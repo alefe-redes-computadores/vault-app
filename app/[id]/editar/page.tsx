@@ -7,10 +7,69 @@ import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, DOCUMENT_FIELDS, type CategoryId, type DocumentType } from "@/lib/types";
+import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
+
+// Campos manuais para cada tipo (sem importar DOCUMENT_FIELDS)
+const getFieldsForType = (type: DocumentType) => {
+  const commonFields = [
+    { key: "number", label: "Número", type: "text" },
+    { key: "issue_date", label: "Data de emissão", type: "date" },
+    { key: "expiry_date", label: "Data de validade", type: "date" },
+    { key: "issuer", label: "Órgão emissor", type: "text" },
+  ];
+
+  const fieldMap: Record<DocumentType, Array<{ key: string; label: string; type: string }>> = {
+    rg: commonFields,
+    cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
+    cnh: [
+      { key: "number", label: "Número da CNH", type: "text" },
+      { key: "category", label: "Categoria", type: "text" },
+      { key: "issue_date", label: "Data de emissão", type: "date" },
+      { key: "expiry_date", label: "Data de validade", type: "date" },
+    ],
+    certificado: [
+      { key: "institution", label: "Instituição", type: "text" },
+      { key: "course", label: "Curso", type: "text" },
+      { key: "duration", label: "Duração", type: "text" },
+      { key: "completion_date", label: "Data de conclusão", type: "date" },
+    ],
+    receita: [
+      { key: "medication", label: "Medicamento", type: "text" },
+      { key: "dosage", label: "Dosagem", type: "text" },
+      { key: "doctor", label: "Médico", type: "text" },
+      { key: "pharmacy", label: "Farmácia", type: "text" },
+      { key: "prescription_date", label: "Data da receita", type: "date" },
+      { key: "renewal_date", label: "Próxima renovação", type: "date" },
+    ],
+    prontuario: [
+      { key: "hospital", label: "Hospital", type: "text" },
+      { key: "doctor", label: "Médico", type: "text" },
+      { key: "specialty", label: "Especialidade", type: "text" },
+      { key: "date", label: "Data", type: "date" },
+    ],
+    laudo: [
+      { key: "doctor", label: "Médico", type: "text" },
+      { key: "specialty", label: "Especialidade", type: "text" },
+      { key: "hospital", label: "Hospital", type: "text" },
+      { key: "date", label: "Data", type: "date" },
+    ],
+    encaminhamento: [
+      { key: "from", label: "Quem encaminhou", type: "text" },
+      { key: "to", label: "Para quem", type: "text" },
+      { key: "reason", label: "Motivo", type: "text" },
+      { key: "date", label: "Data", type: "date" },
+    ],
+    outro: [
+      { key: "custom_field_1", label: "Campo 1", type: "text" },
+      { key: "custom_field_2", label: "Campo 2", type: "text" },
+    ],
+  };
+
+  return fieldMap[type] || [];
+};
 
 export default function EditDocumentPage() {
   const { trigger } = useHapticFeedback();
@@ -48,7 +107,7 @@ export default function EditDocumentPage() {
     }
   }, [doc]);
 
-  const fields = DOCUMENT_FIELDS[formData.type] || [];
+  const fields = getFieldsForType(formData.type);
 
   const handleChange = (field: keyof typeof formData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
