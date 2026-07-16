@@ -58,6 +58,12 @@ export const CATEGORIES: Record<CategoryId, Category> = {
 };
 
 // ============================================================
+// 2.1 ALIAS PARA COMPATIBILIDADE (AREAS e CATEGORY_META)
+// ============================================================
+export const AREAS = CATEGORIES;
+export const CATEGORY_META = CATEGORIES;
+
+// ============================================================
 // 3. DOCUMENTOS (com metadata dinâmica)
 // ============================================================
 export type DocumentType =
@@ -93,6 +99,64 @@ export interface Document {
   updated_at: string;
   synced: boolean;
 }
+
+// ============================================================
+// 3.1 CAMPOS POR TIPO DE DOCUMENTO (para formulário dinâmico)
+// ============================================================
+export const DOCUMENT_FIELDS: Record<
+  DocumentType,
+  Array<{ key: string; label: string; type: 'text' | 'date' | 'select'; options?: string[] }>
+> = {
+  rg: [
+    { key: 'number', label: 'Número do RG', type: 'text' },
+    { key: 'issue_date', label: 'Data de emissão', type: 'date' },
+    { key: 'expiry_date', label: 'Data de validade', type: 'date' },
+    { key: 'issuer', label: 'Órgão emissor', type: 'text' },
+  ],
+  cpf: [{ key: 'number', label: 'Número do CPF', type: 'text' }],
+  cnh: [
+    { key: 'number', label: 'Número da CNH', type: 'text' },
+    { key: 'category', label: 'Categoria', type: 'select', options: ['A', 'B', 'C', 'D', 'E'] },
+    { key: 'issue_date', label: 'Data de emissão', type: 'date' },
+    { key: 'expiry_date', label: 'Data de validade', type: 'date' },
+  ],
+  certificado: [
+    { key: 'institution', label: 'Instituição de ensino', type: 'text' },
+    { key: 'course', label: 'Curso', type: 'text' },
+    { key: 'duration', label: 'Duração (ex: 120 horas)', type: 'text' },
+    { key: 'completion_date', label: 'Data de conclusão', type: 'date' },
+  ],
+  receita: [
+    { key: 'medication', label: 'Medicamento', type: 'text' },
+    { key: 'dosage', label: 'Dosagem', type: 'text' },
+    { key: 'doctor', label: 'Médico', type: 'text' },
+    { key: 'pharmacy', label: 'Farmácia (opcional)', type: 'text' },
+    { key: 'prescription_date', label: 'Data da receita', type: 'date' },
+    { key: 'renewal_date', label: 'Próxima renovação', type: 'date' },
+  ],
+  prontuario: [
+    { key: 'hospital', label: 'Hospital', type: 'text' },
+    { key: 'doctor', label: 'Médico', type: 'text' },
+    { key: 'specialty', label: 'Especialidade', type: 'text' },
+    { key: 'date', label: 'Data', type: 'date' },
+  ],
+  laudo: [
+    { key: 'doctor', label: 'Médico', type: 'text' },
+    { key: 'specialty', label: 'Especialidade', type: 'text' },
+    { key: 'hospital', label: 'Hospital', type: 'text' },
+    { key: 'date', label: 'Data', type: 'date' },
+  ],
+  encaminhamento: [
+    { key: 'from', label: 'Quem encaminhou', type: 'text' },
+    { key: 'to', label: 'Para quem (opcional)', type: 'text' },
+    { key: 'reason', label: 'Motivo', type: 'text' },
+    { key: 'date', label: 'Data', type: 'date' },
+  ],
+  outro: [
+    { key: 'custom_field_1', label: 'Campo personalizado 1', type: 'text' },
+    { key: 'custom_field_2', label: 'Campo personalizado 2', type: 'text' },
+  ],
+};
 
 // ============================================================
 // 4. METADADOS POR TIPO DE DOCUMENTO (campos específicos)
