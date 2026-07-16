@@ -9,7 +9,7 @@ export function useLocalData<T>(
   deps: any[] = []
 ) {
   const data = useLiveQuery(
-    () => db[table].toArray() as Promise<T[]>,
+    () => (db[table] as any).toArray() as Promise<T[]>,
     deps,
     []
   );
