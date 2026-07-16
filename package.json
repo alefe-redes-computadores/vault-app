@@ -25,7 +25,8 @@
     "next": "14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "sharp": "0.33.4"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
@@ -38,5 +39,8 @@
     "postcss": "^8.4.40",
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.4"
+  },
+  "overrides": {
+    "sharp": "0.33.4"
   }
 }
