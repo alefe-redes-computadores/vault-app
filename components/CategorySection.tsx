@@ -1,5 +1,6 @@
 "use client";
 
+/IMPORTAÇÕES 
 import { CATEGORIES, type CategoryId, type Document } from "@/lib/types";
 import { DocumentCard } from "./DocumentCard";
 import { ChevronRight } from "lucide-react";
