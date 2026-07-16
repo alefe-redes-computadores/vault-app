@@ -8,7 +8,7 @@ import { usePersons } from "@/hooks/usePersons";
 import { useDocuments, useFavorites } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, type CategoryId } from "@/lib/types";
+import { CATEGORIES, type CategoryId, type Document } from "@/lib/types";
 import { PersonCard } from "@/components/PersonCard";
 import { CategorySection } from "@/components/CategorySection";
 import { FavoritesSection } from "@/components/FavoritesSection";
@@ -32,8 +32,8 @@ export default function HomePage() {
     }
   }, [persons, selectedPersonId]);
 
-  const allDocs = useDocuments(selectedPersonId || undefined);
-  const favorites = useFavorites(selectedPersonId || undefined);
+  const allDocs = useDocuments(selectedPersonId || undefined) || [];
+  const favorites = useFavorites(selectedPersonId || undefined) || [];
 
   const filteredDocs = allDocs.filter(
     (doc) =>
@@ -48,13 +48,13 @@ export default function HomePage() {
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
-  const docsByCategory = allDocs.reduce<Record<CategoryId, typeof allDocs>>(
+  const docsByCategory = allDocs.reduce<Record<CategoryId, Document[]>>(
     (acc, doc) => {
       if (!acc[doc.category_id]) acc[doc.category_id] = [];
       acc[doc.category_id].push(doc);
       return acc;
     },
-    {} as Record<CategoryId, typeof allDocs>
+    {} as Record<CategoryId, Document[]>
   );
 
   const getCategoryPreview = (categoryId: CategoryId) => {
