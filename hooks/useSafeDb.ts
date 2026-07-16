@@ -1,12 +1,24 @@
-import { db, safeAdd, safeUpdate, safeDelete, toggleFavorite } from '@/lib/db';
+import { db, safeAddPerson, safeAddDocument, safeUpdateDocument, safeDeleteDocument, toggleFavorite } from '@/lib/db';
 import { useHapticFeedback } from '@/lib/haptics';
 
 export function useSafeDb() {
   const haptic = useHapticFeedback();
 
-  const add = async (doc: Parameters<typeof safeAdd>[0]) => {
+  const addPerson = async (person: Parameters<typeof safeAddPerson>[0]) => {
     try {
-      const id = await safeAdd(doc);
+      const id = await safeAddPerson(person);
+      haptic.trigger('success');
+      return id;
+    } catch (error) {
+      haptic.trigger('error');
+      console.error('Erro ao adicionar pessoa:', error);
+      throw error;
+    }
+  };
+
+  const addDocument = async (doc: Parameters<typeof safeAddDocument>[0]) => {
+    try {
+      const id = await safeAddDocument(doc);
       haptic.trigger('success');
       return id;
     } catch (error) {
@@ -16,9 +28,9 @@ export function useSafeDb() {
     }
   };
 
-  const update = async (id: number, changes: Parameters<typeof safeUpdate>[1]) => {
+  const updateDocument = async (id: number, changes: Parameters<typeof safeUpdateDocument>[1]) => {
     try {
-      await safeUpdate(id, changes);
+      await safeUpdateDocument(id, changes);
       haptic.trigger('vibrate');
     } catch (error) {
       haptic.trigger('error');
@@ -27,9 +39,9 @@ export function useSafeDb() {
     }
   };
 
-  const remove = async (id: number) => {
+  const deleteDocument = async (id: number) => {
     try {
-      await safeDelete(id);
+      await safeDeleteDocument(id);
       haptic.trigger('vibrate');
     } catch (error) {
       haptic.trigger('error');
@@ -48,5 +60,5 @@ export function useSafeDb() {
     }
   };
 
-  return { add, update, remove, favorite };
+  return { addPerson, addDocument, updateDocument, deleteDocument, favorite };
 }

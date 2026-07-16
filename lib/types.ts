@@ -1,76 +1,164 @@
-export type DocumentCategory =
-  | "prontuario"
-  | "receita"
-  | "pessoal"
-  | "transporte"
-  | "laudo"
-  | "outros";
-
-export type Profile = {
+// ============================================================
+// 1. PESSOAS
+// ============================================================
+export interface Person {
   id?: number;
-  name: string; // "Eu", "Mãe", "Filha"
-  icon: string; // emoji
-  createdAt: string;
-};
-
-export type Area = {
-  id: string;
-  name: "Saúde" | "Pessoal" | "Empresa" | "Outros";
-  icon: string; // nome do ícone lucide-react
-  description?: string;
-};
-
-export interface VaultDocument {
-  id?: number;
-  profileId: number;
-  areaId: string;
-  category: DocumentCategory;
-  title: string;
-  notes?: string;
-  documentDate?: string; // ISO date
-  expiryDate?: string; // ISO date
-  fileLocalUri?: string; // blob URL / IndexedDB blob key
-  fileRemoteUrl?: string; // Supabase Storage URL
+  user_id: string; // vinculado ao Supabase Auth
+  name: string;
+  email?: string;
+  phone?: string;
+  avatar_url?: string; // foto do Google
+  created_at: string;
+  updated_at: string;
   synced: boolean;
-  isFavorite: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
 
-export interface VaultCategoryMeta {
-  id: DocumentCategory;
-  label: string;
-  icon: string; // nome do ícone lucide-react
+// ============================================================
+// 2. CATEGORIAS (fixas, com cores)
+// ============================================================
+export type CategoryId = 'saude' | 'pessoal' | 'empresa' | 'outros';
+
+export interface Category {
+  id: CategoryId;
+  name: string;
+  icon: string; // nome do ícone Lucide
+  color: string; // hex
+  description?: string;
 }
 
+export const CATEGORIES: Record<CategoryId, Category> = {
+  saude: {
+    id: 'saude',
+    name: 'Saúde',
+    icon: 'Heart',
+    color: '#EC4899',
+    description: 'Prontuários, receitas, laudos, medicamentos',
+  },
+  pessoal: {
+    id: 'pessoal',
+    name: 'Pessoal',
+    icon: 'User',
+    color: '#3B82F6',
+    description: 'RG, CPF, CNH, carteira de trabalho',
+  },
+  empresa: {
+    id: 'empresa',
+    name: 'Empresa',
+    icon: 'Building2',
+    color: '#F59E0B',
+    description: 'Documentos corporativos',
+  },
+  outros: {
+    id: 'outros',
+    name: 'Outros',
+    icon: 'FolderOpen',
+    color: '#6B7280',
+    description: 'Documentos diversos',
+  },
+};
+
+// ============================================================
+// 3. DOCUMENTOS (com metadata dinâmica)
+// ============================================================
+export type DocumentType =
+  | 'rg'
+  | 'cpf'
+  | 'cnh'
+  | 'certificado'
+  | 'receita'
+  | 'prontuario'
+  | 'laudo'
+  | 'encaminhamento'
+  | 'outro';
+
+export interface Attachment {
+  id: string;
+  url: string; // local (blob) ou remota (Supabase)
+  name: string;
+  type: 'image' | 'pdf';
+  uploaded_at: string;
+}
+
+export interface Document {
+  id?: number;
+  person_id: number;
+  category_id: CategoryId;
+  type: DocumentType;
+  title: string;
+  description?: string;
+  metadata: Record<string, any>; // campos específicos por tipo
+  attachments: Attachment[];
+  is_favorite: boolean;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+// ============================================================
+// 4. METADADOS POR TIPO DE DOCUMENTO (campos específicos)
+// ============================================================
+export type RGMetadata = {
+  number: string;
+  issue_date: string;
+  expiry_date: string;
+  issuer: string; // órgão emissor
+};
+
+export type CPFMetadata = {
+  number: string;
+};
+
+export type CNHMetadata = {
+  number: string;
+  category: 'A' | 'B' | 'C' | 'D' | 'E';
+  issue_date: string;
+  expiry_date: string;
+};
+
+export type CertificadoMetadata = {
+  institution: string;
+  course: string;
+  duration: string; // ex: "120 horas"
+  completion_date?: string;
+};
+
+export type ReceitaMetadata = {
+  medication: string;
+  dosage: string;
+  doctor: string;
+  pharmacy?: string;
+  prescription_date: string;
+  renewal_date: string; // próxima renovação
+};
+
+export type ProntuarioMetadata = {
+  hospital: string;
+  doctor: string;
+  specialty: string;
+  date: string;
+};
+
+export type LaudoMetadata = {
+  doctor: string;
+  specialty: string;
+  hospital: string;
+  date: string;
+};
+
+export type EncaminhamentoMetadata = {
+  from: string; // quem encaminhou
+  to?: string; // para quem
+  reason: string;
+  date: string;
+};
+
+// ============================================================
+// 5. FILA DE SINCRONIZAÇÃO
+// ============================================================
 export interface SyncQueueItem {
   id?: number;
-  table: string;
-  operation: "add" | "update" | "delete";
+  table: 'persons' | 'documents';
+  operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
-  createdAt: string;
-}
-
-export const CATEGORY_META: Record<DocumentCategory, VaultCategoryMeta> = {
-  prontuario: { id: "prontuario", label: "Prontuários", icon: "ClipboardList" },
-  receita: { id: "receita", label: "Receitas médicas", icon: "Pill" },
-  pessoal: { id: "pessoal", label: "Documentos pessoais", icon: "IdCard" },
-  transporte: { id: "transporte", label: "Carteira de ônibus", icon: "BusFront" },
-  laudo: { id: "laudo", label: "Laudos", icon: "FileText" },
-  outros: { id: "outros", label: "Outros", icon: "FolderOpen" },
-};
-
-export const DEFAULT_PROFILES: Omit<Profile, "id" | "createdAt">[] = [
-  { name: "Eu", icon: "👤" },
-  { name: "Mãe", icon: "👩" },
-  { name: "Pai", icon: "👨" },
-  { name: "Filha", icon: "👧" },
-  { name: "Filho", icon: "👦" },
-];
-
-export const AREAS: Area[] = [
-  { id: "saude", name: "Saúde", icon: "Heart", description: "Prontuários, receitas, laudos" },
-  { id: "pessoal", name: "Pessoal", icon: "User", description: "RG, CPF, CNH" },
-  { id: "empresa", name: "Empresa", icon: "Building2", description: "Documentos corporativos" },
-  { id: "outros", name: "Outros", icon: "FolderOpen", description: "Documentos diversos" },
-];
+  created_at: string;
+}a
