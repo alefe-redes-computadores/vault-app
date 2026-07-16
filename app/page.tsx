@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { useDocuments, useFavorites } from "@/hooks/useLocalData";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -16,6 +17,7 @@ import { Input } from "@/components/ui/Input";
 export default function HomePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { user, logout } = useAuth();
   const { favorite } = useSafeDb();
 
   const [activeProfileId, setActiveProfileId] = useState<number>(1);
@@ -23,11 +25,9 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Busca documentos com filtros
   const allDocs = useDocuments(activeProfileId, activeArea || undefined) ?? [];
   const favorites = useFavorites(activeProfileId) ?? [];
 
-  // Filtra por busca
   const filteredDocs = allDocs.filter(
     (doc) =>
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -41,27 +41,53 @@ export default function HomePage() {
   const total = allDocs.length;
   const favCount = favorites.length;
 
+  const avatarUrl = user?.user_metadata?.avatar_url;
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuário";
+
   return (
     <main className="min-h-screen bg-void pb-28">
-      {/* Header */}
       <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-            <h1 className="font-display text-2xl font-semibold text-ink-primary">
-              Seus documentos
-            </h1>
+          <div className="flex items-center gap-3">
+            {/* Avatar do Google */}
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="w-10 h-10 rounded-full border-2 border-ice/20"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-steel-dark/40 flex items-center justify-center text-ink-muted">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
+                Olá, {displayName.split(' ')[0]}
+              </h1>
+            </div>
           </div>
-          <button
-            onClick={() => {
-              trigger("vibrate");
-              setIsSearchOpen(true);
-            }}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98] transition-all"
-            aria-label="Buscar documento"
-          >
-            <Search size={18} className="text-ink-muted" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                setIsSearchOpen(true);
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98] transition-all"
+            >
+              <Search size={18} className="text-ink-muted" />
+            </button>
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                logout();
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98] transition-all"
+            >
+              <LogOut size={18} className="text-ink-muted" />
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center justify-between mt-3">
@@ -79,7 +105,6 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Profile Switcher */}
         <div className="mt-4">
           <ProfileSwitcher
             activeProfileId={activeProfileId}
@@ -90,10 +115,7 @@ export default function HomePage() {
 
       {/* Áreas */}
       <div className="px-5 pt-5">
-        <AreaTabs
-          activeArea={activeArea}
-          onAreaChange={setActiveArea}
-        />
+        <AreaTabs activeArea={activeArea} onAreaChange={setActiveArea} />
       </div>
 
       {/* Lista de Documentos */}
@@ -113,7 +135,6 @@ export default function HomePage() {
           router.push("/novo");
         }}
         className="fixed bottom-8 right-5 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-vault active:scale-[0.98] transition-all z-20"
-        aria-label="Adicionar documento"
       >
         <Plus size={24} strokeWidth={2.5} />
       </button>
