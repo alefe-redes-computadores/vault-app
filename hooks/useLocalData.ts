@@ -47,8 +47,8 @@ export function useProfiles() {
 
 export function useDocument(id?: number) {
   return useLiveQuery(
-    () => (id ? db.documents.get(id) : null),
+    () => (id ? db.documents.get(id) : undefined),
     [id],
-    null
+    undefined
   );
 }
