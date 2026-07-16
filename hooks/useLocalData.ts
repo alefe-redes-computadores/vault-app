@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
-import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 
 type TableNames = keyof typeof db;
 
@@ -10,11 +9,10 @@ export function useLocalData<T>(
   deps: any[] = []
 ) {
   const data = useLiveQuery(
-    () => db[table as any].toArray() as Promise<T[]>,
+    () => db[table].toArray() as Promise<T[]>,
     deps,
     []
   );
-
   return (data || []).filter(filter || (() => true));
 }
 
