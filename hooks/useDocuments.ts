@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import type { CategoryId } from '@/lib/types';
+import type { CategoryId, Document } from '@/lib/types';
 
 export function useDocuments(personId?: number, categoryId?: CategoryId) {
   return useLiveQuery(
@@ -27,8 +27,16 @@ export function useFavorites(personId?: number) {
   );
 }
 
+export function useProfiles() {
+  return useLiveQuery(() => db.persons.toArray(), [], []);
+}
+
 export function useDocument(id?: number) {
-  return useLiveQuery(() => (id ? db.documents.get(id) : null), [id], null);
+  return useLiveQuery(
+    () => (id ? db.documents.get(id) : undefined),
+    [id],
+    undefined
+  );
 }
 
 export function useDocumentsByType(personId: number, type: string) {
