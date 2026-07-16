@@ -21,7 +21,6 @@ export default function NewPersonPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Se for "Eu", usa os dados do Google
   const handleAutoFill = () => {
     if (user?.user_metadata) {
       setName(user.user_metadata.full_name || "");
@@ -74,9 +73,7 @@ export default function NewPersonPage() {
           </button>
           <div>
             <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-            <h1 className="font-display text-xl font-semibold text-ink-primary">
-              Nova pessoa
-            </h1>
+            <h1 className="font-display text-xl font-semibold text-ink-primary">Nova pessoa</h1>
           </div>
         </div>
       </header>
@@ -96,30 +93,49 @@ export default function NewPersonPage() {
           </div>
 
           <div className="space-y-4">
-            <Input
-              label="Nome completo"
-              placeholder="Ex: Alefe Gomes"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              error={error}
-              required
-            />
+            <div className="relative">
+              <User
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+              />
+              <Input
+                label="Nome completo"
+                placeholder="Ex: Alefe Gomes"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                error={error}
+                className="pl-9"
+                required
+              />
+            </div>
 
-            <Input
-              label="E-mail"
-              placeholder="exemplo@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              icon={<Mail size={16} className="text-ink-muted" />}
-            />
+            <div className="relative">
+              <Mail
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+              />
+              <Input
+                label="E-mail"
+                placeholder="exemplo@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-9"
+              />
+            </div>
 
-            <Input
-              label="Telefone"
-              placeholder="(11) 99999-9999"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              icon={<Phone size={16} className="text-ink-muted" />}
-            />
+            <div className="relative">
+              <Phone
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+              />
+              <Input
+                label="Telefone"
+                placeholder="(11) 99999-9999"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
         </div>
 
