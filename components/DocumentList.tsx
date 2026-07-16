@@ -1,12 +1,12 @@
 "use client";
 
-import { VaultDocument } from "@/lib/types";
+import { type Document } from "@/lib/types";
 import { DocumentCard } from "./DocumentCard";
 import { Plus, FolderOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface DocumentListProps {
-  documents: VaultDocument[];
+  documents: Document[];
   onFavoriteToggle: (id: number) => void;
   profileId: number;
   areaId?: string | null;
