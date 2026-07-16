@@ -1,23 +1,26 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
-import { initDefaultProfiles } from "@/lib/db";
+import { usePathname, useRouter } from "next/navigation";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
 import { BottomNav } from "./BottomNav";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, loading } = useAuth();
-
-  // Inicializa perfis padrão
-  useEffect(() => {
-    initDefaultProfiles();
-  }, []);
 
   // Ativa a fila de sincronização
   useSyncQueue();
+
+  // Listener para mudanças de autenticação
+  useEffect(() => {
+    // Redireciona para login se não estiver autenticado
+    if (!loading && !user && pathname !== "/login" && pathname !== "/auth/callback") {
+      router.push("/login");
+    }
+  }, [loading, user, pathname, router]);
 
   // Se estiver carregando, mostra loading
   if (loading) {
@@ -31,13 +34,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Se não estiver autenticado, mostra só o login
-  if (!user && pathname !== "/login") {
+  // Se não estiver autenticado e não estiver na página de login ou callback
+  if (!user && pathname !== "/login" && pathname !== "/auth/callback") {
     return <>{children}</>;
   }
 
-  // Se estiver na página de login, não mostra BottomNav
-  if (pathname === "/login") {
+  // Se estiver na página de login ou callback, não mostra BottomNav
+  if (pathname === "/login" || pathname === "/auth/callback") {
     return <>{children}</>;
   }
 
