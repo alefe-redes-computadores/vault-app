@@ -7,7 +7,11 @@ export function usePersons() {
 }
 
 export function usePerson(id?: number) {
-  return useLiveQuery(() => (id ? db.persons.get(id) : null), [id], null);
+  return useLiveQuery(
+    () => (id ? db.persons.get(id) : undefined),
+    [id],
+    undefined
+  );
 }
 
 export function usePersonsByUserId(userId: string) {
