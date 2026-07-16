@@ -1,6 +1,6 @@
 "use client";
 
-import { useProfiles } from "@/hooks/usePersons";
+import { useProfiles } from "@/hooks/useLocalData";
 import { useHapticFeedback } from "@/lib/haptics";
 import { ChevronDown, User } from "lucide-react";
 import { useState } from "react";
