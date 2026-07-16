@@ -20,7 +20,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: process.env.NEXT_PUBLIC_APP_URL || window.location.origin,
+      redirectTo: `${window.location.origin}/auth/callback`,
     },
   });
   return { data, error };
@@ -34,9 +34,4 @@ export async function signOut() {
 export async function getCurrentUser() {
   const { data, error } = await supabase.auth.getUser();
   return { user: data?.user, error };
-}
-
-export async function resetPassword(email: string) {
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email);
-  return { data, error };
 }
