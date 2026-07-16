@@ -1,6 +1,5 @@
 "use client";
 
-/IMPORTAÇÕES 
 import { CATEGORIES, type CategoryId, type Document } from "@/lib/types";
 import { DocumentCard } from "./DocumentCard";
 import { ChevronRight } from "lucide-react";
@@ -24,7 +23,6 @@ export function CategorySection({
 }: CategorySectionProps) {
   const category = CATEGORIES[categoryId];
 
-  // Se não tiver documentos, não mostra a seção
   if (documents.length === 0) {
     return null;
   }
