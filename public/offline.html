@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vault - Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0A0C0F;
+      color: #E8EBEF;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background: #14181D;
+      border: 1px solid #262C34;
+      border-radius: 28px;
+      padding: 40px 32px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 8px 32px -8px rgba(0,0,0,0.5);
+    }
+    .vault-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      display: block;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #E8EBEF;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #7C8592;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 12px;
+      background: #1C2128;
+      border-radius: 16px;
+      border: 1px solid #262C34;
+      font-size: 13px;
+      color: #7C8592;
+    }
+    .retry-btn {
+      margin-top: 20px;
+      padding: 12px 32px;
+      background: #7DD3FC;
+      color: #0A0C0F;
+      border: none;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .retry-btn:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <span class="vault-icon">🔒</span>
+    <h1>Você está offline</h1>
+    <p>
+      Seus documentos estão seguros e disponíveis localmente.
+      Conecte-se à internet para sincronizar com a nuvem.
+    </p>
+    <div class="status">
+      📡 Modo offline ativo<br />
+      <span style="font-size:12px;color:#4A515C;">Os dados locais ainda estão acessíveis</span>
+    </div>
+    <button class="retry-btn" onclick="location.reload()">
+      Tentar novamente
+    </button>
+  </div>
+</body>
+</html>
