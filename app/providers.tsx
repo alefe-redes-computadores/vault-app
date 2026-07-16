@@ -2,38 +2,24 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { initDefaultProfiles } from "@/lib/db";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
 import { BottomNav } from "@/components/BottomNav";
-import { supabase } from "@/lib/supabase/client";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
 
-  // Inicializa perfis padrão
-  useEffect(() => {
-    initDefaultProfiles();
-  }, []);
-
   // Ativa a fila de sincronização
   useSyncQueue();
 
-  // Listener para mudanças de autenticação (redireciona após login)
+  // Redireciona para login se não estiver autenticado
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        router.push("/");
-      }
-      if (event === "SIGNED_OUT") {
-        router.push("/login");
-      }
-    });
-
-    return () => listener?.subscription.unsubscribe();
-  }, [router]);
+    if (!loading && !user && pathname !== "/login" && pathname !== "/auth/callback") {
+      router.push("/login");
+    }
+  }, [loading, user, pathname, router]);
 
   // Se estiver carregando, mostra loading
   if (loading) {
@@ -49,8 +35,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   // Se não estiver autenticado e não estiver na página de login ou callback
   if (!user && pathname !== "/login" && pathname !== "/auth/callback") {
-    router.push("/login");
-    return null;
+    return <>{children}</>;
   }
 
   // Se estiver na página de login ou callback, não mostra BottomNav
