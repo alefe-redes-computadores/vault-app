@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Upload, Camera, X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -18,7 +18,7 @@ export default function EditDocumentPage() {
   const params = useParams();
   const id = Number(params.id);
 
-  const document = useDocument(id);
+  const doc = useDocument(id);
   const persons = usePersons();
   const { updateDocument } = useSafeDb();
 
@@ -34,20 +34,19 @@ export default function EditDocumentPage() {
     attachments: [] as any[],
   });
 
-  // Preenche o formulário com os dados do documento
   useEffect(() => {
-    if (document) {
+    if (doc) {
       setFormData({
-        person_id: document.person_id,
-        category_id: document.category_id,
-        type: document.type as DocumentType,
-        title: document.title,
-        description: document.description || "",
-        metadata: document.metadata || {},
-        attachments: document.attachments || [],
+        person_id: doc.person_id,
+        category_id: doc.category_id,
+        type: doc.type as DocumentType,
+        title: doc.title,
+        description: doc.description || "",
+        metadata: doc.metadata || {},
+        attachments: doc.attachments || [],
       });
     }
-  }, [document]);
+  }, [doc]);
 
   const fields = DOCUMENT_FIELDS[formData.type] || [];
 
@@ -70,7 +69,7 @@ export default function EditDocumentPage() {
   };
 
   const handleSubmit = async () => {
-    if (!validate() || !document) {
+    if (!validate() || !doc) {
       trigger("error");
       return;
     }
@@ -96,7 +95,7 @@ export default function EditDocumentPage() {
     }
   };
 
-  if (!document) {
+  if (!doc) {
     return (
       <main className="min-h-screen bg-void flex items-center justify-center">
         <div className="text-center">
