@@ -1,6 +1,6 @@
 "use client";
 
-import { AREAS } from "@/lib/types";
+import { AREAS, type CategoryId } from "@/lib/types";
 import { useHapticFeedback } from "@/lib/haptics";
 import { LucideIcon, Heart, User, Building2, FolderOpen } from "lucide-react";
 
@@ -12,22 +12,25 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 interface AreaTabsProps {
-  activeArea: string | null;
-  onAreaChange: (areaId: string | null) => void;
+  activeArea: CategoryId | null;
+  onAreaChange: (areaId: CategoryId | null) => void;
 }
 
 export function AreaTabs({ activeArea, onAreaChange }: AreaTabsProps) {
   const { trigger } = useHapticFeedback();
 
-  const handleAreaClick = (areaId: string) => {
+  // Converte AREAS (objeto) para um array
+  const areasArray = Object.values(AREAS);
+
+  const handleAreaClick = (areaId: CategoryId) => {
     trigger("vibrate");
     onAreaChange(activeArea === areaId ? null : areaId);
   };
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-      {AREAS.map((area) => {
-        const Icon = ICON_MAP[area.icon];
+      {areasArray.map((area) => {
+        const Icon = ICON_MAP[area.icon] || FolderOpen;
         const isActive = activeArea === area.id;
 
         return (
