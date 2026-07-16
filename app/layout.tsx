@@ -30,6 +30,16 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Vault",
   },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-192x192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512x512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [
+      { url: "/icon-192x192.png", sizes: "192x192" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
@@ -47,6 +57,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+      <head>
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body className="font-body antialiased bg-void min-h-screen">
         <Providers>
           {children}
