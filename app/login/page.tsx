@@ -74,15 +74,15 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-void flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo do Vault */}
+        {/* Logo do Vault - CORRIGIDA */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-raised border border-surface-border p-2 mb-4">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-surface-raised border border-surface-border p-3 mb-4">
             <Image
               src="/icon-512x512.png"
               alt="Vault Logo"
-              width={64}
-              height={64}
-              className="rounded-full"
+              width={72}
+              height={72}
+              className="object-contain"
               priority
             />
           </div>

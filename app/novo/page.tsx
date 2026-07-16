@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Upload, Camera, X } from "lucide-react";
+import { ArrowLeft, Upload, Camera, X, Loader2 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
+import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
+import { uploadFile } from "@/lib/supabase/storage";
 import {
   CATEGORIES,
   type CategoryId,
@@ -91,8 +93,12 @@ type FormData = {
 export default function NewDocumentPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { user } = useAuth();
   const { addDocument } = useSafeDb();
   const persons = usePersons();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<FormData>({
     person_id: persons[0]?.id || 0,
@@ -105,6 +111,7 @@ export default function NewDocumentPage() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Reset metadata quando trocar o tipo
@@ -129,6 +136,65 @@ export default function NewDocumentPage() {
       ...prev,
       metadata: { ...prev.metadata, [key]: value },
     }));
+  };
+
+  const handleFileUpload = async (file: File) => {
+    if (!user) {
+      trigger("error");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const folder = formData.category_id;
+      const { url, error } = await uploadFile(user.id, file, folder);
+
+      if (error) throw error;
+
+      const newAttachment: Attachment = {
+        id: crypto.randomUUID(),
+        url,
+        name: file.name,
+        type: file.type.startsWith("image") ? "image" : "pdf",
+        uploaded_at: new Date().toISOString(),
+      };
+
+      setFormData((prev) => ({
+        ...prev,
+        attachments: [...prev.attachments, newAttachment],
+      }));
+
+      trigger("success");
+    } catch (error) {
+      console.error("Erro no upload:", error);
+      trigger("error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+    e.target.value = "";
+  };
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+    e.target.value = "";
+  };
+
+  const removeAttachment = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      attachments: prev.attachments.filter((a) => a.id !== id),
+    }));
+    trigger("vibrate");
   };
 
   const validate = (): boolean => {
@@ -179,6 +245,23 @@ export default function NewDocumentPage() {
 
   return (
     <main className="min-h-screen bg-void pb-28">
+      {/* Inputs ocultos para upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleCameraCapture}
+      />
+
       <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
         <div className="flex items-center gap-3">
           <button
@@ -289,7 +372,9 @@ export default function NewDocumentPage() {
                 type={field.type === "date" ? "date" : "text"}
                 value={formData.metadata[field.key] || ""}
                 onChange={(e) => handleMetadataChange(field.key, e.target.value)}
-                placeholder={field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`}
+                placeholder={
+                  field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`
+                }
               />
             ))}
           </div>
@@ -305,27 +390,42 @@ export default function NewDocumentPage() {
 
         {/* Upload de arquivo */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-ink-primary">
-            Anexos
-          </label>
+          <label className="block text-sm font-medium text-ink-primary">Anexos</label>
           <div className="grid grid-cols-2 gap-3">
             <Button
               variant="secondary"
               className="flex items-center justify-center gap-2"
-              onClick={() => trigger("vibrate")}
+              onClick={() => {
+                trigger("vibrate");
+                fileInputRef.current?.click();
+              }}
+              disabled={uploading}
             >
-              <Upload size={16} />
+              {uploading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Upload size={16} />
+              )}
               Upload
             </Button>
             <Button
               variant="secondary"
               className="flex items-center justify-center gap-2"
-              onClick={() => trigger("vibrate")}
+              onClick={() => {
+                trigger("vibrate");
+                cameraInputRef.current?.click();
+              }}
+              disabled={uploading}
             >
-              <Camera size={16} />
+              {uploading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Camera size={16} />
+              )}
               Câmera
             </Button>
           </div>
+
           {formData.attachments.length > 0 && (
             <div className="mt-2 space-y-1">
               {formData.attachments.map((att) => (
@@ -333,15 +433,9 @@ export default function NewDocumentPage() {
                   key={att.id}
                   className="flex items-center justify-between p-2 rounded-lg bg-surface-raised border border-surface-border"
                 >
-                  <span className="text-sm text-ink-muted truncate">{att.name}</span>
+                  <span className="text-sm text-ink-muted truncate flex-1">{att.name}</span>
                   <button
-                    onClick={() => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        attachments: prev.attachments.filter((a) => a.id !== att.id),
-                      }));
-                      trigger("vibrate");
-                    }}
+                    onClick={() => removeAttachment(att.id)}
                     className="p-1 rounded-full hover:bg-surface-border transition-colors"
                   >
                     <X size={14} className="text-ink-muted" />
@@ -357,7 +451,7 @@ export default function NewDocumentPage() {
           size="lg"
           fullWidth
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={loading || uploading}
           className="mt-4"
         >
           {loading ? "Salvando..." : "Salvar documento"}
