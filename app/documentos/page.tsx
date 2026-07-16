@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -58,12 +58,16 @@ export default function DocumentsPage() {
           ))}
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 relative">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+          />
           <Input
             placeholder="Buscar documentos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            icon={<Search size={16} className="text-ink-muted" />}
+            className="pl-9"
           />
         </div>
       </header>
