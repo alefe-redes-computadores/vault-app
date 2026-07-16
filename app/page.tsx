@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, LogOut } from "lucide-react";
+import { Search, Plus, LogOut, User, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useDocuments, useFavorites } from "@/hooks/useLocalData";
+import { usePersons } from "@/hooks/usePersons";
+import { useDocuments, useFavorites } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { ProfileSwitcher } from "@/components/ProfileSwitcher";
-import { AreaTabs } from "@/components/AreaTabs";
-import { DocumentList } from "@/components/DocumentList";
+import { CATEGORIES, type CategoryId } from "@/lib/types";
+import { PersonCard } from "@/components/PersonCard";
+import { CategorySection } from "@/components/CategorySection";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -20,36 +21,61 @@ export default function HomePage() {
   const { user, logout } = useAuth();
   const { favorite } = useSafeDb();
 
-  const [activeProfileId, setActiveProfileId] = useState<number>(1);
-  const [activeArea, setActiveArea] = useState<string | null>(null);
+  const persons = usePersons();
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const allDocs = useDocuments(activeProfileId, activeArea || undefined) ?? [];
-  const favorites = useFavorites(activeProfileId) ?? [];
+  // Seleciona a primeira pessoa automaticamente
+  useEffect(() => {
+    if (persons.length > 0 && selectedPersonId === null) {
+      setSelectedPersonId(persons[0].id!);
+    }
+  }, [persons, selectedPersonId]);
 
+  const allDocs = useDocuments(selectedPersonId || undefined);
+  const favorites = useFavorites(selectedPersonId || undefined);
+
+  // Filtra por busca
   const filteredDocs = allDocs.filter(
     (doc) =>
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.notes?.toLowerCase().includes(searchQuery.toLowerCase())
+      doc.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleFavoriteToggle = async (id: number) => {
     await favorite(id);
   };
 
-  const total = allDocs.length;
-  const favCount = favorites.length;
-
   const avatarUrl = user?.user_metadata?.avatar_url;
-  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuário";
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
+
+  // Agrupa documentos por categoria
+  const docsByCategory = allDocs.reduce<Record<CategoryId, typeof allDocs>>(
+    (acc, doc) => {
+      if (!acc[doc.category_id]) acc[doc.category_id] = [];
+      acc[doc.category_id].push(doc);
+      return acc;
+    },
+    {} as Record<CategoryId, typeof allDocs>
+  );
+
+  // Pega os 3 primeiros de cada categoria
+  const getCategoryPreview = (categoryId: CategoryId) => {
+    const docs = docsByCategory[categoryId] || [];
+    return docs.slice(0, 3);
+  };
+
+  const hasMore = (categoryId: CategoryId) => {
+    return (docsByCategory[categoryId] || []).length > 3;
+  };
 
   return (
     <main className="min-h-screen bg-void pb-28">
+      {/* Header */}
       <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Avatar do Google */}
             {avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -64,7 +90,7 @@ export default function HomePage() {
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
               <h1 className="font-display text-xl font-semibold text-ink-primary">
-                Olá, {displayName.split(' ')[0]}
+                Olá, {displayName.split(" ")[0]}
               </h1>
             </div>
           </div>
@@ -74,7 +100,7 @@ export default function HomePage() {
                 trigger("vibrate");
                 setIsSearchOpen(true);
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98] transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
             >
               <Search size={18} className="text-ink-muted" />
             </button>
@@ -83,7 +109,7 @@ export default function HomePage() {
                 trigger("vibrate");
                 logout();
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98] transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
             >
               <LogOut size={18} className="text-ink-muted" />
             </button>
@@ -92,10 +118,8 @@ export default function HomePage() {
 
         <div className="flex items-center justify-between mt-3">
           <p className="text-sm text-ink-muted">
-            {total === 0
-              ? "Nenhum documento guardado ainda"
-              : `${total} documento${total > 1 ? "s" : ""} guardado${total > 1 ? "s" : ""}`}
-            {favCount > 0 && ` · ${favCount} favorito${favCount > 1 ? "s" : ""}`}
+            {allDocs.length} documento{allDocs.length !== 1 ? "s" : ""}
+            {favorites.length > 0 && ` · ${favorites.length} favorito${favorites.length > 1 ? "s" : ""}`}
           </p>
           <button
             onClick={() => router.push("/favoritos")}
@@ -104,28 +128,57 @@ export default function HomePage() {
             Ver favoritos
           </button>
         </div>
-
-        <div className="mt-4">
-          <ProfileSwitcher
-            activeProfileId={activeProfileId}
-            onProfileChange={setActiveProfileId}
-          />
-        </div>
       </header>
 
-      {/* Áreas */}
-      <div className="px-5 pt-5">
-        <AreaTabs activeArea={activeArea} onAreaChange={setActiveArea} />
-      </div>
-
-      {/* Lista de Documentos */}
+      {/* Pessoas (horizontal) */}
       <section className="px-5 pt-5">
-        <DocumentList
-          documents={filteredDocs}
-          onFavoriteToggle={handleFavoriteToggle}
-          profileId={activeProfileId}
-          areaId={activeArea}
-        />
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display text-sm font-medium text-ink-muted">Pessoas</h2>
+          <button
+            onClick={() => router.push("/pessoas/novo")}
+            className="text-xs text-ice hover:text-ice/80 transition-colors"
+          >
+            + Adicionar
+          </button>
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          {persons.map((person) => (
+            <PersonCard
+              key={person.id}
+              person={person}
+              isActive={selectedPersonId === person.id}
+              onClick={() => {
+                trigger("vibrate");
+                setSelectedPersonId(person.id!);
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Cards por categoria */}
+      <section className="px-5 pt-5 space-y-6">
+        {Object.keys(CATEGORIES).map((categoryId) => {
+          const preview = getCategoryPreview(categoryId as CategoryId);
+          const more = hasMore(categoryId as CategoryId);
+          const total = (docsByCategory[categoryId as CategoryId] || []).length;
+
+          if (preview.length === 0) return null;
+
+          return (
+            <CategorySection
+              key={categoryId}
+              categoryId={categoryId as CategoryId}
+              documents={preview}
+              total={total}
+              hasMore={more}
+              onFavoriteToggle={handleFavoriteToggle}
+              onSeeAll={() => {
+                router.push(`/categoria/${categoryId}`);
+              }}
+            />
+          );
+        })}
       </section>
 
       {/* Botão flutuante */}
@@ -135,16 +188,13 @@ export default function HomePage() {
           router.push("/novo");
         }}
         className="fixed bottom-8 right-5 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-vault active:scale-[0.98] transition-all z-20"
+        aria-label="Adicionar documento"
       >
         <Plus size={24} strokeWidth={2.5} />
       </button>
 
       {/* Bottom Sheet de Busca */}
-      <BottomSheet
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        title="Buscar documentos"
-      >
+      <BottomSheet isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscar documentos">
         <div className="space-y-4">
           <Input
             placeholder="Digite para buscar..."
@@ -168,7 +218,7 @@ export default function HomePage() {
               >
                 <p className="text-sm font-medium text-ink-primary">{doc.title}</p>
                 <p className="text-xs text-ink-muted mt-0.5">
-                  {doc.areaId} · {doc.category}
+                  {doc.category_id} · {doc.type}
                 </p>
               </button>
             ))}
