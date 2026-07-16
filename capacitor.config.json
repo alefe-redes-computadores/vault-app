@@ -1,0 +1,27 @@
+{
+  "appId": "com.seuemail.vault",
+  "appName": "Vault",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0A0C0F",
+      "showSpinner": false
+    },
+    "Biometric": {
+      "android": {
+        "useStrongBiometric": true,
+        "title": "Desbloqueie o Vault"
+      }
+    },
+    "Camera": {
+      "android": {
+        "useLegacy": false
+      }
+    }
+  }
+}

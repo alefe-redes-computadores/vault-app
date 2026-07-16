@@ -1,0 +1,59 @@
+name: Compilar APK Vault
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar Repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configurar Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Instalar Dependências
+        run: npm install
+
+      - name: Build do Next.js
+        run: npm run build
+
+      - name: Sincronizar e Preparar Android
+        run: |
+          rm -rf android
+          npx cap add android
+          
+          # 🔥 INJEÇÃO PARA DEEP LINKING (SCHEME VAULT)
+          sed -i 's/<\/activity>/<intent-filter android:label="vault_auth"><action android:name="android.intent.action.VIEW" \/><category android:name="android.intent.category.DEFAULT" \/><category android:name="android.intent.category.BROWSABLE" \/><data android:scheme="vault" android:host="callback" \/><\/intent-filter><\/activity>/g' android/app/src/main/AndroidManifest.xml
+
+          npx cap sync android
+          
+          # Copia os ícones do PWA para os assets do Capacitor
+          mkdir -p assets
+          cp public/icon-512x512.png assets/icon.png || echo "Ícone não encontrado"
+          cp public/icon-512x512.png assets/splash.png || echo "Splash não encontrada"
+          
+          npx @capacitor/assets generate --android
+
+      - name: Compilar APK (Gradle)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew clean assembleDebug
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vault-App
+          path: android/app/build/outputs/apk/debug/app-debug.apk
