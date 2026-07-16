@@ -1,0 +1,76 @@
+"use client";
+
+import { usePathname, useRouter } from "next/navigation";
+import { Home, FileText, Star, User, Plus } from "lucide-react";
+import { useHapticFeedback } from "@/lib/haptics";
+
+interface NavItem {
+  id: string;
+  icon: typeof Home;
+  label: string;
+  path: string;
+}
+
+const navItems: NavItem[] = [
+  { id: "home", icon: Home, label: "Início", path: "/" },
+  { id: "documents", icon: FileText, label: "Documentos", path: "/documentos" },
+  { id: "favorites", icon: Star, label: "Favoritos", path: "/favoritos" },
+  { id: "profile", icon: User, label: "Perfil", path: "/perfil" },
+];
+
+export function BottomNav() {
+  const { trigger } = useHapticFeedback();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const handleNavigate = (path: string) => {
+    if (path === pathname) return;
+    trigger("vibrate");
+    router.push(path);
+  };
+
+  // Esconde a BottomNav na página de login
+  if (pathname === "/login") return null;
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40">
+      <div className="glass-header rounded-t-[32px] border-t border-surface-border px-4 pt-3 pb-6">
+        <div className="flex items-center justify-around relative">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.path || 
+              (item.path === "/" && pathname === "/") ||
+              (item.path === "/documentos" && pathname?.startsWith("/documentos"));
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavigate(item.path)}
+                className={`flex flex-col items-center gap-0.5 transition-all active:scale-[0.95] ${
+                  isActive ? "text-ice" : "text-ink-muted hover:text-ink-primary"
+                }`}
+              >
+                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                <span className="text-[10px] font-medium">{item.label}</span>
+                {isActive && (
+                  <div className="absolute -top-1 w-1.5 h-1.5 rounded-full bg-ice" />
+                )}
+              </button>
+            );
+          })}
+
+          {/* Botão flutuante de adicionar (centralizado) */}
+          <button
+            onClick={() => {
+              trigger("success");
+              router.push("/novo");
+            }}
+            className="absolute -top-6 left-1/2 -translate-x-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-vault active:scale-[0.95] transition-all border-4 border-void"
+          >
+            <Plus size={24} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}

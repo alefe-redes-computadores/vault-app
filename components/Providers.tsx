@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { initDefaultProfiles } from "@/lib/db";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter, usePathname } from "next/navigation";
+import { BottomNav } from "./BottomNav";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const { user, loading } = useAuth();
 
@@ -19,16 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Ativa a fila de sincronização
   useSyncQueue();
 
-  // Protege rotas (redireciona para login se não estiver autenticado)
-  useEffect(() => {
-    if (!loading && !user && pathname !== "/login") {
-      router.push("/login");
-    }
-    if (!loading && user && pathname === "/login") {
-      router.push("/");
-    }
-  }, [loading, user, pathname, router]);
-
+  // Se estiver carregando, mostra loading
   if (loading) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center">
@@ -40,5 +31,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  // Se não estiver autenticado, mostra só o login
+  if (!user && pathname !== "/login") {
+    return <>{children}</>;
+  }
+
+  // Se estiver na página de login, não mostra BottomNav
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
+  // Páginas principais com BottomNav
+  return (
+    <div className="min-h-screen pb-24">
+      {children}
+      <BottomNav />
+    </div>
+  );
 }
