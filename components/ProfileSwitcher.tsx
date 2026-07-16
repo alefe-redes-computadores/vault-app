@@ -1,9 +1,10 @@
 "use client";
 
-import { useProfiles } from "@/hooks/useLocalData";
+import { useProfiles } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
 import { ChevronDown, User } from "lucide-react";
 import { useState } from "react";
+import type { Person } from "@/lib/types";
 
 interface ProfileSwitcherProps {
   activeProfileId: number;
@@ -15,7 +16,7 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
   const profiles = useProfiles();
   const [isOpen, setIsOpen] = useState(false);
 
-  const activeProfile = profiles.find(p => p.id === activeProfileId);
+  const activeProfile = profiles.find((p: Person) => p.id === activeProfileId);
 
   const handleSelect = (profileId: number) => {
     trigger("vibrate");
@@ -53,7 +54,7 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
             onClick={() => setIsOpen(false)}
           />
           <div className="absolute left-0 top-full mt-2 z-30 min-w-[160px] rounded-card border border-surface-border bg-surface-raised shadow-vault overflow-hidden">
-            {profiles.map((profile) => (
+            {profiles.map((profile: Person) => (
               <button
                 key={profile.id}
                 onClick={() => handleSelect(profile.id!)}
