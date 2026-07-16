@@ -18,6 +18,7 @@ import {
   Building2,
   Heart,
   FolderOpen,
+  Pencil,
 } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -35,7 +36,6 @@ const CATEGORY_ICONS: Record<string, typeof Heart> = {
   outros: FolderOpen,
 };
 
-// Helper para formatar data
 const formatDate = (date?: string) => {
   if (!date) return null;
   try {
@@ -45,7 +45,6 @@ const formatDate = (date?: string) => {
   }
 };
 
-// Helper para obter o label do campo
 const getFieldLabel = (type: string, key: string): string => {
   const fields = DOCUMENT_FIELDS[type as keyof typeof DOCUMENT_FIELDS] || [];
   const field = fields.find((f) => f.key === key);
@@ -62,17 +61,14 @@ export default function DocumentDetailPage() {
   const { deleteDocument, favorite } = useSafeDb();
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
 
   if (!document) {
     return (
       <main className="min-h-screen bg-void flex items-center justify-center">
         <div className="text-center">
           <p className="text-ink-muted">Documento não encontrado</p>
-          <Button
-            variant="primary"
-            onClick={() => router.push("/")}
-            className="mt-4"
-          >
+          <Button variant="primary" onClick={() => router.push("/")} className="mt-4">
             Voltar
           </Button>
         </div>
@@ -111,19 +107,42 @@ export default function DocumentDetailPage() {
 
   const openAttachment = (attachment: Attachment) => {
     setSelectedAttachment(attachment);
+    setIsRenaming(false);
     setIsModalOpen(true);
     trigger("vibrate");
   };
 
-  const downloadAttachment = (attachment: Attachment) => {
-    // Simula download (em produção, usaria Filesystem do Capacitor)
-    const a = document.createElement("a");
-    a.href = attachment.url;
-    a.download = attachment.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    trigger("vibrate");
+  const downloadAttachment = async (attachment: Attachment) => {
+    try {
+      // Tenta usar a API de download nativa do navegador
+      const response = await fetch(attachment.url);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = attachment.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      trigger("success");
+    } catch (error) {
+      console.error("Erro ao baixar:", error);
+      trigger("error");
+    }
+  };
+
+  const updateAttachmentName = (newName: string) => {
+    if (!selectedAttachment || !document) return;
+    // Atualiza o nome no estado local
+    const updatedAttachments = document.attachments.map((att) =>
+      att.id === selectedAttachment.id ? { ...att, name: newName } : att
+    );
+    // Aqui você pode implementar a atualização no banco de dados
+    // Por enquanto, só atualiza localmente
+    setSelectedAttachment({ ...selectedAttachment, name: newName });
+    setIsRenaming(false);
+    trigger("success");
   };
 
   return (
@@ -275,11 +294,7 @@ export default function DocumentDetailPage() {
             Editar documento
           </Button>
 
-          <Button
-            variant="danger"
-            className="flex items-center justify-center gap-2"
-            onClick={handleDelete}
-          >
+          <Button variant="danger" className="flex items-center justify-center gap-2" onClick={handleDelete}>
             <Trash2 size={16} />
             Excluir documento
           </Button>
@@ -298,18 +313,35 @@ export default function DocumentDetailPage() {
           >
             {/* Header do Modal */}
             <div className="flex items-center justify-between mb-4">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={selectedAttachment.name}
-                  onChange={(e) => {
-                    setSelectedAttachment({
-                      ...selectedAttachment,
-                      name: e.target.value,
-                    });
+              <div className="flex-1 flex items-center gap-2">
+                {isRenaming ? (
+                  <input
+                    type="text"
+                    value={selectedAttachment.name}
+                    onChange={(e) =>
+                      setSelectedAttachment({
+                        ...selectedAttachment,
+                        name: e.target.value,
+                      })
+                    }
+                    className="flex-1 bg-transparent text-ink-primary font-medium focus:outline-none border-b border-ice/30 focus:border-ice transition-colors"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-ink-primary font-medium truncate">{selectedAttachment.name}</p>
+                )}
+                <button
+                  onClick={() => {
+                    if (isRenaming) {
+                      updateAttachmentName(selectedAttachment.name);
+                    } else {
+                      setIsRenaming(true);
+                    }
                   }}
-                  className="w-full bg-transparent text-ink-primary font-medium focus:outline-none border-b border-transparent focus:border-steel-light transition-colors"
-                />
+                  className="p-1.5 rounded-full hover:bg-surface-border transition-colors"
+                >
+                  <Pencil size={16} className="text-ink-muted" />
+                </button>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -319,7 +351,7 @@ export default function DocumentDetailPage() {
               </button>
             </div>
 
-            {/* Visualização */}
+            {/* Visualização expandida */}
             <div className="flex items-center justify-center min-h-[300px] bg-surface rounded-xl border border-surface-border p-4">
               {selectedAttachment.type === "image" ? (
                 <img
@@ -345,11 +377,7 @@ export default function DocumentDetailPage() {
                 <Download size={14} className="mr-1" />
                 Baixar
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsModalOpen(false)}
-              >
+              <Button variant="primary" size="sm" onClick={() => setIsModalOpen(false)}>
                 Fechar
               </Button>
             </div>
