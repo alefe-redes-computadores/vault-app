@@ -35,7 +35,17 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
         }}
         className="flex items-center gap-2 rounded-full bg-surface-raised px-4 py-2 border border-surface-border active:scale-[0.98] transition-all"
       >
-        <span className="text-lg">{activeProfile.icon}</span>
+        <span className="text-lg">
+          {activeProfile.avatar_url ? (
+            <img
+              src={activeProfile.avatar_url}
+              alt={activeProfile.name}
+              className="w-6 h-6 rounded-full"
+            />
+          ) : (
+            <User size={16} />
+          )}
+        </span>
         <span className="font-display text-sm font-medium text-ink-primary">
           {activeProfile.name}
         </span>
@@ -64,7 +74,17 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
                     : "text-ink-muted hover:bg-surface-border"
                 }`}
               >
-                <span className="text-lg">{profile.icon}</span>
+                <span className="text-lg">
+                  {profile.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={profile.name}
+                      className="w-6 h-6 rounded-full"
+                    />
+                  ) : (
+                    <User size={16} />
+                  )}
+                </span>
                 <span className="text-sm font-medium">{profile.name}</span>
                 {profile.id === activeProfileId && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-ice" />
