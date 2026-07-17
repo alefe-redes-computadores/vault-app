@@ -1,7 +1,7 @@
 {
   "appId": "com.seuemail.vault",
   "appName": "Vault",
-  "webDir": "out",
+  "webDir": ".next",
   "bundledWebRuntime": false,
   "server": {
     "androidScheme": "https"
