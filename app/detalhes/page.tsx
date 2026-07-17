@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -19,6 +19,9 @@ import {
   Heart,
   FolderOpen,
   Pencil,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -28,6 +31,7 @@ import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageTransition } from "@/components/PageTransition";
+import { useToast } from "@/components/ToastProvider";
 
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
@@ -45,17 +49,29 @@ const formatDate = (date?: string) => {
   }
 };
 
+const getFileIcon = (type: string) => {
+  if (type.startsWith("image/")) return ImageIcon;
+  if (type === "application/pdf") return FileText;
+  if (type.includes("word") || type.includes("document")) return FileText;
+  if (type.includes("sheet") || type.includes("excel")) return FileText;
+  return File;
+};
+
 export default function DocumentDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = Number(searchParams.get("id"));
+  const { showToast } = useToast();
 
   const doc = useDocument(id);
   const { deleteDocument, favorite } = useSafeDb();
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!doc) {
     return (
@@ -78,15 +94,25 @@ export default function DocumentDetailPage() {
 
   const handleDelete = async () => {
     if (confirm("Tem certeza que deseja excluir este documento?")) {
-      await deleteDocument(doc.id!);
-      trigger("success");
-      router.push("/");
+      setIsDeleting(true);
+      try {
+        await deleteDocument(doc.id!);
+        trigger("success");
+        showToast("Documento excluído com sucesso!", "success");
+        router.push("/");
+      } catch {
+        showToast("Erro ao excluir documento", "error");
+        trigger("error");
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
   const handleFavoriteToggle = async () => {
     await favorite(doc.id!);
     trigger("vibrate");
+    showToast(doc.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos", "info");
   };
 
   const handleShare = () => {
@@ -97,17 +123,24 @@ export default function DocumentDetailPage() {
           text: doc.description || "",
         })
         .catch(() => {});
+    } else {
+      // Fallback para navegadores sem suporte a share
+      navigator.clipboard?.writeText(doc.title).then(() => {
+        showToast("Link copiado para a área de transferência!", "success");
+      });
     }
   };
 
   const openAttachment = (attachment: Attachment) => {
     setSelectedAttachment(attachment);
     setIsRenaming(false);
+    setZoomLevel(1);
     setIsModalOpen(true);
     trigger("vibrate");
   };
 
   const downloadAttachment = async (attachment: Attachment) => {
+    setIsDownloading(true);
     try {
       const response = await fetch(attachment.url);
       const blob = await response.blob();
@@ -120,9 +153,13 @@ export default function DocumentDetailPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       trigger("success");
+      showToast("Download concluído!", "success");
     } catch (error) {
       console.error("Erro ao baixar:", error);
       trigger("error");
+      showToast("Erro ao baixar o arquivo", "error");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -131,7 +168,12 @@ export default function DocumentDetailPage() {
     setSelectedAttachment({ ...selectedAttachment, name: newName });
     setIsRenaming(false);
     trigger("success");
+    showToast("Nome atualizado com sucesso!", "success");
   };
+
+  const FileIcon = selectedAttachment
+    ? getFileIcon(selectedAttachment.type)
+    : File;
 
   return (
     <PageTransition>
@@ -241,24 +283,27 @@ export default function DocumentDetailPage() {
 
           {doc.attachments && doc.attachments.length > 0 && (
             <div>
-              <p className="text-sm font-medium text-ink-muted mb-2">Anexos</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-ink-muted">
+                  Anexos ({doc.attachments.length})
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-2">
-                {doc.attachments.map((attachment) => (
-                  <button
-                    key={attachment.id}
-                    onClick={() => openAttachment(attachment)}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-raised border border-surface-border hover:border-steel-light transition-colors active:scale-[0.98]"
-                  >
-                    {attachment.type === "image" ? (
-                      <ImageIcon size={24} className="text-steel-light" />
-                    ) : (
-                      <File size={24} className="text-steel-light" />
-                    )}
-                    <span className="text-xs text-ink-muted truncate w-full text-center mt-1">
-                      {attachment.name}
-                    </span>
-                  </button>
-                ))}
+                {doc.attachments.map((attachment) => {
+                  const Icon = getFileIcon(attachment.type);
+                  return (
+                    <button
+                      key={attachment.id}
+                      onClick={() => openAttachment(attachment)}
+                      className="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-raised border border-surface-border hover:border-steel-light transition-colors active:scale-[0.98]"
+                    >
+                      <Icon size={24} className="text-steel-light" />
+                      <span className="text-xs text-ink-muted truncate w-full text-center mt-1">
+                        {attachment.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -276,24 +321,35 @@ export default function DocumentDetailPage() {
               Editar documento
             </Button>
 
-            <Button variant="danger" className="flex items-center justify-center gap-2" onClick={handleDelete}>
-              <Trash2 size={16} />
-              Excluir documento
+            <Button
+              variant="danger"
+              className="flex items-center justify-center gap-2"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Trash2 size={16} />
+              )}
+              {isDeleting ? "Excluindo..." : "Excluir documento"}
             </Button>
           </div>
         </section>
 
+        {/* Modal de Anexo */}
         {isModalOpen && selectedAttachment && (
           <div
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
             onClick={() => setIsModalOpen(false)}
           >
             <div
-              className="relative max-w-2xl w-full rounded-2xl bg-surface-raised border border-surface-border shadow-vault p-4 animate-in zoom-in duration-200"
+              className="relative max-w-4xl w-full rounded-2xl bg-surface-raised border border-surface-border shadow-vault p-4 animate-in zoom-in duration-200"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Header do Modal */}
               <div className="flex items-center justify-between mb-4">
-                <div className="flex-1 flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-2 min-w-0">
                   {isRenaming ? (
                     <input
                       type="text"
@@ -318,42 +374,72 @@ export default function DocumentDetailPage() {
                         setIsRenaming(true);
                       }
                     }}
-                    className="p-1.5 rounded-full hover:bg-surface-border transition-colors"
+                    className="p-1.5 rounded-full hover:bg-surface-border transition-colors flex-shrink-0"
                   >
                     <Pencil size={16} className="text-ink-muted" />
                   </button>
                 </div>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-1 rounded-full hover:bg-surface-border transition-colors"
-                >
-                  <X size={20} className="text-ink-muted" />
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Controles de zoom (apenas para imagens) */}
+                  {selectedAttachment.type.startsWith("image/") && (
+                    <>
+                      <button
+                        onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.25))}
+                        className="p-1.5 rounded-full hover:bg-surface-border transition-colors"
+                      >
+                        <ZoomOut size={16} className="text-ink-muted" />
+                      </button>
+                      <span className="text-xs text-ink-muted">{Math.round(zoomLevel * 100)}%</span>
+                      <button
+                        onClick={() => setZoomLevel(Math.min(3, zoomLevel + 0.25))}
+                        className="p-1.5 rounded-full hover:bg-surface-border transition-colors"
+                      >
+                        <ZoomIn size={16} className="text-ink-muted" />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 rounded-full hover:bg-surface-border transition-colors"
+                  >
+                    <X size={20} className="text-ink-muted" />
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center justify-center min-h-[300px] bg-surface rounded-xl border border-surface-border p-4">
-                {selectedAttachment.type === "image" ? (
+              {/* Visualização */}
+              <div className="flex items-center justify-center min-h-[300px] bg-surface rounded-xl border border-surface-border p-4 overflow-auto">
+                {selectedAttachment.type.startsWith("image/") ? (
                   <img
                     src={selectedAttachment.url}
                     alt={selectedAttachment.name}
-                    className="max-h-[500px] max-w-full object-contain rounded-lg"
+                    className="max-h-[70vh] max-w-full object-contain transition-transform duration-200 rounded-lg"
+                    style={{ transform: `scale(${zoomLevel})` }}
+                    loading="lazy"
                   />
                 ) : (
-                  <div className="flex flex-col items-center gap-2 text-ink-muted">
-                    <File size={48} />
-                    <p>Pré-visualização não disponível para PDF</p>
+                  <div className="flex flex-col items-center gap-4 text-ink-muted">
+                    <FileIcon size={64} />
+                    <p className="text-sm">Pré-visualização não disponível para este tipo de arquivo</p>
+                    <p className="text-xs text-ink-muted/60">Clique em "Baixar" para visualizar</p>
                   </div>
                 )}
               </div>
 
+              {/* Footer do Modal */}
               <div className="flex justify-end gap-2 mt-4">
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={() => downloadAttachment(selectedAttachment)}
+                  disabled={isDownloading}
                 >
-                  <Download size={14} className="mr-1" />
-                  Baixar
+                  {isDownloading ? (
+                    <Loader2 size={14} className="mr-1 animate-spin" />
+                  ) : (
+                    <Download size={14} className="mr-1" />
+                  )}
+                  {isDownloading ? "Baixando..." : "Baixar"}
                 </Button>
                 <Button variant="primary" size="sm" onClick={() => setIsModalOpen(false)}>
                   Fechar
