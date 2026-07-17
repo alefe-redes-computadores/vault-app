@@ -14,6 +14,7 @@ import { CategorySection } from "@/components/CategorySection";
 import { FavoritesSection } from "@/components/FavoritesSection";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
 export default function HomePage() {
   const { trigger } = useHapticFeedback();
@@ -25,11 +26,15 @@ export default function HomePage() {
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (persons.length > 0 && selectedPersonId === null) {
       setSelectedPersonId(persons[0].id!);
     }
+    // Simula carregamento
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
   }, [persons, selectedPersonId]);
 
   const allDocs = useDocuments(selectedPersonId || undefined) || [];
@@ -65,6 +70,10 @@ export default function HomePage() {
   const hasMore = (categoryId: CategoryId) => {
     return (docsByCategory[categoryId] || []).length > 3;
   };
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
 
   return (
     <main className="min-h-screen bg-void pb-28">
