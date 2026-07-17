@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-static';
+
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Pill, Calendar, Plus, FileText } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
