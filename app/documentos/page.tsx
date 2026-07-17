@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -10,6 +10,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
 import { Input } from "@/components/ui/Input";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
 export default function DocumentsPage() {
   const { trigger } = useHapticFeedback();
@@ -21,6 +22,12 @@ export default function DocumentsPage() {
     persons[0]?.id || null
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   const documents = useDocuments(selectedPersonId || undefined);
 
@@ -34,6 +41,10 @@ export default function DocumentsPage() {
     await favorite(id);
     trigger("vibrate");
   };
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
 
   return (
     <main className="min-h-screen bg-void pb-4">
