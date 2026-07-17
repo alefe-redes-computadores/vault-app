@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BiometricAuth } from '@capacitor-community/biometric-auth';
+import { NativeBiometric } from '@capacitor-community/native-biometric';
 import { Platform } from '@capacitor/core';
 
 interface UseBiometricOptions {
@@ -32,14 +32,11 @@ export function useBiometric(options: UseBiometricOptions = {}) {
       try {
         // Só funciona em dispositivos móveis com Capacitor
         if (Platform.isNative) {
-          const { available, types } = await BiometricAuth.checkAvailability();
-          setIsAvailable(available);
-          if (types && types.length > 0) {
-            const type = types[0];
-            if (type === 'fingerprint') setBiometricType('fingerprint');
-            else if (type === 'face') setBiometricType('face');
-            else if (type === 'iris') setBiometricType('iris');
-          }
+          const { isAvailable, biometricType } = await NativeBiometric.isAvailable();
+          setIsAvailable(isAvailable);
+          if (biometricType === 'fingerprint') setBiometricType('fingerprint');
+          else if (biometricType === 'face') setBiometricType('face');
+          else if (biometricType === 'iris') setBiometricType('iris');
         } else {
           // Em ambiente web, simula disponibilidade para teste
           setIsAvailable(true);
@@ -65,7 +62,7 @@ export function useBiometric(options: UseBiometricOptions = {}) {
 
     try {
       setIsLoading(true);
-      const result = await BiometricAuth.authenticate({
+      const result = await NativeBiometric.verifyIdentity({
         title,
         subtitle,
         description,
@@ -73,13 +70,16 @@ export function useBiometric(options: UseBiometricOptions = {}) {
         disableBackup: true,
       });
 
-      if (result.error) {
-        throw new Error(result.error);
+      // Verifica se foi autenticado
+      if (result?.verified) {
+        setIsAuthenticated(true);
+        onSuccess?.();
+        return true;
+      } else {
+        // O usuário cancelou ou a biometria falhou
+        console.log('Autenticação biométrica não foi concluída');
+        return false;
       }
-
-      setIsAuthenticated(true);
-      onSuccess?.();
-      return true;
     } catch (error) {
       console.error('Erro na autenticação biométrica:', error);
       onError?.(error as Error);
