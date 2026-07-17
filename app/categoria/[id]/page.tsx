@@ -11,6 +11,11 @@ import { CATEGORIES, type CategoryId } from "@/lib/types";
 import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
 
+// ADICIONE ESTA LINHA PARA O BUILD ESTÁTICO
+export async function generateStaticParams() {
+  return [];
+}
+
 export default function CategoryPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -64,7 +69,6 @@ export default function CategoryPage() {
           </div>
         </div>
 
-        {/* Filtro de pessoas */}
         <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
           {persons.map((person) => (
             <PersonCard
