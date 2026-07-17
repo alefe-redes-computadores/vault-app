@@ -1,10 +1,12 @@
 import Dexie, { type Table } from 'dexie';
-import type { Person, Document, SyncQueueItem, CategoryId } from '@/lib/types';
+import type { Person, Document, SyncQueueItem, Medicamento, Renovacao } from '@/lib/types';
 
 class VaultDB extends Dexie {
   persons!: Table<Person, number>;
   documents!: Table<Document, number>;
   syncQueue!: Table<SyncQueueItem, number>;
+  medicamentos!: Table<Medicamento, number>;
+  renovacoes!: Table<Renovacao, number>;
 
   constructor() {
     super('vault-db');
@@ -12,6 +14,13 @@ class VaultDB extends Dexie {
       persons: '++id, user_id, name, synced, created_at',
       documents: '++id, person_id, category_id, type, title, is_favorite, synced, created_at',
       syncQueue: '++id, table, operation, created_at',
+    });
+    this.version(3).stores({
+      persons: '++id, user_id, name, synced, created_at',
+      documents: '++id, person_id, category_id, type, title, is_favorite, synced, created_at',
+      syncQueue: '++id, table, operation, created_at',
+      medicamentos: '++id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: '++id, medicamento_id, data',
     });
   }
 }
@@ -107,4 +116,51 @@ export async function toggleFavorite(id: number): Promise<void> {
   const doc = await db.documents.get(id);
   if (!doc) return;
   await safeUpdateDocument(id, { is_favorite: !doc.is_favorite });
+}
+
+// ============================================================
+// OPERAÇÕES PARA MEDICAMENTOS
+// ============================================================
+export async function safeAddMedicamento(
+  med: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<number> {
+  const timestamp = nowIso();
+  const full: Medicamento = {
+    ...med,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    const id = await db.medicamentos.add(full);
+    await db.syncQueue.add({
+      table: 'medicamentos',
+      operation: 'add',
+      payload: { ...full, id },
+      created_at: timestamp,
+    });
+    return id;
+  });
+}
+
+export async function safeAddRenovacao(
+  ren: Omit<Renovacao, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<number> {
+  const timestamp = nowIso();
+  const full: Renovacao = {
+    ...ren,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
+    const id = await db.renovacoes.add(full);
+    await db.syncQueue.add({
+      table: 'renovacoes',
+      operation: 'add',
+      payload: { ...full, id },
+      created_at: timestamp,
+    });
+    return id;
+  });
 }
