@@ -11,6 +11,7 @@ import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
 import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function DocumentsPage() {
   const { trigger } = useHapticFeedback();
@@ -47,59 +48,61 @@ export default function DocumentsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-void pb-4">
-      <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
-        <div className="flex items-center gap-3">
-          <h1 className="font-display text-xl font-semibold text-ink-primary">
-            Todos os documentos
-          </h1>
-        </div>
-
-        <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
-          {persons.map((person) => (
-            <PersonCard
-              key={person.id}
-              person={person}
-              isActive={selectedPersonId === person.id}
-              onClick={() => {
-                trigger("vibrate");
-                setSelectedPersonId(person.id!);
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="mt-4 relative">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-          />
-          <Input
-            placeholder="Buscar documentos..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </header>
-
-      <section className="px-5 pt-5 space-y-3">
-        {filteredDocs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-ink-muted">
-              {searchQuery ? "Nenhum documento encontrado" : "Nenhum documento ainda"}
-            </p>
+    <PageTransition>
+      <main className="min-h-screen bg-void pb-4">
+        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-xl font-semibold text-ink-primary">
+              Todos os documentos
+            </h1>
           </div>
-        ) : (
-          filteredDocs.map((doc) => (
-            <DocumentCard
-              key={doc.id}
-              document={doc}
-              onFavoriteToggle={handleFavoriteToggle}
+
+          <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
+            {persons.map((person) => (
+              <PersonCard
+                key={person.id}
+                person={person}
+                isActive={selectedPersonId === person.id}
+                onClick={() => {
+                  trigger("vibrate");
+                  setSelectedPersonId(person.id!);
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="mt-4 relative">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
             />
-          ))
-        )}
-      </section>
-    </main>
+            <Input
+              placeholder="Buscar documentos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </header>
+
+        <section className="px-5 pt-5 space-y-3">
+          {filteredDocs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-ink-muted">
+                {searchQuery ? "Nenhum documento encontrado" : "Nenhum documento ainda"}
+              </p>
+            </div>
+          ) : (
+            filteredDocs.map((doc) => (
+              <DocumentCard
+                key={doc.id}
+                document={doc}
+                onFavoriteToggle={handleFavoriteToggle}
+              />
+            ))
+          )}
+        </section>
+      </main>
+    </PageTransition>
   );
 }
