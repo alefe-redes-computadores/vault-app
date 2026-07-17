@@ -1,6 +1,5 @@
 "use client";
 
-import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, Pill, Calendar, Plus, FileText } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -11,14 +10,11 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageTransition } from "@/components/PageTransition";
 
-function MedicamentoDetailContent() {
+export default function MedicamentoDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // Pega o ID da URL: ?id=123
-  const idParam = searchParams.get("id");
-  const id = idParam ? Number(idParam) : 0;
+  const id = Number(searchParams.get("id"));
 
   const medicamento = useLiveQuery(
     () => db.medicamentos.get(id),
@@ -32,7 +28,7 @@ function MedicamentoDetailContent() {
     []
   );
 
-  if (!idParam || !medicamento) {
+  if (!medicamento) {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void flex items-center justify-center">
@@ -128,8 +124,7 @@ function MedicamentoDetailContent() {
                 size="sm"
                 onClick={() => {
                   trigger("vibrate");
-                  // CORRIGIDO: Rota adaptada para Query Params
-                  router.push(`/saude/medicamentos/detalhes/renovacao/novo?id=${id}`);
+                  router.push(`/saude/medicamentos/renovacao/novo?medicamento_id=${id}`);
                 }}
               >
                 <Plus size={14} className="mr-1" />
@@ -165,14 +160,5 @@ function MedicamentoDetailContent() {
         </section>
       </main>
     </PageTransition>
-  );
-}
-
-// Export com Suspense
-export default function MedicamentoDetailPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center text-ink-primary">Carregando...</div>}>
-      <MedicamentoDetailContent />
-    </Suspense>
   );
 }
