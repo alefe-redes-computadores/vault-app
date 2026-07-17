@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Star,
@@ -46,11 +46,14 @@ const formatDate = (date?: string) => {
   }
 };
 
-export default function DocumentDetailPage() {
+function DocumentDetailContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const params = useParams();
-  const id = Number(params.id);
+  const searchParams = useSearchParams();
+  
+  // Pega o ID da URL (?id=123)
+  const idParam = searchParams.get("id");
+  const id = idParam ? Number(idParam) : 0;
 
   const doc = useDocument(id);
   const { deleteDocument, favorite } = useSafeDb();
@@ -58,7 +61,7 @@ export default function DocumentDetailPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
 
-  if (!doc) {
+  if (!id || !doc) {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void flex items-center justify-center">
@@ -273,7 +276,8 @@ export default function DocumentDetailPage() {
               className="flex items-center justify-center gap-2"
               onClick={() => {
                 trigger("vibrate");
-                router.push(`/${doc.id}/editar`);
+                // Atualizado para a nova URL
+                router.push(`/detalhes/editar?id=${doc.id}`);
               }}
             >
               <Edit size={16} />
@@ -368,5 +372,13 @@ export default function DocumentDetailPage() {
         )}
       </main>
     </PageTransition>
+  );
+}
+
+export default function DocumentDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center text-ink-primary">Carregando...</div>}>
+      <DocumentDetailContent />
+    </Suspense>
   );
 }
