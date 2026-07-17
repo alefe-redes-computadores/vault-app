@@ -1,12 +1,10 @@
-import { CATEGORIES } from "@/lib/types";
-
+// Esta função gera as páginas estáticas (executada no servidor)
+// Retorna um array vazio porque os dados são carregados no cliente
 export async function generateStaticParams() {
-  return Object.keys(CATEGORIES).map((id) => ({
-    id: id,
-  }));
+  return [];
 }
 
-export default function CategoryLayout({
+export default function EditLayout({
   children,
 }: {
   children: React.ReactNode;
