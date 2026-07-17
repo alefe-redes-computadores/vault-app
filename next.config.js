@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // output: "export", // REMOVA OU COMENTE ESTA LINHA
+  output: "export", 
   images: { unoptimized: true },
   reactStrictMode: true,
 };
