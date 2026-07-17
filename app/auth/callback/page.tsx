@@ -6,12 +6,13 @@ import { supabase } from "@/lib/supabase/client";
 export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuth = async () => {
-      // O Supabase no modo client pega o hash da URL automaticamente
-      const { error } = await supabase.auth.getSession();
+      // Confirma que o Supabase pegou o hash e validou a sessão no banco
+      const { data } = await supabase.auth.getSession();
       
-      if (!error) {
-        // Fecha o pop-up
+      if (data?.session) {
+        // Envia o sinal "estou logado" para o ClientWrapper (PWA)
         window.opener?.postMessage("auth-success", "*");
+        // Fecha o popup do Custom Tab do Chrome
         window.close();
       }
     };
@@ -21,7 +22,7 @@ export default function AuthCallbackPage() {
 
   return (
     <div style={{ background: '#0A0C0F', color: '#fff', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p>Autenticando...</p>
+      <p style={{ fontFamily: 'sans-serif' }}>Autenticando e voltando para o Vault...</p>
     </div>
   );
 }
