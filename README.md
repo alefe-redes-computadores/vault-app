@@ -2,9 +2,10 @@
 
 **Vault** é um aplicativo local‑first de gestão de documentos pessoais e familiares, organizado por **pessoas** e **categorias** (Saúde, Pessoal, Empresa, Outros). Ele centraliza documentos como RG, CPF, CNH, receitas médicas, prontuários, laudos, certificados, medicamentos e renovações, funcionando **100% offline** (IndexedDB) e sincronizando com Supabase quando online. A interface é orientada a **cards** com cores por categoria, favoritos, busca, anexos e um módulo completo de saúde.
 
-> 🔗 **Link de produção:** [https://vault-app.vercel.app](https://vault-app.vercel.app)
+> 🔗 **Link de produção:** [https://vault-app-ebon.vercel.app/](https://bit.ly/vault-app)
 
 ---
+
 
 ## 📦 Índice
 
