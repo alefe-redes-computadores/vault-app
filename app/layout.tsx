@@ -3,7 +3,7 @@ import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { SplashScreen } from "@/components/SplashScreen";
-import { ClientWrapper } from "@/components/ClientWrapper";
+import { ClientWrapper } from "../components/ClientWrapper";
 
 
 const display = Space_Grotesk({
