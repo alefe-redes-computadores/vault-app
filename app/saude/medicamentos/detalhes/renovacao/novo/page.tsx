@@ -1,8 +1,7 @@
 "use client";
 
-
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, Upload } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { safeAddRenovacao } from "@/lib/db";
@@ -10,11 +9,14 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 
-export default function NewRenovacaoPage() {
+function NewRenovacaoContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const params = useParams();
-  const medicamentoId = Number(params.id);
+  const searchParams = useSearchParams();
+  
+  // Pega o ID da URL: ?id=123
+  const idParam = searchParams.get("id");
+  const medicamentoId = idParam ? Number(idParam) : 0;
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -23,7 +25,7 @@ export default function NewRenovacaoPage() {
   });
 
   const handleSubmit = async () => {
-    if (!formData.data) {
+    if (!formData.data || !medicamentoId) {
       trigger("error");
       return;
     }
@@ -36,7 +38,8 @@ export default function NewRenovacaoPage() {
         observacoes: formData.observacoes || undefined,
       });
       trigger("success");
-      router.push(`/saude/medicamentos/${medicamentoId}`);
+      // CORRIGIDO: Rota adaptada para voltar para os detalhes do medicamento
+      router.push(`/saude/medicamentos/detalhes?id=${medicamentoId}`);
     } catch (error) {
       console.error(error);
       trigger("error");
@@ -105,5 +108,14 @@ export default function NewRenovacaoPage() {
         </Button>
       </section>
     </main>
+  );
+}
+
+// Export com Suspense
+export default function NewRenovacaoPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center text-ink-primary">Carregando...</div>}>
+      <NewRenovacaoContent />
+    </Suspense>
   );
 }
