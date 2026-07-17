@@ -1,39 +1,36 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
-
+// app/auth/callback/route.ts
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const code = searchParams.get('code')
+  // Extrai os parâmetros da URL (access_token, etc.)
+  const url = new URL(request.url);
+  const params = url.searchParams;
 
-  if (code) {
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) { return cookieStore.get(name)?.value },
-          set(name: string, value: string, options: CookieOptions) { cookieStore.set({ name, value, ...options }) },
-          remove(name: string, options: CookieOptions) { cookieStore.delete({ name, ...options }) },
-        },
-      }
-    )
-    await supabase.auth.exchangeCodeForSession(code)
-  }
-
-  // A MÁGICA: Fecha a aba sobreposta automaticamente
+  // Monta uma página HTML que:
+  // 1. Fecha a janela atual (popup)
+  // 2. Envia mensagem 'auth-success' para a página principal (opener)
   const html = `
     <!DOCTYPE html>
     <html>
-      <body style="background: #0A0C0F; color: #E8EBEF; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
-        <p>Autenticado! Voltando...</p>
+      <head>
+        <title>Autenticando...</title>
         <script>
-          window.opener.postMessage('auth-success', '*');
-          window.close();
+          // Fecha a janela após 0.5s
+          setTimeout(() => {
+            if (window.opener) {
+              window.opener.postMessage('auth-success', '*');
+            }
+            window.close();
+          }, 500);
         </script>
+      </head>
+      <body>
+        <p>Autenticação concluída! Feche esta janela.</p>
       </body>
     </html>
-  `
-  return new NextResponse(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
+  `;
+
+  return new Response(html, {
+    headers: {
+      'Content-Type': 'text/html',
+    },
+  });
 }
