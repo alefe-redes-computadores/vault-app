@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
+import { PageTransition } from "@/components/PageTransition";
 
 // Mapeamento de campos por tipo de documento
 const DOCUMENT_FIELDS: Record<
@@ -244,219 +245,221 @@ export default function NewDocumentPage() {
   const fields = DOCUMENT_FIELDS[formData.type] || [];
 
   return (
-    <main className="min-h-screen bg-void pb-28">
-      {/* Inputs ocultos para upload */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,application/pdf"
-        className="hidden"
-        onChange={handleFileSelect}
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleCameraCapture}
-      />
+    <PageTransition>
+      <main className="min-h-screen bg-void pb-28">
+        {/* Inputs ocultos para upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleCameraCapture}
+        />
 
-      <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              trigger("vibrate");
-              router.back();
-            }}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
-          >
-            <ArrowLeft size={18} className="text-ink-primary" />
-          </button>
+        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                router.back();
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
+            >
+              <ArrowLeft size={18} className="text-ink-primary" />
+            </button>
+            <div>
+              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
+                Novo documento
+              </h1>
+            </div>
+          </div>
+        </header>
+
+        <section className="px-5 pt-6 space-y-4">
+          {/* Pessoa */}
           <div>
-            <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-            <h1 className="font-display text-xl font-semibold text-ink-primary">
-              Novo documento
-            </h1>
-          </div>
-        </div>
-      </header>
-
-      <section className="px-5 pt-6 space-y-4">
-        {/* Pessoa */}
-        <div>
-          <label className="block text-sm font-medium text-ink-primary mb-1.5">
-            Pessoa
-          </label>
-          <div className="flex gap-2 flex-wrap">
-            {persons.map((person) => (
-              <button
-                key={person.id}
-                onClick={() => handleChange("person_id", person.id!)}
-                className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
-                  formData.person_id === person.id
-                    ? "border-ice bg-ice/10 text-ice"
-                    : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
-                }`}
-              >
-                <span className="text-sm font-medium">{person.name}</span>
-              </button>
-            ))}
-          </div>
-          {errors.person_id && (
-            <p className="text-xs text-coral mt-1">{errors.person_id}</p>
-          )}
-        </div>
-
-        {/* Categoria */}
-        <div>
-          <label className="block text-sm font-medium text-ink-primary mb-1.5">
-            Categoria
-          </label>
-          <div className="flex gap-2 flex-wrap">
-            {Object.values(CATEGORIES).map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => handleChange("category_id", cat.id)}
-                className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
-                  formData.category_id === cat.id
-                    ? "border-ice bg-ice/10 text-ice"
-                    : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
-                }`}
-              >
-                <span className="text-sm font-medium">{cat.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tipo de Documento */}
-        <div>
-          <label className="block text-sm font-medium text-ink-primary mb-1.5">
-            Tipo de documento
-          </label>
-          <select
-            value={formData.type}
-            onChange={(e) => handleChange("type", e.target.value as DocumentType)}
-            className="w-full rounded-xl bg-surface-raised border border-surface-border px-4 py-3 text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
-          >
-            <option value="rg">RG</option>
-            <option value="cpf">CPF</option>
-            <option value="cnh">CNH</option>
-            <option value="certificado">Certificado</option>
-            <option value="receita">Receita médica</option>
-            <option value="prontuario">Prontuário</option>
-            <option value="laudo">Laudo</option>
-            <option value="encaminhamento">Encaminhamento</option>
-            <option value="outro">Outro</option>
-          </select>
-        </div>
-
-        {/* Título */}
-        <Input
-          label="Título do documento"
-          placeholder="Ex: Minha CNH, Receita Losartana, etc."
-          value={formData.title}
-          onChange={(e) => handleChange("title", e.target.value)}
-          error={errors.title}
-        />
-
-        {/* Campos dinâmicos */}
-        {fields.length > 0 && (
-          <div className="space-y-3 border-t border-surface-border pt-4">
-            <p className="text-sm font-medium text-ink-muted">Campos específicos</p>
-            {fields.map((field) => (
-              <Input
-                key={field.key}
-                label={field.label}
-                type={field.type === "date" ? "date" : "text"}
-                value={formData.metadata[field.key] || ""}
-                onChange={(e) => handleMetadataChange(field.key, e.target.value)}
-                placeholder={
-                  field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`
-                }
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Descrição/Notas */}
-        <TextArea
-          label="Notas (opcional)"
-          placeholder="Informações adicionais..."
-          value={formData.description}
-          onChange={(e) => handleChange("description", e.target.value)}
-        />
-
-        {/* Upload de arquivo */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-ink-primary">Anexos</label>
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="secondary"
-              className="flex items-center justify-center gap-2"
-              onClick={() => {
-                trigger("vibrate");
-                fileInputRef.current?.click();
-              }}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Upload size={16} />
-              )}
-              Upload
-            </Button>
-            <Button
-              variant="secondary"
-              className="flex items-center justify-center gap-2"
-              onClick={() => {
-                trigger("vibrate");
-                cameraInputRef.current?.click();
-              }}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Camera size={16} />
-              )}
-              Câmera
-            </Button>
-          </div>
-
-          {formData.attachments.length > 0 && (
-            <div className="mt-2 space-y-1">
-              {formData.attachments.map((att) => (
-                <div
-                  key={att.id}
-                  className="flex items-center justify-between p-2 rounded-lg bg-surface-raised border border-surface-border"
+            <label className="block text-sm font-medium text-ink-primary mb-1.5">
+              Pessoa
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {persons.map((person) => (
+                <button
+                  key={person.id}
+                  onClick={() => handleChange("person_id", person.id!)}
+                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
+                    formData.person_id === person.id
+                      ? "border-ice bg-ice/10 text-ice"
+                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+                  }`}
                 >
-                  <span className="text-sm text-ink-muted truncate flex-1">{att.name}</span>
-                  <button
-                    onClick={() => removeAttachment(att.id)}
-                    className="p-1 rounded-full hover:bg-surface-border transition-colors"
-                  >
-                    <X size={14} className="text-ink-muted" />
-                  </button>
-                </div>
+                  <span className="text-sm font-medium">{person.name}</span>
+                </button>
+              ))}
+            </div>
+            {errors.person_id && (
+              <p className="text-xs text-coral mt-1">{errors.person_id}</p>
+            )}
+          </div>
+
+          {/* Categoria */}
+          <div>
+            <label className="block text-sm font-medium text-ink-primary mb-1.5">
+              Categoria
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {Object.values(CATEGORIES).map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleChange("category_id", cat.id)}
+                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
+                    formData.category_id === cat.id
+                      ? "border-ice bg-ice/10 text-ice"
+                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+                  }`}
+                >
+                  <span className="text-sm font-medium">{cat.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tipo de Documento */}
+          <div>
+            <label className="block text-sm font-medium text-ink-primary mb-1.5">
+              Tipo de documento
+            </label>
+            <select
+              value={formData.type}
+              onChange={(e) => handleChange("type", e.target.value as DocumentType)}
+              className="w-full rounded-xl bg-surface-raised border border-surface-border px-4 py-3 text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
+            >
+              <option value="rg">RG</option>
+              <option value="cpf">CPF</option>
+              <option value="cnh">CNH</option>
+              <option value="certificado">Certificado</option>
+              <option value="receita">Receita médica</option>
+              <option value="prontuario">Prontuário</option>
+              <option value="laudo">Laudo</option>
+              <option value="encaminhamento">Encaminhamento</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+
+          {/* Título */}
+          <Input
+            label="Título do documento"
+            placeholder="Ex: Minha CNH, Receita Losartana, etc."
+            value={formData.title}
+            onChange={(e) => handleChange("title", e.target.value)}
+            error={errors.title}
+          />
+
+          {/* Campos dinâmicos */}
+          {fields.length > 0 && (
+            <div className="space-y-3 border-t border-surface-border pt-4">
+              <p className="text-sm font-medium text-ink-muted">Campos específicos</p>
+              {fields.map((field) => (
+                <Input
+                  key={field.key}
+                  label={field.label}
+                  type={field.type === "date" ? "date" : "text"}
+                  value={formData.metadata[field.key] || ""}
+                  onChange={(e) => handleMetadataChange(field.key, e.target.value)}
+                  placeholder={
+                    field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`
+                  }
+                />
               ))}
             </div>
           )}
-        </div>
 
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          onClick={handleSubmit}
-          disabled={loading || uploading}
-          className="mt-4"
-        >
-          {loading ? "Salvando..." : "Salvar documento"}
-        </Button>
-      </section>
-    </main>
+          {/* Descrição/Notas */}
+          <TextArea
+            label="Notas (opcional)"
+            placeholder="Informações adicionais..."
+            value={formData.description}
+            onChange={(e) => handleChange("description", e.target.value)}
+          />
+
+          {/* Upload de arquivo */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-ink-primary">Anexos</label>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="secondary"
+                className="flex items-center justify-center gap-2"
+                onClick={() => {
+                  trigger("vibrate");
+                  fileInputRef.current?.click();
+                }}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Upload size={16} />
+                )}
+                Upload
+              </Button>
+              <Button
+                variant="secondary"
+                className="flex items-center justify-center gap-2"
+                onClick={() => {
+                  trigger("vibrate");
+                  cameraInputRef.current?.click();
+                }}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Camera size={16} />
+                )}
+                Câmera
+              </Button>
+            </div>
+
+            {formData.attachments.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {formData.attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className="flex items-center justify-between p-2 rounded-lg bg-surface-raised border border-surface-border"
+                  >
+                    <span className="text-sm text-ink-muted truncate flex-1">{att.name}</span>
+                    <button
+                      onClick={() => removeAttachment(att.id)}
+                      className="p-1 rounded-full hover:bg-surface-border transition-colors"
+                    >
+                      <X size={14} className="text-ink-muted" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSubmit}
+            disabled={loading || uploading}
+            className="mt-4"
+          >
+            {loading ? "Salvando..." : "Salvar documento"}
+          </Button>
+        </section>
+      </main>
+    </PageTransition>
   );
 }
