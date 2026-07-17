@@ -1,38 +1,54 @@
-import { supabase } from './client';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase/client';
+import { User } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
+import { signIn, signUp, signInWithGoogle, signOut } from '@/lib/supabase/auth';
 
-export async function signUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-  return { data, error };
-}
+export function useAuth() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  return { data, error };
-}
+  useEffect(() => {
+    // Busca usuário inicial
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setLoading(false);
+    });
 
-export async function signInWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      // CORRIGIDO: Redirecionamento direto para a raiz do seu app
-      redirectTo: `${window.location.origin}/`,
-    },
-  });
-  return { data, error };
-}
+    // Escuta mudanças de autenticação
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+      
+      // Se o usuário logou, joga pra Home
+      if (event === 'SIGNED_IN') {
+        router.push('/');
+      }
+      // Se o usuário deslogou, joga pro Login
+      if (event === 'SIGNED_OUT') {
+        router.push('/login');
+      }
+    });
 
-export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  return { error };
-}
+    return () => listener?.subscription.unsubscribe();
+  }, [router]);
 
-export async function getCurrentUser() {
-  const { data, error } = await supabase.auth.getUser();
-  return { user: data?.user, error };
+  const login = async (email: string, password: string) => {
+    return await signIn(email, password);
+  };
+
+  const register = async (email: string, password: string) => {
+    return await signUp(email, password);
+  };
+
+  const loginWithGoogle = async () => {
+    return await signInWithGoogle();
+  };
+
+  const logout = async () => {
+    await signOut();
+  };
+
+  return { user, loading, login, register, loginWithGoogle, logout };
 }
