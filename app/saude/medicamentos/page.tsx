@@ -90,7 +90,8 @@ export default function MedicamentosPage() {
                   key={med.id}
                   onClick={() => {
                     trigger("vibrate");
-                    router.push(`/saude/medicamentos/${med.id}`);
+                    // CORRIGIDO: Rota adaptada para Query Params
+                    router.push(`/saude/medicamentos/detalhes?id=${med.id}`);
                   }}
                   className={`rounded-card border p-4 bg-surface shadow-vault active:scale-[0.98] transition-all cursor-pointer ${
                     isUrgent ? "border-coral/40" : "border-surface-border"
