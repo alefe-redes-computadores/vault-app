@@ -29,9 +29,9 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
   const category = CATEGORIES[document.category_id];
   const color = category?.color || "#6B7280";
 
-  const handlePress = () => {
+    const handlePress = () => {
     trigger("vibrate");
-    router.push(`/${document.id}`);
+    router.push(`/detalhes?id=${document.id}`);
   };
 
   const handleFavorite = (e: React.MouseEvent) => {
