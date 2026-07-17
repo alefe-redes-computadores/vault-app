@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Pill, Plus, AlertCircle } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -8,10 +9,17 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
 export default function MedicamentosPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []);
 
@@ -21,6 +29,10 @@ export default function MedicamentosPage() {
     const diff = Math.ceil((renovacao.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
     return diff;
   };
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
 
   return (
     <main className="min-h-screen bg-void pb-28">
