@@ -5,7 +5,7 @@
   "scripts": {
   "dev": "next dev",
   "build": "next build",
-  "build:export": "next build && next export",
+  "build:export": "NEXT_CONFIG_FILE=next.config.export.js next build",
   "start": "next start",
   "lint": "next lint",
   "cap:sync": "npx cap sync",
