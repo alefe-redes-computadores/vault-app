@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.seuemail.vault",
+      "sha256_cert_fingerprints": [
+        "COLE_AQUI_A_SUA_CHAVE_SHA256"
+      ]
+    }
+  }
+]
