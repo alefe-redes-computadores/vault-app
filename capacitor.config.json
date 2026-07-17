@@ -11,17 +11,6 @@
       "launchShowDuration": 2000,
       "backgroundColor": "#0A0C0F",
       "showSpinner": false
-    },
-    "Biometric": {
-      "android": {
-        "useStrongBiometric": true,
-        "title": "Desbloqueie o Vault"
-      }
-    },
-    "Camera": {
-      "android": {
-        "useLegacy": false
-      }
     }
   }
 }
