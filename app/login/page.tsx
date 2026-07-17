@@ -8,6 +8,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { supabase } from "@/lib/supabase/client";
+import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 
 const GoogleIcon = () => (
