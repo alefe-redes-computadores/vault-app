@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
@@ -11,7 +11,9 @@ import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
+import { PageTransition } from "@/components/PageTransition";
 
+// Mapeamento manual de campos por tipo (sem depender do DOCUMENT_FIELDS)
 const getFieldsForType = (type: DocumentType) => {
   const commonFields = [
     { key: "number", label: "Número", type: "text" },
@@ -70,14 +72,11 @@ const getFieldsForType = (type: DocumentType) => {
   return fieldMap[type] || [];
 };
 
-function EditDocumentContent() {
+export default function EditDocumentPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // Pega o ID da URL: ?id=123
-  const idParam = searchParams.get("id");
-  const id = idParam ? Number(idParam) : 0;
+  const id = Number(searchParams.get("id"));
 
   const doc = useDocument(id);
   const persons = usePersons();
@@ -147,7 +146,6 @@ function EditDocumentContent() {
         attachments: formData.attachments,
       });
       trigger("success");
-      // CORRIGIDO PARA VOLTAR PARA A PÁGINA DE DETALHES CORRETA
       router.push(`/detalhes?id=${id}`);
     } catch (error) {
       console.error("Erro ao atualizar:", error);
@@ -157,139 +155,134 @@ function EditDocumentContent() {
     }
   };
 
-  if (!idParam || !doc) {
+  if (!doc) {
     return (
-      <main className="min-h-screen bg-void flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-ink-muted">Documento não encontrado</p>
-          <Button variant="primary" onClick={() => router.push("/")} className="mt-4">
-            Voltar
-          </Button>
-        </div>
-      </main>
+      <PageTransition>
+        <main className="min-h-screen bg-void flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-ink-muted">Documento não encontrado</p>
+            <Button variant="primary" onClick={() => router.push("/")} className="mt-4">
+              Voltar
+            </Button>
+          </div>
+        </main>
+      </PageTransition>
     );
   }
 
   return (
-    <main className="min-h-screen bg-void pb-28">
-      <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              trigger("vibrate");
-              router.back();
-            }}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
-          >
-            <ArrowLeft size={18} className="text-ink-primary" />
-          </button>
+    <PageTransition>
+      <main className="min-h-screen bg-void pb-28">
+        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                router.back();
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
+            >
+              <ArrowLeft size={18} className="text-ink-primary" />
+            </button>
+            <div>
+              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
+              <h1 className="font-display text-xl font-semibold text-ink-primary">Editar documento</h1>
+            </div>
+          </div>
+        </header>
+
+        <section className="px-5 pt-6 space-y-4">
+          {/* Pessoa */}
           <div>
-            <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-            <h1 className="font-display text-xl font-semibold text-ink-primary">Editar documento</h1>
+            <label className="block text-sm font-medium text-ink-primary mb-1.5">Pessoa</label>
+            <div className="flex gap-2 flex-wrap">
+              {persons.map((person) => (
+                <button
+                  key={person.id}
+                  onClick={() => handleChange("person_id", person.id!)}
+                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
+                    formData.person_id === person.id
+                      ? "border-ice bg-ice/10 text-ice"
+                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+                  }`}
+                >
+                  <span className="text-sm font-medium">{person.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      </header>
 
-      <section className="px-5 pt-6 space-y-4">
-        {/* Pessoa */}
-        <div>
-          <label className="block text-sm font-medium text-ink-primary mb-1.5">Pessoa</label>
-          <div className="flex gap-2 flex-wrap">
-            {persons.map((person) => (
-              <button
-                key={person.id}
-                onClick={() => handleChange("person_id", person.id!)}
-                className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
-                  formData.person_id === person.id
-                    ? "border-ice bg-ice/10 text-ice"
-                    : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
-                }`}
-              >
-                <span className="text-sm font-medium">{person.name}</span>
-              </button>
-            ))}
+          {/* Categoria */}
+          <div>
+            <label className="block text-sm font-medium text-ink-primary mb-1.5">Categoria</label>
+            <div className="flex gap-2 flex-wrap">
+              {Object.values(CATEGORIES).map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleChange("category_id", cat.id)}
+                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
+                    formData.category_id === cat.id
+                      ? "border-ice bg-ice/10 text-ice"
+                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+                  }`}
+                >
+                  <span className="text-sm font-medium">{cat.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Categoria */}
-        <div>
-          <label className="block text-sm font-medium text-ink-primary mb-1.5">Categoria</label>
-          <div className="flex gap-2 flex-wrap">
-            {Object.values(CATEGORIES).map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => handleChange("category_id", cat.id)}
-                className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
-                  formData.category_id === cat.id
-                    ? "border-ice bg-ice/10 text-ice"
-                    : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
-                }`}
-              >
-                <span className="text-sm font-medium">{cat.name}</span>
-              </button>
-            ))}
+          {/* Tipo */}
+          <div>
+            <label className="block text-sm font-medium text-ink-primary mb-1.5">Tipo</label>
+            <select
+              value={formData.type}
+              onChange={(e) => handleChange("type", e.target.value as DocumentType)}
+              className="w-full rounded-xl bg-surface-raised border border-surface-border px-4 py-3 text-ink-primary focus:outline-none focus:border-steel-light"
+            >
+              <option value="rg">RG</option>
+              <option value="cpf">CPF</option>
+              <option value="cnh">CNH</option>
+              <option value="certificado">Certificado</option>
+              <option value="receita">Receita</option>
+              <option value="prontuario">Prontuário</option>
+              <option value="laudo">Laudo</option>
+              <option value="encaminhamento">Encaminhamento</option>
+              <option value="outro">Outro</option>
+            </select>
           </div>
-        </div>
 
-        {/* Tipo */}
-        <div>
-          <label className="block text-sm font-medium text-ink-primary mb-1.5">Tipo</label>
-          <select
-            value={formData.type}
-            onChange={(e) => handleChange("type", e.target.value as DocumentType)}
-            className="w-full rounded-xl bg-surface-raised border border-surface-border px-4 py-3 text-ink-primary focus:outline-none focus:border-steel-light"
-          >
-            <option value="rg">RG</option>
-            <option value="cpf">CPF</option>
-            <option value="cnh">CNH</option>
-            <option value="certificado">Certificado</option>
-            <option value="receita">Receita</option>
-            <option value="prontuario">Prontuário</option>
-            <option value="laudo">Laudo</option>
-            <option value="encaminhamento">Encaminhamento</option>
-            <option value="outro">Outro</option>
-          </select>
-        </div>
-
-        {/* Título */}
-        <Input
-          label="Título"
-          value={formData.title}
-          onChange={(e) => handleChange("title", e.target.value)}
-          error={errors.title}
-        />
-
-        {/* Campos dinâmicos */}
-        {fields.map((field) => (
+          {/* Título */}
           <Input
-            key={field.key}
-            label={field.label}
-            type={field.type === "date" ? "date" : "text"}
-            value={formData.metadata[field.key] || ""}
-            onChange={(e) => handleMetadataChange(field.key, e.target.value)}
+            label="Título"
+            value={formData.title}
+            onChange={(e) => handleChange("title", e.target.value)}
+            error={errors.title}
           />
-        ))}
 
-        {/* Notas */}
-        <TextArea
-          label="Notas"
-          value={formData.description}
-          onChange={(e) => handleChange("description", e.target.value)}
-        />
+          {/* Campos dinâmicos */}
+          {fields.map((field) => (
+            <Input
+              key={field.key}
+              label={field.label}
+              type={field.type === "date" ? "date" : "text"}
+              value={formData.metadata[field.key] || ""}
+              onChange={(e) => handleMetadataChange(field.key, e.target.value)}
+            />
+          ))}
 
-        <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading}>
-          {loading ? "Salvando..." : "Salvar alterações"}
-        </Button>
-      </section>
-    </main>
-  );
-}
+          {/* Notas */}
+          <TextArea
+            label="Notas"
+            value={formData.description}
+            onChange={(e) => handleChange("description", e.target.value)}
+          />
 
-// O export default principal envolve o conteúdo no Suspense
-export default function EditDocumentPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center text-ink-primary">Carregando...</div>}>
-      <EditDocumentContent />
-    </Suspense>
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading}>
+            {loading ? "Salvando..." : "Salvar alterações"}
+          </Button>
+        </section>
+      </main>
+    </PageTransition>
   );
 }
