@@ -8,6 +8,8 @@ import { safeAddMedicamento } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
+import { scheduleMedicationRenewalNotification } from "@/lib/notifications";
+import { db } from "@/lib/db";
 
 export default function NewMedicamentoPage() {
   const { trigger } = useHapticFeedback();
@@ -46,6 +48,28 @@ export default function NewMedicamentoPage() {
         proxima_renovacao: formData.proxima_renovacao,
         observacoes: formData.observacoes || undefined,
       });
+
+      // ✅ Busca o ID do medicamento recém-criado
+      const medicamentos = await db.medicamentos.toArray();
+      const ultimo = medicamentos[medicamentos.length - 1];
+      
+      if (ultimo?.id && formData.data_receita) {
+        // ✅ Agenda notificação 25 dias após a data de emissão da receita
+        const dataEmissao = new Date(formData.data_receita);
+        const dataNotificacao = new Date(dataEmissao);
+        dataNotificacao.setDate(dataNotificacao.getDate() + 25); // 25 dias após emissão
+        
+        // Só agenda se a data de notificação ainda não passou
+        if (dataNotificacao > new Date()) {
+          await scheduleMedicationRenewalNotification(
+            ultimo.id,
+            formData.nome,
+            dataNotificacao.toISOString().split("T")[0],
+            formData.medico
+          );
+        }
+      }
+
       trigger("success");
       router.push("/saude/medicamentos");
     } catch (error) {
