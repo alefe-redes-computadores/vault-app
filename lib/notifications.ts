@@ -10,9 +10,6 @@ export interface NotificationData {
   extra?: Record<string, any>;
 }
 
-/**
- * Agenda uma notificação local
- */
 export async function scheduleNotification(data: NotificationData): Promise<void> {
   try {
     const { id, title, body, scheduleDate, extra } = data;
@@ -42,9 +39,6 @@ export async function scheduleNotification(data: NotificationData): Promise<void
   }
 }
 
-/**
- * Cancela uma notificação agendada
- */
 export async function cancelNotification(notificationId: number): Promise<void> {
   try {
     await LocalNotifications.cancel({ notifications: [{ id: notificationId }] });
@@ -54,9 +48,6 @@ export async function cancelNotification(notificationId: number): Promise<void> 
   }
 }
 
-/**
- * Cancela todas as notificações agendadas
- */
 export async function cancelAllNotifications(): Promise<void> {
   try {
     await LocalNotifications.cancelAll();
@@ -66,9 +57,6 @@ export async function cancelAllNotifications(): Promise<void> {
   }
 }
 
-/**
- * Verifica se as permissões estão concedidas e solicita se necessário
- */
 export async function requestNotificationPermissions(): Promise<boolean> {
   try {
     const { display } = await LocalNotifications.requestPermissions();
@@ -79,30 +67,25 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   }
 }
 
-/**
- * Gera um ID único para notificação baseado no tipo e ID do documento
- */
 export function generateNotificationId(type: string, docId: number): number {
-  // Usa um número base + hash para evitar conflitos
   const base = type === 'document' ? 10000 : 20000;
   return base + docId;
 }
 
 /**
- * Agenda notificação de vencimento de documento
+ * Agenda notificação de vencimento de documento (30 dias antes)
  */
 export async function scheduleDocumentExpiryNotification(
   docId: number,
   title: string,
   expiryDate: string,
-  category: string
+  category: string,
+  daysBefore: number = 30
 ): Promise<void> {
   const expiry = new Date(expiryDate);
-  // Agenda 3 dias antes do vencimento
   const notifyDate = new Date(expiry);
-  notifyDate.setDate(notifyDate.getDate() - 3);
+  notifyDate.setDate(notifyDate.getDate() - daysBefore);
 
-  // Se a data de notificação já passou, não agenda
   if (notifyDate < new Date()) {
     console.log('Data de notificação já passou, não agendando');
     return;
@@ -110,7 +93,7 @@ export async function scheduleDocumentExpiryNotification(
 
   await scheduleNotification({
     id: generateNotificationId('document', docId),
-    title: `📄 Documento vence em breve: ${title}`,
+    title: `📄 Documento vence em ${daysBefore} dias: ${title}`,
     body: `Vence em ${format(expiry, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })} (Categoria: ${category})`,
     scheduleDate: notifyDate,
     extra: {
@@ -121,20 +104,17 @@ export async function scheduleDocumentExpiryNotification(
 }
 
 /**
- * Agenda notificação de renovação de receita
+ * Agenda notificação de renovação de receita (25 dias após emissão)
  */
 export async function scheduleMedicationRenewalNotification(
   medicamentoId: number,
   nome: string,
-  renewalDate: string,
+  notificationDate: string,
   medico: string
 ): Promise<void> {
-  const renewal = new Date(renewalDate);
-  // Agenda 3 dias antes da renovação
-  const notifyDate = new Date(renewal);
-  notifyDate.setDate(notifyDate.getDate() - 3);
+  const notify = new Date(notificationDate);
 
-  if (notifyDate < new Date()) {
+  if (notify < new Date()) {
     console.log('Data de notificação já passou, não agendando');
     return;
   }
@@ -142,8 +122,8 @@ export async function scheduleMedicationRenewalNotification(
   await scheduleNotification({
     id: generateNotificationId('medicamento', medicamentoId),
     title: `💊 Medicamento vence em breve: ${nome}`,
-    body: `Renovação com Dr(a). ${medico} em ${format(renewal, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`,
-    scheduleDate: notifyDate,
+    body: `Renovação com Dr(a). ${medico} em breve. Verifique a data da receita.`,
+    scheduleDate: notify,
     extra: {
       type: 'medication_renewal',
       medicamentoId,
