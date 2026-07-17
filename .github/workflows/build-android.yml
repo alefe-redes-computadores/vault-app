@@ -26,8 +26,8 @@ jobs:
       - name: Instalar Dependências
         run: npm install
 
-      - name: Build do Next.js
-        run: npm run build   # ← ESSA LINHA ESTAVA FALTANDO!
+      - name: Build do Next.js (export para Capacitor)
+        run: npm run build:export
 
       - name: Sincronizar e Preparar Android
         run: |
