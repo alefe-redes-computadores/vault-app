@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -29,7 +29,6 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageTransition } from "@/components/PageTransition";
 
-// Mapeamento de ícones por categoria
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
   pessoal: User,
@@ -46,14 +45,11 @@ const formatDate = (date?: string) => {
   }
 };
 
-function DocumentDetailContent() {
+export default function DocumentDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // Pega o ID da URL (?id=123)
-  const idParam = searchParams.get("id");
-  const id = idParam ? Number(idParam) : 0;
+  const id = Number(searchParams.get("id"));
 
   const doc = useDocument(id);
   const { deleteDocument, favorite } = useSafeDb();
@@ -61,7 +57,7 @@ function DocumentDetailContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
 
-  if (!id || !doc) {
+  if (!doc) {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void flex items-center justify-center">
@@ -132,9 +128,6 @@ function DocumentDetailContent() {
 
   const updateAttachmentName = (newName: string) => {
     if (!selectedAttachment || !doc) return;
-    const updatedAttachments = doc.attachments.map((att) =>
-      att.id === selectedAttachment.id ? { ...att, name: newName } : att
-    );
     setSelectedAttachment({ ...selectedAttachment, name: newName });
     setIsRenaming(false);
     trigger("success");
@@ -276,8 +269,7 @@ function DocumentDetailContent() {
               className="flex items-center justify-center gap-2"
               onClick={() => {
                 trigger("vibrate");
-                // Atualizado para a nova URL
-                router.push(`/detalhes/editar?id=${doc.id}`);
+                router.push(`/editar?id=${doc.id}`);
               }}
             >
               <Edit size={16} />
@@ -372,13 +364,5 @@ function DocumentDetailContent() {
         )}
       </main>
     </PageTransition>
-  );
-}
-
-export default function DocumentDetailPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center text-ink-primary">Carregando...</div>}>
-      <DocumentDetailContent />
-    </Suspense>
   );
 }
