@@ -55,29 +55,46 @@ export default function LoginPage() {
     }
   };
 
-    const handleGoogleLogin = async () => {
+      
+      
+      const handleGoogleLogin = async () => {
     setError("");
     setLoading(true);
+    
     try {
+      // Verifica se está rodando no aplicativo nativo (celular) ou na web
+      const isNative = Capacitor.isNativePlatform();
+      
+      // O pulo do gato Híbrido que você lembrou: 
+      // Se for nativo usa vault://, se for web usa a URL do site
+      const redirectUrl = isNative 
+        ? 'vault://callback' 
+        : `${window.location.origin}/auth/callback`;
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          skipBrowserRedirect: true, 
-          redirectTo: 'vault://callback', // 🟢 Isso faz o Android chamar o App de volta
-        },
+        options: { 
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: isNative, // Só pula o redirecionamento automático se for o App
+        }
       });
 
-      if (error) throw error;
-
-      if (data?.url) {
-        // Abre no Browser do Capacitor
-        await Browser.open({ url: data.url });
+      if (error) {
+        throw error;
       }
+
+      // Se estiver no celular, abre o Custom Tab do navegador.
+      if (isNative && data?.url) {
+        await Browser.open({ url: data.url, presentationStyle: 'popover' });
+        setLoading(false);
+      }
+      
     } catch (err) {
-      setError("Erro ao autenticar com Google");
+      setError("Erro ao entrar com Google.");
       setLoading(false);
     }
   };
+
 
 
   return (
