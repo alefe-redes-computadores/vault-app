@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { DocumentTypeSelector } from "@/components/DocumentTypeSelector";
+import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
 
 // Mapeamento de campos por tipo de documento
 const DOCUMENT_FIELDS: Record<
@@ -156,7 +157,6 @@ export default function NewDocumentPage() {
       ...prev,
       metadata: { ...prev.metadata, [key]: value },
     }));
-    // Limpa erro do campo específico se existir
     if (errors[key]) {
       setErrors((prev) => ({ ...prev, [key]: "" }));
     }
@@ -232,7 +232,6 @@ export default function NewDocumentPage() {
       newErrors.title = "Título é obrigatório";
     }
 
-    // Valida campos específicos do tipo de documento
     const fields = DOCUMENT_FIELDS[formData.type] || [];
     fields.forEach((field) => {
       if (field.required && !formData.metadata[field.key]?.trim()) {
@@ -263,7 +262,19 @@ export default function NewDocumentPage() {
         is_favorite: false,
       };
 
-      await addDocument(docData);
+      const id = await addDocument(docData);
+      
+      // ✅ Agenda notificação 30 dias antes do vencimento
+      if (formData.metadata?.expiry_date) {
+        await scheduleDocumentExpiryNotification(
+          id,
+          formData.title,
+          formData.metadata.expiry_date,
+          CATEGORIES[formData.category_id].name,
+          30 // 30 dias antes
+        );
+      }
+
       trigger("success");
       setShowSuccess(true);
       setTimeout(() => {
@@ -282,7 +293,6 @@ export default function NewDocumentPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* Inputs ocultos para upload */}
         <input
           ref={fileInputRef}
           type="file"
@@ -367,7 +377,7 @@ export default function NewDocumentPage() {
             </div>
           </div>
 
-          {/* Tipo de Documento - COM MODAL */}
+          {/* Tipo */}
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
               Tipo de documento <span className="text-coral">*</span>
@@ -411,7 +421,7 @@ export default function NewDocumentPage() {
             </div>
           )}
 
-          {/* Descrição/Notas */}
+          {/* Descrição */}
           <TextArea
             label="Notas (opcional)"
             placeholder="Informações adicionais..."
@@ -419,7 +429,7 @@ export default function NewDocumentPage() {
             onChange={(e) => handleChange("description", e.target.value)}
           />
 
-          {/* Upload de arquivo */}
+          {/* Anexos */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-ink-primary">Anexos</label>
             <div className="grid grid-cols-2 gap-3">
@@ -477,7 +487,6 @@ export default function NewDocumentPage() {
             )}
           </div>
 
-          {/* Botão salvar com estado de loading e sucesso */}
           <Button
             variant="primary"
             size="lg"
@@ -502,7 +511,6 @@ export default function NewDocumentPage() {
           </Button>
         </section>
 
-        {/* MODAL DE SELEÇÃO DE TIPO */}
         <DocumentTypeSelector
           selected={formData.type}
           onChange={(type) => handleChange("type", type)}
