@@ -221,7 +221,7 @@ export type EncaminhamentoMetadata = {
 // ============================================================
 export interface SyncQueueItem {
   id?: number;
-  table: 'persons' | 'documents';
+  table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
