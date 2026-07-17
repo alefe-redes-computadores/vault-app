@@ -1,170 +1,45 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { useDocument } from "@/hooks/useDocuments";
+import { useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { ArrowLeft, User } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
+import { useDocuments } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { TextArea } from "@/components/ui/TextArea";
+import { CATEGORIES, type CategoryId } from "@/lib/types";
+import { DocumentCard } from "@/components/DocumentCard";
+import { PersonCard } from "@/components/PersonCard";
 import { PageTransition } from "@/components/PageTransition";
 
-// Mapeamento manual de campos por tipo (sem depender do DOCUMENT_FIELDS)
-const getFieldsForType = (type: DocumentType) => {
-  const commonFields = [
-    { key: "number", label: "Número", type: "text" },
-    { key: "issue_date", label: "Data de emissão", type: "date" },
-    { key: "expiry_date", label: "Data de validade", type: "date" },
-    { key: "issuer", label: "Órgão emissor", type: "text" },
-  ];
-
-  const fieldMap: Record<DocumentType, Array<{ key: string; label: string; type: string }>> = {
-    rg: commonFields,
-    cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
-    cnh: [
-      { key: "number", label: "Número da CNH", type: "text" },
-      { key: "category", label: "Categoria", type: "text" },
-      { key: "issue_date", label: "Data de emissão", type: "date" },
-      { key: "expiry_date", label: "Data de validade", type: "date" },
-    ],
-    certificado: [
-      { key: "institution", label: "Instituição", type: "text" },
-      { key: "course", label: "Curso", type: "text" },
-      { key: "duration", label: "Duração", type: "text" },
-      { key: "completion_date", label: "Data de conclusão", type: "date" },
-    ],
-    receita: [
-      { key: "medication", label: "Medicamento", type: "text" },
-      { key: "dosage", label: "Dosagem", type: "text" },
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "pharmacy", label: "Farmácia", type: "text" },
-      { key: "prescription_date", label: "Data da receita", type: "date" },
-      { key: "renewal_date", label: "Próxima renovação", type: "date" },
-    ],
-    prontuario: [
-      { key: "hospital", label: "Hospital", type: "text" },
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "specialty", label: "Especialidade", type: "text" },
-      { key: "date", label: "Data", type: "date" },
-    ],
-    laudo: [
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "specialty", label: "Especialidade", type: "text" },
-      { key: "hospital", label: "Hospital", type: "text" },
-      { key: "date", label: "Data", type: "date" },
-    ],
-    encaminhamento: [
-      { key: "from", label: "Quem encaminhou", type: "text" },
-      { key: "to", label: "Para quem", type: "text" },
-      { key: "reason", label: "Motivo", type: "text" },
-      { key: "date", label: "Data", type: "date" },
-    ],
-    outro: [
-      { key: "custom_field_1", label: "Campo 1", type: "text" },
-      { key: "custom_field_2", label: "Campo 2", type: "text" },
-    ],
-  };
-
-  return fieldMap[type] || [];
-};
-
-export default function EditDocumentPage() {
+function CategoryContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const params = useParams();
-  const id = Number(params.id);
+  const searchParams = useSearchParams();
+  
+  // Pega o ID da categoria da URL: ?id=saude
+  const categoryId = searchParams.get("id") as CategoryId;
 
-  const doc = useDocument(id);
   const persons = usePersons();
-  const { updateDocument } = useSafeDb();
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(
+    persons[0]?.id || null
+  );
 
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState({
-    person_id: 0,
-    category_id: "pessoal" as CategoryId,
-    type: "rg" as DocumentType,
-    title: "",
-    description: "",
-    metadata: {} as Record<string, any>,
-    attachments: [] as any[],
-  });
+  const documents = useDocuments(selectedPersonId || undefined, categoryId);
+  const { favorite } = useSafeDb();
 
-  useEffect(() => {
-    if (doc) {
-      setFormData({
-        person_id: doc.person_id,
-        category_id: doc.category_id,
-        type: doc.type as DocumentType,
-        title: doc.title,
-        description: doc.description || "",
-        metadata: doc.metadata || {},
-        attachments: doc.attachments || [],
-      });
-    }
-  }, [doc]);
+  const category = categoryId ? CATEGORIES[categoryId] : null;
 
-  const fields = getFieldsForType(formData.type);
-
-  const handleChange = (field: keyof typeof formData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleFavoriteToggle = async (id: number) => {
+    await favorite(id);
+    trigger("vibrate");
   };
 
-  const handleMetadataChange = (key: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      metadata: { ...prev.metadata, [key]: value },
-    }));
-  };
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.title.trim()) newErrors.title = "Título é obrigatório";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validate() || !doc) {
-      trigger("error");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await updateDocument(id, {
-        person_id: formData.person_id,
-        category_id: formData.category_id,
-        type: formData.type,
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        metadata: formData.metadata,
-        attachments: formData.attachments,
-      });
-      trigger("success");
-      router.push(`/${id}`);
-    } catch (error) {
-      console.error("Erro ao atualizar:", error);
-      trigger("error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!doc) {
+  if (!category) {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-ink-muted">Documento não encontrado</p>
-            <Button variant="primary" onClick={() => router.push("/")} className="mt-4">
-              Voltar
-            </Button>
-          </div>
+          <p className="text-ink-muted">Categoria não encontrada</p>
         </main>
       </PageTransition>
     );
@@ -186,103 +61,64 @@ export default function EditDocumentPage() {
             </button>
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">Editar documento</h1>
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
+                {category.name}
+              </h1>
+              <p className="text-sm text-ink-muted">
+                {documents.length} documento{documents.length !== 1 ? "s" : ""}
+              </p>
             </div>
+          </div>
+
+          <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-hide">
+            {persons.map((person) => (
+              <PersonCard
+                key={person.id}
+                person={person}
+                isActive={selectedPersonId === person.id}
+                onClick={() => {
+                  trigger("vibrate");
+                  setSelectedPersonId(person.id!);
+                }}
+              />
+            ))}
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
-          {/* Pessoa */}
-          <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1.5">Pessoa</label>
-            <div className="flex gap-2 flex-wrap">
-              {persons.map((person) => (
-                <button
-                  key={person.id}
-                  onClick={() => handleChange("person_id", person.id!)}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
-                    formData.person_id === person.id
-                      ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
-                  }`}
-                >
-                  <span className="text-sm font-medium">{person.name}</span>
-                </button>
-              ))}
+        <section className="px-5 pt-5 space-y-3">
+          {documents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+                style={{ backgroundColor: `${category.color}22` }}
+              >
+                <User size={32} style={{ color: category.color }} />
+              </div>
+              <h3 className="font-display text-lg text-ink-primary">Nenhum documento</h3>
+              <p className="text-sm text-ink-muted mt-1">
+                Nenhum documento encontrado nesta categoria para esta pessoa
+              </p>
             </div>
-          </div>
-
-          {/* Categoria */}
-          <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1.5">Categoria</label>
-            <div className="flex gap-2 flex-wrap">
-              {Object.values(CATEGORIES).map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => handleChange("category_id", cat.id)}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
-                    formData.category_id === cat.id
-                      ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
-                  }`}
-                >
-                  <span className="text-sm font-medium">{cat.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tipo */}
-          <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1.5">Tipo</label>
-            <select
-              value={formData.type}
-              onChange={(e) => handleChange("type", e.target.value as DocumentType)}
-              className="w-full rounded-xl bg-surface-raised border border-surface-border px-4 py-3 text-ink-primary focus:outline-none focus:border-steel-light"
-            >
-              <option value="rg">RG</option>
-              <option value="cpf">CPF</option>
-              <option value="cnh">CNH</option>
-              <option value="certificado">Certificado</option>
-              <option value="receita">Receita</option>
-              <option value="prontuario">Prontuário</option>
-              <option value="laudo">Laudo</option>
-              <option value="encaminhamento">Encaminhamento</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-
-          {/* Título */}
-          <Input
-            label="Título"
-            value={formData.title}
-            onChange={(e) => handleChange("title", e.target.value)}
-            error={errors.title}
-          />
-
-          {/* Campos dinâmicos */}
-          {fields.map((field) => (
-            <Input
-              key={field.key}
-              label={field.label}
-              type={field.type === "date" ? "date" : "text"}
-              value={formData.metadata[field.key] || ""}
-              onChange={(e) => handleMetadataChange(field.key, e.target.value)}
-            />
-          ))}
-
-          {/* Notas */}
-          <TextArea
-            label="Notas"
-            value={formData.description}
-            onChange={(e) => handleChange("description", e.target.value)}
-          />
-
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading}>
-            {loading ? "Salvando..." : "Salvar alterações"}
-          </Button>
+          ) : (
+            documents.map((doc) => (
+              <DocumentCard
+                key={doc.id}
+                document={doc}
+                onFavoriteToggle={handleFavoriteToggle}
+              />
+            ))
+          )}
         </section>
       </main>
     </PageTransition>
+  );
+}
+
+// O export default principal envolve o conteúdo no Suspense
+export default function CategoryPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center text-ink-primary">Carregando...</div>}>
+      <CategoryContent />
+    </Suspense>
   );
 }
