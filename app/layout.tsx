@@ -3,8 +3,7 @@ import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { SplashScreen } from "@/components/SplashScreen";
-import { ClientWrapper } from "../components/ClientWrapper";
-
+import { BiometricLock } from "@/components/BiometricLock";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -70,9 +69,9 @@ export default function RootLayout({
       <body className="font-body antialiased bg-void min-h-screen">
         <Providers>
           <SplashScreen>
-            <ClientWrapper>
+            <BiometricLock>
               {children}
-            </ClientWrapper>
+            </BiometricLock>
           </SplashScreen>
         </Providers>
       </body>
