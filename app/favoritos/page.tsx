@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Star } from "lucide-react";
 import { useFavorites } from "@/hooks/useDocuments";
@@ -9,6 +9,7 @@ import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
 export default function FavoritesPage() {
   const { trigger } = useHapticFeedback();
@@ -19,6 +20,12 @@ export default function FavoritesPage() {
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(
     persons[0]?.id || null
   );
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   const favorites = useFavorites(selectedPersonId || undefined);
 
@@ -26,6 +33,10 @@ export default function FavoritesPage() {
     await favorite(id);
     trigger("vibrate");
   };
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
 
   return (
     <main className="min-h-screen bg-void pb-28">
