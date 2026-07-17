@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
+import { DocumentTypeSelector } from "@/components/DocumentTypeSelector";
 
 // Mapeamento de campos por tipo de documento
 const DOCUMENT_FIELDS: Record<
@@ -91,6 +92,19 @@ type FormData = {
   attachments: Attachment[];
 };
 
+// Mapeamento de tipos para exibição no botão
+const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  rg: "RG",
+  cpf: "CPF",
+  cnh: "CNH",
+  certificado: "Certificado",
+  receita: "Receita médica",
+  prontuario: "Prontuário",
+  laudo: "Laudo",
+  encaminhamento: "Encaminhamento",
+  outro: "Outro",
+};
+
 export default function NewDocumentPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -114,6 +128,7 @@ export default function NewDocumentPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
 
   // Reset metadata quando trocar o tipo
   useEffect(() => {
@@ -332,26 +347,17 @@ export default function NewDocumentPage() {
             </div>
           </div>
 
-          {/* Tipo de Documento */}
+          {/* Tipo de Documento - COM MODAL */}
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
               Tipo de documento
             </label>
-            <select
-              value={formData.type}
-              onChange={(e) => handleChange("type", e.target.value as DocumentType)}
-              className="w-full rounded-xl bg-surface-raised border border-surface-border px-4 py-3 text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
+            <button
+              onClick={() => setIsTypeModalOpen(true)}
+              className="w-full text-left px-4 py-3 rounded-xl bg-surface-raised border border-surface-border text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
             >
-              <option value="rg">RG</option>
-              <option value="cpf">CPF</option>
-              <option value="cnh">CNH</option>
-              <option value="certificado">Certificado</option>
-              <option value="receita">Receita médica</option>
-              <option value="prontuario">Prontuário</option>
-              <option value="laudo">Laudo</option>
-              <option value="encaminhamento">Encaminhamento</option>
-              <option value="outro">Outro</option>
-            </select>
+              {DOCUMENT_TYPE_LABELS[formData.type] || "Selecionar tipo..."}
+            </button>
           </div>
 
           {/* Título */}
@@ -459,6 +465,14 @@ export default function NewDocumentPage() {
             {loading ? "Salvando..." : "Salvar documento"}
           </Button>
         </section>
+
+        {/* MODAL DE SELEÇÃO DE TIPO */}
+        <DocumentTypeSelector
+          selected={formData.type}
+          onChange={(type) => handleChange("type", type)}
+          isOpen={isTypeModalOpen}
+          onClose={() => setIsTypeModalOpen(false)}
+        />
       </main>
     </PageTransition>
   );
