@@ -27,23 +27,17 @@ jobs:
         run: npm install
 
       - name: Build do Next.js
-        run: npm run build
+        run: npm run build   # ← ESSA LINHA ESTAVA FALTANDO!
 
       - name: Sincronizar e Preparar Android
         run: |
           rm -rf android
           npx cap add android
-          
-          # 🔥 INJEÇÃO PARA DEEP LINKING (SCHEME VAULT)
           sed -i 's/<\/activity>/<intent-filter android:label="vault_auth"><action android:name="android.intent.action.VIEW" \/><category android:name="android.intent.category.DEFAULT" \/><category android:name="android.intent.category.BROWSABLE" \/><data android:scheme="vault" android:host="callback" \/><\/intent-filter><\/activity>/g' android/app/src/main/AndroidManifest.xml
-
           npx cap sync android
-          
-          # Copia os ícones do PWA para os assets do Capacitor
           mkdir -p assets
           cp public/icon-512x512.png assets/icon.png || echo "Ícone não encontrado"
           cp public/icon-512x512.png assets/splash.png || echo "Splash não encontrada"
-          
           npx @capacitor/assets generate --android
 
       - name: Compilar APK (Gradle)
