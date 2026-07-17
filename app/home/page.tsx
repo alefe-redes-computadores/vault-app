@@ -137,12 +137,7 @@ export default function HomePage() {
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-ink-muted">Pessoas</span>
-              <button
-                onClick={() => router.push("/pessoas/novo")}
-                className="text-xs text-ice hover:text-ice/80 transition-colors"
-              >
-                + Adicionar
-              </button>
+              {/* BOTÃO + ADICIONAR REMOVIDO! */}
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {persons.map((person) => (
@@ -179,7 +174,7 @@ export default function HomePage() {
                 hasMore={more}
                 onFavoriteToggle={handleFavoriteToggle}
                 onSeeAll={() => {
-                  router.push(`/categoria/${categoryId}`);
+                  router.push(`/categoria?nome=${categoryId}`);
                 }}
               />
             );
@@ -237,7 +232,7 @@ export default function HomePage() {
                   onClick={() => {
                     trigger("vibrate");
                     setIsSearchOpen(false);
-                    router.push(`/${doc.id}`);
+                    router.push(`/detalhes?id=${doc.id}`);
                   }}
                   className="w-full text-left p-3 rounded-xl bg-surface border border-surface-border hover:bg-surface-border transition-colors"
                 >
