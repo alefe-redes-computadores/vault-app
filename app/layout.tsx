@@ -5,6 +5,7 @@ import { Providers } from "@/components/Providers";
 import { SplashScreen } from "@/components/SplashScreen";
 import { ClientWrapper } from "@/components/ClientWrapper";
 
+
 const display = Space_Grotesk({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
