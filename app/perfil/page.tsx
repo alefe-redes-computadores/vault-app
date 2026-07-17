@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { db } from "@/lib/db";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function ProfilePage() {
   const { trigger } = useHapticFeedback();
@@ -30,75 +31,77 @@ export default function ProfilePage() {
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
   return (
-    <main className="min-h-screen bg-void pb-4">
-      <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
-        <h1 className="font-display text-xl font-semibold text-ink-primary">Perfil</h1>
-      </header>
+    <PageTransition>
+      <main className="min-h-screen bg-void pb-4">
+        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+          <h1 className="font-display text-xl font-semibold text-ink-primary">Perfil</h1>
+        </header>
 
-      <section className="px-5 pt-6 space-y-6">
-        {/* Avatar e nome */}
-        <div className="flex flex-col items-center gap-3 p-6 rounded-card bg-surface border border-surface-border shadow-vault">
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              className="w-20 h-20 rounded-full border-2 border-ice/20"
-            />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-steel-dark/40 flex items-center justify-center text-ink-muted text-3xl">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <h2 className="font-display text-lg font-semibold text-ink-primary">{displayName}</h2>
-          <p className="text-sm text-ink-muted">{user?.email}</p>
-        </div>
+        <section className="px-5 pt-6 space-y-6">
+          {/* Avatar e nome */}
+          <div className="flex flex-col items-center gap-3 p-6 rounded-card bg-surface border border-surface-border shadow-vault">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="w-20 h-20 rounded-full border-2 border-ice/20"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-steel-dark/40 flex items-center justify-center text-ink-muted text-3xl">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <h2 className="font-display text-lg font-semibold text-ink-primary">{displayName}</h2>
+            <p className="text-sm text-ink-muted">{user?.email}</p>
+          </div>
 
-        {/* Opções */}
-        <div className="space-y-2">
-          <button
-            onClick={() => trigger("vibrate")}
-            className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border hover:bg-surface-border transition-colors active:scale-[0.98]"
+          {/* Opções */}
+          <div className="space-y-2">
+            <button
+              onClick={() => trigger("vibrate")}
+              className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border hover:bg-surface-border transition-colors active:scale-[0.98]"
+            >
+              <Settings size={18} className="text-ink-muted" />
+              <span className="text-sm text-ink-primary">Configurações</span>
+            </button>
+
+            <button
+              onClick={() => trigger("vibrate")}
+              className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border hover:bg-surface-border transition-colors active:scale-[0.98]"
+            >
+              <Shield size={18} className="text-ink-muted" />
+              <span className="text-sm text-ink-primary">Privacidade</span>
+            </button>
+
+            <button
+              onClick={() => trigger("vibrate")}
+              className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border hover:bg-surface-border transition-colors active:scale-[0.98]"
+            >
+              <Database size={18} className="text-ink-muted" />
+              <span className="text-sm text-ink-primary">Dados</span>
+            </button>
+
+            <button
+              onClick={clearLocalData}
+              className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-coral/20 hover:bg-coral/10 transition-colors active:scale-[0.98]"
+            >
+              <HardDrive size={18} className="text-coral" />
+              <span className="text-sm text-coral">Limpar dados locais</span>
+            </button>
+          </div>
+
+          <Button
+            variant="danger"
+            size="lg"
+            fullWidth
+            onClick={handleLogout}
+            className="mt-4"
           >
-            <Settings size={18} className="text-ink-muted" />
-            <span className="text-sm text-ink-primary">Configurações</span>
-          </button>
-
-          <button
-            onClick={() => trigger("vibrate")}
-            className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border hover:bg-surface-border transition-colors active:scale-[0.98]"
-          >
-            <Shield size={18} className="text-ink-muted" />
-            <span className="text-sm text-ink-primary">Privacidade</span>
-          </button>
-
-          <button
-            onClick={() => trigger("vibrate")}
-            className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border hover:bg-surface-border transition-colors active:scale-[0.98]"
-          >
-            <Database size={18} className="text-ink-muted" />
-            <span className="text-sm text-ink-primary">Dados</span>
-          </button>
-
-          <button
-            onClick={clearLocalData}
-            className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-coral/20 hover:bg-coral/10 transition-colors active:scale-[0.98]"
-          >
-            <HardDrive size={18} className="text-coral" />
-            <span className="text-sm text-coral">Limpar dados locais</span>
-          </button>
-        </div>
-
-        <Button
-          variant="danger"
-          size="lg"
-          fullWidth
-          onClick={handleLogout}
-          className="mt-4"
-        >
-          <LogOut size={16} className="mr-2" />
-          Sair da conta
-        </Button>
-      </section>
-    </main>
+            <LogOut size={16} className="mr-2" />
+            Sair da conta
+          </Button>
+        </section>
+      </main>
+    </PageTransition>
   );
 }
