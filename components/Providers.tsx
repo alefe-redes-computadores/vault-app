@@ -14,9 +14,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Ativa a fila de sincronização
   useSyncQueue();
 
-  // Listener para mudanças de autenticação
+  // Ouvinte para autenticação via popup (Google OAuth)
   useEffect(() => {
-    // Redireciona para login se não estiver autenticado
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data === 'auth-success') {
+        window.location.reload(); // Atualiza a página ao receber a mensagem do popup
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Listener para mudanças de autenticação (redireciona para login se não estiver logado)
+  useEffect(() => {
     if (!loading && !user && pathname !== "/login" && pathname !== "/auth/callback") {
       router.push("/login");
     }
