@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { supabase } from "@/lib/supabase/client";
 
 // Ícone SVG do Google com as cores oficiais
 const GoogleIcon = () => (
@@ -21,7 +22,7 @@ const GoogleIcon = () => (
 export default function LoginPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { login, register, loginWithGoogle } = useAuth();
+  const { login, register } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,12 +59,22 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const { error } = await loginWithGoogle();
-      if (error) {
-        setError(error.message);
-        trigger("error");
+      // 1. Pega a URL de autenticação do Supabase com skipBrowserRedirect
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          skipBrowserRedirect: true, // Não expulsa do app!
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) throw error;
+
+      // 2. Abre a gaveta do navegador por cima
+      if (data?.url) {
+        window.open(data.url, '_blank', 'width=500,height=600');
       }
-    } catch {
+    } catch (err) {
       setError("Erro ao autenticar com Google");
       trigger("error");
     } finally {
@@ -74,7 +85,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-void flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo do Vault - CORRIGIDA */}
+        {/* Logo do Vault */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-surface-raised border border-surface-border p-3 mb-4">
             <Image
