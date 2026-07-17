@@ -1,8 +1,7 @@
 "use client";
 
-
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
@@ -13,7 +12,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 
-// Campos manuais para cada tipo (sem importar DOCUMENT_FIELDS)
 const getFieldsForType = (type: DocumentType) => {
   const commonFields = [
     { key: "number", label: "Número", type: "text" },
@@ -72,11 +70,14 @@ const getFieldsForType = (type: DocumentType) => {
   return fieldMap[type] || [];
 };
 
-export default function EditDocumentPage() {
+function EditDocumentContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const params = useParams();
-  const id = Number(params.id);
+  const searchParams = useSearchParams();
+  
+  // Pega o ID da URL: ?id=123
+  const idParam = searchParams.get("id");
+  const id = idParam ? Number(idParam) : 0;
 
   const doc = useDocument(id);
   const persons = usePersons();
@@ -146,7 +147,8 @@ export default function EditDocumentPage() {
         attachments: formData.attachments,
       });
       trigger("success");
-      router.push(`/${id}`);
+      // CORRIGIDO PARA VOLTAR PARA A PÁGINA DE DETALHES CORRETA
+      router.push(`/detalhes?id=${id}`);
     } catch (error) {
       console.error("Erro ao atualizar:", error);
       trigger("error");
@@ -155,7 +157,7 @@ export default function EditDocumentPage() {
     }
   };
 
-  if (!doc) {
+  if (!idParam || !doc) {
     return (
       <main className="min-h-screen bg-void flex items-center justify-center">
         <div className="text-center">
@@ -280,5 +282,14 @@ export default function EditDocumentPage() {
         </Button>
       </section>
     </main>
+  );
+}
+
+// O export default principal envolve o conteúdo no Suspense
+export default function EditDocumentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center text-ink-primary">Carregando...</div>}>
+      <EditDocumentContent />
+    </Suspense>
   );
 }
