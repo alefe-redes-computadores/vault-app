@@ -1,7 +1,7 @@
 "use client";
 
-
-import { useParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, Pill, Calendar, Plus, FileText } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -11,11 +11,14 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageTransition } from "@/components/PageTransition";
 
-export default function MedicamentoDetailPage() {
+function MedicamentoDetailContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const params = useParams();
-  const id = Number(params.id);
+  const searchParams = useSearchParams();
+  
+  // Pega o ID da URL: ?id=123
+  const idParam = searchParams.get("id");
+  const id = idParam ? Number(idParam) : 0;
 
   const medicamento = useLiveQuery(
     () => db.medicamentos.get(id),
@@ -29,7 +32,7 @@ export default function MedicamentoDetailPage() {
     []
   );
 
-  if (!medicamento) {
+  if (!idParam || !medicamento) {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void flex items-center justify-center">
@@ -125,7 +128,8 @@ export default function MedicamentoDetailPage() {
                 size="sm"
                 onClick={() => {
                   trigger("vibrate");
-                  router.push(`/saude/medicamentos/${id}/renovacao/novo`);
+                  // CORRIGIDO: Rota adaptada para Query Params
+                  router.push(`/saude/medicamentos/detalhes/renovacao/novo?id=${id}`);
                 }}
               >
                 <Plus size={14} className="mr-1" />
@@ -161,5 +165,14 @@ export default function MedicamentoDetailPage() {
         </section>
       </main>
     </PageTransition>
+  );
+}
+
+// Export com Suspense
+export default function MedicamentoDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center text-ink-primary">Carregando...</div>}>
+      <MedicamentoDetailContent />
+    </Suspense>
   );
 }
