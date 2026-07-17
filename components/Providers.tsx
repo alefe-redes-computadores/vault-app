@@ -4,12 +4,14 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { BottomNav } from "./BottomNav";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { handleNotificationAction } = useNotifications();
 
   // Ativa a fila de sincronização
   useSyncQueue();
@@ -18,21 +20,38 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data === 'auth-success') {
-        window.location.reload(); // Atualiza a página ao receber a mensagem do popup
+        window.location.reload();
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Listener para mudanças de autenticação (redireciona para login se não estiver logado)
+  // Listener para ações das notificações locais
+  useEffect(() => {
+    const removeListener = handleNotificationAction((data) => {
+      console.log('Notificação clicada:', data);
+      
+      if (data?.type === 'document_expiry' && data?.docId) {
+        router.push(`/detalhes?id=${data.docId}`);
+      } else if (data?.type === 'medication_renewal' && data?.medicamentoId) {
+        router.push(`/saude/medicamentos/detalhes?id=${data.medicamentoId}`);
+      }
+    });
+
+    return () => {
+      removeListener?.();
+    };
+  }, [handleNotificationAction, router]);
+
+  // Redireciona para login se não estiver autenticado
   useEffect(() => {
     if (!loading && !user && pathname !== "/login" && pathname !== "/auth/callback") {
       router.push("/login");
     }
   }, [loading, user, pathname, router]);
 
-  // Se estiver carregando, mostra loading
+  // Loading
   if (loading) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center">
@@ -44,17 +63,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Se não estiver autenticado e não estiver na página de login ou callback
   if (!user && pathname !== "/login" && pathname !== "/auth/callback") {
     return <>{children}</>;
   }
 
-  // Se estiver na página de login ou callback, não mostra BottomNav
   if (pathname === "/login" || pathname === "/auth/callback") {
     return <>{children}</>;
   }
 
-  // Páginas principais com BottomNav
   return (
     <div className="min-h-screen pb-24">
       {children}
