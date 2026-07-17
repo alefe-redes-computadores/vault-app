@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Upload, Camera, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, Camera, X, Loader2, CheckCircle2 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,57 +24,60 @@ import { DocumentTypeSelector } from "@/components/DocumentTypeSelector";
 // Mapeamento de campos por tipo de documento
 const DOCUMENT_FIELDS: Record<
   DocumentType,
-  Array<{ key: string; label: string; type: "text" | "date" | "select"; options?: string[] }>
+  Array<{ key: string; label: string; type: "text" | "date" | "select"; options?: string[]; required?: boolean }>
 > = {
   rg: [
-    { key: "number", label: "Número do RG", type: "text" },
-    { key: "issue_date", label: "Data de emissão", type: "date" },
-    { key: "expiry_date", label: "Data de validade", type: "date" },
-    { key: "issuer", label: "Órgão emissor", type: "text" },
+    { key: "number", label: "Número do RG", type: "text", required: true },
+    { key: "issue_date", label: "Data de emissão", type: "date", required: true },
+    { key: "expiry_date", label: "Data de validade", type: "date", required: true },
+    { key: "issuer", label: "Órgão emissor", type: "text", required: true },
   ],
-  cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
+  cpf: [
+    { key: "number", label: "Número do CPF", type: "text", required: true },
+  ],
   cnh: [
-    { key: "number", label: "Número da CNH", type: "text" },
+    { key: "number", label: "Número da CNH", type: "text", required: true },
     {
       key: "category",
       label: "Categoria",
       type: "select",
       options: ["A", "B", "C", "D", "E"],
+      required: true,
     },
-    { key: "issue_date", label: "Data de emissão", type: "date" },
-    { key: "expiry_date", label: "Data de validade", type: "date" },
+    { key: "issue_date", label: "Data de emissão", type: "date", required: true },
+    { key: "expiry_date", label: "Data de validade", type: "date", required: true },
   ],
   certificado: [
-    { key: "institution", label: "Instituição de ensino", type: "text" },
-    { key: "course", label: "Curso", type: "text" },
-    { key: "duration", label: "Duração (ex: 120 horas)", type: "text" },
+    { key: "institution", label: "Instituição de ensino", type: "text", required: true },
+    { key: "course", label: "Curso", type: "text", required: true },
+    { key: "duration", label: "Duração (ex: 120 horas)", type: "text", required: true },
     { key: "completion_date", label: "Data de conclusão", type: "date" },
   ],
   receita: [
-    { key: "medication", label: "Medicamento", type: "text" },
-    { key: "dosage", label: "Dosagem", type: "text" },
-    { key: "doctor", label: "Médico", type: "text" },
+    { key: "medication", label: "Medicamento", type: "text", required: true },
+    { key: "dosage", label: "Dosagem", type: "text", required: true },
+    { key: "doctor", label: "Médico", type: "text", required: true },
     { key: "pharmacy", label: "Farmácia (opcional)", type: "text" },
-    { key: "prescription_date", label: "Data da receita", type: "date" },
-    { key: "renewal_date", label: "Próxima renovação", type: "date" },
+    { key: "prescription_date", label: "Data da receita", type: "date", required: true },
+    { key: "renewal_date", label: "Próxima renovação", type: "date", required: true },
   ],
   prontuario: [
-    { key: "hospital", label: "Hospital", type: "text" },
-    { key: "doctor", label: "Médico", type: "text" },
-    { key: "specialty", label: "Especialidade", type: "text" },
-    { key: "date", label: "Data", type: "date" },
+    { key: "hospital", label: "Hospital", type: "text", required: true },
+    { key: "doctor", label: "Médico", type: "text", required: true },
+    { key: "specialty", label: "Especialidade", type: "text", required: true },
+    { key: "date", label: "Data", type: "date", required: true },
   ],
   laudo: [
-    { key: "doctor", label: "Médico", type: "text" },
-    { key: "specialty", label: "Especialidade", type: "text" },
-    { key: "hospital", label: "Hospital", type: "text" },
-    { key: "date", label: "Data", type: "date" },
+    { key: "doctor", label: "Médico", type: "text", required: true },
+    { key: "specialty", label: "Especialidade", type: "text", required: true },
+    { key: "hospital", label: "Hospital", type: "text", required: true },
+    { key: "date", label: "Data", type: "date", required: true },
   ],
   encaminhamento: [
-    { key: "from", label: "Quem encaminhou", type: "text" },
+    { key: "from", label: "Quem encaminhou", type: "text", required: true },
     { key: "to", label: "Para quem (opcional)", type: "text" },
-    { key: "reason", label: "Motivo", type: "text" },
-    { key: "date", label: "Data", type: "date" },
+    { key: "reason", label: "Motivo", type: "text", required: true },
+    { key: "date", label: "Data", type: "date", required: true },
   ],
   outro: [
     { key: "custom_field_1", label: "Campo personalizado 1", type: "text" },
@@ -129,6 +132,7 @@ export default function NewDocumentPage() {
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Reset metadata quando trocar o tipo
   useEffect(() => {
@@ -152,6 +156,10 @@ export default function NewDocumentPage() {
       ...prev,
       metadata: { ...prev.metadata, [key]: value },
     }));
+    // Limpa erro do campo específico se existir
+    if (errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: "" }));
+    }
   };
 
   const handleFileUpload = async (file: File) => {
@@ -219,9 +227,18 @@ export default function NewDocumentPage() {
     if (!formData.person_id) {
       newErrors.person_id = "Selecione uma pessoa";
     }
+
     if (!formData.title.trim()) {
       newErrors.title = "Título é obrigatório";
     }
+
+    // Valida campos específicos do tipo de documento
+    const fields = DOCUMENT_FIELDS[formData.type] || [];
+    fields.forEach((field) => {
+      if (field.required && !formData.metadata[field.key]?.trim()) {
+        newErrors[field.key] = `${field.label} é obrigatório(a)`;
+      }
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -248,7 +265,10 @@ export default function NewDocumentPage() {
 
       await addDocument(docData);
       trigger("success");
-      router.push("/");
+      setShowSuccess(true);
+      setTimeout(() => {
+        router.push("/");
+      }, 1500);
     } catch (error) {
       console.error("Erro ao salvar:", error);
       trigger("error");
@@ -303,7 +323,7 @@ export default function NewDocumentPage() {
           {/* Pessoa */}
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
-              Pessoa
+              Pessoa <span className="text-coral">*</span>
             </label>
             <div className="flex gap-2 flex-wrap">
               {persons.map((person) => (
@@ -328,7 +348,7 @@ export default function NewDocumentPage() {
           {/* Categoria */}
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
-              Categoria
+              Categoria <span className="text-coral">*</span>
             </label>
             <div className="flex gap-2 flex-wrap">
               {Object.values(CATEGORIES).map((cat) => (
@@ -350,7 +370,7 @@ export default function NewDocumentPage() {
           {/* Tipo de Documento - COM MODAL */}
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
-              Tipo de documento
+              Tipo de documento <span className="text-coral">*</span>
             </label>
             <button
               onClick={() => setIsTypeModalOpen(true)}
@@ -367,6 +387,7 @@ export default function NewDocumentPage() {
             value={formData.title}
             onChange={(e) => handleChange("title", e.target.value)}
             error={errors.title}
+            required
           />
 
           {/* Campos dinâmicos */}
@@ -383,6 +404,8 @@ export default function NewDocumentPage() {
                   placeholder={
                     field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`
                   }
+                  required={field.required}
+                  error={errors[field.key]}
                 />
               ))}
             </div>
@@ -454,15 +477,28 @@ export default function NewDocumentPage() {
             )}
           </div>
 
+          {/* Botão salvar com estado de loading e sucesso */}
           <Button
             variant="primary"
             size="lg"
             fullWidth
             onClick={handleSubmit}
-            disabled={loading || uploading}
-            className="mt-4"
+            disabled={loading || uploading || showSuccess}
+            className="mt-4 transition-all duration-300"
           >
-            {loading ? "Salvando..." : "Salvar documento"}
+            {showSuccess ? (
+              <>
+                <CheckCircle2 size={18} className="mr-2" />
+                Salvo com sucesso!
+              </>
+            ) : loading ? (
+              <>
+                <Loader2 size={18} className="mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              "Salvar documento"
+            )}
           </Button>
         </section>
 
