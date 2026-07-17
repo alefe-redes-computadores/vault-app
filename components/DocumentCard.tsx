@@ -2,7 +2,20 @@
 
 import { Document, CATEGORIES } from "@/lib/types";
 import { useHapticFeedback } from "@/lib/haptics";
-import { Star, Calendar, FileText, Paperclip } from "lucide-react";
+import {
+  Star,
+  Calendar,
+  FileText,
+  Paperclip,
+  IdCard,
+  Pill,
+  Heart,
+  ClipboardList,
+  File,
+  Building2,
+  FolderOpen,
+  type LucideIcon,
+} from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useRouter } from "next/navigation";
@@ -12,6 +25,18 @@ interface DocumentCardProps {
   onFavoriteToggle?: (id: number) => void;
   compact?: boolean;
 }
+
+const TYPE_ICONS: Record<string, LucideIcon> = {
+  rg: IdCard,
+  cpf: FileText,
+  cnh: FileText,
+  certificado: File,
+  receita: Pill,
+  prontuario: Heart,
+  laudo: ClipboardList,
+  encaminhamento: Building2,
+  outro: FolderOpen,
+};
 
 const formatDate = (date?: string) => {
   if (!date) return null;
@@ -28,8 +53,9 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
 
   const category = CATEGORIES[document.category_id];
   const color = category?.color || "#6B7280";
+  const TypeIcon = TYPE_ICONS[document.type] || FileText;
 
-    const handlePress = () => {
+  const handlePress = () => {
     trigger("vibrate");
     router.push(`/detalhes?id=${document.id}`);
   };
@@ -41,14 +67,17 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
   };
 
   const hasAttachments = document.attachments && document.attachments.length > 0;
-  const isExpiring = document.metadata?.renewal_date &&
-    new Date(document.metadata.renewal_date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
   // Pega o primeiro campo de metadata para exibir como destaque
   const metadataKeys = Object.keys(document.metadata || {}).filter(
     (key) => !["issue_date", "expiry_date", "renewal_date", "prescription_date", "date"].includes(key)
   );
   const firstMetadata = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
+
+  // Data de validade (prioriza metadata, depois usa expiryDate se existir)
+  const expiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date;
+  const isExpiring = expiryDate && new Date(expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const isExpired = expiryDate && new Date(expiryDate) < new Date();
 
   return (
     <div
@@ -61,15 +90,14 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
       <span className="rivet rivet-br" />
 
       <div className="flex items-start gap-3">
-        {/* Ícone da categoria com cor */}
+        {/* Ícone da categoria com cor + ícone específico do tipo */}
         <div
           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl"
           style={{ backgroundColor: `${color}22` }}
         >
-          <FileText size={18} style={{ color }} />
+          <TypeIcon size={18} style={{ color }} />
         </div>
 
-        {/* Conteúdo */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -83,7 +111,6 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
               </div>
             </div>
 
-            {/* Favorito */}
             <button
               onClick={handleFavorite}
               className="flex-shrink-0 p-1 rounded-full hover:bg-surface-border transition-colors"
@@ -111,26 +138,19 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
               </div>
             )}
 
-            {document.metadata?.expiry_date && (
-              <div className="flex items-center gap-1 text-xs text-coral">
-                <Calendar size={12} />
-                <span>Vence: {formatDate(document.metadata.expiry_date)}</span>
-              </div>
-            )}
-
-            {document.metadata?.renewal_date && (
+            {expiryDate && (
               <div
                 className={`flex items-center gap-1 text-xs ${
-                  isExpiring ? "text-coral" : "text-ink-muted"
+                  isExpired ? "text-coral" : isExpiring ? "text-coral/80" : "text-ink-muted"
                 }`}
               >
                 <Calendar size={12} />
-                <span>Renovação: {formatDate(document.metadata.renewal_date)}</span>
+                <span>{isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"} {formatDate(expiryDate)}</span>
               </div>
             )}
           </div>
 
-          {/* Notas (se houver) */}
+          {/* Notas (se houver e não compacto) */}
           {document.description && !compact && (
             <p className="mt-2 text-sm text-ink-muted line-clamp-2">{document.description}</p>
           )}
