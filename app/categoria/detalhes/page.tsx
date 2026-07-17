@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, User } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
@@ -12,13 +12,11 @@ import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
 import { PageTransition } from "@/components/PageTransition";
 
-function CategoryContent() {
+export default function CategoryPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // Pega o ID da categoria da URL: ?id=saude
-  const categoryId = searchParams.get("id") as CategoryId;
+  const categoryId = searchParams.get("nome") as CategoryId;
 
   const persons = usePersons();
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(
@@ -28,7 +26,7 @@ function CategoryContent() {
   const documents = useDocuments(selectedPersonId || undefined, categoryId);
   const { favorite } = useSafeDb();
 
-  const category = categoryId ? CATEGORIES[categoryId] : null;
+  const category = CATEGORIES[categoryId];
 
   const handleFavoriteToggle = async (id: number) => {
     await favorite(id);
@@ -111,14 +109,5 @@ function CategoryContent() {
         </section>
       </main>
     </PageTransition>
-  );
-}
-
-// O export default principal envolve o conteúdo no Suspense
-export default function CategoryPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center text-ink-primary">Carregando...</div>}>
-      <CategoryContent />
-    </Suspense>
   );
 }
