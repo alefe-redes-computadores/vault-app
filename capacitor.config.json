@@ -4,7 +4,9 @@
   "webDir": "out",
   "bundledWebRuntime": false,
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "hostname": "vault-app-ebon.vercel.app",
+    "cleartext": true
   },
   "plugins": {
     "SplashScreen": {
