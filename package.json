@@ -3,14 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "cap:sync": "npx cap sync",
-    "cap:android": "npx cap open android",
-    "cap:build": "npm run build && npx cap sync"
-  },
+  "dev": "next dev",
+  "build": "next build",
+  "build:export": "next build && next export",
+  "start": "next start",
+  "lint": "next lint",
+  "cap:sync": "npx cap sync",
+  "cap:android": "npx cap open android",
+  "cap:build": "npm run build:export && npx cap sync"
+},
   "dependencies": {
     "@capacitor/android": "^6.1.0",
     "@capacitor/app": "^6.0.0",
