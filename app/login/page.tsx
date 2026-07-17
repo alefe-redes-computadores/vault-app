@@ -55,33 +55,30 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = async () => {
+    const handleGoogleLogin = async () => {
     setError("");
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          skipBrowserRedirect: true,
-          redirectTo: `${window.location.origin}/auth/callback`,
+          skipBrowserRedirect: true, 
+          redirectTo: 'vault://callback', // 🟢 Isso faz o Android chamar o App de volta
         },
       });
 
       if (error) throw error;
 
       if (data?.url) {
-        await Browser.open({ 
-          url: data.url,
-          presentationStyle: "popover" 
-        });
+        // Abre no Browser do Capacitor
+        await Browser.open({ url: data.url });
       }
     } catch (err) {
       setError("Erro ao autenticar com Google");
-      trigger("error");
-    } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <main className="min-h-screen bg-void flex items-center justify-center p-4">
