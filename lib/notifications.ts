@@ -49,7 +49,14 @@ export async function cancelNotification(notificationId: number): Promise<void> 
 
 export async function cancelAllNotifications(): Promise<void> {
   try {
-    await LocalNotifications.cancelAll();
+    // Busca as notificações pendentes primeiro
+    const pending = await LocalNotifications.getPending();
+    
+    // Se houver alguma pendente, manda cancelar a lista
+    if (pending && pending.notifications.length > 0) {
+      await LocalNotifications.cancel({ notifications: pending.notifications });
+    }
+    
     console.log('Todas as notificações canceladas');
   } catch (error) {
     console.error('Erro ao cancelar notificações:', error);
