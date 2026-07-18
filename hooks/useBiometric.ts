@@ -68,22 +68,23 @@ export function useBiometric(options: UseBiometricOptions = {}) {
 
     try {
       setIsLoading(true);
-      const result = await NativeBiometric.verifyIdentity({
+      
+      // No novo pacote, se a autenticação falhar, ele joga um erro e vai pro catch.
+      // Se der certo, ele simplesmente continua o código.
+      await NativeBiometric.verifyIdentity({
         title,
         subtitle,
         description,
         fallbackTitle
       });
 
-      if (result?.verified) {
-        setIsAuthenticated(true);
-        onSuccess?.();
-        return true;
-      } else {
-        console.log('Autenticação biométrica não foi concluída');
-        return false;
-      }
+      // Se chegou nesta linha, a biometria deu certo!
+      setIsAuthenticated(true);
+      onSuccess?.();
+      return true;
+
     } catch (error) {
+      // Se cancelou ou a biometria falhou, cai aqui
       console.error('Erro na autenticação biométrica:', error);
       onError?.(error as Error);
       return false;
