@@ -32,6 +32,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
+import { ExportCardButton } from "@/components/ExportCardButton";
 
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
@@ -72,6 +73,9 @@ export default function DocumentDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Ref para capturar o card
+  const cardRef = useRef<HTMLDivElement>(null);
 
   if (!doc) {
     return (
@@ -124,7 +128,6 @@ export default function DocumentDetailPage() {
         })
         .catch(() => {});
     } else {
-      // Fallback para navegadores sem suporte a share
       navigator.clipboard?.writeText(doc.title).then(() => {
         showToast("Link copiado para a área de transferência!", "success");
       });
@@ -219,7 +222,9 @@ export default function DocumentDetailPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
+          {/* CARD COM REF PARA CAPTURA */}
           <div
+            ref={cardRef}
             className="rounded-card border p-6 shadow-vault"
             style={{ borderColor: `${category.color}33`, backgroundColor: "rgba(20, 24, 29, 0.8)" }}
           >
@@ -308,7 +313,15 @@ export default function DocumentDetailPage() {
             </div>
           )}
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3">
+            <ExportCardButton
+              cardRef={cardRef}
+              title={doc.title}
+              variant="secondary"
+              size="sm"
+              label="📄 Exportar PDF"
+            />
+
             <Button
               variant="secondary"
               className="flex items-center justify-center gap-2"
@@ -318,7 +331,7 @@ export default function DocumentDetailPage() {
               }}
             >
               <Edit size={16} />
-              Editar documento
+              Editar
             </Button>
 
             <Button
@@ -332,7 +345,7 @@ export default function DocumentDetailPage() {
               ) : (
                 <Trash2 size={16} />
               )}
-              {isDeleting ? "Excluindo..." : "Excluir documento"}
+              {isDeleting ? "Excluindo..." : "Excluir"}
             </Button>
           </div>
         </section>
@@ -380,7 +393,6 @@ export default function DocumentDetailPage() {
                   </button>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Controles de zoom (apenas para imagens) */}
                   {selectedAttachment.type.startsWith("image/") && (
                     <>
                       <button
@@ -407,7 +419,6 @@ export default function DocumentDetailPage() {
                 </div>
               </div>
 
-              {/* Visualização */}
               <div className="flex items-center justify-center min-h-[300px] bg-surface rounded-xl border border-surface-border p-4 overflow-auto">
                 {selectedAttachment.type.startsWith("image/") ? (
                   <img
@@ -420,13 +431,12 @@ export default function DocumentDetailPage() {
                 ) : (
                   <div className="flex flex-col items-center gap-4 text-ink-muted">
                     <FileIcon size={64} />
-                    <p className="text-sm">Pré-visualização não disponível para este tipo de arquivo</p>
+                    <p className="text-sm">Pré-visualização não disponível</p>
                     <p className="text-xs text-ink-muted/60">Clique em "Baixar" para visualizar</p>
                   </div>
                 )}
               </div>
 
-              {/* Footer do Modal */}
               <div className="flex justify-end gap-2 mt-4">
                 <Button
                   variant="secondary"
