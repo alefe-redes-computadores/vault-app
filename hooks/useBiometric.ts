@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { NativeBiometric } from 'capacitor-native-biometric';
-import { Platform } from '@capacitor/core';
+import { NativeBiometric } from '@capacitor-community/native-biometric';
+import { Capacitor } from '@capacitor/core';
 
 interface UseBiometricOptions {
   onSuccess?: () => void;
@@ -26,19 +26,16 @@ export function useBiometric(options: UseBiometricOptions = {}) {
     fallbackTitle = 'Usar senha',
   } = options;
 
-  // Verifica disponibilidade ao montar
   useEffect(() => {
     const checkAvailability = async () => {
       try {
-        // Só funciona em dispositivos móveis com Capacitor
-        if (Platform.isNative) {
+        if (Capacitor.isNativePlatform()) {
           const { isAvailable, biometricType } = await NativeBiometric.isAvailable();
           setIsAvailable(isAvailable);
           if (biometricType === 'fingerprint') setBiometricType('fingerprint');
           else if (biometricType === 'face') setBiometricType('face');
           else if (biometricType === 'iris') setBiometricType('iris');
         } else {
-          // Em ambiente web, simula disponibilidade para teste
           setIsAvailable(true);
           setBiometricType('fingerprint');
         }
@@ -70,13 +67,11 @@ export function useBiometric(options: UseBiometricOptions = {}) {
         disableBackup: true,
       });
 
-      // Verifica se foi autenticado
       if (result?.verified) {
         setIsAuthenticated(true);
         onSuccess?.();
         return true;
       } else {
-        // O usuário cancelou ou a biometria falhou
         console.log('Autenticação biométrica não foi concluída');
         return false;
       }
