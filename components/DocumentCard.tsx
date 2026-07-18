@@ -7,7 +7,7 @@ import {
   Calendar,
   FileText,
   Paperclip,
-  IdCard,
+  Contact,
   Pill,
   Heart,
   ClipboardList,
@@ -27,7 +27,7 @@ interface DocumentCardProps {
 }
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
-  rg: IdCard,
+  rg: Contact,
   cpf: FileText,
   cnh: FileText,
   certificado: File,
