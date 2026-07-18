@@ -4,31 +4,28 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
-import { supabase } from "@/lib/supabase/client";
 
 export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // 1. ESCUTA O RETORNO DO ANDROID (Deep Link)
     const setupListener = async () => {
       await App.addListener("appUrlOpen", async (data: any) => {
-        // Se a URL for o nosso callback interno
         if (data.url.includes("callback")) {
           // Fecha o navegador imediatamente
-          await Browser.close();
+          await Browser.close().catch(() => {});
 
-          // Extrai o token da URL que o Android devolveu
-          const hash = data.url.split("#")[1];
-          if (hash) {
-            const params = new URLSearchParams(hash);
-            const access_token = params.get("access_token");
-            const refresh_token = params.get("refresh_token");
+          try {
+            // Pega a URL completa e extrai os códigos (?code=... ou #...)
+            const urlObj = new URL(data.url);
+            const params = urlObj.search + urlObj.hash;
 
-            if (access_token && refresh_token) {
-              await supabase.auth.setSession({ access_token, refresh_token });
-              router.replace("/");
+            // Manda o Next.js para a página de callback com os dados
+            if (params) {
+              router.push(`/auth/callback${params}`);
             }
+          } catch (err) {
+            console.error("Erro ao processar URL:", err);
           }
         }
       });
