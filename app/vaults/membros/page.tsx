@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, UserPlus, Mail, X, Loader2 } from "lucide-react";
+import { ArrowLeft, UserPlus, Mail, X, Loader2, Check, Users, Shield, Edit, Eye } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, safeAddVaultMember, safeUpdateVaultMember } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,7 +23,6 @@ export default function VaultMembersPage() {
   const [email, setEmail] = useState("");
   const [permission, setPermission] = useState<"view" | "edit" | "admin">("view");
   const [isAdding, setIsAdding] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   const vault = useLiveQuery(
     () => db.vaults.get(vaultId),
@@ -63,7 +62,7 @@ export default function VaultMembersPage() {
     try {
       await safeAddVaultMember({
         vault_id: vaultId,
-        user_id: email, // Temporário: ideal seria buscar o user_id pelo email
+        user_id: email,
         email: email.trim(),
         name: email.split("@")[0],
         permission,
@@ -93,6 +92,12 @@ export default function VaultMembersPage() {
     }
   };
 
+  const permissionLabels = {
+    view: { label: "Visualizar", icon: Eye },
+    edit: { label: "Editar", icon: Edit },
+    admin: { label: "Admin", icon: Shield },
+  };
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
@@ -117,9 +122,9 @@ export default function VaultMembersPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* Adicionar membro */}
           <div className="rounded-card border border-surface-border bg-surface p-4 shadow-vault">
-            <h3 className="font-display text-sm font-medium text-ink-primary mb-3">
+            <h3 className="font-display text-sm font-medium text-ink-primary mb-3 flex items-center gap-2">
+              <UserPlus size={16} className="text-ink-muted" />
               Convidar membro
             </h3>
             <div className="flex flex-col gap-2">
@@ -135,9 +140,9 @@ export default function VaultMembersPage() {
                   onChange={(e) => setPermission(e.target.value as "view" | "edit" | "admin")}
                   className="px-3 py-2 rounded-xl bg-surface-raised border border-surface-border text-ink-primary focus:outline-none focus:border-steel-light"
                 >
-                  <option value="view">Visualizar</option>
-                  <option value="edit">Editar</option>
-                  <option value="admin">Admin</option>
+                  <option value="view">👁️ Visualizar</option>
+                  <option value="edit">✏️ Editar</option>
+                  <option value="admin">🛡️ Admin</option>
                 </select>
               </div>
               <Button
@@ -157,55 +162,60 @@ export default function VaultMembersPage() {
             </div>
           </div>
 
-          {/* Lista de membros */}
           <div>
-            <h3 className="font-display text-sm font-medium text-ink-primary mb-3">
+            <h3 className="font-display text-sm font-medium text-ink-primary mb-3 flex items-center gap-2">
+              <Users size={16} className="text-ink-muted" />
               Membros ({members?.length || 0})
             </h3>
             {members && members.length > 0 ? (
               <div className="space-y-2">
-                {members.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-steel-dark/40 flex items-center justify-center text-ink-muted text-sm">
-                        {member.name?.charAt(0).toUpperCase() || "?"}
+                {members.map((member) => {
+                  const perm = permissionLabels[member.permission as keyof typeof permissionLabels] || permissionLabels.view;
+                  const PermIcon = perm.icon;
+                  return (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-steel-dark/40 flex items-center justify-center text-ink-muted text-sm font-medium">
+                          {member.name?.charAt(0).toUpperCase() || "?"}
+                        </div>
+                        <div>
+                          <p className="text-sm text-ink-primary">{member.name || member.email}</p>
+                          <p className="text-xs text-ink-muted">{member.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-ink-primary">{member.name || member.email}</p>
-                        <p className="text-xs text-ink-muted">{member.email}</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                          member.status === "accepted" ? "bg-green-500/20 text-green-400" :
+                          member.status === "pending" ? "bg-ice/20 text-ice" :
+                          "bg-coral/20 text-coral"
+                        }`}>
+                          <PermIcon size={10} />
+                          {member.status === "accepted" ? "Aceito" :
+                           member.status === "pending" ? "Pendente" : "Rejeitado"}
+                        </span>
+                        {member.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() => handleUpdateStatus(member.id!, "accepted")}
+                              className="p-1 rounded-full hover:bg-surface-border transition-colors"
+                            >
+                              <Check size={14} className="text-green-400" />
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStatus(member.id!, "rejected")}
+                              className="p-1 rounded-full hover:bg-surface-border transition-colors"
+                            >
+                              <X size={14} className="text-coral" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        member.status === "accepted" ? "bg-green-500/20 text-green-400" :
-                        member.status === "pending" ? "bg-ice/20 text-ice" :
-                        "bg-coral/20 text-coral"
-                      }`}>
-                        {member.status === "accepted" ? "Aceito" :
-                         member.status === "pending" ? "Pendente" : "Rejeitado"}
-                      </span>
-                      {member.status === "pending" && (
-                        <>
-                          <button
-                            onClick={() => handleUpdateStatus(member.id!, "accepted")}
-                            className="p-1 rounded-full hover:bg-surface-border transition-colors"
-                          >
-                            <Check size={14} className="text-green-400" />
-                          </button>
-                          <button
-                            onClick={() => handleUpdateStatus(member.id!, "rejected")}
-                            className="p-1 rounded-full hover:bg-surface-border transition-colors"
-                          >
-                            <X size={14} className="text-coral" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-ink-muted text-center py-4">
