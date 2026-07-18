@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuthDeepLink } from "@/lib/hooks/useAuthDeepLink"; // <-- IMPORTAÇÃO DO HULK AQUI
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -24,6 +25,9 @@ export default function LoginPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { login, register } = useAuth();
+  
+  // <-- ATIVANDO O HULK AQUI:
+  const { isProcessing } = useAuthDeepLink();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,18 +60,13 @@ export default function LoginPage() {
     }
   };
 
-      
-      
-      const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async () => {
     setError("");
     setLoading(true);
     
     try {
-      // Verifica se está rodando no aplicativo nativo (celular) ou na web
       const isNative = Capacitor.isNativePlatform();
       
-      // O pulo do gato Híbrido que você lembrou: 
-      // Se for nativo usa vault://, se for web usa a URL do site
       const redirectUrl = isNative 
         ? 'vault://callback' 
         : `${window.location.origin}/auth/callback`;
@@ -76,7 +75,7 @@ export default function LoginPage() {
         provider: 'google',
         options: { 
           redirectTo: redirectUrl,
-          skipBrowserRedirect: isNative, // Só pula o redirecionamento automático se for o App
+          skipBrowserRedirect: isNative,
         }
       });
 
@@ -84,7 +83,6 @@ export default function LoginPage() {
         throw error;
       }
 
-      // Se estiver no celular, abre o Custom Tab do navegador.
       if (isNative && data?.url) {
         await Browser.open({ url: data.url, presentationStyle: 'popover' });
         setLoading(false);
@@ -96,7 +94,8 @@ export default function LoginPage() {
     }
   };
 
-
+  // Trava os botões se estiver carregando a função local OU se o Hulk estiver processando a volta do link
+  const isBusy = loading || isProcessing;
 
   return (
     <main className="min-h-screen bg-void flex items-center justify-center p-4">
@@ -151,9 +150,9 @@ export default function LoginPage() {
             variant="primary"
             size="lg"
             fullWidth
-            disabled={loading}
+            disabled={isBusy}
           >
-            {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
+            {isBusy ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
           </Button>
         </form>
 
@@ -171,11 +170,11 @@ export default function LoginPage() {
           size="lg"
           fullWidth
           onClick={handleGoogleLogin}
-          disabled={loading}
+          disabled={isBusy}
           className="flex items-center justify-center gap-2"
         >
           <GoogleIcon />
-          Entrar com Google
+          {isProcessing ? "Conectando..." : "Entrar com Google"}
         </Button>
 
         <button
