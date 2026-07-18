@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  IdCard,
+  Contact,
   FileText,
   Heart,
   Pill,
@@ -21,7 +21,7 @@ interface DocumentTypeOption {
 }
 
 const DOCUMENT_TYPES: DocumentTypeOption[] = [
-  { id: "rg", label: "RG", icon: IdCard, description: "Registro Geral" },
+  { id: "rg", label: "RG", icon: Contact, description: "Registro Geral" },
   { id: "cpf", label: "CPF", icon: FileText, description: "Cadastro de Pessoa Física" },
   { id: "cnh", label: "CNH", icon: FileText, description: "Carteira Nacional de Habilitação" },
   { id: "certificado", label: "Certificado", icon: File, description: "Certificados e diplomas" },
