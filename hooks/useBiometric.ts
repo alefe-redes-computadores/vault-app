@@ -72,8 +72,7 @@ export function useBiometric(options: UseBiometricOptions = {}) {
         title,
         subtitle,
         description,
-        fallbackTitle,
-        disableBackup: true,
+        fallbackTitle
       });
 
       if (result?.verified) {
