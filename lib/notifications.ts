@@ -26,7 +26,6 @@ export async function scheduleNotification(data: NotificationData): Promise<void
           },
           extra,
           sound: 'default',
-          vibrate: true,
           smallIcon: 'ic_notification',
           largeIcon: 'ic_notification_large',
         },
