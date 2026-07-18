@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, FileText, Star, User, Plus } from "lucide-react";
+import { Home, Star, User, Users, Plus } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 
 interface NavItem {
@@ -13,7 +13,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
-  { id: "documents", icon: FileText, label: "Documentos", path: "/documentos" },
+  { id: "vaults", icon: Users, label: "Cofres", path: "/vaults" }, // ← SUBSTITUÍDO
   { id: "favorites", icon: Star, label: "Favoritos", path: "/favoritos" },
   { id: "profile", icon: User, label: "Perfil", path: "/perfil" },
 ];
@@ -29,7 +29,6 @@ export function BottomNav() {
     router.push(path);
   };
 
-  // Esconde a BottomNav na página de login
   if (pathname === "/login") return null;
 
   return (
@@ -40,7 +39,7 @@ export function BottomNav() {
             const Icon = item.icon;
             const isActive = pathname === item.path || 
               (item.path === "/" && pathname === "/") ||
-              (item.path === "/documentos" && pathname?.startsWith("/documentos"));
+              (item.path === "/vaults" && pathname?.startsWith("/vaults"));
 
             return (
               <button

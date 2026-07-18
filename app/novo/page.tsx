@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Upload, Camera, X, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Upload, Camera, X, Loader2, CheckCircle2, Users } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +21,8 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { DocumentTypeSelector } from "@/components/DocumentTypeSelector";
 import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
+import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 // Mapeamento de campos por tipo de documento
 const DOCUMENT_FIELDS: Record<
@@ -94,6 +96,7 @@ type FormData = {
   description: string;
   metadata: Record<string, any>;
   attachments: Attachment[];
+  vault_id?: number;
 };
 
 // Mapeamento de tipos para exibição no botão
@@ -127,6 +130,7 @@ export default function NewDocumentPage() {
     description: "",
     metadata: {},
     attachments: [],
+    vault_id: undefined,
   });
 
   const [loading, setLoading] = useState(false);
@@ -134,6 +138,13 @@ export default function NewDocumentPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Busca os cofres do usuário
+  const userVaults = useLiveQuery(
+    () => db.vaults.where('user_id').equals(user?.id || '').toArray(),
+    [user?.id],
+    []
+  );
 
   // Reset metadata quando trocar o tipo
   useEffect(() => {
@@ -260,18 +271,19 @@ export default function NewDocumentPage() {
         metadata: formData.metadata,
         attachments: formData.attachments,
         is_favorite: false,
+        vault_id: formData.vault_id || undefined,
       };
 
       const id = await addDocument(docData);
-      
-      // ✅ Agenda notificação 30 dias antes do vencimento
+
+      // Agenda notificação 30 dias antes do vencimento
       if (formData.metadata?.expiry_date) {
         await scheduleDocumentExpiryNotification(
           id,
           formData.title,
           formData.metadata.expiry_date,
           CATEGORIES[formData.category_id].name,
-          30 // 30 dias antes
+          30
         );
       }
 
@@ -418,6 +430,41 @@ export default function NewDocumentPage() {
                   error={errors[field.key]}
                 />
               ))}
+            </div>
+          )}
+
+          {/* Cofre (compartilhamento) */}
+          {userVaults && userVaults.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-ink-primary mb-1.5">
+                Compartilhar com cofre (opcional)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleChange("vault_id", undefined)}
+                  className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] ${
+                    formData.vault_id === undefined
+                      ? "border-ice bg-ice/10 text-ice"
+                      : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                  }`}
+                >
+                  Nenhum
+                </button>
+                {userVaults.map((vault) => (
+                  <button
+                    key={vault.id}
+                    onClick={() => handleChange("vault_id", vault.id!)}
+                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] flex items-center gap-1 ${
+                      formData.vault_id === vault.id
+                        ? "border-ice bg-ice/10 text-ice"
+                        : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                    }`}
+                  >
+                    <span>{vault.icon || '🔒'}</span>
+                    {vault.name}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

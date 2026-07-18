@@ -95,6 +95,7 @@ export interface Document {
   metadata: Record<string, any>; // campos específicos por tipo
   attachments: Attachment[];
   is_favorite: boolean;
+  vault_id?: number; // ID do cofre que este documento está compartilhado
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -221,7 +222,7 @@ export type EncaminhamentoMetadata = {
 // ============================================================
 export interface SyncQueueItem {
   id?: number;
-  table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes';
+  table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes' | 'vaults' | 'vaultMembers';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -254,4 +255,42 @@ export interface Renovacao {
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
+}
+
+// ============================================================
+// 7. COFRES FAMILIARES / COMPARTILHAMENTO
+// ============================================================
+export type VaultPermission = 'view' | 'edit' | 'admin';
+
+export interface Vault {
+  id?: number;
+  user_id: string; // criador do cofre
+  name: string;
+  description?: string;
+  icon: string; // nome do ícone Lucide
+  color: string; // cor personalizada
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface VaultMember {
+  id?: number;
+  vault_id: number;
+  user_id: string; // ID do usuário convidado
+  email: string;
+  name?: string;
+  permission: VaultPermission;
+  invited_by: string; // ID do usuário que convidou
+  status: 'pending' | 'accepted' | 'rejected';
+  invited_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface VaultDocument {
+  document_id: number;
+  vault_id: number;
+  shared_by: string;
+  shared_at: string;
 }

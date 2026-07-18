@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useSentry } from "@/hooks/useSentry";
 import { BottomNav } from "./BottomNav";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -12,9 +13,48 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading } = useAuth();
   const { handleNotificationAction } = useNotifications();
+  const { setUser, captureException } = useSentry();
 
   // Ativa a fila de sincronização
   useSyncQueue();
+
+  // Define o usuário no Sentry
+  useEffect(() => {
+    if (user) {
+      setUser({
+        id: user.id,
+        email: user.email || undefined,
+        name: user.user_metadata?.full_name || user.email?.split('@')[0],
+      });
+    }
+  }, [user, setUser]);
+
+  // Captura erros não tratados no React
+  useEffect(() => {
+    const errorHandler = (event: ErrorEvent) => {
+      captureException(event.error, {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+      });
+    };
+
+    const promiseRejectionHandler = (event: PromiseRejectionEvent) => {
+      captureException(event.reason, {
+        type: 'unhandledrejection',
+        promise: event.promise,
+      });
+    };
+
+    window.addEventListener('error', errorHandler);
+    window.addEventListener('unhandledrejection', promiseRejectionHandler);
+
+    return () => {
+      window.removeEventListener('error', errorHandler);
+      window.removeEventListener('unhandledrejection', promiseRejectionHandler);
+    };
+  }, [captureException]);
 
   // Ouvinte para autenticação via popup (Google OAuth)
   useEffect(() => {

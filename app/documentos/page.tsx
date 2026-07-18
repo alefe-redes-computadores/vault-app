@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Filter, X, Calendar, FileText, ChevronDown } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
+import { ExportCardButton } from "@/components/ExportCardButton";
 
 // Lista de tipos de documento para filtro
 const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
@@ -32,6 +33,9 @@ export default function DocumentsPage() {
   const router = useRouter();
   const { favorite } = useSafeDb();
   const persons = usePersons();
+
+  // Refs para capturar os cards
+  const cardRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(
     persons[0]?.id || null
@@ -54,7 +58,6 @@ export default function DocumentsPage() {
   const filteredDocs = useMemo(() => {
     let result = documents;
 
-    // Filtro por busca (título ou notas)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -64,17 +67,14 @@ export default function DocumentsPage() {
       );
     }
 
-    // Filtro por categoria
     if (selectedCategory !== "all") {
       result = result.filter((doc) => doc.category_id === selectedCategory);
     }
 
-    // Filtro por tipo de documento
     if (selectedType !== "all") {
       result = result.filter((doc) => doc.type === selectedType);
     }
 
-    // Filtro por data (vencimento)
     if (dateFilter === "expiring") {
       const now = new Date();
       const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -111,6 +111,14 @@ export default function DocumentsPage() {
 
   const hasActiveFilters = selectedCategory !== "all" || selectedType !== "all" || dateFilter !== "all";
 
+  // Monta lista de refs para exportação
+  const getExportCards = () => {
+    return filteredDocs.map((doc) => ({
+      ref: { current: cardRefs.current[doc.id!] },
+      id: doc.id!,
+    }));
+  };
+
   if (isLoading) {
     return <LoadingSkeleton />;
   }
@@ -124,6 +132,13 @@ export default function DocumentsPage() {
               Todos os documentos
             </h1>
             <div className="flex items-center gap-2">
+              <ExportCardButton
+                cards={getExportCards()}
+                title="Meus Documentos"
+                variant="secondary"
+                size="sm"
+                label="📄 Exportar"
+              />
               <button
                 onClick={() => {
                   trigger("vibrate");
@@ -147,7 +162,6 @@ export default function DocumentsPage() {
             </div>
           </div>
 
-          {/* Barra de busca */}
           <div className="mt-4 relative">
             <Search
               size={16}
@@ -161,10 +175,8 @@ export default function DocumentsPage() {
             />
           </div>
 
-          {/* Filtros avançados (expansíveis) */}
           {showFilters && (
             <div className="mt-4 p-4 rounded-xl bg-surface-raised border border-surface-border space-y-4 animate-in fade-in slide-in-from-top duration-200">
-              {/* Filtro por pessoa - já está no topo, mas mantemos aqui também */}
               <div>
                 <label className="block text-xs text-ink-muted mb-1.5">Pessoa</label>
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -200,7 +212,6 @@ export default function DocumentsPage() {
                 </div>
               </div>
 
-              {/* Filtro por categoria */}
               <div>
                 <label className="block text-xs text-ink-muted mb-1.5">Categoria</label>
                 <div className="flex gap-2 flex-wrap">
@@ -245,7 +256,6 @@ export default function DocumentsPage() {
                 </div>
               </div>
 
-              {/* Filtro por tipo de documento */}
               <div>
                 <label className="block text-xs text-ink-muted mb-1.5">Tipo</label>
                 <div className="flex gap-2 flex-wrap">
@@ -281,7 +291,6 @@ export default function DocumentsPage() {
                 </div>
               </div>
 
-              {/* Filtro por data */}
               <div>
                 <label className="block text-xs text-ink-muted mb-1.5">Data de validade</label>
                 <div className="flex gap-2 flex-wrap">
@@ -332,7 +341,6 @@ export default function DocumentsPage() {
           )}
         </header>
 
-        {/* Contagem de resultados */}
         <div className="px-5 pt-4 pb-2 flex items-center justify-between">
           <p className="text-sm text-ink-muted">
             {filteredDocs.length} documento{filteredDocs.length !== 1 ? "s" : ""}
@@ -343,7 +351,6 @@ export default function DocumentsPage() {
           )}
         </div>
 
-        {/* Lista de documentos */}
         <section className="px-5 pt-2 space-y-3">
           {filteredDocs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -365,11 +372,15 @@ export default function DocumentsPage() {
             </div>
           ) : (
             filteredDocs.map((doc) => (
-              <DocumentCard
+              <div
                 key={doc.id}
-                document={doc}
-                onFavoriteToggle={handleFavoriteToggle}
-              />
+                ref={(el) => { cardRefs.current[doc.id!] = el; }}
+              >
+                <DocumentCard
+                  document={doc}
+                  onFavoriteToggle={handleFavoriteToggle}
+                />
+              </div>
             ))
           )}
         </section>

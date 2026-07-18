@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Person, Document, SyncQueueItem, Medicamento, Renovacao } from '@/lib/types';
+import type { Person, Document, SyncQueueItem, Medicamento, Renovacao, Vault, VaultMember } from '@/lib/types';
 
 class VaultDB extends Dexie {
   persons!: Table<Person, number>;
@@ -7,6 +7,8 @@ class VaultDB extends Dexie {
   syncQueue!: Table<SyncQueueItem, number>;
   medicamentos!: Table<Medicamento, number>;
   renovacoes!: Table<Renovacao, number>;
+  vaults!: Table<Vault, number>;
+  vaultMembers!: Table<VaultMember, number>;
 
   constructor() {
     super('vault-db');
@@ -21,6 +23,15 @@ class VaultDB extends Dexie {
       syncQueue: '++id, table, operation, created_at',
       medicamentos: '++id, document_id, nome, medico, proxima_renovacao',
       renovacoes: '++id, medicamento_id, data',
+    });
+    this.version(4).stores({
+      persons: '++id, user_id, name, synced, created_at',
+      documents: '++id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: '++id, table, operation, created_at',
+      medicamentos: '++id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: '++id, medicamento_id, data',
+      vaults: '++id, user_id, name, synced, created_at',
+      vaultMembers: '++id, vault_id, user_id, email, status, synced',
     });
   }
 }
@@ -163,4 +174,85 @@ export async function safeAddRenovacao(
     });
     return id;
   });
+}
+
+// ============================================================
+// OPERAÇÕES PARA COFRES FAMILIARES
+// ============================================================
+export async function safeAddVault(
+  vault: Omit<Vault, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<number> {
+  const timestamp = nowIso();
+  const full: Vault = {
+    ...vault,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.vaults, db.syncQueue, async () => {
+    const id = await db.vaults.add(full);
+    await db.syncQueue.add({
+      table: 'vaults',
+      operation: 'add',
+      payload: { ...full, id },
+      created_at: timestamp,
+    });
+    return id;
+  });
+}
+
+export async function safeAddVaultMember(
+  member: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>
+): Promise<number> {
+  const timestamp = nowIso();
+  const full: VaultMember = {
+    ...member,
+    invited_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
+    const id = await db.vaultMembers.add(full);
+    await db.syncQueue.add({
+      table: 'vaultMembers',
+      operation: 'add',
+      payload: { ...full, id },
+      created_at: timestamp,
+    });
+    return id;
+  });
+}
+
+export async function safeUpdateVaultMember(
+  id: number,
+  changes: Partial<VaultMember>
+): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
+    await db.vaultMembers.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.vaultMembers.get(id);
+    await db.syncQueue.add({
+      table: 'vaultMembers',
+      operation: 'update',
+      payload: { id, ...updated },
+      created_at: timestamp,
+    });
+  });
+}
+
+export async function shareDocumentWithVault(
+  documentId: number,
+  vaultId: number
+): Promise<void> {
+  await db.transaction('rw', db.documents, async () => {
+    await db.documents.update(documentId, { vault_id: vaultId });
+  });
+}
+
+export async function getVaultDocuments(vaultId: number): Promise<Document[]> {
+  return db.documents.where('vault_id').equals(vaultId).toArray();
+}
+
+export async function getVaultMembers(vaultId: number): Promise<VaultMember[]> {
+  return db.vaultMembers.where('vault_id').equals(vaultId).toArray();
 }
