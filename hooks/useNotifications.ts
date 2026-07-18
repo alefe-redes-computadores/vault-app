@@ -16,16 +16,18 @@ export function useNotifications() {
   }, []);
 
   const handleNotificationAction = (callback: (data: any) => void) => {
-    const listener = LocalNotifications.addListener(
+    const listenerPromise = LocalNotifications.addListener(
       'localNotificationActionPerformed',
-      (notification) => {
-        console.log('Ação na notificação:', notification);
-        callback(notification.notification.extra);
+      (action) => {
+        console.log('Ação na notificação:', action);
+        callback(action.notification.extra);
       }
     );
 
+    // O Capacitor v6+ retorna uma Promise, então precisamos aguardar o ouvinte (handle)
+    // ser criado antes de mandar removê-lo.
     return () => {
-      listener.remove();
+      listenerPromise.then((handle) => handle.remove());
     };
   };
 
