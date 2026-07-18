@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fingerprint, FaceIcon, Eye, Shield, Lock } from "lucide-react";
+import { Fingerprint, ScanFace, Eye, Shield, Lock } from "lucide-react";
 import { useBiometric } from "@/hooks/useBiometric";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,7 +65,7 @@ export function BiometricLock({ children }: BiometricLockProps) {
 
   const iconMap = {
     fingerprint: Fingerprint,
-    face: FaceIcon,
+    face: ScanFace,
     iris: Eye,
     none: Lock,
   };
