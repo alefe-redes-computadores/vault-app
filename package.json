@@ -18,6 +18,7 @@
     "@capacitor/browser": "^6.0.0",
     "@capacitor/core": "^6.1.0",
     "capacitor-native-biometric": "latest",
+    "@capacitor/local-notifications": "latest",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
     "date-fns": "^4.4.0",
