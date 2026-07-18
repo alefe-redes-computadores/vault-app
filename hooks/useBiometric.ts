@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NativeBiometric } from '@capacitor-community/native-biometric';
+import { NativeBiometric } from 'capacitor-native-biometric';
 import { Capacitor } from '@capacitor/core';
 
 interface UseBiometricOptions {
