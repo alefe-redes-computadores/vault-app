@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Document, CATEGORIES } from "@/lib/types";
 import { useHapticFeedback } from "@/lib/haptics";
 import {
@@ -47,7 +48,7 @@ const formatDate = (date?: string) => {
   }
 };
 
-export function DocumentCard({ document, onFavoriteToggle, compact = false }: DocumentCardProps) {
+function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: DocumentCardProps) {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
 
@@ -68,13 +69,11 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
 
   const hasAttachments = document.attachments && document.attachments.length > 0;
 
-  // Pega o primeiro campo de metadata para exibir como destaque
   const metadataKeys = Object.keys(document.metadata || {}).filter(
     (key) => !["issue_date", "expiry_date", "renewal_date", "prescription_date", "date"].includes(key)
   );
   const firstMetadata = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
 
-  // Data de validade (prioriza metadata, depois usa expiryDate se existir)
   const expiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date;
   const isExpiring = expiryDate && new Date(expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const isExpired = expiryDate && new Date(expiryDate) < new Date();
@@ -85,12 +84,10 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
       className="relative overflow-hidden rounded-card border p-4 shadow-vault active:scale-[0.98] transition-all duration-150 cursor-pointer bg-surface"
       style={{ borderColor: `${color}33` }}
     >
-      {/* Rebites */}
       <span className="rivet rivet-tl" />
       <span className="rivet rivet-br" />
 
       <div className="flex items-start gap-3">
-        {/* Ícone da categoria com cor + ícone específico do tipo */}
         <div
           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl"
           style={{ backgroundColor: `${color}22` }}
@@ -122,14 +119,12 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
             </button>
           </div>
 
-          {/* Destaque do primeiro campo de metadata */}
           {firstMetadata && (
             <p className="text-sm text-ink-primary font-medium mt-1 truncate">
               {firstMetadata}
             </p>
           )}
 
-          {/* Datas */}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
             {document.metadata?.issue_date && (
               <div className="flex items-center gap-1 text-xs text-ink-muted">
@@ -150,21 +145,18 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
             )}
           </div>
 
-          {/* Notas (se houver e não compacto) */}
           {document.description && !compact && (
             <p className="mt-2 text-sm text-ink-muted line-clamp-2">{document.description}</p>
           )}
         </div>
       </div>
 
-      {/* Badge de anexo */}
       {hasAttachments && (
         <div className="absolute bottom-3 right-3">
           <Paperclip size={14} className="text-ink-muted" />
         </div>
       )}
 
-      {/* Badge de sincronização */}
       {!document.synced && (
         <div className="absolute top-3 right-12">
           <div className="w-2 h-2 rounded-full bg-coral animate-pulse" />
@@ -173,3 +165,13 @@ export function DocumentCard({ document, onFavoriteToggle, compact = false }: Do
     </div>
   );
 }
+
+// ✅ OTIMIZAÇÃO: Só re-renderiza se o documento ou favorito mudar
+export const DocumentCard = memo(DocumentCardComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.document.id === nextProps.document.id &&
+    prevProps.document.is_favorite === nextProps.document.is_favorite &&
+    prevProps.document.synced === nextProps.document.synced &&
+    prevProps.compact === nextProps.compact
+  );
+});
