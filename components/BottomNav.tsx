@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Star, User, Users, Plus } from "lucide-react";
+import { Home, Users, Star, User, Plus } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useEffect, useState } from "react";
 
 interface NavItem {
   id: string;
@@ -13,7 +14,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
-  { id: "vaults", icon: Users, label: "Cofres", path: "/vaults" }, // ← SUBSTITUÍDO
+  { id: "vaults", icon: Users, label: "Cofres", path: "/vaults" },
   { id: "favorites", icon: Star, label: "Favoritos", path: "/favoritos" },
   { id: "profile", icon: User, label: "Perfil", path: "/perfil" },
 ];
@@ -22,6 +23,19 @@ export function BottomNav() {
   const { trigger } = useHapticFeedback();
   const pathname = usePathname();
   const router = useRouter();
+  const [isBiometricLocked, setIsBiometricLocked] = useState(false);
+
+  useEffect(() => {
+    const checkLock = () => {
+      setIsBiometricLocked(document.body.classList.contains("biometric-locked"));
+    };
+    checkLock();
+
+    const observer = new MutationObserver(() => checkLock());
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleNavigate = (path: string) => {
     if (path === pathname) return;
@@ -29,7 +43,8 @@ export function BottomNav() {
     router.push(path);
   };
 
-  if (pathname === "/login") return null;
+  // Esconde em login, callback, e quando a biometria está bloqueada
+  if (pathname === "/login" || pathname === "/auth/callback" || isBiometricLocked) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
@@ -58,7 +73,6 @@ export function BottomNav() {
             );
           })}
 
-          {/* Botão flutuante de adicionar (centralizado) */}
           <button
             onClick={() => {
               trigger("success");
