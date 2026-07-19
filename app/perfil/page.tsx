@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { User, LogOut, Settings, Shield, Database, HardDrive, Camera } from "lucide-react";
+import { User, LogOut, Settings, Shield, Database, HardDrive, Camera, Fingerprint } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { useState } from "react";
+import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 
 export default function ProfilePage() {
   const { trigger } = useHapticFeedback();
@@ -16,6 +17,7 @@ export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { showToast } = useToast();
   const [isChangingPhoto, setIsChangingPhoto] = useState(false);
+  const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
 
   const handleLogout = async () => {
     trigger("vibrate");
@@ -47,17 +49,24 @@ export default function ProfilePage() {
     showToast("Gerenciamento de dados em breve...", "info");
   };
 
+  const handleBiometricToggle = () => {
+    toggleBiometric();
+    trigger("vibrate");
+    showToast(
+      isBiometricEnabled ? "Biometria desativada" : "Biometria ativada",
+      "info"
+    );
+  };
+
   const handleChangePhoto = () => {
     trigger("vibrate");
     setIsChangingPhoto(true);
-    // Simula a abertura de um seletor de arquivos
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        // Aqui você implementaria o upload da foto
         showToast("Foto atualizada com sucesso!", "success");
       }
       setIsChangingPhoto(false);
@@ -126,6 +135,22 @@ export default function ProfilePage() {
             >
               <Database size={18} className="text-ink-muted" />
               <span className="text-sm text-ink-primary">Dados</span>
+            </button>
+
+            {/* Toggle de Biometria */}
+            <button
+              onClick={handleBiometricToggle}
+              className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border hover:bg-surface-border transition-colors active:scale-[0.98]"
+            >
+              <Fingerprint size={18} className={isBiometricEnabled ? "text-ice" : "text-ink-muted"} />
+              <span className="text-sm text-ink-primary">Biometria</span>
+              <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
+                isBiometricEnabled 
+                  ? "bg-ice/20 text-ice" 
+                  : "bg-surface-border text-ink-muted"
+              }`}>
+                {isBiometricEnabled ? "Ativada" : "Desativada"}
+              </span>
             </button>
 
             <button
