@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { motion } from "framer-motion";
 import { Document, CATEGORIES } from "@/lib/types";
 import { useHapticFeedback } from "@/lib/haptics";
 import {
@@ -79,18 +80,23 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
   const isExpired = expiryDate && new Date(expiryDate) < new Date();
 
   return (
-    <div
+    <motion.div
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.2 }}
       onClick={handlePress}
-      className="relative overflow-hidden rounded-card border p-4 shadow-vault active:scale-[0.98] transition-all duration-150 cursor-pointer bg-surface"
-      style={{ borderColor: `${color}33` }}
+      className="relative overflow-hidden rounded-xl border p-4 shadow-sm cursor-pointer bg-surface hover:shadow-md transition-shadow"
+      style={{ borderColor: `${color}25` }}
     >
+      {/* Rebites */}
       <span className="rivet rivet-tl" />
       <span className="rivet rivet-br" />
 
       <div className="flex items-start gap-3">
+        {/* Ícone com cor da categoria */}
         <div
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl"
-          style={{ backgroundColor: `${color}22` }}
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+          style={{ backgroundColor: `${color}15` }}
         >
           <TypeIcon size={18} style={{ color }} />
         </div>
@@ -113,18 +119,20 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
               className="flex-shrink-0 p-1 rounded-full hover:bg-surface-border transition-colors"
             >
               <Star
-                size={18}
-                className={document.is_favorite ? "fill-ice text-ice" : "text-ink-muted"}
+                size={16}
+                className={document.is_favorite ? "fill-ice text-ice" : "text-ink-muted/50"}
               />
             </button>
           </div>
 
+          {/* Destaque do metadata */}
           {firstMetadata && (
             <p className="text-sm text-ink-primary font-medium mt-1 truncate">
               {firstMetadata}
             </p>
           )}
 
+          {/* Datas */}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
             {document.metadata?.issue_date && (
               <div className="flex items-center gap-1 text-xs text-ink-muted">
@@ -151,9 +159,10 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
         </div>
       </div>
 
+      {/* Badges */}
       {hasAttachments && (
         <div className="absolute bottom-3 right-3">
-          <Paperclip size={14} className="text-ink-muted" />
+          <Paperclip size={14} className="text-ink-muted/50" />
         </div>
       )}
 
@@ -162,11 +171,10 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
           <div className="w-2 h-2 rounded-full bg-coral animate-pulse" />
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
-// ✅ OTIMIZAÇÃO: Só re-renderiza se o documento ou favorito mudar
 export const DocumentCard = memo(DocumentCardComponent, (prevProps, nextProps) => {
   return (
     prevProps.document.id === nextProps.document.id &&
