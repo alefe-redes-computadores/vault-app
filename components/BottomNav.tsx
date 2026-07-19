@@ -13,6 +13,7 @@ interface NavItem {
   path: string;
 }
 
+
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
   { id: "pessoas", icon: Users, label: "Pessoas", path: "/pessoas" },
