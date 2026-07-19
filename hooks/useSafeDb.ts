@@ -50,6 +50,22 @@ export function useSafeDb() {
     }
   };
 
+  const deletePerson = async (id: number) => {
+    try {
+      await db.transaction('rw', db.persons, db.documents, async () => {
+        // Remove todos os documentos da pessoa
+        await db.documents.where('person_id').equals(id).delete();
+        // Remove a pessoa
+        await db.persons.delete(id);
+      });
+      haptic.trigger('vibrate');
+    } catch (error) {
+      haptic.trigger('error');
+      console.error('Erro ao deletar pessoa:', error);
+      throw error;
+    }
+  };
+
   const favorite = async (id: number) => {
     try {
       await toggleFavorite(id);
@@ -60,5 +76,5 @@ export function useSafeDb() {
     }
   };
 
-  return { addPerson, addDocument, updateDocument, deleteDocument, favorite };
+  return { addPerson, addDocument, updateDocument, deleteDocument, deletePerson, favorite };
 }
