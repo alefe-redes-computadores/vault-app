@@ -6,8 +6,8 @@ export function useDocuments(personId?: number, categoryId?: CategoryId) {
   return useLiveQuery(
     () => {
       let query = db.documents.toCollection();
-      if (personId) query = query.filter(doc => doc.person_id === personId);
-      if (categoryId) query = query.filter(doc => doc.category_id === categoryId);
+      if (personId) query = query.filter((doc: Document) => doc.person_id === personId);
+      if (categoryId) query = query.filter((doc: Document) => doc.category_id === categoryId);
       return query.reverse().sortBy('created_at');
     },
     [personId, categoryId],
@@ -18,8 +18,8 @@ export function useDocuments(personId?: number, categoryId?: CategoryId) {
 export function useFavorites(personId?: number) {
   return useLiveQuery(
     () => {
-      let query = db.documents.filter(doc => doc.is_favorite === true);
-      if (personId) query = query.filter(doc => doc.person_id === personId);
+      let query = db.documents.filter((doc: Document) => doc.is_favorite === true);
+      if (personId) query = query.filter((doc: Document) => doc.person_id === personId);
       return query.reverse().sortBy('created_at');
     },
     [personId],
