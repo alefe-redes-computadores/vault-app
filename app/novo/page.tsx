@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Upload, Camera, X, Loader2, CheckCircle2, Users } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft, Upload, Camera, X, Loader2, Save } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,7 +25,6 @@ import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 
-// Mapeamento de campos por tipo de documento
 const DOCUMENT_FIELDS: Record<
   DocumentType,
   Array<{ key: string; label: string; type: "text" | "date" | "select"; options?: string[]; required?: boolean }>
@@ -35,18 +35,10 @@ const DOCUMENT_FIELDS: Record<
     { key: "expiry_date", label: "Data de validade", type: "date", required: true },
     { key: "issuer", label: "Órgão emissor", type: "text", required: true },
   ],
-  cpf: [
-    { key: "number", label: "Número do CPF", type: "text", required: true },
-  ],
+  cpf: [{ key: "number", label: "Número do CPF", type: "text", required: true }],
   cnh: [
     { key: "number", label: "Número da CNH", type: "text", required: true },
-    {
-      key: "category",
-      label: "Categoria",
-      type: "select",
-      options: ["A", "B", "C", "D", "E"],
-      required: true,
-    },
+    { key: "category", label: "Categoria", type: "select", options: ["A", "B", "C", "D", "E"], required: true },
     { key: "issue_date", label: "Data de emissão", type: "date", required: true },
     { key: "expiry_date", label: "Data de validade", type: "date", required: true },
   ],
@@ -99,7 +91,6 @@ type FormData = {
   vault_id?: number;
 };
 
-// Mapeamento de tipos para exibição no botão
 const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   rg: "RG",
   cpf: "CPF",
@@ -137,16 +128,13 @@ export default function NewDocumentPage() {
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
-  // Busca os cofres do usuário
   const userVaults = useLiveQuery(
     () => db.vaults.where('user_id').equals(user?.id || '').toArray(),
     [user?.id],
     []
   );
 
-  // Reset metadata quando trocar o tipo
   useEffect(() => {
     const fields = DOCUMENT_FIELDS[formData.type] || [];
     const newMetadata: Record<string, any> = {};
@@ -183,7 +171,6 @@ export default function NewDocumentPage() {
     try {
       const folder = formData.category_id;
       const { url, error } = await uploadFile(user.id, file, folder);
-
       if (error) throw error;
 
       const newAttachment: Attachment = {
@@ -238,7 +225,6 @@ export default function NewDocumentPage() {
     if (!formData.person_id) {
       newErrors.person_id = "Selecione uma pessoa";
     }
-
     if (!formData.title.trim()) {
       newErrors.title = "Título é obrigatório";
     }
@@ -276,7 +262,6 @@ export default function NewDocumentPage() {
 
       const id = await addDocument(docData);
 
-      // Agenda notificação 30 dias antes do vencimento
       if (formData.metadata?.expiry_date) {
         await scheduleDocumentExpiryNotification(
           id,
@@ -288,10 +273,7 @@ export default function NewDocumentPage() {
       }
 
       trigger("success");
-      setShowSuccess(true);
-      setTimeout(() => {
-        router.push("/");
-      }, 1500);
+      router.push("/");
     } catch (error) {
       console.error("Erro ao salvar:", error);
       trigger("error");
@@ -321,14 +303,14 @@ export default function NewDocumentPage() {
           onChange={handleCameraCapture}
         />
 
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -343,7 +325,11 @@ export default function NewDocumentPage() {
 
         <section className="px-5 pt-6 space-y-4">
           {/* Pessoa */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
               Pessoa <span className="text-coral">*</span>
             </label>
@@ -352,10 +338,10 @@ export default function NewDocumentPage() {
                 <button
                   key={person.id}
                   onClick={() => handleChange("person_id", person.id!)}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
+                  className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
                     formData.person_id === person.id
                       ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                   }`}
                 >
                   <span className="text-sm font-medium">{person.name}</span>
@@ -365,10 +351,14 @@ export default function NewDocumentPage() {
             {errors.person_id && (
               <p className="text-xs text-coral mt-1">{errors.person_id}</p>
             )}
-          </div>
+          </motion.div>
 
           {/* Categoria */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+          >
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
               Categoria <span className="text-coral">*</span>
             </label>
@@ -377,44 +367,59 @@ export default function NewDocumentPage() {
                 <button
                   key={cat.id}
                   onClick={() => handleChange("category_id", cat.id)}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
+                  className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
                     formData.category_id === cat.id
                       ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                   }`}
                 >
                   <span className="text-sm font-medium">{cat.name}</span>
                 </button>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Tipo */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
               Tipo de documento <span className="text-coral">*</span>
             </label>
             <button
               onClick={() => setIsTypeModalOpen(true)}
-              className="w-full text-left px-4 py-3 rounded-xl bg-surface-raised border border-surface-border text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
+              className="w-full text-left px-4 py-3 rounded-xl bg-surface-raised border border-surface-border/50 text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
             >
               {DOCUMENT_TYPE_LABELS[formData.type] || "Selecionar tipo..."}
             </button>
-          </div>
+          </motion.div>
 
           {/* Título */}
-          <Input
-            label="Título do documento"
-            placeholder="Ex: Minha CNH, Receita Losartana, etc."
-            value={formData.title}
-            onChange={(e) => handleChange("title", e.target.value)}
-            error={errors.title}
-            required
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+          >
+            <Input
+              label="Título do documento"
+              placeholder="Ex: Minha CNH, Receita Losartana, etc."
+              value={formData.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+              error={errors.title}
+              required
+            />
+          </motion.div>
 
           {/* Campos dinâmicos */}
           {fields.length > 0 && (
-            <div className="space-y-3 border-t border-surface-border pt-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+              className="space-y-3 border-t border-surface-border/50 pt-4"
+            >
               <p className="text-sm font-medium text-ink-muted">Campos específicos</p>
               {fields.map((field) => (
                 <Input
@@ -423,29 +428,31 @@ export default function NewDocumentPage() {
                   type={field.type === "date" ? "date" : "text"}
                   value={formData.metadata[field.key] || ""}
                   onChange={(e) => handleMetadataChange(field.key, e.target.value)}
-                  placeholder={
-                    field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`
-                  }
+                  placeholder={field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`}
                   required={field.required}
                   error={errors[field.key]}
                 />
               ))}
-            </div>
+            </motion.div>
           )}
 
-          {/* Cofre (compartilhamento) */}
+          {/* Cofre */}
           {userVaults && userVaults.length > 0 && (
-            <div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.25 }}
+            >
               <label className="block text-sm font-medium text-ink-primary mb-1.5">
                 Compartilhar com cofre (opcional)
               </label>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => handleChange("vault_id", undefined)}
-                  className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] ${
+                  className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
                     formData.vault_id === undefined
                       ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                      : "border-surface-border/50 bg-surface text-ink-muted hover:text-ink-primary"
                   }`}
                 >
                   Nenhum
@@ -454,30 +461,41 @@ export default function NewDocumentPage() {
                   <button
                     key={vault.id}
                     onClick={() => handleChange("vault_id", vault.id!)}
-                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] flex items-center gap-1 ${
+                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 flex items-center gap-1 ${
                       formData.vault_id === vault.id
                         ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                        : "border-surface-border/50 bg-surface text-ink-muted hover:text-ink-primary"
                     }`}
                   >
-                    <span>{vault.icon || '🔒'}</span>
+                    <span>{vault.icon || "🔒"}</span>
                     {vault.name}
                   </button>
                 ))}
               </div>
-            </div>
+            </motion.div>
           )}
 
-          {/* Descrição */}
-          <TextArea
-            label="Notas (opcional)"
-            placeholder="Informações adicionais..."
-            value={formData.description}
-            onChange={(e) => handleChange("description", e.target.value)}
-          />
+          {/* Notas */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          >
+            <TextArea
+              label="Notas (opcional)"
+              placeholder="Informações adicionais..."
+              value={formData.description}
+              onChange={(e) => handleChange("description", e.target.value)}
+            />
+          </motion.div>
 
-          {/* Anexos */}
-          <div className="space-y-2">
+          {/* Upload */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.35 }}
+            className="space-y-2"
+          >
             <label className="block text-sm font-medium text-ink-primary">Anexos</label>
             <div className="grid grid-cols-2 gap-3">
               <Button
@@ -519,7 +537,7 @@ export default function NewDocumentPage() {
                 {formData.attachments.map((att) => (
                   <div
                     key={att.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-surface-raised border border-surface-border"
+                    className="flex items-center justify-between p-2 rounded-lg bg-surface-raised border border-surface-border/50"
                   >
                     <span className="text-sm text-ink-muted truncate flex-1">{att.name}</span>
                     <button
@@ -532,30 +550,34 @@ export default function NewDocumentPage() {
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
 
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={handleSubmit}
-            disabled={loading || uploading || showSuccess}
-            className="mt-4 transition-all duration-300"
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
           >
-            {showSuccess ? (
-              <>
-                <CheckCircle2 size={18} className="mr-2" />
-                Salvo com sucesso!
-              </>
-            ) : loading ? (
-              <>
-                <Loader2 size={18} className="mr-2 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              "Salvar documento"
-            )}
-          </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleSubmit}
+              disabled={loading || uploading}
+              className="flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Salvar documento
+                </>
+              )}
+            </Button>
+          </motion.div>
         </section>
 
         <DocumentTypeSelector
