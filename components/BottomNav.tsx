@@ -13,7 +13,6 @@ interface NavItem {
   path: string;
 }
 
-
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
   { id: "pessoas", icon: Users, label: "Pessoas", path: "/pessoas" },
@@ -60,8 +59,8 @@ export function BottomNav() {
   return (
     <>
       <nav className="fixed bottom-0 left-0 right-0 z-40">
-        <div className="glass-header rounded-t-[32px] border-t border-surface-border px-4 pt-3 pb-6">
-          <div className="grid grid-cols-5 items-center justify-items-center relative">
+        <div className="bg-surface/95 backdrop-blur-xl border-t border-surface-border/50 px-4 pt-2 pb-5">
+          <div className="grid grid-cols-5 items-center justify-items-center relative max-w-md mx-auto">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
@@ -70,14 +69,19 @@ export function BottomNav() {
                 <button
                   key={item.id}
                   onClick={() => handleNavigate(item.path)}
-                  className={`flex flex-col items-center gap-0.5 transition-all active:scale-[0.95] relative ${
-                    active ? "text-ice" : "text-ink-muted hover:text-ink-primary"
-                  }`}
+                  className={`
+                    flex flex-col items-center gap-0.5 transition-all active:scale-95 relative
+                    ${active ? "text-ice" : "text-ink-muted/60 hover:text-ink-primary"}
+                  `}
                 >
                   <Icon size={22} strokeWidth={active ? 2.5 : 2} />
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  <span className={`text-[10px] font-medium transition-all ${
+                    active ? "text-ice" : "text-ink-muted/60"
+                  }`}>
+                    {item.label}
+                  </span>
                   {active && (
-                    <div className="absolute -top-1 w-1.5 h-1.5 rounded-full bg-ice" />
+                    <div className="absolute -top-1 w-1 h-1 rounded-full bg-ice" />
                   )}
                 </button>
               );
@@ -89,21 +93,22 @@ export function BottomNav() {
                 trigger("vibrate");
                 setIsMoreOpen(true);
               }}
-              className={`flex flex-col items-center gap-0.5 transition-all active:scale-[0.95] relative ${
-                isMoreOpen ? "text-ice" : "text-ink-muted hover:text-ink-primary"
-              }`}
+              className={`
+                flex flex-col items-center gap-0.5 transition-all active:scale-95 relative
+                ${isMoreOpen ? "text-ice" : "text-ink-muted/60 hover:text-ink-primary"}
+              `}
             >
               <MoreHorizontal size={22} strokeWidth={isMoreOpen ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">Mais</span>
+              <span className="text-[10px] font-medium text-ink-muted/60">Mais</span>
             </button>
 
-            {/* Botão flutuante centralizado */}
+            {/* Botão flutuante centralizado (mais elegante) */}
             <button
               onClick={() => {
                 trigger("success");
                 router.push("/novo");
               }}
-              className="absolute -top-6 left-1/2 -translate-x-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-vault active:scale-[0.95] transition-all border-4 border-void z-10"
+              className="absolute -top-7 left-1/2 -translate-x-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/30 active:scale-95 transition-all border-4 border-surface"
             >
               <Plus size={24} strokeWidth={2.5} />
             </button>
@@ -111,7 +116,7 @@ export function BottomNav() {
         </div>
       </nav>
 
-      {/* BottomSheet do "Mais" */}
+      {/* BottomSheet do "Mais" (refinado) */}
       <BottomSheet
         isOpen={isMoreOpen}
         onClose={() => setIsMoreOpen(false)}
@@ -124,10 +129,15 @@ export function BottomNav() {
               <button
                 key={item.id}
                 onClick={() => handleNavigate(item.path)}
-                className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border hover:bg-surface-border transition-colors active:scale-[0.98]"
+                className="flex items-center gap-4 w-full p-3 rounded-xl bg-surface hover:bg-surface-border transition-colors active:scale-[0.98]"
               >
-                <Icon size={20} className="text-ink-muted" />
-                <span className="text-sm text-ink-primary">{item.label}</span>
+                <div className="w-10 h-10 rounded-full bg-surface-border/50 flex items-center justify-center">
+                  <Icon size={18} className="text-ink-muted" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-ink-primary">{item.label}</p>
+                  <p className="text-xs text-ink-muted">Documentos compartilhados</p>
+                </div>
               </button>
             );
           })}
@@ -137,10 +147,15 @@ export function BottomNav() {
               setIsMoreOpen(false);
               router.push("/perfil");
             }}
-            className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border hover:bg-surface-border transition-colors active:scale-[0.98]"
+            className="flex items-center gap-4 w-full p-3 rounded-xl bg-surface hover:bg-surface-border transition-colors active:scale-[0.98]"
           >
-            <User size={20} className="text-ink-muted" />
-            <span className="text-sm text-ink-primary">Perfil</span>
+            <div className="w-10 h-10 rounded-full bg-surface-border/50 flex items-center justify-center">
+              <User size={18} className="text-ink-muted" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-medium text-ink-primary">Perfil</p>
+              <p className="text-xs text-ink-muted">Configurações da conta</p>
+            </div>
           </button>
         </div>
       </BottomSheet>
