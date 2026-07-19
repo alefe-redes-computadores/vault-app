@@ -49,3 +49,26 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Scrollbar escondida (já tinha, mas reforça) */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animações suaves */
+* {
+  transition-duration: 200ms;
+}
+
+/* Melhora a legibilidade dos cards */
+.card-hover {
+  transition: all 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(125, 211, 252, 0.2);
+}
