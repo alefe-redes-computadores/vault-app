@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, User, FolderOpen, ChevronRight } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { ArrowLeft, User, FolderOpen } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -13,7 +13,6 @@ import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { useEffect, useState } from "react";
 
 export default function CategoryPage() {
   const { trigger } = useHapticFeedback();
@@ -42,9 +41,6 @@ export default function CategoryPage() {
     trigger("vibrate");
   }, [favorite, trigger]);
 
-  const totalDocs = documents?.length || 0;
-  const hasDocs = totalDocs > 0;
-
   if (isLoading) {
     return <LoadingSkeleton />;
   }
@@ -53,22 +49,14 @@ export default function CategoryPage() {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-ink-muted">Categoria não encontrada</p>
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
-              className="mt-4 text-sm text-ice hover:text-ice/80 transition-colors"
-            >
-              Voltar
-            </button>
-          </div>
+          <p className="text-ink-muted">Categoria não encontrada</p>
         </main>
       </PageTransition>
     );
   }
+
+  const totalDocs = documents?.length || 0;
+  const hasDocs = totalDocs > 0;
 
   return (
     <PageTransition>
@@ -148,69 +136,55 @@ export default function CategoryPage() {
           </div>
         </header>
 
-        {/* CONTEÚDO */}
+        {/* LISTA DE DOCUMENTOS */}
         <section className="px-5 pt-5 space-y-3">
-          <AnimatePresence mode="wait">
-            {!hasDocs ? (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="flex flex-col items-center justify-center py-20 text-center"
+          {!hasDocs ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col items-center justify-center py-20 text-center"
+            >
+              <div
+                className="w-24 h-24 rounded-full flex items-center justify-center mb-6 border"
+                style={{
+                  backgroundColor: `${category.color}15`,
+                  borderColor: `${category.color}30`,
+                }}
               >
-                <div
-                  className="w-24 h-24 rounded-full flex items-center justify-center mb-6 border"
-                  style={{
-                    backgroundColor: `${category.color}15`,
-                    borderColor: `${category.color}30`,
-                  }}
-                >
-                  <FolderOpen size={36} style={{ color: category.color }} />
-                </div>
-                <h3 className="font-display text-xl text-ink-primary">
-                  Nenhum documento em {category.name}
-                </h3>
-                <p className="text-sm text-ink-muted mt-2 max-w-xs">
-                  Comece adicionando documentos nesta categoria.
-                </p>
-                <button
-                  onClick={() => {
-                    trigger("vibrate");
-                    router.push("/novo");
-                  }}
-                  className="mt-6 flex items-center gap-2 rounded-full bg-ice px-6 py-3 text-void font-medium text-sm active:scale-95 transition-all"
-                >
-                  Adicionar documento
-                  <ChevronRight size={16} />
-                </button>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="list"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-3"
+                <FolderOpen size={36} style={{ color: category.color }} />
+              </div>
+              <h3 className="font-display text-xl text-ink-primary">
+                Nenhum documento em {category.name}
+              </h3>
+              <p className="text-sm text-ink-muted mt-2 max-w-xs">
+                Comece adicionando documentos nesta categoria.
+              </p>
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push("/novo");
+                }}
+                className="mt-6 flex items-center gap-2 rounded-full bg-ice px-6 py-3 text-void font-medium text-sm active:scale-95 transition-all"
               >
-                {documents.map((doc, index) => (
-                  <motion.div
-                    key={doc.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: index * 0.05 }}
-                  >
-                    <DocumentCard
-                      document={doc}
-                      onFavoriteToggle={handleFavoriteToggle}
-                    />
-                  </motion.div>
-                ))}
+                Adicionar documento
+              </button>
+            </motion.div>
+          ) : (
+            documents.map((doc, index) => (
+              <motion.div
+                key={doc.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: index * 0.05 }}
+              >
+                <DocumentCard
+                  document={doc}
+                  onFavoriteToggle={handleFavoriteToggle}
+                />
               </motion.div>
-            )}
-          </AnimatePresence>
+            ))
+          )}
         </section>
       </main>
     </PageTransition>
