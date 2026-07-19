@@ -47,18 +47,11 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
     trigger("vibrate");
 
     try {
-      // Primeiro faz push (envia dados locais para nuvem)
       await processQueue();
-      
-      // Depois faz pull (puxa dados da nuvem para local)
       await refresh();
-      
       setSyncStatus("success");
-      
-      // Atualiza contagem após sync
       const pending = await db.syncQueue.where('table').notEqual('').count();
       setPendingCount(pending);
-      
       setTimeout(() => setSyncStatus("idle"), 3000);
     } catch (error) {
       console.error("Erro na sincronização:", error);
