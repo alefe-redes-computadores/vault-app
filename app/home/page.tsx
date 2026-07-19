@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Plus, LogOut, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +17,18 @@ import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 
+// ✅ DEBOUNCE (aguarda 300ms antes de buscar)
+function useDebounce(value: string, delay: number = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function HomePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -29,6 +41,8 @@ export default function HomePage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
   useEffect(() => {
     if (persons.length > 0 && selectedPersonId === null) {
       setSelectedPersonId(persons[0].id!);
@@ -40,36 +54,44 @@ export default function HomePage() {
   const allDocs = useDocuments(selectedPersonId || undefined) || [];
   const favorites = useFavorites(selectedPersonId || undefined) || [];
 
-  const filteredDocs = allDocs.filter(
-    (doc) =>
-      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ✅ OTIMIZAÇÃO: useMemo para evitar recálculo desnecessário
+  const filteredDocs = useMemo(() => {
+    if (!debouncedSearch.trim()) return allDocs;
+    const query = debouncedSearch.toLowerCase();
+    return allDocs.filter(
+      (doc) =>
+        doc.title.toLowerCase().includes(query) ||
+        doc.description?.toLowerCase().includes(query)
+    );
+  }, [allDocs, debouncedSearch]);
 
-  const handleFavoriteToggle = async (id: number) => {
+  // ✅ OTIMIZAÇÃO: useCallback para evitar recriação de função
+  const handleFavoriteToggle = useCallback(async (id: number) => {
     await favorite(id);
-  };
+  }, [favorite]);
+
+  const docsByCategory = useMemo(() => {
+    return allDocs.reduce<Record<CategoryId, Document[]>>(
+      (acc, doc) => {
+        if (!acc[doc.category_id]) acc[doc.category_id] = [];
+        acc[doc.category_id].push(doc);
+        return acc;
+      },
+      {} as Record<CategoryId, Document[]>
+    );
+  }, [allDocs]);
+
+  const getCategoryPreview = useCallback((categoryId: CategoryId) => {
+    const docs = docsByCategory[categoryId] || [];
+    return docs.slice(0, 3);
+  }, [docsByCategory]);
+
+  const hasMore = useCallback((categoryId: CategoryId) => {
+    return (docsByCategory[categoryId] || []).length > 3;
+  }, [docsByCategory]);
 
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
-
-  const docsByCategory = allDocs.reduce<Record<CategoryId, Document[]>>(
-    (acc, doc) => {
-      if (!acc[doc.category_id]) acc[doc.category_id] = [];
-      acc[doc.category_id].push(doc);
-      return acc;
-    },
-    {} as Record<CategoryId, Document[]>
-  );
-
-  const getCategoryPreview = (categoryId: CategoryId) => {
-    const docs = docsByCategory[categoryId] || [];
-    return docs.slice(0, 3);
-  };
-
-  const hasMore = (categoryId: CategoryId) => {
-    return (docsByCategory[categoryId] || []).length > 3;
-  };
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -137,7 +159,6 @@ export default function HomePage() {
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-ink-muted">Pessoas</span>
-              {/* BOTÃO + ADICIONAR REMOVIDO! */}
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {persons.map((person) => (
