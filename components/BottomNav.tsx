@@ -49,7 +49,8 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
       <div className="glass-header rounded-t-[32px] border-t border-surface-border px-4 pt-3 pb-6">
-        <div className="flex items-center justify-around relative">
+        {/* Container grid com 4 colunas iguais */}
+        <div className="grid grid-cols-4 items-center justify-items-center relative">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path || 
@@ -60,7 +61,7 @@ export function BottomNav() {
               <button
                 key={item.id}
                 onClick={() => handleNavigate(item.path)}
-                className={`flex flex-col items-center gap-0.5 transition-all active:scale-[0.95] ${
+                className={`flex flex-col items-center gap-0.5 transition-all active:scale-[0.95] relative ${
                   isActive ? "text-ice" : "text-ink-muted hover:text-ink-primary"
                 }`}
               >
@@ -73,12 +74,13 @@ export function BottomNav() {
             );
           })}
 
+          {/* Botão flutuante centralizado sobre a grid */}
           <button
             onClick={() => {
               trigger("success");
               router.push("/novo");
             }}
-            className="absolute -top-6 left-1/2 -translate-x-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-vault active:scale-[0.95] transition-all border-4 border-void"
+            className="absolute -top-6 left-1/2 -translate-x-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-vault active:scale-[0.95] transition-all border-4 border-void z-10"
           >
             <Plus size={24} strokeWidth={2.5} />
           </button>
