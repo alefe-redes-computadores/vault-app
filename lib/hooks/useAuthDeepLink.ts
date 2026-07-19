@@ -37,7 +37,7 @@ export function useAuthDeepLink() {
 
           if (data?.session) {
             setIsProcessing(false)
-            router.replace('/') // Redireciona para a home do Vault
+            router.replace('/') 
             return
           }
         }
@@ -80,7 +80,7 @@ export function useAuthDeepLink() {
     })
 
     return () => {
-      listener.remove().catch(() => {})
+      listener.then(handle => handle.remove()).catch(() => {})
     }
   }, [router])
 
