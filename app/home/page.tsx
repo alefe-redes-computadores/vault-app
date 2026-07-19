@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Plus, LogOut, User, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
 import { useDocuments, useFavorites } from "@/hooks/useDocuments";
@@ -95,8 +96,8 @@ export default function HomePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* HEADER REFORMULADO */}
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/50 px-5 pt-6 pb-4">
+        {/* HEADER — MAIS LIMPO */}
+        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {avatarUrl ? (
@@ -124,13 +125,13 @@ export default function HomePage() {
                 trigger("vibrate");
                 setIsSearchOpen(true);
               }}
-              className="p-2 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
+              className="p-2.5 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
             >
               <Search size={18} className="text-ink-muted" />
             </button>
           </div>
 
-          {/* PESSOAS (scroll horizontal) */}
+          {/* PESSOAS — SCROLL HORIZONTAL */}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
@@ -159,66 +160,88 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* CONTEÚDO */}
+        {/* CONTEÚDO COM ANIMAÇÃO */}
         <section className="px-5 pt-5 space-y-6">
-          <FavoritesSection favorites={favorites} onFavoriteToggle={handleFavoriteToggle} />
-
-          {Object.keys(CATEGORIES).map((categoryId) => {
-            const preview = getCategoryPreview(categoryId as CategoryId);
-            const total = (docsByCategory[categoryId as CategoryId] || []).length;
-
-            if (preview.length === 0) return null;
-
-            return (
-              <CategorySection
-                key={categoryId}
-                categoryId={categoryId as CategoryId}
-                documents={preview}
-                total={total}
-                hasMore={hasMore(categoryId as CategoryId)}
-                onFavoriteToggle={handleFavoriteToggle}
-                onSeeAll={() => {
-                  router.push(`/categoria?nome=${categoryId}`);
-                }}
-              />
-            );
-          })}
-
-          {allDocs.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-surface-raised flex items-center justify-center mb-4">
-                <User size={28} className="text-ink-muted" />
-              </div>
-              <h3 className="font-display text-base text-ink-primary">Nenhum documento</h3>
-              <p className="text-sm text-ink-muted mt-1 max-w-xs">
-                Comece guardando seu primeiro documento no Vault
-              </p>
-              <button
-                onClick={() => {
-                  trigger("success");
-                  router.push("/novo");
-                }}
-                className="mt-4 flex items-center gap-2 rounded-full bg-ice px-5 py-2.5 text-void font-medium text-sm active:scale-[0.98] transition-all"
+          <AnimatePresence mode="wait">
+            {favorites.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
               >
-                <Plus size={16} />
-                Adicionar
-              </button>
-            </div>
-          )}
+                <FavoritesSection favorites={favorites} onFavoriteToggle={handleFavoriteToggle} />
+              </motion.div>
+            )}
+
+            {Object.keys(CATEGORIES).map((categoryId, index) => {
+              const preview = getCategoryPreview(categoryId as CategoryId);
+              const total = (docsByCategory[categoryId as CategoryId] || []).length;
+
+              if (preview.length === 0) return null;
+
+              return (
+                <motion.div
+                  key={categoryId}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <CategorySection
+                    categoryId={categoryId as CategoryId}
+                    documents={preview}
+                    total={total}
+                    hasMore={hasMore(categoryId as CategoryId)}
+                    onFavoriteToggle={handleFavoriteToggle}
+                    onSeeAll={() => {
+                      router.push(`/categoria?nome=${categoryId}`);
+                    }}
+                  />
+                </motion.div>
+              );
+            })}
+
+            {allDocs.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col items-center justify-center py-16 text-center"
+              >
+                <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
+                  <User size={32} className="text-ink-muted" />
+                </div>
+                <h3 className="font-display text-lg text-ink-primary">Nenhum documento</h3>
+                <p className="text-sm text-ink-muted mt-1 max-w-xs">
+                  Comece guardando seu primeiro documento no Vault
+                </p>
+                <button
+                  onClick={() => {
+                    trigger("success");
+                    router.push("/novo");
+                  }}
+                  className="mt-6 flex items-center gap-2 rounded-full bg-ice px-6 py-3 text-void font-medium text-sm active:scale-[0.98] transition-all"
+                >
+                  <Plus size={16} />
+                  Adicionar documento
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
 
-        {/* BOTÃO FLUTUANTE (mais sutil) */}
+        {/* BOTÃO FLUTUANTE */}
         <button
           onClick={() => {
             trigger("success");
             router.push("/novo");
           }}
-          className="fixed bottom-24 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 active:scale-[0.95] transition-all z-20"
+          className="fixed bottom-24 right-5 flex h-13 w-13 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 active:scale-95 transition-all z-20"
         >
-          <Plus size={20} strokeWidth={2.5} />
+          <Plus size={22} strokeWidth={2.5} />
         </button>
 
-        {/* BOTTOM SHEET DE BUSCA */}
+        {/* BUSCA */}
         <BottomSheet isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscar documentos">
           <div className="space-y-4">
             <Input
@@ -239,7 +262,7 @@ export default function HomePage() {
                     setIsSearchOpen(false);
                     router.push(`/detalhes?id=${doc.id}`);
                   }}
-                  className="w-full text-left p-3 rounded-xl bg-surface border border-surface-border hover:bg-surface-border transition-colors"
+                  className="w-full text-left p-3 rounded-xl bg-surface border border-surface-border/50 hover:bg-surface-border transition-colors"
                 >
                   <p className="text-sm font-medium text-ink-primary">{doc.title}</p>
                   <p className="text-xs text-ink-muted mt-0.5">
