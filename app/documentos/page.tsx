@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Filter, X, Calendar, FileText, ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useDocuments } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -15,7 +16,16 @@ import { PageTransition } from "@/components/PageTransition";
 import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { ExportCardButton } from "@/components/ExportCardButton";
 
-// Lista de tipos de documento para filtro
+// ✅ DEBOUNCE
+function useDebounce(value: string, delay: number = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
   { id: "rg", label: "RG" },
   { id: "cpf", label: "CPF" },
@@ -34,7 +44,6 @@ export default function DocumentsPage() {
   const { favorite } = useSafeDb();
   const persons = usePersons();
 
-  // Refs para capturar os cards
   const cardRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(
@@ -47,6 +56,8 @@ export default function DocumentsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
@@ -54,12 +65,11 @@ export default function DocumentsPage() {
 
   const documents = useDocuments(selectedPersonId || undefined);
 
-  // Aplica todos os filtros
   const filteredDocs = useMemo(() => {
     let result = documents;
 
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const query = debouncedSearch.toLowerCase();
       result = result.filter(
         (doc) =>
           doc.title.toLowerCase().includes(query) ||
@@ -94,12 +104,12 @@ export default function DocumentsPage() {
     }
 
     return result;
-  }, [documents, searchQuery, selectedCategory, selectedType, dateFilter]);
+  }, [documents, debouncedSearch, selectedCategory, selectedType, dateFilter]);
 
-  const handleFavoriteToggle = async (id: number) => {
+  const handleFavoriteToggle = useCallback(async (id: number) => {
     await favorite(id);
     trigger("vibrate");
-  };
+  }, [favorite, trigger]);
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -111,7 +121,6 @@ export default function DocumentsPage() {
 
   const hasActiveFilters = selectedCategory !== "all" || selectedType !== "all" || dateFilter !== "all";
 
-  // Monta lista de refs para exportação
   const getExportCards = () => {
     return filteredDocs.map((doc) => ({
       ref: { current: cardRefs.current[doc.id!] },
@@ -126,42 +135,52 @@ export default function DocumentsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-4">
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
-            <h1 className="font-display text-xl font-semibold text-ink-primary">
-              Todos os documentos
-            </h1>
+            <div>
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
+                Documentos
+              </h1>
+              <p className="text-sm text-ink-muted">
+                {filteredDocs.length} documento{filteredDocs.length !== 1 ? "s" : ""}
+                {hasActiveFilters && " filtrados"}
+              </p>
+            </div>
             <div className="flex items-center gap-2">
-              <ExportCardButton
-                cards={getExportCards()}
-                title="Meus Documentos"
-                variant="secondary"
-                size="sm"
-                label="📄 Exportar"
-              />
+              {filteredDocs.length > 0 && (
+                <ExportCardButton
+                  cards={getExportCards()}
+                  title="Meus Documentos"
+                  variant="secondary"
+                  size="sm"
+                  label="📄 Exportar"
+                />
+              )}
               <button
                 onClick={() => {
                   trigger("vibrate");
                   setShowFilters(!showFilters);
                 }}
-                className={`flex h-10 w-10 items-center justify-center rounded-full border ${
-                  hasActiveFilters ? "border-ice bg-ice/10 text-ice" : "border-surface-border bg-surface-raised text-ink-muted"
-                } active:scale-[0.98] transition-all`}
+                className={`p-2 rounded-full border transition-colors ${
+                  hasActiveFilters
+                    ? "border-ice bg-ice/10 text-ice"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted hover:bg-surface-border"
+                }`}
               >
                 <Filter size={18} />
               </button>
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink-primary transition-colors"
+                  className="text-xs text-ink-muted hover:text-ink-primary transition-colors"
                 >
-                  <X size={14} />
-                  Limpar
+                  <X size={14} /> Limpar
                 </button>
               )}
             </div>
           </div>
 
+          {/* Busca */}
           <div className="mt-4 relative">
             <Search
               size={16}
@@ -171,194 +190,163 @@ export default function DocumentsPage() {
               placeholder="Buscar documentos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 bg-surface-raised border-surface-border/50 focus:border-steel-light"
             />
           </div>
 
-          {showFilters && (
-            <div className="mt-4 p-4 rounded-xl bg-surface-raised border border-surface-border space-y-4 animate-in fade-in slide-in-from-top duration-200">
-              <div>
-                <label className="block text-xs text-ink-muted mb-1.5">Pessoa</label>
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  <button
-                    onClick={() => {
-                      trigger("vibrate");
-                      setSelectedPersonId(null);
-                    }}
-                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] ${
-                      selectedPersonId === null
-                        ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    Todos
-                  </button>
-                  {persons.map((person) => (
+          {/* Filtros */}
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mt-4 p-4 rounded-xl bg-surface-raised border border-surface-border/50 space-y-4 overflow-hidden"
+              >
+                {/* Pessoa */}
+                <div>
+                  <label className="block text-xs text-ink-muted mb-1.5">Pessoa</label>
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                     <button
-                      key={person.id}
-                      onClick={() => {
-                        trigger("vibrate");
-                        setSelectedPersonId(person.id!);
-                      }}
-                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] whitespace-nowrap ${
-                        selectedPersonId === person.id
+                      onClick={() => setSelectedPersonId(null)}
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 whitespace-nowrap ${
+                        selectedPersonId === null
                           ? "border-ice bg-ice/10 text-ice"
                           : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
                       }`}
                     >
-                      {person.name}
+                      Todos
                     </button>
-                  ))}
+                    {persons.map((person) => (
+                      <button
+                        key={person.id}
+                        onClick={() => setSelectedPersonId(person.id!)}
+                        className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 whitespace-nowrap ${
+                          selectedPersonId === person.id
+                            ? "border-ice bg-ice/10 text-ice"
+                            : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                        }`}
+                      >
+                        {person.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs text-ink-muted mb-1.5">Categoria</label>
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={() => {
-                      trigger("vibrate");
-                      setSelectedCategory("all");
-                    }}
-                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] ${
-                      selectedCategory === "all"
-                        ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    Todas
-                  </button>
-                  {Object.values(CATEGORIES).map((cat) => (
+                {/* Categoria */}
+                <div>
+                  <label className="block text-xs text-ink-muted mb-1.5">Categoria</label>
+                  <div className="flex gap-2 flex-wrap">
                     <button
-                      key={cat.id}
-                      onClick={() => {
-                        trigger("vibrate");
-                        setSelectedCategory(cat.id);
-                      }}
-                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] ${
-                        selectedCategory === cat.id
+                      onClick={() => setSelectedCategory("all")}
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
+                        selectedCategory === "all"
                           ? "border-ice bg-ice/10 text-ice"
                           : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
                       }`}
-                      style={{
-                        borderColor: selectedCategory === cat.id ? cat.color : undefined,
-                      }}
                     >
-                      <span className="flex items-center gap-1">
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: cat.color }}
-                        />
+                      Todas
+                    </button>
+                    {Object.values(CATEGORIES).map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setSelectedCategory(cat.id)}
+                        className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 flex items-center gap-1 ${
+                          selectedCategory === cat.id
+                            ? "border-ice bg-ice/10 text-ice"
+                            : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
                         {cat.name}
-                      </span>
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs text-ink-muted mb-1.5">Tipo</label>
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={() => {
-                      trigger("vibrate");
-                      setSelectedType("all");
-                    }}
-                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] ${
-                      selectedType === "all"
-                        ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    Todos
-                  </button>
-                  {DOCUMENT_TYPES.map((type) => (
+                {/* Tipo */}
+                <div>
+                  <label className="block text-xs text-ink-muted mb-1.5">Tipo</label>
+                  <div className="flex gap-2 flex-wrap">
                     <button
-                      key={type.id}
-                      onClick={() => {
-                        trigger("vibrate");
-                        setSelectedType(type.id);
-                      }}
-                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] ${
-                        selectedType === type.id
+                      onClick={() => setSelectedType("all")}
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
+                        selectedType === "all"
                           ? "border-ice bg-ice/10 text-ice"
                           : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
                       }`}
                     >
-                      {type.label}
+                      Todos
                     </button>
-                  ))}
+                    {DOCUMENT_TYPES.map((type) => (
+                      <button
+                        key={type.id}
+                        onClick={() => setSelectedType(type.id)}
+                        className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
+                          selectedType === type.id
+                            ? "border-ice bg-ice/10 text-ice"
+                            : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                        }`}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs text-ink-muted mb-1.5">Data de validade</label>
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={() => {
-                      trigger("vibrate");
-                      setDateFilter("all");
-                    }}
-                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] ${
-                      dateFilter === "all"
-                        ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    Todas
-                  </button>
-                  <button
-                    onClick={() => {
-                      trigger("vibrate");
-                      setDateFilter("expiring");
-                    }}
-                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] flex items-center gap-1 ${
-                      dateFilter === "expiring"
-                        ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    <Calendar size={12} />
-                    Vencendo (7 dias)
-                  </button>
-                  <button
-                    onClick={() => {
-                      trigger("vibrate");
-                      setDateFilter("expired");
-                    }}
-                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-[0.98] flex items-center gap-1 ${
-                      dateFilter === "expired"
-                        ? "border-coral bg-coral/10 text-coral"
-                        : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    <Calendar size={12} />
-                    Vencidos
-                  </button>
+                {/* Data */}
+                <div>
+                  <label className="block text-xs text-ink-muted mb-1.5">Validade</label>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setDateFilter("all")}
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
+                        dateFilter === "all"
+                          ? "border-ice bg-ice/10 text-ice"
+                          : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                      }`}
+                    >
+                      Todas
+                    </button>
+                    <button
+                      onClick={() => setDateFilter("expiring")}
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 flex items-center gap-1 ${
+                        dateFilter === "expiring"
+                          ? "border-ice bg-ice/10 text-ice"
+                          : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                      }`}
+                    >
+                      <Calendar size={12} />
+                      Vencendo (7d)
+                    </button>
+                    <button
+                      onClick={() => setDateFilter("expired")}
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 flex items-center gap-1 ${
+                        dateFilter === "expired"
+                          ? "border-coral bg-coral/10 text-coral"
+                          : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
+                      }`}
+                    >
+                      <Calendar size={12} />
+                      Vencidos
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </header>
 
-        <div className="px-5 pt-4 pb-2 flex items-center justify-between">
-          <p className="text-sm text-ink-muted">
-            {filteredDocs.length} documento{filteredDocs.length !== 1 ? "s" : ""}
-            {hasActiveFilters && " (filtrado)"}
-          </p>
-          {hasActiveFilters && (
-            <span className="text-xs text-ice">{filteredDocs.length} resultados</span>
-          )}
-        </div>
-
-        <section className="px-5 pt-2 space-y-3">
+        {/* Lista */}
+        <section className="px-5 pt-5 space-y-3">
           {filteredDocs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="text-ink-muted">
                 {searchQuery
-                  ? "Nenhum documento encontrado para sua busca"
+                  ? "Nenhum documento encontrado"
                   : hasActiveFilters
-                  ? "Nenhum documento com os filtros selecionados"
+                  ? "Nenhum documento com esses filtros"
                   : "Nenhum documento ainda"}
               </p>
               {hasActiveFilters && (
@@ -371,16 +359,19 @@ export default function DocumentsPage() {
               )}
             </div>
           ) : (
-            filteredDocs.map((doc) => (
-              <div
+            filteredDocs.map((doc, index) => (
+              <motion.div
                 key={doc.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: index * 0.03 }}
                 ref={(el) => { cardRefs.current[doc.id!] = el; }}
               >
                 <DocumentCard
                   document={doc}
                   onFavoriteToggle={handleFavoriteToggle}
                 />
-              </div>
+              </motion.div>
             ))
           )}
         </section>
