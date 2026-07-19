@@ -1,7 +1,8 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, Pill, Calendar, Plus, FileText } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft, Pill, Calendar, Plus, FileText, Clock } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -9,12 +10,15 @@ import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageTransition } from "@/components/PageTransition";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { useEffect, useState } from "react";
 
 export default function MedicamentoDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = Number(searchParams.get("id"));
+  const [isLoading, setIsLoading] = useState(true);
 
   const medicamento = useLiveQuery(
     () => db.medicamentos.get(id),
@@ -27,6 +31,15 @@ export default function MedicamentoDetailPage() {
     [id],
     []
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
 
   if (!medicamento) {
     return (
@@ -43,35 +56,55 @@ export default function MedicamentoDetailPage() {
     );
   }
 
+  const dataReceita = new Date(medicamento.data_receita);
+  const dataRenovacao = new Date(medicamento.proxima_renovacao);
+  const diasRestantes = Math.ceil((dataRenovacao.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  const isUrgent = diasRestantes < 7;
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
-            <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary truncate max-w-[200px]">
-                {medicamento.nome}
-              </h1>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl ${isUrgent ? "bg-coral/20" : "bg-surface-raised"}`}>
+                <Pill size={20} className={isUrgent ? "text-coral" : "text-ink-muted"} />
+              </div>
+              <div>
+                <h1 className="font-display text-xl font-semibold text-ink-primary truncate max-w-[200px]">
+                  {medicamento.nome}
+                </h1>
+                <p className="text-sm text-ink-muted">{medicamento.dosagem}</p>
+              </div>
             </div>
+            {isUrgent && (
+              <span className="ml-auto text-xs px-3 py-1 rounded-full bg-coral/20 text-coral border border-coral/30">
+                {diasRestantes} dias
+              </span>
+            )}
           </div>
         </header>
 
         <section className="px-5 pt-6 space-y-6">
           {/* Card do medicamento */}
-          <div className="rounded-card border border-surface-border bg-surface p-6 shadow-vault">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="rounded-xl border border-surface-border/50 bg-surface p-6 shadow-sm"
+          >
             <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 rounded-xl bg-steel-dark/40">
-                <Pill size={24} className="text-steel-light" />
+              <div className={`p-3 rounded-xl ${isUrgent ? "bg-coral/20" : "bg-surface-raised"}`}>
+                <Pill size={24} className={isUrgent ? "text-coral" : "text-ink-muted"} />
               </div>
               <div>
                 <h2 className="font-display text-lg font-semibold text-ink-primary">
@@ -81,42 +114,52 @@ export default function MedicamentoDetailPage() {
               </div>
             </div>
 
-            <div className="border-t border-surface-border pt-4 space-y-2">
-              <div className="flex justify-between">
+            <div className="border-t border-surface-border/50 pt-4 space-y-2">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-ink-muted">Médico</span>
                 <span className="text-sm text-ink-primary font-medium">Dr(a). {medicamento.medico}</span>
               </div>
               {medicamento.farmacia && (
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-sm text-ink-muted">Farmácia</span>
                   <span className="text-sm text-ink-primary font-medium">{medicamento.farmacia}</span>
                 </div>
               )}
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-ink-muted">Data da receita</span>
                 <span className="text-sm text-ink-primary font-medium">
-                  {format(new Date(medicamento.data_receita), "dd/MM/yyyy", { locale: ptBR })}
+                  {format(dataReceita, "dd/MM/yyyy", { locale: ptBR })}
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-ink-muted">Próxima renovação</span>
-                <span className="text-sm text-ink-primary font-medium">
-                  {format(new Date(medicamento.proxima_renovacao), "dd/MM/yyyy", { locale: ptBR })}
+                <span className={`text-sm font-medium ${isUrgent ? "text-coral" : "text-ink-primary"}`}>
+                  {format(dataRenovacao, "dd/MM/yyyy", { locale: ptBR })}
+                  {!isUrgent && diasRestantes > 0 && (
+                    <span className="ml-2 text-xs text-ink-muted font-normal">
+                      ({diasRestantes} dias)
+                    </span>
+                  )}
                 </span>
               </div>
               {medicamento.observacoes && (
-                <div className="border-t border-surface-border pt-4 mt-2">
+                <div className="border-t border-surface-border/50 pt-4 mt-2">
                   <p className="text-sm text-ink-muted mb-1">Observações</p>
                   <p className="text-sm text-ink-primary">{medicamento.observacoes}</p>
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Histórico de renovações */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-display text-sm font-medium text-ink-primary">
+              <h3 className="font-display text-sm font-medium text-ink-primary flex items-center gap-2">
+                <Clock size={16} className="text-ink-muted" />
                 Histórico de renovações
               </h3>
               <Button
@@ -126,25 +169,31 @@ export default function MedicamentoDetailPage() {
                   trigger("vibrate");
                   router.push(`/saude/medicamentos/renovacao/novo?medicamento_id=${id}`);
                 }}
+                className="flex items-center gap-1"
               >
-                <Plus size={14} className="mr-1" />
+                <Plus size={14} />
                 Nova
               </Button>
             </div>
 
             {renovacoes.length === 0 ? (
-              <div className="text-center py-8 text-ink-muted text-sm">
+              <div className="text-center py-8 text-ink-muted text-sm border border-dashed border-surface-border/50 rounded-xl">
                 Nenhuma renovação registrada ainda
               </div>
             ) : (
               <div className="space-y-2">
-                {renovacoes.map((ren) => (
-                  <div
+                {renovacoes.map((ren, index) => (
+                  <motion.div
                     key={ren.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: index * 0.05 }}
+                    className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <Calendar size={16} className="text-ink-muted" />
+                      <div className="w-8 h-8 rounded-full bg-surface-border/50 flex items-center justify-center">
+                        <Calendar size={14} className="text-ink-muted" />
+                      </div>
                       <span className="text-sm text-ink-primary">
                         {format(new Date(ren.data), "dd/MM/yyyy", { locale: ptBR })}
                       </span>
@@ -152,11 +201,11 @@ export default function MedicamentoDetailPage() {
                     {ren.anexo_url && (
                       <FileText size={16} className="text-steel-light" />
                     )}
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
         </section>
       </main>
     </PageTransition>
