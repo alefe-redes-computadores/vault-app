@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, User, Trash2, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Plus, User, Trash2, Loader2, Users } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
@@ -10,13 +11,11 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
-import { useAuth } from "@/hooks/useAuth";
 
 export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast } = useToast();
-  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
@@ -35,9 +34,7 @@ export default function PessoasPage() {
     setIsDeleting(id);
     try {
       await db.transaction('rw', db.persons, db.documents, async () => {
-        // Remove todos os documentos da pessoa
         await db.documents.where('person_id').equals(id).delete();
-        // Remove a pessoa
         await db.persons.delete(id);
       });
       trigger("success");
@@ -58,7 +55,7 @@ export default function PessoasPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
@@ -74,7 +71,7 @@ export default function PessoasPage() {
                 trigger("vibrate");
                 router.push("/pessoas/novo");
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void active:scale-[0.98] transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void active:scale-95 transition-all"
             >
               <Plus size={18} strokeWidth={2.5} />
             </button>
@@ -83,9 +80,14 @@ export default function PessoasPage() {
 
         <section className="px-5 pt-6 space-y-4">
           {persons.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border">
-                <User size={32} className="text-ink-muted" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col items-center justify-center py-16 text-center"
+            >
+              <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
+                <Users size={32} className="text-ink-muted" />
               </div>
               <h3 className="font-display text-lg text-ink-primary">Nenhuma pessoa</h3>
               <p className="text-sm text-ink-muted mt-1 max-w-xs">
@@ -101,12 +103,15 @@ export default function PessoasPage() {
               >
                 Adicionar pessoa
               </Button>
-            </div>
+            </motion.div>
           ) : (
-            persons.map((person) => (
-              <div
+            persons.map((person, index) => (
+              <motion.div
                 key={person.id}
-                className="flex items-center justify-between p-4 rounded-card border border-surface-border bg-surface shadow-vault"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: index * 0.05 }}
+                className="flex items-center justify-between p-4 rounded-xl border border-surface-border/50 bg-surface shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center gap-3">
                   {person.avatar_url ? (
@@ -116,7 +121,7 @@ export default function PessoasPage() {
                       className="w-12 h-12 rounded-full border-2 border-ice/20"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-steel-dark/40 flex items-center justify-center text-ink-muted text-lg">
+                    <div className="w-12 h-12 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-lg font-medium">
                       {person.name.charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -144,7 +149,7 @@ export default function PessoasPage() {
                     <Trash2 size={16} className="text-ink-muted hover:text-coral transition-colors" />
                   )}
                 </button>
-              </div>
+              </motion.div>
             ))
           )}
         </section>
