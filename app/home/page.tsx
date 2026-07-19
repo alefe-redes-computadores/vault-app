@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, LogOut, User } from "lucide-react";
+import { Search, Plus, LogOut, User, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
 import { useDocuments, useFavorites } from "@/hooks/useDocuments";
@@ -16,18 +16,13 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
-import { db } from "@/lib/db";
-import { useToast } from "@/components/ToastProvider";
 
-// ✅ DEBOUNCE (aguarda 300ms antes de buscar)
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
-
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedValue(value), delay);
     return () => clearTimeout(handler);
   }, [value, delay]);
-
   return debouncedValue;
 }
 
@@ -36,14 +31,12 @@ export default function HomePage() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { favorite } = useSafeDb();
-  const { showToast } = useToast();
 
   const persons = usePersons();
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -58,7 +51,6 @@ export default function HomePage() {
   const allDocs = useDocuments(selectedPersonId || undefined) || [];
   const favorites = useFavorites(selectedPersonId || undefined) || [];
 
-  // ✅ OTIMIZAÇÃO: useMemo para evitar recálculo desnecessário
   const filteredDocs = useMemo(() => {
     if (!debouncedSearch.trim()) return allDocs;
     const query = debouncedSearch.toLowerCase();
@@ -69,7 +61,6 @@ export default function HomePage() {
     );
   }, [allDocs, debouncedSearch]);
 
-  // ✅ OTIMIZAÇÃO: useCallback para evitar recriação de função
   const handleFavoriteToggle = useCallback(async (id: number) => {
     await favorite(id);
   }, [favorite]);
@@ -94,30 +85,6 @@ export default function HomePage() {
     return (docsByCategory[categoryId] || []).length > 3;
   }, [docsByCategory]);
 
-  const deletePerson = async (id: number) => {
-    try {
-      setIsDeleting(id);
-      await db.transaction('rw', db.persons, db.documents, async () => {
-        // Remove todos os documentos da pessoa
-        await db.documents.where('person_id').equals(id).delete();
-        // Remove a pessoa
-        await db.persons.delete(id);
-      });
-      trigger("success");
-      showToast("Pessoa removida com sucesso!", "success");
-      // Se a pessoa removida era a selecionada, limpa a seleção
-      if (selectedPersonId === id) {
-        setSelectedPersonId(persons[0]?.id || null);
-      }
-    } catch (error) {
-      console.error("Erro ao remover pessoa:", error);
-      trigger("error");
-      showToast("Erro ao remover pessoa", "error");
-    } finally {
-      setIsDeleting(null);
-    }
-  };
-
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
@@ -128,65 +95,53 @@ export default function HomePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        {/* HEADER REFORMULADO */}
+        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/50 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt={displayName}
-                  className="w-10 h-10 rounded-full border-2 border-ice/20"
+                  className="w-10 h-10 rounded-full border border-ice/20"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-steel-dark/40 flex items-center justify-center text-ink-muted text-lg">
+                <div className="w-10 h-10 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-sm font-medium">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
               <div>
-                <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-                <h1 className="font-display text-xl font-semibold text-ink-primary">
+                <h1 className="font-display text-lg font-semibold text-ink-primary">
                   Olá, {displayName.split(" ")[0]}
                 </h1>
+                <p className="text-xs text-ink-muted">
+                  {allDocs.length} documento{allDocs.length !== 1 ? "s" : ""}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-                  setIsSearchOpen(true);
-                }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
-              >
-                <Search size={18} className="text-ink-muted" />
-              </button>
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-                  logout();
-                }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
-              >
-                <LogOut size={18} className="text-ink-muted" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-3">
-            <p className="text-sm text-ink-muted">
-              {allDocs.length} documento{allDocs.length !== 1 ? "s" : ""}
-              {favorites.length > 0 && ` · ${favorites.length} favorito${favorites.length > 1 ? "s" : ""}`}
-            </p>
             <button
-              onClick={() => router.push("/favoritos")}
-              className="text-sm text-ice hover:text-ice/80 transition-colors"
+              onClick={() => {
+                trigger("vibrate");
+                setIsSearchOpen(true);
+              }}
+              className="p-2 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
             >
-              Ver favoritos
+              <Search size={18} className="text-ink-muted" />
             </button>
           </div>
 
+          {/* PESSOAS (scroll horizontal) */}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-ink-muted">Pessoas</span>
+              <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
+                Pessoas
+              </span>
+              <button
+                onClick={() => router.push("/pessoas/novo")}
+                className="text-xs text-ice/70 hover:text-ice transition-colors"
+              >
+                + Adicionar
+              </button>
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {persons.map((person) => (
@@ -198,20 +153,18 @@ export default function HomePage() {
                     trigger("vibrate");
                     setSelectedPersonId(person.id!);
                   }}
-                  onDelete={deletePerson}
-                  isDeleting={isDeleting === person.id}
                 />
               ))}
             </div>
           </div>
         </header>
 
+        {/* CONTEÚDO */}
         <section className="px-5 pt-5 space-y-6">
           <FavoritesSection favorites={favorites} onFavoriteToggle={handleFavoriteToggle} />
 
           {Object.keys(CATEGORIES).map((categoryId) => {
             const preview = getCategoryPreview(categoryId as CategoryId);
-            const more = hasMore(categoryId as CategoryId);
             const total = (docsByCategory[categoryId as CategoryId] || []).length;
 
             if (preview.length === 0) return null;
@@ -222,7 +175,7 @@ export default function HomePage() {
                 categoryId={categoryId as CategoryId}
                 documents={preview}
                 total={total}
-                hasMore={more}
+                hasMore={hasMore(categoryId as CategoryId)}
                 onFavoriteToggle={handleFavoriteToggle}
                 onSeeAll={() => {
                   router.push(`/categoria?nome=${categoryId}`);
@@ -232,11 +185,11 @@ export default function HomePage() {
           })}
 
           {allDocs.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border">
-                <User size={32} className="text-ink-muted" />
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-surface-raised flex items-center justify-center mb-4">
+                <User size={28} className="text-ink-muted" />
               </div>
-              <h3 className="font-display text-lg text-ink-primary">Nenhum documento</h3>
+              <h3 className="font-display text-base text-ink-primary">Nenhum documento</h3>
               <p className="text-sm text-ink-muted mt-1 max-w-xs">
                 Comece guardando seu primeiro documento no Vault
               </p>
@@ -245,26 +198,27 @@ export default function HomePage() {
                   trigger("success");
                   router.push("/novo");
                 }}
-                className="mt-6 flex items-center gap-2 rounded-full bg-ice px-6 py-3 text-void font-medium active:scale-[0.98] transition-all"
+                className="mt-4 flex items-center gap-2 rounded-full bg-ice px-5 py-2.5 text-void font-medium text-sm active:scale-[0.98] transition-all"
               >
-                <Plus size={18} />
-                Adicionar documento
+                <Plus size={16} />
+                Adicionar
               </button>
             </div>
           )}
         </section>
 
+        {/* BOTÃO FLUTUANTE (mais sutil) */}
         <button
           onClick={() => {
             trigger("success");
             router.push("/novo");
           }}
-          className="fixed bottom-24 right-5 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-vault active:scale-[0.98] transition-all z-20"
-          aria-label="Adicionar documento"
+          className="fixed bottom-24 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 active:scale-[0.95] transition-all z-20"
         >
-          <Plus size={24} strokeWidth={2.5} />
+          <Plus size={20} strokeWidth={2.5} />
         </button>
 
+        {/* BOTTOM SHEET DE BUSCA */}
         <BottomSheet isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscar documentos">
           <div className="space-y-4">
             <Input
