@@ -16,6 +16,8 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
+import { db } from "@/lib/db";
+import { useToast } from "@/components/ToastProvider";
 
 // ✅ DEBOUNCE (aguarda 300ms antes de buscar)
 function useDebounce(value: string, delay: number = 300) {
@@ -34,12 +36,14 @@ export default function HomePage() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { favorite } = useSafeDb();
+  const { showToast } = useToast();
 
   const persons = usePersons();
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -89,6 +93,30 @@ export default function HomePage() {
   const hasMore = useCallback((categoryId: CategoryId) => {
     return (docsByCategory[categoryId] || []).length > 3;
   }, [docsByCategory]);
+
+  const deletePerson = async (id: number) => {
+    try {
+      setIsDeleting(id);
+      await db.transaction('rw', db.persons, db.documents, async () => {
+        // Remove todos os documentos da pessoa
+        await db.documents.where('person_id').equals(id).delete();
+        // Remove a pessoa
+        await db.persons.delete(id);
+      });
+      trigger("success");
+      showToast("Pessoa removida com sucesso!", "success");
+      // Se a pessoa removida era a selecionada, limpa a seleção
+      if (selectedPersonId === id) {
+        setSelectedPersonId(persons[0]?.id || null);
+      }
+    } catch (error) {
+      console.error("Erro ao remover pessoa:", error);
+      trigger("error");
+      showToast("Erro ao remover pessoa", "error");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
@@ -170,6 +198,8 @@ export default function HomePage() {
                     trigger("vibrate");
                     setSelectedPersonId(person.id!);
                   }}
+                  onDelete={deletePerson}
+                  isDeleting={isDeleting === person.id}
                 />
               ))}
             </div>
