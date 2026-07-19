@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fingerprint, ScanFace, Eye, Shield, Lock } from "lucide-react";
+import { Fingerprint, Eye, Shield, Lock } from "lucide-react";
 import { useBiometric } from "@/hooks/useBiometric";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +27,8 @@ export function BiometricLock({ children }: BiometricLockProps) {
   } = useBiometric({
     onSuccess: () => {
       console.log("Autenticado com sucesso!");
+      // Remove a classe do body ao desbloquear
+      document.body.classList.remove("biometric-locked");
     },
     onError: (error) => {
       console.error("Erro na biometria:", error);
@@ -36,22 +38,29 @@ export function BiometricLock({ children }: BiometricLockProps) {
     description: "Mantenha seus documentos seguros",
   });
 
+  // Adiciona classe quando bloqueado
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading && isAvailable) {
+      document.body.classList.add("biometric-locked");
+    } else {
+      document.body.classList.remove("biometric-locked");
+    }
+    return () => document.body.classList.remove("biometric-locked");
+  }, [isAuthenticated, isLoading, isAvailable]);
+
   // Verifica se o usuário está logado
   if (!user) {
     return <>{children}</>;
   }
 
-  // Se não houver biometria disponível, mostra o conteúdo normalmente
   if (!isAvailable && !isLoading) {
     return <>{children}</>;
   }
 
-  // Se já autenticou, mostra o conteúdo
   if (isAuthenticated) {
     return <>{children}</>;
   }
 
-  // Enquanto verifica disponibilidade, mostra loading
   if (isLoading) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center">
@@ -65,7 +74,7 @@ export function BiometricLock({ children }: BiometricLockProps) {
 
   const iconMap = {
     fingerprint: Fingerprint,
-    face: ScanFace,
+    face: Eye,
     iris: Eye,
     none: Lock,
   };
@@ -81,7 +90,7 @@ export function BiometricLock({ children }: BiometricLockProps) {
       : "Biometria";
 
   return (
-    <div className="min-h-screen bg-void flex items-center justify-center p-4">
+    <div className="min-h-screen bg-void flex items-center justify-center p-4 biometric-lock-screen">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
