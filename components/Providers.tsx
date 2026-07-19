@@ -117,12 +117,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // Renderiza com header e BottomNav
   return (
     <div className="min-h-screen pb-24">
-      {/* Header com SyncStatus */}
-      <div className="glass-header sticky top-0 z-10 px-5 py-2 border-b border-surface-border flex items-center justify-end">
-        <SyncStatus showLabel />
-      </div>
+      {/* Header com SyncStatus (apenas quando logado e não em páginas especiais) */}
+      {user && (
+        <div className="glass-header sticky top-0 z-10 px-5 py-2 border-b border-surface-border flex items-center justify-end">
+          <SyncStatus showLabel />
+        </div>
+      )}
       {children}
       <BottomNav />
     </div>
