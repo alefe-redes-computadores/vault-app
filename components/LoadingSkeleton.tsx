@@ -1,24 +1,38 @@
 "use client";
 
+import { motion } from "framer-motion";
+
 export function LoadingSkeleton() {
   return (
-    <div className="space-y-3 animate-pulse">
-      {[1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="rounded-card bg-surface-raised border border-surface-border p-4"
-        >
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-surface-border" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-surface-border rounded w-3/4" />
-              <div className="h-3 bg-surface-border rounded w-1/2" />
-              <div className="h-3 bg-surface-border rounded w-1/3" />
-            </div>
-            <div className="w-5 h-5 rounded-full bg-surface-border" />
-          </div>
+    <div className="min-h-screen bg-void flex flex-col items-center justify-center p-6">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col items-center gap-6"
+      >
+        {/* Logo animada */}
+        <div className="w-20 h-20 rounded-full bg-ice/10 border-2 border-ice/30 flex items-center justify-center">
+          <span className="text-3xl">🔒</span>
         </div>
-      ))}
+
+        {/* Título */}
+        <h1 className="font-display text-2xl font-semibold text-ink-primary animate-pulse">
+          Vault
+        </h1>
+
+        {/* Barra de progresso animada */}
+        <div className="w-48 h-1 bg-surface-border rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-ice rounded-full"
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+
+        <p className="text-sm text-ink-muted">Carregando seus documentos...</p>
+      </motion.div>
     </div>
   );
 }
