@@ -1,22 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useSentry } from "@/hooks/useSentry";
 import { BottomNav } from "./BottomNav";
+import { SyncStatus } from "./SyncStatus";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, isSyncing } = useAuth();
   const { handleNotificationAction } = useNotifications();
   const { setUser, captureException } = useSentry();
+  const { processQueue, isProcessing, isOnline } = useSyncQueue();
 
-  // Ativa a fila de sincronização
-  useSyncQueue();
+  // Ativa a fila de sincronização (push)
+  useEffect(() => {
+    if (isOnline) {
+      processQueue();
+    }
+  }, [isOnline, processQueue]);
 
   // Define o usuário no Sentry
   useEffect(() => {
@@ -113,6 +119,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen pb-24">
+      {/* Header com SyncStatus */}
+      <div className="glass-header sticky top-0 z-10 px-5 py-2 border-b border-surface-border flex items-center justify-end">
+        <SyncStatus showLabel />
+      </div>
       {children}
       <BottomNav />
     </div>
