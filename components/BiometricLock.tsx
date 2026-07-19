@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Fingerprint, Eye, Shield, Lock } from "lucide-react";
 import { useBiometric } from "@/hooks/useBiometric";
+import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -16,18 +17,18 @@ export function BiometricLock({ children }: BiometricLockProps) {
   const { user } = useAuth();
   const router = useRouter();
   const [showFallback, setShowFallback] = useState(false);
+  const { isEnabled, isLoading: prefLoading } = useBiometricPreference();
 
   const {
     isAvailable,
     isAuthenticated,
-    isLoading,
+    isLoading: bioLoading,
     biometricType,
     authenticate,
     reset,
   } = useBiometric({
     onSuccess: () => {
       console.log("Autenticado com sucesso!");
-      // Remove a classe do body ao desbloquear
       document.body.classList.remove("biometric-locked");
     },
     onError: (error) => {
@@ -38,30 +39,30 @@ export function BiometricLock({ children }: BiometricLockProps) {
     description: "Mantenha seus documentos seguros",
   });
 
-  // Adiciona classe quando bloqueado
+  // Adiciona/remove classe de bloqueio
   useEffect(() => {
-    if (!isAuthenticated && !isLoading && isAvailable) {
+    if (!isAuthenticated && !bioLoading && isAvailable && isEnabled) {
       document.body.classList.add("biometric-locked");
     } else {
       document.body.classList.remove("biometric-locked");
     }
     return () => document.body.classList.remove("biometric-locked");
-  }, [isAuthenticated, isLoading, isAvailable]);
+  }, [isAuthenticated, bioLoading, isAvailable, isEnabled]);
 
-  // Verifica se o usuário está logado
-  if (!user) {
-    return <>{children}</>;
-  }
+  // Se o usuário não estiver logado, mostra o conteúdo normalmente
+  if (!user) return <>{children}</>;
 
-  if (!isAvailable && !isLoading) {
-    return <>{children}</>;
-  }
+  // Se a biometria estiver desabilitada nas preferências, pula a tela
+  if (!isEnabled || prefLoading) return <>{children}</>;
 
-  if (isAuthenticated) {
-    return <>{children}</>;
-  }
+  // Se não houver biometria disponível, pula
+  if (!isAvailable && !bioLoading) return <>{children}</>;
 
-  if (isLoading) {
+  // Se já autenticou, mostra o conteúdo
+  if (isAuthenticated) return <>{children}</>;
+
+  // Loading
+  if (bioLoading) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center">
         <div className="text-center">
