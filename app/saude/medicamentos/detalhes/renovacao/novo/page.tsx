@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, Save, Loader2, Upload } from "lucide-react";
+import { ArrowLeft, Calendar, Save, Loader2, Upload, X, FileText } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { safeAddRenovacao } from "@/lib/db";
+import { uploadFile } from "@/lib/supabase/storage";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -16,12 +18,52 @@ export default function NewRenovacaoPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const medicamentoId = Number(searchParams.get("medicamento_id"));
+  const { user } = useAuth();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     data: "",
     observacoes: "",
+    anexo_url: "",
   });
+
+  const handleFileUpload = async (file: File) => {
+    if (!user) {
+      trigger("error");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const folder = "renovacoes";
+      const { url, error } = await uploadFile(user.id, file, folder);
+      if (error) throw error;
+      
+      setFormData((prev) => ({ ...prev, anexo_url: url }));
+      trigger("success");
+    } catch (error) {
+      console.error("Erro no upload:", error);
+      trigger("error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+    e.target.value = "";
+  };
+
+  const removeAttachment = () => {
+    setFormData((prev) => ({ ...prev, anexo_url: "" }));
+    trigger("vibrate");
+  };
 
   const handleSubmit = async () => {
     if (!formData.data) {
@@ -34,6 +76,7 @@ export default function NewRenovacaoPage() {
       await safeAddRenovacao({
         medicamento_id: medicamentoId,
         data: formData.data,
+        anexo_url: formData.anexo_url || undefined,
         observacoes: formData.observacoes || undefined,
       });
       trigger("success");
@@ -49,6 +92,14 @@ export default function NewRenovacaoPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+
         <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
@@ -97,20 +148,49 @@ export default function NewRenovacaoPage() {
             />
           </motion.div>
 
+          {/* Upload de anexo */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="grid grid-cols-2 gap-3"
+            className="space-y-2"
           >
-            <Button
-              variant="secondary"
-              className="flex items-center justify-center gap-2"
-              onClick={() => trigger("vibrate")}
-            >
-              <Upload size={16} />
-              Anexar receita
-            </Button>
+            <label className="block text-sm font-medium text-ink-primary">Anexo (opcional)</label>
+            
+            {formData.anexo_url ? (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border/50">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-ink-muted" />
+                  <span className="text-sm text-ink-primary truncate max-w-[200px]">
+                    {formData.anexo_url.split('/').pop() || 'Arquivo anexado'}
+                  </span>
+                </div>
+                <button
+                  onClick={removeAttachment}
+                  className="p-1 rounded-full hover:bg-surface-border transition-colors"
+                  disabled={uploading}
+                >
+                  <X size={16} className="text-ink-muted hover:text-coral transition-colors" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                variant="secondary"
+                className="w-full flex items-center justify-center gap-2 py-6 border-dashed"
+                onClick={() => {
+                  trigger("vibrate");
+                  fileInputRef.current?.click();
+                }}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Upload size={16} />
+                )}
+                {uploading ? "Enviando..." : "Anexar receita (imagem ou PDF)"}
+              </Button>
+            )}
           </motion.div>
 
           <motion.div
@@ -123,7 +203,7 @@ export default function NewRenovacaoPage() {
               size="lg"
               fullWidth
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading || uploading}
               className="flex items-center justify-center gap-2 mt-4"
             >
               {loading ? (
