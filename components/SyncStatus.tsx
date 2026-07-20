@@ -6,6 +6,7 @@ import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
+import { useToast } from "@/components/ToastProvider";
 
 interface SyncStatusProps {
   showLabel?: boolean;
@@ -16,10 +17,10 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
   const { trigger } = useHapticFeedback();
   const { processQueue, isProcessing, isOnline } = useSyncQueue();
   const { refresh, isSyncing } = useAuth();
+  const { showToast } = useToast();
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "success" | "error">("idle");
   const [pendingCount, setPendingCount] = useState(0);
 
-  // Verifica quantos itens estão pendentes na fila
   useEffect(() => {
     const checkPending = async () => {
       try {
@@ -41,6 +42,7 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
     if (!isOnline) {
       trigger("error");
       setSyncStatus("error");
+      showToast("Sem conexão com a internet", "error");
       setTimeout(() => setSyncStatus("idle"), 3000);
       return;
     }
@@ -49,24 +51,22 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
 
     setSyncStatus("syncing");
     trigger("vibrate");
+    showToast("Sincronizando dados...", "info");
 
     try {
-      // Primeiro faz push (envia dados locais para nuvem)
       await processQueue();
-      
-      // Depois faz pull (puxa dados da nuvem para local)
       await refresh();
       
       setSyncStatus("success");
-      
-      // Atualiza contagem após sync
       const pending = await db.syncQueue.count();
       setPendingCount(pending);
       
+      showToast("Dados sincronizados com sucesso!", "success");
       setTimeout(() => setSyncStatus("idle"), 3000);
     } catch (error) {
       console.error("Erro na sincronização:", error);
       setSyncStatus("error");
+      showToast("Erro ao sincronizar dados", "error");
       setTimeout(() => setSyncStatus("idle"), 3000);
     }
   };
@@ -75,7 +75,6 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      {/* Indicador visual */}
       <div className="relative flex items-center">
         {isSyncingAll ? (
           <Loader2 size={16} className="text-ice animate-spin" />
@@ -98,7 +97,6 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
         )}
       </div>
 
-      {/* Botão de sincronização manual */}
       <button
         onClick={handleSync}
         disabled={isSyncingAll || !isOnline}
