@@ -2,37 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { ArrowLeft, User, Mail, Phone, Save, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
+import { db } from "@/lib/db";
+import { useToast } from "@/components/ToastProvider";
 
 export default function NewPersonPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
-  const { addPerson } = useSafeDb();
+  const { showToast } = useToast();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const handleAutoFill = () => {
-    if (user?.user_metadata) {
-      setName(user.user_metadata.full_name || "");
-      setEmail(user.email || "");
-      trigger("vibrate");
-    }
-  };
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    avatar_url: "",
+  });
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
+    trigger("vibrate");
+    
+    if (!formData.name.trim()) {
       setError("Nome é obrigatório");
       trigger("error");
       return;
@@ -42,14 +39,18 @@ export default function NewPersonPage() {
     setError("");
 
     try {
-      await addPerson({
+      await db.persons.add({
         user_id: user?.id || "",
-        name: name.trim(),
-        email: email.trim() || undefined,
-        phone: phone.trim() || undefined,
-        avatar_url: user?.user_metadata?.avatar_url,
+        name: formData.name.trim(),
+        email: formData.email.trim() || undefined,
+        phone: formData.phone.trim() || undefined,
+        avatar_url: formData.avatar_url || undefined,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        synced: false,
       });
       trigger("success");
+      showToast("Pessoa adicionada com sucesso!", "success");
       router.push("/pessoas");
     } catch (err) {
       setError("Erro ao salvar pessoa");
@@ -58,6 +59,20 @@ export default function NewPersonPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePreencherDados = () => {
+    trigger("vibrate");
+    const nome = user?.user_metadata?.full_name || "";
+    const email = user?.email || "";
+    const avatar = user?.user_metadata?.avatar_url || "";
+    setFormData({
+      name: nome,
+      email: email,
+      phone: "",
+      avatar_url: avatar,
+    });
+    showToast("Dados preenchidos com seu perfil!", "info");
   };
 
   return (
@@ -82,21 +97,16 @@ export default function NewPersonPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="rounded-xl border border-surface-border/50 bg-surface p-6 shadow-sm"
-          >
+          <div className="rounded-xl border border-surface-border/50 bg-surface p-6 shadow-sm">
             <div className="flex flex-col items-center gap-4 mb-6">
               <div className="w-24 h-24 rounded-full bg-surface-raised flex items-center justify-center border-2 border-ice/20">
                 <User size={40} className="text-ink-muted" />
               </div>
               <button
-                onClick={handleAutoFill}
+                onClick={handlePreencherDados}
                 className="text-sm text-ice hover:text-ice/80 transition-colors"
               >
-                Preencher com meus dados do Google
+                Preencher com meus dados
               </button>
             </div>
 
@@ -104,8 +114,8 @@ export default function NewPersonPage() {
               <Input
                 label="Nome completo"
                 placeholder="Ex: Alefe Gomes"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={formData.name}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                 error={error}
                 required
               />
@@ -118,8 +128,8 @@ export default function NewPersonPage() {
                 <Input
                   label="E-mail"
                   placeholder="exemplo@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                   className="pl-9"
                 />
               </div>
@@ -132,40 +142,34 @@ export default function NewPersonPage() {
                 <Input
                   label="Telefone"
                   placeholder="(11) 99999-9999"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  value={formData.phone}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
                   className="pl-9"
                 />
               </div>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSubmit}
+            disabled={loading}
+            className="flex items-center justify-center gap-2"
           >
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Salvar pessoa
-                </>
-              )}
-            </Button>
-          </motion.div>
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Adicionar pessoa
+              </>
+            )}
+          </Button>
         </section>
       </main>
     </PageTransition>
