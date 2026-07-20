@@ -119,7 +119,6 @@ export default function NewDocumentPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
 
-  // Modais para seleção
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
@@ -193,6 +192,7 @@ export default function NewDocumentPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      trigger("vibrate");
       handleFileUpload(file);
     }
     e.target.value = "";
@@ -201,6 +201,7 @@ export default function NewDocumentPage() {
   const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      trigger("vibrate");
       handleFileUpload(file);
     }
     e.target.value = "";
@@ -236,6 +237,8 @@ export default function NewDocumentPage() {
   };
 
   const handleSubmit = async () => {
+    trigger("vibrate");
+    
     if (!validate()) {
       trigger("error");
       const firstErrorKey = Object.keys(errors)[0];
@@ -340,7 +343,10 @@ export default function NewDocumentPage() {
               {persons.map((person) => (
                 <button
                   key={person.id}
-                  onClick={() => handleChange("person_id", person.id!)}
+                  onClick={() => {
+                    trigger("vibrate");
+                    handleChange("person_id", person.id!);
+                  }}
                   className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
                     formData.person_id === person.id
                       ? "border-ice bg-ice/10 text-ice"
@@ -369,7 +375,10 @@ export default function NewDocumentPage() {
               {Object.values(CATEGORIES).map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => handleChange("category_id", cat.id)}
+                  onClick={() => {
+                    trigger("vibrate");
+                    handleChange("category_id", cat.id);
+                  }}
                   className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
                     formData.category_id === cat.id
                       ? "border-ice bg-ice/10 text-ice"
@@ -392,7 +401,10 @@ export default function NewDocumentPage() {
               Tipo de documento <span className="text-coral">*</span>
             </label>
             <button
-              onClick={() => setIsTypeModalOpen(true)}
+              onClick={() => {
+                trigger("vibrate");
+                setIsTypeModalOpen(true);
+              }}
               className="w-full text-left px-4 py-3 rounded-xl bg-surface-raised border border-surface-border/50 text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
             >
               {DOCUMENT_TYPE_LABELS[formData.type] || "Selecionar tipo..."}
@@ -429,7 +441,6 @@ export default function NewDocumentPage() {
                 const rawValue = formData.metadata[field.key] || '';
                 const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
 
-                // Campo do tipo date
                 if (field.type === "date") {
                   return (
                     <CustomDatePicker
@@ -444,7 +455,6 @@ export default function NewDocumentPage() {
                   );
                 }
 
-                // Campo do tipo select (médico, farmácia, hospital)
                 if (field.type === "select") {
                   let items: any[] = [];
                   let renderItem: any;
@@ -472,6 +482,7 @@ export default function NewDocumentPage() {
                     isModalOpen = isDoctorModalOpen;
                     setIsModalOpen = setIsDoctorModalOpen;
                     onSelect = (item: any) => {
+                      trigger("vibrate");
                       handleMetadataChange(field.key, String(item.id));
                     };
                     placeholder = "Buscar médico...";
@@ -492,6 +503,7 @@ export default function NewDocumentPage() {
                     isModalOpen = isPharmacyModalOpen;
                     setIsModalOpen = setIsPharmacyModalOpen;
                     onSelect = (item: any) => {
+                      trigger("vibrate");
                       handleMetadataChange(field.key, String(item.id));
                     };
                     placeholder = "Buscar farmácia...";
@@ -512,6 +524,7 @@ export default function NewDocumentPage() {
                     isModalOpen = isHospitalModalOpen;
                     setIsModalOpen = setIsHospitalModalOpen;
                     onSelect = (item: any) => {
+                      trigger("vibrate");
                       handleMetadataChange(field.key, String(item.id));
                     };
                     placeholder = "Buscar hospital...";
@@ -525,7 +538,10 @@ export default function NewDocumentPage() {
                   return (
                     <div key={field.key}>
                       <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={() => {
+                          trigger("vibrate");
+                          setIsModalOpen(true);
+                        }}
                         className={`w-full text-left px-4 py-3 rounded-xl bg-surface-raised border transition-colors ${
                           errors[field.key]
                             ? "border-coral/50 focus:border-coral"
@@ -549,6 +565,7 @@ export default function NewDocumentPage() {
                         getItemLabel={getItemLabel}
                         onCreateNew={() => {
                           setIsModalOpen(false);
+                          trigger("vibrate");
                           router.push(createPath);
                         }}
                         createNewLabel={`Criar ${field.label.toLowerCase()}`}
@@ -557,7 +574,6 @@ export default function NewDocumentPage() {
                   );
                 }
 
-                // Campo do tipo text normal
                 return (
                   <Input
                     key={field.key}
@@ -592,7 +608,10 @@ export default function NewDocumentPage() {
               </label>
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => handleChange("vault_id", undefined)}
+                  onClick={() => {
+                    trigger("vibrate");
+                    handleChange("vault_id", undefined);
+                  }}
                   className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
                     formData.vault_id === undefined
                       ? "border-ice bg-ice/10 text-ice"
@@ -604,7 +623,10 @@ export default function NewDocumentPage() {
                 {userVaults.map((vault) => (
                   <button
                     key={vault.id}
-                    onClick={() => handleChange("vault_id", vault.id!)}
+                    onClick={() => {
+                      trigger("vibrate");
+                      handleChange("vault_id", vault.id!);
+                    }}
                     className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 flex items-center gap-1 ${
                       formData.vault_id === vault.id
                         ? "border-ice bg-ice/10 text-ice"
@@ -726,7 +748,10 @@ export default function NewDocumentPage() {
 
         <DocumentTypeSelector
           selected={formData.type}
-          onChange={(type) => handleChange("type", type)}
+          onChange={(type) => {
+            trigger("vibrate");
+            handleChange("type", type);
+          }}
           isOpen={isTypeModalOpen}
           onClose={() => setIsTypeModalOpen(false)}
         />
