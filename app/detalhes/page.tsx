@@ -249,8 +249,8 @@ export default function DocumentDetailPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="rounded-xl border p-6 shadow-sm bg-surface"
-            style={{ borderColor: `${category.color}25`, backgroundColor: "rgba(20, 24, 29, 0.8)" }}
+            className="rounded-xl border p-6 shadow-vault bg-surface"
+            style={{ borderColor: `${category.color}25` }}
           >
             <div className="flex items-center gap-3 mb-4">
               <div
