@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 export default function MedicamentosPage() {
   const { trigger } = useHapticFeedback();
@@ -137,6 +138,9 @@ export default function MedicamentosPage() {
             })
           )}
         </section>
+
+        {/* ScrollToTop */}
+        <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
   );
