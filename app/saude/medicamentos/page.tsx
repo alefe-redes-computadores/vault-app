@@ -1,96 +1,131 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Pill, Plus, AlertCircle, Loader2 } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { ArrowLeft, Plus, Pill, Trash2, Edit, Loader2, Calendar, AlertTriangle } from "lucide-react";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useHapticFeedback } from "@/lib/haptics";
-import { Button } from "@/components/ui/Button";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { useToast } from "@/components/ToastProvider";
+import { format, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function MedicamentosPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
+  const { showToast, showSuccess } = useToast();
+  const { medicamentos, deleteMedicamento } = useMedicamentos();
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 600);
-    return () => clearTimeout(timer);
-  }, []);
+  const handleDeleteClick = async (id: number, nome: string) => {
+    trigger("vibrate");
 
-  const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []);
+    // Mostrar toast com opção de desfazer
+    const toastId = showSuccess(
+      `"${nome}" foi removido`,
+      5000,
+      {
+        label: "Desfazer",
+        onClick: () => {
+          showToast("Restauração em breve...", "info");
+        }
+      }
+    );
 
-  const getProximaRenovacao = (data: string) => {
-    const hoje = new Date();
-    const renovacao = new Date(data);
-    const diff = Math.ceil((renovacao.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-    return diff;
+    setIsDeleting(id);
+    try {
+      await deleteMedicamento(id);
+      trigger("success");
+    } catch (error) {
+      showToast("Erro ao remover medicamento", "error");
+      trigger("error");
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
-  if (isLoading) {
-    return <LoadingSkeleton />;
-  }
+  const formatDate = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), "dd/MM/yyyy", { locale: ptBR });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getDaysUntilRenewal = (dateStr: string) => {
+    try {
+      const today = new Date();
+      const renewal = new Date(dateStr);
+      return differenceInDays(renewal, today);
+    } catch {
+      return null;
+    }
+  };
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              >
+                <ArrowLeft size={18} className="text-ink-primary" />
+              </button>
+              <div>
+                <h1 className="font-display text-xl font-semibold text-ink-primary">Medicamentos</h1>
+                <p className="text-sm text-ink-muted">
+                  {medicamentos.length} medicamento{medicamentos.length !== 1 ? "s" : ""} cadastrado{medicamentos.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+            </div>
             <button
               onClick={() => {
                 trigger("vibrate");
-                router.back();
+                router.push("/saude/medicamentos/novo");
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void active:scale-95 transition-all"
             >
-              <ArrowLeft size={18} className="text-ink-primary" />
+              <Plus size={18} strokeWidth={2.5} />
             </button>
-            <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">Medicamentos</h1>
-              <p className="text-sm text-ink-muted">Gerencie suas receitas e renovações</p>
-            </div>
           </div>
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          <Button
-            variant="primary"
-            className="w-full flex items-center justify-center gap-2"
-            onClick={() => {
-              trigger("vibrate");
-              router.push("/saude/medicamentos/novo");
-            }}
-          >
-            <Plus size={16} />
-            Novo medicamento
-          </Button>
-
-          {medicamentos?.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-16 text-center"
-            >
+          {medicamentos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
                 <Pill size={32} className="text-ink-muted" />
               </div>
               <h3 className="font-display text-lg text-ink-primary">Nenhum medicamento</h3>
-              <p className="text-sm text-ink-muted mt-1">
-                Comece cadastrando suas receitas e medicamentos
+              <p className="text-sm text-ink-muted mt-1 max-w-xs">
+                Cadastre medicamentos para controlar suas receitas e renovações.
               </p>
-            </motion.div>
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push("/saude/medicamentos/novo");
+                }}
+                className="mt-6 flex items-center gap-2 rounded-full bg-ice px-5 py-2 text-void font-medium text-sm active:scale-95 transition-all"
+              >
+                <Plus size={16} />
+                Adicionar medicamento
+              </button>
+            </div>
           ) : (
-            medicamentos?.map((med, index) => {
-              const dias = getProximaRenovacao(med.proxima_renovacao);
-              const isUrgent = dias < 7;
+            medicamentos.map((med, index) => {
+              const daysUntilRenewal = med.proxima_renovacao 
+                ? getDaysUntilRenewal(med.proxima_renovacao) 
+                : null;
+              const isExpiring = daysUntilRenewal !== null && daysUntilRenewal <= 7 && daysUntilRenewal >= 0;
+              const isExpired = daysUntilRenewal !== null && daysUntilRenewal < 0;
 
               return (
                 <motion.div
@@ -98,40 +133,62 @@ export default function MedicamentosPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: index * 0.05 }}
-                  onClick={() => {
-                    trigger("vibrate");
-                    router.push(`/saude/medicamentos/detalhes?id=${med.id}`);
-                  }}
-                  className={`rounded-xl border p-4 bg-surface shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-95 ${
-                    isUrgent ? "border-coral/40" : "border-surface-border/50"
+                  className={`flex items-center justify-between p-4 rounded-xl border bg-surface shadow-sm ${
+                    isExpired 
+                      ? "border-coral/50" 
+                      : isExpiring 
+                        ? "border-amber-500/50" 
+                        : "border-surface-border/50"
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl ${
-                        isUrgent ? "bg-coral/20" : "bg-surface-raised"
-                      }`}>
-                        <Pill size={18} className={isUrgent ? "text-coral" : "text-ink-muted"} />
-                      </div>
-                      <div>
-                        <h3 className="font-display text-[15px] font-medium text-ink-primary">
-                          {med.nome}
-                        </h3>
-                        <p className="text-sm text-ink-muted">{med.dosagem}</p>
-                        <p className="text-xs text-ink-muted mt-0.5">Dr(a). {med.medico}</p>
-                      </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display text-[15px] font-medium text-ink-primary">
+                        {med.nome}
+                      </h3>
+                      {isExpired && (
+                        <span className="text-xs bg-coral/20 text-coral px-2 py-0.5 rounded-full">
+                          Vencido
+                        </span>
+                      )}
+                      {isExpiring && !isExpired && (
+                        <span className="text-xs bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded-full">
+                          {daysUntilRenewal}d
+                        </span>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <div className={`flex items-center gap-1 text-xs font-medium ${
-                        isUrgent ? "text-coral" : "text-ink-muted"
-                      }`}>
-                        {isUrgent && <AlertCircle size={14} />}
-                        {dias} dias
-                      </div>
-                      <p className="text-xs text-ink-muted mt-1">
-                        Renova: {format(new Date(med.proxima_renovacao), "dd/MM/yyyy", { locale: ptBR })}
-                      </p>
+                    <p className="text-sm text-ink-muted">{med.dosagem}</p>
+                    <div className="flex gap-3 mt-1">
+                      <span className="text-xs text-ink-muted">Médico: {med.medico}</span>
+                      {med.proxima_renovacao && (
+                        <span className="text-xs text-ink-muted flex items-center gap-1">
+                          <Calendar size={12} />
+                          Renovação: {formatDate(med.proxima_renovacao)}
+                        </span>
+                      )}
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        trigger("vibrate");
+                        router.push(`/saude/medicamentos/detalhes?id=${med.id}`);
+                      }}
+                      className="p-2 rounded-full hover:bg-surface-border transition-colors"
+                    >
+                      <Edit size={16} className="text-ink-muted hover:text-ice transition-colors" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(med.id!, med.nome)}
+                      disabled={isDeleting === med.id}
+                      className="p-2 rounded-full hover:bg-surface-border transition-colors disabled:opacity-50"
+                    >
+                      {isDeleting === med.id ? (
+                        <Loader2 size={16} className="animate-spin text-coral" />
+                      ) : (
+                        <Trash2 size={16} className="text-ink-muted hover:text-coral transition-colors" />
+                      )}
+                    </button>
                   </div>
                 </motion.div>
               );
@@ -139,7 +196,6 @@ export default function MedicamentosPage() {
           )}
         </section>
 
-        {/* ScrollToTop */}
         <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
