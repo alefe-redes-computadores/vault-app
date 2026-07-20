@@ -249,6 +249,7 @@ export default function NewDocumentPage() {
     setLoading(true);
     try {
       const docData: Omit<Document, "id" | "created_at" | "updated_at" | "synced"> = {
+        user_id: user?.id || "", // ← ADICIONADO
         person_id: formData.person_id,
         category_id: formData.category_id,
         type: formData.type,
