@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { RefreshCw, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { RefreshCw, CheckCircle, AlertCircle, Loader2, Clock } from "lucide-react";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
+import { format, formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface SyncStatusProps {
   showLabel?: boolean;
@@ -20,6 +22,26 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
   const { showToast } = useToast();
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "success" | "error">("idle");
   const [pendingCount, setPendingCount] = useState(0);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+
+  // Carrega a última sincronização do localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("vault_last_sync");
+    if (saved) {
+      try {
+        setLastSyncTime(new Date(JSON.parse(saved)));
+      } catch {
+        setLastSyncTime(null);
+      }
+    }
+  }, []);
+
+  // Atualiza o tempo de última sincronização
+  const updateLastSyncTime = () => {
+    const now = new Date();
+    setLastSyncTime(now);
+    localStorage.setItem("vault_last_sync", JSON.stringify(now.toISOString()));
+  };
 
   useEffect(() => {
     const checkPending = async () => {
@@ -60,6 +82,7 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
       setSyncStatus("success");
       const pending = await db.syncQueue.count();
       setPendingCount(pending);
+      updateLastSyncTime();
       
       showToast("Dados sincronizados com sucesso!", "success");
       setTimeout(() => setSyncStatus("idle"), 3000);
@@ -73,8 +96,19 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
 
   const hasPending = pendingCount > 0;
 
+  // Formata o tempo desde a última sincronização
+  const getLastSyncLabel = () => {
+    if (!lastSyncTime) return "Nunca sincronizado";
+    const diff = formatDistanceToNow(lastSyncTime, { 
+      addSuffix: true,
+      locale: ptBR 
+    });
+    return `Última sync: ${diff}`;
+  };
+
   return (
     <div className={`flex items-center gap-2 ${className}`}>
+      {/* Indicador visual */}
       <div className="relative flex items-center">
         {isSyncingAll ? (
           <Loader2 size={16} className="text-ice animate-spin" />
@@ -97,6 +131,7 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
         )}
       </div>
 
+      {/* Botão de sincronização manual */}
       <button
         onClick={handleSync}
         disabled={isSyncingAll || !isOnline}
@@ -109,7 +144,7 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
       >
         <RefreshCw size={14} className={isSyncingAll ? "animate-spin" : ""} />
         {showLabel && (
-          <span>
+          <span className="flex items-center gap-1">
             {isSyncingAll
               ? "Sincronizando..."
               : hasPending
@@ -117,6 +152,11 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
               : isOnline
               ? "Sincronizado"
               : "Offline"}
+            {!isSyncingAll && !hasPending && isOnline && lastSyncTime && (
+              <span className="text-[10px] text-ink-muted/60 ml-1 hidden sm:inline">
+                · {getLastSyncLabel()}
+              </span>
+            )}
           </span>
         )}
       </button>
