@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
@@ -26,6 +27,20 @@ const config: Config = {
           muted: "#7C8592",
           faint: "#4A515C",
         },
+        // Cores claras (para tema light)
+        light: {
+          void: "#F1F5F9",
+          surface: {
+            DEFAULT: "#FFFFFF",
+            raised: "#F8FAFC",
+            border: "#E2E8F0",
+          },
+          ink: {
+            primary: "#0F172A",
+            muted: "#475569",
+            faint: "#94A3B8",
+          },
+        },
       },
       fontFamily: {
         display: ["var(--font-display)", "sans-serif"],
@@ -41,6 +56,7 @@ const config: Config = {
       },
       boxShadow: {
         vault: "0 8px 32px -8px rgba(0,0,0,0.5)",
+        "vault-light": "0 8px 32px -8px rgba(0,0,0,0.08)",
         rivet: "inset 0 1px 0 0 rgba(255,255,255,0.04)",
       },
     },
