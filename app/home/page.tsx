@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, User, ChevronRight, ChevronDown } from "lucide-react";
+import { Search, Plus, User, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
@@ -42,19 +42,31 @@ export default function HomePage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [welcomeShown, setWelcomeShown] = useState(false);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // ✅ CORRIGIDO: Toast de boas-vindas
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && !welcomeShown) {
+      // Verificar se já foi mostrado nesta sessão
       const hasSeenWelcome = sessionStorage.getItem('vault_welcome_shown');
+      
       if (!hasSeenWelcome) {
         const name = user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuário";
-        showToast(`👋 Bem-vindo de volta, ${name}!`, "info");
+        
+        // Pequeno delay para garantir que o ToastProvider está pronto
+        setTimeout(() => {
+          showToast(`👋 Bem-vindo de volta, ${name}!`, "info", 4000);
+        }, 500);
+        
         sessionStorage.setItem('vault_welcome_shown', 'true');
+        setWelcomeShown(true);
+      } else {
+        setWelcomeShown(true);
       }
     }
-  }, [loading, user, showToast]);
+  }, [loading, user, showToast, welcomeShown]);
 
   useEffect(() => {
     if (persons.length > 0 && selectedPersonId === null) {
@@ -154,7 +166,7 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Seletor de pessoa - agora um botão que abre BottomSheet */}
+          {/* Seletor de pessoa */}
           <div className="mt-3">
             <button
               onClick={() => {
