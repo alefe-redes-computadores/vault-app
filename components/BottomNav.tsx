@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Users, Star, User, Plus, MoreHorizontal } from "lucide-react";
+import { Home, Users, Star, LayoutGrid, Plus } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useEffect, useState } from "react";
 
@@ -16,7 +16,7 @@ const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
   { id: "pessoas", icon: Users, label: "Pessoas", path: "/pessoas" },
   { id: "favorites", icon: Star, label: "Favoritos", path: "/favoritos" },
-  { id: "profile", icon: User, label: "Perfil", path: "/perfil" },
+  { id: "mais", icon: LayoutGrid, label: "Mais", path: "/mais" },
 ];
 
 export function BottomNav() {
@@ -52,7 +52,7 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
       <div className="bg-surface/95 backdrop-blur-xl border-t border-surface-border/50 px-4 pt-2 pb-5">
-        <div className="grid grid-cols-5 items-center justify-items-center relative max-w-md mx-auto">
+        <div className="grid grid-cols-4 items-center justify-items-center relative max-w-md mx-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -78,24 +78,6 @@ export function BottomNav() {
               </button>
             );
           })}
-
-          {/* Botão "Mais" — agora abre uma tela */}
-          <button
-            onClick={() => {
-              trigger("vibrate");
-              router.push("/mais");
-            }}
-            className={`
-              flex flex-col items-center gap-0.5 transition-all active:scale-95 relative
-              ${pathname === "/mais" ? "text-ice" : "text-ink-muted/60 hover:text-ink-primary"}
-            `}
-          >
-            <MoreHorizontal size={22} strokeWidth={pathname === "/mais" ? 2.5 : 2} />
-            <span className="text-[10px] font-medium text-ink-muted/60">Mais</span>
-            {pathname === "/mais" && (
-              <div className="absolute -top-1 w-1 h-1 rounded-full bg-ice" />
-            )}
-          </button>
 
           {/* Botão flutuante centralizado */}
           <button
