@@ -25,6 +25,42 @@ import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 
+// ============================================================
+// MÁSCARAS
+// ============================================================
+const applyMask = (value: string, type: string): string => {
+  const digits = value.replace(/\D/g, '');
+  
+  if (type === 'cpf') {
+    return digits
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .slice(0, 14);
+  }
+  
+  if (type === 'rg') {
+    return digits
+      .replace(/(\d{2})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .slice(0, 13);
+  }
+  
+  if (type === 'cnh') {
+    return digits.slice(0, 11);
+  }
+  
+  return value;
+};
+
+const getMaskType = (fieldKey: string, docType: DocumentType): string | null => {
+  if (docType === 'cpf' && fieldKey === 'number') return 'cpf';
+  if (docType === 'rg' && fieldKey === 'number') return 'rg';
+  if (docType === 'cnh' && fieldKey === 'number') return 'cnh';
+  return null;
+};
+
 const DOCUMENT_FIELDS: Record<
   DocumentType,
   Array<{ key: string; label: string; type: "text" | "date" | "select"; options?: string[]; required?: boolean }>
@@ -243,13 +279,21 @@ export default function NewDocumentPage() {
   const handleSubmit = async () => {
     if (!validate()) {
       trigger("error");
+      // Scroll para o primeiro campo com erro
+      const firstErrorKey = Object.keys(errors)[0];
+      if (firstErrorKey) {
+        const element = document.querySelector(`[data-field="${firstErrorKey}"]`);
+        if (element) {
+          (element as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
       return;
     }
 
     setLoading(true);
     try {
       const docData: Omit<Document, "id" | "created_at" | "updated_at" | "synced"> = {
-        user_id: user?.id || "", // ← ADICIONADO
+        user_id: user?.id || "",
         person_id: formData.person_id,
         category_id: formData.category_id,
         type: formData.type,
@@ -422,18 +466,30 @@ export default function NewDocumentPage() {
               className="space-y-3 border-t border-surface-border/50 pt-4"
             >
               <p className="text-sm font-medium text-ink-muted">Campos específicos</p>
-              {fields.map((field) => (
-                <Input
-                  key={field.key}
-                  label={field.label}
-                  type={field.type === "date" ? "date" : "text"}
-                  value={formData.metadata[field.key] || ""}
-                  onChange={(e) => handleMetadataChange(field.key, e.target.value)}
-                  placeholder={field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`}
-                  required={field.required}
-                  error={errors[field.key]}
-                />
-              ))}
+              {fields.map((field) => {
+                const maskType = getMaskType(field.key, formData.type);
+                const rawValue = formData.metadata[field.key] || '';
+                const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
+
+                return (
+                  <Input
+                    key={field.key}
+                    data-field={field.key}
+                    label={field.label}
+                    type={field.type === "date" ? "date" : "text"}
+                    value={displayedValue}
+                    onChange={(e) => {
+                      const raw = maskType 
+                        ? e.target.value.replace(/\D/g, '')
+                        : e.target.value;
+                      handleMetadataChange(field.key, raw);
+                    }}
+                    placeholder={field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`}
+                    required={field.required}
+                    error={errors[field.key]}
+                  />
+                );
+              })}
             </motion.div>
           )}
 
