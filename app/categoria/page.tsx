@@ -26,7 +26,12 @@ export default function CategoryPage() {
     persons[0]?.id || null
   );
 
-  const documents = useDocuments(selectedPersonId || undefined, categoryId);
+  // ✅ CORRIGIDO: useDocuments recebe apenas o personId
+  const allDocs = useDocuments(selectedPersonId || undefined);
+  
+  // Filtrar os documentos pela categoria
+  const documents = allDocs.filter(doc => doc.category_id === categoryId);
+  
   const { favorite } = useSafeDb();
 
   const category = CATEGORIES[categoryId];
