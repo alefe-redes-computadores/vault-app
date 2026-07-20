@@ -19,7 +19,7 @@ import {
   RefreshCw,
   Camera,
   Fingerprint,
-  Pencil, // ← NOVO
+  Pencil,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -31,6 +31,7 @@ import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function MaisPage() {
   const { trigger } = useHapticFeedback();
@@ -138,6 +139,14 @@ export default function MaisPage() {
           label: "Pessoas",
           description: "Gerencie as pessoas do seu vault",
           onClick: () => router.push("/pessoas"),
+        },
+        // TEMA - ADICIONADO AQUI
+        {
+          id: "tema",
+          icon: Settings,
+          label: "Tema",
+          description: "Claro, Escuro ou Automático",
+          component: <ThemeToggle />,
         },
       ],
     },
@@ -267,6 +276,10 @@ export default function MaisPage() {
               <div className="space-y-2">
                 {section.items.map((item) => {
                   const Icon = item.icon;
+                  // Se tiver componente, renderiza o componente
+                  if (item.component) {
+                    return <div key={item.id}>{item.component}</div>;
+                  }
                   return (
                     <button
                       key={item.id}
