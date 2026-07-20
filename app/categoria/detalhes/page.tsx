@@ -174,7 +174,7 @@ export default function EditDocumentPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -197,7 +197,7 @@ export default function EditDocumentPage() {
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">Pessoa</label>
             <div className="flex gap-2 flex-wrap">
-              {persons.map((person) => (
+              {persons.map((person: any) => (
                 <button
                   key={person.id}
                   onClick={() => handleChange("person_id", person.id!)}
