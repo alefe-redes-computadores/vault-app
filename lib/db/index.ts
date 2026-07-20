@@ -61,7 +61,7 @@ export async function safeAddPerson(
     await db.syncQueue.add({
       table: 'persons',
       operation: 'add',
-      payload: { ...full, id },
+      payload: { ...full, id, user_id: full.user_id },
       created_at: timestamp,
     });
     return id;
@@ -194,7 +194,7 @@ export async function safeAddVault(
     await db.syncQueue.add({
       table: 'vaults',
       operation: 'add',
-      payload: { ...full, id },
+      payload: { ...full, id, user_id: full.user_id },
       created_at: timestamp,
     });
     return id;
