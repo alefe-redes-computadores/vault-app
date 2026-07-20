@@ -11,6 +11,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
@@ -153,6 +154,9 @@ export default function PessoasPage() {
             ))
           )}
         </section>
+
+        {/* ScrollToTop */}
+        <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
   );
