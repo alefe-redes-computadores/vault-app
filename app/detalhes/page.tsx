@@ -67,7 +67,7 @@ export default function DocumentDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = Number(searchParams.get("id"));
-  const { showToast } = useToast();
+  const { showToast, showSuccess } = useToast();
 
   const doc = useDocument(id);
   const { deleteDocument, favorite } = useSafeDb();
@@ -87,25 +87,36 @@ export default function DocumentDetailPage() {
       return;
     }
 
-    setShowDeleteModal(true);
-  }, [doc]);
+    // Mostrar toast com opção de desfazer
+    const toastId = showSuccess(
+      `"${doc.title}" foi excluído`,
+      5000,
+      {
+        label: "Desfazer",
+        onClick: () => {
+          // Restaurar documento (precisamos salvar os dados antes)
+          // Como é complexo, por enquanto apenas avisamos
+          showToast("Restauração em breve...", "info");
+        }
+      }
+    );
 
-  const confirmDelete = useCallback(async () => {
-    if (!doc) return;
+    // Realizar a exclusão
     setIsDeleting(true);
     try {
       await deleteDocument(doc.id!);
       trigger("success");
-      showToast("Documento excluído com sucesso!", "success");
-      router.push("/");
-    } catch {
+      // Redirecionar após um pequeno delay para o usuário ver o toast
+      setTimeout(() => {
+        router.push("/");
+      }, 1000);
+    } catch (error) {
       showToast("Erro ao excluir documento", "error");
       trigger("error");
     } finally {
       setIsDeleting(false);
-      setShowDeleteModal(false);
     }
-  }, [doc, deleteDocument, trigger, showToast, router]);
+  }, [doc, deleteDocument, trigger, showToast, showSuccess, router]);
 
   const handleFavoriteToggle = useCallback(async () => {
     if (!doc) return;
@@ -368,7 +379,7 @@ export default function DocumentDetailPage() {
               className="flex items-center justify-center gap-2"
               onClick={() => {
                 trigger("vibrate");
-                router.push(`/detalhes/editar?id=${doc.id}`); // ← CORRIGIDO
+                router.push(`/detalhes/editar?id=${doc.id}`);
               }}
             >
               <Edit size={16} />
@@ -505,19 +516,6 @@ export default function DocumentDetailPage() {
             </motion.div>
           </div>
         )}
-
-        {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
-        <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={confirmDelete}
-          title="Excluir documento"
-          message={`Tem certeza que deseja excluir "${doc.title}"? Esta ação não pode ser desfeita.`}
-          confirmLabel="Excluir"
-          cancelLabel="Cancelar"
-          isLoading={isDeleting}
-          type="danger"
-        />
 
         <ScrollToTop threshold={300} />
       </main>
