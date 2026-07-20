@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Users, Star, LayoutGrid, Plus } from "lucide-react";
+import { Home, Users, Shield, LayoutGrid, Plus } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -16,7 +16,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
   { id: "pessoas", icon: Users, label: "Pessoas", path: "/pessoas" },
-  { id: "favorites", icon: Star, label: "Favoritos", path: "/favoritos" },
+  { id: "cofres", icon: Shield, label: "Cofres", path: "/vaults" }, // ← substituído
   { id: "mais", icon: LayoutGrid, label: "Mais", path: "/mais" },
 ];
 
@@ -50,22 +50,20 @@ export function BottomNav() {
     return pathname === path || (path === "/" && pathname === "/");
   };
 
-  // Posições das abas no grid de 5 colunas
-  const itemPositions: Record<string, string> = {
-    home: "col-start-1",
-    pessoas: "col-start-2",
-    favorites: "col-start-4",
-    mais: "col-start-5",
-  };
-
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
       <div className="bg-surface/95 backdrop-blur-xl border-t border-surface-border/50 px-4 pt-2 pb-5">
         <div className="grid grid-cols-5 items-end justify-items-center relative max-w-md mx-auto">
+          {/* Abas: home (col 1), pessoas (col 2), espaço (col 3), cofres (col 4), mais (col 5) */}
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
-            const colClass = itemPositions[item.id] || "";
+            const colMap: Record<string, string> = {
+              home: "col-start-1",
+              pessoas: "col-start-2",
+              cofres: "col-start-4",
+              mais: "col-start-5",
+            };
 
             return (
               <button
@@ -74,7 +72,7 @@ export function BottomNav() {
                 className={`
                   flex flex-col items-center gap-0.5 transition-all active:scale-95 relative
                   ${active ? "text-ice" : "text-ink-muted/60 hover:text-ink-primary"}
-                  ${colClass}
+                  ${colMap[item.id] || ""}
                 `}
               >
                 <Icon size={24} strokeWidth={active ? 2.5 : 2} />
