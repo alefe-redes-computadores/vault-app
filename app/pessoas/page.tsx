@@ -12,15 +12,13 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { ScrollToTop } from "@/components/ScrollToTop";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { showToast } = useToast();
+  const { showToast, showSuccess } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState<{ id: number; name: string } | null>(null);
 
   const persons = usePersons();
 
@@ -29,13 +27,20 @@ export default function PessoasPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleDeleteClick = (id: number, name: string) => {
-    setShowDeleteModal({ id, name });
-  };
+  const handleDeleteClick = async (id: number, name: string) => {
+    trigger("vibrate");
 
-  const confirmDelete = async () => {
-    if (!showDeleteModal) return;
-    const { id, name } = showDeleteModal;
+    // Mostrar toast com opção de desfazer
+    const toastId = showSuccess(
+      `"${name}" foi removido(a)`,
+      5000,
+      {
+        label: "Desfazer",
+        onClick: () => {
+          showToast("Restauração em breve...", "info");
+        }
+      }
+    );
 
     setIsDeleting(id);
     try {
@@ -44,14 +49,12 @@ export default function PessoasPage() {
         await db.persons.delete(id);
       });
       trigger("success");
-      showToast(`"${name}" removido com sucesso!`, "success");
     } catch (error) {
       console.error("Erro ao remover pessoa:", error);
       trigger("error");
       showToast("Erro ao remover pessoa", "error");
     } finally {
       setIsDeleting(null);
-      setShowDeleteModal(null);
     }
   };
 
@@ -182,19 +185,6 @@ export default function PessoasPage() {
             ))
           )}
         </section>
-
-        {/* MODAL DE CONFIRMAÇÃO */}
-        <ConfirmationModal
-          isOpen={!!showDeleteModal}
-          onClose={() => setShowDeleteModal(null)}
-          onConfirm={confirmDelete}
-          title="Remover pessoa"
-          message={`Tem certeza que deseja remover "${showDeleteModal?.name}"?\nTodos os documentos desta pessoa também serão removidos.`}
-          confirmLabel="Remover"
-          cancelLabel="Cancelar"
-          isLoading={isDeleting !== null}
-          type="danger"
-        />
 
         <ScrollToTop threshold={400} />
       </main>
