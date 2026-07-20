@@ -1,7 +1,7 @@
 "use client";
 
-import { memo } from "react";
-import { motion } from "framer-motion";
+import { memo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Document, CATEGORIES } from "@/lib/types";
 import { useHapticFeedback } from "@/lib/haptics";
 import {
@@ -17,10 +17,13 @@ import {
   Building2,
   FolderOpen,
   type LucideIcon,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ToastProvider";
 
 interface DocumentCardProps {
   document: Document;
@@ -52,6 +55,9 @@ const formatDate = (date?: string) => {
 function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: DocumentCardProps) {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { showToast } = useToast();
+  const [showSyncTooltip, setShowSyncTooltip] = useState(false);
+  const [isFavoriteAnimating, setIsFavoriteAnimating] = useState(false);
 
   const category = CATEGORIES[document.category_id];
   const color = category?.color || "#6B7280";
@@ -65,6 +71,17 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
   const handleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
     trigger("vibrate");
+    
+    // Anima o coração
+    setIsFavoriteAnimating(true);
+    setTimeout(() => setIsFavoriteAnimating(false), 500);
+    
+    // Mostra toast
+    showToast(
+      document.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
+      "info"
+    );
+    
     onFavoriteToggle?.(document.id!);
   };
 
@@ -79,6 +96,13 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
   const isExpiring = expiryDate && new Date(expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const isExpired = expiryDate && new Date(expiryDate) < new Date();
 
+  const syncIcon = document.synced ? (
+    <CheckCircle size={12} className="text-green-400" />
+  ) : (
+    <Loader2 size={12} className="text-coral animate-spin" />
+  );
+  const syncLabel = document.synced ? "Sincronizado" : "Pendente de sincronização";
+
   return (
     <motion.div
       whileHover={{ scale: 1.01 }}
@@ -88,12 +112,10 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
       className="relative overflow-hidden rounded-xl border p-4 shadow-sm cursor-pointer bg-surface hover:shadow-md transition-shadow"
       style={{ borderColor: `${color}25` }}
     >
-      {/* Rebites */}
       <span className="rivet rivet-tl" />
       <span className="rivet rivet-br" />
 
       <div className="flex items-start gap-3">
-        {/* Ícone com cor da categoria */}
         <div
           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
           style={{ backgroundColor: `${color}15` }}
@@ -116,23 +138,32 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
 
             <button
               onClick={handleFavorite}
-              className="flex-shrink-0 p-1 rounded-full hover:bg-surface-border transition-colors"
+              className="flex-shrink-0 p-1 rounded-full hover:bg-surface-border transition-colors relative"
             >
-              <Star
-                size={16}
-                className={document.is_favorite ? "fill-ice text-ice" : "text-ink-muted/50"}
-              />
+              <AnimatePresence>
+                <motion.div
+                  animate={isFavoriteAnimating ? { scale: 1.3 } : { scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Star
+                    size={16}
+                    className={
+                      document.is_favorite 
+                        ? "fill-ice text-ice" 
+                        : "text-ink-muted/50"
+                    }
+                  />
+                </motion.div>
+              </AnimatePresence>
             </button>
           </div>
 
-          {/* Destaque do metadata */}
           {firstMetadata && (
             <p className="text-sm text-ink-primary font-medium mt-1 truncate">
               {firstMetadata}
             </p>
           )}
 
-          {/* Datas */}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
             {document.metadata?.issue_date && (
               <div className="flex items-center gap-1 text-xs text-ink-muted">
@@ -159,18 +190,26 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
         </div>
       </div>
 
-      {/* Badges */}
       {hasAttachments && (
         <div className="absolute bottom-3 right-3">
           <Paperclip size={14} className="text-ink-muted/50" />
         </div>
       )}
 
-      {!document.synced && (
-        <div className="absolute top-3 right-12">
-          <div className="w-2 h-2 rounded-full bg-coral animate-pulse" />
+      <div 
+        className="absolute top-3 right-12"
+        onMouseEnter={() => setShowSyncTooltip(true)}
+        onMouseLeave={() => setShowSyncTooltip(false)}
+      >
+        <div className="flex items-center gap-1">
+          {syncIcon}
+          {showSyncTooltip && (
+            <span className="absolute -top-6 right-0 text-[10px] bg-surface-raised border border-surface-border px-2 py-0.5 rounded whitespace-nowrap text-ink-muted shadow-md">
+              {syncLabel}
+            </span>
+          )}
         </div>
-      )}
+      </div>
     </motion.div>
   );
 }
