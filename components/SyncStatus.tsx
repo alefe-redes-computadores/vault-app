@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface SyncStatusProps {
@@ -23,6 +23,7 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "success" | "error">("idle");
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
 
   // Carrega a última sincronização do localStorage
   useEffect(() => {
@@ -35,6 +36,11 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
       }
     }
   }, []);
+
+  // Monitora se está sincronizando em background
+  useEffect(() => {
+    setIsBackgroundSyncing(isProcessing || isSyncing);
+  }, [isProcessing, isSyncing]);
 
   // Atualiza o tempo de última sincronização
   const updateLastSyncTime = () => {
@@ -96,7 +102,6 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
 
   const hasPending = pendingCount > 0;
 
-  // Formata o tempo desde a última sincronização
   const getLastSyncLabel = () => {
     if (!lastSyncTime) return "Nunca sincronizado";
     const diff = formatDistanceToNow(lastSyncTime, { 
@@ -128,6 +133,14 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
               <div className="w-2 h-2 rounded-full bg-green-400/50" />
             )}
           </div>
+        )}
+        
+        {/* Indicador de sincronização em background (pisca suavemente) */}
+        {isBackgroundSyncing && !isSyncingAll && (
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ice opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-ice" />
+          </span>
         )}
       </div>
 
