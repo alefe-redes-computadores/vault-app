@@ -124,9 +124,9 @@ export default function FavoritesPage() {
             </div>
           </div>
 
-          {/* Filtro por categoria */}
+          {/* Filtro por categoria - CORRIGIDO: active em vez de selected */}
           <div className="mt-3">
-            <AreaTabs selected={selectedCategory} onChange={setSelectedCategory} />
+            <AreaTabs active={selectedCategory} onChange={setSelectedCategory} />
           </div>
         </header>
 
