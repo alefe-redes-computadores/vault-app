@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Home, Users, Star, LayoutGrid, Plus } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 interface NavItem {
   id: string;
@@ -52,11 +53,18 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
       <div className="bg-surface/95 backdrop-blur-xl border-t border-surface-border/50 px-4 pt-2 pb-5">
-        <div className="grid grid-cols-4 items-center justify-items-center relative max-w-md mx-auto">
-          {navItems.map((item) => {
+        {/* Grid com 5 colunas: 4 itens + coluna central vazia para o botão + */}
+        <div className="grid grid-cols-5 items-end justify-items-center relative max-w-md mx-auto">
+          {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item.path);
-
+            // Pula a coluna central (índice 2) para colocar o botão
+            if (index === 2) {
+              // Coluna vazia para o botão flutuante
+              return <div key="empty-center" className="w-full" />;
+            }
+            // Ajusta a ordem dos itens: índice 0,1,3,4
+            // Vamos mapear com base na posição original
             return (
               <button
                 key={item.id}
@@ -64,30 +72,38 @@ export function BottomNav() {
                 className={`
                   flex flex-col items-center gap-0.5 transition-all active:scale-95 relative
                   ${active ? "text-ice" : "text-ink-muted/60 hover:text-ink-primary"}
+                  ${index === 0 ? "justify-self-start" : ""}
+                  ${index === 1 ? "justify-self-start" : ""}
+                  ${index === 3 ? "justify-self-end" : ""}
+                  ${index === 4 ? "justify-self-end" : ""}
                 `}
               >
-                <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+                <Icon size={24} strokeWidth={active ? 2.5 : 2} />
                 <span className={`text-[10px] font-medium transition-all ${
                   active ? "text-ice" : "text-ink-muted/60"
                 }`}>
                   {item.label}
                 </span>
                 {active && (
-                  <div className="absolute -top-1 w-1 h-1 rounded-full bg-ice" />
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute -top-1 w-1 h-1 rounded-full bg-ice"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
                 )}
               </button>
             );
           })}
 
-          {/* Botão flutuante centralizado */}
+          {/* Botão flutuante centralizado com destaque */}
           <button
             onClick={() => {
               trigger("success");
               router.push("/novo");
             }}
-            className="absolute -top-7 left-1/2 -translate-x-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/30 active:scale-95 transition-all border-4 border-surface"
+            className="absolute left-1/2 -translate-x-1/2 -top-7 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-ice to-ice/80 text-void shadow-lg shadow-ice/40 active:scale-95 transition-all border-2 border-void/10"
           >
-            <Plus size={24} strokeWidth={2.5} />
+            <Plus size={26} strokeWidth={2.5} />
           </button>
         </div>
       </div>
