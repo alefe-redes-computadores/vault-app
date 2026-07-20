@@ -2,22 +2,89 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   VARIÁVEIS DO TEMA (PADRÃO: ESCURO)
+   ============================================================ */
 :root {
+  --bg-void: #0A0C0F;
+  --bg-surface: #14181D;
+  --bg-surface-raised: #1C2128;
+  --border-surface: #262C34;
+  --text-ink-primary: #E8EBEF;
+  --text-ink-muted: #7C8592;
+  --text-ink-faint: #4A515C;
+  --shadow-vault: 0 8px 32px -8px rgba(0,0,0,0.5);
   color-scheme: dark;
 }
 
+/* ============================================================
+   TEMA CLARO (SOBRESCREVE AS VARIÁVEIS)
+   ============================================================ */
+.light {
+  --bg-void: #F1F5F9;
+  --bg-surface: #FFFFFF;
+  --bg-surface-raised: #F8FAFC;
+  --border-surface: #E2E8F0;
+  --text-ink-primary: #0F172A;
+  --text-ink-muted: #475569;
+  --text-ink-faint: #94A3B8;
+  --shadow-vault: 0 8px 32px -8px rgba(0,0,0,0.08);
+  color-scheme: light;
+}
+
+/* ============================================================
+   APLICAÇÃO DAS VARIÁVEIS NOS ELEMENTOS
+   ============================================================ */
+.bg-void {
+  background-color: var(--bg-void);
+}
+
+.bg-surface {
+  background-color: var(--bg-surface);
+}
+
+.bg-surface-raised {
+  background-color: var(--bg-surface-raised);
+}
+
+.border-surface-border {
+  border-color: var(--border-surface);
+}
+
+.text-ink-primary {
+  color: var(--text-ink-primary);
+}
+
+.text-ink-muted {
+  color: var(--text-ink-muted);
+}
+
+.text-ink-faint {
+  color: var(--text-ink-faint);
+}
+
+.shadow-vault {
+  box-shadow: var(--shadow-vault);
+}
+
+/* ============================================================
+   ELEMENTOS BASE
+   ============================================================ */
 html,
 body {
-  background-color: #0a0c0f;
-  color: #e8ebef;
+  background-color: var(--bg-void);
+  color: var(--text-ink-primary);
   overscroll-behavior-y: none;
+  transition: background-color 300ms ease, color 300ms ease;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Rebite decorativo — assinatura visual das "caixas de depósito" do Vault */
+/* ============================================================
+   REBITE DECORATIVO
+   ============================================================ */
 .rivet {
   position: absolute;
   width: 6px;
@@ -36,6 +103,9 @@ body {
   right: 14px;
 }
 
+/* ============================================================
+   GLASS HEADER
+   ============================================================ */
 .glass-header {
   background: rgba(20, 24, 29, 0.72);
   backdrop-filter: blur(20px);
@@ -43,14 +113,14 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+.light .glass-header {
+  background: rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* Scrollbar escondida (já tinha, mas reforça) */
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -59,16 +129,32 @@ body {
   scrollbar-width: none;
 }
 
-/* Animações suaves */
-* {
-  transition-duration: 200ms;
-}
-
-/* Melhora a legibilidade dos cards */
+/* ============================================================
+   CARD HOVER
+   ============================================================ */
 .card-hover {
   transition: all 0.2s ease;
 }
 .card-hover:hover {
   transform: translateY(-2px);
   border-color: rgba(125, 211, 252, 0.2);
+}
+
+/* ============================================================
+   ANIMAÇÕES
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   TRANSITION GLOBAL
+   ============================================================ */
+* {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 300ms;
+  transition-timing-function: ease-in-out;
 }
