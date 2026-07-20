@@ -29,13 +29,31 @@ import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 // Versão do aplicativo (extraída do package.json ou definida manualmente)
 const APP_VERSION = "1.0.0";
+
+// ============================================================
+// TIPO PARA OS ITENS DO MENU (com component opcional)
+// ============================================================
+interface MenuItem {
+  id: string;
+  icon: any;
+  label: string;
+  description: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  component?: ReactNode; // ← ADICIONADO
+}
+
+interface MenuSection {
+  title: string;
+  items: MenuItem[];
+}
 
 export default function MaisPage() {
   const { trigger } = useHapticFeedback();
@@ -126,7 +144,7 @@ export default function MaisPage() {
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
-  const menuSections = [
+  const menuSections: MenuSection[] = [
     {
       title: "Geral",
       items: [
@@ -279,9 +297,11 @@ export default function MaisPage() {
               <div className="space-y-2">
                 {section.items.map((item) => {
                   const Icon = item.icon;
+                  // Se tiver componente, renderiza ele
                   if (item.component) {
                     return <div key={item.id}>{item.component}</div>;
                   }
+                  // Senão, renderiza o botão normal
                   return (
                     <button
                       key={item.id}
