@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import type { Document, Vault, VaultMember } from '@/lib/types';
+import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital } from '@/lib/types';
 
 export function useSyncQueue() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -43,6 +43,12 @@ export function useSyncQueue() {
             await syncMedicamento(item);
           } else if (item.table === 'renovacoes') {
             await syncRenovacao(item);
+          } else if (item.table === 'medicos') {
+            await syncMedico(item);
+          } else if (item.table === 'farmacias') {
+            await syncFarmacia(item);
+          } else if (item.table === 'hospitais') {
+            await syncHospital(item);
           }
           await db.syncQueue.delete(item.id!);
         } catch (error) {
@@ -177,7 +183,7 @@ export function useSyncQueue() {
       case 'add':
         await supabase.from('documents').insert({
           id: doc.id,
-          user_id: doc.user_id, // ← ADICIONADO
+          user_id: doc.user_id,
           person_id: doc.person_id,
           category_id: doc.category_id,
           type: doc.type,
@@ -302,6 +308,139 @@ export function useSyncQueue() {
 
     if (item.operation !== 'delete' && member.id) {
       await db.vaultMembers.update(member.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // SYNC: MEDICOS (NOVO)
+  // ============================================================
+  const syncMedico = async (item: any) => {
+    if (!supabase) return;
+    const medico = item.payload as Medico;
+
+    switch (item.operation) {
+      case 'add':
+        await supabase.from('medicos').insert({
+          id: medico.id,
+          user_id: medico.user_id,
+          nome: medico.nome,
+          especialidade: medico.especialidade || null,
+          crm: medico.crm || null,
+          telefone: medico.telefone || null,
+          email: medico.email || null,
+          created_at: medico.created_at,
+          updated_at: medico.updated_at,
+        });
+        break;
+
+      case 'update':
+        await supabase.from('medicos')
+          .update({
+            nome: medico.nome,
+            especialidade: medico.especialidade || null,
+            crm: medico.crm || null,
+            telefone: medico.telefone || null,
+            email: medico.email || null,
+            updated_at: medico.updated_at,
+          })
+          .eq('id', medico.id);
+        break;
+
+      case 'delete':
+        await supabase.from('medicos')
+          .delete()
+          .eq('id', item.payload.id);
+        break;
+    }
+
+    if (item.operation !== 'delete' && medico.id) {
+      await db.medicos.update(medico.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // SYNC: FARMACIAS (NOVO)
+  // ============================================================
+  const syncFarmacia = async (item: any) => {
+    if (!supabase) return;
+    const farmacia = item.payload as Farmacia;
+
+    switch (item.operation) {
+      case 'add':
+        await supabase.from('farmacias').insert({
+          id: farmacia.id,
+          user_id: farmacia.user_id,
+          nome: farmacia.nome,
+          endereco: farmacia.endereco || null,
+          telefone: farmacia.telefone || null,
+          created_at: farmacia.created_at,
+          updated_at: farmacia.updated_at,
+        });
+        break;
+
+      case 'update':
+        await supabase.from('farmacias')
+          .update({
+            nome: farmacia.nome,
+            endereco: farmacia.endereco || null,
+            telefone: farmacia.telefone || null,
+            updated_at: farmacia.updated_at,
+          })
+          .eq('id', farmacia.id);
+        break;
+
+      case 'delete':
+        await supabase.from('farmacias')
+          .delete()
+          .eq('id', item.payload.id);
+        break;
+    }
+
+    if (item.operation !== 'delete' && farmacia.id) {
+      await db.farmacias.update(farmacia.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // SYNC: HOSPITAIS (NOVO)
+  // ============================================================
+  const syncHospital = async (item: any) => {
+    if (!supabase) return;
+    const hospital = item.payload as Hospital;
+
+    switch (item.operation) {
+      case 'add':
+        await supabase.from('hospitais').insert({
+          id: hospital.id,
+          user_id: hospital.user_id,
+          nome: hospital.nome,
+          endereco: hospital.endereco || null,
+          telefone: hospital.telefone || null,
+          created_at: hospital.created_at,
+          updated_at: hospital.updated_at,
+        });
+        break;
+
+      case 'update':
+        await supabase.from('hospitais')
+          .update({
+            nome: hospital.nome,
+            endereco: hospital.endereco || null,
+            telefone: hospital.telefone || null,
+            updated_at: hospital.updated_at,
+          })
+          .eq('id', hospital.id);
+        break;
+
+      case 'delete':
+        await supabase.from('hospitais')
+          .delete()
+          .eq('id', item.payload.id);
+        break;
+    }
+
+    if (item.operation !== 'delete' && hospital.id) {
+      await db.hospitais.update(hospital.id, { synced: true });
     }
   };
 
