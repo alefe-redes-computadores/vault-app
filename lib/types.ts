@@ -87,72 +87,72 @@ export interface Attachment {
 
 export interface Document {
   id?: number;
-  user_id: string; // ← ADICIONADO (vinculado ao Supabase Auth)
+  user_id: string;
   person_id: number;
   category_id: CategoryId;
   type: DocumentType;
   title: string;
   description?: string;
-  metadata: Record<string, any>; // campos específicos por tipo
+  metadata: Record<string, any>;
   attachments: Attachment[];
   is_favorite: boolean;
-  vault_id?: number; // ID do cofre que este documento está compartilhado
+  vault_id?: number;
   created_at: string;
   updated_at: string;
   synced: boolean;
 }
 
 // ============================================================
-// 3.1 CAMPOS POR TIPO DE DOCUMENTO (para formulário dinâmico)
+// 3.1 CAMPOS POR TIPO DE DOCUMENTO (com required)
 // ============================================================
 export const DOCUMENT_FIELDS: Record<
   DocumentType,
-  Array<{ key: string; label: string; type: 'text' | 'date' | 'select'; options?: string[] }>
+  Array<{ key: string; label: string; type: 'text' | 'date' | 'select'; options?: string[]; required?: boolean }>
 > = {
   rg: [
-    { key: 'number', label: 'Número do RG', type: 'text' },
-    { key: 'issue_date', label: 'Data de emissão', type: 'date' },
-    { key: 'expiry_date', label: 'Data de validade', type: 'date' },
-    { key: 'issuer', label: 'Órgão emissor', type: 'text' },
+    { key: 'number', label: 'Número do RG', type: 'text', required: true },
+    { key: 'issue_date', label: 'Data de emissão', type: 'date', required: true },
+    { key: 'expiry_date', label: 'Data de validade', type: 'date', required: true },
+    { key: 'issuer', label: 'Órgão emissor', type: 'text', required: true },
   ],
-  cpf: [{ key: 'number', label: 'Número do CPF', type: 'text' }],
+  cpf: [{ key: 'number', label: 'Número do CPF', type: 'text', required: true }],
   cnh: [
-    { key: 'number', label: 'Número da CNH', type: 'text' },
-    { key: 'category', label: 'Categoria', type: 'select', options: ['A', 'B', 'C', 'D', 'E'] },
-    { key: 'issue_date', label: 'Data de emissão', type: 'date' },
-    { key: 'expiry_date', label: 'Data de validade', type: 'date' },
+    { key: 'number', label: 'Número da CNH', type: 'text', required: true },
+    { key: 'category', label: 'Categoria', type: 'select', options: ['A', 'B', 'C', 'D', 'E'], required: true },
+    { key: 'issue_date', label: 'Data de emissão', type: 'date', required: true },
+    { key: 'expiry_date', label: 'Data de validade', type: 'date', required: true },
   ],
   certificado: [
-    { key: 'institution', label: 'Instituição de ensino', type: 'text' },
-    { key: 'course', label: 'Curso', type: 'text' },
-    { key: 'duration', label: 'Duração (ex: 120 horas)', type: 'text' },
+    { key: 'institution', label: 'Instituição de ensino', type: 'text', required: true },
+    { key: 'course', label: 'Curso', type: 'text', required: true },
+    { key: 'duration', label: 'Duração (ex: 120 horas)', type: 'text', required: true },
     { key: 'completion_date', label: 'Data de conclusão', type: 'date' },
   ],
   receita: [
-    { key: 'medication', label: 'Medicamento', type: 'text' },
-    { key: 'dosage', label: 'Dosagem', type: 'text' },
-    { key: 'doctor', label: 'Médico', type: 'text' },
-    { key: 'pharmacy', label: 'Farmácia (opcional)', type: 'text' },
-    { key: 'prescription_date', label: 'Data da receita', type: 'date' },
-    { key: 'renewal_date', label: 'Próxima renovação', type: 'date' },
+    { key: 'medication', label: 'Medicamento', type: 'text', required: true },
+    { key: 'dosage', label: 'Dosagem', type: 'text', required: true },
+    { key: 'doctor', label: 'Médico', type: 'select', required: true },
+    { key: 'pharmacy', label: 'Farmácia', type: 'select' },
+    { key: 'prescription_date', label: 'Data da receita', type: 'date', required: true },
+    { key: 'renewal_date', label: 'Próxima renovação', type: 'date', required: true },
   ],
   prontuario: [
-    { key: 'hospital', label: 'Hospital', type: 'text' },
-    { key: 'doctor', label: 'Médico', type: 'text' },
-    { key: 'specialty', label: 'Especialidade', type: 'text' },
-    { key: 'date', label: 'Data', type: 'date' },
+    { key: 'hospital', label: 'Hospital', type: 'select', required: true },
+    { key: 'doctor', label: 'Médico', type: 'select', required: true },
+    { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
+    { key: 'date', label: 'Data', type: 'date', required: true },
   ],
   laudo: [
-    { key: 'doctor', label: 'Médico', type: 'text' },
-    { key: 'specialty', label: 'Especialidade', type: 'text' },
-    { key: 'hospital', label: 'Hospital', type: 'text' },
-    { key: 'date', label: 'Data', type: 'date' },
+    { key: 'doctor', label: 'Médico', type: 'select', required: true },
+    { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
+    { key: 'hospital', label: 'Hospital', type: 'select', required: true },
+    { key: 'date', label: 'Data', type: 'date', required: true },
   ],
   encaminhamento: [
-    { key: 'from', label: 'Quem encaminhou', type: 'text' },
+    { key: 'from', label: 'Quem encaminhou', type: 'text', required: true },
     { key: 'to', label: 'Para quem (opcional)', type: 'text' },
-    { key: 'reason', label: 'Motivo', type: 'text' },
-    { key: 'date', label: 'Data', type: 'date' },
+    { key: 'reason', label: 'Motivo', type: 'text', required: true },
+    { key: 'date', label: 'Data', type: 'date', required: true },
   ],
   outro: [
     { key: 'custom_field_1', label: 'Campo personalizado 1', type: 'text' },
@@ -161,13 +161,13 @@ export const DOCUMENT_FIELDS: Record<
 };
 
 // ============================================================
-// 4. METADADOS POR TIPO DE DOCUMENTO (campos específicos)
+// 4. METADADOS POR TIPO DE DOCUMENTO
 // ============================================================
 export type RGMetadata = {
   number: string;
   issue_date: string;
   expiry_date: string;
-  issuer: string; // órgão emissor
+  issuer: string;
 };
 
 export type CPFMetadata = {
@@ -184,36 +184,36 @@ export type CNHMetadata = {
 export type CertificadoMetadata = {
   institution: string;
   course: string;
-  duration: string; // ex: "120 horas"
+  duration: string;
   completion_date?: string;
 };
 
 export type ReceitaMetadata = {
   medication: string;
   dosage: string;
-  doctor: string;
-  pharmacy?: string;
+  doctor: string; // ID do médico selecionado
+  pharmacy?: string; // ID da farmácia selecionada
   prescription_date: string;
-  renewal_date: string; // próxima renovação
+  renewal_date: string;
 };
 
 export type ProntuarioMetadata = {
-  hospital: string;
-  doctor: string;
+  hospital: string; // ID do hospital selecionado
+  doctor: string; // ID do médico selecionado
   specialty: string;
   date: string;
 };
 
 export type LaudoMetadata = {
-  doctor: string;
+  doctor: string; // ID do médico selecionado
   specialty: string;
-  hospital: string;
+  hospital: string; // ID do hospital selecionado
   date: string;
 };
 
 export type EncaminhamentoMetadata = {
-  from: string; // quem encaminhou
-  to?: string; // para quem
+  from: string;
+  to?: string;
   reason: string;
   date: string;
 };
@@ -234,7 +234,7 @@ export interface SyncQueueItem {
 // ============================================================
 export interface Medicamento {
   id?: number;
-  document_id: number; // vinculado ao documento principal
+  document_id: number;
   nome: string;
   dosagem: string;
   medico: string;
@@ -265,11 +265,11 @@ export type VaultPermission = 'view' | 'edit' | 'admin';
 
 export interface Vault {
   id?: number;
-  user_id: string; // criador do cofre
+  user_id: string;
   name: string;
   description?: string;
-  icon: string; // nome do ícone Lucide
-  color: string; // cor personalizada
+  icon: string;
+  color: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -278,11 +278,11 @@ export interface Vault {
 export interface VaultMember {
   id?: number;
   vault_id: number;
-  user_id: string; // ID do usuário convidado
+  user_id: string;
   email: string;
   name?: string;
   permission: VaultPermission;
-  invited_by: string; // ID do usuário que convidou
+  invited_by: string;
   status: 'pending' | 'accepted' | 'rejected';
   invited_at: string;
   updated_at: string;
@@ -294,4 +294,42 @@ export interface VaultDocument {
   vault_id: number;
   shared_by: string;
   shared_at: string;
+}
+
+// ============================================================
+// 8. MÓDULO SAÚDE — MÉDICOS, FARMÁCIAS, HOSPITAIS
+// ============================================================
+export interface Medico {
+  id?: number;
+  user_id: string;
+  nome: string;
+  especialidade?: string;
+  crm?: string;
+  telefone?: string;
+  email?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface Farmacia {
+  id?: number;
+  user_id: string;
+  nome: string;
+  endereco?: string;
+  telefone?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface Hospital {
+  id?: number;
+  user_id: string;
+  nome: string;
+  endereco?: string;
+  telefone?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
 }
