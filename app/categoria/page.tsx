@@ -8,7 +8,7 @@ import { usePersons } from "@/hooks/usePersons";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, type CategoryId } from "@/lib/types";
+import { CATEGORIES, type CategoryId, type Document } from "@/lib/types";
 import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
 import { PageTransition } from "@/components/PageTransition";
@@ -29,8 +29,8 @@ export default function CategoryPage() {
   // ✅ CORRIGIDO: useDocuments recebe apenas o personId
   const allDocs = useDocuments(selectedPersonId || undefined);
   
-  // Filtrar os documentos pela categoria
-  const documents = allDocs.filter(doc => doc.category_id === categoryId);
+  // Filtrar os documentos pela categoria - CORRIGIDO: adicionado tipo : any
+  const documents = allDocs.filter((doc: any) => doc.category_id === categoryId);
   
   const { favorite } = useSafeDb();
 
@@ -66,8 +66,8 @@ export default function CategoryPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* HEADER COM COR DA CATEGORIA */}
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        {/* HEADER COM COR DA CATEGORIA - CORRIGIDO: bg-surface/80 para tema claro */}
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -96,7 +96,7 @@ export default function CategoryPage() {
             </div>
           </div>
 
-          {/* Filtro por pessoa */}
+          {/* Filtro por pessoa - CORRIGIDO: adicionado tipo : any */}
           <div className="mt-4">
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               <button
@@ -112,7 +112,7 @@ export default function CategoryPage() {
               >
                 Todos
               </button>
-              {persons.map((person) => (
+              {persons.map((person: any) => (
                 <button
                   key={person.id}
                   onClick={() => {
@@ -141,7 +141,7 @@ export default function CategoryPage() {
           </div>
         </header>
 
-        {/* LISTA DE DOCUMENTOS */}
+        {/* LISTA DE DOCUMENTOS - CORRIGIDO: adicionado tipo : any */}
         <section className="px-5 pt-5 space-y-3">
           {!hasDocs ? (
             <motion.div
@@ -176,7 +176,7 @@ export default function CategoryPage() {
               </button>
             </motion.div>
           ) : (
-            documents.map((doc, index) => (
+            documents.map((doc: any, index: number) => (
               <motion.div
                 key={doc.id}
                 initial={{ opacity: 0, y: 10 }}
