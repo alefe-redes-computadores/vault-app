@@ -50,21 +50,23 @@ export function BottomNav() {
     return pathname === path || (path === "/" && pathname === "/");
   };
 
+  // Posições das abas no grid de 5 colunas
+  const itemPositions: Record<string, string> = {
+    home: "col-start-1",
+    pessoas: "col-start-2",
+    favorites: "col-start-4",
+    mais: "col-start-5",
+  };
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
       <div className="bg-surface/95 backdrop-blur-xl border-t border-surface-border/50 px-4 pt-2 pb-5">
-        {/* Grid com 5 colunas: 4 itens + coluna central vazia para o botão + */}
         <div className="grid grid-cols-5 items-end justify-items-center relative max-w-md mx-auto">
-          {navItems.map((item, index) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
-            // Pula a coluna central (índice 2) para colocar o botão
-            if (index === 2) {
-              // Coluna vazia para o botão flutuante
-              return <div key="empty-center" className="w-full" />;
-            }
-            // Ajusta a ordem dos itens: índice 0,1,3,4
-            // Vamos mapear com base na posição original
+            const colClass = itemPositions[item.id] || "";
+
             return (
               <button
                 key={item.id}
@@ -72,16 +74,15 @@ export function BottomNav() {
                 className={`
                   flex flex-col items-center gap-0.5 transition-all active:scale-95 relative
                   ${active ? "text-ice" : "text-ink-muted/60 hover:text-ink-primary"}
-                  ${index === 0 ? "justify-self-start" : ""}
-                  ${index === 1 ? "justify-self-start" : ""}
-                  ${index === 3 ? "justify-self-end" : ""}
-                  ${index === 4 ? "justify-self-end" : ""}
+                  ${colClass}
                 `}
               >
                 <Icon size={24} strokeWidth={active ? 2.5 : 2} />
-                <span className={`text-[10px] font-medium transition-all ${
-                  active ? "text-ice" : "text-ink-muted/60"
-                }`}>
+                <span
+                  className={`text-[10px] font-medium transition-all ${
+                    active ? "text-ice" : "text-ink-muted/60"
+                  }`}
+                >
                   {item.label}
                 </span>
                 {active && (
@@ -95,13 +96,13 @@ export function BottomNav() {
             );
           })}
 
-          {/* Botão flutuante centralizado com destaque */}
+          {/* Botão flutuante centralizado */}
           <button
             onClick={() => {
               trigger("success");
               router.push("/novo");
             }}
-            className="absolute left-1/2 -translate-x-1/2 -top-7 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-ice to-ice/80 text-void shadow-lg shadow-ice/40 active:scale-95 transition-all border-2 border-void/10"
+            className="absolute left-1/2 -translate-x-1/2 -top-7 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-ice to-ice/80 text-void shadow-lg shadow-ice/40 active:scale-95 transition-all border-2 border-void/10 z-10"
           >
             <Plus size={26} strokeWidth={2.5} />
           </button>
