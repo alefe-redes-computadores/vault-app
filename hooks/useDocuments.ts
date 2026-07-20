@@ -1,48 +1,56 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
-import type { CategoryId, Document } from '@/lib/types';
+"use client";
 
-export function useDocuments(personId?: number, categoryId?: CategoryId) {
-  return useLiveQuery(
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import { useAuth } from "./useAuth";
+
+export function useDocuments(personId?: number) {
+  const { user } = useAuth();
+
+  const documents = useLiveQuery(
     () => {
-      let query = db.documents.toCollection();
-      if (personId) query = query.filter((doc: Document) => doc.person_id === personId);
-      if (categoryId) query = query.filter((doc: Document) => doc.category_id === categoryId);
-      return query.reverse().sortBy('created_at');
+      let query = db.documents.where('user_id').equals(user?.id || '');
+      if (personId) {
+        query = query.and((doc) => doc.person_id === personId);
+      }
+      return query.toArray();
     },
-    [personId, categoryId],
+    [user?.id, personId],
     []
   );
+
+  return documents || [];
 }
 
 export function useFavorites(personId?: number) {
-  return useLiveQuery(
+  const { user } = useAuth();
+
+  const favorites = useLiveQuery(
     () => {
-      let query = db.documents.filter((doc: Document) => doc.is_favorite === true);
-      if (personId) query = query.filter((doc: Document) => doc.person_id === personId);
-      return query.reverse().sortBy('created_at');
+      let query = db.documents
+        .where('user_id')
+        .equals(user?.id || '')
+        .and((doc) => doc.is_favorite === true);
+      if (personId) {
+        query = query.and((doc) => doc.person_id === personId);
+      }
+      return query.toArray();
     },
-    [personId],
+    [user?.id, personId],
     []
   );
+
+  return favorites || [];
 }
 
-export function useProfiles() {
-  return useLiveQuery(() => db.persons.toArray(), [], []);
-}
+export function useDocument(id: number) {
+  const { user } = useAuth();
 
-export function useDocument(id?: number) {
-  return useLiveQuery(
-    () => (id ? db.documents.get(id) : undefined),
-    [id],
-    undefined
+  const document = useLiveQuery(
+    () => db.documents.where('user_id').equals(user?.id || '').and((doc) => doc.id === id).first(),
+    [user?.id, id],
+    null
   );
-}
 
-export function useDocumentsByType(personId: number, type: string) {
-  return useLiveQuery(
-    () => db.documents.where({ person_id: personId, type }).toArray(),
-    [personId, type],
-    []
-  );
+  return document;
 }
