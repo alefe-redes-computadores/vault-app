@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fingerprint, Shield } from "lucide-react";
+import { Fingerprint } from "lucide-react";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
@@ -19,18 +19,15 @@ export function BiometricLock({ children }: BiometricLockProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Se a biometria não estiver ativada, libera o acesso
     if (!isEnabled) {
       setIsAuthenticated(true);
       return;
     }
 
-    // Se estiver ativada, simula autenticação (apenas para demonstração)
-    // Em produção, isso usaria o Capacitor Biometric
     const timer = setTimeout(() => {
       setIsAuthenticated(true);
       trigger("success");
-    }, 1500);
+    }, 1200);
 
     return () => clearTimeout(timer);
   }, [isEnabled, trigger]);
@@ -44,41 +41,37 @@ export function BiometricLock({ children }: BiometricLockProps) {
     setIsLoading(true);
     trigger("vibrate");
 
-    // Simula autenticação
     setTimeout(() => {
       setIsAuthenticated(true);
       setIsLoading(false);
       trigger("success");
       showToast("Autenticado com sucesso!", "success");
-    }, 1500);
+    }, 1200);
   };
 
-  // Se a biometria não estiver ativada, mostra o conteúdo normalmente
   if (!isEnabled) {
     return <>{children}</>;
   }
 
-  // Se já estiver autenticado, mostra o conteúdo
   if (isAuthenticated) {
     return <>{children}</>;
   }
 
-  // Tela de bloqueio
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-void">
       {/* Ícone animado */}
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
+        initial={{ scale: 0.85, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="relative"
       >
         <motion.div
           animate={{
-            scale: [1, 1.05, 1],
+            scale: [1, 1.06, 1],
           }}
           transition={{
-            duration: 2,
+            duration: 2.5,
             repeat: Infinity,
             ease: "easeInOut",
           }}
@@ -90,7 +83,7 @@ export function BiometricLock({ children }: BiometricLockProps) {
 
       {/* Título */}
       <motion.h1
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.3 }}
         className="mt-6 font-display text-xl font-semibold text-ink-primary"
@@ -108,52 +101,29 @@ export function BiometricLock({ children }: BiometricLockProps) {
         {isLoading ? "Verificando..." : "Toque no sensor para desbloquear"}
       </motion.p>
 
-      {/* Bolinha pulsante discreta */}
+      {/* Bolinhas pulsantes */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.7 }}
-        className="mt-8 flex items-center gap-2"
+        className="mt-8 flex items-center gap-2.5"
       >
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.3, 1, 0.3],
-          }}
-          transition={{
-            duration: 1.2,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 0,
-          }}
-          className="w-2 h-2 rounded-full bg-ice/60"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.3, 1, 0.3],
-          }}
-          transition={{
-            duration: 1.2,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 0.2,
-          }}
-          className="w-2 h-2 rounded-full bg-ice/40"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.3, 1, 0.3],
-          }}
-          transition={{
-            duration: 1.2,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 0.4,
-          }}
-          className="w-2 h-2 rounded-full bg-ice/20"
-        />
+        {[0, 0.2, 0.4].map((delay) => (
+          <motion.div
+            key={delay}
+            animate={{
+              scale: [1, 1.4, 1],
+              opacity: [0.3, 1, 0.3],
+            }}
+            transition={{
+              duration: 1.2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay,
+            }}
+            className="w-2.5 h-2.5 rounded-full bg-ice/50"
+          />
+        ))}
       </motion.div>
 
       {/* Botão para tentar novamente */}
