@@ -20,6 +20,7 @@ import {
   Camera,
   Fingerprint,
   Pencil,
+  Heart,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -32,6 +33,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+// Versão do aplicativo (extraída do package.json ou definida manualmente)
+const APP_VERSION = "1.0.0";
 
 export default function MaisPage() {
   const { trigger } = useHapticFeedback();
@@ -140,7 +144,6 @@ export default function MaisPage() {
           description: "Gerencie as pessoas do seu vault",
           onClick: () => router.push("/pessoas"),
         },
-        // TEMA - ADICIONADO AQUI
         {
           id: "tema",
           icon: Settings,
@@ -276,7 +279,6 @@ export default function MaisPage() {
               <div className="space-y-2">
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  // Se tiver componente, renderiza o componente
                   if (item.component) {
                     return <div key={item.id}>{item.component}</div>;
                   }
@@ -323,6 +325,26 @@ export default function MaisPage() {
               </div>
               <ChevronRight size={16} className="text-coral/40 flex-shrink-0" />
             </button>
+          </motion.div>
+
+          {/* ============================================================
+              RODAPÉ COM VERSÃO E CRÉDITOS
+              ============================================================ */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="pt-4 pb-8 text-center"
+          >
+            <p className="text-xs text-ink-faint">
+              Vault v{APP_VERSION}
+            </p>
+            <p className="text-xs text-ink-faint mt-1 flex items-center justify-center gap-1">
+              Desenvolvido com <Heart size={12} className="text-coral fill-coral" /> por Álefe Jôhsefe
+            </p>
+            <p className="text-[10px] text-ink-faint/50 mt-2">
+              © {new Date().getFullYear()} — Todos os direitos reservados
+            </p>
           </motion.div>
         </section>
 
