@@ -35,6 +35,7 @@ import { ptBR } from "date-fns/locale";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { ExportCardButton } from "@/components/ExportCardButton";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
@@ -491,6 +492,9 @@ export default function DocumentDetailPage() {
             </motion.div>
           </div>
         )}
+
+        {/* ScrollToTop */}
+        <ScrollToTop threshold={300} />
       </main>
     </PageTransition>
   );
