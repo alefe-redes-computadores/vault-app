@@ -9,12 +9,11 @@ import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { DocumentCard } from "@/components/DocumentCard";
-import { PersonCard } from "@/components/PersonCard";
 import { AreaTabs } from "@/components/AreaTabs";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollToTop } from "@/components/ScrollToTop";
-import { EmptyState } from "@/components/EmptyState";
+import type { CategoryId } from "@/lib/types";
 
 export default function FavoritesPage() {
   const { trigger } = useHapticFeedback();
@@ -23,7 +22,7 @@ export default function FavoritesPage() {
   const persons = usePersons();
 
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>("todos");
+  const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +36,7 @@ export default function FavoritesPage() {
   const favorites = useFavorites(selectedPersonId || undefined);
 
   const filtered = favorites.filter(doc => {
-    const matchCategory = selectedCategory === "todos" || doc.category_id === selectedCategory;
+    const matchCategory = selectedCategory === null || doc.category_id === selectedCategory;
     return matchCategory;
   });
 
@@ -124,9 +123,12 @@ export default function FavoritesPage() {
             </div>
           </div>
 
-          {/* Filtro por categoria - CORRIGIDO: active em vez de selected */}
+          {/* Filtro por categoria - CORRIGIDO: usa activeArea e onAreaChange */}
           <div className="mt-3">
-            <AreaTabs active={selectedCategory} onChange={setSelectedCategory} />
+            <AreaTabs
+              activeArea={selectedCategory}
+              onAreaChange={setSelectedCategory}
+            />
           </div>
         </header>
 
@@ -190,7 +192,6 @@ export default function FavoritesPage() {
           </AnimatePresence>
         </section>
 
-        {/* ScrollToTop */}
         <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
