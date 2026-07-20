@@ -40,7 +40,7 @@ class VaultDB extends Dexie {
     this.version(5).stores({
       persons: '++id, user_id, name, synced, created_at',
       documents: '++id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: '++id, table, operation, created_at',
+      syncQueue: '++id, table, operation, created_at, user_id',
       medicamentos: '++id, document_id, nome, medico, proxima_renovacao',
       renovacoes: '++id, medicamento_id, data',
       vaults: '++id, user_id, name, synced, created_at',
@@ -302,7 +302,7 @@ export async function safeAddMedico(
     await db.syncQueue.add({
       table: 'medicos',
       operation: 'add',
-      payload: { ...full, id },
+      payload: { ...full, id, user_id: full.user_id },
       created_at: timestamp,
     });
     return id;
@@ -324,7 +324,7 @@ export async function safeAddFarmacia(
     await db.syncQueue.add({
       table: 'farmacias',
       operation: 'add',
-      payload: { ...full, id },
+      payload: { ...full, id, user_id: full.user_id },
       created_at: timestamp,
     });
     return id;
@@ -346,7 +346,7 @@ export async function safeAddHospital(
     await db.syncQueue.add({
       table: 'hospitais',
       operation: 'add',
-      payload: { ...full, id },
+      payload: { ...full, id, user_id: full.user_id },
       created_at: timestamp,
     });
     return id;
