@@ -1,179 +1,171 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Fingerprint, Eye, Shield, Lock } from "lucide-react";
-import { useBiometric } from "@/hooks/useBiometric";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Fingerprint, Shield } from "lucide-react";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
-import { Button } from "@/components/ui/Button";
-import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
+import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 
 interface BiometricLockProps {
   children: React.ReactNode;
 }
 
 export function BiometricLock({ children }: BiometricLockProps) {
-  const { user } = useAuth();
-  const router = useRouter();
-  const [showFallback, setShowFallback] = useState(false);
-  const { isEnabled, isLoading: prefLoading } = useBiometricPreference();
+  const { isEnabled, isAvailable, authenticate } = useBiometricPreference();
+  const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
+  const [isAuthenticated, setIsAuthenticated] = useState(!isEnabled);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const {
-    isAvailable,
-    isAuthenticated,
-    isLoading: bioLoading,
-    biometricType,
-    authenticate,
-    reset,
-  } = useBiometric({
-    onSuccess: () => {
-      console.log("Autenticado com sucesso!");
-      document.body.classList.remove("biometric-locked");
-    },
-    onError: (error) => {
-      console.error("Erro na biometria:", error);
-    },
-    title: "Desbloqueie o Vault",
-    subtitle: "Use sua impressão digital ou Face ID",
-    description: "Mantenha seus documentos seguros",
-  });
-
-  // Adiciona/remove classe de bloqueio
   useEffect(() => {
-    if (!isAuthenticated && !bioLoading && isAvailable && isEnabled) {
-      document.body.classList.add("biometric-locked");
+    if (isEnabled && isAvailable) {
+      handleAuthenticate();
     } else {
-      document.body.classList.remove("biometric-locked");
+      setIsAuthenticated(true);
     }
-    return () => document.body.classList.remove("biometric-locked");
-  }, [isAuthenticated, bioLoading, isAvailable, isEnabled]);
+  }, [isEnabled, isAvailable]);
 
-  // Se o usuário não estiver logado, mostra o conteúdo normalmente
-  if (!user) return <>{children}</>;
+  const handleAuthenticate = async () => {
+    if (!isAvailable || !isEnabled) {
+      setIsAuthenticated(true);
+      return;
+    }
 
-  // Se a biometria estiver desabilitada nas preferências, pula a tela
-  if (!isEnabled || prefLoading) return <>{children}</>;
+    setIsLoading(true);
+    try {
+      const result = await authenticate();
+      if (result) {
+        setIsAuthenticated(true);
+        trigger("success");
+      } else {
+        showToast("Biometria não reconhecida. Tente novamente.", "error");
+        trigger("error");
+        // Tenta novamente após 1 segundo
+        setTimeout(() => handleAuthenticate(), 1000);
+      }
+    } catch (error) {
+      console.error("Erro na autenticação biométrica:", error);
+      showToast("Erro ao autenticar. Tente novamente.", "error");
+      trigger("error");
+      setTimeout(() => handleAuthenticate(), 1000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Se não houver biometria disponível, pula
-  if (!isAvailable && !bioLoading) return <>{children}</>;
+  if (!isEnabled) {
+    return <>{children}</>;
+  }
 
-  // Se já autenticou, mostra o conteúdo
-  if (isAuthenticated) return <>{children}</>;
-
-  // Loading
-  if (bioLoading) {
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-void flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-ice border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-ink-muted mt-4">Verificando biometria...</p>
-        </div>
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-void">
+        {/* Ícone animado */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="relative"
+        >
+          <motion.div
+            animate={{
+              scale: [1, 1.05, 1],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-ice/20 to-ice/5 border border-ice/20 flex items-center justify-center shadow-2xl shadow-ice/10"
+          >
+            <Fingerprint size={40} className="text-ice" strokeWidth={1.5} />
+          </motion.div>
+        </motion.div>
+
+        {/* Título */}
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="mt-6 font-display text-xl font-semibold text-ink-primary"
+        >
+          Desbloquear Vault
+        </motion.h1>
+
+        {/* Subtítulo */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+          className="mt-1 text-sm text-ink-muted"
+        >
+          {isLoading ? "Verificando..." : "Toque no sensor para desbloquear"}
+        </motion.p>
+
+        {/* Bolinha pulsante discreta */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.7 }}
+          className="mt-8 flex items-center gap-2"
+        >
+          <motion.div
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [0.3, 1, 0.3],
+            }}
+            transition={{
+              duration: 1.2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0,
+            }}
+            className="w-2 h-2 rounded-full bg-ice/60"
+          />
+          <motion.div
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [0.3, 1, 0.3],
+            }}
+            transition={{
+              duration: 1.2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.2,
+            }}
+            className="w-2 h-2 rounded-full bg-ice/40"
+          />
+          <motion.div
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [0.3, 1, 0.3],
+            }}
+            transition={{
+              duration: 1.2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.4,
+            }}
+            className="w-2 h-2 rounded-full bg-ice/20"
+          />
+        </motion.div>
+
+        {/* Botão para tentar novamente (se falhou) */}
+        {!isLoading && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.9 }}
+            onClick={handleAuthenticate}
+            className="mt-6 text-sm text-ice/70 hover:text-ice transition-colors"
+          >
+            Tentar novamente
+          </motion.button>
+        )}
       </div>
     );
   }
 
-  const iconMap = {
-    fingerprint: Fingerprint,
-    face: Eye,
-    iris: Eye,
-    none: Lock,
-  };
-
-  const IconComponent = iconMap[biometricType] || Lock;
-  const iconLabel =
-    biometricType === "fingerprint"
-      ? "Impressão digital"
-      : biometricType === "face"
-      ? "Face ID"
-      : biometricType === "iris"
-      ? "Íris"
-      : "Biometria";
-
-  return (
-    <div className="min-h-screen bg-void flex items-center justify-center p-4 biometric-lock-screen">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md text-center"
-      >
-        <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-ice/10 border-2 border-ice/30 mb-6">
-            <Shield size={40} className="text-ice" />
-          </div>
-          <h1 className="font-display text-2xl font-semibold text-ink-primary">
-            Vault
-          </h1>
-          <p className="text-sm text-ink-muted mt-2">
-            Seus documentos estão protegidos
-          </p>
-        </div>
-
-        <motion.div
-          initial={{ scale: 0.95 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-          className="p-8 rounded-card bg-surface border border-surface-border shadow-vault"
-        >
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-ice/10 flex items-center justify-center">
-              <IconComponent size={40} className="text-ice" />
-            </div>
-
-            <div>
-              <h2 className="font-display text-lg font-semibold text-ink-primary">
-                {iconLabel}
-              </h2>
-              <p className="text-sm text-ink-muted mt-1">
-                Toque no botão abaixo para autenticar
-              </p>
-            </div>
-
-            <Button
-              variant="primary"
-              size="lg"
-              className="mt-4 w-full flex items-center justify-center gap-2"
-              onClick={authenticate}
-            >
-              <Lock size={16} />
-              Autenticar com {iconLabel}
-            </Button>
-
-            {!showFallback ? (
-              <button
-                onClick={() => setShowFallback(true)}
-                className="text-xs text-ink-muted hover:text-ink-primary transition-colors mt-2"
-              >
-                Usar senha do dispositivo
-              </button>
-            ) : (
-              <div className="mt-4 space-y-2">
-                <p className="text-xs text-ink-muted">
-                  A autenticação biométrica falhou?
-                </p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="w-full"
-                  onClick={authenticate}
-                >
-                  Tentar novamente
-                </Button>
-                <button
-                  onClick={() => {
-                    reset();
-                    router.push("/login");
-                  }}
-                  className="text-xs text-coral hover:text-coral/80 transition-colors"
-                >
-                  Sair da conta
-                </button>
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </motion.div>
-    </div>
-  );
+  return <>{children}</>;
 }
