@@ -2,7 +2,17 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Pill, Calendar, Plus, FileText, Clock } from "lucide-react";
+import { 
+  ArrowLeft, 
+  Pill, 
+  Calendar, 
+  Plus, 
+  FileText, 
+  Clock,
+  Edit,
+  Trash2,
+  Loader2
+} from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -12,13 +22,16 @@ import { ptBR } from "date-fns/locale";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ToastProvider";
 
 export default function MedicamentoDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = Number(searchParams.get("id"));
+  const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const medicamento = useLiveQuery(
     () => db.medicamentos.get(id),
@@ -36,6 +49,29 @@ export default function MedicamentoDetailPage() {
     const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleDelete = async () => {
+    if (!medicamento) return;
+    
+    if (confirm(`Tem certeza que deseja excluir "${medicamento.nome}"?\nTodas as renovações também serão removidas.`)) {
+      setIsDeleting(true);
+      try {
+        await db.transaction('rw', db.medicamentos, db.renovacoes, async () => {
+          await db.renovacoes.where('medicamento_id').equals(id).delete();
+          await db.medicamentos.delete(id);
+        });
+        trigger("success");
+        showToast("Medicamento excluído com sucesso!", "success");
+        router.push("/saude/medicamentos");
+      } catch (error) {
+        console.error(error);
+        trigger("error");
+        showToast("Erro ao excluir medicamento", "error");
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -65,32 +101,58 @@ export default function MedicamentoDetailPage() {
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${isUrgent ? "bg-coral/20" : "bg-surface-raised"}`}>
-                <Pill size={20} className={isUrgent ? "text-coral" : "text-ink-muted"} />
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              >
+                <ArrowLeft size={18} className="text-ink-primary" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${isUrgent ? "bg-coral/20" : "bg-surface-raised"}`}>
+                  <Pill size={20} className={isUrgent ? "text-coral" : "text-ink-muted"} />
+                </div>
+                <div>
+                  <h1 className="font-display text-xl font-semibold text-ink-primary truncate max-w-[200px]">
+                    {medicamento.nome}
+                  </h1>
+                  <p className="text-sm text-ink-muted">{medicamento.dosagem}</p>
+                </div>
               </div>
-              <div>
-                <h1 className="font-display text-xl font-semibold text-ink-primary truncate max-w-[200px]">
-                  {medicamento.nome}
-                </h1>
-                <p className="text-sm text-ink-muted">{medicamento.dosagem}</p>
-              </div>
+              {isUrgent && (
+                <span className="ml-auto text-xs px-3 py-1 rounded-full bg-coral/20 text-coral border border-coral/30">
+                  {diasRestantes} dias
+                </span>
+              )}
             </div>
-            {isUrgent && (
-              <span className="ml-auto text-xs px-3 py-1 rounded-full bg-coral/20 text-coral border border-coral/30">
-                {diasRestantes} dias
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push(`/saude/medicamentos/editar?id=${id}`);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised hover:bg-surface-border transition-colors active:scale-95"
+                title="Editar medicamento"
+              >
+                <Edit size={18} className="text-ink-muted" />
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 hover:bg-coral/20 transition-colors active:scale-95 disabled:opacity-50"
+                title="Excluir medicamento"
+              >
+                {isDeleting ? (
+                  <Loader2 size={18} className="animate-spin text-coral" />
+                ) : (
+                  <Trash2 size={18} className="text-coral" />
+                )}
+              </button>
+            </div>
           </div>
         </header>
 
