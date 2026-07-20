@@ -36,6 +36,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
@@ -76,6 +77,7 @@ export default function DocumentDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -85,19 +87,23 @@ export default function DocumentDetailPage() {
       return;
     }
 
-    if (confirm("Tem certeza que deseja excluir este documento?")) {
-      setIsDeleting(true);
-      try {
-        await deleteDocument(doc.id!);
-        trigger("success");
-        showToast("Documento excluído com sucesso!", "success");
-        router.push("/");
-      } catch {
-        showToast("Erro ao excluir documento", "error");
-        trigger("error");
-      } finally {
-        setIsDeleting(false);
-      }
+    setShowDeleteModal(true);
+  }, [doc]);
+
+  const confirmDelete = useCallback(async () => {
+    if (!doc) return;
+    setIsDeleting(true);
+    try {
+      await deleteDocument(doc.id!);
+      trigger("success");
+      showToast("Documento excluído com sucesso!", "success");
+      router.push("/");
+    } catch {
+      showToast("Erro ao excluir documento", "error");
+      trigger("error");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   }, [doc, deleteDocument, trigger, showToast, router]);
 
@@ -362,7 +368,7 @@ export default function DocumentDetailPage() {
               className="flex items-center justify-center gap-2"
               onClick={() => {
                 trigger("vibrate");
-                router.push(`/editar?id=${doc.id}`);
+                router.push(`/detalhes/editar?id=${doc.id}`); // ← CORRIGIDO
               }}
             >
               <Edit size={16} />
@@ -500,7 +506,19 @@ export default function DocumentDetailPage() {
           </div>
         )}
 
-        {/* ScrollToTop */}
+        {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={confirmDelete}
+          title="Excluir documento"
+          message={`Tem certeza que deseja excluir "${doc.title}"? Esta ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          cancelLabel="Cancelar"
+          isLoading={isDeleting}
+          type="danger"
+        />
+
         <ScrollToTop threshold={300} />
       </main>
     </PageTransition>
