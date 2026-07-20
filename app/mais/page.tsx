@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Camera,
   Fingerprint,
+  Pencil, // ← NOVO
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -101,6 +102,11 @@ export default function MaisPage() {
       setIsChangingPhoto(false);
     };
     input.click();
+  };
+
+  const handleEditProfile = () => {
+    trigger("vibrate");
+    showToast("Editar perfil em breve...", "info");
   };
 
   const handleBiometricToggle = () => {
@@ -198,7 +204,7 @@ export default function MaisPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          {/* PERFIL — INTEGRADO NO TOPO */}
+          {/* PERFIL — INTEGRADO NO TOPO COM BOTÃO DE EDIÇÃO */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -219,11 +225,10 @@ export default function MaisPage() {
                   </div>
                 )}
                 <button
-                  onClick={handleChangePhoto}
+                  onClick={handleEditProfile}
                   className="absolute bottom-0 right-0 p-1.5 rounded-full bg-ice text-void border-2 border-void hover:bg-ice/80 transition-colors active:scale-95"
-                  disabled={isChangingPhoto}
                 >
-                  <Camera size={14} />
+                  <Pencil size={14} />
                 </button>
               </div>
               <h2 className="font-display text-lg font-semibold text-ink-primary">{displayName}</h2>
