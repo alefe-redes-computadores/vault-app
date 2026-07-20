@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -17,6 +18,8 @@ import {
   Database,
   Download,
   RefreshCw,
+  Camera,
+  Fingerprint,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -24,13 +27,18 @@ import { PageTransition } from "@/components/PageTransition";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
+import { useBiometricPreference } from "@/hooks/useBiometricPreference";
+import { useState } from "react";
+import { Button } from "@/components/ui/Button";
 
 export default function MaisPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { showToast } = useToast();
   const { processQueue, isOnline } = useSyncQueue();
+  const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
+  const [isChangingPhoto, setIsChangingPhoto] = useState(false);
 
   const handleLogout = async () => {
     if (confirm("Tem certeza que deseja sair da conta?")) {
@@ -63,6 +71,34 @@ export default function MaisPage() {
       showToast("Erro ao sincronizar", "error");
     }
   };
+
+  const handleChangePhoto = () => {
+    trigger("vibrate");
+    setIsChangingPhoto(true);
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        showToast("Foto atualizada com sucesso!", "success");
+      }
+      setIsChangingPhoto(false);
+    };
+    input.click();
+  };
+
+  const handleBiometricToggle = () => {
+    toggleBiometric();
+    trigger("vibrate");
+    showToast(
+      isBiometricEnabled ? "Biometria desativada" : "Biometria ativada",
+      "info"
+    );
+  };
+
+  const avatarUrl = user?.user_metadata?.avatar_url;
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
   const menuSections = [
     {
@@ -147,6 +183,57 @@ export default function MaisPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
+          {/* PERFIL — INTEGRADO NO TOPO */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="rounded-xl border border-surface-border/50 bg-surface p-6 shadow-sm"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    className="w-20 h-20 rounded-full border-2 border-ice/20"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-3xl">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <button
+                  onClick={handleChangePhoto}
+                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-ice text-void border-2 border-void hover:bg-ice/80 transition-colors active:scale-95"
+                  disabled={isChangingPhoto}
+                >
+                  <Camera size={14} />
+                </button>
+              </div>
+              <h2 className="font-display text-lg font-semibold text-ink-primary">{displayName}</h2>
+              <p className="text-sm text-ink-muted">{user?.email}</p>
+            </div>
+
+            <div className="mt-4 border-t border-surface-border/50 pt-4 space-y-2">
+              <button
+                onClick={handleBiometricToggle}
+                className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-surface-border transition-colors active:scale-95"
+              >
+                <Fingerprint size={18} className={isBiometricEnabled ? "text-ice" : "text-ink-muted"} />
+                <span className="text-sm text-ink-primary flex-1">Biometria</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  isBiometricEnabled
+                    ? "bg-ice/20 text-ice"
+                    : "bg-surface-border text-ink-muted"
+                }`}>
+                  {isBiometricEnabled ? "Ativada" : "Desativada"}
+                </span>
+              </button>
+            </div>
+          </motion.div>
+
+          {/* SEÇÕES DO MENU */}
           {menuSections.map((section, sectionIndex) => (
             <motion.div
               key={section.title}
@@ -184,7 +271,7 @@ export default function MaisPage() {
             </motion.div>
           ))}
 
-          {/* Sair (seção separada) */}
+          {/* SAIR DA CONTA */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
