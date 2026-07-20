@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase/client';
 import { db } from '@/lib/db';
-import type { Person, Document, Medicamento, Renovacao, Vault, VaultMember } from '@/lib/types';
+import type { Person, Document, Medicamento, Renovacao, Vault, VaultMember, Medico, Farmacia, Hospital } from '@/lib/types';
 
 /**
  * Puxa todos os dados do Supabase e insere no Dexie
@@ -40,7 +40,8 @@ export async function pullAllData(userId: string): Promise<void> {
     // 3. Puxar medicamentos
     const { data: medicamentos, error: medError } = await supabase
       .from('medicamentos')
-      .select('*');
+      .select('*')
+      .eq('user_id', userId);
     
     if (medError) throw medError;
     if (medicamentos && medicamentos.length > 0) {
@@ -54,7 +55,8 @@ export async function pullAllData(userId: string): Promise<void> {
     // 4. Puxar renovações
     const { data: renovacoes, error: renError } = await supabase
       .from('renovacoes')
-      .select('*');
+      .select('*')
+      .eq('user_id', userId);
     
     if (renError) throw renError;
     if (renovacoes && renovacoes.length > 0) {
@@ -93,6 +95,55 @@ export async function pullAllData(userId: string): Promise<void> {
         await db.vaultMembers.bulkAdd(members);
       });
       console.log(`✅ ${members.length} membros sincronizados`);
+    }
+
+    // ============================================================
+    // NOVO: Puxar médicos, farmácias e hospitais
+    // ============================================================
+
+    // 7. Puxar médicos
+    const { data: medicos, error: medicosError } = await supabase
+      .from('medicos')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (medicosError) throw medicosError;
+    if (medicos && medicos.length > 0) {
+      await db.transaction('rw', db.medicos, async () => {
+        await db.medicos.clear();
+        await db.medicos.bulkAdd(medicos);
+      });
+      console.log(`✅ ${medicos.length} médicos sincronizados`);
+    }
+
+    // 8. Puxar farmácias
+    const { data: farmacias, error: farmaciasError } = await supabase
+      .from('farmacias')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (farmaciasError) throw farmaciasError;
+    if (farmacias && farmacias.length > 0) {
+      await db.transaction('rw', db.farmacias, async () => {
+        await db.farmacias.clear();
+        await db.farmacias.bulkAdd(farmacias);
+      });
+      console.log(`✅ ${farmacias.length} farmácias sincronizadas`);
+    }
+
+    // 9. Puxar hospitais
+    const { data: hospitais, error: hospitaisError } = await supabase
+      .from('hospitais')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (hospitaisError) throw hospitaisError;
+    if (hospitais && hospitais.length > 0) {
+      await db.transaction('rw', db.hospitais, async () => {
+        await db.hospitais.clear();
+        await db.hospitais.bulkAdd(hospitais);
+      });
+      console.log(`✅ ${hospitais.length} hospitais sincronizados`);
     }
 
   } catch (error) {
