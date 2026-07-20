@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, User, ChevronDown } from "lucide-react";
+import { Search, Plus, User, ChevronDown, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
@@ -47,7 +47,6 @@ export default function HomePage() {
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // Toast de boas-vindas
   useEffect(() => {
     if (!loading && user && !welcomeShown) {
       const hasSeenWelcome = sessionStorage.getItem('vault_welcome_shown');
@@ -116,6 +115,11 @@ export default function HomePage() {
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
   const selectedPerson = persons.find(p => p.id === selectedPersonId);
 
+  // Limitar a exibição a 5 pessoas no scroll
+  const MAX_VISIBLE_PERSONS = 5;
+  const visiblePersons = persons.slice(0, MAX_VISIBLE_PERSONS);
+  const hasMorePersons = persons.length > MAX_VISIBLE_PERSONS;
+
   if (isLoading) {
     return <LoadingSkeleton />;
   }
@@ -123,7 +127,7 @@ export default function HomePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -155,7 +159,6 @@ export default function HomePage() {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              {/* ✅ Botão de exportação adicionado */}
               <ExportButton variant="icon" />
               <button
                 onClick={() => {
@@ -169,19 +172,49 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Seletor de pessoa */}
+          {/* PESSOAS - SCROLL HORIZONTAL + BOTÃO "VER TODOS" */}
           <div className="mt-3">
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                setIsPersonModalOpen(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface-raised border border-surface-border/50 text-ink-primary text-sm active:scale-95 transition-all"
-            >
-              <User size={16} />
-              {selectedPerson?.name || "Selecionar pessoa"}
-              <ChevronDown size={14} className="text-ink-muted" />
-            </button>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
+                Pessoas
+              </span>
+              {hasMorePersons && (
+                <button
+                  onClick={() => {
+                    trigger("vibrate");
+                    setIsPersonModalOpen(true);
+                  }}
+                  className="text-xs text-ice/70 hover:text-ice transition-colors flex items-center gap-1"
+                >
+                  Ver todos
+                  <ChevronRight size={12} />
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {visiblePersons.map((person) => (
+                <PersonCard
+                  key={person.id}
+                  person={person}
+                  isActive={selectedPersonId === person.id}
+                  onClick={() => {
+                    trigger("vibrate");
+                    setSelectedPersonId(person.id!);
+                  }}
+                />
+              ))}
+              {hasMorePersons && (
+                <button
+                  onClick={() => {
+                    trigger("vibrate");
+                    setIsPersonModalOpen(true);
+                  }}
+                  className="flex-shrink-0 w-10 h-10 rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center text-ink-muted text-xs font-medium hover:bg-surface-border transition-colors"
+                >
+                  +{persons.length - MAX_VISIBLE_PERSONS}
+                </button>
+              )}
+            </div>
           </div>
         </header>
 
@@ -297,11 +330,11 @@ export default function HomePage() {
           </div>
         </BottomSheet>
 
-        {/* BottomSheet - Selecionar pessoa */}
+        {/* BottomSheet - Selecionar pessoa (TODAS) */}
         <BottomSheet
           isOpen={isPersonModalOpen}
           onClose={() => setIsPersonModalOpen(false)}
-          title="Selecionar pessoa"
+          title="Todas as pessoas"
         >
           <div className="space-y-2">
             {persons.map((person) => (
@@ -327,6 +360,9 @@ export default function HomePage() {
                     </div>
                   )}
                   <span className="text-ink-primary font-medium">{person.name}</span>
+                  {person.id === selectedPersonId && (
+                    <span className="ml-auto text-xs text-ice">✓</span>
+                  )}
                 </div>
               </button>
             ))}
