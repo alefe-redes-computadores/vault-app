@@ -19,6 +19,7 @@ import {
   type LucideIcon,
   CheckCircle,
   Loader2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -27,6 +28,7 @@ import { useToast } from "@/components/ToastProvider";
 
 interface DocumentCardProps {
   document: Document;
+  personName?: string;
   onFavoriteToggle?: (id: number) => void;
   compact?: boolean;
 }
@@ -52,7 +54,7 @@ const formatDate = (date?: string) => {
   }
 };
 
-function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: DocumentCardProps) {
+function DocumentCardComponent({ document, personName, onFavoriteToggle, compact = false }: DocumentCardProps) {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast } = useToast();
@@ -72,11 +74,9 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
     e.stopPropagation();
     trigger("vibrate");
     
-    // Anima o coração
     setIsFavoriteAnimating(true);
     setTimeout(() => setIsFavoriteAnimating(false), 500);
     
-    // Mostra toast
     showToast(
       document.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
       "info"
@@ -86,6 +86,7 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
   };
 
   const hasAttachments = document.attachments && document.attachments.length > 0;
+  const hasImageAttachment = document.attachments?.some(a => a.type === 'image');
 
   const metadataKeys = Object.keys(document.metadata || {}).filter(
     (key) => !["issue_date", "expiry_date", "renewal_date", "prescription_date", "date"].includes(key)
@@ -132,7 +133,13 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-ink-muted">{category?.name}</span>
                 <span className="w-1 h-1 rounded-full bg-ink-faint" />
-                <span className="text-xs text-ink-muted capitalize">{document.type}</span>
+                {/* Mostra o nome da pessoa em vez do tipo */}
+                {personName && (
+                  <span className="text-xs text-ink-muted">{personName}</span>
+                )}
+                {!personName && (
+                  <span className="text-xs text-ink-muted capitalize">{document.type}</span>
+                )}
               </div>
             </div>
 
@@ -190,9 +197,14 @@ function DocumentCardComponent({ document, onFavoriteToggle, compact = false }: 
         </div>
       </div>
 
+      {/* Badge de anexo com ícone específico */}
       {hasAttachments && (
         <div className="absolute bottom-3 right-3">
-          <Paperclip size={14} className="text-ink-muted/50" />
+          {hasImageAttachment ? (
+            <ImageIcon size={14} className="text-ink-muted/50" />
+          ) : (
+            <Paperclip size={14} className="text-ink-muted/50" />
+          )}
         </div>
       )}
 
@@ -219,6 +231,7 @@ export const DocumentCard = memo(DocumentCardComponent, (prevProps, nextProps) =
     prevProps.document.id === nextProps.document.id &&
     prevProps.document.is_favorite === nextProps.document.is_favorite &&
     prevProps.document.synced === nextProps.document.synced &&
-    prevProps.compact === nextProps.compact
+    prevProps.compact === nextProps.compact &&
+    prevProps.personName === nextProps.personName
   );
 });
