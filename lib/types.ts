@@ -219,11 +219,11 @@ export type EncaminhamentoMetadata = {
 };
 
 // ============================================================
-// 5. FILA DE SINCRONIZAÇÃO
+// 5. FILA DE SINCRONIZAÇÃO (CORRIGIDO)
 // ============================================================
 export interface SyncQueueItem {
   id?: number;
-  table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes' | 'vaults' | 'vaultMembers';
+  table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes' | 'vaults' | 'vaultMembers' | 'medicos' | 'farmacias' | 'hospitais';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
