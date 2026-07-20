@@ -44,6 +44,8 @@ export default function NovoMedicoPage() {
   };
 
   const handleSubmit = async () => {
+    trigger("vibrate");
+    
     if (!validate()) {
       trigger("error");
       return;
@@ -64,6 +66,7 @@ export default function NovoMedicoPage() {
       router.push("/saude/medicos");
     } catch (error) {
       showToast("Erro ao cadastrar médico", "error");
+      trigger("error");
     } finally {
       setLoading(false);
     }
