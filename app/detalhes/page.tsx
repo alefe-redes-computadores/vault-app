@@ -80,6 +80,11 @@ export default function DocumentDetailPage() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleDelete = useCallback(async () => {
+    if (!doc) {
+      showToast("Documento não encontrado", "error");
+      return;
+    }
+
     if (confirm("Tem certeza que deseja excluir este documento?")) {
       setIsDeleting(true);
       try {
@@ -97,12 +102,14 @@ export default function DocumentDetailPage() {
   }, [doc, deleteDocument, trigger, showToast, router]);
 
   const handleFavoriteToggle = useCallback(async () => {
+    if (!doc) return;
     await favorite(doc.id!);
     trigger("vibrate");
     showToast(doc.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos", "info");
   }, [doc, favorite, trigger, showToast]);
 
   const handleShare = useCallback(() => {
+    if (!doc) return;
     if (navigator.share) {
       navigator
         .share({
