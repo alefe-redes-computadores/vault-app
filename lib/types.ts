@@ -64,7 +64,7 @@ export const AREAS = CATEGORIES;
 export const CATEGORY_META = CATEGORIES;
 
 // ============================================================
-// 3. DOCUMENTOS (com metadata dinâmica)
+// 3. DOCUMENTOS (com metadata dinâmica e user_id)
 // ============================================================
 export type DocumentType =
   | 'rg'
@@ -87,6 +87,7 @@ export interface Attachment {
 
 export interface Document {
   id?: number;
+  user_id: string; // ← ADICIONADO (vinculado ao Supabase Auth)
   person_id: number;
   category_id: CategoryId;
   type: DocumentType;
