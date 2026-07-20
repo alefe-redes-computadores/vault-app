@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Star, User, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,9 +10,11 @@ import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
+import { AreaTabs } from "@/components/AreaTabs";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function FavoritesPage() {
   const { trigger } = useHapticFeedback();
@@ -20,24 +22,31 @@ export default function FavoritesPage() {
   const { favorite } = useSafeDb();
   const persons = usePersons();
 
-  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(
-    persons[0]?.id || null
-  );
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("todos");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (persons.length > 0 && selectedPersonId === null) {
+      setSelectedPersonId(persons[0]?.id || null);
+    }
     const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
-  }, []);
+  }, [persons]);
 
   const favorites = useFavorites(selectedPersonId || undefined);
+
+  const filtered = favorites.filter(doc => {
+    const matchCategory = selectedCategory === "todos" || doc.category_id === selectedCategory;
+    return matchCategory;
+  });
 
   const handleFavoriteToggle = useCallback(async (id: number) => {
     await favorite(id);
     trigger("vibrate");
   }, [favorite, trigger]);
 
-  const hasFavorites = favorites && favorites.length > 0;
+  const hasFavorites = filtered && filtered.length > 0;
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -65,7 +74,7 @@ export default function FavoritesPage() {
                   Favoritos
                 </h1>
                 <p className="text-sm text-ink-muted">
-                  {hasFavorites ? `${favorites.length} documento${favorites.length !== 1 ? "s" : ""} favoritado${favorites.length !== 1 ? "s" : ""}` : "Nenhum favorito ainda"}
+                  {hasFavorites ? `${filtered.length} documento${filtered.length !== 1 ? "s" : ""}` : "Nenhum favorito"}
                 </p>
               </div>
             </div>
@@ -85,7 +94,7 @@ export default function FavoritesPage() {
                     : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                 }`}
               >
-                Todos
+                Todas pessoas
               </button>
               {persons.map((person) => (
                 <button
@@ -113,6 +122,11 @@ export default function FavoritesPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Filtro por categoria */}
+          <div className="mt-3">
+            <AreaTabs selected={selectedCategory} onChange={setSelectedCategory} />
           </div>
         </header>
 
@@ -157,7 +171,7 @@ export default function FavoritesPage() {
                 transition={{ duration: 0.3 }}
                 className="space-y-3"
               >
-                {favorites.map((doc, index) => (
+                {filtered.map((doc, index) => (
                   <motion.div
                     key={doc.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -167,6 +181,7 @@ export default function FavoritesPage() {
                     <DocumentCard
                       document={doc}
                       onFavoriteToggle={handleFavoriteToggle}
+                      personName={persons.find(p => p.id === doc.person_id)?.name}
                     />
                   </motion.div>
                 ))}
