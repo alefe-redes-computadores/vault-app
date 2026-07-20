@@ -12,6 +12,7 @@ import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 export default function FavoritesPage() {
   const { trigger } = useHapticFeedback();
@@ -173,6 +174,9 @@ export default function FavoritesPage() {
             )}
           </AnimatePresence>
         </section>
+
+        {/* ScrollToTop */}
+        <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
   );
