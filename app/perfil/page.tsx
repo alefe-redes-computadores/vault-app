@@ -23,6 +23,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { useState } from "react";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 export default function ProfilePage() {
   const { trigger } = useHapticFeedback();
@@ -31,21 +32,36 @@ export default function ProfilePage() {
   const { showToast } = useToast();
   const [isChangingPhoto, setIsChangingPhoto] = useState(false);
   const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showClearDataModal, setShowClearDataModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
-    if (confirm("Tem certeza que deseja sair da conta?")) {
+    setIsLoading(true);
+    try {
       trigger("vibrate");
       await logout();
       router.push("/login");
+    } catch (error) {
+      showToast("Erro ao sair da conta", "error");
+    } finally {
+      setIsLoading(false);
+      setShowLogoutModal(false);
     }
   };
 
   const clearLocalData = async () => {
-    if (confirm("Tem certeza que deseja limpar todos os dados locais?")) {
+    setIsLoading(true);
+    try {
       await db.delete();
       trigger("success");
       showToast("Dados locais limpos com sucesso!", "success");
       router.push("/login");
+    } catch (error) {
+      showToast("Erro ao limpar dados", "error");
+    } finally {
+      setIsLoading(false);
+      setShowClearDataModal(false);
     }
   };
 
@@ -159,7 +175,7 @@ export default function ProfilePage() {
             </button>
 
             <button
-              onClick={clearLocalData}
+              onClick={() => setShowClearDataModal(true)}
               className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-coral/20 hover:bg-coral/10 transition-colors active:scale-95"
             >
               <HardDrive size={18} className="text-coral" />
@@ -176,7 +192,7 @@ export default function ProfilePage() {
               variant="danger"
               size="lg"
               fullWidth
-              onClick={handleLogout}
+              onClick={() => setShowLogoutModal(true)}
               className="flex items-center justify-center gap-2"
             >
               <LogOut size={16} />
@@ -184,6 +200,32 @@ export default function ProfilePage() {
             </Button>
           </motion.div>
         </section>
+
+        {/* MODAL DE CONFIRMAÇÃO - LOGOUT */}
+        <ConfirmationModal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+          title="Sair da conta"
+          message="Tem certeza que deseja sair da sua conta?"
+          confirmLabel="Sair"
+          cancelLabel="Cancelar"
+          isLoading={isLoading}
+          type="warning"
+        />
+
+        {/* MODAL DE CONFIRMAÇÃO - LIMPAR DADOS LOCAIS */}
+        <ConfirmationModal
+          isOpen={showClearDataModal}
+          onClose={() => setShowClearDataModal(false)}
+          onConfirm={clearLocalData}
+          title="Limpar dados locais"
+          message="Tem certeza que deseja limpar todos os dados locais? Esta ação não pode ser desfeita."
+          confirmLabel="Limpar"
+          cancelLabel="Cancelar"
+          isLoading={isLoading}
+          type="danger"
+        />
       </main>
     </PageTransition>
   );
