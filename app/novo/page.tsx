@@ -24,6 +24,7 @@ import { DocumentTypeSelector } from "@/components/DocumentTypeSelector";
 import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { CustomDatePicker } from "@/components/DatePicker"; // ← NOVO
 
 // ============================================================
 // MÁSCARAS
@@ -471,12 +472,27 @@ export default function NewDocumentPage() {
                 const rawValue = formData.metadata[field.key] || '';
                 const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
 
+                // Se for campo do tipo date, usa o CustomDatePicker
+                if (field.type === "date") {
+                  return (
+                    <CustomDatePicker
+                      key={field.key}
+                      data-field={field.key}
+                      label={field.label}
+                      value={rawValue}
+                      onChange={(val) => handleMetadataChange(field.key, val)}
+                      required={field.required}
+                      error={errors[field.key]}
+                    />
+                  );
+                }
+
                 return (
                   <Input
                     key={field.key}
                     data-field={field.key}
                     label={field.label}
-                    type={field.type === "date" ? "date" : "text"}
+                    type="text"
                     value={displayedValue}
                     onChange={(e) => {
                       const raw = maskType 
