@@ -36,7 +36,6 @@ import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
@@ -77,7 +76,6 @@ export default function DocumentDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -87,26 +85,21 @@ export default function DocumentDetailPage() {
       return;
     }
 
-    // Mostrar toast com opção de desfazer
     const toastId = showSuccess(
       `"${doc.title}" foi excluído`,
       5000,
       {
         label: "Desfazer",
         onClick: () => {
-          // Restaurar documento (precisamos salvar os dados antes)
-          // Como é complexo, por enquanto apenas avisamos
           showToast("Restauração em breve...", "info");
         }
       }
     );
 
-    // Realizar a exclusão
     setIsDeleting(true);
     try {
       await deleteDocument(doc.id!);
       trigger("success");
-      // Redirecionar após um pequeno delay para o usuário ver o toast
       setTimeout(() => {
         router.push("/");
       }, 1000);
@@ -371,7 +364,7 @@ export default function DocumentDetailPage() {
               title={doc.title}
               variant="secondary"
               size="sm"
-              label="📄 Exportar PDF"
+              label="Exportar PDF"
             />
 
             <Button
