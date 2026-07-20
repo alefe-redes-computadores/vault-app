@@ -15,11 +15,15 @@ class VaultDB extends Dexie {
 
   constructor() {
     super('vault-db');
+    
+    // Versão 2
     this.version(2).stores({
       persons: '++id, user_id, name, synced, created_at',
       documents: '++id, person_id, category_id, type, title, is_favorite, synced, created_at',
       syncQueue: '++id, table, operation, created_at',
     });
+    
+    // Versão 3 - Medicamentos e Renovações
     this.version(3).stores({
       persons: '++id, user_id, name, synced, created_at',
       documents: '++id, person_id, category_id, type, title, is_favorite, synced, created_at',
@@ -27,6 +31,8 @@ class VaultDB extends Dexie {
       medicamentos: '++id, document_id, nome, medico, proxima_renovacao',
       renovacoes: '++id, medicamento_id, data',
     });
+    
+    // Versão 4 - Cofres
     this.version(4).stores({
       persons: '++id, user_id, name, synced, created_at',
       documents: '++id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -36,7 +42,8 @@ class VaultDB extends Dexie {
       vaults: '++id, user_id, name, synced, created_at',
       vaultMembers: '++id, vault_id, user_id, email, status, synced',
     });
-    // Versão 5 - Módulo Saúde (Médicos, Farmácias, Hospitais)
+    
+    // Versão 5 - Médicos, Farmácias, Hospitais
     this.version(5).stores({
       persons: '++id, user_id, name, synced, created_at',
       documents: '++id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -59,6 +66,25 @@ class VaultDB extends Dexie {
       await tx.table('hospitais').toCollection().modify((item: any) => {
         if (!item.synced) item.synced = true;
       });
+    });
+
+    // ============================================================
+    // VERSÃO 6 - CORRIGE ÍNDICE user_id EM documents
+    // ============================================================
+    this.version(6).stores({
+      persons: '++id, user_id, name, synced, created_at',
+      documents: '++id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', // ← ADICIONADO user_id
+      syncQueue: '++id, table, operation, created_at, user_id',
+      medicamentos: '++id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: '++id, medicamento_id, data',
+      vaults: '++id, user_id, name, synced, created_at',
+      vaultMembers: '++id, vault_id, user_id, email, status, synced',
+      medicos: '++id, user_id, nome, especialidade, synced',
+      farmacias: '++id, user_id, nome, synced',
+      hospitais: '++id, user_id, nome, synced',
+    }).upgrade(async (tx) => {
+      // Não precisa modificar dados, apenas adicionar o índice
+      console.log('🔄 Atualizando banco para versão 6 (adicionando índice user_id em documents)');
     });
   }
 }
