@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, User, ChevronRight } from "lucide-react";
+import { Search, Plus, User, ChevronRight, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
@@ -40,6 +40,7 @@ export default function HomePage() {
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -102,6 +103,7 @@ export default function HomePage() {
 
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
+  const selectedPerson = persons.find(p => p.id === selectedPersonId);
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -113,25 +115,33 @@ export default function HomePage() {
         <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={displayName}
-                  className="w-8 h-8 rounded-full border border-ice/20"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-xs font-medium">
-                  {displayName.charAt(0).toUpperCase()}
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push("/mais");
+                }}
+                className="flex items-center gap-2"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    className="w-8 h-8 rounded-full border border-ice/20"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-xs font-medium">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="text-left">
+                  <h1 className="font-display text-base font-semibold text-ink-primary">
+                    Olá, {displayName.split(" ")[0]}
+                  </h1>
+                  <p className="text-xs text-ink-muted">
+                    {allDocs.length} documento{allDocs.length !== 1 ? "s" : ""}
+                  </p>
                 </div>
-              )}
-              <div>
-                <h1 className="font-display text-base font-semibold text-ink-primary">
-                  Olá, {displayName.split(" ")[0]}
-                </h1>
-                <p className="text-xs text-ink-muted">
-                  {allDocs.length} documento{allDocs.length !== 1 ? "s" : ""}
-                </p>
-              </div>
+              </button>
             </div>
             <button
               onClick={() => {
@@ -144,31 +154,19 @@ export default function HomePage() {
             </button>
           </div>
 
+          {/* Seletor de pessoa - agora um botão que abre BottomSheet */}
           <div className="mt-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
-                Pessoas
-              </span>
-              <button
-                onClick={() => router.push("/pessoas/novo")}
-                className="text-xs text-ice/70 hover:text-ice transition-colors"
-              >
-                + Adicionar
-              </button>
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {persons.map((person) => (
-                <PersonCard
-                  key={person.id}
-                  person={person}
-                  isActive={selectedPersonId === person.id}
-                  onClick={() => {
-                    trigger("vibrate");
-                    setSelectedPersonId(person.id!);
-                  }}
-                />
-              ))}
-            </div>
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                setIsPersonModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface-raised border border-surface-border/50 text-ink-primary text-sm active:scale-95 transition-all"
+            >
+              <User size={16} />
+              {selectedPerson?.name || "Selecionar pessoa"}
+              <ChevronDown size={14} className="text-ink-muted" />
+            </button>
           </div>
         </header>
 
@@ -251,6 +249,7 @@ export default function HomePage() {
           <Plus size={20} strokeWidth={2.5} />
         </button>
 
+        {/* BottomSheet - Busca */}
         <BottomSheet isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscar documentos">
           <div className="space-y-4">
             <Input
@@ -280,6 +279,42 @@ export default function HomePage() {
                 </button>
               ))}
             </div>
+          </div>
+        </BottomSheet>
+
+        {/* BottomSheet - Selecionar pessoa */}
+        <BottomSheet
+          isOpen={isPersonModalOpen}
+          onClose={() => setIsPersonModalOpen(false)}
+          title="Selecionar pessoa"
+        >
+          <div className="space-y-2">
+            {persons.map((person) => (
+              <button
+                key={person.id}
+                onClick={() => {
+                  setSelectedPersonId(person.id!);
+                  setIsPersonModalOpen(false);
+                  trigger("vibrate");
+                }}
+                className={`w-full text-left p-3 rounded-xl border transition-all ${
+                  selectedPersonId === person.id
+                    ? "border-ice bg-ice/10"
+                    : "border-surface-border/50 bg-surface hover:bg-surface-border"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {person.avatar_url ? (
+                    <img src={person.avatar_url} alt={person.name} className="w-8 h-8 rounded-full" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-surface-raised flex items-center justify-center text-xs font-medium text-ink-muted">
+                      {person.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-ink-primary font-medium">{person.name}</span>
+                </div>
+              </button>
+            ))}
           </div>
         </BottomSheet>
 
