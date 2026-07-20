@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, User, Trash2, Loader2, Users } from "lucide-react";
+import { Plus, User, Trash2, Loader2, Users, Edit } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +12,7 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
@@ -19,6 +20,7 @@ export default function PessoasPage() {
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState<{ id: number; name: string } | null>(null);
 
   const persons = usePersons();
 
@@ -27,10 +29,13 @@ export default function PessoasPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const deletePerson = async (id: number, name: string) => {
-    if (!confirm(`Tem certeza que deseja remover "${name}"?\nTodos os documentos desta pessoa também serão removidos.`)) {
-      return;
-    }
+  const handleDeleteClick = (id: number, name: string) => {
+    setShowDeleteModal({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!showDeleteModal) return;
+    const { id, name } = showDeleteModal;
 
     setIsDeleting(id);
     try {
@@ -46,7 +51,13 @@ export default function PessoasPage() {
       showToast("Erro ao remover pessoa", "error");
     } finally {
       setIsDeleting(null);
+      setShowDeleteModal(null);
     }
+  };
+
+  const handlePersonClick = (id: number) => {
+    trigger("vibrate");
+    router.push(`/pessoas/editar?id=${id}`);
   };
 
   if (isLoading) {
@@ -112,7 +123,8 @@ export default function PessoasPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: index * 0.05 }}
-                className="flex items-center justify-between p-4 rounded-xl border border-surface-border/50 bg-surface shadow-sm hover:shadow-md transition-shadow"
+                className="flex items-center justify-between p-4 rounded-xl border border-surface-border/50 bg-surface shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-95"
+                onClick={() => handlePersonClick(person.id!)}
               >
                 <div className="flex items-center gap-3">
                   {person.avatar_url ? (
@@ -138,24 +150,52 @@ export default function PessoasPage() {
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() => deletePerson(person.id!, person.name)}
-                  disabled={isDeleting === person.id}
-                  className="p-2 rounded-full hover:bg-surface-border transition-colors disabled:opacity-50"
-                  title="Remover pessoa"
-                >
-                  {isDeleting === person.id ? (
-                    <Loader2 size={16} className="animate-spin text-coral" />
-                  ) : (
-                    <Trash2 size={16} className="text-ink-muted hover:text-coral transition-colors" />
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      trigger("vibrate");
+                      router.push(`/pessoas/editar?id=${person.id}`);
+                    }}
+                    className="p-2 rounded-full hover:bg-surface-border transition-colors"
+                    title="Editar pessoa"
+                  >
+                    <Edit size={16} className="text-ink-muted hover:text-ice transition-colors" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(person.id!, person.name);
+                    }}
+                    disabled={isDeleting === person.id}
+                    className="p-2 rounded-full hover:bg-surface-border transition-colors disabled:opacity-50"
+                    title="Remover pessoa"
+                  >
+                    {isDeleting === person.id ? (
+                      <Loader2 size={16} className="animate-spin text-coral" />
+                    ) : (
+                      <Trash2 size={16} className="text-ink-muted hover:text-coral transition-colors" />
+                    )}
+                  </button>
+                </div>
               </motion.div>
             ))
           )}
         </section>
 
-        {/* ScrollToTop */}
+        {/* MODAL DE CONFIRMAÇÃO */}
+        <ConfirmationModal
+          isOpen={!!showDeleteModal}
+          onClose={() => setShowDeleteModal(null)}
+          onConfirm={confirmDelete}
+          title="Remover pessoa"
+          message={`Tem certeza que deseja remover "${showDeleteModal?.name}"?\nTodos os documentos desta pessoa também serão removidos.`}
+          confirmLabel="Remover"
+          cancelLabel="Cancelar"
+          isLoading={isDeleting !== null}
+          type="danger"
+        />
+
         <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
