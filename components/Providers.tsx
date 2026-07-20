@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useSentry } from "@/hooks/useSentry";
 import { BottomNav } from "./BottomNav";
-import { SyncStatus } from "./SyncStatus";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
 
@@ -119,17 +118,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Renderiza com header e BottomNav, tudo dentro do ToastProvider e ErrorBoundary
+  // Renderiza sem o SyncStatus no header (agora está na tela "Mais")
   return (
     <ToastProvider>
       <ErrorBoundary>
         <div className="min-h-screen pb-24">
-          {/* Header com SyncStatus (apenas quando logado e não em páginas especiais) */}
-          {user && (
-            <div className="glass-header sticky top-0 z-10 px-5 py-2 border-b border-surface-border flex items-center justify-end">
-              <SyncStatus showLabel />
-            </div>
-          )}
           {children}
           <BottomNav />
         </div>
