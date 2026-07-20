@@ -1,23 +1,17 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
-import type { Person } from '@/lib/types';
+"use client";
+
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import { useAuth } from "./useAuth";
 
 export function usePersons() {
-  return useLiveQuery(() => db.persons.toArray(), [], []);
-}
+  const { user } = useAuth();
 
-export function usePerson(id?: number) {
-  return useLiveQuery(
-    () => (id ? db.persons.get(id) : undefined),
-    [id],
-    undefined
-  );
-}
-
-export function usePersonsByUserId(userId: string) {
-  return useLiveQuery(
-    () => db.persons.where('user_id').equals(userId).toArray(),
-    [userId],
+  const persons = useLiveQuery(
+    () => db.persons.where('user_id').equals(user?.id || '').toArray(),
+    [user?.id],
     []
   );
+
+  return persons || [];
 }
