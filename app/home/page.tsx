@@ -19,6 +19,7 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useToast } from "@/components/ToastProvider";
+import { ExportButton } from "@/components/ExportButton";
 
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -46,16 +47,14 @@ export default function HomePage() {
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // ✅ CORRIGIDO: Toast de boas-vindas
+  // Toast de boas-vindas
   useEffect(() => {
     if (!loading && user && !welcomeShown) {
-      // Verificar se já foi mostrado nesta sessão
       const hasSeenWelcome = sessionStorage.getItem('vault_welcome_shown');
       
       if (!hasSeenWelcome) {
         const name = user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuário";
         
-        // Pequeno delay para garantir que o ToastProvider está pronto
         setTimeout(() => {
           showToast(`👋 Bem-vindo de volta, ${name}!`, "info", 4000);
         }, 500);
@@ -155,15 +154,19 @@ export default function HomePage() {
                 </div>
               </button>
             </div>
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                setIsSearchOpen(true);
-              }}
-              className="p-2 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
-            >
-              <Search size={16} className="text-ink-muted" />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* ✅ Botão de exportação adicionado */}
+              <ExportButton variant="icon" />
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  setIsSearchOpen(true);
+                }}
+                className="p-2 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
+              >
+                <Search size={16} className="text-ink-muted" />
+              </button>
+            </div>
           </div>
 
           {/* Seletor de pessoa */}
