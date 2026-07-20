@@ -1,139 +1,283 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { useSyncQueue } from "@/hooks/useSyncQueue";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Search, Plus, LogOut, User, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
-import { useNotifications } from "@/hooks/useNotifications";
-import { useSentry } from "@/hooks/useSentry";
-import { BottomNav } from "./BottomNav";
-import { SyncStatus } from "./SyncStatus";
-import { ErrorBoundary } from "./ErrorBoundary";
-import { ToastProvider } from "./ToastProvider";
+import { usePersons } from "@/hooks/usePersons";
+import { useDocuments, useFavorites } from "@/hooks/useDocuments";
+import { useSafeDb } from "@/hooks/useSafeDb";
+import { useHapticFeedback } from "@/lib/haptics";
+import { CATEGORIES, type CategoryId, type Document } from "@/lib/types";
+import { PersonCard } from "@/components/PersonCard";
+import { CategorySection } from "@/components/CategorySection";
+import { FavoritesSection } from "@/components/FavoritesSection";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Input } from "@/components/ui/Input";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { PageTransition } from "@/components/PageTransition";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+function useDebounce(value: string, delay: number = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+export default function HomePage() {
+  const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { user, loading, isSyncing } = useAuth();
-  const { handleNotificationAction } = useNotifications();
-  const { setUser, captureException } = useSentry();
-  const { processQueue, isProcessing, isOnline } = useSyncQueue();
+  const { user, logout } = useAuth();
+  const { favorite } = useSafeDb();
 
-  // Ativa a fila de sincronização (push)
+  const persons = usePersons();
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
   useEffect(() => {
-    if (isOnline) {
-      processQueue();
+    if (persons.length > 0 && selectedPersonId === null) {
+      setSelectedPersonId(persons[0].id!);
     }
-  }, [isOnline, processQueue]);
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, [persons, selectedPersonId]);
 
-  // Define o usuário no Sentry
-  useEffect(() => {
-    if (user) {
-      setUser({
-        id: user.id,
-        email: user.email || undefined,
-        name: user.user_metadata?.full_name || user.email?.split('@')[0],
-      });
-    }
-  }, [user, setUser]);
+  const allDocs = useDocuments(selectedPersonId || undefined) || [];
+  const favorites = useFavorites(selectedPersonId || undefined) || [];
 
-  // Captura erros não tratados no React
-  useEffect(() => {
-    const errorHandler = (event: ErrorEvent) => {
-      captureException(event.error, {
-        message: event.message,
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno,
-      });
-    };
-
-    const promiseRejectionHandler = (event: PromiseRejectionEvent) => {
-      captureException(event.reason, {
-        type: 'unhandledrejection',
-        promise: event.promise,
-      });
-    };
-
-    window.addEventListener('error', errorHandler);
-    window.addEventListener('unhandledrejection', promiseRejectionHandler);
-
-    return () => {
-      window.removeEventListener('error', errorHandler);
-      window.removeEventListener('unhandledrejection', promiseRejectionHandler);
-    };
-  }, [captureException]);
-
-  // Ouvinte para autenticação via popup (Google OAuth)
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data === 'auth-success') {
-        window.location.reload();
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  // Listener para ações das notificações locais
-  useEffect(() => {
-    const removeListener = handleNotificationAction((data) => {
-      console.log('Notificação clicada:', data);
-      
-      if (data?.type === 'document_expiry' && data?.docId) {
-        router.push(`/detalhes?id=${data.docId}`);
-      } else if (data?.type === 'medication_renewal' && data?.medicamentoId) {
-        router.push(`/saude/medicamentos/detalhes?id=${data.medicamentoId}`);
-      }
-    });
-
-    return () => {
-      removeListener?.();
-    };
-  }, [handleNotificationAction, router]);
-
-  // Redireciona para login se não estiver autenticado
-  useEffect(() => {
-    if (!loading && !user && pathname !== "/login" && pathname !== "/auth/callback") {
-      router.push("/login");
-    }
-  }, [loading, user, pathname, router]);
-
-  // Loading
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-void flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-ice border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-ink-muted mt-4">Carregando...</p>
-        </div>
-      </div>
+  const filteredDocs = useMemo(() => {
+    if (!debouncedSearch.trim()) return allDocs;
+    const query = debouncedSearch.toLowerCase();
+    return allDocs.filter(
+      (doc) =>
+        doc.title.toLowerCase().includes(query) ||
+        doc.description?.toLowerCase().includes(query)
     );
+  }, [allDocs, debouncedSearch]);
+
+  const handleFavoriteToggle = useCallback(async (id: number) => {
+    await favorite(id);
+  }, [favorite]);
+
+  const docsByCategory = useMemo(() => {
+    return allDocs.reduce<Record<CategoryId, Document[]>>(
+      (acc, doc) => {
+        if (!acc[doc.category_id]) acc[doc.category_id] = [];
+        acc[doc.category_id].push(doc);
+        return acc;
+      },
+      {} as Record<CategoryId, Document[]>
+    );
+  }, [allDocs]);
+
+  const getCategoryPreview = useCallback((categoryId: CategoryId) => {
+    const docs = docsByCategory[categoryId] || [];
+    return docs.slice(0, 3);
+  }, [docsByCategory]);
+
+  const hasMore = useCallback((categoryId: CategoryId) => {
+    return (docsByCategory[categoryId] || []).length > 3;
+  }, [docsByCategory]);
+
+  const avatarUrl = user?.user_metadata?.avatar_url;
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
   }
 
-  if (!user && pathname !== "/login" && pathname !== "/auth/callback") {
-    return <>{children}</>;
-  }
-
-  if (pathname === "/login" || pathname === "/auth/callback") {
-    return <>{children}</>;
-  }
-
-  // Renderiza com header e BottomNav, tudo dentro do ToastProvider e ErrorBoundary
   return (
-    <ToastProvider>
-      <ErrorBoundary>
-        <div className="min-h-screen pb-24">
-          {/* Header com SyncStatus (apenas quando logado e não em páginas especiais) */}
-          {user && (
-            <div className="glass-header sticky top-0 z-10 px-5 py-2 border-b border-surface-border flex items-center justify-end">
-              <SyncStatus showLabel />
+    <PageTransition>
+      <main className="min-h-screen bg-void pb-28">
+        {/* HEADER — MAIS LIMPO */}
+        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="w-10 h-10 rounded-full border border-ice/20"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-sm font-medium">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <h1 className="font-display text-lg font-semibold text-ink-primary">
+                  Olá, {displayName.split(" ")[0]}
+                </h1>
+                <p className="text-xs text-ink-muted">
+                  {allDocs.length} documento{allDocs.length !== 1 ? "s" : ""}
+                </p>
+              </div>
             </div>
-          )}
-          {children}
-          <BottomNav />
-        </div>
-      </ErrorBoundary>
-    </ToastProvider>
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                setIsSearchOpen(true);
+              }}
+              className="p-2.5 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
+            >
+              <Search size={18} className="text-ink-muted" />
+            </button>
+          </div>
+
+          {/* PESSOAS — SCROLL HORIZONTAL */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
+                Pessoas
+              </span>
+              <button
+                onClick={() => router.push("/pessoas/novo")}
+                className="text-xs text-ice/70 hover:text-ice transition-colors"
+              >
+                + Adicionar
+              </button>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {persons.map((person) => (
+                <PersonCard
+                  key={person.id}
+                  person={person}
+                  isActive={selectedPersonId === person.id}
+                  onClick={() => {
+                    trigger("vibrate");
+                    setSelectedPersonId(person.id!);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </header>
+
+        {/* CONTEÚDO COM ANIMAÇÃO */}
+        <section className="px-5 pt-5 space-y-6">
+          <AnimatePresence mode="wait">
+            {favorites.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                <FavoritesSection favorites={favorites} onFavoriteToggle={handleFavoriteToggle} />
+              </motion.div>
+            )}
+
+            {Object.keys(CATEGORIES).map((categoryId, index) => {
+              const preview = getCategoryPreview(categoryId as CategoryId);
+              const total = (docsByCategory[categoryId as CategoryId] || []).length;
+
+              if (preview.length === 0) return null;
+
+              return (
+                <motion.div
+                  key={categoryId}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <CategorySection
+                    categoryId={categoryId as CategoryId}
+                    documents={preview}
+                    total={total}
+                    hasMore={hasMore(categoryId as CategoryId)}
+                    onFavoriteToggle={handleFavoriteToggle}
+                    onSeeAll={() => {
+                      router.push(`/categoria?nome=${categoryId}`);
+                    }}
+                  />
+                </motion.div>
+              );
+            })}
+
+            {allDocs.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col items-center justify-center py-16 text-center"
+              >
+                <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
+                  <User size={32} className="text-ink-muted" />
+                </div>
+                <h3 className="font-display text-lg text-ink-primary">Nenhum documento</h3>
+                <p className="text-sm text-ink-muted mt-1 max-w-xs">
+                  Comece guardando seu primeiro documento no Vault
+                </p>
+                <button
+                  onClick={() => {
+                    trigger("success");
+                    router.push("/novo");
+                  }}
+                  className="mt-6 flex items-center gap-2 rounded-full bg-ice px-6 py-3 text-void font-medium text-sm active:scale-[0.98] transition-all"
+                >
+                  <Plus size={16} />
+                  Adicionar documento
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </section>
+
+        {/* BOTÃO FLUTUANTE */}
+        <button
+          onClick={() => {
+            trigger("success");
+            router.push("/novo");
+          }}
+          className="fixed bottom-24 right-5 flex h-13 w-13 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 active:scale-95 transition-all z-20"
+        >
+          <Plus size={22} strokeWidth={2.5} />
+        </button>
+
+        {/* BUSCA */}
+        <BottomSheet isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscar documentos">
+          <div className="space-y-4">
+            <Input
+              placeholder="Digite para buscar..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
+            />
+            <div className="text-sm text-ink-muted">
+              {filteredDocs.length} resultado{filteredDocs.length !== 1 ? "s" : ""}
+            </div>
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {filteredDocs.map((doc) => (
+                <button
+                  key={doc.id}
+                  onClick={() => {
+                    trigger("vibrate");
+                    setIsSearchOpen(false);
+                    router.push(`/detalhes?id=${doc.id}`);
+                  }}
+                  className="w-full text-left p-3 rounded-xl bg-surface border border-surface-border/50 hover:bg-surface-border transition-colors"
+                >
+                  <p className="text-sm font-medium text-ink-primary">{doc.title}</p>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    {doc.category_id} · {doc.type}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </BottomSheet>
+
+        {/* ScrollToTop */}
+        <ScrollToTop threshold={400} />
+      </main>
+    </PageTransition>
   );
 }
