@@ -1,80 +1,47 @@
-import { db, safeAddPerson, safeAddDocument, safeUpdateDocument, safeDeleteDocument, toggleFavorite } from '@/lib/db';
-import { useHapticFeedback } from '@/lib/haptics';
+"use client";
+
+import { useCallback } from "react";
+import { db, safeAddDocument, safeUpdateDocument, safeDeleteDocument, toggleFavorite } from "@/lib/db";
+import { useAuth } from "./useAuth";
 
 export function useSafeDb() {
-  const haptic = useHapticFeedback();
+  const { user } = useAuth();
 
-  const addPerson = async (person: Parameters<typeof safeAddPerson>[0]) => {
-    try {
-      const id = await safeAddPerson(person);
-      haptic.trigger('success');
-      return id;
-    } catch (error) {
-      haptic.trigger('error');
-      console.error('Erro ao adicionar pessoa:', error);
-      throw error;
-    }
-  };
-
-  const addDocument = async (doc: Parameters<typeof safeAddDocument>[0]) => {
-    try {
-      const id = await safeAddDocument(doc);
-      haptic.trigger('success');
-      return id;
-    } catch (error) {
-      haptic.trigger('error');
-      console.error('Erro ao adicionar documento:', error);
-      throw error;
-    }
-  };
-
-  const updateDocument = async (id: number, changes: Parameters<typeof safeUpdateDocument>[1]) => {
-    try {
-      await safeUpdateDocument(id, changes);
-      haptic.trigger('vibrate');
-    } catch (error) {
-      haptic.trigger('error');
-      console.error('Erro ao atualizar documento:', error);
-      throw error;
-    }
-  };
-
-  const deleteDocument = async (id: number) => {
-    try {
-      await safeDeleteDocument(id);
-      haptic.trigger('vibrate');
-    } catch (error) {
-      haptic.trigger('error');
-      console.error('Erro ao deletar documento:', error);
-      throw error;
-    }
-  };
-
-  const deletePerson = async (id: number) => {
-    try {
-      await db.transaction('rw', db.persons, db.documents, async () => {
-        // Remove todos os documentos da pessoa
-        await db.documents.where('person_id').equals(id).delete();
-        // Remove a pessoa
-        await db.persons.delete(id);
+  const addDocument = useCallback(
+    async (doc: any) => {
+      return safeAddDocument({
+        ...doc,
+        user_id: user?.id || "",
       });
-      haptic.trigger('vibrate');
-    } catch (error) {
-      haptic.trigger('error');
-      console.error('Erro ao deletar pessoa:', error);
-      throw error;
-    }
-  };
+    },
+    [user]
+  );
 
-  const favorite = async (id: number) => {
-    try {
-      await toggleFavorite(id);
-      haptic.trigger('vibrate');
-    } catch (error) {
-      console.error('Erro ao favoritar:', error);
-      throw error;
-    }
-  };
+  const updateDocument = useCallback(
+    async (id: number, changes: any) => {
+      return safeUpdateDocument(id, changes);
+    },
+    []
+  );
 
-  return { addPerson, addDocument, updateDocument, deleteDocument, deletePerson, favorite };
+  const deleteDocument = useCallback(
+    async (id: number) => {
+      return safeDeleteDocument(id);
+    },
+    []
+  );
+
+  const favorite = useCallback(
+    async (id: number) => {
+      return toggleFavorite(id);
+    },
+    []
+  );
+
+  return {
+    addDocument,
+    updateDocument,
+    deleteDocument,
+    favorite,
+  };
 }
