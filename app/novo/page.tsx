@@ -15,6 +15,7 @@ import {
   type DocumentType,
   type Document,
   type Attachment,
+  DOCUMENT_FIELDS,
 } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -24,7 +25,11 @@ import { DocumentTypeSelector } from "@/components/DocumentTypeSelector";
 import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { CustomDatePicker } from "@/components/DatePicker"; // ← NOVO
+import { CustomDatePicker } from "@/components/DatePicker";
+import { SelectionModal } from "@/components/SelectionModal";
+import { useMedicos } from "@/hooks/useMedicos";
+import { useFarmacias } from "@/hooks/useFarmacias";
+import { useHospitais } from "@/hooks/useHospitais";
 
 // ============================================================
 // MÁSCARAS
@@ -62,61 +67,6 @@ const getMaskType = (fieldKey: string, docType: DocumentType): string | null => 
   return null;
 };
 
-const DOCUMENT_FIELDS: Record<
-  DocumentType,
-  Array<{ key: string; label: string; type: "text" | "date" | "select"; options?: string[]; required?: boolean }>
-> = {
-  rg: [
-    { key: "number", label: "Número do RG", type: "text", required: true },
-    { key: "issue_date", label: "Data de emissão", type: "date", required: true },
-    { key: "expiry_date", label: "Data de validade", type: "date", required: true },
-    { key: "issuer", label: "Órgão emissor", type: "text", required: true },
-  ],
-  cpf: [{ key: "number", label: "Número do CPF", type: "text", required: true }],
-  cnh: [
-    { key: "number", label: "Número da CNH", type: "text", required: true },
-    { key: "category", label: "Categoria", type: "select", options: ["A", "B", "C", "D", "E"], required: true },
-    { key: "issue_date", label: "Data de emissão", type: "date", required: true },
-    { key: "expiry_date", label: "Data de validade", type: "date", required: true },
-  ],
-  certificado: [
-    { key: "institution", label: "Instituição de ensino", type: "text", required: true },
-    { key: "course", label: "Curso", type: "text", required: true },
-    { key: "duration", label: "Duração (ex: 120 horas)", type: "text", required: true },
-    { key: "completion_date", label: "Data de conclusão", type: "date" },
-  ],
-  receita: [
-    { key: "medication", label: "Medicamento", type: "text", required: true },
-    { key: "dosage", label: "Dosagem", type: "text", required: true },
-    { key: "doctor", label: "Médico", type: "text", required: true },
-    { key: "pharmacy", label: "Farmácia (opcional)", type: "text" },
-    { key: "prescription_date", label: "Data da receita", type: "date", required: true },
-    { key: "renewal_date", label: "Próxima renovação", type: "date", required: true },
-  ],
-  prontuario: [
-    { key: "hospital", label: "Hospital", type: "text", required: true },
-    { key: "doctor", label: "Médico", type: "text", required: true },
-    { key: "specialty", label: "Especialidade", type: "text", required: true },
-    { key: "date", label: "Data", type: "date", required: true },
-  ],
-  laudo: [
-    { key: "doctor", label: "Médico", type: "text", required: true },
-    { key: "specialty", label: "Especialidade", type: "text", required: true },
-    { key: "hospital", label: "Hospital", type: "text", required: true },
-    { key: "date", label: "Data", type: "date", required: true },
-  ],
-  encaminhamento: [
-    { key: "from", label: "Quem encaminhou", type: "text", required: true },
-    { key: "to", label: "Para quem (opcional)", type: "text" },
-    { key: "reason", label: "Motivo", type: "text", required: true },
-    { key: "date", label: "Data", type: "date", required: true },
-  ],
-  outro: [
-    { key: "custom_field_1", label: "Campo personalizado 1", type: "text" },
-    { key: "custom_field_2", label: "Campo personalizado 2", type: "text" },
-  ],
-};
-
 type FormData = {
   person_id: number;
   category_id: CategoryId;
@@ -146,6 +96,9 @@ export default function NewDocumentPage() {
   const { user } = useAuth();
   const { addDocument } = useSafeDb();
   const persons = usePersons();
+  const { medicos } = useMedicos();
+  const { farmacias } = useFarmacias();
+  const { hospitais } = useHospitais();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -165,6 +118,11 @@ export default function NewDocumentPage() {
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
+
+  // Modais para seleção
+  const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
+  const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
+  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
 
   const userVaults = useLiveQuery(
     () => db.vaults.where('user_id').equals(user?.id || '').toArray(),
@@ -280,7 +238,6 @@ export default function NewDocumentPage() {
   const handleSubmit = async () => {
     if (!validate()) {
       trigger("error");
-      // Scroll para o primeiro campo com erro
       const firstErrorKey = Object.keys(errors)[0];
       if (firstErrorKey) {
         const element = document.querySelector(`[data-field="${firstErrorKey}"]`);
@@ -472,7 +429,7 @@ export default function NewDocumentPage() {
                 const rawValue = formData.metadata[field.key] || '';
                 const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
 
-                // Se for campo do tipo date, usa o CustomDatePicker
+                // Campo do tipo date
                 if (field.type === "date") {
                   return (
                     <CustomDatePicker
@@ -487,6 +444,120 @@ export default function NewDocumentPage() {
                   );
                 }
 
+                // Campo do tipo select (médico, farmácia, hospital)
+                if (field.type === "select") {
+                  let items: any[] = [];
+                  let renderItem: any;
+                  let getItemLabel: any;
+                  let getItemId: any;
+                  let isModalOpen = false;
+                  let setIsModalOpen: any;
+                  let onSelect: any;
+                  let placeholder = "";
+                  let title = "";
+                  let createPath = "";
+
+                  if (field.key === "doctor") {
+                    items = medicos;
+                    renderItem = (item: any) => (
+                      <div>
+                        <p className="text-ink-primary font-medium">{item.nome}</p>
+                        {item.especialidade && (
+                          <p className="text-xs text-ink-muted">{item.especialidade}</p>
+                        )}
+                      </div>
+                    );
+                    getItemLabel = (item: any) => item.nome;
+                    getItemId = (item: any) => item.id!;
+                    isModalOpen = isDoctorModalOpen;
+                    setIsModalOpen = setIsDoctorModalOpen;
+                    onSelect = (item: any) => {
+                      handleMetadataChange(field.key, String(item.id));
+                    };
+                    placeholder = "Buscar médico...";
+                    title = "Selecionar médico";
+                    createPath = "/saude/medicos/novo";
+                  } else if (field.key === "pharmacy") {
+                    items = farmacias;
+                    renderItem = (item: any) => (
+                      <div>
+                        <p className="text-ink-primary font-medium">{item.nome}</p>
+                        {item.endereco && (
+                          <p className="text-xs text-ink-muted">{item.endereco}</p>
+                        )}
+                      </div>
+                    );
+                    getItemLabel = (item: any) => item.nome;
+                    getItemId = (item: any) => item.id!;
+                    isModalOpen = isPharmacyModalOpen;
+                    setIsModalOpen = setIsPharmacyModalOpen;
+                    onSelect = (item: any) => {
+                      handleMetadataChange(field.key, String(item.id));
+                    };
+                    placeholder = "Buscar farmácia...";
+                    title = "Selecionar farmácia";
+                    createPath = "/saude/farmacias/novo";
+                  } else if (field.key === "hospital") {
+                    items = hospitais;
+                    renderItem = (item: any) => (
+                      <div>
+                        <p className="text-ink-primary font-medium">{item.nome}</p>
+                        {item.endereco && (
+                          <p className="text-xs text-ink-muted">{item.endereco}</p>
+                        )}
+                      </div>
+                    );
+                    getItemLabel = (item: any) => item.nome;
+                    getItemId = (item: any) => item.id!;
+                    isModalOpen = isHospitalModalOpen;
+                    setIsModalOpen = setIsHospitalModalOpen;
+                    onSelect = (item: any) => {
+                      handleMetadataChange(field.key, String(item.id));
+                    };
+                    placeholder = "Buscar hospital...";
+                    title = "Selecionar hospital";
+                    createPath = "/saude/hospitais/novo";
+                  }
+
+                  const selectedId = formData.metadata[field.key];
+                  const selectedItem = items.find((item: any) => String(item.id) === selectedId);
+
+                  return (
+                    <div key={field.key}>
+                      <button
+                        onClick={() => setIsModalOpen(true)}
+                        className={`w-full text-left px-4 py-3 rounded-xl bg-surface-raised border transition-colors ${
+                          errors[field.key]
+                            ? "border-coral/50 focus:border-coral"
+                            : "border-surface-border/50 focus:border-steel-light"
+                        } text-ink-primary focus:outline-none`}
+                      >
+                        {selectedItem ? selectedItem.nome : `Selecionar ${field.label.toLowerCase()}`}
+                      </button>
+                      {errors[field.key] && (
+                        <p className="text-xs text-coral mt-1">{errors[field.key]}</p>
+                      )}
+                      <SelectionModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        onSelect={onSelect}
+                        items={items}
+                        title={title}
+                        placeholder={placeholder}
+                        renderItem={renderItem}
+                        getItemId={getItemId}
+                        getItemLabel={getItemLabel}
+                        onCreateNew={() => {
+                          setIsModalOpen(false);
+                          router.push(createPath);
+                        }}
+                        createNewLabel={`Criar ${field.label.toLowerCase()}`}
+                      />
+                    </div>
+                  );
+                }
+
+                // Campo do tipo text normal
                 return (
                   <Input
                     key={field.key}
@@ -500,7 +571,7 @@ export default function NewDocumentPage() {
                         : e.target.value;
                       handleMetadataChange(field.key, raw);
                     }}
-                    placeholder={field.type === "select" ? "" : `Digite ${field.label.toLowerCase()}...`}
+                    placeholder={field.options ? "Selecione..." : `Digite ${field.label.toLowerCase()}...`}
                     required={field.required}
                     error={errors[field.key]}
                   />
