@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, LogOut, User, ChevronRight } from "lucide-react";
+import { Search, Plus, User, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
@@ -32,7 +32,7 @@ function useDebounce(value: string, delay: number = 300) {
 export default function HomePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useAuth();
   const { favorite } = useSafeDb();
   const { showToast } = useToast();
 
@@ -44,7 +44,6 @@ export default function HomePage() {
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // ✅ TOAST DE BOAS-VINDAS (UMA VEZ POR SESSÃO)
   useEffect(() => {
     if (!loading && user) {
       const hasSeenWelcome = sessionStorage.getItem('vault_welcome_shown');
@@ -118,15 +117,15 @@ export default function HomePage() {
                 <img
                   src={avatarUrl}
                   alt={displayName}
-                  className="w-10 h-10 rounded-full border border-ice/20"
+                  className="w-8 h-8 rounded-full border border-ice/20"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-sm font-medium">
+                <div className="w-8 h-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-xs font-medium">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
               <div>
-                <h1 className="font-display text-lg font-semibold text-ink-primary">
+                <h1 className="font-display text-base font-semibold text-ink-primary">
                   Olá, {displayName.split(" ")[0]}
                 </h1>
                 <p className="text-xs text-ink-muted">
@@ -139,13 +138,13 @@ export default function HomePage() {
                 trigger("vibrate");
                 setIsSearchOpen(true);
               }}
-              className="p-2.5 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
+              className="p-2 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
             >
-              <Search size={18} className="text-ink-muted" />
+              <Search size={16} className="text-ink-muted" />
             </button>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
                 Pessoas
@@ -220,10 +219,10 @@ export default function HomePage() {
                 transition={{ duration: 0.4 }}
                 className="flex flex-col items-center justify-center py-16 text-center"
               >
-                <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
-                  <User size={32} className="text-ink-muted" />
+                <div className="w-16 h-16 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
+                  <User size={24} className="text-ink-muted" />
                 </div>
-                <h3 className="font-display text-lg text-ink-primary">Nenhum documento</h3>
+                <h3 className="font-display text-base text-ink-primary">Nenhum documento</h3>
                 <p className="text-sm text-ink-muted mt-1 max-w-xs">
                   Comece guardando seu primeiro documento no Vault
                 </p>
@@ -232,7 +231,7 @@ export default function HomePage() {
                     trigger("success");
                     router.push("/novo");
                   }}
-                  className="mt-6 flex items-center gap-2 rounded-full bg-ice px-6 py-3 text-void font-medium text-sm active:scale-[0.98] transition-all"
+                  className="mt-6 flex items-center gap-2 rounded-full bg-ice px-5 py-2 text-void font-medium text-sm active:scale-[0.98] transition-all"
                 >
                   <Plus size={16} />
                   Adicionar documento
@@ -247,9 +246,9 @@ export default function HomePage() {
             trigger("success");
             router.push("/novo");
           }}
-          className="fixed bottom-24 right-5 flex h-13 w-13 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 active:scale-95 transition-all z-20"
+          className="fixed bottom-24 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 active:scale-95 transition-all z-20"
         >
-          <Plus size={22} strokeWidth={2.5} />
+          <Plus size={20} strokeWidth={2.5} />
         </button>
 
         <BottomSheet isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscar documentos">
