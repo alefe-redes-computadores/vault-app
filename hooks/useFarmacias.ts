@@ -4,7 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useAuth } from "./useAuth";
 import { useCallback } from "react";
-import { Farmacia } from "@/lib/types";
+import type { Farmacia } from "@/lib/types";
 
 export function useFarmacias() {
   const { user } = useAuth();
