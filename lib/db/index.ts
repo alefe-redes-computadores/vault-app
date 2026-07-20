@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Person, Document, SyncQueueItem, Medicamento, Renovacao, Vault, VaultMember } from '@/lib/types';
+import type { Person, Document, SyncQueueItem, Medicamento, Renovacao, Vault, VaultMember, Medico, Farmacia, Hospital } from '@/lib/types';
 
 class VaultDB extends Dexie {
   persons!: Table<Person, number>;
@@ -9,6 +9,9 @@ class VaultDB extends Dexie {
   renovacoes!: Table<Renovacao, number>;
   vaults!: Table<Vault, number>;
   vaultMembers!: Table<VaultMember, number>;
+  medicos!: Table<Medico, number>;
+  farmacias!: Table<Farmacia, number>;
+  hospitais!: Table<Hospital, number>;
 
   constructor() {
     super('vault-db');
@@ -32,6 +35,30 @@ class VaultDB extends Dexie {
       renovacoes: '++id, medicamento_id, data',
       vaults: '++id, user_id, name, synced, created_at',
       vaultMembers: '++id, vault_id, user_id, email, status, synced',
+    });
+    // Versão 5 - Módulo Saúde (Médicos, Farmácias, Hospitais)
+    this.version(5).stores({
+      persons: '++id, user_id, name, synced, created_at',
+      documents: '++id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: '++id, table, operation, created_at',
+      medicamentos: '++id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: '++id, medicamento_id, data',
+      vaults: '++id, user_id, name, synced, created_at',
+      vaultMembers: '++id, vault_id, user_id, email, status, synced',
+      medicos: '++id, user_id, nome, especialidade, synced',
+      farmacias: '++id, user_id, nome, synced',
+      hospitais: '++id, user_id, nome, synced',
+    }).upgrade(async (tx) => {
+      // Inicializar synced para registros existentes
+      await tx.table('medicos').toCollection().modify((item: any) => {
+        if (!item.synced) item.synced = true;
+      });
+      await tx.table('farmacias').toCollection().modify((item: any) => {
+        if (!item.synced) item.synced = true;
+      });
+      await tx.table('hospitais').toCollection().modify((item: any) => {
+        if (!item.synced) item.synced = true;
+      });
     });
   }
 }
@@ -255,4 +282,73 @@ export async function getVaultDocuments(vaultId: number): Promise<Document[]> {
 
 export async function getVaultMembers(vaultId: number): Promise<VaultMember[]> {
   return db.vaultMembers.where('vault_id').equals(vaultId).toArray();
+}
+
+// ============================================================
+// OPERAÇÕES PARA MÉDICOS, FARMÁCIAS, HOSPITAIS
+// ============================================================
+export async function safeAddMedico(
+  data: Omit<Medico, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<number> {
+  const timestamp = nowIso();
+  const full: Medico = {
+    ...data,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    const id = await db.medicos.add(full);
+    await db.syncQueue.add({
+      table: 'medicos',
+      operation: 'add',
+      payload: { ...full, id },
+      created_at: timestamp,
+    });
+    return id;
+  });
+}
+
+export async function safeAddFarmacia(
+  data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<number> {
+  const timestamp = nowIso();
+  const full: Farmacia = {
+    ...data,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    const id = await db.farmacias.add(full);
+    await db.syncQueue.add({
+      table: 'farmacias',
+      operation: 'add',
+      payload: { ...full, id },
+      created_at: timestamp,
+    });
+    return id;
+  });
+}
+
+export async function safeAddHospital(
+  data: Omit<Hospital, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<number> {
+  const timestamp = nowIso();
+  const full: Hospital = {
+    ...data,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    const id = await db.hospitais.add(full);
+    await db.syncQueue.add({
+      table: 'hospitais',
+      operation: 'add',
+      payload: { ...full, id },
+      created_at: timestamp,
+    });
+    return id;
+  });
 }
