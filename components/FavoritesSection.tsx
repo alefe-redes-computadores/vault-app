@@ -2,7 +2,7 @@
 
 import { Document } from "@/lib/types";
 import { DocumentCard } from "./DocumentCard";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface FavoritesSectionProps {
@@ -20,7 +20,7 @@ export function FavoritesSection({ favorites, onFavoriteToggle }: FavoritesSecti
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-yellow-400 text-sm">⭐</span>
+          <Star size={16} className="text-yellow-400 fill-yellow-400" />
           <h2 className="font-display text-sm font-medium text-ink-primary">Favoritos</h2>
           <span className="text-xs text-ink-muted">({favorites.length})</span>
         </div>
