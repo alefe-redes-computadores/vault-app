@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { SplashScreen } from "@/components/SplashScreen";
 import { BiometricLock } from "@/components/BiometricLock";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -56,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang="pt-BR" className={`${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
@@ -66,14 +67,21 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#0A0C0F" />
         <meta name="msapplication-TileImage" content="/icon-144x144.png" />
       </head>
-      <body className="font-body antialiased bg-void min-h-screen">
-        <Providers>
-          <SplashScreen>
-            <BiometricLock>
-              {children}
-            </BiometricLock>
-          </SplashScreen>
-        </Providers>
+      <body className="font-body antialiased bg-void min-h-screen transition-colors duration-300">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Providers>
+            <SplashScreen>
+              <BiometricLock>
+                {children}
+              </BiometricLock>
+            </SplashScreen>
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );
