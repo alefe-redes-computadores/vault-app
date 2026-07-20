@@ -17,6 +17,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -273,6 +274,9 @@ export default function HomePage() {
             </div>
           </div>
         </BottomSheet>
+
+        {/* ScrollToTop */}
+        <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
   );
