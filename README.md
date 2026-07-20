@@ -7,8 +7,6 @@
  [https://vault-app-ebon.vercel.app/]
 
 ---
-
-
 ## 📦 Índice
 
 - [📸 Screenshots](#-screenshots)
