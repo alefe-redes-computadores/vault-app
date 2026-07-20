@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { useToast } from "@/components/ToastProvider";
 
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -31,8 +32,9 @@ function useDebounce(value: string, delay: number = 300) {
 export default function HomePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const { favorite } = useSafeDb();
+  const { showToast } = useToast();
 
   const persons = usePersons();
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
@@ -41,6 +43,18 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // ✅ TOAST DE BOAS-VINDAS (UMA VEZ POR SESSÃO)
+  useEffect(() => {
+    if (!loading && user) {
+      const hasSeenWelcome = sessionStorage.getItem('vault_welcome_shown');
+      if (!hasSeenWelcome) {
+        const name = user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuário";
+        showToast(`👋 Bem-vindo de volta, ${name}!`, "info");
+        sessionStorage.setItem('vault_welcome_shown', 'true');
+      }
+    }
+  }, [loading, user, showToast]);
 
   useEffect(() => {
     if (persons.length > 0 && selectedPersonId === null) {
@@ -97,7 +111,6 @@ export default function HomePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* HEADER — MAIS LIMPO */}
         <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -132,7 +145,6 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* PESSOAS — SCROLL HORIZONTAL */}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
@@ -161,7 +173,6 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* CONTEÚDO COM ANIMAÇÃO */}
         <section className="px-5 pt-5 space-y-6">
           <AnimatePresence mode="wait">
             {favorites.length > 0 && (
@@ -231,7 +242,6 @@ export default function HomePage() {
           </AnimatePresence>
         </section>
 
-        {/* BOTÃO FLUTUANTE */}
         <button
           onClick={() => {
             trigger("success");
@@ -242,7 +252,6 @@ export default function HomePage() {
           <Plus size={22} strokeWidth={2.5} />
         </button>
 
-        {/* BUSCA */}
         <BottomSheet isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscar documentos">
           <div className="space-y-4">
             <Input
@@ -275,7 +284,6 @@ export default function HomePage() {
           </div>
         </BottomSheet>
 
-        {/* ScrollToTop */}
         <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
