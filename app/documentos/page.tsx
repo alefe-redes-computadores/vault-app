@@ -15,6 +15,7 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { ExportCardButton } from "@/components/ExportCardButton";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 // ✅ DEBOUNCE
 function useDebounce(value: string, delay: number = 300) {
@@ -375,6 +376,9 @@ export default function DocumentsPage() {
             ))
           )}
         </section>
+
+        {/* ScrollToTop */}
+        <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
   );
