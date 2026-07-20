@@ -30,7 +30,6 @@ export default function PessoasPage() {
   const handleDeleteClick = async (id: number, name: string) => {
     trigger("vibrate");
 
-    // Mostrar toast com opção de desfazer
     const toastId = showSuccess(
       `"${name}" foi removido(a)`,
       5000,
@@ -70,7 +69,7 @@ export default function PessoasPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
