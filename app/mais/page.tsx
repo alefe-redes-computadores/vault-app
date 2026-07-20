@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -30,6 +29,7 @@ import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 export default function MaisPage() {
   const { trigger } = useHapticFeedback();
@@ -39,21 +39,36 @@ export default function MaisPage() {
   const { processQueue, isOnline } = useSyncQueue();
   const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
   const [isChangingPhoto, setIsChangingPhoto] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showClearDataModal, setShowClearDataModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
-    if (confirm("Tem certeza que deseja sair da conta?")) {
+    setIsLoading(true);
+    try {
       trigger("vibrate");
       await logout();
       router.push("/login");
+    } catch (error) {
+      showToast("Erro ao sair da conta", "error");
+    } finally {
+      setIsLoading(false);
+      setShowLogoutModal(false);
     }
   };
 
   const clearLocalData = async () => {
-    if (confirm("Tem certeza que deseja limpar todos os dados locais?")) {
+    setIsLoading(true);
+    try {
       await db.delete();
       trigger("success");
       showToast("Dados locais limpos com sucesso!", "success");
       router.push("/login");
+    } catch (error) {
+      showToast("Erro ao limpar dados", "error");
+    } finally {
+      setIsLoading(false);
+      setShowClearDataModal(false);
     }
   };
 
@@ -143,7 +158,7 @@ export default function MaisPage() {
           icon: HardDrive,
           label: "Limpar dados locais",
           description: "Remove todos os dados do dispositivo",
-          onClick: clearLocalData,
+          onClick: () => setShowClearDataModal(true),
         },
       ],
     },
@@ -278,7 +293,7 @@ export default function MaisPage() {
             transition={{ duration: 0.3, delay: 0.2 }}
           >
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutModal(true)}
               className="flex items-center gap-4 w-full p-3 rounded-xl bg-coral/10 border border-coral/20 hover:bg-coral/20 transition-all active:scale-95"
             >
               <div className="w-10 h-10 rounded-full bg-coral/20 flex items-center justify-center flex-shrink-0">
@@ -292,6 +307,32 @@ export default function MaisPage() {
             </button>
           </motion.div>
         </section>
+
+        {/* MODAL DE CONFIRMAÇÃO - LOGOUT */}
+        <ConfirmationModal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+          title="Sair da conta"
+          message="Tem certeza que deseja sair da sua conta?"
+          confirmLabel="Sair"
+          cancelLabel="Cancelar"
+          isLoading={isLoading}
+          type="warning"
+        />
+
+        {/* MODAL DE CONFIRMAÇÃO - LIMPAR DADOS LOCAIS */}
+        <ConfirmationModal
+          isOpen={showClearDataModal}
+          onClose={() => setShowClearDataModal(false)}
+          onConfirm={clearLocalData}
+          title="Limpar dados locais"
+          message="Tem certeza que deseja limpar todos os dados locais? Esta ação não pode ser desfeita."
+          confirmLabel="Limpar"
+          cancelLabel="Cancelar"
+          isLoading={isLoading}
+          type="danger"
+        />
       </main>
     </PageTransition>
   );
