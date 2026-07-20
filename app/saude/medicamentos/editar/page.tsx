@@ -2,24 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
-import { db } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
+import { CustomDatePicker } from "@/components/DatePicker";
+import { db } from "@/lib/db";
 
 export default function EditMedicamentoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = Number(searchParams.get("id"));
+  const { user } = useAuth();
+  const { updateMedicamento } = useMedicamentos();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
   const [formData, setFormData] = useState({
     nome: "",
     dosagem: "",
@@ -29,6 +33,7 @@ export default function EditMedicamentoPage() {
     proxima_renovacao: "",
     observacoes: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const loadMedicamento = async () => {
@@ -43,37 +48,58 @@ export default function EditMedicamentoPage() {
           proxima_renovacao: med.proxima_renovacao || "",
           observacoes: med.observacoes || "",
         });
+      } else {
+        showToast("Medicamento não encontrado", "error");
+        router.push("/saude/medicamentos");
       }
       setIsLoading(false);
     };
     loadMedicamento();
-  }, [id]);
+  }, [id, router, showToast]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.nome.trim()) newErrors.nome = "Nome é obrigatório";
+    if (!formData.dosagem.trim()) newErrors.dosagem = "Dosagem é obrigatória";
+    if (!formData.medico.trim()) newErrors.medico = "Médico é obrigatório";
+    if (!formData.data_receita.trim()) newErrors.data_receita = "Data da receita é obrigatória";
+    if (!formData.proxima_renovacao.trim()) newErrors.proxima_renovacao = "Próxima renovação é obrigatória";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!formData.nome || !formData.dosagem || !formData.medico || !formData.proxima_renovacao) {
+    trigger("vibrate");
+    
+    if (!validate()) {
       trigger("error");
-      showToast("Preencha todos os campos obrigatórios", "error");
       return;
     }
 
     setLoading(true);
     try {
-      await db.medicamentos.update(id, {
-        ...formData,
-        updated_at: new Date().toISOString(),
-        synced: false,
+      await updateMedicamento(id, {
+        nome: formData.nome.trim(),
+        dosagem: formData.dosagem.trim(),
+        medico: formData.medico.trim(),
+        farmacia: formData.farmacia.trim() || undefined,
+        data_receita: formData.data_receita,
+        proxima_renovacao: formData.proxima_renovacao,
+        observacoes: formData.observacoes.trim() || undefined,
       });
       trigger("success");
       showToast("Medicamento atualizado com sucesso!", "success");
-      router.push(`/saude/medicamentos/detalhes?id=${id}`);
+      router.push("/saude/medicamentos");
     } catch (error) {
-      console.error(error);
-      trigger("error");
       showToast("Erro ao atualizar medicamento", "error");
+      trigger("error");
     } finally {
       setLoading(false);
     }
@@ -104,130 +130,92 @@ export default function EditMedicamentoPage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
               <h1 className="font-display text-xl font-semibold text-ink-primary">Editar medicamento</h1>
+              <p className="text-sm text-ink-muted">Atualize as informações do medicamento</p>
             </div>
           </div>
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
+          <div className="rounded-xl border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4">
             <Input
               label="Nome do medicamento"
-              placeholder="Ex: Losartana"
+              placeholder="Ex: Losartana Potássica"
               value={formData.nome}
               onChange={(e) => handleChange("nome", e.target.value)}
+              error={errors.nome}
+              required
             />
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
-          >
             <Input
               label="Dosagem"
               placeholder="Ex: 50mg"
               value={formData.dosagem}
               onChange={(e) => handleChange("dosagem", e.target.value)}
+              error={errors.dosagem}
+              required
             />
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-          >
             <Input
               label="Médico"
-              placeholder="Nome do médico"
+              placeholder="Ex: Dr. João Silva"
               value={formData.medico}
               onChange={(e) => handleChange("medico", e.target.value)}
+              error={errors.medico}
+              required
             />
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.15 }}
-          >
             <Input
               label="Farmácia (opcional)"
-              placeholder="Nome da farmácia"
+              placeholder="Ex: Droga Raia"
               value={formData.farmacia}
               onChange={(e) => handleChange("farmacia", e.target.value)}
             />
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
-          >
-            <Input
+            <CustomDatePicker
               label="Data da receita"
-              type="date"
               value={formData.data_receita}
-              onChange={(e) => handleChange("data_receita", e.target.value)}
+              onChange={(val) => handleChange("data_receita", val)}
+              required
+              error={errors.data_receita}
             />
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.25 }}
-          >
-            <Input
+            <CustomDatePicker
               label="Próxima renovação"
-              type="date"
               value={formData.proxima_renovacao}
-              onChange={(e) => handleChange("proxima_renovacao", e.target.value)}
+              onChange={(val) => handleChange("proxima_renovacao", val)}
+              required
+              error={errors.proxima_renovacao}
             />
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-          >
-            <Input
+            <TextArea
               label="Observações (opcional)"
               placeholder="Informações adicionais..."
               value={formData.observacoes}
               onChange={(e) => handleChange("observacoes", e.target.value)}
             />
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.35 }}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSubmit}
+            disabled={loading}
+            className="flex items-center justify-center gap-2"
           >
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Salvar alterações
-                </>
-              )}
-            </Button>
-          </motion.div>
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Salvar alterações
+              </>
+            )}
+          </Button>
         </section>
       </main>
     </PageTransition>
