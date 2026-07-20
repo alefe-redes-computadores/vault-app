@@ -49,6 +49,8 @@ export default function EditPersonPage() {
   }, [id, router, showToast]);
 
   const handleSubmit = async () => {
+    trigger("vibrate");
+    
     if (!formData.name.trim()) {
       setError("Nome é obrigatório");
       trigger("error");
