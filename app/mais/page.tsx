@@ -81,34 +81,22 @@ export default function MaisPage() {
     }
   };
 
-  // ✅ CORRIGIDO: Dexie não tem db.delete()
+  // ✅ CORRIGIDO: Limpar dados usando transações separadas
   const clearLocalData = async () => {
     setIsLoading(true);
     try {
-      await db.transaction('rw', 
-        db.persons, 
-        db.documents, 
-        db.medicamentos, 
-        db.renovacoes, 
-        db.vaults, 
-        db.vaultMembers, 
-        db.medicos, 
-        db.farmacias, 
-        db.hospitais, 
-        db.syncQueue, 
-        async () => {
-          await db.persons.clear();
-          await db.documents.clear();
-          await db.medicamentos.clear();
-          await db.renovacoes.clear();
-          await db.vaults.clear();
-          await db.vaultMembers.clear();
-          await db.medicos.clear();
-          await db.farmacias.clear();
-          await db.hospitais.clear();
-          await db.syncQueue.clear();
-        }
-      );
+      // Limpar cada tabela individualmente
+      await db.persons.clear();
+      await db.documents.clear();
+      await db.medicamentos.clear();
+      await db.renovacoes.clear();
+      await db.vaults.clear();
+      await db.vaultMembers.clear();
+      await db.medicos.clear();
+      await db.farmacias.clear();
+      await db.hospitais.clear();
+      await db.syncQueue.clear();
+      
       trigger("success");
       showToast("Dados locais limpos com sucesso!", "success");
       router.push("/login");
