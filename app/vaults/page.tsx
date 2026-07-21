@@ -52,7 +52,7 @@ export default function VaultsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pb-4 pt-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
@@ -78,7 +78,7 @@ export default function VaultsPage() {
         <section className="px-5 pt-6 space-y-4">
           {!vaults || vaults.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border">
+              <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
                 <Lock size={32} className="text-ink-muted" />
               </div>
               <h3 className="font-display text-lg text-ink-primary">Nenhum cofre criado</h3>
