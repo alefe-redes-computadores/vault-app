@@ -35,7 +35,8 @@ export default function FavoritesPage() {
 
   const favorites = useFavorites(selectedPersonId || undefined);
 
-  const filtered = favorites.filter(doc => {
+  // CORRIGIDO: adicionado : any no doc
+  const filtered = favorites.filter((doc: any) => {
     const matchCategory = selectedCategory === null || doc.category_id === selectedCategory;
     return matchCategory;
   });
@@ -55,7 +56,7 @@ export default function FavoritesPage() {
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
         {/* HEADER */}
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -95,7 +96,7 @@ export default function FavoritesPage() {
               >
                 Todas pessoas
               </button>
-              {persons.map((person) => (
+              {persons.map((person: any) => (
                 <button
                   key={person.id}
                   onClick={() => {
@@ -123,7 +124,7 @@ export default function FavoritesPage() {
             </div>
           </div>
 
-          {/* Filtro por categoria - CORRIGIDO: usa activeArea e onAreaChange */}
+          {/* Filtro por categoria */}
           <div className="mt-3">
             <AreaTabs
               activeArea={selectedCategory}
@@ -173,7 +174,7 @@ export default function FavoritesPage() {
                 transition={{ duration: 0.3 }}
                 className="space-y-3"
               >
-                {filtered.map((doc, index) => (
+                {filtered.map((doc: any, index: number) => (
                   <motion.div
                     key={doc.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -183,7 +184,7 @@ export default function FavoritesPage() {
                     <DocumentCard
                       document={doc}
                       onFavoriteToggle={handleFavoriteToggle}
-                      personName={persons.find(p => p.id === doc.person_id)?.name}
+                      personName={persons.find((p: any) => p.id === doc.person_id)?.name}
                     />
                   </motion.div>
                 ))}
