@@ -20,6 +20,19 @@
 /* ============================================================
    TEMA CLARO (SOBRESCREVE AS VARIÁVEIS)
    ============================================================ */
+html.light {
+  --bg-void: #F1F5F9;
+  --bg-surface: #FFFFFF;
+  --bg-surface-raised: #F8FAFC;
+  --border-surface: #E2E8F0;
+  --text-ink-primary: #0F172A;
+  --text-ink-muted: #475569;
+  --text-ink-faint: #94A3B8;
+  --shadow-vault: 0 8px 32px -8px rgba(0,0,0,0.08);
+  color-scheme: light;
+}
+
+/* Mantém compatibilidade com .light no body também */
 .light {
   --bg-void: #F1F5F9;
   --bg-surface: #FFFFFF;
@@ -113,6 +126,7 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+html.light .glass-header,
 .light .glass-header {
   background: rgba(255, 255, 255, 0.72);
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
