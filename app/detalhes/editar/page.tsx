@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -13,7 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 
-// Mapeamento manual de campos por tipo (sem depender do DOCUMENT_FIELDS)
+// Mapeamento manual de campos por tipo
 const getFieldsForType = (type: DocumentType) => {
   const commonFields = [
     { key: "number", label: "Número", type: "text" },
@@ -72,7 +73,7 @@ const getFieldsForType = (type: DocumentType) => {
   return fieldMap[type] || [];
 };
 
-export default function EditDocumentPage() {
+export default function EditarDetalhePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -173,14 +174,14 @@ export default function EditDocumentPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -196,14 +197,14 @@ export default function EditDocumentPage() {
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">Pessoa</label>
             <div className="flex gap-2 flex-wrap">
-              {persons.map((person) => (
+              {persons.map((person: any) => (
                 <button
                   key={person.id}
                   onClick={() => handleChange("person_id", person.id!)}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
+                  className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
                     formData.person_id === person.id
                       ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                   }`}
                 >
                   <span className="text-sm font-medium">{person.name}</span>
@@ -216,14 +217,14 @@ export default function EditDocumentPage() {
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">Categoria</label>
             <div className="flex gap-2 flex-wrap">
-              {Object.values(CATEGORIES).map((cat) => (
+              {Object.values(CATEGORIES).map((cat: any) => (
                 <button
                   key={cat.id}
                   onClick={() => handleChange("category_id", cat.id)}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-[0.98] ${
+                  className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
                     formData.category_id === cat.id
                       ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                   }`}
                 >
                   <span className="text-sm font-medium">{cat.name}</span>
@@ -238,7 +239,7 @@ export default function EditDocumentPage() {
             <select
               value={formData.type}
               onChange={(e) => handleChange("type", e.target.value as DocumentType)}
-              className="w-full rounded-xl bg-surface-raised border border-surface-border px-4 py-3 text-ink-primary focus:outline-none focus:border-steel-light"
+              className="w-full rounded-xl bg-surface-raised border border-surface-border/50 px-4 py-3 text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
             >
               <option value="rg">RG</option>
               <option value="cpf">CPF</option>
@@ -261,7 +262,7 @@ export default function EditDocumentPage() {
           />
 
           {/* Campos dinâmicos */}
-          {fields.map((field) => (
+          {fields.map((field: any) => (
             <Input
               key={field.key}
               label={field.label}
@@ -278,9 +279,32 @@ export default function EditDocumentPage() {
             onChange={(e) => handleChange("description", e.target.value)}
           />
 
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading}>
-            {loading ? "Salvando..." : "Salvar alterações"}
-          </Button>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Salvar alterações
+                </>
+              )}
+            </Button>
+          </motion.div>
         </section>
       </main>
     </PageTransition>
