@@ -28,7 +28,7 @@ import {
 import { useDocument } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, type Attachment } from "@/lib/types";
+import { CATEGORIES, type Attachment, type CategoryId } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -189,7 +189,9 @@ export default function DocumentDetailPage() {
     );
   }
 
-  const category = CATEGORIES[doc.category_id];
+  // CORRIGIDO: verifica se category_id é uma chave válida
+  const categoryId = doc.category_id as CategoryId;
+  const category = CATEGORIES[categoryId];
   const CategoryIcon = CATEGORY_ICONS[doc.category_id] || FolderOpen;
   const hasMetadata = Object.keys(doc.metadata || {}).length > 0;
   const hasAttachments = doc.attachments && doc.attachments.length > 0;
@@ -201,7 +203,7 @@ export default function DocumentDetailPage() {
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
         {/* HEADER */}
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -250,21 +252,21 @@ export default function DocumentDetailPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
             className="rounded-xl border p-6 shadow-vault bg-surface"
-            style={{ borderColor: `${category.color}25` }}
+            style={{ borderColor: `${category?.color || '#6B7280'}25` }}
           >
             <div className="flex items-center gap-3 mb-4">
               <div
                 className="flex h-12 w-12 items-center justify-center rounded-xl"
-                style={{ backgroundColor: `${category.color}15` }}
+                style={{ backgroundColor: `${category?.color || '#6B7280'}15` }}
               >
-                <CategoryIcon size={22} style={{ color: category.color }} />
+                <CategoryIcon size={22} style={{ color: category?.color || '#6B7280' }} />
               </div>
               <div>
                 <h2 className="font-display text-lg font-semibold text-ink-primary">
                   {doc.title}
                 </h2>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-ink-muted">{category.name}</span>
+                  <span className="text-xs text-ink-muted">{category?.name || 'Outros'}</span>
                   <span className="w-1 h-1 rounded-full bg-ink-faint" />
                   <span className="text-xs text-ink-muted capitalize">{doc.type}</span>
                   {doc.vault_id && (
@@ -333,7 +335,7 @@ export default function DocumentDetailPage() {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {doc.attachments.map((attachment) => {
+                {doc.attachments.map((attachment: any) => {
                   const Icon = getFileIcon(attachment.type);
                   return (
                     <button
