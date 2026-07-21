@@ -16,7 +16,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
   { id: "pessoas", icon: Users, label: "Pessoas", path: "/pessoas" },
-  { id: "cofres", icon: Shield, label: "Cofres", path: "/vaults" }, // ← substituído
+  { id: "cofres", icon: Shield, label: "Cofres", path: "/vaults" },
   { id: "mais", icon: LayoutGrid, label: "Mais", path: "/mais" },
 ];
 
@@ -54,7 +54,6 @@ export function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-40">
       <div className="bg-surface/95 backdrop-blur-xl border-t border-surface-border/50 px-4 pt-2 pb-5">
         <div className="grid grid-cols-5 items-end justify-items-center relative max-w-md mx-auto">
-          {/* Abas: home (col 1), pessoas (col 2), espaço (col 3), cofres (col 4), mais (col 5) */}
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
