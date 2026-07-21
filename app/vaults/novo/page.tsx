@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 
-// Opções de ícones Lucide
 const ICON_OPTIONS: { label: string; icon: LucideIcon; value: string }[] = [
   { label: "Casa", icon: Home, value: "home" },
   { label: "Saúde", icon: Heart, value: "heart" },
@@ -24,14 +23,8 @@ const ICON_OPTIONS: { label: string; icon: LucideIcon; value: string }[] = [
 ];
 
 const COLOR_OPTIONS = [
-  "#7DD3FC", // ice
-  "#EC4899", // rosa
-  "#3B82F6", // azul
-  "#F59E0B", // amarelo
-  "#10B981", // verde
-  "#8B5CF6", // roxo
-  "#F472B6", // rosa claro
-  "#34D399", // verde claro
+  "#7DD3FC", "#EC4899", "#3B82F6", "#F59E0B",
+  "#10B981", "#8B5CF6", "#F472B6", "#34D399",
 ];
 
 export default function NewVaultPage() {
@@ -77,14 +70,14 @@ export default function NewVaultPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pb-4 pt-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-[0.98]"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -114,7 +107,7 @@ export default function NewVaultPage() {
                     className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all active:scale-[0.98] ${
                       isSelected
                         ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                     }`}
                   >
                     <Icon size={20} />
@@ -125,7 +118,6 @@ export default function NewVaultPage() {
             </div>
           </div>
 
-          {/* Nome */}
           <Input
             label="Nome do cofre"
             placeholder="Ex: Família Gomes, Saúde, etc."
@@ -134,7 +126,6 @@ export default function NewVaultPage() {
             required
           />
 
-          {/* Descrição */}
           <TextArea
             label="Descrição (opcional)"
             placeholder="O que guardar neste cofre..."
@@ -142,7 +133,6 @@ export default function NewVaultPage() {
             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
           />
 
-          {/* Cor */}
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
               Cor
@@ -161,8 +151,7 @@ export default function NewVaultPage() {
             </div>
           </div>
 
-          {/* Preview */}
-          <div className="p-4 rounded-card bg-surface border border-surface-border">
+          <div className="p-4 rounded-card bg-surface border border-surface-border/50">
             <p className="text-xs text-ink-muted mb-2">Prévia do cofre:</p>
             <div className="flex items-center gap-3">
               <div
