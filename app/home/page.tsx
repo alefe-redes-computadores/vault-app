@@ -91,7 +91,6 @@ export default function HomePage() {
     await favorite(id);
   }, [favorite]);
 
-  // CORRIGIDO: adicionado tipo no acc
   const docsByCategory = useMemo(() => {
     return allDocs.reduce<Record<CategoryId, Document[]>>(
       (acc: Record<CategoryId, Document[]>, doc: any) => {
