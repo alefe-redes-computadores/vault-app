@@ -71,25 +71,24 @@ export default function DocumentsPage() {
 
     if (debouncedSearch.trim()) {
       const query = debouncedSearch.toLowerCase();
-      result = result.filter(
-        (doc) =>
-          doc.title.toLowerCase().includes(query) ||
-          doc.description?.toLowerCase().includes(query)
+      result = result.filter((doc: any) =>
+        doc.title.toLowerCase().includes(query) ||
+        doc.description?.toLowerCase().includes(query)
       );
     }
 
     if (selectedCategory !== "all") {
-      result = result.filter((doc) => doc.category_id === selectedCategory);
+      result = result.filter((doc: any) => doc.category_id === selectedCategory);
     }
 
     if (selectedType !== "all") {
-      result = result.filter((doc) => doc.type === selectedType);
+      result = result.filter((doc: any) => doc.type === selectedType);
     }
 
     if (dateFilter === "expiring") {
       const now = new Date();
       const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      result = result.filter((doc) => {
+      result = result.filter((doc: any) => {
         const expiry = doc.metadata?.expiry_date || doc.metadata?.renewal_date;
         if (!expiry) return false;
         const expiryDate = new Date(expiry);
@@ -97,7 +96,7 @@ export default function DocumentsPage() {
       });
     } else if (dateFilter === "expired") {
       const now = new Date();
-      result = result.filter((doc) => {
+      result = result.filter((doc: any) => {
         const expiry = doc.metadata?.expiry_date || doc.metadata?.renewal_date;
         if (!expiry) return false;
         return new Date(expiry) < now;
@@ -123,7 +122,7 @@ export default function DocumentsPage() {
   const hasActiveFilters = selectedCategory !== "all" || selectedType !== "all" || dateFilter !== "all";
 
   const getExportCards = () => {
-    return filteredDocs.map((doc) => ({
+    return filteredDocs.map((doc: any) => ({
       ref: { current: cardRefs.current[doc.id!] },
       id: doc.id!,
     }));
@@ -136,7 +135,7 @@ export default function DocumentsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-4">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-display text-xl font-semibold text-ink-primary">
@@ -219,7 +218,7 @@ export default function DocumentsPage() {
                     >
                       Todos
                     </button>
-                    {persons.map((person) => (
+                    {persons.map((person: any) => (
                       <button
                         key={person.id}
                         onClick={() => setSelectedPersonId(person.id!)}
@@ -249,7 +248,7 @@ export default function DocumentsPage() {
                     >
                       Todas
                     </button>
-                    {Object.values(CATEGORIES).map((cat) => (
+                    {Object.values(CATEGORIES).map((cat: any) => (
                       <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id)}
@@ -280,7 +279,7 @@ export default function DocumentsPage() {
                     >
                       Todos
                     </button>
-                    {DOCUMENT_TYPES.map((type) => (
+                    {DOCUMENT_TYPES.map((type: any) => (
                       <button
                         key={type.id}
                         onClick={() => setSelectedType(type.id)}
@@ -360,7 +359,7 @@ export default function DocumentsPage() {
               )}
             </div>
           ) : (
-            filteredDocs.map((doc, index) => (
+            filteredDocs.map((doc: any, index: number) => (
               <motion.div
                 key={doc.id}
                 initial={{ opacity: 0, y: 10 }}
