@@ -77,7 +77,6 @@ export default function HomePage() {
   const allDocs = useDocuments(selectedPersonId || undefined) || [];
   const favorites = useFavorites(selectedPersonId || undefined) || [];
 
-  // CORRIGIDO: adicionado : any no filter
   const filteredDocs = useMemo(() => {
     if (!debouncedSearch.trim()) return allDocs;
     const query = debouncedSearch.toLowerCase();
@@ -92,11 +91,13 @@ export default function HomePage() {
     await favorite(id);
   }, [favorite]);
 
+  // CORRIGIDO: adicionado tipo no acc
   const docsByCategory = useMemo(() => {
     return allDocs.reduce<Record<CategoryId, Document[]>>(
-      (acc, doc: any) => {
-        if (!acc[doc.category_id]) acc[doc.category_id] = [];
-        acc[doc.category_id].push(doc);
+      (acc: Record<CategoryId, Document[]>, doc: any) => {
+        const categoryId = doc.category_id as CategoryId;
+        if (!acc[categoryId]) acc[categoryId] = [];
+        acc[categoryId].push(doc);
         return acc;
       },
       {} as Record<CategoryId, Document[]>
