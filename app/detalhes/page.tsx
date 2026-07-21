@@ -279,20 +279,21 @@ export default function DocumentDetailPage() {
               </div>
             </div>
 
-            {/* Metadados */}
+            {/* Metadados - CORRIGIDO: formatDate com fallback vazio */}
             {hasMetadata && (
               <div className="border-t border-surface-border/50 pt-4 space-y-2">
                 {Object.entries(doc.metadata || {}).map(([key, value]) => {
                   if (!value) return null;
+                  const formattedValue = typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)
+                    ? formatDate(value) || value
+                    : value;
                   return (
                     <div key={key} className="flex justify-between items-center">
                       <span className="text-sm text-ink-muted">
                         {key.replace(/_/g, " ").toUpperCase()}:
                       </span>
                       <span className="text-sm text-ink-primary font-medium">
-                        {typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)
-                          ? formatDate(value)
-                          : value}
+                        {formattedValue}
                       </span>
                     </div>
                   );
@@ -317,7 +318,7 @@ export default function DocumentDetailPage() {
                   <span className="text-coral animate-pulse">↻ Pendente</span>
                 )}
               </p>
-              <p className="text-xs text-ink-muted">Criado em {formatDate(doc.created_at)}</p>
+              <p className="text-xs text-ink-muted">Criado em {formatDate(doc.created_at) || 'Data inválida'}</p>
             </div>
           </motion.div>
 
