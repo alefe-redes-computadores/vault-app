@@ -77,11 +77,12 @@ export default function HomePage() {
   const allDocs = useDocuments(selectedPersonId || undefined) || [];
   const favorites = useFavorites(selectedPersonId || undefined) || [];
 
+  // CORRIGIDO: adicionado : any no filter
   const filteredDocs = useMemo(() => {
     if (!debouncedSearch.trim()) return allDocs;
     const query = debouncedSearch.toLowerCase();
     return allDocs.filter(
-      (doc) =>
+      (doc: any) =>
         doc.title.toLowerCase().includes(query) ||
         doc.description?.toLowerCase().includes(query)
     );
@@ -93,7 +94,7 @@ export default function HomePage() {
 
   const docsByCategory = useMemo(() => {
     return allDocs.reduce<Record<CategoryId, Document[]>>(
-      (acc, doc) => {
+      (acc, doc: any) => {
         if (!acc[doc.category_id]) acc[doc.category_id] = [];
         acc[doc.category_id].push(doc);
         return acc;
@@ -113,7 +114,7 @@ export default function HomePage() {
 
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
-  const selectedPerson = persons.find(p => p.id === selectedPersonId);
+  const selectedPerson = persons.find((p: any) => p.id === selectedPersonId);
 
   // Limitar a exibição a 5 pessoas no scroll
   const MAX_VISIBLE_PERSONS = 5;
@@ -192,7 +193,7 @@ export default function HomePage() {
               )}
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {visiblePersons.map((person) => (
+              {visiblePersons.map((person: any) => (
                 <PersonCard
                   key={person.id}
                   person={person}
@@ -231,7 +232,7 @@ export default function HomePage() {
               </motion.div>
             )}
 
-            {Object.keys(CATEGORIES).map((categoryId, index) => {
+            {Object.keys(CATEGORIES).map((categoryId: any, index: number) => {
               const preview = getCategoryPreview(categoryId as CategoryId);
               const total = (docsByCategory[categoryId as CategoryId] || []).length;
 
@@ -310,7 +311,7 @@ export default function HomePage() {
               {filteredDocs.length} resultado{filteredDocs.length !== 1 ? "s" : ""}
             </div>
             <div className="max-h-80 overflow-y-auto space-y-2">
-              {filteredDocs.map((doc) => (
+              {filteredDocs.map((doc: any) => (
                 <button
                   key={doc.id}
                   onClick={() => {
@@ -337,7 +338,7 @@ export default function HomePage() {
           title="Todas as pessoas"
         >
           <div className="space-y-2">
-            {persons.map((person) => (
+            {persons.map((person: any) => (
               <button
                 key={person.id}
                 onClick={() => {
