@@ -44,8 +44,8 @@ const CATEGORY_ICONS: Record<string, typeof Heart> = {
   outros: FolderOpen,
 };
 
-const formatDate = (date?: string) => {
-  if (!date) return null;
+const formatDate = (date?: string): string => {
+  if (!date) return "Data inválida";
   try {
     return format(new Date(date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   } catch {
@@ -279,21 +279,24 @@ export default function DocumentDetailPage() {
               </div>
             </div>
 
-            {/* Metadados - CORRIGIDO: formatDate com fallback vazio */}
+            {/* Metadados - CORRIGIDO: converte tudo para string */}
             {hasMetadata && (
               <div className="border-t border-surface-border/50 pt-4 space-y-2">
                 {Object.entries(doc.metadata || {}).map(([key, value]) => {
                   if (!value) return null;
-                  const formattedValue = typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)
-                    ? formatDate(value) || value
-                    : value;
+                  // Converte qualquer valor para string
+                  let displayValue: string = String(value);
+                  // Se for uma data, formata
+                  if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+                    displayValue = formatDate(value);
+                  }
                   return (
                     <div key={key} className="flex justify-between items-center">
                       <span className="text-sm text-ink-muted">
                         {key.replace(/_/g, " ").toUpperCase()}:
                       </span>
                       <span className="text-sm text-ink-primary font-medium">
-                        {formattedValue}
+                        {displayValue}
                       </span>
                     </div>
                   );
@@ -318,7 +321,7 @@ export default function DocumentDetailPage() {
                   <span className="text-coral animate-pulse">↻ Pendente</span>
                 )}
               </p>
-              <p className="text-xs text-ink-muted">Criado em {formatDate(doc.created_at) || 'Data inválida'}</p>
+              <p className="text-xs text-ink-muted">Criado em {formatDate(doc.created_at)}</p>
             </div>
           </motion.div>
 
