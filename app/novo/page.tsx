@@ -31,9 +31,6 @@ import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
 
-// ============================================================
-// MÁSCARAS
-// ============================================================
 const applyMask = (value: string, type: string): string => {
   const digits = value.replace(/\D/g, '');
   
@@ -186,7 +183,7 @@ export default function NewDocumentPage() {
       const newAttachment: Attachment = {
         id: crypto.randomUUID(),
         url: URL.createObjectURL(file),
-        name: "foto_capturada.jpg",
+        name: `foto_${Date.now()}.jpg`,
         type: "image",
         uploaded_at: new Date().toISOString(),
       };
@@ -360,14 +357,14 @@ export default function NewDocumentPage() {
           onChange={handleCameraCapture}
         />
 
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -647,7 +644,7 @@ export default function NewDocumentPage() {
             </motion.div>
           )}
 
-          {/* Cofre - CORRIGIDO: 🔒 removido */}
+          {/* Cofre */}
           {userVaults && userVaults.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
