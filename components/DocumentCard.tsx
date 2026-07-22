@@ -29,7 +29,7 @@ import { useToast } from "@/components/ToastProvider";
 interface DocumentCardProps {
   document: Document;
   personName?: string;
-  onFavoriteToggle?: (id: number) => void;
+  onFavoriteToggle?: (id: string) => void; // ← string
   compact?: boolean;
 }
 
@@ -133,7 +133,6 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-ink-muted">{category?.name}</span>
                 <span className="w-1 h-1 rounded-full bg-ink-faint" />
-                {/* Mostra o nome da pessoa em vez do tipo */}
                 {personName && (
                   <span className="text-xs text-ink-muted">{personName}</span>
                 )}
@@ -145,7 +144,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
 
             <button
               onClick={handleFavorite}
-              className="flex-shrink-0 p-1 rounded-full hover:bg-surface-border transition-colors relative"
+              className="flex-shrink-0 p-1 rounded-full hover:bg-surface-border/50 transition-colors relative"
             >
               <AnimatePresence>
                 <motion.div
@@ -197,7 +196,6 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
         </div>
       </div>
 
-      {/* Badge de anexo com ícone específico */}
       {hasAttachments && (
         <div className="absolute bottom-3 right-3">
           {hasImageAttachment ? (
@@ -216,7 +214,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
         <div className="flex items-center gap-1">
           {syncIcon}
           {showSyncTooltip && (
-            <span className="absolute -top-6 right-0 text-[10px] bg-surface-raised border border-surface-border px-2 py-0.5 rounded whitespace-nowrap text-ink-muted shadow-md">
+            <span className="absolute -top-6 right-0 text-[10px] bg-surface-raised border border-surface-border/50 px-2 py-0.5 rounded whitespace-nowrap text-ink-muted shadow-md">
               {syncLabel}
             </span>
           )}
