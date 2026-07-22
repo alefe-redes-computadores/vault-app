@@ -77,16 +77,16 @@ export default function EditarDetalhePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = Number(searchParams.get("id"));
+  const id = searchParams.get("id"); // ← string
 
-  const doc = useDocument(id);
+  const doc = useDocument(id || "");
   const persons = usePersons();
   const { updateDocument } = useSafeDb();
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
-    person_id: 0,
+    person_id: "",
     category_id: "pessoal" as CategoryId,
     type: "rg" as DocumentType,
     title: "",
@@ -98,7 +98,7 @@ export default function EditarDetalhePage() {
   useEffect(() => {
     if (doc) {
       setFormData({
-        person_id: doc.person_id,
+        person_id: doc.person_id || "",
         category_id: doc.category_id,
         type: doc.type as DocumentType,
         title: doc.title,
@@ -130,7 +130,7 @@ export default function EditarDetalhePage() {
   };
 
   const handleSubmit = async () => {
-    if (!validate() || !doc) {
+    if (!validate() || !doc || !id) {
       trigger("error");
       return;
     }
