@@ -22,7 +22,7 @@ export default function CategoryPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const persons = usePersons();
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>( // ← string
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(
     persons[0]?.id || null
   );
 
@@ -39,7 +39,7 @@ export default function CategoryPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleFavoriteToggle = useCallback(async (id: string) => { // ← string
+  const handleFavoriteToggle = useCallback(async (id: string) => {
     await favorite(id);
     trigger("vibrate");
   }, [favorite, trigger]);
@@ -65,14 +65,14 @@ export default function CategoryPage() {
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
         {/* HEADER */}
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -139,8 +139,8 @@ export default function CategoryPage() {
           </div>
         </header>
 
-        {/* LISTA DE DOCUMENTOS */}
-        <section className="px-5 pt-5 space-y-3">
+        {/* LISTA DE DOCUMENTOS - space-y-3 → space-y-4 */}
+        <section className="px-5 pt-5 space-y-4">
           {!hasDocs ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
