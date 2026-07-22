@@ -3,6 +3,7 @@ import type {
   Person, Document, SyncQueueItem, Medicamento, Renovacao, 
   Vault, VaultMember, Medico, Farmacia, Hospital 
 } from '@/lib/types';
+import { deleteFile } from '@/lib/supabase/storage';
 
 // Gerador de UUID compatível com todos os ambientes
 function generateId(): string {
@@ -206,6 +207,23 @@ export async function safeDeleteDocument(id: string): Promise<void> {
   const timestamp = nowIso();
   const doc = await db.documents.get(id);
   if (!doc) throw new Error('Documento não encontrado');
+
+  // ============================================================
+  // DELETAR ANEXOS DO STORAGE (CORRIGIDO)
+  // ============================================================
+  if (doc.attachments && doc.attachments.length > 0) {
+    for (const attachment of doc.attachments) {
+      // Verifica se a URL é remota (não é blob:)
+      if (attachment.url && !attachment.url.startsWith('blob:')) {
+        try {
+          await deleteFile(attachment.url);
+        } catch (error) {
+          console.error('Erro ao deletar anexo:', attachment.url, error);
+          // Não interrompe a exclusão do documento se o anexo não for deletado
+        }
+      }
+    }
+  }
 
   await db.transaction('rw', db.documents, db.syncQueue, async () => {
     await db.documents.delete(id);
