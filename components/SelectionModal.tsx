@@ -15,7 +15,7 @@ interface SelectionModalProps<T> {
   title: string;
   placeholder?: string;
   renderItem: (item: T) => React.ReactNode;
-  getItemId: (item: T) => number;
+  getItemId: (item: T) => string; // ← string
   getItemLabel: (item: T) => string;
   onCreateNew?: () => void;
   createNewLabel?: string;
@@ -60,14 +60,14 @@ export function SelectionModal<T>({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="relative w-full max-w-md rounded-2xl bg-surface border border-surface-border shadow-vault p-4 max-h-[80vh] flex flex-col"
+            className="relative w-full max-w-md rounded-2xl bg-surface border border-surface-border/50 shadow-vault p-4 max-h-[80vh] flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display text-lg font-semibold text-ink-primary">{title}</h3>
               <button
                 onClick={onClose}
-                className="p-1 rounded-full hover:bg-surface-border transition-colors"
+                className="p-1 rounded-full hover:bg-surface-border/50 transition-colors"
               >
                 <X size={18} className="text-ink-muted" />
               </button>
