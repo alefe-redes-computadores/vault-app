@@ -2,27 +2,27 @@
 // 1. PESSOAS
 // ============================================================
 export interface Person {
-  id?: number;
-  user_id: string; // vinculado ao Supabase Auth
+  id?: string; // ← agora é string (UUID)
+  user_id: string;
   name: string;
   email?: string;
   phone?: string;
-  avatar_url?: string; // foto do Google
+  avatar_url?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
 }
 
 // ============================================================
-// 2. CATEGORIAS (fixas, com cores)
+// 2. CATEGORIAS
 // ============================================================
 export type CategoryId = 'saude' | 'pessoal' | 'empresa' | 'outros';
 
 export interface Category {
   id: CategoryId;
   name: string;
-  icon: string; // nome do ícone Lucide
-  color: string; // hex
+  icon: string;
+  color: string;
   description?: string;
 }
 
@@ -57,14 +57,11 @@ export const CATEGORIES: Record<CategoryId, Category> = {
   },
 };
 
-// ============================================================
-// 2.1 ALIAS PARA COMPATIBILIDADE (AREAS e CATEGORY_META)
-// ============================================================
 export const AREAS = CATEGORIES;
 export const CATEGORY_META = CATEGORIES;
 
 // ============================================================
-// 3. DOCUMENTOS (com metadata dinâmica e user_id)
+// 3. DOCUMENTOS
 // ============================================================
 export type DocumentType =
   | 'rg'
@@ -79,16 +76,16 @@ export type DocumentType =
 
 export interface Attachment {
   id: string;
-  url: string; // local (blob) ou remota (Supabase)
+  url: string;
   name: string;
   type: 'image' | 'pdf';
   uploaded_at: string;
 }
 
 export interface Document {
-  id?: number;
+  id?: string; // ← UUID
   user_id: string;
-  person_id: number;
+  person_id: string; // ← agora string (UUID da pessoa)
   category_id: CategoryId;
   type: DocumentType;
   title: string;
@@ -96,14 +93,14 @@ export interface Document {
   metadata: Record<string, any>;
   attachments: Attachment[];
   is_favorite: boolean;
-  vault_id?: number;
+  vault_id?: string; // ← UUID
   created_at: string;
   updated_at: string;
   synced: boolean;
 }
 
 // ============================================================
-// 3.1 CAMPOS POR TIPO DE DOCUMENTO (com required)
+// 3.1 CAMPOS POR TIPO DE DOCUMENTO
 // ============================================================
 export const DOCUMENT_FIELDS: Record<
   DocumentType,
@@ -161,80 +158,37 @@ export const DOCUMENT_FIELDS: Record<
 };
 
 // ============================================================
-// 4. METADADOS POR TIPO DE DOCUMENTO
+// 4. METADADOS
 // ============================================================
-export type RGMetadata = {
-  number: string;
-  issue_date: string;
-  expiry_date: string;
-  issuer: string;
-};
-
-export type CPFMetadata = {
-  number: string;
-};
-
-export type CNHMetadata = {
-  number: string;
-  category: 'A' | 'B' | 'C' | 'D' | 'E';
-  issue_date: string;
-  expiry_date: string;
-};
-
-export type CertificadoMetadata = {
-  institution: string;
-  course: string;
-  duration: string;
-  completion_date?: string;
-};
-
-export type ReceitaMetadata = {
-  medication: string;
-  dosage: string;
-  doctor: string; // ID do médico selecionado
-  pharmacy?: string; // ID da farmácia selecionada
-  prescription_date: string;
-  renewal_date: string;
-};
-
-export type ProntuarioMetadata = {
-  hospital: string; // ID do hospital selecionado
-  doctor: string; // ID do médico selecionado
-  specialty: string;
-  date: string;
-};
-
-export type LaudoMetadata = {
-  doctor: string; // ID do médico selecionado
-  specialty: string;
-  hospital: string; // ID do hospital selecionado
-  date: string;
-};
-
-export type EncaminhamentoMetadata = {
-  from: string;
-  to?: string;
-  reason: string;
-  date: string;
-};
+export type RGMetadata = { number: string; issue_date: string; expiry_date: string; issuer: string; };
+export type CPFMetadata = { number: string; };
+export type CNHMetadata = { number: string; category: 'A' | 'B' | 'C' | 'D' | 'E'; issue_date: string; expiry_date: string; };
+export type CertificadoMetadata = { institution: string; course: string; duration: string; completion_date?: string; };
+export type ReceitaMetadata = { medication: string; dosage: string; doctor: string; pharmacy?: string; prescription_date: string; renewal_date: string; };
+export type ProntuarioMetadata = { hospital: string; doctor: string; specialty: string; date: string; };
+export type LaudoMetadata = { doctor: string; specialty: string; hospital: string; date: string; };
+export type EncaminhamentoMetadata = { from: string; to?: string; reason: string; date: string; };
 
 // ============================================================
 // 5. FILA DE SINCRONIZAÇÃO (CORRIGIDO)
 // ============================================================
 export interface SyncQueueItem {
-  id?: number;
+  id?: string; // ← UUID
   table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes' | 'vaults' | 'vaultMembers' | 'medicos' | 'farmacias' | 'hospitais';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
+  retry_count?: number; // ← NOVO: controle de tentativas
+  failed?: boolean; // ← NOVO: marcador de falha permanente
 }
 
 // ============================================================
-// 6. MÓDULO SAÚDE — MEDICAMENTOS E RENOVAÇÕES
+// 6. MÓDULO SAÚDE
 // ============================================================
 export interface Medicamento {
-  id?: number;
-  document_id: number;
+  id?: string;
+  user_id: string;
+  document_id: string;
   nome: string;
   dosagem: string;
   medico: string;
@@ -248,8 +202,8 @@ export interface Medicamento {
 }
 
 export interface Renovacao {
-  id?: number;
-  medicamento_id: number;
+  id?: string;
+  medicamento_id: string;
   data: string;
   anexo_url?: string;
   observacoes?: string;
@@ -259,12 +213,12 @@ export interface Renovacao {
 }
 
 // ============================================================
-// 7. COFRES FAMILIARES / COMPARTILHAMENTO
+// 7. COFRES FAMILIARES
 // ============================================================
 export type VaultPermission = 'view' | 'edit' | 'admin';
 
 export interface Vault {
-  id?: number;
+  id?: string;
   user_id: string;
   name: string;
   description?: string;
@@ -276,8 +230,8 @@ export interface Vault {
 }
 
 export interface VaultMember {
-  id?: number;
-  vault_id: number;
+  id?: string;
+  vault_id: string;
   user_id: string;
   email: string;
   name?: string;
@@ -290,8 +244,8 @@ export interface VaultMember {
 }
 
 export interface VaultDocument {
-  document_id: number;
-  vault_id: number;
+  document_id: string;
+  vault_id: string;
   shared_by: string;
   shared_at: string;
 }
@@ -300,7 +254,7 @@ export interface VaultDocument {
 // 8. MÓDULO SAÚDE — MÉDICOS, FARMÁCIAS, HOSPITAIS
 // ============================================================
 export interface Medico {
-  id?: number;
+  id?: string;
   user_id: string;
   nome: string;
   especialidade?: string;
@@ -313,7 +267,7 @@ export interface Medico {
 }
 
 export interface Farmacia {
-  id?: number;
+  id?: string;
   user_id: string;
   nome: string;
   endereco?: string;
@@ -324,7 +278,7 @@ export interface Farmacia {
 }
 
 export interface Hospital {
-  id?: number;
+  id?: string;
   user_id: string;
   nome: string;
   endereco?: string;
