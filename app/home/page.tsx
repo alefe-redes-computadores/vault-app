@@ -38,7 +38,7 @@ export default function HomePage() {
   const { showToast } = useToast();
 
   const persons = usePersons();
-  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null); // ← string
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
@@ -87,7 +87,7 @@ export default function HomePage() {
     );
   }, [allDocs, debouncedSearch]);
 
-  const handleFavoriteToggle = useCallback(async (id: number) => {
+  const handleFavoriteToggle = useCallback(async (id: string) => { // ← string
     await favorite(id);
   }, [favorite]);
 
@@ -116,7 +116,6 @@ export default function HomePage() {
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
   const selectedPerson = persons.find((p: any) => p.id === selectedPersonId);
 
-  // Limitar a exibição a 5 pessoas no scroll
   const MAX_VISIBLE_PERSONS = 5;
   const visiblePersons = persons.slice(0, MAX_VISIBLE_PERSONS);
   const hasMorePersons = persons.length > MAX_VISIBLE_PERSONS;
@@ -173,7 +172,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* PESSOAS - SCROLL HORIZONTAL + BOTÃO "VER TODOS" */}
+          {/* PESSOAS */}
           <div className="mt-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
