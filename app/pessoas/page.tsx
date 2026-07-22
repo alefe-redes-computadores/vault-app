@@ -18,7 +18,7 @@ export default function PessoasPage() {
   const router = useRouter();
   const { showToast, showSuccess } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null); // ← string
 
   const persons = usePersons();
 
@@ -27,7 +27,7 @@ export default function PessoasPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleDeleteClick = async (id: number, name: string) => {
+  const handleDeleteClick = async (id: string, name: string) => { // ← string
     trigger("vibrate");
 
     const toastId = showSuccess(
@@ -57,7 +57,7 @@ export default function PessoasPage() {
     }
   };
 
-  const handlePersonClick = (id: number) => {
+  const handlePersonClick = (id: string) => { // ← string
     trigger("vibrate");
     router.push(`/pessoas/editar?id=${id}`);
   };
