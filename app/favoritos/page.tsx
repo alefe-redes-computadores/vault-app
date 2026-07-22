@@ -21,7 +21,7 @@ export default function FavoritesPage() {
   const { favorite } = useSafeDb();
   const persons = usePersons();
 
-  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null); // ← string
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,13 +35,12 @@ export default function FavoritesPage() {
 
   const favorites = useFavorites(selectedPersonId || undefined);
 
-  // CORRIGIDO: adicionado : any no doc
   const filtered = favorites.filter((doc: any) => {
     const matchCategory = selectedCategory === null || doc.category_id === selectedCategory;
     return matchCategory;
   });
 
-  const handleFavoriteToggle = useCallback(async (id: number) => {
+  const handleFavoriteToggle = useCallback(async (id: string) => { // ← string
     await favorite(id);
     trigger("vibrate");
   }, [favorite, trigger]);
