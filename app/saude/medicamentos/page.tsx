@@ -17,12 +17,11 @@ export default function MedicamentosPage() {
   const router = useRouter();
   const { showToast, showSuccess } = useToast();
   const { medicamentos, deleteMedicamento } = useMedicamentos();
-  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null); // ← string
 
-  const handleDeleteClick = async (id: number, nome: string) => {
+  const handleDeleteClick = async (id: string, nome: string) => { // ← string
     trigger("vibrate");
 
-    // Mostrar toast com opção de desfazer
     const toastId = showSuccess(
       `"${nome}" foi removido`,
       5000,
@@ -67,7 +66,7 @@ export default function MedicamentosPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -174,14 +173,14 @@ export default function MedicamentosPage() {
                         trigger("vibrate");
                         router.push(`/saude/medicamentos/detalhes?id=${med.id}`);
                       }}
-                      className="p-2 rounded-full hover:bg-surface-border transition-colors"
+                      className="p-2 rounded-full hover:bg-surface-border/50 transition-colors"
                     >
                       <Edit size={16} className="text-ink-muted hover:text-ice transition-colors" />
                     </button>
                     <button
                       onClick={() => handleDeleteClick(med.id!, med.nome)}
                       disabled={isDeleting === med.id}
-                      className="p-2 rounded-full hover:bg-surface-border transition-colors disabled:opacity-50"
+                      className="p-2 rounded-full hover:bg-surface-border/50 transition-colors disabled:opacity-50"
                     >
                       {isDeleting === med.id ? (
                         <Loader2 size={16} className="animate-spin text-coral" />
