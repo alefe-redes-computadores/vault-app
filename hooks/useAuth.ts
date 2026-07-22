@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { signIn, signUp, signOut, getCurrentUser } from "@/lib/supabase/auth";
-import type { User } from "@supabase/supabase-js";
+import type { User, AuthError } from "@supabase/supabase-js";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -47,19 +47,20 @@ export function useAuth() {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { data, error } = await signIn(email, password);
-    if (error) throw error;
-    return data;
+    const result = await signIn(email, password);
+    if (result.error) {
+      return { data: null, error: result.error };
+    }
+    return { data: result.data, error: null };
   }, []);
 
   const register = useCallback(async (email: string, password: string) => {
-    const { data, error } = await signUp(email, password);
-    if (error) throw error;
-    return data;
+    const result = await signUp(email, password);
+    if (result.error) {
+      return { data: null, error: result.error };
+    }
+    return { data: result.data, error: null };
   }, []);
-
-  // ✅ REMOVIDO: signInWithGoogle agora é gerenciado exclusivamente em login/page.tsx
-  // O login com Google é feito via handleGoogleLogin na página de login
 
   const logout = useCallback(async () => {
     const { error } = await signOut();
@@ -74,6 +75,5 @@ export function useAuth() {
     login,
     register,
     logout,
-    // signInWithGoogle removido - use o handleGoogleLogin do login/page.tsx
   };
 }
