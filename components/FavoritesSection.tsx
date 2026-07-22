@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 interface FavoritesSectionProps {
   favorites: Document[];
-  onFavoriteToggle: (id: number) => void;
+  onFavoriteToggle: (id: string) => void; // ← string
 }
 
 export function FavoritesSection({ favorites, onFavoriteToggle }: FavoritesSectionProps) {
