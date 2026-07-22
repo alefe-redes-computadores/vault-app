@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Upload, Camera, X, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Upload, Camera, X, Loader2, Save, Shield } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useAuth } from "@/hooks/useAuth";
@@ -123,9 +123,6 @@ export default function NewDocumentPage() {
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
 
-  // ============================================================
-  // ESTADO PARA ARQUIVOS LOCAIS (antes do upload)
-  // ============================================================
   const [localFiles, setLocalFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
@@ -161,16 +158,11 @@ export default function NewDocumentPage() {
     }
   };
 
-  // ============================================================
-  // MANIPULAÇÃO DE ARQUIVOS (apenas armazena localmente)
-  // ============================================================
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       trigger("vibrate");
-      // Guarda o arquivo localmente
       setLocalFiles((prev) => [...prev, file]);
-      // Cria um attachment temporário com URL blob
       const newAttachment: Attachment = {
         id: crypto.randomUUID(),
         url: URL.createObjectURL(file),
@@ -207,12 +199,9 @@ export default function NewDocumentPage() {
   };
 
   const removeAttachment = (id: string) => {
-    // Remove o arquivo local correspondente
     const attachmentToRemove = formData.attachments.find((a) => a.id === id);
     if (attachmentToRemove && attachmentToRemove.url.startsWith('blob:')) {
-      // Revoga a URL blob para liberar memória
       URL.revokeObjectURL(attachmentToRemove.url);
-      // Remove o file da lista local
       const fileIndex = localFiles.findIndex((f) => f.name === attachmentToRemove.name);
       if (fileIndex !== -1) {
         const newFiles = [...localFiles];
@@ -248,9 +237,6 @@ export default function NewDocumentPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ============================================================
-  // SUBMISSÃO: salva documento e depois faz upload
-  // ============================================================
   const handleSubmit = async () => {
     trigger("vibrate");
     
@@ -270,7 +256,6 @@ export default function NewDocumentPage() {
     setUploadProgress(0);
 
     try {
-      // 1. Salvar documento no Dexie com attachments (URLs blob)
       const docData: Omit<Document, "id" | "created_at" | "updated_at" | "synced"> = {
         user_id: user?.id || "",
         person_id: formData.person_id,
@@ -286,39 +271,32 @@ export default function NewDocumentPage() {
 
       const docId = await addDocument(docData);
 
-      // 2. Se houver arquivos locais, fazer upload para o Storage
       if (localFiles.length > 0 && user) {
         const folder = formData.category_id;
         const uploadedAttachments: Attachment[] = [];
 
         for (let i = 0; i < localFiles.length; i++) {
           const file = localFiles[i];
-          const attachment = formData.attachments[i]; // corresponde ao attachment criado
+          const attachment = formData.attachments[i];
 
           if (!attachment) continue;
 
-          // Faz upload
           const { url, error } = await uploadFile(user.id, file, folder);
           if (error) {
             console.error('Erro no upload:', error);
-            // Se falhar, mantém o blob local
             continue;
           }
 
-          // Atualiza a URL do attachment
           const updatedAttachment: Attachment = {
             ...attachment,
-            url: url, // substitui blob: por URL remota
+            url: url,
           };
           uploadedAttachments.push(updatedAttachment);
 
-          // Atualiza progresso
           setUploadProgress(Math.round(((i + 1) / localFiles.length) * 100));
         }
 
-        // 3. Atualizar o documento com as novas URLs
         if (uploadedAttachments.length > 0) {
-          // Mescla os attachments atualizados com os que não foram alterados
           const finalAttachments = formData.attachments.map((att) => {
             const updated = uploadedAttachments.find((u) => u.id === att.id);
             return updated || att;
@@ -330,19 +308,16 @@ export default function NewDocumentPage() {
             synced: false,
           });
 
-          // Revoga as URLs blob antigas
           formData.attachments.forEach((att) => {
             if (att.url.startsWith('blob:')) {
               URL.revokeObjectURL(att.url);
             }
           });
 
-          // Limpa os arquivos locais
           setLocalFiles([]);
         }
       }
 
-      // 4. Notificações
       if (formData.metadata?.expiry_date) {
         await scheduleDocumentExpiryNotification(
           docId,
@@ -672,7 +647,7 @@ export default function NewDocumentPage() {
             </motion.div>
           )}
 
-          {/* Cofre */}
+          {/* Cofre - CORRIGIDO: 🔒 removido */}
           {userVaults && userVaults.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -709,7 +684,7 @@ export default function NewDocumentPage() {
                         : "border-surface-border/50 bg-surface text-ink-muted hover:text-ink-primary"
                     }`}
                   >
-                    <span>{vault.icon || "🔒"}</span>
+                    <Shield size={12} />
                     {vault.name}
                   </button>
                 ))}
