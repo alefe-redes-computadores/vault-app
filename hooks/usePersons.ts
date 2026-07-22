@@ -12,6 +12,5 @@ export function usePersons() {
     [user?.id],
     []
   );
-
   return persons || [];
 }
