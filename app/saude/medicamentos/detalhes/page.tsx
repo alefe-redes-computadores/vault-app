@@ -28,7 +28,7 @@ export default function MedicamentoDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = Number(searchParams.get("id"));
+  const id = searchParams.get("id") || ""; // ← string
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -100,7 +100,7 @@ export default function MedicamentoDetailPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -135,7 +135,7 @@ export default function MedicamentoDetailPage() {
                   trigger("vibrate");
                   router.push(`/saude/medicamentos/editar?id=${id}`);
                 }}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised hover:bg-surface-border transition-colors active:scale-95"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised hover:bg-surface-border/50 transition-colors active:scale-95"
                 title="Editar medicamento"
               >
                 <Edit size={18} className="text-ink-muted" />
@@ -157,7 +157,6 @@ export default function MedicamentoDetailPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          {/* Card do medicamento */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -213,7 +212,6 @@ export default function MedicamentoDetailPage() {
             </div>
           </motion.div>
 
-          {/* Histórico de renovações */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -250,7 +248,7 @@ export default function MedicamentoDetailPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
+                    className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border/50 hover:bg-surface-border/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-surface-border/50 flex items-center justify-center">
