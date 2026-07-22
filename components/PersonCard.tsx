@@ -71,7 +71,6 @@ export function PersonCard({
             <Trash2 size={14} className="text-ink-muted hover:text-coral transition-colors" />
           </button>
         )}
-        {/* Rivet removido do PersonCard (chip pequeno) */}
       </div>
 
       <ConfirmationModal
