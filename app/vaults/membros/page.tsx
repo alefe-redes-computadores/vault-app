@@ -16,7 +16,7 @@ export default function VaultMembersPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const vaultId = Number(searchParams.get("cofre_id"));
+  const vaultId = searchParams.get("cofre_id") || ""; // ← string
   const { user } = useAuth();
   const { showToast } = useToast();
 
@@ -81,7 +81,7 @@ export default function VaultMembersPage() {
     }
   };
 
-  const handleUpdateStatus = async (memberId: number, status: "accepted" | "rejected") => {
+  const handleUpdateStatus = async (memberId: string, status: "accepted" | "rejected") => { // ← string
     try {
       await safeUpdateVaultMember(memberId, { status });
       trigger("vibrate");
@@ -101,14 +101,14 @@ export default function VaultMembersPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pb-4 pt-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-[0.98]"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -122,7 +122,7 @@ export default function VaultMembersPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          <div className="rounded-card border border-surface-border bg-surface p-4 shadow-vault">
+          <div className="rounded-card border border-surface-border/50 bg-surface p-4 shadow-vault">
             <h3 className="font-display text-sm font-medium text-ink-primary mb-3 flex items-center gap-2">
               <UserPlus size={16} className="text-ink-muted" />
               Convidar membro
@@ -138,7 +138,7 @@ export default function VaultMembersPage() {
                 <select
                   value={permission}
                   onChange={(e) => setPermission(e.target.value as "view" | "edit" | "admin")}
-                  className="px-3 py-2 rounded-xl bg-surface-raised border border-surface-border text-ink-primary focus:outline-none focus:border-steel-light"
+                  className="px-3 py-2 rounded-xl bg-surface-raised border border-surface-border/50 text-ink-primary focus:outline-none focus:border-steel-light"
                 >
                   <option value="view">👁️ Visualizar</option>
                   <option value="edit">✏️ Editar</option>
@@ -175,7 +175,7 @@ export default function VaultMembersPage() {
                   return (
                     <div
                       key={member.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border"
+                      className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border/50"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-steel-dark/40 flex items-center justify-center text-ink-muted text-sm font-medium">
@@ -200,13 +200,13 @@ export default function VaultMembersPage() {
                           <>
                             <button
                               onClick={() => handleUpdateStatus(member.id!, "accepted")}
-                              className="p-1 rounded-full hover:bg-surface-border transition-colors"
+                              className="p-1 rounded-full hover:bg-surface-border/50 transition-colors"
                             >
                               <Check size={14} className="text-green-400" />
                             </button>
                             <button
                               onClick={() => handleUpdateStatus(member.id!, "rejected")}
-                              className="p-1 rounded-full hover:bg-surface-border transition-colors"
+                              className="p-1 rounded-full hover:bg-surface-border/50 transition-colors"
                             >
                               <X size={14} className="text-coral" />
                             </button>
