@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital, SyncQueueItem } from '@/lib/types';
 
-const MAX_RETRIES = 5; // Número máximo de tentativas antes de marcar como failed
+const MAX_RETRIES = 5;
 
 export function useSyncQueue() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -387,13 +387,11 @@ export function useSyncQueue() {
   // processQueue (memoizado com useCallback + lock + retry)
   // ============================================================
   const processQueue = useCallback(async () => {
-    // Se já está processando, ou offline, ou já tem um lock, sai
     if (processingRef.current || !isOnline) {
       console.log('⏳ Sync já em andamento ou offline, ignorando');
       return;
     }
 
-    // Verifica se há itens na fila primeiro para não travar desnecessariamente
     const count = await db.syncQueue.count();
     if (count === 0) {
       console.log('📭 Fila de sincronização vazia');
@@ -405,18 +403,16 @@ export function useSyncQueue() {
     window.dispatchEvent(new Event('sync:start'));
 
     try {
-      // Buscar apenas itens não falhos e com retry_count < MAX_RETRIES
+      // CORRIGIDO: usar filter em vez de where para boolean
       const queue = await db.syncQueue
-        .where('failed')
-        .equals(false)
-        .and((item) => (item.retry_count || 0) < MAX_RETRIES)
+        .toCollection()
+        .filter((item) => item.failed !== true && (item.retry_count || 0) < MAX_RETRIES)
         .toArray();
 
       console.log(`🔄 Processando ${queue.length} itens da fila...`);
 
       for (const item of queue) {
         try {
-          // Disparar a sync correta baseada na tabela
           if (item.table === 'documents') {
             await syncDocument(item);
           } else if (item.table === 'vaults') {
@@ -436,12 +432,10 @@ export function useSyncQueue() {
           } else if (item.table === 'hospitais') {
             await syncHospital(item);
           }
-          // Se chegou aqui, deu certo: remove da fila
           await db.syncQueue.delete(item.id!);
         } catch (error) {
           console.error('Erro ao sincronizar item:', item, error);
           
-          // Incrementar contagem de tentativas
           const retryCount = (item.retry_count || 0) + 1;
           const failed = retryCount >= MAX_RETRIES;
           
@@ -452,21 +446,18 @@ export function useSyncQueue() {
           
           if (failed) {
             console.error(`❌ Item falhou permanentemente após ${MAX_RETRIES} tentativas:`, item);
-            // Aqui poderíamos disparar um toast de erro para o usuário
           }
         }
       }
 
-      // Verificar se ainda há itens pendentes (não falhos)
+      // CORRIGIDO: usar filter em vez de where para boolean
       const remaining = await db.syncQueue
-        .where('failed')
-        .equals(false)
-        .and((item) => (item.retry_count || 0) < MAX_RETRIES)
+        .toCollection()
+        .filter((item) => item.failed !== true && (item.retry_count || 0) < MAX_RETRIES)
         .count();
 
       if (remaining > 0) {
         console.log(`⏳ ${remaining} itens ainda pendentes, agendando nova tentativa...`);
-        // Agenda nova tentativa após 5 segundos
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
           processQueue();
@@ -483,10 +474,8 @@ export function useSyncQueue() {
     }
   }, [isOnline]);
 
-  // Sincronização automática quando fica online
   useEffect(() => {
     if (isOnline) {
-      // Delay inicial para evitar conflitos com o pull
       const timer = setTimeout(() => {
         processQueue();
       }, 2000);
@@ -494,7 +483,6 @@ export function useSyncQueue() {
     }
   }, [isOnline, processQueue]);
 
-  // Verificar pendências a cada 30 segundos
   useEffect(() => {
     if (!isOnline) return;
     const interval = setInterval(() => {
