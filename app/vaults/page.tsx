@@ -17,7 +17,7 @@ export default function VaultsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [memberCounts, setMemberCounts] = useState<Record<number, number>>({});
+  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({}); // ← string
 
   const vaults = useLiveQuery(
     () => db.vaults.where('user_id').equals(user?.id || '').toArray(),
@@ -28,7 +28,7 @@ export default function VaultsPage() {
   useEffect(() => {
     const countMembers = async () => {
       if (!vaults || vaults.length === 0) return;
-      const counts: Record<number, number> = {};
+      const counts: Record<string, number> = {};
       for (const vault of vaults) {
         if (vault.id) {
           const count = await db.vaultMembers.where('vault_id').equals(vault.id).count();
