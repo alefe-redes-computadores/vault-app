@@ -34,9 +34,6 @@ export default function FavoritesPage() {
     return () => clearTimeout(timer);
   }, [persons]);
 
-  // ============================================================
-  // PAGINAÇÃO para favoritos
-  // ============================================================
   const {
     documents: paginatedFavorites,
     totalCount,
@@ -46,10 +43,8 @@ export default function FavoritesPage() {
   } = usePaginatedDocuments({
     personId: selectedPersonId || undefined,
     categoryId: selectedCategory || undefined,
-    // Filtro por favoritos será aplicado em memória
   });
 
-  // Filtrar apenas favoritos
   const favorites = useMemo(() => {
     return paginatedFavorites.filter((doc: any) => doc.is_favorite === true);
   }, [paginatedFavorites]);
@@ -68,15 +63,14 @@ export default function FavoritesPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* HEADER */}
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
