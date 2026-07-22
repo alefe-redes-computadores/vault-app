@@ -1,3 +1,5 @@
+"use client";
+
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { CategoryId, Document } from '@/lib/types';
@@ -17,7 +19,8 @@ export function useLocalData<T>(
   return (data || []).filter(filter || (() => true));
 }
 
-export function useDocuments(personId?: number, categoryId?: CategoryId) {
+// CORRIGIDO: personId agora é string (UUID)
+export function useDocuments(personId?: string, categoryId?: CategoryId) {
   return useLiveQuery(
     () => {
       let query = db.documents.toCollection();
@@ -30,7 +33,8 @@ export function useDocuments(personId?: number, categoryId?: CategoryId) {
   );
 }
 
-export function useFavorites(personId?: number) {
+// CORRIGIDO: personId agora é string (UUID)
+export function useFavorites(personId?: string) {
   return useLiveQuery(
     () => {
       let query = db.documents.filter((doc: Document) => doc.is_favorite === true);
@@ -46,7 +50,8 @@ export function useProfiles() {
   return useLiveQuery(() => db.persons.toArray(), [], []);
 }
 
-export function useDocument(id?: number) {
+// CORRIGIDO: id agora é string (UUID)
+export function useDocument(id?: string) {
   return useLiveQuery(
     () => (id ? db.documents.get(id) : undefined),
     [id],
@@ -54,7 +59,8 @@ export function useDocument(id?: number) {
   );
 }
 
-export function useDocumentsByType(personId: number, type: string) {
+// CORRIGIDO: personId agora é string (UUID)
+export function useDocumentsByType(personId: string, type: string) {
   return useLiveQuery(
     () => db.documents.where({ person_id: personId, type }).toArray(),
     [personId, type],
