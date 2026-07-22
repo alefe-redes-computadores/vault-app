@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { CATEGORIES, type CategoryId, type Document } from "@/lib/types";
 import { DocumentCard } from "./DocumentCard";
 import { ChevronRight } from "lucide-react";
@@ -13,7 +14,7 @@ interface CategorySectionProps {
   onSeeAll: () => void;
 }
 
-export function CategorySection({
+function CategorySectionComponent({
   categoryId,
   documents,
   total,
@@ -51,7 +52,6 @@ export function CategorySection({
         )}
       </div>
 
-      {/* space-y-2 → space-y-3 */}
       <div className="space-y-3">
         {documents.map((doc) => (
           <DocumentCard
@@ -64,3 +64,5 @@ export function CategorySection({
     </div>
   );
 }
+
+export const CategorySection = memo(CategorySectionComponent);
