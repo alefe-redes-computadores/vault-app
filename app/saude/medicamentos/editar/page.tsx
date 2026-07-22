@@ -18,7 +18,7 @@ export default function EditMedicamentoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = Number(searchParams.get("id"));
+  const id = searchParams.get("id") || ""; // ← string
   const { user } = useAuth();
   const { updateMedicamento } = useMedicamentos();
   const { showToast } = useToast();
@@ -118,7 +118,7 @@ export default function EditMedicamentoPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
