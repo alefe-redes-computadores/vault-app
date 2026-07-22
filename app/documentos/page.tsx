@@ -115,13 +115,13 @@ export default function DocumentsPage() {
     trigger("vibrate");
   }, [favorite, trigger]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSelectedCategory("all");
     setSelectedType("all");
     setDateFilter("all");
     trigger("vibrate");
-  };
+  }, [trigger]);
 
   const hasActiveFilters = selectedCategory !== "all" || selectedType !== "all" || dateFilter !== "all";
 
@@ -165,7 +165,7 @@ export default function DocumentsPage() {
                   trigger("vibrate");
                   setShowFilters(!showFilters);
                 }}
-                className={`p-2 rounded-full border transition-colors ${
+                className={`p-2 rounded-full border transition-all duration-150 active:scale-90 ${
                   hasActiveFilters
                     ? "border-ice bg-ice/10 text-ice"
                     : "border-surface-border/50 bg-surface-raised text-ink-muted hover:bg-surface-border"
@@ -176,7 +176,7 @@ export default function DocumentsPage() {
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="text-xs text-ink-muted hover:text-ink-primary transition-colors"
+                  className="text-xs text-ink-muted hover:text-ink-primary transition-colors duration-150 active:scale-90"
                 >
                   <X size={14} /> Limpar
                 </button>
@@ -194,7 +194,7 @@ export default function DocumentsPage() {
               placeholder="Buscar documentos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-surface-raised border-surface-border/50 focus:border-steel-light"
+              className="pl-9 bg-surface-raised border-surface-border/50 focus:border-steel-light transition-all duration-150"
             />
           </div>
 
@@ -214,7 +214,7 @@ export default function DocumentsPage() {
                   <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                     <button
                       onClick={() => setSelectedPersonId(null)}
-                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 whitespace-nowrap ${
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all duration-150 active:scale-90 whitespace-nowrap ${
                         selectedPersonId === null
                           ? "border-ice bg-ice/10 text-ice"
                           : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
@@ -226,7 +226,7 @@ export default function DocumentsPage() {
                       <button
                         key={person.id}
                         onClick={() => setSelectedPersonId(person.id!)}
-                        className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 whitespace-nowrap ${
+                        className={`px-3 py-1.5 rounded-full border text-xs transition-all duration-150 active:scale-90 whitespace-nowrap ${
                           selectedPersonId === person.id
                             ? "border-ice bg-ice/10 text-ice"
                             : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
@@ -244,7 +244,7 @@ export default function DocumentsPage() {
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => setSelectedCategory("all")}
-                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all duration-150 active:scale-90 ${
                         selectedCategory === "all"
                           ? "border-ice bg-ice/10 text-ice"
                           : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
@@ -256,7 +256,7 @@ export default function DocumentsPage() {
                       <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id)}
-                        className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 flex items-center gap-1 ${
+                        className={`px-3 py-1.5 rounded-full border text-xs transition-all duration-150 active:scale-90 flex items-center gap-1 ${
                           selectedCategory === cat.id
                             ? "border-ice bg-ice/10 text-ice"
                             : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
@@ -275,7 +275,7 @@ export default function DocumentsPage() {
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => setSelectedType("all")}
-                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all duration-150 active:scale-90 ${
                         selectedType === "all"
                           ? "border-ice bg-ice/10 text-ice"
                           : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
@@ -287,7 +287,7 @@ export default function DocumentsPage() {
                       <button
                         key={type.id}
                         onClick={() => setSelectedType(type.id)}
-                        className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
+                        className={`px-3 py-1.5 rounded-full border text-xs transition-all duration-150 active:scale-90 ${
                           selectedType === type.id
                             ? "border-ice bg-ice/10 text-ice"
                             : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
@@ -305,7 +305,7 @@ export default function DocumentsPage() {
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => setDateFilter("all")}
-                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all duration-150 active:scale-90 ${
                         dateFilter === "all"
                           ? "border-ice bg-ice/10 text-ice"
                           : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
@@ -315,7 +315,7 @@ export default function DocumentsPage() {
                     </button>
                     <button
                       onClick={() => setDateFilter("expiring")}
-                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 flex items-center gap-1 ${
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all duration-150 active:scale-90 flex items-center gap-1 ${
                         dateFilter === "expiring"
                           ? "border-ice bg-ice/10 text-ice"
                           : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
@@ -326,7 +326,7 @@ export default function DocumentsPage() {
                     </button>
                     <button
                       onClick={() => setDateFilter("expired")}
-                      className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 flex items-center gap-1 ${
+                      className={`px-3 py-1.5 rounded-full border text-xs transition-all duration-150 active:scale-90 flex items-center gap-1 ${
                         dateFilter === "expired"
                           ? "border-coral bg-coral/10 text-coral"
                           : "border-surface-border bg-surface text-ink-muted hover:text-ink-primary"
@@ -342,7 +342,7 @@ export default function DocumentsPage() {
           </AnimatePresence>
         </header>
 
-        {/* Lista com InfiniteScrollTrigger - space-y-3 → space-y-4 */}
+        {/* Lista com InfiniteScrollTrigger - space-y-4 */}
         <section className="px-5 pt-5 space-y-4">
           {filteredDocs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -356,7 +356,7 @@ export default function DocumentsPage() {
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="mt-4 text-sm text-ice hover:text-ice/80 transition-colors"
+                  className="mt-4 text-sm text-ice hover:text-ice/80 transition-colors duration-150"
                 >
                   Limpar filtros
                 </button>
