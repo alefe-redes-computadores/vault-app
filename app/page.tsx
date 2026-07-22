@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, LogOut, User } from "lucide-react";
+import { Search, Plus, User, ChevronDown, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
 import { useDocuments, useFavorites } from "@/hooks/useDocuments";
@@ -14,232 +15,361 @@ import { CategorySection } from "@/components/CategorySection";
 import { FavoritesSection } from "@/components/FavoritesSection";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { PageTransition } from "@/components/PageTransition";
+import { ScrollToTop } from "@/components/ScrollToTop";
+import { useToast } from "@/components/ToastProvider";
+import { ExportButton } from "@/components/ExportButton";
+
+function useDebounce(value: string, delay: number = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 export default function HomePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, loading } = useAuth();
   const { favorite } = useSafeDb();
+  const { showToast } = useToast();
 
   const persons = usePersons();
-  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null); // ← string
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [welcomeShown, setWelcomeShown] = useState(false);
+
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  useEffect(() => {
+    if (!loading && user && !welcomeShown) {
+      const hasSeenWelcome = sessionStorage.getItem('vault_welcome_shown');
+      
+      if (!hasSeenWelcome) {
+        const name = user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuário";
+        
+        setTimeout(() => {
+          showToast(`👋 Bem-vindo de volta, ${name}!`, "info", 4000);
+        }, 500);
+        
+        sessionStorage.setItem('vault_welcome_shown', 'true');
+        setWelcomeShown(true);
+      } else {
+        setWelcomeShown(true);
+      }
+    }
+  }, [loading, user, showToast, welcomeShown]);
 
   useEffect(() => {
     if (persons.length > 0 && selectedPersonId === null) {
-      setSelectedPersonId(persons[0].id!);
+      setSelectedPersonId(persons[0].id!); // ← agora é string
     }
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
   }, [persons, selectedPersonId]);
 
   const allDocs = useDocuments(selectedPersonId || undefined) || [];
   const favorites = useFavorites(selectedPersonId || undefined) || [];
 
-  const filteredDocs = allDocs.filter(
-    (doc) =>
-      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDocs = useMemo(() => {
+    if (!debouncedSearch.trim()) return allDocs;
+    const query = debouncedSearch.toLowerCase();
+    return allDocs.filter(
+      (doc: any) =>
+        doc.title.toLowerCase().includes(query) ||
+        doc.description?.toLowerCase().includes(query)
+    );
+  }, [allDocs, debouncedSearch]);
 
-  const handleFavoriteToggle = async (id: number) => {
+  const handleFavoriteToggle = useCallback(async (id: string) => {
     await favorite(id);
-  };
+  }, [favorite]);
+
+  const docsByCategory = useMemo(() => {
+    return allDocs.reduce<Record<CategoryId, Document[]>>(
+      (acc: Record<CategoryId, Document[]>, doc: any) => {
+        const categoryId = doc.category_id as CategoryId;
+        if (!acc[categoryId]) acc[categoryId] = [];
+        acc[categoryId].push(doc);
+        return acc;
+      },
+      {} as Record<CategoryId, Document[]>
+    );
+  }, [allDocs]);
+
+  const getCategoryPreview = useCallback((categoryId: CategoryId) => {
+    const docs = docsByCategory[categoryId] || [];
+    return docs.slice(0, 3);
+  }, [docsByCategory]);
+
+  const hasMore = useCallback((categoryId: CategoryId) => {
+    return (docsByCategory[categoryId] || []).length > 3;
+  }, [docsByCategory]);
 
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
+  const selectedPerson = persons.find((p: any) => p.id === selectedPersonId);
 
-  const docsByCategory = allDocs.reduce<Record<CategoryId, Document[]>>(
-    (acc, doc) => {
-      if (!acc[doc.category_id]) acc[doc.category_id] = [];
-      acc[doc.category_id].push(doc);
-      return acc;
-    },
-    {} as Record<CategoryId, Document[]>
-  );
+  const MAX_VISIBLE_PERSONS = 5;
+  const visiblePersons = persons.slice(0, MAX_VISIBLE_PERSONS);
+  const hasMorePersons = persons.length > MAX_VISIBLE_PERSONS;
 
-  const getCategoryPreview = (categoryId: CategoryId) => {
-    const docs = docsByCategory[categoryId] || [];
-    return docs.slice(0, 3);
-  };
-
-  const hasMore = (categoryId: CategoryId) => {
-    return (docsByCategory[categoryId] || []).length > 3;
-  };
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
 
   return (
-    <main className="min-h-screen bg-void pb-28">
-      <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                className="w-10 h-10 rounded-full border-2 border-ice/20"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-steel-dark/40 flex items-center justify-center text-ink-muted text-lg">
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">
-                Olá, {displayName.split(" ")[0]}
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                setIsSearchOpen(true);
-              }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
-            >
-              <Search size={18} className="text-ink-muted" />
-            </button>
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                logout();
-              }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
-            >
-              <LogOut size={18} className="text-ink-muted" />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between mt-3">
-          <p className="text-sm text-ink-muted">
-            {allDocs.length} documento{allDocs.length !== 1 ? "s" : ""}
-            {favorites.length > 0 && ` · ${favorites.length} favorito${favorites.length > 1 ? "s" : ""}`}
-          </p>
-          <button
-            onClick={() => router.push("/favoritos")}
-            className="text-sm text-ice hover:text-ice/80 transition-colors"
-          >
-            Ver favoritos
-          </button>
-        </div>
-
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-ink-muted">Pessoas</span>
-            <button
-              onClick={() => router.push("/pessoas/novo")}
-              className="text-xs text-ice hover:text-ice/80 transition-colors"
-            >
-              + Adicionar
-            </button>
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {persons.map((person) => (
-              <PersonCard
-                key={person.id}
-                person={person}
-                isActive={selectedPersonId === person.id}
-                onClick={() => {
-                  trigger("vibrate");
-                  setSelectedPersonId(person.id!);
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </header>
-
-      <section className="px-5 pt-5 space-y-6">
-        <FavoritesSection favorites={favorites} onFavoriteToggle={handleFavoriteToggle} />
-
-        {Object.keys(CATEGORIES).map((categoryId) => {
-          const preview = getCategoryPreview(categoryId as CategoryId);
-          const more = hasMore(categoryId as CategoryId);
-          const total = (docsByCategory[categoryId as CategoryId] || []).length;
-
-          if (preview.length === 0) return null;
-
-          return (
-            <CategorySection
-              key={categoryId}
-              categoryId={categoryId as CategoryId}
-              documents={preview}
-              total={total}
-              hasMore={more}
-              onFavoriteToggle={handleFavoriteToggle}
-              onSeeAll={() => {
-                router.push(`/categoria/${categoryId}`);
-              }}
-            />
-          );
-        })}
-
-        {allDocs.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border">
-              <User size={32} className="text-ink-muted" />
-            </div>
-            <h3 className="font-display text-lg text-ink-primary">Nenhum documento</h3>
-            <p className="text-sm text-ink-muted mt-1 max-w-xs">
-              Comece guardando seu primeiro documento no Vault
-            </p>
-            <button
-              onClick={() => {
-                trigger("success");
-                router.push("/novo");
-              }}
-              className="mt-6 flex items-center gap-2 rounded-full bg-ice px-6 py-3 text-void font-medium active:scale-[0.98] transition-all"
-            >
-              <Plus size={18} />
-              Adicionar documento
-            </button>
-          </div>
-        )}
-      </section>
-
-      <button
-        onClick={() => {
-          trigger("success");
-          router.push("/novo");
-        }}
-        className="fixed bottom-24 right-5 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-vault active:scale-[0.98] transition-all z-20"
-        aria-label="Adicionar documento"
-      >
-        <Plus size={24} strokeWidth={2.5} />
-      </button>
-
-      <BottomSheet isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscar documentos">
-        <div className="space-y-4">
-          <Input
-            placeholder="Digite para buscar..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            autoFocus
-          />
-          <div className="text-sm text-ink-muted">
-            {filteredDocs.length} resultado{filteredDocs.length !== 1 ? "s" : ""}
-          </div>
-          <div className="max-h-80 overflow-y-auto space-y-2">
-            {filteredDocs.map((doc) => (
+    <PageTransition>
+      <main className="min-h-screen bg-void pb-28">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <button
-                key={doc.id}
                 onClick={() => {
                   trigger("vibrate");
-                  setIsSearchOpen(false);
-                  router.push(`/${doc.id}`);
+                  router.push("/mais");
                 }}
-                className="w-full text-left p-3 rounded-xl bg-surface border border-surface-border hover:bg-surface-border transition-colors"
+                className="flex items-center gap-2"
               >
-                <p className="text-sm font-medium text-ink-primary">{doc.title}</p>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  {doc.category_id} · {doc.type}
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    className="w-8 h-8 rounded-full border border-ice/20"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-xs font-medium">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="text-left">
+                  <h1 className="font-display text-base font-semibold text-ink-primary">
+                    Olá, {displayName.split(" ")[0]}
+                  </h1>
+                  <p className="text-xs text-ink-muted">
+                    {allDocs.length} documento{allDocs.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <ExportButton variant="icon" />
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  setIsSearchOpen(true);
+                }}
+                className="p-2 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
+              >
+                <Search size={16} className="text-ink-muted" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
+                Pessoas
+              </span>
+              {hasMorePersons && (
+                <button
+                  onClick={() => {
+                    trigger("vibrate");
+                    setIsPersonModalOpen(true);
+                  }}
+                  className="text-xs text-ice/70 hover:text-ice transition-colors flex items-center gap-1"
+                >
+                  Ver todos
+                  <ChevronRight size={12} />
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {visiblePersons.map((person: any) => (
+                <PersonCard
+                  key={person.id}
+                  person={person}
+                  isActive={selectedPersonId === person.id}
+                  onClick={() => {
+                    trigger("vibrate");
+                    setSelectedPersonId(person.id!);
+                  }}
+                />
+              ))}
+              {hasMorePersons && (
+                <button
+                  onClick={() => {
+                    trigger("vibrate");
+                    setIsPersonModalOpen(true);
+                  }}
+                  className="flex-shrink-0 w-10 h-10 rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center text-ink-muted text-xs font-medium hover:bg-surface-border transition-colors"
+                >
+                  +{persons.length - MAX_VISIBLE_PERSONS}
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <section className="px-5 pt-5 space-y-6">
+          <AnimatePresence mode="wait">
+            {favorites.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                <FavoritesSection favorites={favorites} onFavoriteToggle={handleFavoriteToggle} />
+              </motion.div>
+            )}
+
+            {Object.keys(CATEGORIES).map((categoryId: any, index: number) => {
+              const preview = getCategoryPreview(categoryId as CategoryId);
+              const total = (docsByCategory[categoryId as CategoryId] || []).length;
+
+              if (preview.length === 0) return null;
+
+              return (
+                <motion.div
+                  key={categoryId}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <CategorySection
+                    categoryId={categoryId as CategoryId}
+                    documents={preview}
+                    total={total}
+                    hasMore={hasMore(categoryId as CategoryId)}
+                    onFavoriteToggle={handleFavoriteToggle}
+                    onSeeAll={() => {
+                      router.push(`/categoria?nome=${categoryId}`);
+                    }}
+                  />
+                </motion.div>
+              );
+            })}
+
+            {allDocs.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col items-center justify-center py-16 text-center"
+              >
+                <div className="w-16 h-16 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
+                  <User size={24} className="text-ink-muted" />
+                </div>
+                <h3 className="font-display text-base text-ink-primary">Nenhum documento</h3>
+                <p className="text-sm text-ink-muted mt-1 max-w-xs">
+                  Comece guardando seu primeiro documento no Vault
                 </p>
+                <button
+                  onClick={() => {
+                    trigger("success");
+                    router.push("/novo");
+                  }}
+                  className="mt-6 flex items-center gap-2 rounded-full bg-ice px-5 py-2 text-void font-medium text-sm active:scale-[0.98] transition-all"
+                >
+                  <Plus size={16} />
+                  Adicionar documento
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </section>
+
+        <button
+          onClick={() => {
+            trigger("success");
+            router.push("/novo");
+          }}
+          className="fixed bottom-24 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 active:scale-95 transition-all z-20"
+        >
+          <Plus size={20} strokeWidth={2.5} />
+        </button>
+
+        {/* BottomSheet - Busca */}
+        <BottomSheet isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscar documentos">
+          <div className="space-y-4">
+            <Input
+              placeholder="Digite para buscar..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
+            />
+            <div className="text-sm text-ink-muted">
+              {filteredDocs.length} resultado{filteredDocs.length !== 1 ? "s" : ""}
+            </div>
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {filteredDocs.map((doc: any) => (
+                <button
+                  key={doc.id}
+                  onClick={() => {
+                    trigger("vibrate");
+                    setIsSearchOpen(false);
+                    router.push(`/detalhes?id=${doc.id}`);
+                  }}
+                  className="w-full text-left p-3 rounded-xl bg-surface border border-surface-border/50 hover:bg-surface-border transition-colors"
+                >
+                  <p className="text-sm font-medium text-ink-primary">{doc.title}</p>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    {doc.category_id} · {doc.type}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </BottomSheet>
+
+        {/* BottomSheet - Selecionar pessoa (TODAS) */}
+        <BottomSheet
+          isOpen={isPersonModalOpen}
+          onClose={() => setIsPersonModalOpen(false)}
+          title="Todas as pessoas"
+        >
+          <div className="space-y-2">
+            {persons.map((person: any) => (
+              <button
+                key={person.id}
+                onClick={() => {
+                  setSelectedPersonId(person.id!);
+                  setIsPersonModalOpen(false);
+                  trigger("vibrate");
+                }}
+                className={`w-full text-left p-3 rounded-xl border transition-all ${
+                  selectedPersonId === person.id
+                    ? "border-ice bg-ice/10"
+                    : "border-surface-border/50 bg-surface hover:bg-surface-border"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {person.avatar_url ? (
+                    <img src={person.avatar_url} alt={person.name} className="w-8 h-8 rounded-full" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-surface-raised flex items-center justify-center text-xs font-medium text-ink-muted">
+                      {person.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-ink-primary font-medium">{person.name}</span>
+                  {person.id === selectedPersonId && (
+                    <span className="ml-auto text-xs text-ice">✓</span>
+                  )}
+                </div>
               </button>
             ))}
           </div>
-        </div>
-      </BottomSheet>
-    </main>
+        </BottomSheet>
+
+        <ScrollToTop threshold={400} />
+      </main>
+    </PageTransition>
   );
 }
