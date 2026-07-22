@@ -22,14 +22,12 @@ export default function CategoryPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const persons = usePersons();
-  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>( // ← string
     persons[0]?.id || null
   );
 
-  // ✅ CORRIGIDO: useDocuments recebe apenas o personId
   const allDocs = useDocuments(selectedPersonId || undefined);
   
-  // Filtrar os documentos pela categoria - CORRIGIDO: adicionado tipo : any
   const documents = allDocs.filter((doc: any) => doc.category_id === categoryId);
   
   const { favorite } = useSafeDb();
@@ -41,7 +39,7 @@ export default function CategoryPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleFavoriteToggle = useCallback(async (id: number) => {
+  const handleFavoriteToggle = useCallback(async (id: string) => { // ← string
     await favorite(id);
     trigger("vibrate");
   }, [favorite, trigger]);
@@ -66,7 +64,7 @@ export default function CategoryPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* HEADER COM COR DA CATEGORIA - CORRIGIDO: bg-surface/80 para tema claro */}
+        {/* HEADER */}
         <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
@@ -96,7 +94,7 @@ export default function CategoryPage() {
             </div>
           </div>
 
-          {/* Filtro por pessoa - CORRIGIDO: adicionado tipo : any */}
+          {/* Filtro por pessoa */}
           <div className="mt-4">
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               <button
@@ -141,7 +139,7 @@ export default function CategoryPage() {
           </div>
         </header>
 
-        {/* LISTA DE DOCUMENTOS - CORRIGIDO: adicionado tipo : any */}
+        {/* LISTA DE DOCUMENTOS */}
         <section className="px-5 pt-5 space-y-3">
           {!hasDocs ? (
             <motion.div
