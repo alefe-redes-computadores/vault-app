@@ -78,7 +78,23 @@ export function CustomDatePicker({
         placeholderText={placeholder || "Selecione a data"}
         customInput={<CustomInput />}
         popperClassName="!z-50"
-        calendarClassName="!bg-surface !border !border-surface-border rounded-xl shadow-vault"
+        // ✅ CORRIGIDO: Estilos para ambos os temas
+        calendarClassName={`
+          !bg-surface !border !border-surface-border/50 rounded-xl shadow-vault
+          [&_.react-datepicker__header]:!bg-surface-raised [&_.react-datepicker__header]:!border-surface-border/50
+          [&_.react-datepicker__current-month]:!text-ink-primary
+          [&_.react-datepicker__day-name]:!text-ink-muted
+          [&_.react-datepicker__day]:!text-ink-primary [&_.react-datepicker__day]:!hover:bg-ice/20
+          [&_.react-datepicker__day--selected]:!bg-ice [&_.react-datepicker__day--selected]:!text-void
+          [&_.react-datepicker__day--keyboard-selected]:!bg-ice/30 [&_.react-datepicker__day--keyboard-selected]:!text-ink-primary
+          [&_.react-datepicker__day--today]:!text-ice [&_.react-datepicker__day--today]:!font-bold
+          [&_.react-datepicker__day--outside-month]:!text-ink-muted/50
+          [&_.react-datepicker__navigation-icon::before]:!border-ink-muted
+          [&_.react-datepicker__year-dropdown]:!bg-surface [&_.react-datepicker__year-dropdown]:!border-surface-border/50
+          [&_.react-datepicker__year-option]:!text-ink-primary [&_.react-datepicker__year-option]:!hover:bg-surface-raised
+          [&_.react-datepicker__month-dropdown]:!bg-surface [&_.react-datepicker__month-dropdown]:!border-surface-border/50
+          [&_.react-datepicker__month-option]:!text-ink-primary [&_.react-datepicker__month-option]:!hover:bg-surface-raised
+        `}
         popperPlacement="bottom-start"
         showYearDropdown
         scrollableYearDropdown
