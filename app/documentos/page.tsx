@@ -139,7 +139,7 @@ export default function DocumentsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-4">
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-display text-xl font-semibold text-ink-primary">
@@ -342,8 +342,8 @@ export default function DocumentsPage() {
           </AnimatePresence>
         </header>
 
-        {/* Lista com InfiniteScrollTrigger */}
-        <section className="px-5 pt-5 space-y-3">
+        {/* Lista com InfiniteScrollTrigger - space-y-3 → space-y-4 */}
+        <section className="px-5 pt-5 space-y-4">
           {filteredDocs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="text-ink-muted">
@@ -368,7 +368,7 @@ export default function DocumentsPage() {
               hasMore={hasMore}
               isLoading={isLoadingMore}
             >
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {filteredDocs.map((doc: any, index: number) => (
                   <motion.div
                     key={doc.id}
