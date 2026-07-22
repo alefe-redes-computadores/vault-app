@@ -19,6 +19,7 @@ function CallbackContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [mensagemIndex, setMensagemIndex] = useState(0)
 
+  // Frases animadas
   useEffect(() => {
     const intervalo = setInterval(() => {
       setMensagemIndex((atual) => (atual + 1) % frasesEngracadas.length)
@@ -26,21 +27,26 @@ function CallbackContent() {
     return () => clearInterval(intervalo)
   }, [])
 
+  // ✅ CORRIGIDO: Autenticação com cleanup correto
   useEffect(() => {
     let isRedirecting = false
+    let unsubscribe: (() => void) | undefined
+
     const redirecionar = () => {
       if (isRedirecting) return
       isRedirecting = true
-      setTimeout(() => router.replace('/'), 1200) // Vai para a raiz do Vault
+      setTimeout(() => router.replace('/'), 1200)
     }
 
     const handleAuth = async () => {
+      // Verifica se já está logado
       const { data: existing } = await supabase.auth.getSession()
       if (existing?.session) {
         redirecionar()
         return
       }
 
+      // Troca o código por sessão
       const code = searchParams.get('code')
       if (code) {
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
@@ -54,13 +60,26 @@ function CallbackContent() {
         }
       }
 
+      // Escuta mudanças no estado de autenticação
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session) redirecionar()
+        if (event === 'SIGNED_IN' && session) {
+          redirecionar()
+        }
       })
-      return () => subscription.unsubscribe()
+      
+      // Guarda a função de cleanup
+      unsubscribe = () => subscription.unsubscribe()
     }
 
+    // Executa a autenticação
     handleAuth()
+
+    // ✅ CORRIGIDO: cleanup retorna a função de unsubscribe
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    }
   }, [router, searchParams])
 
   if (errorMsg) {
@@ -69,7 +88,12 @@ function CallbackContent() {
         <AlertCircle size={48} className="text-red-500 mb-4" />
         <h1 className="text-xl font-bold text-white">Falha ao conectar</h1>
         <p className="text-red-500 mt-2">{errorMsg}</p>
-        <button onClick={() => router.replace('/login')} className="mt-6 px-6 py-2 bg-ice text-void font-bold rounded-full">Tentar novamente</button>
+        <button 
+          onClick={() => router.replace('/login')} 
+          className="mt-6 px-6 py-2 bg-ice text-void font-bold rounded-full hover:bg-ice/80 transition-colors active:scale-95"
+        >
+          Tentar novamente
+        </button>
       </div>
     )
   }
@@ -80,7 +104,7 @@ function CallbackContent() {
         <div className="absolute inset-0 bg-ice/10 rounded-full animate-ping opacity-75" />
         <div className="absolute inset-2 bg-ice/20 rounded-full animate-pulse" />
         
-        <div className="relative z-10 bg-surface-raised p-4 rounded-2xl shadow-xl border border-surface-border">
+        <div className="relative z-10 bg-surface-raised p-4 rounded-2xl shadow-xl border border-surface-border/50">
           <div className="relative">
             <Server size={40} className="text-ice" />
             <Settings size={20} className="text-ink-muted absolute -bottom-2 -right-2 animate-spin" />
@@ -105,7 +129,7 @@ export default function AuthCallbackPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-void flex flex-col items-center justify-center">
-         <h1 className="text-xl font-bold text-ink-primary">Preparando sistema...</h1>
+        <h1 className="text-xl font-bold text-ink-primary">Preparando sistema...</h1>
       </div>
     }>
       <CallbackContent />
