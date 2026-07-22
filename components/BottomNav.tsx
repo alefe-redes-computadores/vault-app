@@ -28,25 +28,19 @@ export function BottomNav() {
   const { isEnabled: isBiometricEnabled } = useBiometricPreference();
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
 
-  // ✅ Substitui MutationObserver por verificação periódica e eventos
   useEffect(() => {
     const checkLock = () => {
       setIsBiometricLocked(document.body.classList.contains("biometric-locked"));
     };
 
-    // Verificação inicial
     checkLock();
 
-    // Escuta mudanças na classe do body via MutationObserver (único caso necessário)
-    // Mas em vez de observar o body inteiro, usamos um evento personalizado
     const handleLockChange = () => {
       checkLock();
     };
 
-    // Disparado pelo BiometricLock quando o estado muda
     window.addEventListener('biometric:lockchange', handleLockChange);
 
-    // Também escuta mudanças no DOM (fallback)
     const observer = new MutationObserver(() => {
       checkLock();
     });
@@ -71,7 +65,7 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 pb-safe">
       <div className="bg-surface/95 backdrop-blur-xl border-t border-surface-border/50 px-4 pt-2 pb-5">
         <div className="grid grid-cols-5 items-end justify-items-center relative max-w-md mx-auto">
           {navItems.map((item) => {
@@ -89,14 +83,14 @@ export function BottomNav() {
                 key={item.id}
                 onClick={() => handleNavigate(item.path)}
                 className={`
-                  flex flex-col items-center gap-0.5 transition-all active:scale-95 relative
+                  flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 relative
                   ${active ? "text-ice" : "text-ink-muted/60 hover:text-ink-primary"}
                   ${colMap[item.id] || ""}
                 `}
               >
                 <Icon size={24} strokeWidth={active ? 2.5 : 2} />
                 <span
-                  className={`text-[10px] font-medium transition-all ${
+                  className={`text-[10px] font-medium transition-all duration-150 ${
                     active ? "text-ice" : "text-ink-muted/60"
                   }`}
                 >
@@ -119,7 +113,7 @@ export function BottomNav() {
               trigger("success");
               router.push("/novo");
             }}
-            className="absolute left-1/2 -translate-x-1/2 -top-7 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-ice to-ice/80 text-void shadow-lg shadow-ice/40 active:scale-95 transition-all border-2 border-void/10 z-10"
+            className="absolute left-1/2 -translate-x-1/2 -top-7 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-ice to-ice/80 text-void shadow-lg shadow-ice/40 active:scale-90 transition-all duration-150 border-2 border-void/10 z-10"
           >
             <Plus size={26} strokeWidth={2.5} />
           </button>
