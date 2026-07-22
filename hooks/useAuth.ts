@@ -1,96 +1,79 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
-import { User } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
-import { signIn, signUp, signInWithGoogle, signOut } from '@/lib/supabase/auth';
-import { pullAllData } from '@/lib/sync/pull';
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "@/lib/supabase/client";
+import { signIn, signUp, signOut, getCurrentUser } from "@/lib/supabase/auth";
+import type { User } from "@supabase/supabase-js";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const router = useRouter();
-
-  // Função para sincronizar dados do Supabase para o local
-  const syncDataFromCloud = async (userId: string) => {
-    if (isSyncing) return;
-    setIsSyncing(true);
-    try {
-      await pullAllData(userId);
-      console.log('✅ Dados sincronizados da nuvem');
-    } catch (error) {
-      console.error('Erro ao sincronizar dados:', error);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   useEffect(() => {
-    // Busca usuário inicial
-    supabase.auth.getUser().then(async ({ data }) => {
-      setUser(data.user);
-      setLoading(false);
-      
-      // Se tiver usuário, puxa dados do Supabase
-      if (data.user) {
-        await syncDataFromCloud(data.user.id);
+    let mounted = true;
+
+    const getUser = async () => {
+      try {
+        const { user: currentUser } = await getCurrentUser();
+        if (mounted) {
+          setUser(currentUser || null);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar usuário:", error);
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+        }
       }
-    });
+    };
 
-    // Escuta mudanças de autenticação
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const user = session?.user ?? null;
-      setUser(user);
-      setLoading(false);
-      
-      // Se o usuário logou, puxa dados do Supabase
-      if (event === 'SIGNED_IN' && user) {
-        await syncDataFromCloud(user.id);
-        router.push('/');
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (mounted) {
+          setUser(session?.user || null);
+          setLoading(false);
+        }
       }
-      
-      // Se o usuário deslogou, joga pro Login
-      if (event === 'SIGNED_OUT') {
-        router.push('/login');
-      }
-    });
+    );
 
-    return () => listener?.subscription.unsubscribe();
-  }, [router]);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
-  const login = async (email: string, password: string) => {
-    const result = await signIn(email, password);
-    return result;
-  };
+  const login = useCallback(async (email: string, password: string) => {
+    const { data, error } = await signIn(email, password);
+    if (error) throw error;
+    return data;
+  }, []);
 
-  const register = async (email: string, password: string) => {
-    const result = await signUp(email, password);
-    return result;
-  };
+  const register = useCallback(async (email: string, password: string) => {
+    const { data, error } = await signUp(email, password);
+    if (error) throw error;
+    return data;
+  }, []);
 
-  const loginWithGoogle = async () => {
-    const result = await signInWithGoogle();
-    return result;
-  };
+  // ✅ REMOVIDO: signInWithGoogle agora é gerenciado exclusivamente em login/page.tsx
+  // O login com Google é feito via handleGoogleLogin na página de login
 
-  const logout = async () => {
-    await signOut();
-  };
+  const logout = useCallback(async () => {
+    const { error } = await signOut();
+    if (error) throw error;
+    setUser(null);
+  }, []);
 
-  const refresh = async () => {
-    if (user) {
-      await syncDataFromCloud(user.id);
-    }
-  };
-
-  return { 
-    user, 
-    loading, 
-    isSyncing, 
-    login, 
-    register, 
-    loginWithGoogle, 
+  return {
+    user,
+    loading,
+    isSyncing,
+    login,
+    register,
     logout,
-    refresh 
+    // signInWithGoogle removido - use o handleGoogleLogin do login/page.tsx
   };
 }
