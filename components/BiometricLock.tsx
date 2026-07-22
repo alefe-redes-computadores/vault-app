@@ -18,6 +18,17 @@ export function BiometricLock({ children }: BiometricLockProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(!isEnabled);
   const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ Atualiza classe do body e dispara evento para BottomNav
+  useEffect(() => {
+    if (isAuthenticated) {
+      document.body.classList.remove('biometric-locked');
+    } else {
+      document.body.classList.add('biometric-locked');
+    }
+    // Dispara evento personalizado para o BottomNav reagir
+    window.dispatchEvent(new Event('biometric:lockchange'));
+  }, [isAuthenticated]);
+
   useEffect(() => {
     if (!isEnabled) {
       setIsAuthenticated(true);
