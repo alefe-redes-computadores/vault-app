@@ -65,7 +65,7 @@ export default function DocumentDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = searchParams.get("id"); // ← string
+  const id = searchParams.get("id") || "";
   const { showToast, showSuccess } = useToast();
 
   const doc = useDocument(id || "");
@@ -201,8 +201,7 @@ export default function DocumentDetailPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* HEADER */}
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -210,7 +209,7 @@ export default function DocumentDetailPage() {
                   trigger("vibrate");
                   router.back();
                 }}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
               >
                 <ArrowLeft size={18} className="text-ink-primary" />
               </button>
@@ -225,7 +224,7 @@ export default function DocumentDetailPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleFavoriteToggle}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
               >
                 <Star
                   size={18}
@@ -234,7 +233,7 @@ export default function DocumentDetailPage() {
               </button>
               <button
                 onClick={handleShare}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
               >
                 <Share2 size={18} className="text-ink-muted" />
               </button>
@@ -242,7 +241,6 @@ export default function DocumentDetailPage() {
           </div>
         </header>
 
-        {/* CONTEÚDO */}
         <section className="px-5 pt-6 space-y-6">
           {/* CARD PRINCIPAL */}
           <motion.div
