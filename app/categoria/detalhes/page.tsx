@@ -73,11 +73,11 @@ const getFieldsForType = (type: DocumentType) => {
   return fieldMap[type] || [];
 };
 
-export default function EditDocumentPage() {
+export default function EditarDetalhePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = Number(searchParams.get("id"));
+  const id = searchParams.get("id") || ""; // ← CORRIGIDO: agora é string
 
   const doc = useDocument(id);
   const persons = usePersons();
@@ -86,7 +86,7 @@ export default function EditDocumentPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
-    person_id: 0,
+    person_id: "",
     category_id: "pessoal" as CategoryId,
     type: "rg" as DocumentType,
     title: "",
@@ -98,7 +98,7 @@ export default function EditDocumentPage() {
   useEffect(() => {
     if (doc) {
       setFormData({
-        person_id: doc.person_id,
+        person_id: doc.person_id || "",
         category_id: doc.category_id,
         type: doc.type as DocumentType,
         title: doc.title,
@@ -130,7 +130,7 @@ export default function EditDocumentPage() {
   };
 
   const handleSubmit = async () => {
-    if (!validate() || !doc) {
+    if (!validate() || !doc || !id) {
       trigger("error");
       return;
     }
@@ -217,7 +217,7 @@ export default function EditDocumentPage() {
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">Categoria</label>
             <div className="flex gap-2 flex-wrap">
-              {Object.values(CATEGORIES).map((cat) => (
+              {Object.values(CATEGORIES).map((cat: any) => (
                 <button
                   key={cat.id}
                   onClick={() => handleChange("category_id", cat.id)}
@@ -262,7 +262,7 @@ export default function EditDocumentPage() {
           />
 
           {/* Campos dinâmicos */}
-          {fields.map((field) => (
+          {fields.map((field: any) => (
             <Input
               key={field.key}
               label={field.label}
