@@ -91,7 +91,6 @@ export default function NewVaultPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* Ícone */}
           <div>
             <label className="block text-sm font-medium text-ink-primary mb-1.5">
               Ícone
