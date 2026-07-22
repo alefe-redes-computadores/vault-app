@@ -18,21 +18,21 @@ export function useSafeDb() {
   );
 
   const updateDocument = useCallback(
-    async (id: number, changes: any) => {
+    async (id: string, changes: any) => { // ← string
       return safeUpdateDocument(id, changes);
     },
     []
   );
 
   const deleteDocument = useCallback(
-    async (id: number) => {
+    async (id: string) => { // ← string
       return safeDeleteDocument(id);
     },
     []
   );
 
   const favorite = useCallback(
-    async (id: number) => {
+    async (id: string) => { // ← string
       return toggleFavorite(id);
     },
     []
