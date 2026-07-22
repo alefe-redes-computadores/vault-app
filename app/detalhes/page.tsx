@@ -65,10 +65,10 @@ export default function DocumentDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = Number(searchParams.get("id"));
+  const id = searchParams.get("id"); // ← string
   const { showToast, showSuccess } = useToast();
 
-  const doc = useDocument(id);
+  const doc = useDocument(id || "");
   const { deleteDocument, favorite } = useSafeDb();
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,7 +80,7 @@ export default function DocumentDetailPage() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleDelete = useCallback(async () => {
-    if (!doc) {
+    if (!doc || !doc.id) {
       showToast("Documento não encontrado", "error");
       return;
     }
@@ -98,7 +98,7 @@ export default function DocumentDetailPage() {
 
     setIsDeleting(true);
     try {
-      await deleteDocument(doc.id!);
+      await deleteDocument(doc.id);
       trigger("success");
       setTimeout(() => {
         router.push("/");
@@ -112,8 +112,8 @@ export default function DocumentDetailPage() {
   }, [doc, deleteDocument, trigger, showToast, showSuccess, router]);
 
   const handleFavoriteToggle = useCallback(async () => {
-    if (!doc) return;
-    await favorite(doc.id!);
+    if (!doc || !doc.id) return;
+    await favorite(doc.id);
     trigger("vibrate");
     showToast(doc.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos", "info");
   }, [doc, favorite, trigger, showToast]);
@@ -189,7 +189,6 @@ export default function DocumentDetailPage() {
     );
   }
 
-  // CORRIGIDO: verifica se category_id é uma chave válida
   const categoryId = doc.category_id as CategoryId;
   const category = CATEGORIES[categoryId];
   const CategoryIcon = CATEGORY_ICONS[doc.category_id] || FolderOpen;
@@ -279,14 +278,12 @@ export default function DocumentDetailPage() {
               </div>
             </div>
 
-            {/* Metadados - CORRIGIDO: converte tudo para string */}
+            {/* Metadados */}
             {hasMetadata && (
               <div className="border-t border-surface-border/50 pt-4 space-y-2">
                 {Object.entries(doc.metadata || {}).map(([key, value]) => {
                   if (!value) return null;
-                  // Converte qualquer valor para string
                   let displayValue: string = String(value);
-                  // Se for uma data, formata
                   if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)) {
                     displayValue = formatDate(value);
                   }
