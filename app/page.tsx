@@ -48,6 +48,7 @@ export default function HomePage() {
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Welcome toast
   useEffect(() => {
     if (!loading && user && !welcomeShown) {
       const hasSeenWelcome = sessionStorage.getItem('vault_welcome_shown');
@@ -65,6 +66,7 @@ export default function HomePage() {
     }
   }, [loading, user, showToast, welcomeShown]);
 
+  // Set initial person and loading state
   useEffect(() => {
     if (persons.length > 0 && selectedPersonId === null) {
       setSelectedPersonId(persons[0].id!);
@@ -73,6 +75,7 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [persons, selectedPersonId]);
 
+  // Memoize documents to prevent unnecessary re-renders
   const { documents: allDocs } = usePaginatedDocuments({
     personId: selectedPersonId || undefined,
     searchQuery: debouncedSearch,
@@ -83,8 +86,10 @@ export default function HomePage() {
 
   const handleFavoriteToggle = useCallback(async (id: string) => {
     await favorite(id);
-  }, [favorite]);
+    trigger("vibrate");
+  }, [favorite, trigger]);
 
+  // Group documents by category with useMemo
   const docsByCategory = useMemo(() => {
     return allDocs.reduce<Record<CategoryId, Document[]>>(
       (acc: Record<CategoryId, Document[]>, doc: any) => {
@@ -135,7 +140,8 @@ export default function HomePage() {
                   <img
                     src={avatarUrl}
                     alt={displayName}
-                    className="w-8 h-8 rounded-full border border-ice/20"
+                    loading="lazy"
+                    className="w-8 h-8 rounded-full border border-ice/20 object-cover"
                   />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-xs font-medium">
@@ -159,7 +165,7 @@ export default function HomePage() {
                   trigger("vibrate");
                   setIsSearchOpen(true);
                 }}
-                className="p-2 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors"
+                className="p-2 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-all duration-150 active:scale-90"
               >
                 <Search size={16} className="text-ink-muted" />
               </button>
@@ -177,7 +183,7 @@ export default function HomePage() {
                     trigger("vibrate");
                     setIsPersonModalOpen(true);
                   }}
-                  className="text-xs text-ice/70 hover:text-ice transition-colors flex items-center gap-1"
+                  className="text-xs text-ice/70 hover:text-ice transition-colors duration-150 flex items-center gap-1"
                 >
                   Ver todos
                   <ChevronRight size={12} />
@@ -202,7 +208,7 @@ export default function HomePage() {
                     trigger("vibrate");
                     setIsPersonModalOpen(true);
                   }}
-                  className="flex-shrink-0 w-10 h-10 rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center text-ink-muted text-xs font-medium hover:bg-surface-border transition-colors"
+                  className="flex-shrink-0 w-10 h-10 rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center text-ink-muted text-xs font-medium hover:bg-surface-border transition-all duration-150 active:scale-90"
                 >
                   +{persons.length - MAX_VISIBLE_PERSONS}
                 </button>
@@ -235,7 +241,7 @@ export default function HomePage() {
                   key={categoryId}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
                 >
                   <CategorySection
                     categoryId={categoryId as CategoryId}
@@ -270,7 +276,7 @@ export default function HomePage() {
                     trigger("success");
                     router.push("/novo");
                   }}
-                  className="mt-6 flex items-center gap-2 rounded-full bg-ice px-5 py-2 text-void font-medium text-sm active:scale-[0.98] transition-all"
+                  className="mt-6 flex items-center gap-2 rounded-full bg-ice px-5 py-2 text-void font-medium text-sm active:scale-95 transition-all duration-150"
                 >
                   <Plus size={16} />
                   Adicionar documento
@@ -285,7 +291,7 @@ export default function HomePage() {
             trigger("success");
             router.push("/novo");
           }}
-          className="fixed bottom-24 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 active:scale-95 transition-all z-20"
+          className="fixed bottom-24 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 active:scale-90 transition-all duration-150 z-20"
         >
           <Plus size={20} strokeWidth={2.5} />
         </button>
@@ -298,6 +304,7 @@ export default function HomePage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
+              className="transition-all duration-150"
             />
             <div className="text-sm text-ink-muted">
               {allDocs.length} resultado{allDocs.length !== 1 ? "s" : ""}
@@ -311,7 +318,7 @@ export default function HomePage() {
                     setIsSearchOpen(false);
                     router.push(`/detalhes?id=${doc.id}`);
                   }}
-                  className="w-full text-left p-3 rounded-xl bg-surface border border-surface-border/50 hover:bg-surface-border transition-colors"
+                  className="w-full text-left p-3 rounded-xl bg-surface border border-surface-border/50 hover:bg-surface-border transition-all duration-150 active:scale-98"
                 >
                   <p className="text-sm font-medium text-ink-primary">{doc.title}</p>
                   <p className="text-xs text-ink-muted mt-0.5">
@@ -337,7 +344,7 @@ export default function HomePage() {
                   setIsPersonModalOpen(false);
                   trigger("vibrate");
                 }}
-                className={`w-full text-left p-3 rounded-xl border transition-all ${
+                className={`w-full text-left p-3 rounded-xl border transition-all duration-150 active:scale-98 ${
                   selectedPersonId === person.id
                     ? "border-ice bg-ice/10"
                     : "border-surface-border/50 bg-surface hover:bg-surface-border"
@@ -345,7 +352,7 @@ export default function HomePage() {
               >
                 <div className="flex items-center gap-3">
                   {person.avatar_url ? (
-                    <img src={person.avatar_url} alt={person.name} className="w-8 h-8 rounded-full" />
+                    <img src={person.avatar_url} alt={person.name} loading="lazy" className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-surface-raised flex items-center justify-center text-xs font-medium text-ink-muted">
                       {person.name.charAt(0).toUpperCase()}
