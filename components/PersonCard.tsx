@@ -71,6 +71,9 @@ export function PersonCard({
             <Trash2 size={14} className="text-ink-muted hover:text-coral transition-colors" />
           </button>
         )}
+        {/* Rivet decorativo */}
+        <span className="rivet rivet-tl" />
+        <span className="rivet rivet-br" />
       </div>
 
       <ConfirmationModal
