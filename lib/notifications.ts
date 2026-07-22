@@ -55,7 +55,6 @@ export async function scheduleDocumentExpiryNotification(
   categoryName: string,
   daysBefore: number = 30
 ): Promise<void> {
-  // Verifica se está no ambiente web (não suporta notificações locais)
   if (typeof window !== 'undefined' && !('cordova' in window)) {
     console.log('📱 Notificação programada para:', title);
     return;
@@ -164,11 +163,17 @@ export async function cancelNotification(notificationId: number): Promise<void> 
 
 /**
  * Remove todas as notificações locais
+ * CORRIGIDO: usa cancel() com array vazio em vez de cancelAll()
  */
 export async function cancelAllNotifications(): Promise<void> {
   if (typeof window !== 'undefined' && !('cordova' in window)) return;
   try {
-    await LocalNotifications.cancelAll();
+    // Busca todas as notificações agendadas
+    const { notifications } = await LocalNotifications.getPending();
+    if (notifications && notifications.length > 0) {
+      const ids = notifications.map(n => n.id);
+      await LocalNotifications.cancel({ notifications: ids.map(id => ({ id })) });
+    }
   } catch (error) {
     console.error('❌ Erro ao cancelar todas as notificações:', error);
   }
