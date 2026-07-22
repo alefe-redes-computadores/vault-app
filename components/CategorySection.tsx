@@ -9,7 +9,7 @@ interface CategorySectionProps {
   documents: Document[];
   total: number;
   hasMore: boolean;
-  onFavoriteToggle: (id: number) => void;
+  onFavoriteToggle: (id: string) => void; // ← string
   onSeeAll: () => void;
 }
 
