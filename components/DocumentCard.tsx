@@ -29,7 +29,7 @@ import { useToast } from "@/components/ToastProvider";
 interface DocumentCardProps {
   document: Document;
   personName?: string;
-  onFavoriteToggle?: (id: string) => void; // ← string
+  onFavoriteToggle?: (id: string) => void;
   compact?: boolean;
 }
 
@@ -104,13 +104,22 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
   );
   const syncLabel = document.synced ? "Sincronizado" : "Pendente de sincronização";
 
+  // ✅ TOGGLE PARA TOOLTIP (tap-to-show)
+  const handleSyncIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowSyncTooltip((prev) => !prev);
+    trigger("vibrate");
+  };
+
+  // Fecha o tooltip após 3 segundos
+  const handleSyncIconMouseLeave = () => {
+    setTimeout(() => setShowSyncTooltip(false), 3000);
+  };
+
   return (
-    <motion.div
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.2 }}
+    <div
       onClick={handlePress}
-      className="relative overflow-hidden rounded-xl border p-4 shadow-sm cursor-pointer bg-surface hover:shadow-md transition-shadow"
+      className="relative overflow-hidden rounded-xl border p-4 shadow-sm cursor-pointer bg-surface hover:shadow-md transition-shadow active:scale-[0.98]"
       style={{ borderColor: `${color}25` }}
     >
       <span className="rivet rivet-tl" />
@@ -196,6 +205,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
         </div>
       </div>
 
+      {/* Badge de anexo */}
       {hasAttachments && (
         <div className="absolute bottom-3 right-3">
           {hasImageAttachment ? (
@@ -206,21 +216,23 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
         </div>
       )}
 
-      <div 
-        className="absolute top-3 right-12"
-        onMouseEnter={() => setShowSyncTooltip(true)}
-        onMouseLeave={() => setShowSyncTooltip(false)}
-      >
-        <div className="flex items-center gap-1">
+      {/* ✅ TOOLTIP DE SYNC — tap-to-show */}
+      <div className="absolute top-3 right-12">
+        <button
+          onClick={handleSyncIconClick}
+          onMouseLeave={handleSyncIconMouseLeave}
+          className="flex items-center gap-1 p-1 rounded hover:bg-surface-border/50 transition-colors"
+          aria-label="Status de sincronização"
+        >
           {syncIcon}
-          {showSyncTooltip && (
-            <span className="absolute -top-6 right-0 text-[10px] bg-surface-raised border border-surface-border/50 px-2 py-0.5 rounded whitespace-nowrap text-ink-muted shadow-md">
-              {syncLabel}
-            </span>
-          )}
-        </div>
+        </button>
+        {showSyncTooltip && (
+          <span className="absolute -top-6 right-0 text-[10px] bg-surface-raised border border-surface-border/50 px-2 py-0.5 rounded whitespace-nowrap text-ink-muted shadow-md">
+            {syncLabel}
+          </span>
+        )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
