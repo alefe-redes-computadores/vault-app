@@ -9,7 +9,7 @@ import type { Document } from '@/lib/types';
 
 interface ExportCardButtonProps {
   cardRef?: React.RefObject<HTMLElement>;
-  cards?: Array<{ ref: React.RefObject<HTMLElement>; id: number }>;
+  cards?: Array<{ ref: React.RefObject<HTMLElement>; id: string }>; // ← string
   title?: string;
   variant?: 'primary' | 'secondary';
   size?: 'sm' | 'md' | 'lg';
@@ -39,7 +39,6 @@ export function ExportCardButton({
 
     try {
       if (cards && cards.length > 0) {
-        // Exporta múltiplos cards
         const refs = cards.map((c) => c.ref);
         await exportCardsToPDF({
           cards: refs,
@@ -50,7 +49,6 @@ export function ExportCardButton({
           },
         });
       } else if (cardRef) {
-        // Exporta um único card
         await exportCardToPDF({
           cardRef,
           title,
