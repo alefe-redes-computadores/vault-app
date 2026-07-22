@@ -6,94 +6,63 @@
    CORES FIXAS (não dependem de tema)
    ============================================================ */
 :root {
-  /* Cores que NÃO mudam com o tema */
   --ice: #7DD3FC;
   --coral: #E8735C;
   --steel: #5B7C99;
 }
 
 /* ============================================================
-   CORES DO TEMA (mudam com o tema)
+   CORES DO TEMA (em RGB, sem "rgb()", pra funcionar com
+   rgb(var(--x) / <alpha-value>) no tailwind.config.ts)
    ============================================================ */
 :root,
 html.dark {
   /* Escuro (padrão) */
-  --bg-void: #0A0C0F;
-  --bg-surface: #14181D;
-  --bg-surface-raised: #1C2128;
-  --bg-surface-raised-2: #262C34;
-  --border-surface: #262C34;
-  --text-ink-primary: #E8EBEF;
-  --text-ink-muted: #7C8592;
-  --text-ink-faint: #4A515C;
+  --bg-void: 10 12 15;              /* #0A0C0F */
+  --bg-surface: 20 24 29;           /* #14181D */
+  --bg-surface-raised: 28 33 40;    /* #1C2128 */
+  --bg-surface-raised-2: 38 44 52;  /* #262C34 */
+  --border-surface: 38 44 52;       /* #262C34 */
+  --text-ink-primary: 232 235 239;  /* #E8EBEF */
+  --text-ink-muted: 124 133 146;    /* #7C8592 */
+  --text-ink-faint: 74 81 92;       /* #4A515C */
   --shadow-vault: 0 8px 32px -8px rgba(0,0,0,0.5);
   color-scheme: dark;
 }
 
-/* ============================================================
-   TEMA CLARO (sobrescreve as variáveis)
-   ============================================================ */
 html.light {
-  --bg-void: #F1F5F9;
-  --bg-surface: #FFFFFF;
-  --bg-surface-raised: #F8FAFC;
-  --bg-surface-raised-2: #E2E8F0;
-  --border-surface: #E2E8F0;
-  --text-ink-primary: #0F172A;
-  --text-ink-muted: #475569;
-  --text-ink-faint: #94A3B8;
+  --bg-void: 241 245 249;           /* #F1F5F9 */
+  --bg-surface: 255 255 255;        /* #FFFFFF */
+  --bg-surface-raised: 248 250 252; /* #F8FAFC */
+  --bg-surface-raised-2: 226 232 240; /* #E2E8F0 */
+  --border-surface: 226 232 240;    /* #E2E8F0 */
+  --text-ink-primary: 15 23 42;     /* #0F172A */
+  --text-ink-muted: 71 85 105;      /* #475569 */
+  --text-ink-faint: 148 163 184;    /* #94A3B8 */
   --shadow-vault: 0 8px 32px -8px rgba(0,0,0,0.08);
   color-scheme: light;
 }
 
 /* ============================================================
-   APLICAÇÃO DAS VARIÁVEIS (com fallback)
-   ============================================================ */
-.bg-void {
-  background-color: var(--bg-void, #0A0C0F);
-}
-
-.bg-surface {
-  background-color: var(--bg-surface, #14181D);
-}
-
-.bg-surface-raised {
-  background-color: var(--bg-surface-raised, #1C2128);
-}
-
-.border-surface-border {
-  border-color: var(--border-surface, #262C34);
-}
-
-.text-ink-primary {
-  color: var(--text-ink-primary, #E8EBEF);
-}
-
-.text-ink-muted {
-  color: var(--text-ink-muted, #7C8592);
-}
-
-.text-ink-faint {
-  color: var(--text-ink-faint, #4A515C);
-}
-
-.shadow-vault {
-  box-shadow: var(--shadow-vault, 0 8px 32px -8px rgba(0,0,0,0.5));
-}
-
-/* ============================================================
    ELEMENTOS BASE
+   As classes bg-void, bg-surface, text-ink-primary etc. NÃO
+   precisam mais ser declaradas manualmente aqui — o Tailwind
+   já gera todas elas (e as variantes com opacidade, tipo
+   bg-surface/80) a partir do tailwind.config.ts.
    ============================================================ */
 html,
 body {
-  background-color: var(--bg-void, #0A0C0F);
-  color: var(--text-ink-primary, #E8EBEF);
+  @apply bg-void text-ink-primary;
   overscroll-behavior-y: none;
   transition: background-color 300ms ease, color 300ms ease;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+.shadow-vault {
+  box-shadow: var(--shadow-vault);
 }
 
 /* ============================================================
@@ -118,18 +87,13 @@ body {
 }
 
 /* ============================================================
-   GLASS HEADER (com fallback)
+   GLASS HEADER
    ============================================================ */
 .glass-header {
-  background: rgba(20, 24, 29, 0.72);
+  background: rgb(var(--bg-surface) / 0.72);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-html.light .glass-header {
-  background: rgba(255, 255, 255, 0.72);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgb(var(--border-surface) / 0.5);
 }
 
 /* ============================================================
