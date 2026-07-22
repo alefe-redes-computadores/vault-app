@@ -4,7 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useAuth } from "./useAuth";
 
-export function useDocuments(personId?: number) {
+export function useDocuments(personId?: string) { // ← string
   const { user } = useAuth();
 
   const documents = useLiveQuery(
@@ -22,7 +22,7 @@ export function useDocuments(personId?: number) {
   return documents || [];
 }
 
-export function useFavorites(personId?: number) {
+export function useFavorites(personId?: string) { // ← string
   const { user } = useAuth();
 
   const favorites = useLiveQuery(
@@ -43,7 +43,7 @@ export function useFavorites(personId?: number) {
   return favorites || [];
 }
 
-export function useDocument(id: number) {
+export function useDocument(id: string) { // ← string
   const { user } = useAuth();
 
   const document = useLiveQuery(
