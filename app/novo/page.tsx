@@ -25,7 +25,6 @@ import { DocumentTypeSelector } from "@/components/DocumentTypeSelector";
 import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { CustomDatePicker } from "@/components/DatePicker";
 import { SelectionModal } from "@/components/SelectionModal";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
@@ -338,6 +337,33 @@ export default function NewDocumentPage() {
 
   const fields = DOCUMENT_FIELDS[formData.type] || [];
 
+  // Renderiza um input date nativo estilizado (fallback)
+  const renderDateInput = (field: any) => {
+    return (
+      <div key={field.key} className="space-y-1.5">
+        <label className="block text-sm font-medium text-ink-primary">
+          {field.label} {field.required && <span className="text-coral">*</span>}
+        </label>
+        <input
+          type="date"
+          data-field={field.key}
+          value={formData.metadata[field.key] || ''}
+          onChange={(e) => handleMetadataChange(field.key, e.target.value)}
+          className={`
+            w-full rounded-xl bg-surface-raised border 
+            px-4 py-3 text-ink-primary placeholder:text-ink-muted/50
+            focus:outline-none focus:border-ice/50 focus:ring-2 focus:ring-ice/20
+            transition-all duration-150
+            ${errors[field.key] ? "border-coral/50 focus:border-coral/50 focus:ring-coral/20" : "border-surface-border/50"}
+          `}
+        />
+        {errors[field.key] && (
+          <p className="text-xs text-coral">{errors[field.key]}</p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
@@ -489,18 +515,9 @@ export default function NewDocumentPage() {
                 const rawValue = formData.metadata[field.key] || '';
                 const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
 
+                // === CORREÇÃO: Input date nativo com tema escuro ===
                 if (field.type === "date") {
-                  return (
-                    <CustomDatePicker
-                      key={field.key}
-                      data-field={field.key}
-                      label={field.label}
-                      value={rawValue}
-                      onChange={(val) => handleMetadataChange(field.key, val)}
-                      required={field.required}
-                      error={errors[field.key]}
-                    />
-                  );
+                  return renderDateInput(field);
                 }
 
                 if (field.type === "select") {
