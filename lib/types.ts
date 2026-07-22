@@ -2,7 +2,7 @@
 // 1. PESSOAS
 // ============================================================
 export interface Person {
-  id?: string; // ← agora é string (UUID)
+  id?: string;
   user_id: string;
   name: string;
   email?: string;
@@ -45,7 +45,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     id: 'empresa',
     name: 'Empresa',
     icon: 'Building2',
-    color: '#F59E0B',
+    color: '#7C9CB5', // ← steel-light (em vez de amarelo)
     description: 'Documentos corporativos',
   },
   outros: {
@@ -83,9 +83,9 @@ export interface Attachment {
 }
 
 export interface Document {
-  id?: string; // ← UUID
+  id?: string;
   user_id: string;
-  person_id: string; // ← agora string (UUID da pessoa)
+  person_id: string;
   category_id: CategoryId;
   type: DocumentType;
   title: string;
@@ -93,7 +93,7 @@ export interface Document {
   metadata: Record<string, any>;
   attachments: Attachment[];
   is_favorite: boolean;
-  vault_id?: string; // ← UUID
+  vault_id?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -170,16 +170,16 @@ export type LaudoMetadata = { doctor: string; specialty: string; hospital: strin
 export type EncaminhamentoMetadata = { from: string; to?: string; reason: string; date: string; };
 
 // ============================================================
-// 5. FILA DE SINCRONIZAÇÃO (CORRIGIDO)
+// 5. FILA DE SINCRONIZAÇÃO
 // ============================================================
 export interface SyncQueueItem {
-  id?: string; // ← UUID
+  id?: string;
   table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes' | 'vaults' | 'vaultMembers' | 'medicos' | 'farmacias' | 'hospitais';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
-  retry_count?: number; // ← NOVO: controle de tentativas
-  failed?: boolean; // ← NOVO: marcador de falha permanente
+  retry_count?: number;
+  failed?: boolean;
 }
 
 // ============================================================
