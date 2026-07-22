@@ -1,13 +1,17 @@
 import { db } from '@/lib/db';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital } from '@/lib/types';
+import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital, SyncQueueItem } from '@/lib/types';
+
+const MAX_RETRIES = 5; // Número máximo de tentativas antes de marcar como failed
 
 export function useSyncQueue() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== 'undefined' ? navigator.onLine : false
   );
+  const processingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -19,49 +23,13 @@ export function useSyncQueue() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
-  const processQueue = async () => {
-    if (!isOnline || isProcessing) return;
-
-    setIsProcessing(true);
-    try {
-      const queue = await db.syncQueue.toArray();
-
-      for (const item of queue) {
-        try {
-          if (item.table === 'documents') {
-            await syncDocument(item);
-          } else if (item.table === 'vaults') {
-            await syncVault(item);
-          } else if (item.table === 'vaultMembers') {
-            await syncVaultMember(item);
-          } else if (item.table === 'persons') {
-            await syncPerson(item);
-          } else if (item.table === 'medicamentos') {
-            await syncMedicamento(item);
-          } else if (item.table === 'renovacoes') {
-            await syncRenovacao(item);
-          } else if (item.table === 'medicos') {
-            await syncMedico(item);
-          } else if (item.table === 'farmacias') {
-            await syncFarmacia(item);
-          } else if (item.table === 'hospitais') {
-            await syncHospital(item);
-          }
-          await db.syncQueue.delete(item.id!);
-        } catch (error) {
-          console.error('Erro ao sincronizar item:', item, error);
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao processar fila:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
+  // ============================================================
+  // sync functions
+  // ============================================================
   const syncPerson = async (item: any) => {
     if (!supabase) return;
     const person = item.payload as any;
@@ -105,7 +73,8 @@ export function useSyncQueue() {
       case 'add':
         await supabase.from('medicamentos').insert({
           id: med.id,
-          document_id: med.document_id || 0,
+          document_id: med.document_id || '',
+          user_id: med.user_id,
           nome: med.nome,
           dosagem: med.dosagem,
           medico: med.medico,
@@ -176,7 +145,6 @@ export function useSyncQueue() {
 
   const syncDocument = async (item: any) => {
     if (!supabase) return;
-
     const doc = item.payload as Document;
 
     switch (item.operation) {
@@ -197,7 +165,6 @@ export function useSyncQueue() {
           updated_at: doc.updated_at,
         });
         break;
-
       case 'update':
         await supabase.from('documents')
           .update({
@@ -211,14 +178,12 @@ export function useSyncQueue() {
           })
           .eq('id', doc.id);
         break;
-
       case 'delete':
         await supabase.from('documents')
           .delete()
           .eq('id', item.payload.id);
         break;
     }
-
     if (item.operation !== 'delete' && doc.id) {
       await db.documents.update(doc.id, { synced: true });
     }
@@ -226,7 +191,6 @@ export function useSyncQueue() {
 
   const syncVault = async (item: any) => {
     if (!supabase) return;
-
     const vault = item.payload as Vault;
 
     switch (item.operation) {
@@ -242,7 +206,6 @@ export function useSyncQueue() {
           updated_at: vault.updated_at,
         });
         break;
-
       case 'update':
         await supabase.from('vaults')
           .update({
@@ -254,14 +217,12 @@ export function useSyncQueue() {
           })
           .eq('id', vault.id);
         break;
-
       case 'delete':
         await supabase.from('vaults')
           .delete()
           .eq('id', item.payload.id);
         break;
     }
-
     if (item.operation !== 'delete' && vault.id) {
       await db.vaults.update(vault.id, { synced: true });
     }
@@ -269,7 +230,6 @@ export function useSyncQueue() {
 
   const syncVaultMember = async (item: any) => {
     if (!supabase) return;
-
     const member = item.payload as VaultMember;
 
     switch (item.operation) {
@@ -287,7 +247,6 @@ export function useSyncQueue() {
           updated_at: member.updated_at,
         });
         break;
-
       case 'update':
         await supabase.from('vault_members')
           .update({
@@ -298,22 +257,17 @@ export function useSyncQueue() {
           })
           .eq('id', member.id);
         break;
-
       case 'delete':
         await supabase.from('vault_members')
           .delete()
           .eq('id', item.payload.id);
         break;
     }
-
     if (item.operation !== 'delete' && member.id) {
       await db.vaultMembers.update(member.id, { synced: true });
     }
   };
 
-  // ============================================================
-  // SYNC: MEDICOS (NOVO)
-  // ============================================================
   const syncMedico = async (item: any) => {
     if (!supabase) return;
     const medico = item.payload as Medico;
@@ -332,7 +286,6 @@ export function useSyncQueue() {
           updated_at: medico.updated_at,
         });
         break;
-
       case 'update':
         await supabase.from('medicos')
           .update({
@@ -345,22 +298,17 @@ export function useSyncQueue() {
           })
           .eq('id', medico.id);
         break;
-
       case 'delete':
         await supabase.from('medicos')
           .delete()
           .eq('id', item.payload.id);
         break;
     }
-
     if (item.operation !== 'delete' && medico.id) {
       await db.medicos.update(medico.id, { synced: true });
     }
   };
 
-  // ============================================================
-  // SYNC: FARMACIAS (NOVO)
-  // ============================================================
   const syncFarmacia = async (item: any) => {
     if (!supabase) return;
     const farmacia = item.payload as Farmacia;
@@ -377,7 +325,6 @@ export function useSyncQueue() {
           updated_at: farmacia.updated_at,
         });
         break;
-
       case 'update':
         await supabase.from('farmacias')
           .update({
@@ -388,22 +335,17 @@ export function useSyncQueue() {
           })
           .eq('id', farmacia.id);
         break;
-
       case 'delete':
         await supabase.from('farmacias')
           .delete()
           .eq('id', item.payload.id);
         break;
     }
-
     if (item.operation !== 'delete' && farmacia.id) {
       await db.farmacias.update(farmacia.id, { synced: true });
     }
   };
 
-  // ============================================================
-  // SYNC: HOSPITAIS (NOVO)
-  // ============================================================
   const syncHospital = async (item: any) => {
     if (!supabase) return;
     const hospital = item.payload as Hospital;
@@ -420,7 +362,6 @@ export function useSyncQueue() {
           updated_at: hospital.updated_at,
         });
         break;
-
       case 'update':
         await supabase.from('hospitais')
           .update({
@@ -431,24 +372,142 @@ export function useSyncQueue() {
           })
           .eq('id', hospital.id);
         break;
-
       case 'delete':
         await supabase.from('hospitais')
           .delete()
           .eq('id', item.payload.id);
         break;
     }
-
     if (item.operation !== 'delete' && hospital.id) {
       await db.hospitais.update(hospital.id, { synced: true });
     }
   };
 
-  useEffect(() => {
-    if (isOnline) {
-      processQueue();
+  // ============================================================
+  // processQueue (memoizado com useCallback + lock + retry)
+  // ============================================================
+  const processQueue = useCallback(async () => {
+    // Se já está processando, ou offline, ou já tem um lock, sai
+    if (processingRef.current || !isOnline) {
+      console.log('⏳ Sync já em andamento ou offline, ignorando');
+      return;
+    }
+
+    // Verifica se há itens na fila primeiro para não travar desnecessariamente
+    const count = await db.syncQueue.count();
+    if (count === 0) {
+      console.log('📭 Fila de sincronização vazia');
+      return;
+    }
+
+    processingRef.current = true;
+    setIsProcessing(true);
+    window.dispatchEvent(new Event('sync:start'));
+
+    try {
+      // Buscar apenas itens não falhos e com retry_count < MAX_RETRIES
+      const queue = await db.syncQueue
+        .where('failed')
+        .equals(false)
+        .and((item) => (item.retry_count || 0) < MAX_RETRIES)
+        .toArray();
+
+      console.log(`🔄 Processando ${queue.length} itens da fila...`);
+
+      for (const item of queue) {
+        try {
+          // Disparar a sync correta baseada na tabela
+          if (item.table === 'documents') {
+            await syncDocument(item);
+          } else if (item.table === 'vaults') {
+            await syncVault(item);
+          } else if (item.table === 'vaultMembers') {
+            await syncVaultMember(item);
+          } else if (item.table === 'persons') {
+            await syncPerson(item);
+          } else if (item.table === 'medicamentos') {
+            await syncMedicamento(item);
+          } else if (item.table === 'renovacoes') {
+            await syncRenovacao(item);
+          } else if (item.table === 'medicos') {
+            await syncMedico(item);
+          } else if (item.table === 'farmacias') {
+            await syncFarmacia(item);
+          } else if (item.table === 'hospitais') {
+            await syncHospital(item);
+          }
+          // Se chegou aqui, deu certo: remove da fila
+          await db.syncQueue.delete(item.id!);
+        } catch (error) {
+          console.error('Erro ao sincronizar item:', item, error);
+          
+          // Incrementar contagem de tentativas
+          const retryCount = (item.retry_count || 0) + 1;
+          const failed = retryCount >= MAX_RETRIES;
+          
+          await db.syncQueue.update(item.id!, {
+            retry_count: retryCount,
+            failed: failed,
+          });
+          
+          if (failed) {
+            console.error(`❌ Item falhou permanentemente após ${MAX_RETRIES} tentativas:`, item);
+            // Aqui poderíamos disparar um toast de erro para o usuário
+          }
+        }
+      }
+
+      // Verificar se ainda há itens pendentes (não falhos)
+      const remaining = await db.syncQueue
+        .where('failed')
+        .equals(false)
+        .and((item) => (item.retry_count || 0) < MAX_RETRIES)
+        .count();
+
+      if (remaining > 0) {
+        console.log(`⏳ ${remaining} itens ainda pendentes, agendando nova tentativa...`);
+        // Agenda nova tentativa após 5 segundos
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => {
+          processQueue();
+        }, 5000);
+      }
+
+      console.log('✅ Sincronização concluída!');
+    } catch (error) {
+      console.error('❌ Erro ao processar fila:', error);
+    } finally {
+      processingRef.current = false;
+      setIsProcessing(false);
+      window.dispatchEvent(new Event('sync:end'));
     }
   }, [isOnline]);
 
-  return { processQueue, isProcessing, isOnline };
+  // Sincronização automática quando fica online
+  useEffect(() => {
+    if (isOnline) {
+      // Delay inicial para evitar conflitos com o pull
+      const timer = setTimeout(() => {
+        processQueue();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, processQueue]);
+
+  // Verificar pendências a cada 30 segundos
+  useEffect(() => {
+    if (!isOnline) return;
+    const interval = setInterval(() => {
+      if (!processingRef.current) {
+        processQueue();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isOnline, processQueue]);
+
+  return {
+    processQueue,
+    isProcessing,
+    isOnline,
+  };
 }
