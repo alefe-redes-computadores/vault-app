@@ -35,7 +35,8 @@ export function FavoritesSection({ favorites, onFavoriteToggle }: FavoritesSecti
         )}
       </div>
 
-      <div className="space-y-2">
+      {/* space-y-2 → space-y-3 */}
+      <div className="space-y-3">
         {preview.map((doc) => (
           <DocumentCard
             key={doc.id}
