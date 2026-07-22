@@ -60,6 +60,10 @@ export function ConfirmationModal({
             transition={{ duration: 0.2 }}
             className="relative w-full max-w-md rounded-2xl bg-surface border border-surface-border shadow-vault p-6"
           >
+            {/* Rivet decorativo */}
+            <span className="rivet rivet-tl" />
+            <span className="rivet rivet-br" />
+
             {/* Fechar */}
             <button
               onClick={onClose}
