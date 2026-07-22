@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Star, User, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useFavorites } from "@/hooks/useDocuments";
+import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { DocumentCard } from "@/components/DocumentCard";
 import { AreaTabs } from "@/components/AreaTabs";
+import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -21,7 +22,7 @@ export default function FavoritesPage() {
   const { favorite } = useSafeDb();
   const persons = usePersons();
 
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null); // ← string
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -33,19 +34,32 @@ export default function FavoritesPage() {
     return () => clearTimeout(timer);
   }, [persons]);
 
-  const favorites = useFavorites(selectedPersonId || undefined);
-
-  const filtered = favorites.filter((doc: any) => {
-    const matchCategory = selectedCategory === null || doc.category_id === selectedCategory;
-    return matchCategory;
+  // ============================================================
+  // PAGINAÇÃO para favoritos
+  // ============================================================
+  const {
+    documents: paginatedFavorites,
+    totalCount,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+  } = usePaginatedDocuments({
+    personId: selectedPersonId || undefined,
+    categoryId: selectedCategory || undefined,
+    // Filtro por favoritos será aplicado em memória
   });
 
-  const handleFavoriteToggle = useCallback(async (id: string) => { // ← string
+  // Filtrar apenas favoritos
+  const favorites = useMemo(() => {
+    return paginatedFavorites.filter((doc: any) => doc.is_favorite === true);
+  }, [paginatedFavorites]);
+
+  const handleFavoriteToggle = useCallback(async (id: string) => {
     await favorite(id);
     trigger("vibrate");
   }, [favorite, trigger]);
 
-  const hasFavorites = filtered && filtered.length > 0;
+  const hasFavorites = favorites && favorites.length > 0;
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -73,7 +87,7 @@ export default function FavoritesPage() {
                   Favoritos
                 </h1>
                 <p className="text-sm text-ink-muted">
-                  {hasFavorites ? `${filtered.length} documento${filtered.length !== 1 ? "s" : ""}` : "Nenhum favorito"}
+                  {hasFavorites ? `${favorites.length} documento${favorites.length !== 1 ? "s" : ""}` : "Nenhum favorito"}
                 </p>
               </div>
             </div>
@@ -132,7 +146,7 @@ export default function FavoritesPage() {
           </div>
         </header>
 
-        {/* CONTEÚDO */}
+        {/* CONTEÚDO com InfiniteScrollTrigger */}
         <section className="px-5 pt-5 space-y-3">
           <AnimatePresence mode="wait">
             {!hasFavorites ? (
@@ -171,22 +185,29 @@ export default function FavoritesPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-3"
               >
-                {filtered.map((doc: any, index: number) => (
-                  <motion.div
-                    key={doc.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: index * 0.05 }}
-                  >
-                    <DocumentCard
-                      document={doc}
-                      onFavoriteToggle={handleFavoriteToggle}
-                      personName={persons.find((p: any) => p.id === doc.person_id)?.name}
-                    />
-                  </motion.div>
-                ))}
+                <InfiniteScrollTrigger
+                  onLoadMore={loadMore}
+                  hasMore={hasMore}
+                  isLoading={isLoadingMore}
+                >
+                  <div className="space-y-3">
+                    {favorites.map((doc: any, index: number) => (
+                      <motion.div
+                        key={doc.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2, delay: Math.min(index * 0.05, 0.5) }}
+                      >
+                        <DocumentCard
+                          document={doc}
+                          onFavoriteToggle={handleFavoriteToggle}
+                          personName={persons.find((p: any) => p.id === doc.person_id)?.name}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </InfiniteScrollTrigger>
               </motion.div>
             )}
           </AnimatePresence>
