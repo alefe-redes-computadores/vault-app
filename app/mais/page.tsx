@@ -34,12 +34,8 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-// Versão do aplicativo (extraída do package.json ou definida manualmente)
 const APP_VERSION = "1.0.0";
 
-// ============================================================
-// TIPO PARA OS ITENS DO MENU (com component opcional)
-// ============================================================
 interface MenuItem {
   id: string;
   icon: any;
@@ -177,7 +173,7 @@ export default function MaisPage() {
           id: "tema",
           icon: Settings,
           label: "Tema",
-          description: "Claro, Escuro ou Automático", // ← 🎉 removido
+          description: "Claro, Escuro ou Automático",
           component: <ThemeToggle />,
         },
       ],
@@ -226,14 +222,14 @@ export default function MaisPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
