@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Document, CATEGORIES } from "@/lib/types";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -65,14 +65,14 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
   const color = category?.color || "#6B7280";
   const TypeIcon = TYPE_ICONS[document.type] || FileText;
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     trigger("vibrate");
     router.push(`/detalhes?id=${document.id}`);
-  };
+  }, [trigger, router, document.id]);
 
-  const handleFavorite = (e: React.MouseEvent) => {
+  const handleFavorite = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    trigger("vibrate");
+    trigger("success");
     setIsFavoriteAnimating(true);
     setTimeout(() => setIsFavoriteAnimating(false), 500);
     showToast(
@@ -80,7 +80,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
       "info"
     );
     onFavoriteToggle?.(document.id!);
-  };
+  }, [trigger, document.is_favorite, document.id, onFavoriteToggle, showToast]);
 
   const hasAttachments = document.attachments && document.attachments.length > 0;
   const hasImageAttachment = document.attachments?.some(a => a.type === 'image');
@@ -101,20 +101,16 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
   );
   const syncLabel = document.synced ? "Sincronizado" : "Pendente de sincronização";
 
-  const handleSyncIconClick = (e: React.MouseEvent) => {
+  const handleSyncIconClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setShowSyncTooltip((prev) => !prev);
     trigger("vibrate");
-  };
-
-  const handleSyncIconMouseLeave = () => {
-    setTimeout(() => setShowSyncTooltip(false), 3000);
-  };
+  }, [trigger]);
 
   return (
     <div
       onClick={handlePress}
-      className="relative overflow-hidden rounded-xl border p-4 shadow-vault cursor-pointer bg-surface hover:shadow-lg transition-shadow active:scale-[0.98]"
+      className="relative overflow-hidden rounded-xl border p-4 shadow-vault cursor-pointer bg-surface hover:shadow-lg hover:border-ice/20 transition-all duration-200 active:scale-[0.97]"
       style={{ borderColor: `${color}25` }}
     >
       <span className="rivet rivet-tl" />
@@ -122,7 +118,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
 
       <div className="flex items-start gap-3">
         <div
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-all duration-200"
           style={{ backgroundColor: `${color}15` }}
         >
           <TypeIcon size={18} style={{ color }} />
@@ -134,7 +130,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
               <h3 className="font-display text-[15px] font-medium text-ink-primary truncate">
                 {document.title}
               </h3>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className="text-xs text-ink-muted">{category?.name}</span>
                 <span className="w-1 h-1 rounded-full bg-ink-faint" />
                 {personName && (
@@ -143,16 +139,29 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
                 {!personName && (
                   <span className="text-xs text-ink-muted capitalize">{document.type}</span>
                 )}
+                {/* Badge de categoria com cor */}
+                {category && (
+                  <span 
+                    className="category-badge text-[9px]"
+                    style={{ 
+                      backgroundColor: `${color}15`, 
+                      borderColor: `${color}30`,
+                      color: color 
+                    }}
+                  >
+                    {category.name}
+                  </span>
+                )}
               </div>
             </div>
 
             <button
               onClick={handleFavorite}
-              className="flex-shrink-0 p-1 rounded-full hover:bg-surface-border/50 transition-colors relative"
+              className="flex-shrink-0 p-1 rounded-full hover:bg-surface-border/50 transition-colors duration-150 active:scale-90"
             >
               <AnimatePresence>
                 <motion.div
-                  animate={isFavoriteAnimating ? { scale: 1.3 } : { scale: 1 }}
+                  animate={isFavoriteAnimating ? { scale: 1.3, rotate: 20 } : { scale: 1, rotate: 0 }}
                   transition={{ duration: 0.2 }}
                 >
                   <Star
@@ -184,7 +193,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
 
             {expiryDate && (
               <div
-                className={`flex items-center gap-1 text-xs ${
+                className={`flex items-center gap-1 text-xs transition-colors duration-150 ${
                   isExpired ? "text-coral" : isExpiring ? "text-coral/80" : "text-ink-muted"
                 }`}
               >
@@ -211,18 +220,17 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
         </div>
       )}
 
-      {/* TOOLTIP DE SYNC */}
+      {/* TOOLTIP DE SYNC - tap-to-show */}
       <div className="absolute top-3 right-12">
         <button
           onClick={handleSyncIconClick}
-          onMouseLeave={handleSyncIconMouseLeave}
-          className="flex items-center gap-1 p-1 rounded hover:bg-surface-border/50 transition-colors"
+          className="flex items-center gap-1 p-1 rounded hover:bg-surface-border/50 transition-colors duration-150 active:scale-90"
           aria-label="Status de sincronização"
         >
           {syncIcon}
         </button>
         {showSyncTooltip && (
-          <span className="absolute -top-6 right-0 text-[10px] bg-surface-raised border border-surface-border/50 px-2 py-0.5 rounded whitespace-nowrap text-ink-muted shadow-md">
+          <span className="absolute -top-6 right-0 text-[10px] bg-surface-raised border border-surface-border/50 px-2 py-0.5 rounded whitespace-nowrap text-ink-muted shadow-md pointer-events-none">
             {syncLabel}
           </span>
         )}
