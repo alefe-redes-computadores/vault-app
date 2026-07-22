@@ -15,14 +15,20 @@ export function useMedicos() {
     []
   );
 
-  const getMedico = useCallback((id: number) => {
+  const getMedico = useCallback((id: string) => { // ← string
     return db.medicos.get(id);
   }, []);
 
   const addMedico = useCallback(async (data: Omit<Medico, 'id' | 'created_at' | 'updated_at' | 'synced'>) => {
     const now = new Date().toISOString();
-    const id = await db.medicos.add({
+    const id = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    await db.medicos.add({
       ...data,
+      id,
       created_at: now,
       updated_at: now,
       synced: false,
@@ -30,7 +36,7 @@ export function useMedicos() {
     return id;
   }, []);
 
-  const updateMedico = useCallback(async (id: number, data: Partial<Medico>) => {
+  const updateMedico = useCallback(async (id: string, data: Partial<Medico>) => { // ← string
     await db.medicos.update(id, {
       ...data,
       updated_at: new Date().toISOString(),
@@ -38,7 +44,7 @@ export function useMedicos() {
     });
   }, []);
 
-  const deleteMedico = useCallback(async (id: number) => {
+  const deleteMedico = useCallback(async (id: string) => { // ← string
     await db.medicos.delete(id);
   }, []);
 
