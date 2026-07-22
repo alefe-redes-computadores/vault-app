@@ -73,23 +73,18 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [persons, selectedPersonId]);
 
-  // ============================================================
-  // PAGINAÇÃO - documentos por categoria
-  // ============================================================
   const { documents: allDocs } = usePaginatedDocuments({
     personId: selectedPersonId || undefined,
     searchQuery: debouncedSearch,
     initialPage: 1,
   });
 
-  // Favoritos (ainda usa o hook antigo, mas podemos paginar depois)
   const favorites = useFavorites(selectedPersonId || undefined) || [];
 
   const handleFavoriteToggle = useCallback(async (id: string) => {
     await favorite(id);
   }, [favorite]);
 
-  // Agrupar por categoria
   const docsByCategory = useMemo(() => {
     return allDocs.reduce<Record<CategoryId, Document[]>>(
       (acc: Record<CategoryId, Document[]>, doc: any) => {
@@ -126,7 +121,7 @@ export default function HomePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
