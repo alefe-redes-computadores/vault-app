@@ -26,7 +26,7 @@ export default function VaultDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = Number(searchParams.get("id"));
+  const id = searchParams.get("id") || ""; // ← string
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -78,14 +78,14 @@ export default function VaultDetailPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="glass-header sticky top-0 z-10 px-5 pb-4 pt-6">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pb-4 pt-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-[0.98]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-[0.98]"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -99,7 +99,7 @@ export default function VaultDetailPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          <div className="rounded-card border border-surface-border bg-surface p-6 shadow-vault">
+          <div className="rounded-card border border-surface-border/50 bg-surface p-6 shadow-vault">
             <div className="flex items-center gap-4 mb-4">
               <div
                 className="flex h-14 w-14 items-center justify-center rounded-2xl"
@@ -120,7 +120,7 @@ export default function VaultDetailPage() {
               </div>
             </div>
 
-            <div className="border-t border-surface-border pt-4">
+            <div className="border-t border-surface-border/50 pt-4">
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="secondary"
@@ -178,7 +178,7 @@ export default function VaultDetailPage() {
                       trigger("vibrate");
                       router.push(`/detalhes?id=${doc.id}`);
                     }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border cursor-pointer hover:border-surface-border transition-colors active:scale-[0.98]"
+                    className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-surface-border/50 cursor-pointer hover:border-surface-border transition-colors active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-3">
                       <Lock size={14} className="text-ink-muted" />
