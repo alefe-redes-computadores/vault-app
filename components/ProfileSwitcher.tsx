@@ -7,8 +7,8 @@ import { useState } from "react";
 import type { Person } from "@/lib/types";
 
 interface ProfileSwitcherProps {
-  activeProfileId: number;
-  onProfileChange: (profileId: number) => void;
+  activeProfileId: string; // ← agora é string (UUID)
+  onProfileChange: (profileId: string) => void; // ← agora é string
 }
 
 export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwitcherProps) {
@@ -16,9 +16,10 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
   const profiles = useProfiles();
   const [isOpen, setIsOpen] = useState(false);
 
+  // CORRIGIDO: comparação com string
   const activeProfile = profiles.find((p: Person) => p.id === activeProfileId);
 
-  const handleSelect = (profileId: number) => {
+  const handleSelect = (profileId: string) => { // ← agora é string
     trigger("vibrate");
     onProfileChange(profileId);
     setIsOpen(false);
@@ -33,7 +34,7 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
           trigger("vibrate");
           setIsOpen(!isOpen);
         }}
-        className="flex items-center gap-2 rounded-full bg-surface-raised px-4 py-2 border border-surface-border active:scale-[0.98] transition-all"
+        className="flex items-center gap-2 rounded-full bg-surface-raised px-4 py-2 border border-surface-border/50 active:scale-[0.98] transition-all"
       >
         <span className="text-lg">
           {activeProfile.avatar_url ? (
@@ -63,7 +64,7 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
             className="fixed inset-0 z-20"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute left-0 top-full mt-2 z-30 min-w-[160px] rounded-card border border-surface-border bg-surface-raised shadow-vault overflow-hidden">
+          <div className="absolute left-0 top-full mt-2 z-30 min-w-[160px] rounded-card border border-surface-border/50 bg-surface-raised shadow-vault overflow-hidden">
             {profiles.map((profile: Person) => (
               <button
                 key={profile.id}
@@ -71,7 +72,7 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
                 className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors active:scale-[0.98] ${
                   profile.id === activeProfileId
                     ? "bg-steel-dark/20 text-ink-primary"
-                    : "text-ink-muted hover:bg-surface-border"
+                    : "text-ink-muted hover:bg-surface-border/50"
                 }`}
               >
                 <span className="text-lg">
