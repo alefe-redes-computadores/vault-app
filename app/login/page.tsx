@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
-import { useAuthDeepLink } from "@/lib/hooks/useAuthDeepLink"; // <-- IMPORTAÇÃO DO HULK AQUI
+import { useAuthDeepLink } from "@/lib/hooks/useAuthDeepLink";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -25,8 +25,6 @@ export default function LoginPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { login, register } = useAuth();
-  
-  // <-- ATIVANDO O HULK AQUI:
   const { isProcessing } = useAuthDeepLink();
 
   const [email, setEmail] = useState("");
@@ -41,16 +39,24 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = isLogin
-        ? await login(email, password)
-        : await register(email, password);
-
-      if (error) {
-        setError(error.message);
-        trigger("error");
+      if (isLogin) {
+        const { error } = await login(email, password);
+        if (error) {
+          setError(error.message);
+          trigger("error");
+        } else {
+          trigger("success");
+          router.push("/");
+        }
       } else {
-        trigger("success");
-        router.push("/");
+        const { error } = await register(email, password);
+        if (error) {
+          setError(error.message);
+          trigger("error");
+        } else {
+          trigger("success");
+          router.push("/");
+        }
       }
     } catch {
       setError("Erro ao autenticar");
@@ -94,14 +100,13 @@ export default function LoginPage() {
     }
   };
 
-  // Trava os botões se estiver carregando a função local OU se o Hulk estiver processando a volta do link
   const isBusy = loading || isProcessing;
 
   return (
     <main className="min-h-screen bg-void flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-surface-raised border border-surface-border p-3 mb-4">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-surface-raised border border-surface-border/50 p-3 mb-4">
             <Image
               src="/icon-512x512.png"
               alt="Vault Logo"
@@ -158,7 +163,7 @@ export default function LoginPage() {
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-surface-border" />
+            <div className="w-full border-t border-surface-border/50" />
           </div>
           <div className="relative flex justify-center text-xs">
             <span className="bg-void px-2 text-ink-muted">ou</span>
