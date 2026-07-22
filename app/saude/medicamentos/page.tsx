@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Plus, Pill, Trash2, Edit, Loader2, Calendar, AlertTriangle } from "lucide-react";
+import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useToast } from "@/components/ToastProvider";
+import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -16,10 +18,27 @@ export default function MedicamentosPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast, showSuccess } = useToast();
-  const { medicamentos, deleteMedicamento } = useMedicamentos();
-  const [isDeleting, setIsDeleting] = useState<string | null>(null); // ← string
+  const { medicamentos: allMedicamentos, deleteMedicamento } = useMedicamentos();
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  const handleDeleteClick = async (id: string, nome: string) => { // ← string
+  // ============================================================
+  // PAGINAÇÃO para medicamentos
+  // ============================================================
+  const {
+    documents: paginatedDocs,
+    totalCount,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+  } = usePaginatedDocuments({
+    // Medicamentos são documentos com category_id = 'saude' e type = 'receita'
+    // Por enquanto usamos o hook antigo, mas podemos adaptar
+  });
+
+  // Usar todos os medicamentos (se for poucos, mantém; se for muitos, paginar)
+  const medicamentos = allMedicamentos || [];
+
+  const handleDeleteClick = async (id: string, nome: string) => {
     trigger("vibrate");
 
     const toastId = showSuccess(
@@ -131,7 +150,7 @@ export default function MedicamentosPage() {
                   key={med.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.05 }}
+                  transition={{ duration: 0.2, delay: Math.min(index * 0.05, 0.5) }}
                   className={`flex items-center justify-between p-4 rounded-xl border bg-surface shadow-sm ${
                     isExpired 
                       ? "border-coral/50" 
