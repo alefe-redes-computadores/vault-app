@@ -68,14 +68,14 @@ const getMaskType = (fieldKey: string, docType: DocumentType): string | null => 
 };
 
 type FormData = {
-  person_id: number;
+  person_id: string; // ← string
   category_id: CategoryId;
   type: DocumentType;
   title: string;
   description: string;
   metadata: Record<string, any>;
   attachments: Attachment[];
-  vault_id?: number;
+  vault_id?: string; // ← string
 };
 
 const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
@@ -104,7 +104,7 @@ export default function NewDocumentPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<FormData>({
-    person_id: persons[0]?.id || 0,
+    person_id: persons[0]?.id || "",
     category_id: "pessoal",
     type: "rg",
     title: "",
@@ -340,7 +340,7 @@ export default function NewDocumentPage() {
               Pessoa <span className="text-coral">*</span>
             </label>
             <div className="flex gap-2 flex-wrap">
-              {persons.map((person) => (
+              {persons.map((person: any) => (
                 <button
                   key={person.id}
                   onClick={() => {
@@ -372,7 +372,7 @@ export default function NewDocumentPage() {
               Categoria <span className="text-coral">*</span>
             </label>
             <div className="flex gap-2 flex-wrap">
-              {Object.values(CATEGORIES).map((cat) => (
+              {Object.values(CATEGORIES).map((cat: any) => (
                 <button
                   key={cat.id}
                   onClick={() => {
@@ -620,7 +620,7 @@ export default function NewDocumentPage() {
                 >
                   Nenhum
                 </button>
-                {userVaults.map((vault) => (
+                {userVaults.map((vault: any) => (
                   <button
                     key={vault.id}
                     onClick={() => {
