@@ -3,8 +3,9 @@
 import { usePathname, useRouter } from "next/navigation";
 import { Home, Users, Star, LayoutGrid, Plus } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 
 interface NavItem {
   id: string;
@@ -24,18 +25,37 @@ export function BottomNav() {
   const { trigger } = useHapticFeedback();
   const pathname = usePathname();
   const router = useRouter();
+  const { isEnabled: isBiometricEnabled } = useBiometricPreference();
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
 
+  // ✅ Substitui MutationObserver por verificação periódica e eventos
   useEffect(() => {
     const checkLock = () => {
       setIsBiometricLocked(document.body.classList.contains("biometric-locked"));
     };
+
+    // Verificação inicial
     checkLock();
 
-    const observer = new MutationObserver(() => checkLock());
-    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    // Escuta mudanças na classe do body via MutationObserver (único caso necessário)
+    // Mas em vez de observar o body inteiro, usamos um evento personalizado
+    const handleLockChange = () => {
+      checkLock();
+    };
 
-    return () => observer.disconnect();
+    // Disparado pelo BiometricLock quando o estado muda
+    window.addEventListener('biometric:lockchange', handleLockChange);
+
+    // Também escuta mudanças no DOM (fallback)
+    const observer = new MutationObserver(() => {
+      checkLock();
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      window.removeEventListener('biometric:lockchange', handleLockChange);
+      observer.disconnect();
+    };
   }, []);
 
   const handleNavigate = (path: string) => {
