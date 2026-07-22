@@ -40,7 +40,8 @@ export default function NewMedicamentoPage() {
     setLoading(true);
     try {
       await safeAddMedicamento({
-        document_id: 0,
+        user_id: "", // será preenchido pela função safeAddMedicamento
+        document_id: "", // ← string vazia (UUID será gerado)
         nome: formData.nome,
         dosagem: formData.dosagem,
         medico: formData.medico,
@@ -81,7 +82,7 @@ export default function NewMedicamentoPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
