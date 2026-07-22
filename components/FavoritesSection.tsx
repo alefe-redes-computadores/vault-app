@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 interface FavoritesSectionProps {
   favorites: Document[];
-  onFavoriteToggle: (id: string) => void; // ← string
+  onFavoriteToggle: (id: string) => void;
 }
 
 export function FavoritesSection({ favorites, onFavoriteToggle }: FavoritesSectionProps) {
@@ -20,7 +20,7 @@ export function FavoritesSection({ favorites, onFavoriteToggle }: FavoritesSecti
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Star size={16} className="text-yellow-400 fill-yellow-400" />
+          <Star size={16} className="text-ice fill-ice" />
           <h2 className="font-display text-sm font-medium text-ink-primary">Favoritos</h2>
           <span className="text-xs text-ink-muted">({favorites.length})</span>
         </div>
