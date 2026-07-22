@@ -81,11 +81,9 @@ export default function MaisPage() {
     }
   };
 
-  // ✅ CORRIGIDO: Limpar dados usando transações separadas
   const clearLocalData = async () => {
     setIsLoading(true);
     try {
-      // Limpar cada tabela individualmente
       await db.persons.clear();
       await db.documents.clear();
       await db.medicamentos.clear();
@@ -179,7 +177,7 @@ export default function MaisPage() {
           id: "tema",
           icon: Settings,
           label: "Tema",
-          description: "Claro, Escuro ou Automático",
+          description: "Claro, Escuro ou Automático", // ← 🎉 removido
           component: <ThemeToggle />,
         },
       ],
