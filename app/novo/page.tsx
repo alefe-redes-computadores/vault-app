@@ -68,14 +68,14 @@ const getMaskType = (fieldKey: string, docType: DocumentType): string | null => 
 };
 
 type FormData = {
-  person_id: string; // ← string
+  person_id: string;
   category_id: CategoryId;
   type: DocumentType;
   title: string;
   description: string;
   metadata: Record<string, any>;
   attachments: Attachment[];
-  vault_id?: string; // ← string
+  vault_id?: string;
 };
 
 const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
@@ -123,6 +123,12 @@ export default function NewDocumentPage() {
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
 
+  // ============================================================
+  // ESTADO PARA ARQUIVOS LOCAIS (antes do upload)
+  // ============================================================
+  const [localFiles, setLocalFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+
   const userVaults = useLiveQuery(
     () => db.vaults.where('user_id').equals(user?.id || '').toArray(),
     [user?.id],
@@ -155,45 +161,27 @@ export default function NewDocumentPage() {
     }
   };
 
-  const handleFileUpload = async (file: File) => {
-    if (!user) {
-      trigger("error");
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const folder = formData.category_id;
-      const { url, error } = await uploadFile(user.id, file, folder);
-      if (error) throw error;
-
-      const newAttachment: Attachment = {
-        id: crypto.randomUUID(),
-        url,
-        name: file.name,
-        type: file.type.startsWith("image") ? "image" : "pdf",
-        uploaded_at: new Date().toISOString(),
-      };
-
-      setFormData((prev) => ({
-        ...prev,
-        attachments: [...prev.attachments, newAttachment],
-      }));
-
-      trigger("success");
-    } catch (error) {
-      console.error("Erro no upload:", error);
-      trigger("error");
-    } finally {
-      setUploading(false);
-    }
-  };
-
+  // ============================================================
+  // MANIPULAÇÃO DE ARQUIVOS (apenas armazena localmente)
+  // ============================================================
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       trigger("vibrate");
-      handleFileUpload(file);
+      // Guarda o arquivo localmente
+      setLocalFiles((prev) => [...prev, file]);
+      // Cria um attachment temporário com URL blob
+      const newAttachment: Attachment = {
+        id: crypto.randomUUID(),
+        url: URL.createObjectURL(file),
+        name: file.name,
+        type: file.type.startsWith("image") ? "image" : "pdf",
+        uploaded_at: new Date().toISOString(),
+      };
+      setFormData((prev) => ({
+        ...prev,
+        attachments: [...prev.attachments, newAttachment],
+      }));
     }
     e.target.value = "";
   };
@@ -202,12 +190,36 @@ export default function NewDocumentPage() {
     const file = e.target.files?.[0];
     if (file) {
       trigger("vibrate");
-      handleFileUpload(file);
+      setLocalFiles((prev) => [...prev, file]);
+      const newAttachment: Attachment = {
+        id: crypto.randomUUID(),
+        url: URL.createObjectURL(file),
+        name: "foto_capturada.jpg",
+        type: "image",
+        uploaded_at: new Date().toISOString(),
+      };
+      setFormData((prev) => ({
+        ...prev,
+        attachments: [...prev.attachments, newAttachment],
+      }));
     }
     e.target.value = "";
   };
 
   const removeAttachment = (id: string) => {
+    // Remove o arquivo local correspondente
+    const attachmentToRemove = formData.attachments.find((a) => a.id === id);
+    if (attachmentToRemove && attachmentToRemove.url.startsWith('blob:')) {
+      // Revoga a URL blob para liberar memória
+      URL.revokeObjectURL(attachmentToRemove.url);
+      // Remove o file da lista local
+      const fileIndex = localFiles.findIndex((f) => f.name === attachmentToRemove.name);
+      if (fileIndex !== -1) {
+        const newFiles = [...localFiles];
+        newFiles.splice(fileIndex, 1);
+        setLocalFiles(newFiles);
+      }
+    }
     setFormData((prev) => ({
       ...prev,
       attachments: prev.attachments.filter((a) => a.id !== id),
@@ -236,6 +248,9 @@ export default function NewDocumentPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // ============================================================
+  // SUBMISSÃO: salva documento e depois faz upload
+  // ============================================================
   const handleSubmit = async () => {
     trigger("vibrate");
     
@@ -252,7 +267,10 @@ export default function NewDocumentPage() {
     }
 
     setLoading(true);
+    setUploadProgress(0);
+
     try {
+      // 1. Salvar documento no Dexie com attachments (URLs blob)
       const docData: Omit<Document, "id" | "created_at" | "updated_at" | "synced"> = {
         user_id: user?.id || "",
         person_id: formData.person_id,
@@ -266,11 +284,68 @@ export default function NewDocumentPage() {
         vault_id: formData.vault_id || undefined,
       };
 
-      const id = await addDocument(docData);
+      const docId = await addDocument(docData);
 
+      // 2. Se houver arquivos locais, fazer upload para o Storage
+      if (localFiles.length > 0 && user) {
+        const folder = formData.category_id;
+        const uploadedAttachments: Attachment[] = [];
+
+        for (let i = 0; i < localFiles.length; i++) {
+          const file = localFiles[i];
+          const attachment = formData.attachments[i]; // corresponde ao attachment criado
+
+          if (!attachment) continue;
+
+          // Faz upload
+          const { url, error } = await uploadFile(user.id, file, folder);
+          if (error) {
+            console.error('Erro no upload:', error);
+            // Se falhar, mantém o blob local
+            continue;
+          }
+
+          // Atualiza a URL do attachment
+          const updatedAttachment: Attachment = {
+            ...attachment,
+            url: url, // substitui blob: por URL remota
+          };
+          uploadedAttachments.push(updatedAttachment);
+
+          // Atualiza progresso
+          setUploadProgress(Math.round(((i + 1) / localFiles.length) * 100));
+        }
+
+        // 3. Atualizar o documento com as novas URLs
+        if (uploadedAttachments.length > 0) {
+          // Mescla os attachments atualizados com os que não foram alterados
+          const finalAttachments = formData.attachments.map((att) => {
+            const updated = uploadedAttachments.find((u) => u.id === att.id);
+            return updated || att;
+          });
+
+          await db.documents.update(docId, {
+            attachments: finalAttachments,
+            updated_at: new Date().toISOString(),
+            synced: false,
+          });
+
+          // Revoga as URLs blob antigas
+          formData.attachments.forEach((att) => {
+            if (att.url.startsWith('blob:')) {
+              URL.revokeObjectURL(att.url);
+            }
+          });
+
+          // Limpa os arquivos locais
+          setLocalFiles([]);
+        }
+      }
+
+      // 4. Notificações
       if (formData.metadata?.expiry_date) {
         await scheduleDocumentExpiryNotification(
-          id,
+          docId,
           formData.title,
           formData.metadata.expiry_date,
           CATEGORIES[formData.category_id].name,
@@ -285,6 +360,7 @@ export default function NewDocumentPage() {
       trigger("error");
     } finally {
       setLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -671,13 +747,9 @@ export default function NewDocumentPage() {
                   trigger("vibrate");
                   fileInputRef.current?.click();
                 }}
-                disabled={uploading}
+                disabled={uploading || loading}
               >
-                {uploading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Upload size={16} />
-                )}
+                <Upload size={16} />
                 Upload
               </Button>
               <Button
@@ -687,13 +759,9 @@ export default function NewDocumentPage() {
                   trigger("vibrate");
                   cameraInputRef.current?.click();
                 }}
-                disabled={uploading}
+                disabled={uploading || loading}
               >
-                {uploading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Camera size={16} />
-                )}
+                <Camera size={16} />
                 Câmera
               </Button>
             </div>
@@ -708,13 +776,20 @@ export default function NewDocumentPage() {
                     <span className="text-sm text-ink-muted truncate flex-1">{att.name}</span>
                     <button
                       onClick={() => removeAttachment(att.id)}
-                      className="p-1 rounded-full hover:bg-surface-border transition-colors"
+                      className="p-1 rounded-full hover:bg-surface-border/50 transition-colors"
+                      disabled={loading}
                     >
                       <X size={14} className="text-ink-muted" />
                     </button>
                   </div>
                 ))}
               </div>
+            )}
+            {localFiles.length > 0 && (
+              <p className="text-xs text-ink-muted">
+                {localFiles.length} arquivo{localFiles.length > 1 ? 's' : ''} pronto{localFiles.length > 1 ? 's' : ''} para upload
+                {uploadProgress > 0 && ` (${uploadProgress}%)`}
+              </p>
             )}
           </motion.div>
 
@@ -734,7 +809,7 @@ export default function NewDocumentPage() {
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Salvando...
+                  {uploadProgress > 0 ? `Enviando anexos ${uploadProgress}%` : 'Salvando...'}
                 </>
               ) : (
                 <>
