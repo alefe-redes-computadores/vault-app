@@ -254,7 +254,8 @@ export default function MaisPage() {
                   <img
                     src={avatarUrl}
                     alt={displayName}
-                    className="w-20 h-20 rounded-full border-2 border-ice/20"
+                    loading="lazy"
+                    className="w-20 h-20 rounded-full border-2 border-ice/20 object-cover"
                   />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-3xl">
