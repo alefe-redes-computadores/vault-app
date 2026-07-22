@@ -73,15 +73,12 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
   const handleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
     trigger("vibrate");
-    
     setIsFavoriteAnimating(true);
     setTimeout(() => setIsFavoriteAnimating(false), 500);
-    
     showToast(
       document.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
       "info"
     );
-    
     onFavoriteToggle?.(document.id!);
   };
 
@@ -104,14 +101,12 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
   );
   const syncLabel = document.synced ? "Sincronizado" : "Pendente de sincronização";
 
-  // ✅ TOGGLE PARA TOOLTIP (tap-to-show)
   const handleSyncIconClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowSyncTooltip((prev) => !prev);
     trigger("vibrate");
   };
 
-  // Fecha o tooltip após 3 segundos
   const handleSyncIconMouseLeave = () => {
     setTimeout(() => setShowSyncTooltip(false), 3000);
   };
@@ -205,9 +200,9 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
         </div>
       </div>
 
-      {/* Badge de anexo */}
+      {/* Badge de anexo movido para canto inferior esquerdo */}
       {hasAttachments && (
-        <div className="absolute bottom-3 right-3">
+        <div className="absolute bottom-3 left-3">
           {hasImageAttachment ? (
             <ImageIcon size={14} className="text-ink-muted/50" />
           ) : (
@@ -216,7 +211,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
         </div>
       )}
 
-      {/* ✅ TOOLTIP DE SYNC — tap-to-show */}
+      {/* TOOLTIP DE SYNC */}
       <div className="absolute top-3 right-12">
         <button
           onClick={handleSyncIconClick}
