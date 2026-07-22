@@ -168,6 +168,12 @@ export default function DocumentDetailPage() {
 
   const updateAttachmentName = useCallback((newName: string) => {
     if (!selectedAttachment || !doc) return;
+    // Atualiza o attachment no documento local
+    const updatedAttachments = doc.attachments.map((att) =>
+      att.id === selectedAttachment.id ? { ...att, name: newName } : att
+    );
+    // Salva no banco
+    // TODO: adicionar função de atualização de attachment
     setSelectedAttachment({ ...selectedAttachment, name: newName });
     setIsRenaming(false);
     trigger("success");
@@ -396,7 +402,7 @@ export default function DocumentDetailPage() {
           </motion.div>
         </section>
 
-        {/* MODAL DE ANEXO */}
+        {/* MODAL DE ANEXO - CORRIGIDO */}
         {isModalOpen && selectedAttachment && (
           <div
             className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
@@ -425,6 +431,14 @@ export default function DocumentDetailPage() {
                       }
                       className="flex-1 bg-transparent text-ink-primary font-medium focus:outline-none border-b border-ice/30 focus:border-ice transition-colors"
                       autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          updateAttachmentName(selectedAttachment.name);
+                        }
+                        if (e.key === 'Escape') {
+                          setIsRenaming(false);
+                        }
+                      }}
                     />
                   ) : (
                     <p className="text-ink-primary font-medium truncate">{selectedAttachment.name}</p>
@@ -435,9 +449,16 @@ export default function DocumentDetailPage() {
                         updateAttachmentName(selectedAttachment.name);
                       } else {
                         setIsRenaming(true);
+                        setTimeout(() => {
+                          const input = document.querySelector(
+                            'input[type="text"]'
+                          ) as HTMLInputElement;
+                          if (input) input.focus();
+                        }, 100);
                       }
                     }}
                     className="p-1.5 rounded-full hover:bg-surface-border transition-colors flex-shrink-0"
+                    title={isRenaming ? "Salvar nome" : "Renomear"}
                   >
                     <Pencil size={16} className="text-ink-muted" />
                   </button>
@@ -469,7 +490,7 @@ export default function DocumentDetailPage() {
                 </div>
               </div>
 
-              {/* Visualização */}
+              {/* Visualização - CORRIGIDO para PDFs */}
               <div className="flex items-center justify-center min-h-[300px] bg-surface rounded-xl border border-surface-border/50 p-4 overflow-auto">
                 {selectedAttachment.type.startsWith("image/") ? (
                   <img
@@ -479,6 +500,35 @@ export default function DocumentDetailPage() {
                     style={{ transform: `scale(${zoomLevel})` }}
                     loading="lazy"
                   />
+                ) : selectedAttachment.type === "pdf" ? (
+                  <div className="flex flex-col items-center gap-4 text-ink-muted w-full">
+                    <FileText size={64} className="text-ice/30" />
+                    <p className="text-sm text-ink-primary">📄 {selectedAttachment.name}</p>
+                    <div className="flex gap-4 text-xs text-ink-muted/60">
+                      <span>Clique em "Baixar" para visualizar</span>
+                      <span>•</span>
+                      <span>PDF</span>
+                    </div>
+                    {selectedAttachment.url && (
+                      <object
+                        data={selectedAttachment.url}
+                        type="application/pdf"
+                        className="w-full h-[500px] rounded-lg border border-surface-border/30"
+                        style={{ minHeight: '300px' }}
+                      >
+                        <p className="text-center text-ink-muted p-4">
+                          Seu navegador não suporta visualização de PDF.
+                          <br />
+                          <button
+                            onClick={() => downloadAttachment(selectedAttachment)}
+                            className="text-ice hover:text-ice/80 transition-colors mt-2"
+                          >
+                            Baixar para visualizar
+                          </button>
+                        </p>
+                      </object>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center gap-4 text-ink-muted">
                     <FileIcon size={64} />
