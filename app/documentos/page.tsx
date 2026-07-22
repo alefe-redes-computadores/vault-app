@@ -45,9 +45,9 @@ export default function DocumentsPage() {
   const { favorite } = useSafeDb();
   const persons = usePersons();
 
-  const cardRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+  const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({}); // ← string
 
-  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>( // ← string
     persons[0]?.id || null
   );
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,7 +106,7 @@ export default function DocumentsPage() {
     return result;
   }, [documents, debouncedSearch, selectedCategory, selectedType, dateFilter]);
 
-  const handleFavoriteToggle = useCallback(async (id: number) => {
+  const handleFavoriteToggle = useCallback(async (id: string) => { // ← string
     await favorite(id);
     trigger("vibrate");
   }, [favorite, trigger]);
