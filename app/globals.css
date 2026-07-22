@@ -26,7 +26,7 @@ html.dark {
   --text-ink-primary: 232 235 239;  /* #E8EBEF */
   --text-ink-muted: 124 133 146;    /* #7C8592 */
   --text-ink-faint: 74 81 92;       /* #4A515C */
-  --shadow-vault: 0 8px 32px -8px rgba(0,0,0,0.5);
+  --shadow-vault: 0 8px 32px -8px rgba(0,0,0,0.3); /* ← opacidade reduzida */
   color-scheme: dark;
 }
 
@@ -39,16 +39,12 @@ html.light {
   --text-ink-primary: 15 23 42;     /* #0F172A */
   --text-ink-muted: 71 85 105;      /* #475569 */
   --text-ink-faint: 148 163 184;    /* #94A3B8 */
-  --shadow-vault: 0 8px 32px -8px rgba(0,0,0,0.08);
+  --shadow-vault: 0 8px 32px -8px rgba(0,0,0,0.06); /* ← opacidade reduzida */
   color-scheme: light;
 }
 
 /* ============================================================
    ELEMENTOS BASE
-   As classes bg-void, bg-surface, text-ink-primary etc. NÃO
-   precisam mais ser declaradas manualmente aqui — o Tailwind
-   já gera todas elas (e as variantes com opacidade, tipo
-   bg-surface/80) a partir do tailwind.config.ts.
    ============================================================ */
 html,
 body {
