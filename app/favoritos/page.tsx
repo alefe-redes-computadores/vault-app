@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Star, User, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
+import { usePaginatedFavorites } from "@/hooks/usePaginatedFavorites";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -34,20 +34,17 @@ export default function FavoritesPage() {
     return () => clearTimeout(timer);
   }, [persons]);
 
+  // ✅ CORRIGIDO: usa usePaginatedFavorites
   const {
-    documents: paginatedFavorites,
+    favorites,
     totalCount,
     hasMore,
     isLoadingMore,
     loadMore,
-  } = usePaginatedDocuments({
+  } = usePaginatedFavorites({
     personId: selectedPersonId || undefined,
     categoryId: selectedCategory || undefined,
   });
-
-  const favorites = useMemo(() => {
-    return paginatedFavorites.filter((doc: any) => doc.is_favorite === true);
-  }, [paginatedFavorites]);
 
   const handleFavoriteToggle = useCallback(async (id: string) => {
     await favorite(id);
