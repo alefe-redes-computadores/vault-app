@@ -4,12 +4,13 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Filter, X, Calendar, FileText, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useDocuments } from "@/hooks/useDocuments";
+import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { DocumentCard } from "@/components/DocumentCard";
 import { PersonCard } from "@/components/PersonCard";
+import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
 import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { PageTransition } from "@/components/PageTransition";
@@ -17,7 +18,6 @@ import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
 
-// ✅ DEBOUNCE
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
@@ -45,9 +45,9 @@ export default function DocumentsPage() {
   const { favorite } = useSafeDb();
   const persons = usePersons();
 
-  const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({}); // ← string
+  const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>( // ← string
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(
     persons[0]?.id || null
   );
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,27 +64,31 @@ export default function DocumentsPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const documents = useDocuments(selectedPersonId || undefined);
+  // ============================================================
+  // PAGINAÇÃO
+  // ============================================================
+  const {
+    documents: paginatedDocs,
+    totalCount,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+  } = usePaginatedDocuments({
+    personId: selectedPersonId || undefined,
+    categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
+    searchQuery: debouncedSearch,
+  });
 
+  // Filtrar por tipo e data (feito em memória após a paginação)
   const filteredDocs = useMemo(() => {
-    let result = documents;
+    let result = paginatedDocs;
 
-    if (debouncedSearch.trim()) {
-      const query = debouncedSearch.toLowerCase();
-      result = result.filter((doc: any) =>
-        doc.title.toLowerCase().includes(query) ||
-        doc.description?.toLowerCase().includes(query)
-      );
-    }
-
-    if (selectedCategory !== "all") {
-      result = result.filter((doc: any) => doc.category_id === selectedCategory);
-    }
-
+    // Filtrar por tipo
     if (selectedType !== "all") {
       result = result.filter((doc: any) => doc.type === selectedType);
     }
 
+    // Filtrar por data
     if (dateFilter === "expiring") {
       const now = new Date();
       const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -104,9 +108,9 @@ export default function DocumentsPage() {
     }
 
     return result;
-  }, [documents, debouncedSearch, selectedCategory, selectedType, dateFilter]);
+  }, [paginatedDocs, selectedType, dateFilter]);
 
-  const handleFavoriteToggle = useCallback(async (id: string) => { // ← string
+  const handleFavoriteToggle = useCallback(async (id: string) => {
     await favorite(id);
     trigger("vibrate");
   }, [favorite, trigger]);
@@ -142,7 +146,7 @@ export default function DocumentsPage() {
                 Documentos
               </h1>
               <p className="text-sm text-ink-muted">
-                {filteredDocs.length} documento{filteredDocs.length !== 1 ? "s" : ""}
+                {totalCount} documento{totalCount !== 1 ? "s" : ""}
                 {hasActiveFilters && " filtrados"}
               </p>
             </div>
@@ -338,7 +342,7 @@ export default function DocumentsPage() {
           </AnimatePresence>
         </header>
 
-        {/* Lista */}
+        {/* Lista com InfiniteScrollTrigger */}
         <section className="px-5 pt-5 space-y-3">
           {filteredDocs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -359,24 +363,31 @@ export default function DocumentsPage() {
               )}
             </div>
           ) : (
-            filteredDocs.map((doc: any, index: number) => (
-              <motion.div
-                key={doc.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: index * 0.03 }}
-                ref={(el) => { cardRefs.current[doc.id!] = el; }}
-              >
-                <DocumentCard
-                  document={doc}
-                  onFavoriteToggle={handleFavoriteToggle}
-                />
-              </motion.div>
-            ))
+            <InfiniteScrollTrigger
+              onLoadMore={loadMore}
+              hasMore={hasMore}
+              isLoading={isLoadingMore}
+            >
+              <div className="space-y-3">
+                {filteredDocs.map((doc: any, index: number) => (
+                  <motion.div
+                    key={doc.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: Math.min(index * 0.03, 0.5) }}
+                    ref={(el) => { cardRefs.current[doc.id!] = el; }}
+                  >
+                    <DocumentCard
+                      document={doc}
+                      onFavoriteToggle={handleFavoriteToggle}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </InfiniteScrollTrigger>
           )}
         </section>
 
-        {/* ScrollToTop */}
         <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
