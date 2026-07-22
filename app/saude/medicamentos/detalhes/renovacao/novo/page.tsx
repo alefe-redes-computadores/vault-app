@@ -17,7 +17,7 @@ export default function NewRenovacaoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const medicamentoId = Number(searchParams.get("medicamento_id"));
+  const medicamentoId = searchParams.get("medicamento_id") || ""; // ← string
   const { user } = useAuth();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +100,7 @@ export default function NewRenovacaoPage() {
           onChange={handleFileSelect}
         />
 
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -148,7 +148,6 @@ export default function NewRenovacaoPage() {
             />
           </motion.div>
 
-          {/* Upload de anexo */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -167,7 +166,7 @@ export default function NewRenovacaoPage() {
                 </div>
                 <button
                   onClick={removeAttachment}
-                  className="p-1 rounded-full hover:bg-surface-border transition-colors"
+                  className="p-1 rounded-full hover:bg-surface-border/50 transition-colors"
                   disabled={uploading}
                 >
                   <X size={16} className="text-ink-muted hover:text-coral transition-colors" />
