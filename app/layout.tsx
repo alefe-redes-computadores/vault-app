@@ -67,7 +67,7 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#0A0C0F" />
         <meta name="msapplication-TileImage" content="/icon-144x144.png" />
       </head>
-      <body className="font-body antialiased bg-void min-h-screen transition-colors duration-300">
+      <body className="font-body antialiased bg-void min-h-screen transition-colors duration-300 pb-safe">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
