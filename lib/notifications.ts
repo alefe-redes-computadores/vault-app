@@ -1,5 +1,4 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { Platform } from '@capacitor/core';
 
 // ============================================================
 // NOTIFICAÇÕES DE VENCIMENTO DE DOCUMENTOS
@@ -14,13 +13,14 @@ import { Platform } from '@capacitor/core';
  * @param daysBefore - Dias de antecedência para notificar (padrão: 30)
  */
 export async function scheduleDocumentExpiryNotification(
-  documentId: string, // ← agora é string
+  documentId: string,
   title: string,
   expiryDate: string,
   categoryName: string,
   daysBefore: number = 30
 ): Promise<void> {
-  if (Platform.is('web')) {
+  // Verifica se está no ambiente web (não suporta notificações locais)
+  if (typeof window !== 'undefined' && !('cordova' in window)) {
     console.log('📱 Notificação programada para:', title);
     return;
   }
@@ -34,7 +34,7 @@ export async function scheduleDocumentExpiryNotification(
       await LocalNotifications.schedule({
         notifications: [
           {
-            id: parseInt(documentId.slice(0, 8), 16) || Date.now(), // Converte UUID para número
+            id: Math.floor(Math.random() * 1000000), // Usa ID aleatório
             title: '📄 Documento vencendo em breve',
             body: `${title} (${categoryName}) vence em ${expiryDate}`,
             schedule: {
@@ -43,7 +43,7 @@ export async function scheduleDocumentExpiryNotification(
             sound: 'default',
             extra: {
               type: 'document_expiry',
-              docId: documentId, // ← agora é string
+              docId: documentId,
             },
           },
         ],
@@ -68,13 +68,13 @@ export async function scheduleDocumentExpiryNotification(
  * @param daysBefore - Dias de antecedência (padrão: 7)
  */
 export async function scheduleMedicationRenewalNotification(
-  medicamentoId: string, // ← agora é string
+  medicamentoId: string,
   nome: string,
   dataRenovacao: string,
   medico: string,
   daysBefore: number = 7
 ): Promise<void> {
-  if (Platform.is('web')) {
+  if (typeof window !== 'undefined' && !('cordova' in window)) {
     console.log('📱 Notificação de renovação programada para:', nome);
     return;
   }
@@ -88,7 +88,7 @@ export async function scheduleMedicationRenewalNotification(
       await LocalNotifications.schedule({
         notifications: [
           {
-            id: parseInt(medicamentoId.slice(0, 8), 16) || Date.now(),
+            id: Math.floor(Math.random() * 1000000),
             title: '💊 Medicamento precisa ser renovado',
             body: `${nome} - Dr(a). ${medico}`,
             schedule: {
@@ -97,7 +97,7 @@ export async function scheduleMedicationRenewalNotification(
             sound: 'default',
             extra: {
               type: 'medication_renewal',
-              medicamentoId: medicamentoId, // ← agora é string
+              medicamentoId: medicamentoId,
             },
           },
         ],
@@ -118,7 +118,7 @@ export async function scheduleMedicationRenewalNotification(
  * @param notificationId - ID da notificação
  */
 export async function cancelNotification(notificationId: number): Promise<void> {
-  if (Platform.is('web')) return;
+  if (typeof window !== 'undefined' && !('cordova' in window)) return;
   try {
     await LocalNotifications.cancel({ notifications: [{ id: notificationId }] });
   } catch (error) {
@@ -130,7 +130,7 @@ export async function cancelNotification(notificationId: number): Promise<void> 
  * Remove todas as notificações locais
  */
 export async function cancelAllNotifications(): Promise<void> {
-  if (Platform.is('web')) return;
+  if (typeof window !== 'undefined' && !('cordova' in window)) return;
   try {
     await LocalNotifications.cancelAll();
   } catch (error) {
