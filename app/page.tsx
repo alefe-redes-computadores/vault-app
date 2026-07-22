@@ -6,7 +6,8 @@ import { Search, Plus, User, ChevronDown, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
-import { useDocuments, useFavorites } from "@/hooks/useDocuments";
+import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
+import { useFavorites } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { CATEGORIES, type CategoryId, type Document } from "@/lib/types";
@@ -38,7 +39,7 @@ export default function HomePage() {
   const { showToast } = useToast();
 
   const persons = usePersons();
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null); // ← string
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
@@ -53,11 +54,9 @@ export default function HomePage() {
       
       if (!hasSeenWelcome) {
         const name = user.user_metadata?.full_name || user.email?.split('@')[0] || "Usuário";
-        
         setTimeout(() => {
           showToast(`👋 Bem-vindo de volta, ${name}!`, "info", 4000);
         }, 500);
-        
         sessionStorage.setItem('vault_welcome_shown', 'true');
         setWelcomeShown(true);
       } else {
@@ -68,29 +67,29 @@ export default function HomePage() {
 
   useEffect(() => {
     if (persons.length > 0 && selectedPersonId === null) {
-      setSelectedPersonId(persons[0].id!); // ← agora é string
+      setSelectedPersonId(persons[0].id!);
     }
     const timer = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(timer);
   }, [persons, selectedPersonId]);
 
-  const allDocs = useDocuments(selectedPersonId || undefined) || [];
-  const favorites = useFavorites(selectedPersonId || undefined) || [];
+  // ============================================================
+  // PAGINAÇÃO - documentos por categoria
+  // ============================================================
+  const { documents: allDocs } = usePaginatedDocuments({
+    personId: selectedPersonId || undefined,
+    searchQuery: debouncedSearch,
+    initialPage: 1,
+  });
 
-  const filteredDocs = useMemo(() => {
-    if (!debouncedSearch.trim()) return allDocs;
-    const query = debouncedSearch.toLowerCase();
-    return allDocs.filter(
-      (doc: any) =>
-        doc.title.toLowerCase().includes(query) ||
-        doc.description?.toLowerCase().includes(query)
-    );
-  }, [allDocs, debouncedSearch]);
+  // Favoritos (ainda usa o hook antigo, mas podemos paginar depois)
+  const favorites = useFavorites(selectedPersonId || undefined) || [];
 
   const handleFavoriteToggle = useCallback(async (id: string) => {
     await favorite(id);
   }, [favorite]);
 
+  // Agrupar por categoria
   const docsByCategory = useMemo(() => {
     return allDocs.reduce<Record<CategoryId, Document[]>>(
       (acc: Record<CategoryId, Document[]>, doc: any) => {
@@ -306,10 +305,10 @@ export default function HomePage() {
               autoFocus
             />
             <div className="text-sm text-ink-muted">
-              {filteredDocs.length} resultado{filteredDocs.length !== 1 ? "s" : ""}
+              {allDocs.length} resultado{allDocs.length !== 1 ? "s" : ""}
             </div>
             <div className="max-h-80 overflow-y-auto space-y-2">
-              {filteredDocs.map((doc: any) => (
+              {allDocs.map((doc: any) => (
                 <button
                   key={doc.id}
                   onClick={() => {
@@ -329,7 +328,6 @@ export default function HomePage() {
           </div>
         </BottomSheet>
 
-        {/* BottomSheet - Selecionar pessoa (TODAS) */}
         <BottomSheet
           isOpen={isPersonModalOpen}
           onClose={() => setIsPersonModalOpen(false)}
