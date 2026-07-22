@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Document } from "@/lib/types";
 import { DocumentCard } from "./DocumentCard";
 import { ChevronRight, Star } from "lucide-react";
@@ -10,7 +11,7 @@ interface FavoritesSectionProps {
   onFavoriteToggle: (id: string) => void;
 }
 
-export function FavoritesSection({ favorites, onFavoriteToggle }: FavoritesSectionProps) {
+function FavoritesSectionComponent({ favorites, onFavoriteToggle }: FavoritesSectionProps) {
   const router = useRouter();
   const preview = favorites.slice(0, 3);
 
@@ -35,7 +36,6 @@ export function FavoritesSection({ favorites, onFavoriteToggle }: FavoritesSecti
         )}
       </div>
 
-      {/* space-y-2 → space-y-3 */}
       <div className="space-y-3">
         {preview.map((doc) => (
           <DocumentCard
@@ -49,3 +49,5 @@ export function FavoritesSection({ favorites, onFavoriteToggle }: FavoritesSecti
     </div>
   );
 }
+
+export const FavoritesSection = memo(FavoritesSectionComponent);
