@@ -9,7 +9,7 @@ interface CategorySectionProps {
   documents: Document[];
   total: number;
   hasMore: boolean;
-  onFavoriteToggle: (id: string) => void; // ← string
+  onFavoriteToggle: (id: string) => void;
   onSeeAll: () => void;
 }
 
@@ -51,7 +51,8 @@ export function CategorySection({
         )}
       </div>
 
-      <div className="space-y-2">
+      {/* space-y-2 → space-y-3 */}
+      <div className="space-y-3">
         {documents.map((doc) => (
           <DocumentCard
             key={doc.id}
