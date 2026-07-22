@@ -54,10 +54,8 @@ const formatDate = (date?: string): string => {
 };
 
 const getFileIcon = (type: string) => {
-  if (type.startsWith("image/")) return ImageIcon;
-  if (type === "application/pdf") return FileText;
-  if (type.includes("word") || type.includes("document")) return FileText;
-  if (type.includes("sheet") || type.includes("excel")) return FileText;
+  if (type === 'image') return ImageIcon;
+  if (type === 'pdf') return FileText;
   return File;
 };
 
@@ -76,6 +74,7 @@ export default function DocumentDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -138,6 +137,7 @@ export default function DocumentDetailPage() {
     setSelectedAttachment(attachment);
     setIsRenaming(false);
     setZoomLevel(1);
+    setImageError(false);
     setIsModalOpen(true);
     trigger("vibrate");
   }, [trigger]);
@@ -168,12 +168,9 @@ export default function DocumentDetailPage() {
 
   const updateAttachmentName = useCallback((newName: string) => {
     if (!selectedAttachment || !doc) return;
-    // Atualiza o attachment no documento local
     const updatedAttachments = doc.attachments.map((att) =>
       att.id === selectedAttachment.id ? { ...att, name: newName } : att
     );
-    // Salva no banco
-    // TODO: adicionar função de atualização de attachment
     setSelectedAttachment({ ...selectedAttachment, name: newName });
     setIsRenaming(false);
     trigger("success");
@@ -379,7 +376,7 @@ export default function DocumentDetailPage() {
               className="flex items-center justify-center gap-2"
               onClick={() => {
                 trigger("vibrate");
-                router.push(`/detalhes/editar?id=${doc.id}`);
+                router.push(`/editar?id=${doc.id}`);
               }}
             >
               <Edit size={16} />
@@ -464,7 +461,7 @@ export default function DocumentDetailPage() {
                   </button>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {selectedAttachment.type.startsWith("image/") && (
+                  {selectedAttachment.type === 'image' && (
                     <>
                       <button
                         onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.25))}
@@ -490,17 +487,31 @@ export default function DocumentDetailPage() {
                 </div>
               </div>
 
-              {/* Visualização - CORRIGIDO para PDFs */}
+              {/* VISUALIZAÇÃO - CORRIGIDO */}
               <div className="flex items-center justify-center min-h-[300px] bg-surface rounded-xl border border-surface-border/50 p-4 overflow-auto">
-                {selectedAttachment.type.startsWith("image/") ? (
-                  <img
-                    src={selectedAttachment.url}
-                    alt={selectedAttachment.name}
-                    className="max-h-[70vh] max-w-full object-contain transition-transform duration-200 rounded-lg"
-                    style={{ transform: `scale(${zoomLevel})` }}
-                    loading="lazy"
-                  />
-                ) : selectedAttachment.type === "pdf" ? (
+                {selectedAttachment.type === 'image' ? (
+                  !imageError ? (
+                    <img
+                      src={selectedAttachment.url}
+                      alt={selectedAttachment.name}
+                      className="max-h-[70vh] max-w-full object-contain transition-transform duration-200 rounded-lg"
+                      style={{ transform: `scale(${zoomLevel})` }}
+                      loading="lazy"
+                      onError={() => setImageError(true)}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-4 text-ink-muted">
+                      <ImageIcon size={64} className="text-ink-muted/30" />
+                      <p className="text-sm text-ink-primary">Imagem não disponível</p>
+                      <button
+                        onClick={() => downloadAttachment(selectedAttachment)}
+                        className="text-ice hover:text-ice/80 transition-colors text-sm"
+                      >
+                        Baixar imagem
+                      </button>
+                    </div>
+                  )
+                ) : selectedAttachment.type === 'pdf' ? (
                   <div className="flex flex-col items-center gap-4 text-ink-muted w-full">
                     <FileText size={64} className="text-ice/30" />
                     <p className="text-sm text-ink-primary">📄 {selectedAttachment.name}</p>
@@ -509,31 +520,24 @@ export default function DocumentDetailPage() {
                       <span>•</span>
                       <span>PDF</span>
                     </div>
-                    {selectedAttachment.url && (
-                      <object
-                        data={selectedAttachment.url}
-                        type="application/pdf"
-                        className="w-full h-[500px] rounded-lg border border-surface-border/30"
-                        style={{ minHeight: '300px' }}
-                      >
-                        <p className="text-center text-ink-muted p-4">
-                          Seu navegador não suporta visualização de PDF.
-                          <br />
-                          <button
-                            onClick={() => downloadAttachment(selectedAttachment)}
-                            className="text-ice hover:text-ice/80 transition-colors mt-2"
-                          >
-                            Baixar para visualizar
-                          </button>
-                        </p>
-                      </object>
-                    )}
+                    <button
+                      onClick={() => downloadAttachment(selectedAttachment)}
+                      className="text-ice hover:text-ice/80 transition-colors text-sm"
+                    >
+                      Baixar PDF
+                    </button>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-4 text-ink-muted">
-                    <FileIcon size={64} />
-                    <p className="text-sm">Pré-visualização não disponível</p>
-                    <p className="text-xs text-ink-muted/60">Clique em "Baixar" para visualizar</p>
+                    <FileIcon size={64} className="text-ink-muted/30" />
+                    <p className="text-sm text-ink-primary">{selectedAttachment.name}</p>
+                    <p className="text-xs text-ink-muted/60">Pré-visualização não disponível</p>
+                    <button
+                      onClick={() => downloadAttachment(selectedAttachment)}
+                      className="text-ice hover:text-ice/80 transition-colors text-sm"
+                    >
+                      Baixar arquivo
+                    </button>
                   </div>
                 )}
               </div>
