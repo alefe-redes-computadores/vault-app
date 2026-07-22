@@ -136,8 +136,8 @@ export default function FavoritesPage() {
           </div>
         </header>
 
-        {/* CONTEÚDO com InfiniteScrollTrigger */}
-        <section className="px-5 pt-5 space-y-3">
+        {/* CONTEÚDO com InfiniteScrollTrigger - space-y-3 → space-y-4 */}
+        <section className="px-5 pt-5 space-y-4">
           <AnimatePresence mode="wait">
             {!hasFavorites ? (
               <motion.div
@@ -181,7 +181,7 @@ export default function FavoritesPage() {
                   hasMore={hasMore}
                   isLoading={isLoadingMore}
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {favorites.map((doc: any, index: number) => (
                       <motion.div
                         key={doc.id}
