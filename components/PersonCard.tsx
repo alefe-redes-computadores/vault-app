@@ -54,7 +54,8 @@ export function PersonCard({
             <img
               src={person.avatar_url}
               alt={person.name}
-              className="w-6 h-6 rounded-full"
+              loading="lazy"
+              className="w-6 h-6 rounded-full object-cover"
             />
           ) : (
             <User size={14} />
