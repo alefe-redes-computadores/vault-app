@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useAuth } from "./useAuth";
@@ -21,33 +21,33 @@ export function usePaginatedFavorites({
 }: UsePaginatedFavoritesOptions = {}) {
   const { user } = useAuth();
   const [page, setPage] = useState(initialPage);
-  const [allLoaded, setAllLoaded] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Busca total de favoritos com os filtros
+  // Total de favoritos que batem com os filtros (sem paginar)
   const totalCount = useLiveQuery(
     async () => {
       if (!user) return 0;
-      
+
       let query = db.documents
         .where('user_id')
         .equals(user.id)
         .and((doc: Document) => doc.is_favorite === true);
-      
+
       if (personId) {
         query = query.and((doc: Document) => doc.person_id === personId);
       }
       if (categoryId) {
         query = query.and((doc: Document) => doc.category_id === categoryId);
       }
-      
+
       return query.count();
     },
     [user?.id, personId, categoryId],
     0
   );
 
-  // Busca apenas os favoritos da página atual
+  // Favoritos da página atual (sem efeito colateral aqui dentro —
+  // apenas busca e retorna, sem setState)
   const favorites = useLiveQuery(
     async () => {
       if (!user) return [];
@@ -56,61 +56,59 @@ export function usePaginatedFavorites({
         .where('user_id')
         .equals(user.id)
         .and((doc: Document) => doc.is_favorite === true);
-      
+
       if (personId) {
         query = query.and((doc: Document) => doc.person_id === personId);
       }
       if (categoryId) {
         query = query.and((doc: Document) => doc.category_id === categoryId);
       }
-      
-      let docs = await query.toArray();
-      
-      // Ordenar por data de criação (mais recentes primeiro)
+
+      const docs = await query.toArray();
+
       docs.sort((a: Document, b: Document) => {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
-      
-      // Paginar
-      const start = 0;
-      const end = page * PAGE_SIZE;
-      const paginated = docs.slice(start, end);
-      
-      // Verificar se carregou todos
-      if (paginated.length >= docs.length) {
-        setAllLoaded(true);
-      } else {
-        setAllLoaded(false);
-      }
-      
-      return paginated;
+
+      return docs.slice(0, page * PAGE_SIZE);
     },
     [user?.id, personId, categoryId, page],
     []
   );
 
+  // allLoaded/hasMore são valores DERIVADOS — calculados no render,
+  // nunca defasados em relação ao que está na tela.
+  const loadedCount = favorites?.length || 0;
+  const total = totalCount || 0;
+  const allLoaded = total > 0 && loadedCount >= total;
+  const hasMore = !allLoaded;
+
   const loadMore = useCallback(() => {
-    if (!allLoaded && !isLoadingMore) {
-      setIsLoadingMore(true);
-      setPage(prev => prev + 1);
-      setTimeout(() => setIsLoadingMore(false), 100);
-    }
+    if (allLoaded || isLoadingMore) return;
+    setIsLoadingMore(true);
+    setPage((prev) => prev + 1);
   }, [allLoaded, isLoadingMore]);
+
+  // Libera o "carregando" assim que a página de fato aumentou de tamanho
+  // (em vez de um setTimeout arbitrário desligado do carregamento real)
+  useEffect(() => {
+    if (isLoadingMore) {
+      setIsLoadingMore(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [favorites]);
 
   const reset = useCallback(() => {
     setPage(1);
-    setAllLoaded(false);
   }, []);
 
   useEffect(() => {
     reset();
   }, [personId, categoryId, reset]);
 
-  const hasMore = !allLoaded && (favorites?.length || 0) < (totalCount || 0);
-
   return {
     favorites: favorites || [],
-    totalCount: totalCount || 0,
+    totalCount: total,
     page,
     hasMore,
     isLoadingMore,
