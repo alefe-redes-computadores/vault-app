@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, CheckCircle, AlertCircle, Loader2, Clock } from "lucide-react";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
-import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
@@ -18,7 +17,6 @@ interface SyncStatusProps {
 export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProps) {
   const { trigger } = useHapticFeedback();
   const { processQueue, isProcessing, isOnline } = useSyncQueue();
-  const { refresh, isSyncing } = useAuth();
   const { showToast } = useToast();
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "success" | "error">("idle");
   const [pendingCount, setPendingCount] = useState(0);
@@ -39,8 +37,8 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
 
   // Monitora se está sincronizando em background
   useEffect(() => {
-    setIsBackgroundSyncing(isProcessing || isSyncing);
-  }, [isProcessing, isSyncing]);
+    setIsBackgroundSyncing(isProcessing);
+  }, [isProcessing]);
 
   // Atualiza o tempo de última sincronização
   const updateLastSyncTime = () => {
@@ -64,7 +62,7 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
     return () => clearInterval(interval);
   }, []);
 
-  const isSyncingAll = isProcessing || isSyncing;
+  const isSyncingAll = isProcessing;
 
   const handleSync = async () => {
     if (!isOnline) {
@@ -83,7 +81,6 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
 
     try {
       await processQueue();
-      await refresh();
       
       setSyncStatus("success");
       const pending = await db.syncQueue.count();
