@@ -1,6 +1,42 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 
 // ============================================================
+// PERMISSÕES
+// ============================================================
+
+/**
+ * Verifica se as permissões de notificação estão concedidas
+ */
+export async function checkNotificationPermissions(): Promise<boolean> {
+  if (typeof window !== 'undefined' && !('cordova' in window)) {
+    return true;
+  }
+  try {
+    const result = await LocalNotifications.checkPermissions();
+    return result.display === 'granted';
+  } catch (error) {
+    console.error('❌ Erro ao verificar permissões:', error);
+    return false;
+  }
+}
+
+/**
+ * Solicita permissões de notificação
+ */
+export async function requestNotificationPermissions(): Promise<boolean> {
+  if (typeof window !== 'undefined' && !('cordova' in window)) {
+    return true;
+  }
+  try {
+    const result = await LocalNotifications.requestPermissions();
+    return result.display === 'granted';
+  } catch (error) {
+    console.error('❌ Erro ao solicitar permissões:', error);
+    return false;
+  }
+}
+
+// ============================================================
 // NOTIFICAÇÕES DE VENCIMENTO DE DOCUMENTOS
 // ============================================================
 
@@ -34,7 +70,7 @@ export async function scheduleDocumentExpiryNotification(
       await LocalNotifications.schedule({
         notifications: [
           {
-            id: Math.floor(Math.random() * 1000000), // Usa ID aleatório
+            id: Math.floor(Math.random() * 1000000),
             title: '📄 Documento vencendo em breve',
             body: `${title} (${categoryName}) vence em ${expiryDate}`,
             schedule: {
