@@ -34,7 +34,6 @@ export default function FavoritesPage() {
     return () => clearTimeout(timer);
   }, [persons]);
 
-  // ✅ CORRIGIDO: usa usePaginatedFavorites
   const {
     favorites,
     totalCount,
