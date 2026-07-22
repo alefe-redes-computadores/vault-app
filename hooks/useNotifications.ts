@@ -1,38 +1,92 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { requestNotificationPermissions } from '@/lib/notifications';
 
 export function useNotifications() {
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const init = async () => {
-      const granted = await requestNotificationPermissions();
-      setPermissionsGranted(granted);
-    };
-    init();
+  // Função para verificar permissões
+  const checkPermissions = useCallback(async () => {
+    try {
+      // Verifica se está em ambiente Capacitor/Cordova
+      if (typeof window !== 'undefined' && 'cordova' in window) {
+        const result = await LocalNotifications.checkPermissions();
+        const granted = result.display === 'granted';
+        setPermissionGranted(granted);
+        return granted;
+      }
+      // Em ambiente web, retorna true (mas não faz nada)
+      setPermissionGranted(true);
+      return true;
+    } catch (error) {
+      console.error('Erro ao verificar permissões:', error);
+      setPermissionGranted(false);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const handleNotificationAction = (callback: (data: any) => void) => {
-    const listenerPromise = LocalNotifications.addListener(
-      'localNotificationActionPerformed',
-      (action) => {
-        console.log('Ação na notificação:', action);
-        callback(action.notification.extra);
+  // Função para solicitar permissões
+  const requestPermissions = useCallback(async () => {
+    try {
+      if (typeof window !== 'undefined' && 'cordova' in window) {
+        const result = await LocalNotifications.requestPermissions();
+        const granted = result.display === 'granted';
+        setPermissionGranted(granted);
+        return granted;
       }
-    );
+      setPermissionGranted(true);
+      return true;
+    } catch (error) {
+      console.error('Erro ao solicitar permissões:', error);
+      return false;
+    }
+  }, []);
 
-    // O Capacitor v6+ retorna uma Promise, então precisamos aguardar o ouvinte (handle)
-    // ser criado antes de mandar removê-lo.
-    return () => {
-      listenerPromise.then((handle) => handle.remove());
+  // Listener para quando o usuário clica em uma notificação
+  const handleNotificationAction = useCallback((callback: (data: any) => void) => {
+    let listener: any;
+
+    const setupListener = async () => {
+      try {
+        if (typeof window !== 'undefined' && 'cordova' in window) {
+          listener = await LocalNotifications.addListener(
+            'localNotificationActionPerformed',
+            (notification: any) => {
+              const data = notification.notification?.extra;
+              if (data) {
+                callback(data);
+              }
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao configurar listener de notificações:', error);
+      }
     };
-  };
+
+    setupListener();
+
+    return () => {
+      if (listener) {
+        listener.remove();
+      }
+    };
+  }, []);
+
+  // Verificar permissões ao montar
+  useEffect(() => {
+    checkPermissions();
+  }, [checkPermissions]);
 
   return {
-    permissionsGranted,
+    permissionGranted,
+    isLoading,
+    checkPermissions,
+    requestPermissions,
     handleNotificationAction,
   };
 }
