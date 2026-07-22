@@ -77,7 +77,7 @@ export default function EditarDetalhePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = searchParams.get("id"); // ← string
+  const id = searchParams.get("id");
 
   const doc = useDocument(id || "");
   const persons = usePersons();
