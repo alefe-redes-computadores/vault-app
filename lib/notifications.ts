@@ -1,138 +1,139 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { Platform } from '@capacitor/core';
 
-export interface NotificationData {
-  id: number;
-  title: string;
-  body: string;
-  scheduleDate: Date;
-  extra?: Record<string, any>;
-}
-
-export async function scheduleNotification(data: NotificationData): Promise<void> {
-  try {
-    const { id, title, body, scheduleDate, extra } = data;
-
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id,
-          title,
-          body,
-          schedule: {
-            at: scheduleDate,
-            allowWhileIdle: true,
-          },
-          extra,
-          sound: 'default',
-          smallIcon: 'ic_notification',
-          largeIcon: 'ic_notification_large',
-        },
-      ],
-    });
-
-    console.log(`Notificação agendada: ${title} (ID: ${id})`);
-  } catch (error) {
-    console.error('Erro ao agendar notificação:', error);
-  }
-}
-
-export async function cancelNotification(notificationId: number): Promise<void> {
-  try {
-    await LocalNotifications.cancel({ notifications: [{ id: notificationId }] });
-    console.log(`Notificação cancelada: ${notificationId}`);
-  } catch (error) {
-    console.error('Erro ao cancelar notificação:', error);
-  }
-}
-
-export async function cancelAllNotifications(): Promise<void> {
-  try {
-    // Busca as notificações pendentes primeiro
-    const pending = await LocalNotifications.getPending();
-    
-    // Se houver alguma pendente, manda cancelar a lista
-    if (pending && pending.notifications.length > 0) {
-      await LocalNotifications.cancel({ notifications: pending.notifications });
-    }
-    
-    console.log('Todas as notificações canceladas');
-  } catch (error) {
-    console.error('Erro ao cancelar notificações:', error);
-  }
-}
-
-export async function requestNotificationPermissions(): Promise<boolean> {
-  try {
-    const { display } = await LocalNotifications.requestPermissions();
-    return display === 'granted';
-  } catch (error) {
-    console.error('Erro ao solicitar permissões:', error);
-    return false;
-  }
-}
-
-export function generateNotificationId(type: string, docId: number): number {
-  const base = type === 'document' ? 10000 : 20000;
-  return base + docId;
-}
+// ============================================================
+// NOTIFICAÇÕES DE VENCIMENTO DE DOCUMENTOS
+// ============================================================
 
 /**
- * Agenda notificação de vencimento de documento (30 dias antes)
+ * Agenda uma notificação local para quando um documento estiver próximo do vencimento
+ * @param documentId - ID do documento (string - UUID)
+ * @param title - Título do documento
+ * @param expiryDate - Data de vencimento (formato YYYY-MM-DD)
+ * @param categoryName - Nome da categoria
+ * @param daysBefore - Dias de antecedência para notificar (padrão: 30)
  */
 export async function scheduleDocumentExpiryNotification(
-  docId: number,
+  documentId: string, // ← agora é string
   title: string,
   expiryDate: string,
-  category: string,
+  categoryName: string,
   daysBefore: number = 30
 ): Promise<void> {
-  const expiry = new Date(expiryDate);
-  const notifyDate = new Date(expiry);
-  notifyDate.setDate(notifyDate.getDate() - daysBefore);
-
-  if (notifyDate < new Date()) {
-    console.log('Data de notificação já passou, não agendando');
+  if (Platform.is('web')) {
+    console.log('📱 Notificação programada para:', title);
     return;
   }
 
-  await scheduleNotification({
-    id: generateNotificationId('document', docId),
-    title: `📄 Documento vence em ${daysBefore} dias: ${title}`,
-    body: `Vence em ${format(expiry, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })} (Categoria: ${category})`,
-    scheduleDate: notifyDate,
-    extra: {
-      type: 'document_expiry',
-      docId,
-    },
-  });
+  try {
+    const expiry = new Date(expiryDate);
+    const notificationDate = new Date(expiry);
+    notificationDate.setDate(notificationDate.getDate() - daysBefore);
+
+    if (notificationDate > new Date()) {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: parseInt(documentId.slice(0, 8), 16) || Date.now(), // Converte UUID para número
+            title: '📄 Documento vencendo em breve',
+            body: `${title} (${categoryName}) vence em ${expiryDate}`,
+            schedule: {
+              at: notificationDate,
+            },
+            sound: 'default',
+            extra: {
+              type: 'document_expiry',
+              docId: documentId, // ← agora é string
+            },
+          },
+        ],
+      });
+      console.log('✅ Notificação agendada para:', notificationDate);
+    }
+  } catch (error) {
+    console.error('❌ Erro ao agendar notificação:', error);
+  }
+}
+
+// ============================================================
+// NOTIFICAÇÕES DE RENOVAÇÃO DE MEDICAMENTOS
+// ============================================================
+
+/**
+ * Agenda uma notificação local para renovação de medicamento
+ * @param medicamentoId - ID do medicamento (string - UUID)
+ * @param nome - Nome do medicamento
+ * @param dataRenovacao - Data de renovação
+ * @param medico - Nome do médico
+ * @param daysBefore - Dias de antecedência (padrão: 7)
+ */
+export async function scheduleMedicationRenewalNotification(
+  medicamentoId: string, // ← agora é string
+  nome: string,
+  dataRenovacao: string,
+  medico: string,
+  daysBefore: number = 7
+): Promise<void> {
+  if (Platform.is('web')) {
+    console.log('📱 Notificação de renovação programada para:', nome);
+    return;
+  }
+
+  try {
+    const renewal = new Date(dataRenovacao);
+    const notificationDate = new Date(renewal);
+    notificationDate.setDate(notificationDate.getDate() - daysBefore);
+
+    if (notificationDate > new Date()) {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: parseInt(medicamentoId.slice(0, 8), 16) || Date.now(),
+            title: '💊 Medicamento precisa ser renovado',
+            body: `${nome} - Dr(a). ${medico}`,
+            schedule: {
+              at: notificationDate,
+            },
+            sound: 'default',
+            extra: {
+              type: 'medication_renewal',
+              medicamentoId: medicamentoId, // ← agora é string
+            },
+          },
+        ],
+      });
+      console.log('✅ Notificação de renovação agendada para:', notificationDate);
+    }
+  } catch (error) {
+    console.error('❌ Erro ao agendar notificação de renovação:', error);
+  }
+}
+
+// ============================================================
+// LIMPAR NOTIFICAÇÕES
+// ============================================================
+
+/**
+ * Remove uma notificação local
+ * @param notificationId - ID da notificação
+ */
+export async function cancelNotification(notificationId: number): Promise<void> {
+  if (Platform.is('web')) return;
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: notificationId }] });
+  } catch (error) {
+    console.error('❌ Erro ao cancelar notificação:', error);
+  }
 }
 
 /**
- * Agenda notificação de renovação de receita (25 dias após emissão)
+ * Remove todas as notificações locais
  */
-export async function scheduleMedicationRenewalNotification(
-  medicamentoId: number,
-  nome: string,
-  notificationDate: string,
-  medico: string
-): Promise<void> {
-  const notify = new Date(notificationDate);
-
-  if (notify < new Date()) {
-    console.log('Data de notificação já passou, não agendando');
-    return;
+export async function cancelAllNotifications(): Promise<void> {
+  if (Platform.is('web')) return;
+  try {
+    await LocalNotifications.cancelAll();
+  } catch (error) {
+    console.error('❌ Erro ao cancelar todas as notificações:', error);
   }
-
-  await scheduleNotification({
-    id: generateNotificationId('medicamento', medicamentoId),
-    title: `💊 Medicamento vence em breve: ${nome}`,
-    body: `Renovação com Dr(a). ${medico} em breve. Verifique a data da receita.`,
-    scheduleDate: notify,
-    extra: {
-      type: 'medication_renewal',
-      medicamentoId,
-    },
-  });
 }
