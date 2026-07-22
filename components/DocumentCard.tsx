@@ -114,7 +114,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
   return (
     <div
       onClick={handlePress}
-      className="relative overflow-hidden rounded-xl border p-4 shadow-sm cursor-pointer bg-surface hover:shadow-md transition-shadow active:scale-[0.98]"
+      className="relative overflow-hidden rounded-xl border p-4 shadow-vault cursor-pointer bg-surface hover:shadow-lg transition-shadow active:scale-[0.98]"
       style={{ borderColor: `${color}25` }}
     >
       <span className="rivet rivet-tl" />
@@ -200,7 +200,7 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
         </div>
       </div>
 
-      {/* Badge de anexo movido para canto inferior esquerdo */}
+      {/* Badge de anexo */}
       {hasAttachments && (
         <div className="absolute bottom-3 left-3">
           {hasImageAttachment ? (
