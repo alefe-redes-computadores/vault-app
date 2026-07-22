@@ -15,14 +15,20 @@ export function useFarmacias() {
     []
   );
 
-  const getFarmacia = useCallback((id: number) => {
+  const getFarmacia = useCallback((id: string) => { // ← string
     return db.farmacias.get(id);
   }, []);
 
   const addFarmacia = useCallback(async (data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>) => {
     const now = new Date().toISOString();
-    const id = await db.farmacias.add({
+    const id = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    await db.farmacias.add({
       ...data,
+      id,
       created_at: now,
       updated_at: now,
       synced: false,
@@ -30,7 +36,7 @@ export function useFarmacias() {
     return id;
   }, []);
 
-  const updateFarmacia = useCallback(async (id: number, data: Partial<Farmacia>) => {
+  const updateFarmacia = useCallback(async (id: string, data: Partial<Farmacia>) => { // ← string
     await db.farmacias.update(id, {
       ...data,
       updated_at: new Date().toISOString(),
@@ -38,7 +44,7 @@ export function useFarmacias() {
     });
   }, []);
 
-  const deleteFarmacia = useCallback(async (id: number) => {
+  const deleteFarmacia = useCallback(async (id: string) => { // ← string
     await db.farmacias.delete(id);
   }, []);
 
