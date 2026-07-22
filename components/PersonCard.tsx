@@ -3,12 +3,13 @@
 import type { Person } from "@/lib/types";
 import { User, Trash2 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useConfirmationModal } from "@/components/ConfirmationModal"; // se existir, ou mantém confirm()
 
 interface PersonCardProps {
   person: Person;
   isActive: boolean;
   onClick: () => void;
-  onDelete?: (id: number) => void;
+  onDelete?: (id: string) => void; // ← string
   isDeleting?: boolean;
 }
 
@@ -38,7 +39,7 @@ export function PersonCard({
           flex items-center gap-2 px-4 py-2 rounded-full border transition-all active:scale-[0.98]
           ${isActive
             ? "border-ice bg-ice/10 text-ice"
-            : "border-surface-border bg-surface-raised text-ink-muted hover:text-ink-primary"
+            : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
           }
         `}
       >
