@@ -10,7 +10,6 @@ function generateId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // Fallback para ambientes sem crypto.randomUUID
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -33,14 +32,12 @@ class VaultDB extends Dexie {
   constructor() {
     super('vault-db');
     
-    // Versão 2
     this.version(2).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at',
       syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
     });
     
-    // Versão 3
     this.version(3).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at',
@@ -49,7 +46,6 @@ class VaultDB extends Dexie {
       renovacoes: 'id, medicamento_id, data',
     });
     
-    // Versão 4
     this.version(4).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -60,7 +56,6 @@ class VaultDB extends Dexie {
       vaultMembers: 'id, vault_id, user_id, email, status, synced',
     });
     
-    // Versão 5
     this.version(5).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -84,7 +79,6 @@ class VaultDB extends Dexie {
       });
     });
 
-    // VERSÃO 6 - UUID + syncQueue com retry_count e failed
     this.version(6).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -98,12 +92,6 @@ class VaultDB extends Dexie {
       hospitais: 'id, user_id, nome, synced',
     }).upgrade(async (tx) => {
       console.log('🔄 Migrando para versão 6: convertendo IDs para UUID...');
-      
-      // Como a migração de número para string é complexa e pode causar perda de dados,
-      // esta migração apenas garante que as novas tabelas tenham os índices corretos.
-      // Os dados existentes permanecem com IDs numéricos, mas novos registros usarão UUID.
-      // Isso é aceitável porque o app já está em produção e os dados existentes são estáveis.
-      
       console.log('✅ Migração concluída! Novos registros usarão UUID.');
     });
   }
@@ -142,7 +130,6 @@ export async function safeAddPerson(
       operation: 'add',
       payload: { ...full },
       created_at: timestamp,
-      user_id: full.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -171,7 +158,6 @@ export async function safeAddDocument(
       operation: 'add',
       payload: { ...full },
       created_at: timestamp,
-      user_id: full.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -196,7 +182,6 @@ export async function safeUpdateDocument(
       operation: 'update',
       payload: { ...updated },
       created_at: timestamp,
-      user_id: updated!.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -208,18 +193,13 @@ export async function safeDeleteDocument(id: string): Promise<void> {
   const doc = await db.documents.get(id);
   if (!doc) throw new Error('Documento não encontrado');
 
-  // ============================================================
-  // DELETAR ANEXOS DO STORAGE (CORRIGIDO)
-  // ============================================================
   if (doc.attachments && doc.attachments.length > 0) {
     for (const attachment of doc.attachments) {
-      // Verifica se a URL é remota (não é blob:)
       if (attachment.url && !attachment.url.startsWith('blob:')) {
         try {
           await deleteFile(attachment.url);
         } catch (error) {
           console.error('Erro ao deletar anexo:', attachment.url, error);
-          // Não interrompe a exclusão do documento se o anexo não for deletado
         }
       }
     }
@@ -233,7 +213,6 @@ export async function safeDeleteDocument(id: string): Promise<void> {
       operation: 'delete',
       payload: { id },
       created_at: timestamp,
-      user_id: doc.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -269,7 +248,6 @@ export async function safeAddMedicamento(
       operation: 'add',
       payload: { ...full },
       created_at: timestamp,
-      user_id: full.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -297,7 +275,6 @@ export async function safeAddRenovacao(
       operation: 'add',
       payload: { ...full },
       created_at: timestamp,
-      user_id: full.user_id || '', // Renovacao pode não ter user_id direto, mas colocamos para compatibilidade
       retry_count: 0,
       failed: false,
     });
@@ -328,7 +305,6 @@ export async function safeAddVault(
       operation: 'add',
       payload: { ...full },
       created_at: timestamp,
-      user_id: full.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -356,7 +332,6 @@ export async function safeAddVaultMember(
       operation: 'add',
       payload: { ...full },
       created_at: timestamp,
-      user_id: full.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -381,7 +356,6 @@ export async function safeUpdateVaultMember(
       operation: 'update',
       payload: { ...updated },
       created_at: timestamp,
-      user_id: updated!.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -428,7 +402,6 @@ export async function safeAddMedico(
       operation: 'add',
       payload: { ...full },
       created_at: timestamp,
-      user_id: full.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -456,7 +429,6 @@ export async function safeAddFarmacia(
       operation: 'add',
       payload: { ...full },
       created_at: timestamp,
-      user_id: full.user_id,
       retry_count: 0,
       failed: false,
     });
@@ -484,7 +456,6 @@ export async function safeAddHospital(
       operation: 'add',
       payload: { ...full },
       created_at: timestamp,
-      user_id: full.user_id,
       retry_count: 0,
       failed: false,
     });
