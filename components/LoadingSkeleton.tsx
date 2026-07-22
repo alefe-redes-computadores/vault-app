@@ -66,7 +66,7 @@ export function LoadingSkeleton() {
         </div>
       ))}
 
-      {/* ✅ Bolinha pulsante discreta (sem cadeado) */}
+      {/* Bolinha pulsante discreta */}
       <div className="fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-2">
         <motion.div
           animate={{
