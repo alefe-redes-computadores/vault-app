@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, AlertCircle, Info, X, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, Info, X, Loader2 } from "lucide-react";
 
 export type ToastType = "success" | "error" | "info" | "loading";
 
@@ -18,70 +18,121 @@ interface ToastProps {
 }
 
 const ICONS = {
-  success: CheckCircle,
+  success: CheckCircle2,
   error: AlertCircle,
   info: Info,
   loading: Loader2,
 };
 
-const COLORS = {
-  success: "border-green-500/30 bg-green-500/10 text-green-400",
-  error: "border-coral/30 bg-coral/10 text-coral",
-  info: "border-ice/30 bg-ice/10 text-ice",
-  loading: "border-ice/30 bg-ice/10 text-ice",
+const ACCENTS = {
+  success: {
+    ring: "border-emerald-400/20",
+    glow: "shadow-emerald-500/10",
+    iconWrap: "bg-emerald-400/12 text-emerald-300",
+    action: "text-emerald-300 hover:bg-emerald-400/10",
+  },
+  error: {
+    ring: "border-coral/20",
+    glow: "shadow-coral/10",
+    iconWrap: "bg-coral/12 text-coral",
+    action: "text-coral hover:bg-coral/10",
+  },
+  info: {
+    ring: "border-ice/20",
+    glow: "shadow-ice/10",
+    iconWrap: "bg-ice/12 text-ice",
+    action: "text-ice hover:bg-ice/10",
+  },
+  loading: {
+    ring: "border-ice/20",
+    glow: "shadow-ice/10",
+    iconWrap: "bg-ice/12 text-ice",
+    action: "text-ice hover:bg-ice/10",
+  },
 };
 
-export function Toast({ message, type = "info", duration = 3000, onClose, action }: ToastProps) {
+export function Toast({
+  message,
+  type = "info",
+  duration = 3000,
+  onClose,
+  action,
+}: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     if (type === "loading") return;
+
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onClose, 300);
+      setTimeout(onClose, 220);
     }, duration);
 
     return () => clearTimeout(timer);
   }, [duration, onClose, type]);
 
   const Icon = ICONS[type];
-  const colorClass = COLORS[type];
+  const accent = ACCENTS[type];
   const isSpin = type === "loading";
+
+  const dismiss = () => {
+    setIsVisible(false);
+    setTimeout(onClose, 220);
+  };
 
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          className="w-full max-w-sm pointer-events-auto"
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          className="pointer-events-auto w-full max-w-sm"
+          initial={{ opacity: 0, y: -16, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
+          exit={{ opacity: 0, y: -12, scale: 0.96 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className={`flex items-center gap-3 rounded-xl border p-3.5 backdrop-blur-xl bg-surface/90 shadow-vault ${colorClass}`}>
-            <Icon size={18} className={`flex-shrink-0 ${isSpin ? "animate-spin" : ""}`} />
-            <span className="flex-1 text-sm text-ink-primary">{message}</span>
-            {action && (
-              <button
-                onClick={() => {
-                  action.onClick();
-                  setIsVisible(false);
-                  setTimeout(onClose, 300);
-                }}
-                className="text-xs font-medium text-ice hover:text-ice/80 transition-colors px-2 py-1 rounded-lg bg-ice/10 hover:bg-ice/20"
-              >
-                {action.label}
-              </button>
-            )}
+          <div
+            className={[
+              "flex items-start gap-3 rounded-2xl border bg-surface/92 p-3.5 backdrop-blur-xl",
+              "shadow-lg",
+              accent.ring,
+              accent.glow,
+            ].join(" ")}
+          >
+            <div
+              className={[
+                "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/5",
+                accent.iconWrap,
+              ].join(" ")}
+            >
+              <Icon size={17} className={isSpin ? "animate-spin" : ""} />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="text-sm leading-5 text-ink-primary">{message}</p>
+
+              {action && (
+                <button
+                  onClick={() => {
+                    action.onClick();
+                    dismiss();
+                  }}
+                  className={[
+                    "mt-2 inline-flex rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors",
+                    accent.action,
+                  ].join(" ")}
+                >
+                  {action.label}
+                </button>
+              )}
+            </div>
+
             {type !== "loading" && (
               <button
-                onClick={() => {
-                  setIsVisible(false);
-                  setTimeout(onClose, 300);
-                }}
-                className="p-0.5 rounded-full hover:bg-surface-border transition-colors flex-shrink-0"
+                onClick={dismiss}
+                aria-label="Fechar toast"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary"
               >
-                <X size={14} className="text-ink-muted" />
+                <X size={14} />
               </button>
             )}
           </div>
