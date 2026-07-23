@@ -13,7 +13,7 @@ import { DocumentCard } from "@/components/DocumentCard";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
-const containerVariants = {
+const listVariants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -52,6 +52,7 @@ export default function CategoryPage() {
   }, [persons, selectedPersonId]);
 
   const allDocs = useDocuments(selectedPersonId || undefined);
+
   const documents = useMemo(
     () => allDocs.filter((doc: any) => doc.category_id === categoryId),
     [allDocs, categoryId]
@@ -219,7 +220,7 @@ export default function CategoryPage() {
             </motion.div>
           ) : (
             <motion.div
-              variants={containerVariants}
+              variants={listVariants}
               initial="hidden"
               animate="show"
               className="space-y-4"
