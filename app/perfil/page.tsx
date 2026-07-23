@@ -3,17 +3,14 @@
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  User,
   LogOut,
-  Settings,
-  Shield,
-  Database,
   HardDrive,
   Camera,
   Fingerprint,
   ChevronRight,
-  HelpCircle,
-  FileText,
+  Shield,
+  UserCircle2,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -24,6 +21,11 @@ import { useToast } from "@/components/ToastProvider";
 import { useState } from "react";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+
+const itemMotion = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+};
 
 export default function ProfilePage() {
   const { trigger } = useHapticFeedback();
@@ -65,26 +67,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSettings = () => {
-    trigger("vibrate");
-    showToast("Configurações em breve...", "info");
-  };
-
-  const handlePrivacy = () => {
-    trigger("vibrate");
-    showToast("Privacidade em breve...", "info");
-  };
-
-  const handleData = () => {
-    trigger("vibrate");
-    showToast("Gerenciamento de dados em breve...", "info");
-  };
-
-  const handleHelp = () => {
-    trigger("vibrate");
-    showToast("Ajuda em breve...", "info");
-  };
-
   const handleChangePhoto = () => {
     trigger("vibrate");
     setIsChangingPhoto(true);
@@ -116,77 +98,166 @@ export default function ProfilePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
-          <h1 className="font-display text-xl font-semibold text-ink-primary">Perfil</h1>
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+          <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+            Vault
+          </p>
+          <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+            Perfil e ajustes
+          </h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Conta, segurança e preferências locais
+          </p>
         </header>
 
-        <section className="px-5 pt-6 space-y-6">
-          {/* Avatar e nome */}
+        <section className="space-y-5 px-5 pt-6">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex flex-col items-center gap-3 p-6 rounded-xl bg-surface border border-surface-border/50"
+            {...itemMotion}
+            transition={{ duration: 0.24 }}
+            className="rounded-[30px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm"
           >
-            <div className="relative">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={displayName}
-                  className="w-20 h-20 rounded-full border-2 border-ice/20"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-3xl">
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <button
-                onClick={handleChangePhoto}
-                className="absolute bottom-0 right-0 p-1.5 rounded-full bg-ice text-void border-2 border-void hover:bg-ice/80 transition-colors active:scale-95"
-                disabled={isChangingPhoto}
-              >
-                <Camera size={14} />
-              </button>
+            <div className="flex flex-col items-center text-center">
+              <div className="relative">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    className="h-24 w-24 rounded-full border-2 border-ice/20 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-3xl text-ink-muted">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleChangePhoto}
+                  disabled={isChangingPhoto}
+                  aria-label="Alterar foto"
+                  className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-void bg-ice text-void transition-all active:scale-95"
+                >
+                  <Camera size={14} />
+                </button>
+              </div>
+
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-ink-muted">
+                <Sparkles size={12} />
+                Seu espaço
+              </div>
+
+              <h2 className="mt-3 font-display text-lg font-semibold text-ink-primary">
+                {displayName}
+              </h2>
+              <p className="mt-1 text-sm text-ink-muted">{user?.email}</p>
             </div>
-            <h2 className="font-display text-lg font-semibold text-ink-primary">{displayName}</h2>
-            <p className="text-sm text-ink-muted">{user?.email}</p>
           </motion.div>
 
-          {/* Ações rápidas */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
-            className="space-y-2"
+            {...itemMotion}
+            transition={{ duration: 0.24, delay: 0.04 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
           >
+            <div className="mb-3 flex items-center gap-2">
+              <Shield size={16} className="text-ice" />
+              <h3 className="text-sm font-medium text-ink-primary">Segurança</h3>
+            </div>
+
             <button
               onClick={handleBiometricToggle}
-              className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors active:scale-95"
+              className="flex w-full items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-4 text-left transition-all active:scale-[0.99]"
             >
-              <Fingerprint size={18} className={isBiometricEnabled ? "text-ice" : "text-ink-muted"} />
-              <span className="text-sm text-ink-primary flex-1">Biometria</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                isBiometricEnabled
-                  ? "bg-ice/20 text-ice"
-                  : "bg-surface-border text-ink-muted"
-              }`}>
-                {isBiometricEnabled ? "Ativada" : "Desativada"}
-              </span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/12 text-ice">
+                <Fingerprint size={18} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-ink-primary">Biometria</p>
+                <p className="mt-0.5 text-xs text-ink-muted">
+                  Proteção rápida para abrir o app com mais segurança
+                </p>
+              </div>
+
+              <div
+                className={`relative h-7 w-12 rounded-full transition-colors ${
+                  isBiometricEnabled ? "bg-ice/80" : "bg-surface-border"
+                }`}
+              >
+                <span
+                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all ${
+                    isBiometricEnabled ? "left-6" : "left-1"
+                  }`}
+                />
+              </div>
             </button>
+          </motion.div>
+
+          <motion.div
+            {...itemMotion}
+            transition={{ duration: 0.24, delay: 0.08 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <UserCircle2 size={16} className="text-ice" />
+              <h3 className="text-sm font-medium text-ink-primary">Conta</h3>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  showToast("Gerenciamento de conta em breve...", "info");
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left transition-colors active:scale-[0.99]"
+              >
+                <span className="flex-1 text-sm text-ink-primary">Dados da conta</span>
+                <ChevronRight size={16} className="text-ink-faint" />
+              </button>
+
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  showToast("Privacidade em breve...", "info");
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left transition-colors active:scale-[0.99]"
+              >
+                <span className="flex-1 text-sm text-ink-primary">Privacidade</span>
+                <ChevronRight size={16} className="text-ink-faint" />
+              </button>
+            </div>
+          </motion.div>
+
+          <motion.div
+            {...itemMotion}
+            transition={{ duration: 0.24, delay: 0.12 }}
+            className="rounded-[28px] border border-coral/20 bg-surface px-4 py-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <HardDrive size={16} className="text-coral" />
+              <h3 className="text-sm font-medium text-coral">Zona sensível</h3>
+            </div>
 
             <button
               onClick={() => setShowClearDataModal(true)}
-              className="flex items-center gap-3 w-full p-3 rounded-xl bg-surface-raised border border-coral/20 hover:bg-coral/10 transition-colors active:scale-95"
+              className="flex w-full items-center gap-3 rounded-2xl border border-coral/20 bg-coral/8 px-4 py-4 text-left transition-all active:scale-[0.99]"
             >
-              <HardDrive size={18} className="text-coral" />
-              <span className="text-sm text-coral flex-1">Limpar dados locais</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-coral/12 text-coral">
+                <HardDrive size={18} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-coral">Limpar dados locais</p>
+                <p className="mt-0.5 text-xs text-ink-muted">
+                  Remove o armazenamento local deste dispositivo
+                </p>
+              </div>
+
+              <ChevronRight size={16} className="text-coral/70" />
             </button>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
+            {...itemMotion}
+            transition={{ duration: 0.24, delay: 0.16 }}
           >
             <Button
               variant="danger"
@@ -201,7 +272,6 @@ export default function ProfilePage() {
           </motion.div>
         </section>
 
-        {/* MODAL DE CONFIRMAÇÃO - LOGOUT */}
         <ConfirmationModal
           isOpen={showLogoutModal}
           onClose={() => setShowLogoutModal(false)}
@@ -214,7 +284,6 @@ export default function ProfilePage() {
           type="warning"
         />
 
-        {/* MODAL DE CONFIRMAÇÃO - LIMPAR DADOS LOCAIS */}
         <ConfirmationModal
           isOpen={showClearDataModal}
           onClose={() => setShowClearDataModal(false)}
