@@ -181,7 +181,7 @@ export default function MaisPage() {
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
-  // ✅ Menu simplificado, sem duplicação
+  // ✅ Menu com Tema isolado (sem button wrapper)
   const menuSections: MenuSection[] = [
     {
       title: "Geral",
@@ -346,7 +346,7 @@ export default function MaisPage() {
                 {section.items.map((item) => {
                   const Icon = item.icon;
 
-                  // ✅ ThemeToggle - renderiza como item separado, sem duplicação
+                  // ✅ TEMA: renderizado como div, SEM button wrapper
                   if (item.id === "tema") {
                     return (
                       <div
