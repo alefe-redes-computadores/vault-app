@@ -39,15 +39,19 @@ export function BottomNav() {
       checkLock();
     };
 
-    window.addEventListener('biometric:lockchange', handleLockChange);
+    window.addEventListener("biometric:lockchange", handleLockChange);
 
     const observer = new MutationObserver(() => {
       checkLock();
     });
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
 
     return () => {
-      window.removeEventListener('biometric:lockchange', handleLockChange);
+      window.removeEventListener("biometric:lockchange", handleLockChange);
       observer.disconnect();
     };
   }, []);
@@ -58,7 +62,12 @@ export function BottomNav() {
     router.push(path);
   };
 
-  if (pathname === "/login" || pathname === "/auth/callback" || isBiometricLocked) return null;
+  if (
+    pathname === "/login" ||
+    pathname === "/auth/callback" ||
+    isBiometricLocked
+  )
+    return null;
 
   const isActive = (path: string) => {
     return pathname === path || (path === "/" && pathname === "/");
@@ -66,11 +75,12 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 pb-safe">
-      <div className="bg-surface/95 backdrop-blur-xl border-t border-surface-border/50 px-4 pt-2 pb-5">
-        <div className="grid grid-cols-5 items-end justify-items-center relative max-w-md mx-auto">
+      <div className="border-t border-surface-border/40 bg-surface/92 px-4 pb-5 pt-2 backdrop-blur-2xl">
+        <div className="relative mx-auto grid max-w-md grid-cols-5 items-end justify-items-center">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
+
             const colMap: Record<string, string> = {
               home: "col-start-1",
               pessoas: "col-start-2",
@@ -83,39 +93,42 @@ export function BottomNav() {
                 key={item.id}
                 onClick={() => handleNavigate(item.path)}
                 className={`
-                  flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 relative
-                  ${active ? "text-ice" : "text-ink-muted/60 hover:text-ink-primary"}
+                  relative flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5 transition-all duration-200 active:scale-95
+                  ${active ? "text-ice" : "text-ink-muted/65 hover:text-ink-primary"}
                   ${colMap[item.id] || ""}
                 `}
               >
-                <Icon size={24} strokeWidth={active ? 2.5 : 2} />
-                <span
-                  className={`text-[10px] font-medium transition-all duration-150 ${
-                    active ? "text-ice" : "text-ink-muted/60"
-                  }`}
-                >
-                  {item.label}
-                </span>
                 {active && (
                   <motion.div
-                    layoutId="activeTab"
-                    className="absolute -top-1 w-1 h-1 rounded-full bg-ice"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    layoutId="active-pill"
+                    className="absolute inset-0 rounded-2xl bg-ice/10"
+                    transition={{ type: "spring", stiffness: 320, damping: 28 }}
                   />
                 )}
+
+                <div className="relative z-[1] flex flex-col items-center gap-1">
+                  <Icon size={22} strokeWidth={active ? 2.4 : 2} />
+                  <span
+                    className={`text-[10px] font-medium ${
+                      active ? "text-ice" : "text-ink-muted/65"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </div>
               </button>
             );
           })}
 
-          {/* Botão flutuante centralizado */}
           <button
             onClick={() => {
               trigger("success");
               router.push("/novo");
             }}
-            className="absolute left-1/2 -translate-x-1/2 -top-7 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-ice to-ice/80 text-void shadow-lg shadow-ice/40 active:scale-90 transition-all duration-150 border-2 border-void/10 z-10"
+            aria-label="Novo documento"
+            className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(125,211,252,0.28)] transition-all duration-200 active:scale-95"
           >
-            <Plus size={26} strokeWidth={2.5} />
+            <Plus size={24} strokeWidth={2.6} />
           </button>
         </div>
       </div>
