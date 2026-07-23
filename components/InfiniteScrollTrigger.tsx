@@ -44,8 +44,14 @@ export function InfiniteScrollTrigger({
   return (
     <>
       {children}
-      <div ref={observerRef} className="flex justify-center py-4">
-        <Loader2 size={24} className="animate-spin text-ice" />
+      <div
+        ref={observerRef}
+        className="flex justify-center py-6"
+      >
+        <div className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-2 text-xs text-ink-muted">
+          <Loader2 size={16} className="animate-spin text-ice" />
+          Carregando mais
+        </div>
       </div>
     </>
   );
