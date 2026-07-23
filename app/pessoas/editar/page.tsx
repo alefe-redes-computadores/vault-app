@@ -108,22 +108,29 @@ export default function EditarPessoaPage() {
       // Atualiza a pessoa no Dexie
       await db.persons.update(id, updateData);
 
-      // Busca a pessoa atualizada
+      // Busca a pessoa atualizada (garantindo que existe)
       const updatedPerson = await db.persons.get(id);
+      
+      // ✅ VERIFICA se a pessoa existe antes de adicionar na fila
+      if (!updatedPerson) {
+        throw new Error("Pessoa não encontrada após atualização");
+      }
 
       // Adiciona na fila de sincronização (update)
       await db.syncQueue.add({
         id: crypto.randomUUID(),
         table: "persons",
         operation: "update",
-        payload: updatedPerson,
+        payload: { ...updatedPerson }, // ✅ Spread para garantir que é um objeto
         created_at: new Date().toISOString(),
         retry_count: 0,
         failed: false,
       });
 
       // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
-      window.dispatchEvent(new Event('sync:process'));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('sync:process'));
+      }
 
       trigger("success");
       showSuccess("Pessoa atualizada com sucesso!", 3000);
