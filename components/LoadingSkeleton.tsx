@@ -1,112 +1,88 @@
 "use client";
 
-import { motion } from "framer-motion";
-
 export function LoadingSkeleton() {
   return (
-    <div className="min-h-screen bg-void px-5 pt-6 pb-28">
-      {/* Header skeleton */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-void px-5 pb-28 pt-6">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-surface-raised animate-pulse" />
+          <div className="h-11 w-11 rounded-full bg-surface-raised/80 animate-pulse" />
           <div>
-            <div className="w-32 h-5 bg-surface-raised rounded animate-pulse" />
-            <div className="w-20 h-3 bg-surface-raised rounded mt-1 animate-pulse" />
+            <div className="h-5 w-32 rounded bg-surface-raised/80 animate-pulse" />
+            <div className="mt-1 h-3 w-20 rounded bg-surface-raised/60 animate-pulse" />
           </div>
         </div>
-        <div className="w-9 h-9 rounded-full bg-surface-raised animate-pulse" />
+        <div className="h-10 w-10 rounded-full bg-surface-raised/80 animate-pulse" />
       </div>
 
-      {/* Pessoas skeleton */}
       <div className="mb-6">
-        <div className="flex justify-between mb-2">
-          <div className="w-16 h-3 bg-surface-raised rounded animate-pulse" />
-          <div className="w-16 h-3 bg-surface-raised rounded animate-pulse" />
+        <div className="mb-2 flex justify-between">
+          <div className="h-3 w-16 rounded bg-surface-raised/70 animate-pulse" />
+          <div className="h-3 w-16 rounded bg-surface-raised/70 animate-pulse" />
         </div>
-        <div className="flex gap-3">
+
+        <div className="flex gap-3 overflow-hidden">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="w-14 h-14 rounded-full bg-surface-raised animate-pulse"
-              style={{ animationDelay: `${i * 0.1}s` }}
+              className="h-14 w-14 rounded-full bg-surface-raised/80 animate-pulse"
             />
           ))}
         </div>
       </div>
 
-      {/* Favoritos skeleton */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-5 h-5 bg-surface-raised rounded animate-pulse" />
-          <div className="w-20 h-4 bg-surface-raised rounded animate-pulse" />
+        <div className="mb-3 flex items-center gap-2">
+          <div className="h-5 w-5 rounded bg-surface-raised/70 animate-pulse" />
+          <div className="h-4 w-20 rounded bg-surface-raised/70 animate-pulse" />
         </div>
+
         {[1, 2].map((i) => (
           <div
             key={i}
-            className="w-full h-20 bg-surface-raised rounded-xl animate-pulse mb-3"
-            style={{ animationDelay: `${i * 0.15}s` }}
-          />
+            className="mb-3 rounded-[22px] bg-surface-raised/80 p-4 animate-pulse"
+          >
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-2xl bg-surface-border/70" />
+              <div className="flex-1">
+                <div className="h-4 w-36 rounded bg-surface-border/70" />
+                <div className="mt-2 h-3 w-24 rounded bg-surface-border/60" />
+                <div className="mt-3 h-3 w-40 rounded bg-surface-border/50" />
+              </div>
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* Cards skeleton */}
       {[1, 2, 3].map((category) => (
         <div key={category} className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-5 h-5 bg-surface-raised rounded animate-pulse" />
-            <div className="w-24 h-4 bg-surface-raised rounded animate-pulse" />
+          <div className="mb-3 flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-surface-raised/80 animate-pulse" />
+            <div className="h-4 w-24 rounded bg-surface-raised/70 animate-pulse" />
           </div>
+
           {[1, 2, 3].map((card) => (
             <div
               key={card}
-              className="w-full h-24 bg-surface-raised rounded-xl animate-pulse mb-3"
-              style={{ animationDelay: `${(category + card) * 0.1}s` }}
-            />
+              className="mb-3 rounded-[22px] bg-surface-raised/80 p-4 animate-pulse"
+            >
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-surface-border/70" />
+                <div className="flex-1">
+                  <div className="h-4 w-40 rounded bg-surface-border/70" />
+                  <div className="mt-2 h-3 w-28 rounded bg-surface-border/60" />
+                  <div className="mt-3 h-3 w-48 rounded bg-surface-border/50" />
+                  <div className="mt-2 h-3 w-32 rounded bg-surface-border/50" />
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       ))}
 
-      {/* Bolinha pulsante discreta */}
-      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-2">
-        <motion.div
-          animate={{
-            scale: [1, 1.4, 1],
-            opacity: [0.3, 1, 0.3],
-          }}
-          transition={{
-            duration: 1.2,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 0,
-          }}
-          className="w-2.5 h-2.5 rounded-full bg-ice/60"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.4, 1],
-            opacity: [0.3, 1, 0.3],
-          }}
-          transition={{
-            duration: 1.2,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 0.2,
-          }}
-          className="w-2.5 h-2.5 rounded-full bg-ice/40"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.4, 1],
-            opacity: [0.3, 1, 0.3],
-          }}
-          transition={{
-            duration: 1.2,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 0.4,
-          }}
-          className="w-2.5 h-2.5 rounded-full bg-ice/20"
-        />
+      <div className="fixed bottom-24 left-1/2 flex -translate-x-1/2 items-center gap-2">
+        <div className="h-2.5 w-2.5 rounded-full bg-ice/60 animate-pulse" />
+        <div className="h-2.5 w-2.5 rounded-full bg-ice/40 animate-pulse [animation-delay:120ms]" />
+        <div className="h-2.5 w-2.5 rounded-full bg-ice/20 animate-pulse [animation-delay:240ms]" />
       </div>
     </div>
   );
