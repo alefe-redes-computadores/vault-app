@@ -36,6 +36,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { db } from "@/lib/db";
 
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
@@ -59,6 +60,25 @@ const getFileIcon = (type: string) => {
   return File;
 };
 
+// ============================================================
+// FUNÇÕES PARA EXTRAIR NOME BASE E EXTENSÃO
+// ============================================================
+const getBaseName = (filename: string): string => {
+  const lastDot = filename.lastIndexOf('.');
+  if (lastDot === -1) return filename;
+  return filename.substring(0, lastDot);
+};
+
+const getExtension = (filename: string): string => {
+  const lastDot = filename.lastIndexOf('.');
+  if (lastDot === -1) return '';
+  return filename.substring(lastDot);
+};
+
+const buildFullName = (baseName: string, extension: string): string => {
+  return baseName + extension;
+};
+
 export default function DocumentDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -78,6 +98,9 @@ export default function DocumentDetailPage() {
 
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================
+  // EXCLUIR DOCUMENTO
+  // ============================================================
   const handleDelete = useCallback(async () => {
     if (!doc || !doc.id) {
       showToast("Documento não encontrado", "error");
@@ -110,6 +133,9 @@ export default function DocumentDetailPage() {
     }
   }, [doc, deleteDocument, trigger, showToast, showSuccess, router]);
 
+  // ============================================================
+  // FAVORITAR
+  // ============================================================
   const handleFavoriteToggle = useCallback(async () => {
     if (!doc || !doc.id) return;
     await favorite(doc.id);
@@ -117,6 +143,9 @@ export default function DocumentDetailPage() {
     showToast(doc.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos", "info");
   }, [doc, favorite, trigger, showToast]);
 
+  // ============================================================
+  // COMPARTILHAR
+  // ============================================================
   const handleShare = useCallback(() => {
     if (!doc) return;
     if (navigator.share) {
@@ -133,6 +162,9 @@ export default function DocumentDetailPage() {
     }
   }, [doc, showToast]);
 
+  // ============================================================
+  // ABRIR ANEXO
+  // ============================================================
   const openAttachment = useCallback((attachment: Attachment) => {
     setSelectedAttachment(attachment);
     setIsRenaming(false);
@@ -142,6 +174,9 @@ export default function DocumentDetailPage() {
     trigger("vibrate");
   }, [trigger]);
 
+  // ============================================================
+  // BAIXAR ANEXO
+  // ============================================================
   const downloadAttachment = useCallback(async (attachment: Attachment) => {
     setIsDownloading(true);
     try {
@@ -166,17 +201,50 @@ export default function DocumentDetailPage() {
     }
   }, [trigger, showToast]);
 
-  const updateAttachmentName = useCallback((newName: string) => {
-    if (!selectedAttachment || !doc) return;
+  // ============================================================
+  // RENOMEAR ANEXO - CORRIGIDO (salva no banco)
+  // ============================================================
+  const updateAttachmentName = useCallback(async (newBaseName: string) => {
+    if (!selectedAttachment || !doc || !doc.id) return;
+
+    // Pega a extensão original do arquivo
+    const extension = getExtension(selectedAttachment.name);
+    const newFullName = buildFullName(newBaseName, extension);
+
+    // Atualiza o attachment no array
     const updatedAttachments = doc.attachments.map((att) =>
-      att.id === selectedAttachment.id ? { ...att, name: newName } : att
+      att.id === selectedAttachment.id 
+        ? { ...att, name: newFullName } 
+        : att
     );
-    setSelectedAttachment({ ...selectedAttachment, name: newName });
-    setIsRenaming(false);
-    trigger("success");
-    showToast("Nome atualizado com sucesso!", "success");
+
+    try {
+      // Salva no banco local (Dexie)
+      await db.documents.update(doc.id, {
+        attachments: updatedAttachments,
+        updated_at: new Date().toISOString(),
+        synced: false, // Marca como não sincronizado para enviar para a nuvem
+      });
+
+      // Atualiza o estado local
+      setSelectedAttachment({ ...selectedAttachment, name: newFullName });
+      
+      // Atualiza o documento no cache local (opcional)
+      // O useDocument vai revalidar sozinho
+
+      setIsRenaming(false);
+      trigger("success");
+      showToast("Nome atualizado com sucesso!", "success");
+    } catch (error) {
+      console.error("Erro ao renomear anexo:", error);
+      trigger("error");
+      showToast("Erro ao renomear anexo", "error");
+    }
   }, [selectedAttachment, doc, trigger, showToast]);
 
+  // ============================================================
+  // RENDER
+  // ============================================================
   if (!doc) {
     return (
       <PageTransition>
@@ -200,10 +268,6 @@ export default function DocumentDetailPage() {
   const FileIcon = selectedAttachment
     ? getFileIcon(selectedAttachment.type)
     : File;
-
-  // Pega o primeiro anexo para miniatura
-  const firstAttachment = hasAttachments ? doc.attachments[0] : null;
-  const isImageAttachment = firstAttachment?.type === 'image';
 
   return (
     <PageTransition>
@@ -283,7 +347,7 @@ export default function DocumentDetailPage() {
               </div>
             </div>
 
-            {/* Metadados - TRADUZIDOS PARA PORTUGUÊS */}
+            {/* Metadados - TRADUZIDOS */}
             {hasMetadata && (
               <div className="border-t border-surface-border/50 pt-4 space-y-2">
                 {Object.entries(doc.metadata || {}).map(([key, value]) => {
@@ -293,7 +357,6 @@ export default function DocumentDetailPage() {
                     displayValue = formatDate(value);
                   }
                   
-                  // Tradução das chaves
                   const labels: Record<string, string> = {
                     number: "Número",
                     issue_date: "Data de emissão",
@@ -386,7 +449,15 @@ export default function DocumentDetailPage() {
                           className="w-full h-20 object-cover rounded-lg"
                           loading="lazy"
                           onError={(e) => {
+                            // Se a imagem falhar, mostra ícone
                             (e.target as HTMLImageElement).style.display = 'none';
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            if (parent) {
+                              const icon = document.createElement('div');
+                              icon.className = 'flex items-center justify-center w-full h-20';
+                              icon.innerHTML = `<svg class="w-8 h-8 text-ink-muted/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`;
+                              parent.prepend(icon);
+                            }
                           }}
                         />
                       ) : (
@@ -445,7 +516,7 @@ export default function DocumentDetailPage() {
           </motion.div>
         </section>
 
-        {/* MODAL DE ANEXO */}
+        {/* MODAL DE ANEXO - CORRIGIDO (rename com extensão preservada) */}
         {isModalOpen && selectedAttachment && (
           <div
             className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
@@ -465,18 +536,18 @@ export default function DocumentDetailPage() {
                   {isRenaming ? (
                     <input
                       type="text"
-                      value={selectedAttachment.name}
+                      value={getBaseName(selectedAttachment.name)}
                       onChange={(e) =>
                         setSelectedAttachment({
                           ...selectedAttachment,
-                          name: e.target.value,
+                          name: buildFullName(e.target.value, getExtension(selectedAttachment.name)),
                         })
                       }
                       className="flex-1 bg-transparent text-ink-primary font-medium focus:outline-none border-b border-ice/30 focus:border-ice transition-colors"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          updateAttachmentName(selectedAttachment.name);
+                          updateAttachmentName(getBaseName(selectedAttachment.name));
                         }
                         if (e.key === 'Escape') {
                           setIsRenaming(false);
@@ -484,12 +555,15 @@ export default function DocumentDetailPage() {
                       }}
                     />
                   ) : (
-                    <p className="text-ink-primary font-medium truncate">{selectedAttachment.name}</p>
+                    <p className="text-ink-primary font-medium truncate">{getBaseName(selectedAttachment.name)}</p>
                   )}
+                  <span className="text-xs text-ink-muted/50 flex-shrink-0">
+                    {getExtension(selectedAttachment.name)}
+                  </span>
                   <button
                     onClick={() => {
                       if (isRenaming) {
-                        updateAttachmentName(selectedAttachment.name);
+                        updateAttachmentName(getBaseName(selectedAttachment.name));
                       } else {
                         setIsRenaming(true);
                         setTimeout(() => {
