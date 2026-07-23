@@ -18,7 +18,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const { handleNotificationAction } = useNotifications();
   const { setUser, captureException } = useSentry();
   const { processQueue, isOnline } = useSyncQueue();
-  const [isInitialSyncDone, setIsInitialSyncDone] = useState(false);
   const [isPullDone, setIsPullDone] = useState(false);
 
   // ============================================================
@@ -34,22 +33,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
         })
         .catch((err) => {
           console.error('❌ Erro no pull:', err);
-          // Mesmo com erro, marca como tentado para não bloquear
           setIsPullDone(true);
         });
     }
   }, [user, loading, isPullDone]);
 
   // ============================================================
-  // 2. SYNC INICIAL (push) - APENAS UMA VEZ
+  // 2. SYNC (push) - DEPOIS DO PULL
   // ============================================================
   useEffect(() => {
-    if (isOnline && user && !isInitialSyncDone && isPullDone) {
-      processQueue().then(() => {
-        setIsInitialSyncDone(true);
-      });
+    if (isOnline && user && isPullDone) {
+      console.log('🔄 Executando push (processQueue)...');
+      processQueue();
     }
-  }, [isOnline, user, processQueue, isInitialSyncDone, isPullDone]);
+  }, [isOnline, user, isPullDone, processQueue]);
 
   // ============================================================
   // 3. SENTRY - Define usuário
