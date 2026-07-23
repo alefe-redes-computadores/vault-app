@@ -40,63 +40,65 @@ export function EmptyState({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className={`flex flex-col items-center justify-center text-center ${
-        compact ? "py-8 px-4" : "py-16 px-4"
+      initial={{ opacity: 0, y: 14, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.28 }}
+      className={`flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface text-center shadow-sm ${
+        compact ? "px-4 py-8" : "px-6 py-14"
       }`}
     >
-      {/* Ícone com animação de flutuação */}
-      <motion.div
-        animate={{ y: [0, -8, 0] }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-        className={`rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center ${
-          compact ? "w-16 h-16 mb-3" : "w-24 h-24 mb-6"
+      <div
+        className={`flex items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised ${
+          compact ? "mb-3 h-16 w-16" : "mb-5 h-24 w-24"
         }`}
       >
-        <Icon size={compact ? 28 : 40} className="text-ink-muted/50" />
-      </motion.div>
+        <Icon
+          size={compact ? 28 : 38}
+          className="text-ink-muted/45"
+        />
+      </div>
 
-      <h3 className={`font-display text-ink-primary ${
-        compact ? "text-base" : "text-xl"
-      }`}>
+      <h3
+        className={`font-display font-semibold text-ink-primary ${
+          compact ? "text-base" : "text-xl"
+        }`}
+      >
         {title}
       </h3>
 
-      <p className={`text-ink-muted max-w-xs ${
-        compact ? "text-sm mt-1" : "text-sm mt-2"
-      }`}>
+      <p
+        className={`max-w-xs text-ink-muted ${
+          compact ? "mt-1 text-sm leading-6" : "mt-2 text-sm leading-6"
+        }`}
+      >
         {description}
       </p>
 
-      <div className="flex flex-col sm:flex-row items-center gap-3 mt-6">
-        {actionLabel && onAction && (
-          <Button
-            variant="primary"
-            onClick={handleAction}
-            className="flex items-center gap-2"
-          >
-            <Plus size={16} />
-            {actionLabel}
-          </Button>
-        )}
+      {(actionLabel || secondaryActionLabel) && (
+        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
+          {actionLabel && onAction && (
+            <Button
+              variant="primary"
+              onClick={handleAction}
+              className="flex items-center gap-2"
+            >
+              <Plus size={16} />
+              {actionLabel}
+            </Button>
+          )}
 
-        {secondaryActionLabel && onSecondaryAction && (
-          <Button
-            variant="secondary"
-            onClick={handleSecondaryAction}
-            className="flex items-center gap-2"
-          >
-            {secondaryActionLabel}
-            <ArrowRight size={14} />
-          </Button>
-        )}
-      </div>
+          {secondaryActionLabel && onSecondaryAction && (
+            <Button
+              variant="secondary"
+              onClick={handleSecondaryAction}
+              className="flex items-center gap-2"
+            >
+              {secondaryActionLabel}
+              <ArrowRight size={14} />
+            </Button>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
