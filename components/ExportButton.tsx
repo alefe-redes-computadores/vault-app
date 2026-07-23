@@ -46,13 +46,13 @@ export function ExportButton({ variant = "icon" }: ExportButtonProps) {
       <button
         onClick={handleExport}
         disabled={isExporting}
-        className="p-2 rounded-full bg-surface-raised border border-surface-border/50 hover:bg-surface-border transition-colors active:scale-95 disabled:opacity-50"
         title="Exportar dados"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-all active:scale-95 hover:bg-surface-border hover:text-ink-primary disabled:opacity-50"
       >
         {isExporting ? (
-          <Loader2 size={18} className="animate-spin text-ink-muted" />
+          <Loader2 size={18} className="animate-spin" />
         ) : (
-          <Download size={18} className="text-ink-muted" />
+          <Download size={18} />
         )}
       </button>
     );
@@ -62,7 +62,7 @@ export function ExportButton({ variant = "icon" }: ExportButtonProps) {
     <button
       onClick={handleExport}
       disabled={isExporting}
-      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-surface-border/50 hover:bg-surface-border transition-colors active:scale-95 disabled:opacity-50"
+      className="flex items-center gap-2 rounded-2xl border border-surface-border/50 bg-surface px-4 py-2.5 text-sm font-medium text-ink-primary transition-all active:scale-95 hover:bg-surface-raised disabled:opacity-50"
     >
       {isExporting ? (
         <>
