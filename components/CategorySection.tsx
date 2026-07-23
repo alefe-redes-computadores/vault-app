@@ -29,22 +29,30 @@ function CategorySectionComponent({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: category.color }}
-          />
-          <h2 className="font-display text-sm font-medium text-ink-primary">
-            {category.name}
-          </h2>
-          <span className="text-xs text-ink-muted">({total})</span>
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div
+              className="h-3 w-3 rounded-full"
+              style={{ backgroundColor: category.color }}
+            />
+            <h2 className="font-display text-sm font-semibold text-ink-primary">
+              {category.name}
+            </h2>
+            <span className="rounded-full bg-surface-raised px-2 py-0.5 text-[11px] text-ink-muted">
+              {total}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-ink-muted">
+            Documentos recentes desta categoria
+          </p>
         </div>
+
         {hasMore && (
           <button
             onClick={onSeeAll}
-            className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink-primary transition-colors"
+            className="flex shrink-0 items-center gap-1 text-xs font-medium text-ink-muted transition-colors hover:text-ink-primary"
           >
             Ver mais
             <ChevronRight size={14} />
@@ -61,7 +69,7 @@ function CategorySectionComponent({
           />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
