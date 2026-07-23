@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Plus, User, Trash2, Loader2, Users, Edit } from "lucide-react";
@@ -17,7 +17,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { showToast, showSuccess } = useToast();
+  const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<{ id: string; name: string } | null>(null);
@@ -25,9 +25,13 @@ export default function PessoasPage() {
   const persons = usePersons();
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 600);
+    const timer = setTimeout(() => setIsLoading(false), 420);
     return () => clearTimeout(timer);
   }, []);
+
+  const sortedPersons = useMemo(() => {
+    return [...persons].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }, [persons]);
 
   const handleDeleteClick = (id: string, name: string) => {
     setShowDeleteModal({ id, name });
@@ -41,8 +45,8 @@ export default function PessoasPage() {
     setIsDeleting(id);
 
     try {
-      await db.transaction('rw', db.persons, db.documents, async () => {
-        await db.documents.where('person_id').equals(id).delete();
+      await db.transaction("rw", db.persons, db.documents, async () => {
+        await db.documents.where("person_id").equals(id).delete();
         await db.persons.delete(id);
       });
       trigger("success");
@@ -69,43 +73,50 @@ export default function PessoasPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                Vault
+              </p>
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Pessoas
               </h1>
-              <p className="text-sm text-ink-muted">
-                {persons.length} pessoa{persons.length !== 1 ? "s" : ""} cadastrada{persons.length !== 1 ? "s" : ""}
+              <p className="mt-1 text-sm text-ink-muted">
+                {sortedPersons.length} pessoa{sortedPersons.length !== 1 ? "s" : ""} cadastrada
+                {sortedPersons.length !== 1 ? "s" : ""}
               </p>
             </div>
+
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.push("/pessoas/novo");
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void active:scale-95 transition-all"
+              aria-label="Adicionar pessoa"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 transition-all active:scale-95"
             >
               <Plus size={18} strokeWidth={2.5} />
             </button>
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
-          {persons.length === 0 ? (
+        <section className="px-5 pt-6">
+          {sortedPersons.length === 0 ? (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-16 text-center"
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.28 }}
+              className="flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
             >
-              <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
                 <Users size={32} className="text-ink-muted" />
               </div>
-              <h3 className="font-display text-lg text-ink-primary">Nenhuma pessoa</h3>
-              <p className="text-sm text-ink-muted mt-1 max-w-xs">
-                Cadastre pessoas para começar a organizar seus documentos.
+              <h3 className="font-display text-lg font-semibold text-ink-primary">
+                Nenhuma pessoa cadastrada
+              </h3>
+              <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
+                Cadastre pessoas para vincular documentos e deixar sua organização mais rápida.
               </p>
               <Button
                 variant="primary"
@@ -119,69 +130,78 @@ export default function PessoasPage() {
               </Button>
             </motion.div>
           ) : (
-            persons.map((person, index) => (
-              <motion.div
-                key={person.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
-                className="flex items-center justify-between p-4 rounded-xl border border-surface-border/50 bg-surface shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-95"
-                onClick={() => handlePersonClick(person.id!)}
-              >
-                <div className="flex items-center gap-3">
-                  {person.avatar_url ? (
-                    <img
-                      src={person.avatar_url}
-                      alt={person.name}
-                      className="w-12 h-12 rounded-full border-2 border-ice/20"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-lg font-medium">
-                      {person.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="font-display text-[15px] font-medium text-ink-primary">
-                      {person.name}
-                    </h3>
-                    {person.email && (
-                      <p className="text-xs text-ink-muted">{person.email}</p>
-                    )}
-                    {person.phone && (
-                      <p className="text-xs text-ink-muted">{person.phone}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
+            <div className="space-y-3">
+              {sortedPersons.map((person, index) => (
+                <motion.article
+                  key={person.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, delay: index * 0.04 }}
+                  className="group flex items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm transition-all duration-200 active:scale-[0.99]"
+                >
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      trigger("vibrate");
-                      router.push(`/pessoas/editar?id=${person.id}`);
-                    }}
-                    className="p-2 rounded-full hover:bg-surface-border transition-colors"
-                    title="Editar pessoa"
+                    onClick={() => handlePersonClick(person.id!)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <Edit size={16} className="text-ink-muted hover:text-ice transition-colors" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteClick(person.id!, person.name);
-                    }}
-                    disabled={isDeleting === person.id}
-                    className="p-2 rounded-full hover:bg-surface-border transition-colors disabled:opacity-50"
-                    title="Remover pessoa"
-                  >
-                    {isDeleting === person.id ? (
-                      <Loader2 size={16} className="animate-spin text-coral" />
+                    {person.avatar_url ? (
+                      <img
+                        src={person.avatar_url}
+                        alt={person.name}
+                        className="h-12 w-12 rounded-full border border-surface-border/50 object-cover"
+                      />
                     ) : (
-                      <Trash2 size={16} className="text-ink-muted hover:text-coral transition-colors" />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-sm font-semibold text-ink-primary">
+                        {person.name.charAt(0).toUpperCase()}
+                      </div>
                     )}
+
+                    <div className="min-w-0">
+                      <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
+                        {person.name}
+                      </h3>
+                      <div className="mt-1 space-y-0.5">
+                        {person.email && (
+                          <p className="truncate text-xs text-ink-muted">{person.email}</p>
+                        )}
+                        {person.phone && (
+                          <p className="truncate text-xs text-ink-muted">{person.phone}</p>
+                        )}
+                      </div>
+                    </div>
                   </button>
-                </div>
-              </motion.div>
-            ))
+
+                  <div className="ml-3 flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        trigger("vibrate");
+                        router.push(`/pessoas/editar?id=${person.id}`);
+                      }}
+                      aria-label={`Editar ${person.name}`}
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-colors active:scale-95 hover:bg-surface-raised hover:text-ice"
+                    >
+                      <Edit size={16} />
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(person.id!, person.name);
+                      }}
+                      disabled={isDeleting === person.id}
+                      aria-label={`Remover ${person.name}`}
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-colors active:scale-95 hover:bg-surface-raised hover:text-coral disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isDeleting === person.id ? (
+                        <Loader2 size={16} className="animate-spin text-coral" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
+                  </div>
+                </motion.article>
+              ))}
+            </div>
           )}
         </section>
 
