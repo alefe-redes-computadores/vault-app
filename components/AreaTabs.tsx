@@ -18,8 +18,6 @@ interface AreaTabsProps {
 
 export function AreaTabs({ activeArea, onAreaChange }: AreaTabsProps) {
   const { trigger } = useHapticFeedback();
-
-  // Converte AREAS (objeto) para um array
   const areasArray = Object.values(AREAS);
 
   const handleAreaClick = (areaId: CategoryId) => {
@@ -37,13 +35,13 @@ export function AreaTabs({ activeArea, onAreaChange }: AreaTabsProps) {
           <button
             key={area.id}
             onClick={() => handleAreaClick(area.id)}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] ${
+            className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] ${
               isActive
-                ? "bg-ice text-void"
-                : "bg-surface-raised text-ink-muted border border-surface-border hover:text-ink-primary"
+                ? "border-ice bg-ice/12 text-ice shadow-sm shadow-ice/10"
+                : "border-surface-border/50 bg-surface-raised text-ink-muted hover:border-surface-border hover:text-ink-primary"
             }`}
           >
-            <Icon size={16} />
+            <Icon size={15} />
             <span>{area.name}</span>
           </button>
         );
