@@ -107,6 +107,15 @@ function nowIso() {
 }
 
 // ============================================================
+// DISPARA EVENTO PARA PROCESSAR FILA IMEDIATAMENTE
+// ============================================================
+function triggerSyncProcess() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('sync:process'));
+  }
+}
+
+// ============================================================
 // OPERAÇÕES ATÔMICAS (safeAdd / safeUpdate / safeDelete)
 // ============================================================
 export async function safeAddPerson(
@@ -133,6 +142,8 @@ export async function safeAddPerson(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
     return id;
   });
 }
@@ -161,6 +172,8 @@ export async function safeAddDocument(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
     return id;
   });
 }
@@ -185,6 +198,8 @@ export async function safeUpdateDocument(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
   });
 }
 
@@ -216,6 +231,8 @@ export async function safeDeleteDocument(id: string): Promise<void> {
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
   });
 }
 
@@ -251,6 +268,8 @@ export async function safeAddMedicamento(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
     return id;
   });
 }
@@ -278,6 +297,8 @@ export async function safeAddRenovacao(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
     return id;
   });
 }
@@ -308,6 +329,8 @@ export async function safeAddVault(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
     return id;
   });
 }
@@ -335,6 +358,8 @@ export async function safeAddVaultMember(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
     return id;
   });
 }
@@ -359,6 +384,8 @@ export async function safeUpdateVaultMember(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
   });
 }
 
@@ -405,6 +432,8 @@ export async function safeAddMedico(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
     return id;
   });
 }
@@ -432,6 +461,8 @@ export async function safeAddFarmacia(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
     return id;
   });
 }
@@ -459,6 +490,8 @@ export async function safeAddHospital(
       retry_count: 0,
       failed: false,
     });
+    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+    triggerSyncProcess();
     return id;
   });
 }
