@@ -86,14 +86,27 @@ export default function EditarPessoaPage() {
 
     setLoading(true);
     try {
-      // Atualiza a pessoa no Dexie
-      await db.persons.update(id, {
+      // ✅ CORRIGIDO: usar undefined em vez de null
+      const updateData: any = {
         name: formData.name.trim(),
-        email: formData.email.trim() || null,
-        phone: formData.phone.trim() || null,
         updated_at: new Date().toISOString(),
         synced: false,
-      });
+      };
+
+      if (formData.email.trim()) {
+        updateData.email = formData.email.trim();
+      } else {
+        updateData.email = undefined;
+      }
+
+      if (formData.phone.trim()) {
+        updateData.phone = formData.phone.trim();
+      } else {
+        updateData.phone = undefined;
+      }
+
+      // Atualiza a pessoa no Dexie
+      await db.persons.update(id, updateData);
 
       // Busca a pessoa atualizada
       const updatedPerson = await db.persons.get(id);
@@ -108,6 +121,9 @@ export default function EditarPessoaPage() {
         retry_count: 0,
         failed: false,
       });
+
+      // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
+      window.dispatchEvent(new Event('sync:process'));
 
       trigger("success");
       showSuccess("Pessoa atualizada com sucesso!", 3000);
