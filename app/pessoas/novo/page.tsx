@@ -28,7 +28,7 @@ export default function NewPersonPage() {
 
   const handleSubmit = async () => {
     trigger("vibrate");
-    
+
     if (!formData.name.trim()) {
       setError("Nome é obrigatório");
       trigger("error");
@@ -49,6 +49,7 @@ export default function NewPersonPage() {
         updated_at: new Date().toISOString(),
         synced: false,
       });
+
       trigger("success");
       showToast("Pessoa adicionada com sucesso!", "success");
       router.push("/pessoas");
@@ -78,36 +79,47 @@ export default function NewPersonPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-void/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              aria-label="Voltar"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
-            <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">Nova pessoa</h1>
+
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                Vault
+              </p>
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+                Nova pessoa
+              </h1>
             </div>
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
-          <div className="rounded-xl border border-surface-border/50 bg-surface p-6 shadow-sm">
-            <div className="flex flex-col items-center gap-4 mb-6">
-              <div className="w-24 h-24 rounded-full bg-surface-raised flex items-center justify-center border-2 border-ice/20">
+        <section className="px-5 pt-6">
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm">
+            <div className="mb-6 flex flex-col items-center text-center">
+              <div className="flex h-24 w-24 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised shadow-sm">
                 <User size={40} className="text-ink-muted" />
               </div>
+
               <button
                 onClick={handlePreencherDados}
-                className="text-sm text-ice hover:text-ice/80 transition-colors"
+                className="mt-4 text-sm font-medium text-ice transition-colors active:scale-95 hover:text-ice/80"
               >
                 Preencher com meus dados
               </button>
+
+              <p className="mt-2 max-w-xs text-xs leading-5 text-ink-faint">
+                Use seus dados do perfil para acelerar o cadastro e manter o fluxo consistente.
+              </p>
             </div>
 
             <div className="space-y-4">
@@ -115,7 +127,9 @@ export default function NewPersonPage() {
                 label="Nome completo"
                 placeholder="Ex: Alefe Gomes"
                 value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
                 error={error}
                 required
               />
@@ -123,13 +137,15 @@ export default function NewPersonPage() {
               <div className="relative">
                 <Mail
                   size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
                 />
                 <Input
                   label="E-mail"
                   placeholder="exemplo@email.com"
                   value={formData.email}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, email: e.target.value }))
+                  }
                   className="pl-9"
                 />
               </div>
@@ -137,13 +153,15 @@ export default function NewPersonPage() {
               <div className="relative">
                 <Phone
                   size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
                 />
                 <Input
                   label="Telefone"
                   placeholder="(11) 99999-9999"
                   value={formData.phone}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                  }
                   className="pl-9"
                 />
               </div>
@@ -156,7 +174,7 @@ export default function NewPersonPage() {
             fullWidth
             onClick={handleSubmit}
             disabled={loading}
-            className="flex items-center justify-center gap-2"
+            className="mt-4 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
