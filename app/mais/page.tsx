@@ -21,6 +21,7 @@ import {
   Fingerprint,
   Pencil,
   Heart,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -29,10 +30,11 @@ import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { pullAllData } from "@/lib/sync/pull";
 
 const APP_VERSION = "1.0.0";
 
@@ -55,13 +57,14 @@ export default function MaisPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { showToast } = useToast();
+  const { showToast, showSuccess, showError, showInfo } = useToast();
   const { processQueue, isOnline } = useSyncQueue();
   const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
   const [isChangingPhoto, setIsChangingPhoto] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleLogout = async () => {
     setIsLoading(true);
@@ -103,20 +106,67 @@ export default function MaisPage() {
     }
   };
 
-  const handleSync = async () => {
-    if (!isOnline) {
-      showToast("Sem conexão com a internet", "error");
+  // ============================================================
+  // BOTÃO DE SINCRONIZAÇÃO CORRIGIDO (PULL + PUSH)
+  // ============================================================
+  const handleSync = useCallback(async () => {
+    if (!user?.id) {
+      showError("Usuário não autenticado");
       return;
     }
-    trigger("vibrate");
-    showToast("Sincronizando dados...", "info");
-    try {
-      await processQueue();
-      showToast("Dados sincronizados com sucesso!", "success");
-    } catch {
-      showToast("Erro ao sincronizar", "error");
+
+    if (!isOnline) {
+      showError("Sem conexão com a internet");
+      return;
     }
-  };
+
+    if (isSyncing) return;
+
+    setIsSyncing(true);
+    trigger("vibrate");
+    showInfo("Sincronizando dados...", 5000);
+
+    try {
+      // ============================================================
+      // PASSO 1: PULL (baixar dados da nuvem)
+      // ============================================================
+      console.log("🔵 Iniciando pull...");
+      await pullAllData(user.id);
+      
+      const personsCount = await db.persons.count();
+      const docsCount = await db.documents.count();
+      console.log(`✅ Pull concluído: ${personsCount} pessoas, ${docsCount} documentos`);
+
+      // ============================================================
+      // PASSO 2: PUSH (enviar dados locais para a nuvem)
+      // ============================================================
+      console.log("🔄 Iniciando push...");
+      await processQueue();
+
+      // ============================================================
+      // PASSO 3: Contar novamente para mostrar resultado final
+      // ============================================================
+      const finalPersons = await db.persons.count();
+      const finalDocs = await db.documents.count();
+      const finalMedicamentos = await db.medicamentos.count();
+
+      showSuccess(
+        `Sincronizado! ${finalPersons} pessoas, ${finalDocs} documentos`,
+        5000
+      );
+
+      // Força recarregamento da UI
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+
+    } catch (error: any) {
+      console.error("❌ Erro na sincronização:", error);
+      showError(`Erro ao sincronizar: ${error?.message || "Erro desconhecido"}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [user, isOnline, isSyncing, trigger, showInfo, showSuccess, showError, processQueue]);
 
   const handleChangePhoto = () => {
     trigger("vibrate");
@@ -192,9 +242,13 @@ export default function MaisPage() {
           id: "sync",
           icon: RefreshCw,
           label: "Sincronizar agora",
-          description: isOnline ? "Forçar sincronização com a nuvem" : "Sem conexão",
+          description: isOnline 
+            ? isSyncing 
+              ? "Baixando e enviando dados..." 
+              : "Forçar sincronização com a nuvem (pull + push)"
+            : "Sem conexão",
           onClick: handleSync,
-          disabled: !isOnline,
+          disabled: !isOnline || isSyncing,
         },
         {
           id: "limpar",
@@ -241,7 +295,7 @@ export default function MaisPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          {/* PERFIL — INTEGRADO NO TOPO COM BOTÃO DE EDIÇÃO */}
+          {/* PERFIL */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -308,17 +362,22 @@ export default function MaisPage() {
                   if (item.component) {
                     return <div key={item.id}>{item.component}</div>;
                   }
+                  const isSyncItem = item.id === "sync";
                   return (
                     <button
                       key={item.id}
                       onClick={item.onClick}
-                      disabled={item.disabled}
+                      disabled={item.disabled || isSyncing}
                       className={`flex items-center gap-4 w-full p-3 rounded-xl bg-surface border border-surface-border/50 hover:bg-surface-border transition-all active:scale-95 ${
-                        item.disabled ? "opacity-50 cursor-not-allowed" : ""
+                        item.disabled || isSyncing ? "opacity-50 cursor-not-allowed" : ""
                       }`}
                     >
                       <div className="w-10 h-10 rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center flex-shrink-0">
-                        <Icon size={18} className="text-ink-muted" />
+                        {isSyncItem && isSyncing ? (
+                          <Loader2 size={18} className="text-ice animate-spin" />
+                        ) : (
+                          <Icon size={18} className="text-ink-muted" />
+                        )}
                       </div>
                       <div className="flex-1 text-left">
                         <p className="text-sm font-medium text-ink-primary">{item.label}</p>
@@ -353,7 +412,7 @@ export default function MaisPage() {
             </button>
           </motion.div>
 
-          {/* RODAPÉ COM VERSÃO E CRÉDITOS */}
+          {/* RODAPÉ */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -372,7 +431,7 @@ export default function MaisPage() {
           </motion.div>
         </section>
 
-        {/* MODAL DE CONFIRMAÇÃO - LOGOUT */}
+        {/* MODAIS */}
         <ConfirmationModal
           isOpen={showLogoutModal}
           onClose={() => setShowLogoutModal(false)}
@@ -385,7 +444,6 @@ export default function MaisPage() {
           type="warning"
         />
 
-        {/* MODAL DE CONFIRMAÇÃO - LIMPAR DADOS LOCAIS */}
         <ConfirmationModal
           isOpen={showClearDataModal}
           onClose={() => setShowClearDataModal(false)}
