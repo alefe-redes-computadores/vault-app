@@ -290,7 +290,11 @@ export default function MedicamentosPage() {
           )}
 
           {hasMore && (
-            <InfiniteScrollTrigger onLoadMore={loadMore} />
+            <InfiniteScrollTrigger 
+              hasMore={hasMore} 
+              isLoading={isLoadingMore} 
+              onLoadMore={loadMore} 
+            />
           )}
         </section>
 
