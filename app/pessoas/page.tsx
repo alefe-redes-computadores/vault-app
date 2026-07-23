@@ -157,9 +157,9 @@ export default function PessoasPage() {
                     onClick={(e) => {
                       e.stopPropagation();
                       trigger("vibrate");
-                      handlePersonClick(person.id!);
+                      router.push(`/pessoas/editar?id=${person.id}`);
                     }}
-                    className="p-2 rounded-full hover:bg-surface-border/50 transition-colors"
+                    className="p-2 rounded-full hover:bg-surface-border transition-colors"
                     title="Editar pessoa"
                   >
                     <Edit size={16} className="text-ink-muted hover:text-ice transition-colors" />
@@ -170,7 +170,7 @@ export default function PessoasPage() {
                       handleDeleteClick(person.id!, person.name);
                     }}
                     disabled={isDeleting === person.id}
-                    className="p-2 rounded-full hover:bg-surface-border/50 transition-colors disabled:opacity-50"
+                    className="p-2 rounded-full hover:bg-surface-border transition-colors disabled:opacity-50"
                     title="Remover pessoa"
                   >
                     {isDeleting === person.id ? (
