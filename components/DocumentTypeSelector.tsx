@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
   FileText,
@@ -9,6 +10,7 @@ import {
   File,
   Building2,
   FolderOpen,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { type DocumentType } from "@/lib/types";
@@ -39,55 +41,90 @@ interface DocumentTypeSelectorProps {
   onClose: () => void;
 }
 
-export function DocumentTypeSelector({ selected, onChange, isOpen, onClose }: DocumentTypeSelectorProps) {
-  if (!isOpen) return null;
-
+export function DocumentTypeSelector({
+  selected,
+  onChange,
+  isOpen,
+  onClose,
+}: DocumentTypeSelectorProps) {
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="relative max-w-md w-full rounded-2xl bg-surface-raised border border-surface-border shadow-vault p-6 animate-in zoom-in duration-200 max-h-[80vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="font-display text-lg font-semibold text-ink-primary text-center mb-4">
-          Selecionar tipo de documento
-        </h2>
-
-        <div className="grid grid-cols-2 gap-2">
-          {DOCUMENT_TYPES.map((type) => {
-            const Icon = type.icon;
-            const isSelected = selected === type.id;
-
-            return (
-              <button
-                key={type.id}
-                onClick={() => {
-                  onChange(type.id);
-                  onClose();
-                }}
-                className={`flex flex-col items-center gap-1 p-4 rounded-xl border transition-all active:scale-[0.98] ${
-                  isSelected
-                    ? "border-ice bg-ice/10 text-ice"
-                    : "border-surface-border bg-surface hover:bg-surface-border text-ink-muted hover:text-ink-primary"
-                }`}
-              >
-                <Icon size={24} />
-                <span className="text-sm font-medium">{type.label}</span>
-                <span className="text-xs text-ink-muted/70">{type.description}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <button
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
           onClick={onClose}
-          className="mt-4 w-full py-2 rounded-full bg-surface-border text-ink-muted hover:bg-surface-border/80 transition-colors active:scale-[0.98]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
         >
-          Cancelar
-        </button>
-      </div>
-    </div>
+          <motion.div
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.97 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="relative max-h-[82vh] w-full max-w-md overflow-y-auto rounded-[28px] border border-surface-border/60 bg-surface p-5 shadow-vault"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={onClose}
+              aria-label="Fechar seletor"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="mb-5 pr-10">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                Documento
+              </p>
+              <h2 className="mt-1 font-display text-lg font-semibold text-ink-primary">
+                Selecionar tipo
+              </h2>
+              <p className="mt-1 text-sm text-ink-muted">
+                Escolha o tipo para carregar os campos corretos do formulário
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {DOCUMENT_TYPES.map((type) => {
+                const Icon = type.icon;
+                const isSelected = selected === type.id;
+
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => {
+                      onChange(type.id);
+                      onClose();
+                    }}
+                    className={`rounded-[22px] border p-4 text-left transition-all active:scale-[0.985] ${
+                      isSelected
+                        ? "border-ice bg-ice/10 text-ice shadow-sm shadow-ice/10"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:border-surface-border hover:text-ink-primary"
+                    }`}
+                  >
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/[0.03]">
+                      <Icon size={20} />
+                    </div>
+                    <span className="block text-sm font-semibold">{type.label}</span>
+                    <span className="mt-1 block text-xs leading-5 text-ink-muted">
+                      {type.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={onClose}
+              className="mt-4 w-full rounded-full border border-surface-border/50 bg-surface-raised py-2.5 text-sm font-medium text-ink-muted transition-colors active:scale-[0.985] hover:bg-surface-border hover:text-ink-primary"
+            >
+              Cancelar
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
