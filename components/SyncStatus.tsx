@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { RefreshCw, CheckCircle, AlertCircle, Loader2, Clock } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
@@ -14,16 +19,21 @@ interface SyncStatusProps {
   className?: string;
 }
 
-export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProps) {
+export function SyncStatus({
+  showLabel = false,
+  className = "",
+}: SyncStatusProps) {
   const { trigger } = useHapticFeedback();
   const { processQueue, isProcessing, isOnline } = useSyncQueue();
   const { showToast } = useToast();
-  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "success" | "error">("idle");
+
+  const [syncStatus, setSyncStatus] = useState<
+    "idle" | "syncing" | "success" | "error"
+  >("idle");
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
 
-  // Carrega a última sincronização do localStorage
   useEffect(() => {
     const saved = localStorage.getItem("vault_last_sync");
     if (saved) {
@@ -35,12 +45,10 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
     }
   }, []);
 
-  // Monitora se está sincronizando em background
   useEffect(() => {
     setIsBackgroundSyncing(isProcessing);
   }, [isProcessing]);
 
-  // Atualiza o tempo de última sincronização
   const updateLastSyncTime = () => {
     const now = new Date();
     setLastSyncTime(now);
@@ -63,6 +71,16 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
   }, []);
 
   const isSyncingAll = isProcessing;
+  const hasPending = pendingCount > 0;
+
+  const getLastSyncLabel = () => {
+    if (!lastSyncTime) return "Nunca sincronizado";
+    const diff = formatDistanceToNow(lastSyncTime, {
+      addSuffix: true,
+      locale: ptBR,
+    });
+    return `Última sync: ${diff}`;
+  };
 
   const handleSync = async () => {
     if (!isOnline) {
@@ -81,12 +99,12 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
 
     try {
       await processQueue();
-      
+
       setSyncStatus("success");
       const pending = await db.syncQueue.count();
       setPendingCount(pending);
       updateLastSyncTime();
-      
+
       showToast("Dados sincronizados com sucesso!", "success");
       setTimeout(() => setSyncStatus("idle"), 3000);
     } catch (error) {
@@ -97,62 +115,52 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
     }
   };
 
-  const hasPending = pendingCount > 0;
-
-  const getLastSyncLabel = () => {
-    if (!lastSyncTime) return "Nunca sincronizado";
-    const diff = formatDistanceToNow(lastSyncTime, { 
-      addSuffix: true,
-      locale: ptBR 
-    });
-    return `Última sync: ${diff}`;
-  };
+  const statusIcon = isSyncingAll ? (
+    <Loader2 size={15} className="animate-spin text-ice" />
+  ) : syncStatus === "success" ? (
+    <CheckCircle size={15} className="text-emerald-400" />
+  ) : syncStatus === "error" ? (
+    <AlertCircle size={15} className="text-coral" />
+  ) : hasPending ? (
+    <span className="relative flex h-2.5 w-2.5">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-coral opacity-75" />
+      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-coral" />
+    </span>
+  ) : (
+    <div className="h-2.5 w-2.5 rounded-full bg-emerald-400/60" />
+  );
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      {/* Indicador visual */}
       <div className="relative flex items-center">
-        {isSyncingAll ? (
-          <Loader2 size={16} className="text-ice animate-spin" />
-        ) : syncStatus === "success" ? (
-          <CheckCircle size={16} className="text-green-400" />
-        ) : syncStatus === "error" ? (
-          <AlertCircle size={16} className="text-coral" />
-        ) : (
-          <div className="flex items-center gap-1">
-            {hasPending && (
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-coral opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-coral" />
-              </span>
-            )}
-            {!hasPending && (
-              <div className="w-2 h-2 rounded-full bg-green-400/50" />
-            )}
-          </div>
-        )}
-        
-        {/* Indicador de sincronização em background (pisca suavemente) */}
+        {statusIcon}
+
         {isBackgroundSyncing && !isSyncingAll && (
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ice opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-ice" />
+          <span className="absolute -right-1 -top-1 flex h-3 w-3">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ice opacity-70" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-ice" />
           </span>
         )}
       </div>
 
-      {/* Botão de sincronização manual */}
       <button
         onClick={handleSync}
         disabled={isSyncingAll || !isOnline}
-        className={`flex items-center gap-1 text-xs transition-all active:scale-[0.95] ${
+        title={
+          !isOnline
+            ? "Sem internet"
+            : isSyncingAll
+            ? "Sincronizando..."
+            : "Sincronizar agora"
+        }
+        className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-all active:scale-[0.97] ${
           isSyncingAll || !isOnline
-            ? "text-ink-muted/50 cursor-not-allowed"
-            : "text-ink-muted hover:text-ink-primary"
+            ? "cursor-not-allowed text-ink-muted/45"
+            : "text-ink-muted hover:bg-surface-raised hover:text-ink-primary"
         }`}
-        title={!isOnline ? "Sem internet" : isSyncingAll ? "Sincronizando..." : "Sincronizar agora"}
       >
-        <RefreshCw size={14} className={isSyncingAll ? "animate-spin" : ""} />
+        <RefreshCw size={13} className={isSyncingAll ? "animate-spin" : ""} />
+
         {showLabel && (
           <span className="flex items-center gap-1">
             {isSyncingAll
@@ -162,8 +170,9 @@ export function SyncStatus({ showLabel = false, className = "" }: SyncStatusProp
               : isOnline
               ? "Sincronizado"
               : "Offline"}
+
             {!isSyncingAll && !hasPending && isOnline && lastSyncTime && (
-              <span className="text-[10px] text-ink-muted/60 ml-1 hidden sm:inline">
+              <span className="ml-1 hidden text-[10px] text-ink-muted/60 sm:inline">
                 · {getLastSyncLabel()}
               </span>
             )}
