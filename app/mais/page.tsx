@@ -103,9 +103,6 @@ export default function MaisPage() {
     }
   };
 
-  // ============================================================
-  // BOTÃO DE SINCRONIZAÇÃO (PULL + PUSH + RELOAD)
-  // ============================================================
   const handleSync = useCallback(async () => {
     if (!user?.id) {
       showError("Usuário não autenticado");
@@ -124,14 +121,11 @@ export default function MaisPage() {
     showInfo("Sincronizando dados...", 5000);
 
     try {
-      console.log("🔵 Iniciando pull...");
       await pullAllData(user.id);
       
       const personsCount = await db.persons.count();
       const docsCount = await db.documents.count();
-      console.log(`✅ Pull concluído: ${personsCount} pessoas, ${docsCount} documentos`);
 
-      console.log("🔄 Iniciando push...");
       await processQueue();
 
       const finalPersons = await db.persons.count();
@@ -187,6 +181,7 @@ export default function MaisPage() {
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
+  // ✅ Menu simplificado, sem duplicação
   const menuSections: MenuSection[] = [
     {
       title: "Geral",
@@ -205,6 +200,11 @@ export default function MaisPage() {
           description: "Gerencie as pessoas do seu vault",
           onClick: () => router.push("/pessoas"),
         },
+      ],
+    },
+    {
+      title: "Preferências",
+      items: [
         {
           id: "tema",
           icon: Settings,
@@ -345,7 +345,8 @@ export default function MaisPage() {
               <div className="space-y-2">
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  // ✅ Se for o item "tema", renderiza o componente sem o button wrapper
+
+                  // ✅ ThemeToggle - renderiza como item separado, sem duplicação
                   if (item.id === "tema") {
                     return (
                       <div
