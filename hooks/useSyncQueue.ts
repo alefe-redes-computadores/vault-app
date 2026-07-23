@@ -1,7 +1,9 @@
+"use client";
+
 import { db } from '@/lib/db';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital, SyncQueueItem } from '@/lib/types';
+import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital } from '@/lib/types';
 
 const MAX_RETRIES = 5;
 
@@ -13,6 +15,9 @@ export function useSyncQueue() {
   const processingRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ============================================================
+  // DETECTAR MUDANÇAS DE CONEXÃO
+  // ============================================================
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -28,7 +33,7 @@ export function useSyncQueue() {
   }, []);
 
   // ============================================================
-  // sync functions
+  // FUNÇÕES DE SYNC POR TABELA
   // ============================================================
   const syncPerson = async (item: any) => {
     if (!supabase) return;
@@ -147,9 +152,11 @@ export function useSyncQueue() {
     if (!supabase) return;
     const doc = item.payload as Document;
 
+    console.log('📤 Enviando documento para Supabase:', doc);
+
     switch (item.operation) {
       case 'add':
-        await supabase.from('documents').insert({
+        const { data, error } = await supabase.from('documents').insert({
           id: doc.id,
           user_id: doc.user_id,
           person_id: doc.person_id,
@@ -164,6 +171,11 @@ export function useSyncQueue() {
           created_at: doc.created_at,
           updated_at: doc.updated_at,
         });
+        if (error) {
+          console.error('❌ Erro no insert do documento:', error);
+          throw error;
+        }
+        console.log('✅ Documento enviado com sucesso:', data);
         break;
       case 'update':
         await supabase.from('documents')
@@ -403,7 +415,6 @@ export function useSyncQueue() {
     window.dispatchEvent(new Event('sync:start'));
 
     try {
-      // CORRIGIDO: usar filter em vez de where para boolean
       const queue = await db.syncQueue
         .toCollection()
         .filter((item) => item.failed !== true && (item.retry_count || 0) < MAX_RETRIES)
@@ -450,7 +461,6 @@ export function useSyncQueue() {
         }
       }
 
-      // CORRIGIDO: usar filter em vez de where para boolean
       const remaining = await db.syncQueue
         .toCollection()
         .filter((item) => item.failed !== true && (item.retry_count || 0) < MAX_RETRIES)
@@ -474,6 +484,19 @@ export function useSyncQueue() {
     }
   }, [isOnline]);
 
+  // ============================================================
+  // ✅ CORREÇÃO 1: Processar fila na montagem do componente
+  // ============================================================
+  useEffect(() => {
+    if (isOnline) {
+      console.log('🔄 Executando sync na montagem...');
+      processQueue();
+    }
+  }, []); // Executa UMA VEZ quando o componente monta
+
+  // ============================================================
+  // ✅ CORREÇÃO 2: Processar fila quando online
+  // ============================================================
   useEffect(() => {
     if (isOnline) {
       const timer = setTimeout(() => {
@@ -483,13 +506,21 @@ export function useSyncQueue() {
     }
   }, [isOnline, processQueue]);
 
+  // ============================================================
+  // ✅ CORREÇÃO 3: Verificar fila periodicamente (a cada 10s)
+  // ============================================================
   useEffect(() => {
     if (!isOnline) return;
-    const interval = setInterval(() => {
-      if (!processingRef.current) {
+    
+    const checkQueue = async () => {
+      const count = await db.syncQueue.count();
+      if (count > 0 && !processingRef.current) {
+        console.log(`🔍 Detectados ${count} itens na fila, processando...`);
         processQueue();
       }
-    }, 30000);
+    };
+    
+    const interval = setInterval(checkQueue, 10000);
     return () => clearInterval(interval);
   }, [isOnline, processQueue]);
 
