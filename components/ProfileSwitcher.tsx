@@ -2,24 +2,26 @@
 
 import { useProfiles } from "@/hooks/useLocalData";
 import { useHapticFeedback } from "@/lib/haptics";
-import { ChevronDown, User } from "lucide-react";
+import { ChevronDown, User, Check } from "lucide-react";
 import { useState } from "react";
 import type { Person } from "@/lib/types";
 
 interface ProfileSwitcherProps {
-  activeProfileId: string; // ← agora é string (UUID)
-  onProfileChange: (profileId: string) => void; // ← agora é string
+  activeProfileId: string;
+  onProfileChange: (profileId: string) => void;
 }
 
-export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwitcherProps) {
+export function ProfileSwitcher({
+  activeProfileId,
+  onProfileChange,
+}: ProfileSwitcherProps) {
   const { trigger } = useHapticFeedback();
   const profiles = useProfiles();
   const [isOpen, setIsOpen] = useState(false);
 
-  // CORRIGIDO: comparação com string
   const activeProfile = profiles.find((p: Person) => p.id === activeProfileId);
 
-  const handleSelect = (profileId: string) => { // ← agora é string
+  const handleSelect = (profileId: string) => {
     trigger("vibrate");
     onProfileChange(profileId);
     setIsOpen(false);
@@ -34,22 +36,24 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
           trigger("vibrate");
           setIsOpen(!isOpen);
         }}
-        className="flex items-center gap-2 rounded-full bg-surface-raised px-4 py-2 border border-surface-border/50 active:scale-[0.98] transition-all"
+        className="flex items-center gap-2.5 rounded-full border border-surface-border/50 bg-surface-raised px-4 py-2 text-left transition-all active:scale-[0.98] hover:border-surface-border"
       >
-        <span className="text-lg">
-          {activeProfile.avatar_url ? (
-            <img
-              src={activeProfile.avatar_url}
-              alt={activeProfile.name}
-              className="w-6 h-6 rounded-full"
-            />
-          ) : (
-            <User size={16} />
-          )}
-        </span>
+        {activeProfile.avatar_url ? (
+          <img
+            src={activeProfile.avatar_url}
+            alt={activeProfile.name}
+            className="h-6 w-6 rounded-full border border-white/5 object-cover"
+          />
+        ) : (
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-surface">
+            <User size={14} className="text-ink-muted" />
+          </div>
+        )}
+
         <span className="font-display text-sm font-medium text-ink-primary">
           {activeProfile.name}
         </span>
+
         <ChevronDown
           size={16}
           className={`text-ink-muted transition-transform duration-200 ${
@@ -60,38 +64,50 @@ export function ProfileSwitcher({ activeProfileId, onProfileChange }: ProfileSwi
 
       {isOpen && (
         <>
-          <div
-            className="fixed inset-0 z-20"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute left-0 top-full mt-2 z-30 min-w-[160px] rounded-card border border-surface-border/50 bg-surface-raised shadow-vault overflow-hidden">
-            {profiles.map((profile: Person) => (
-              <button
-                key={profile.id}
-                onClick={() => handleSelect(profile.id!)}
-                className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors active:scale-[0.98] ${
-                  profile.id === activeProfileId
-                    ? "bg-steel-dark/20 text-ink-primary"
-                    : "text-ink-muted hover:bg-surface-border/50"
-                }`}
-              >
-                <span className="text-lg">
-                  {profile.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt={profile.name}
-                      className="w-6 h-6 rounded-full"
-                    />
-                  ) : (
-                    <User size={16} />
-                  )}
-                </span>
-                <span className="text-sm font-medium">{profile.name}</span>
-                {profile.id === activeProfileId && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-ice" />
-                )}
-              </button>
-            ))}
+          <div className="fixed inset-0 z-20" onClick={() => setIsOpen(false)} />
+
+          <div className="absolute left-0 top-full z-30 mt-2 min-w-[220px] overflow-hidden rounded-[24px] border border-surface-border/50 bg-surface shadow-vault">
+            <div className="border-b border-surface-border/40 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-ink-faint">
+                Perfis
+              </p>
+            </div>
+
+            <div className="p-2">
+              {profiles.map((profile: Person) => {
+                const isActive = profile.id === activeProfileId;
+
+                return (
+                  <button
+                    key={profile.id}
+                    onClick={() => handleSelect(profile.id!)}
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-all active:scale-[0.985] ${
+                      isActive
+                        ? "bg-ice/10 text-ink-primary"
+                        : "text-ink-muted hover:bg-surface-raised hover:text-ink-primary"
+                    }`}
+                  >
+                    {profile.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt={profile.name}
+                        className="h-7 w-7 rounded-full border border-white/5 object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-raised">
+                        <User size={14} />
+                      </div>
+                    )}
+
+                    <span className="text-sm font-medium">{profile.name}</span>
+
+                    {isActive && (
+                      <Check size={15} className="ml-auto text-ice" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </>
       )}
