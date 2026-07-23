@@ -8,7 +8,6 @@ import {
   Star,
   Trash2,
   Edit,
-  Calendar,
   FileText,
   Share2,
   Download,
@@ -24,6 +23,7 @@ import {
   ZoomIn,
   ZoomOut,
   Paperclip,
+  ChevronRight,
 } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -55,23 +55,20 @@ const formatDate = (date?: string): string => {
 };
 
 const getFileIcon = (type: string) => {
-  if (type === 'image') return ImageIcon;
-  if (type === 'pdf') return FileText;
+  if (type === "image") return ImageIcon;
+  if (type === "pdf") return FileText;
   return File;
 };
 
-// ============================================================
-// FUNÇÕES PARA EXTRAIR NOME BASE E EXTENSÃO
-// ============================================================
 const getBaseName = (filename: string): string => {
-  const lastDot = filename.lastIndexOf('.');
+  const lastDot = filename.lastIndexOf(".");
   if (lastDot === -1) return filename;
   return filename.substring(0, lastDot);
 };
 
 const getExtension = (filename: string): string => {
-  const lastDot = filename.lastIndexOf('.');
-  if (lastDot === -1) return '';
+  const lastDot = filename.lastIndexOf(".");
+  if (lastDot === -1) return "";
   return filename.substring(lastDot);
 };
 
@@ -88,6 +85,7 @@ export default function DocumentDetailPage() {
 
   const doc = useDocument(id || "");
   const { deleteDocument, favorite } = useSafeDb();
+
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -98,27 +96,21 @@ export default function DocumentDetailPage() {
 
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // ============================================================
-  // EXCLUIR DOCUMENTO
-  // ============================================================
   const handleDelete = useCallback(async () => {
     if (!doc || !doc.id) {
       showToast("Documento não encontrado", "error");
       return;
     }
 
-    const toastId = showSuccess(
-      `"${doc.title}" foi excluído`,
-      5000,
-      {
-        label: "Desfazer",
-        onClick: () => {
-          showToast("Restauração em breve...", "info");
-        }
-      }
-    );
+    showSuccess(`"${doc.title}" foi excluído`, 5000, {
+      label: "Desfazer",
+      onClick: () => {
+        showToast("Restauração em breve...", "info");
+      },
+    });
 
     setIsDeleting(true);
+
     try {
       await deleteDocument(doc.id);
       trigger("success");
@@ -133,21 +125,19 @@ export default function DocumentDetailPage() {
     }
   }, [doc, deleteDocument, trigger, showToast, showSuccess, router]);
 
-  // ============================================================
-  // FAVORITAR
-  // ============================================================
   const handleFavoriteToggle = useCallback(async () => {
     if (!doc || !doc.id) return;
     await favorite(doc.id);
     trigger("vibrate");
-    showToast(doc.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos", "info");
+    showToast(
+      doc.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
+      "info"
+    );
   }, [doc, favorite, trigger, showToast]);
 
-  // ============================================================
-  // COMPARTILHAR
-  // ============================================================
   const handleShare = useCallback(() => {
     if (!doc) return;
+
     if (navigator.share) {
       navigator
         .share({
@@ -162,96 +152,87 @@ export default function DocumentDetailPage() {
     }
   }, [doc, showToast]);
 
-  // ============================================================
-  // ABRIR ANEXO
-  // ============================================================
-  const openAttachment = useCallback((attachment: Attachment) => {
-    setSelectedAttachment(attachment);
-    setIsRenaming(false);
-    setZoomLevel(1);
-    setImageError(false);
-    setIsModalOpen(true);
-    trigger("vibrate");
-  }, [trigger]);
-
-  // ============================================================
-  // BAIXAR ANEXO
-  // ============================================================
-  const downloadAttachment = useCallback(async (attachment: Attachment) => {
-    setIsDownloading(true);
-    try {
-      const response = await fetch(attachment.url);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = attachment.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      trigger("success");
-      showToast("Download concluído!", "success");
-    } catch (error) {
-      console.error("Erro ao baixar:", error);
-      trigger("error");
-      showToast("Erro ao baixar o arquivo", "error");
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [trigger, showToast]);
-
-  // ============================================================
-  // RENOMEAR ANEXO - CORRIGIDO (salva no banco)
-  // ============================================================
-  const updateAttachmentName = useCallback(async (newBaseName: string) => {
-    if (!selectedAttachment || !doc || !doc.id) return;
-
-    // Pega a extensão original do arquivo
-    const extension = getExtension(selectedAttachment.name);
-    const newFullName = buildFullName(newBaseName, extension);
-
-    // Atualiza o attachment no array
-    const updatedAttachments = doc.attachments.map((att) =>
-      att.id === selectedAttachment.id 
-        ? { ...att, name: newFullName } 
-        : att
-    );
-
-    try {
-      // Salva no banco local (Dexie)
-      await db.documents.update(doc.id, {
-        attachments: updatedAttachments,
-        updated_at: new Date().toISOString(),
-        synced: false, // Marca como não sincronizado para enviar para a nuvem
-      });
-
-      // Atualiza o estado local
-      setSelectedAttachment({ ...selectedAttachment, name: newFullName });
-      
-      // Atualiza o documento no cache local (opcional)
-      // O useDocument vai revalidar sozinho
-
+  const openAttachment = useCallback(
+    (attachment: Attachment) => {
+      setSelectedAttachment(attachment);
       setIsRenaming(false);
-      trigger("success");
-      showToast("Nome atualizado com sucesso!", "success");
-    } catch (error) {
-      console.error("Erro ao renomear anexo:", error);
-      trigger("error");
-      showToast("Erro ao renomear anexo", "error");
-    }
-  }, [selectedAttachment, doc, trigger, showToast]);
+      setZoomLevel(1);
+      setImageError(false);
+      setIsModalOpen(true);
+      trigger("vibrate");
+    },
+    [trigger]
+  );
 
-  // ============================================================
-  // RENDER
-  // ============================================================
+  const downloadAttachment = useCallback(
+    async (attachment: Attachment) => {
+      setIsDownloading(true);
+      try {
+        const response = await fetch(attachment.url);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = attachment.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        trigger("success");
+        showToast("Download concluído!", "success");
+      } catch (error) {
+        console.error("Erro ao baixar:", error);
+        trigger("error");
+        showToast("Erro ao baixar o arquivo", "error");
+      } finally {
+        setIsDownloading(false);
+      }
+    },
+    [trigger, showToast]
+  );
+
+  const updateAttachmentName = useCallback(
+    async (newBaseName: string) => {
+      if (!selectedAttachment || !doc || !doc.id) return;
+
+      const extension = getExtension(selectedAttachment.name);
+      const newFullName = buildFullName(newBaseName, extension);
+
+      const updatedAttachments = doc.attachments.map((att) =>
+        att.id === selectedAttachment.id ? { ...att, name: newFullName } : att
+      );
+
+      try {
+        await db.documents.update(doc.id, {
+          attachments: updatedAttachments,
+          updated_at: new Date().toISOString(),
+          synced: false,
+        });
+
+        setSelectedAttachment({ ...selectedAttachment, name: newFullName });
+        setIsRenaming(false);
+        trigger("success");
+        showToast("Nome atualizado com sucesso!", "success");
+      } catch (error) {
+        console.error("Erro ao renomear anexo:", error);
+        trigger("error");
+        showToast("Erro ao renomear anexo", "error");
+      }
+    },
+    [selectedAttachment, doc, trigger, showToast]
+  );
+
   if (!doc) {
     return (
       <PageTransition>
-        <main className="min-h-screen bg-void flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-ink-muted">Documento não encontrado</p>
-            <Button variant="primary" onClick={() => router.push("/")} className="mt-4">
+        <main className="flex min-h-screen items-center justify-center bg-void px-5">
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
+            <p className="text-sm text-ink-muted">Documento não encontrado</p>
+            <Button
+              variant="primary"
+              onClick={() => router.push("/")}
+              className="mt-4"
+            >
               Voltar
             </Button>
           </div>
@@ -265,46 +246,56 @@ export default function DocumentDetailPage() {
   const CategoryIcon = CATEGORY_ICONS[doc.category_id] || FolderOpen;
   const hasMetadata = Object.keys(doc.metadata || {}).length > 0;
   const hasAttachments = doc.attachments && doc.attachments.length > 0;
-  const FileIcon = selectedAttachment
-    ? getFileIcon(selectedAttachment.type)
-    : File;
+  const FileIcon = selectedAttachment ? getFileIcon(selectedAttachment.type) : File;
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <button
                 onClick={() => {
                   trigger("vibrate");
                   router.back();
                 }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
                 <ArrowLeft size={18} className="text-ink-primary" />
               </button>
-              <div>
-                <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-                <h1 className="font-display text-lg font-semibold text-ink-primary truncate max-w-[200px]">
+
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                  Vault
+                </p>
+                <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary sm:text-xl">
                   {doc.title}
                 </h1>
+                <p className="mt-1 text-sm text-ink-muted">
+                  Detalhes do documento
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={handleFavoriteToggle}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+                aria-label="Favoritar documento"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
                 <Star
                   size={18}
-                  className={doc.is_favorite ? "fill-ice text-ice" : "text-ink-muted"}
+                  className={
+                    doc.is_favorite ? "fill-ice text-ice" : "text-ink-muted"
+                  }
                 />
               </button>
+
               <button
                 onClick={handleShare}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+                aria-label="Compartilhar documento"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
                 <Share2 size={18} className="text-ink-muted" />
               </button>
@@ -312,158 +303,190 @@ export default function DocumentDetailPage() {
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-6">
-          {/* CARD PRINCIPAL */}
+        <section className="space-y-5 px-5 pt-6">
           <motion.div
             ref={cardRef}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="rounded-xl border p-6 shadow-vault bg-surface"
-            style={{ borderColor: `${category?.color || '#6B7280'}25` }}
+            transition={{ duration: 0.28 }}
+            className="rounded-[28px] border bg-surface p-5 shadow-sm"
+            style={{ borderColor: `${category?.color || "#6B7280"}25` }}
           >
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-start gap-4">
               <div
-                className="flex h-12 w-12 items-center justify-center rounded-xl"
-                style={{ backgroundColor: `${category?.color || '#6B7280'}15` }}
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
+                style={{ backgroundColor: `${category?.color || "#6B7280"}15` }}
               >
-                <CategoryIcon size={22} style={{ color: category?.color || '#6B7280' }} />
+                <CategoryIcon
+                  size={24}
+                  style={{ color: category?.color || "#6B7280" }}
+                />
               </div>
-              <div>
-                <h2 className="font-display text-lg font-semibold text-ink-primary">
+
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate font-display text-lg font-semibold text-ink-primary">
                   {doc.title}
                 </h2>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-ink-muted">{category?.name || 'Outros'}</span>
-                  <span className="w-1 h-1 rounded-full bg-ink-faint" />
-                  <span className="text-xs text-ink-muted capitalize">{doc.type}</span>
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+                  <span>{category?.name || "Outros"}</span>
+                  <span className="h-1 w-1 rounded-full bg-ink-faint" />
+                  <span className="capitalize">{doc.type}</span>
                   {doc.vault_id && (
-                    <span className="text-xs text-ice flex items-center gap-1">
-                      <User size={10} />
-                      Compartilhado
-                    </span>
+                    <>
+                      <span className="h-1 w-1 rounded-full bg-ink-faint" />
+                      <span className="inline-flex items-center gap-1 text-ice">
+                        <User size={10} />
+                        Compartilhado
+                      </span>
+                    </>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Metadados - TRADUZIDOS */}
             {hasMetadata && (
-              <div className="border-t border-surface-border/50 pt-4 space-y-2">
-                {Object.entries(doc.metadata || {}).map(([key, value]) => {
-                  if (!value) return null;
-                  let displayValue: string = String(value);
-                  if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)) {
-                    displayValue = formatDate(value);
-                  }
-                  
-                  const labels: Record<string, string> = {
-                    number: "Número",
-                    issue_date: "Data de emissão",
-                    expiry_date: "Data de validade",
-                    issuer: "Órgão emissor",
-                    category: "Categoria",
-                    institution: "Instituição",
-                    course: "Curso",
-                    duration: "Duração",
-                    completion_date: "Data de conclusão",
-                    medication: "Medicamento",
-                    dosage: "Dosagem",
-                    doctor: "Médico",
-                    pharmacy: "Farmácia",
-                    prescription_date: "Data da receita",
-                    renewal_date: "Próxima renovação",
-                    hospital: "Hospital",
-                    specialty: "Especialidade",
-                    date: "Data",
-                    from: "Quem encaminhou",
-                    to: "Para quem",
-                    reason: "Motivo",
-                    custom_field_1: "Campo 1",
-                    custom_field_2: "Campo 2",
-                  };
-                  
-                  const label = labels[key] || key.replace(/_/g, " ").toUpperCase();
-                  
-                  return (
-                    <div key={key} className="flex justify-between items-center">
-                      <span className="text-sm text-ink-muted">{label}:</span>
-                      <span className="text-sm text-ink-primary font-medium">
-                        {displayValue}
-                      </span>
-                    </div>
-                  );
-                })}
+              <div className="mt-5 border-t border-surface-border/50 pt-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <FileText size={14} className="text-ice" />
+                  <p className="text-sm font-medium text-ink-primary">
+                    Informações
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  {Object.entries(doc.metadata || {}).map(([key, value]) => {
+                    if (!value) return null;
+
+                    let displayValue: string = String(value);
+                    if (
+                      typeof value === "string" &&
+                      value.match(/^d{4}-d{2}-d{2}/)
+                    ) {
+                      displayValue = formatDate(value);
+                    }
+
+                    const labels: Record<string, string> = {
+                      number: "Número",
+                      issue_date: "Data de emissão",
+                      expiry_date: "Data de validade",
+                      issuer: "Órgão emissor",
+                      category: "Categoria",
+                      institution: "Instituição",
+                      course: "Curso",
+                      duration: "Duração",
+                      completion_date: "Data de conclusão",
+                      medication: "Medicamento",
+                      dosage: "Dosagem",
+                      doctor: "Médico",
+                      pharmacy: "Farmácia",
+                      prescription_date: "Data da receita",
+                      renewal_date: "Próxima renovação",
+                      hospital: "Hospital",
+                      specialty: "Especialidade",
+                      date: "Data",
+                      from: "Quem encaminhou",
+                      to: "Para quem",
+                      reason: "Motivo",
+                      custom_field_1: "Campo 1",
+                      custom_field_2: "Campo 2",
+                    };
+
+                    const label =
+                      labels[key] || key.replace(/_/g, " ").toUpperCase();
+
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-start justify-between gap-4 rounded-2xl bg-surface-raised/55 px-3.5 py-3"
+                      >
+                        <span className="text-sm text-ink-muted">{label}</span>
+                        <span className="text-right text-sm font-medium text-ink-primary">
+                          {displayValue}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Descrição */}
             {doc.description && (
-              <div className="mt-4 border-t border-surface-border/50 pt-4">
-                <p className="text-sm font-medium text-ink-muted mb-1">Notas</p>
-                <p className="text-sm text-ink-primary">{doc.description}</p>
+              <div className="mt-5 border-t border-surface-border/50 pt-5">
+                <p className="mb-2 text-sm font-medium text-ink-primary">Notas</p>
+                <p className="text-sm leading-6 text-ink-muted">
+                  {doc.description}
+                </p>
               </div>
             )}
 
-            {/* Status */}
-            <div className="mt-4 border-t border-surface-border/50 pt-4 flex justify-between items-center">
-              <p className="text-xs text-ink-muted">
-                {doc.synced ? (
-                  <span className="text-green-400">✓ Sincronizado</span>
-                ) : (
-                  <span className="text-coral animate-pulse">↻ Pendente</span>
-                )}
-              </p>
-              <p className="text-xs text-ink-muted">Criado em {formatDate(doc.created_at)}</p>
+            <div className="mt-5 border-t border-surface-border/50 pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <p className="text-ink-muted">
+                  {doc.synced ? (
+                    <span className="text-emerald-400">✓ Sincronizado</span>
+                  ) : (
+                    <span className="animate-pulse text-coral">↻ Pendente</span>
+                  )}
+                </p>
+                <p className="text-ink-muted">
+                  Criado em {formatDate(doc.created_at)}
+                </p>
+              </div>
             </div>
           </motion.div>
 
-          {/* ANEXOS COM MINIATURA */}
           {hasAttachments && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
+              transition={{ duration: 0.28, delay: 0.06 }}
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-ink-muted flex items-center gap-2">
-                  <Paperclip size={14} />
+              <div className="mb-4 flex items-center justify-between">
+                <p className="flex items-center gap-2 text-sm font-medium text-ink-primary">
+                  <Paperclip size={14} className="text-ice" />
                   Anexos ({doc.attachments.length})
                 </p>
+                <ChevronRight size={16} className="text-ink-faint" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+
+              <div className="grid grid-cols-2 gap-3">
                 {doc.attachments.map((attachment: any) => {
                   const Icon = getFileIcon(attachment.type);
-                  const isImage = attachment.type === 'image';
-                  
+                  const isImage = attachment.type === "image";
+
                   return (
                     <button
                       key={attachment.id}
                       onClick={() => openAttachment(attachment)}
-                      className="flex flex-col items-center justify-center p-4 rounded-xl bg-surface-raised border border-surface-border/50 hover:border-surface-border transition-colors active:scale-95 relative overflow-hidden"
+                      className="group relative overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface-raised p-3 text-left transition-all active:scale-[0.985]"
                     >
                       {isImage ? (
                         <img
                           src={attachment.url}
                           alt={attachment.name}
-                          className="w-full h-20 object-cover rounded-lg"
+                          className="h-24 w-full rounded-xl object-cover"
                           loading="lazy"
                           onError={(e) => {
-                            // Se a imagem falhar, mostra ícone
-                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).style.display = "none";
                             const parent = (e.target as HTMLImageElement).parentElement;
                             if (parent) {
-                              const icon = document.createElement('div');
-                              icon.className = 'flex items-center justify-center w-full h-20';
-                              icon.innerHTML = `<svg class="w-8 h-8 text-ink-muted/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`;
+                              const icon = document.createElement("div");
+                              icon.className =
+                                "flex items-center justify-center w-full h-24 rounded-xl bg-surface";
+                              icon.innerHTML = `<svg class="w-8 h-8 text-gray-500/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`;
                               parent.prepend(icon);
                             }
                           }}
                         />
                       ) : (
-                        <Icon size={24} className="text-ink-muted" />
+                        <div className="flex h-24 items-center justify-center rounded-xl bg-surface">
+                          <Icon size={26} className="text-ink-muted" />
+                        </div>
                       )}
-                      <span className="text-xs text-ink-muted truncate w-full text-center mt-1">
+
+                      <span className="mt-2 block truncate text-xs text-ink-muted group-hover:text-ink-primary">
                         {attachment.name}
                       </span>
                     </button>
@@ -473,11 +496,10 @@ export default function DocumentDetailPage() {
             </motion.div>
           )}
 
-          {/* AÇÕES */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
+            transition={{ duration: 0.28, delay: 0.12 }}
             className="flex flex-wrap gap-3"
           >
             <ExportCardButton
@@ -516,174 +538,207 @@ export default function DocumentDetailPage() {
           </motion.div>
         </section>
 
-        {/* MODAL DE ANEXO - CORRIGIDO (rename com extensão preservada) */}
-        {isModalOpen && selectedAttachment && (
-          <div
-            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-            onClick={() => setIsModalOpen(false)}
-          >
+        <AnimatePresence>
+          {isModalOpen && selectedAttachment && (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="relative max-w-4xl w-full rounded-2xl bg-surface-raised border border-surface-border shadow-vault p-4"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
+              onClick={() => setIsModalOpen(false)}
             >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex-1 flex items-center gap-2 min-w-0">
-                  {isRenaming ? (
-                    <input
-                      type="text"
-                      value={getBaseName(selectedAttachment.name)}
-                      onChange={(e) =>
-                        setSelectedAttachment({
-                          ...selectedAttachment,
-                          name: buildFullName(e.target.value, getExtension(selectedAttachment.name)),
-                        })
-                      }
-                      className="flex-1 bg-transparent text-ink-primary font-medium focus:outline-none border-b border-ice/30 focus:border-ice transition-colors"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          updateAttachmentName(getBaseName(selectedAttachment.name));
+              <motion.div
+                initial={{ scale: 0.94, opacity: 0, y: 10 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.96, opacity: 0, y: 8 }}
+                transition={{ duration: 0.22 }}
+                className="relative w-full max-w-4xl rounded-[28px] border border-surface-border bg-surface-raised p-4 shadow-vault"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    {isRenaming ? (
+                      <input
+                        type="text"
+                        value={getBaseName(selectedAttachment.name)}
+                        onChange={(e) =>
+                          setSelectedAttachment({
+                            ...selectedAttachment,
+                            name: buildFullName(
+                              e.target.value,
+                              getExtension(selectedAttachment.name)
+                            ),
+                          })
                         }
-                        if (e.key === 'Escape') {
-                          setIsRenaming(false);
+                        className="flex-1 border-b border-ice/30 bg-transparent font-medium text-ink-primary outline-none transition-colors focus:border-ice"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            updateAttachmentName(
+                              getBaseName(selectedAttachment.name)
+                            );
+                          }
+                          if (e.key === "Escape") {
+                            setIsRenaming(false);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <p className="truncate font-medium text-ink-primary">
+                        {getBaseName(selectedAttachment.name)}
+                      </p>
+                    )}
+
+                    <span className="shrink-0 text-xs text-ink-muted/50">
+                      {getExtension(selectedAttachment.name)}
+                    </span>
+
+                    <button
+                      onClick={() => {
+                        if (isRenaming) {
+                          updateAttachmentName(getBaseName(selectedAttachment.name));
+                        } else {
+                          setIsRenaming(true);
+                          setTimeout(() => {
+                            const input = document.querySelector(
+                              'input[type="text"]'
+                            ) as HTMLInputElement;
+                            if (input) input.focus();
+                          }, 100);
                         }
                       }}
-                    />
-                  ) : (
-                    <p className="text-ink-primary font-medium truncate">{getBaseName(selectedAttachment.name)}</p>
-                  )}
-                  <span className="text-xs text-ink-muted/50 flex-shrink-0">
-                    {getExtension(selectedAttachment.name)}
-                  </span>
-                  <button
-                    onClick={() => {
-                      if (isRenaming) {
-                        updateAttachmentName(getBaseName(selectedAttachment.name));
-                      } else {
-                        setIsRenaming(true);
-                        setTimeout(() => {
-                          const input = document.querySelector(
-                            'input[type="text"]'
-                          ) as HTMLInputElement;
-                          if (input) input.focus();
-                        }, 100);
-                      }
-                    }}
-                    className="p-1.5 rounded-full hover:bg-surface-border transition-colors flex-shrink-0"
-                    title={isRenaming ? "Salvar nome" : "Renomear"}
-                  >
-                    <Pencil size={16} className="text-ink-muted" />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {selectedAttachment.type === 'image' && (
-                    <>
-                      <button
-                        onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.25))}
-                        className="p-1.5 rounded-full hover:bg-surface-border transition-colors"
-                      >
-                        <ZoomOut size={16} className="text-ink-muted" />
-                      </button>
-                      <span className="text-xs text-ink-muted">{Math.round(zoomLevel * 100)}%</span>
-                      <button
-                        onClick={() => setZoomLevel(Math.min(3, zoomLevel + 0.25))}
-                        className="p-1.5 rounded-full hover:bg-surface-border transition-colors"
-                      >
-                        <ZoomIn size={16} className="text-ink-muted" />
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="p-1.5 rounded-full hover:bg-surface-border transition-colors"
-                  >
-                    <X size={20} className="text-ink-muted" />
-                  </button>
-                </div>
-              </div>
+                      className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                      title={isRenaming ? "Salvar nome" : "Renomear"}
+                    >
+                      <Pencil size={16} className="text-ink-muted" />
+                    </button>
+                  </div>
 
-              {/* Visualização */}
-              <div className="flex items-center justify-center min-h-[300px] bg-surface rounded-xl border border-surface-border/50 p-4 overflow-auto">
-                {selectedAttachment.type === 'image' ? (
-                  !imageError ? (
-                    <img
-                      src={selectedAttachment.url}
-                      alt={selectedAttachment.name}
-                      className="max-h-[70vh] max-w-full object-contain transition-transform duration-200 rounded-lg"
-                      style={{ transform: `scale(${zoomLevel})` }}
-                      loading="lazy"
-                      onError={() => setImageError(true)}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-4 text-ink-muted">
-                      <ImageIcon size={64} className="text-ink-muted/30" />
-                      <p className="text-sm text-ink-primary">Imagem não disponível</p>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {selectedAttachment.type === "image" && (
+                      <>
+                        <button
+                          onClick={() =>
+                            setZoomLevel(Math.max(0.5, zoomLevel - 0.25))
+                          }
+                          className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                        >
+                          <ZoomOut size={16} className="text-ink-muted" />
+                        </button>
+
+                        <span className="text-xs text-ink-muted">
+                          {Math.round(zoomLevel * 100)}%
+                        </span>
+
+                        <button
+                          onClick={() =>
+                            setZoomLevel(Math.min(3, zoomLevel + 0.25))
+                          }
+                          className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                        >
+                          <ZoomIn size={16} className="text-ink-muted" />
+                        </button>
+                      </>
+                    )}
+
+                    <button
+                      onClick={() => setIsModalOpen(false)}
+                      className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                    >
+                      <X size={20} className="text-ink-muted" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex min-h-[320px] items-center justify-center overflow-auto rounded-[22px] border border-surface-border/50 bg-surface p-4">
+                  {selectedAttachment.type === "image" ? (
+                    !imageError ? (
+                      <img
+                        src={selectedAttachment.url}
+                        alt={selectedAttachment.name}
+                        className="max-h-[70vh] max-w-full rounded-xl object-contain transition-transform duration-200"
+                        style={{ transform: `scale(${zoomLevel})` }}
+                        loading="lazy"
+                        onError={() => setImageError(true)}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-4 text-ink-muted">
+                        <ImageIcon size={64} className="text-ink-muted/30" />
+                        <p className="text-sm text-ink-primary">
+                          Imagem não disponível
+                        </p>
+                        <button
+                          onClick={() => downloadAttachment(selectedAttachment)}
+                          className="text-sm text-ice transition-colors hover:text-ice/80"
+                        >
+                          Baixar imagem
+                        </button>
+                      </div>
+                    )
+                  ) : selectedAttachment.type === "pdf" ? (
+                    <div className="flex w-full flex-col items-center gap-4 text-ink-muted">
+                      <FileText size={64} className="text-ice/30" />
+                      <p className="text-sm text-ink-primary">
+                        📄 {selectedAttachment.name}
+                      </p>
+                      <div className="flex gap-4 text-xs text-ink-muted/60">
+                        <span>Clique em "Baixar" para visualizar</span>
+                        <span>•</span>
+                        <span>PDF</span>
+                      </div>
                       <button
                         onClick={() => downloadAttachment(selectedAttachment)}
-                        className="text-ice hover:text-ice/80 transition-colors text-sm"
+                        className="text-sm text-ice transition-colors hover:text-ice/80"
                       >
-                        Baixar imagem
+                        Baixar PDF
                       </button>
                     </div>
-                  )
-                ) : selectedAttachment.type === 'pdf' ? (
-                  <div className="flex flex-col items-center gap-4 text-ink-muted w-full">
-                    <FileText size={64} className="text-ice/30" />
-                    <p className="text-sm text-ink-primary">📄 {selectedAttachment.name}</p>
-                    <div className="flex gap-4 text-xs text-ink-muted/60">
-                      <span>Clique em "Baixar" para visualizar</span>
-                      <span>•</span>
-                      <span>PDF</span>
-                    </div>
-                    <button
-                      onClick={() => downloadAttachment(selectedAttachment)}
-                      className="text-ice hover:text-ice/80 transition-colors text-sm"
-                    >
-                      Baixar PDF
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-4 text-ink-muted">
-                    <FileIcon size={64} className="text-ink-muted/30" />
-                    <p className="text-sm text-ink-primary">{selectedAttachment.name}</p>
-                    <p className="text-xs text-ink-muted/60">Pré-visualização não disponível</p>
-                    <button
-                      onClick={() => downloadAttachment(selectedAttachment)}
-                      className="text-ice hover:text-ice/80 transition-colors text-sm"
-                    >
-                      Baixar arquivo
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="flex justify-end gap-2 mt-4">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => downloadAttachment(selectedAttachment)}
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? (
-                    <Loader2 size={14} className="mr-1 animate-spin" />
                   ) : (
-                    <Download size={14} className="mr-1" />
+                    <div className="flex flex-col items-center gap-4 text-ink-muted">
+                      <FileIcon size={64} className="text-ink-muted/30" />
+                      <p className="text-sm text-ink-primary">
+                        {selectedAttachment.name}
+                      </p>
+                      <p className="text-xs text-ink-muted/60">
+                        Pré-visualização não disponível
+                      </p>
+                      <button
+                        onClick={() => downloadAttachment(selectedAttachment)}
+                        className="text-sm text-ice transition-colors hover:text-ice/80"
+                      >
+                        Baixar arquivo
+                      </button>
+                    </div>
                   )}
-                  {isDownloading ? "Baixando..." : "Baixar"}
-                </Button>
-                <Button variant="primary" size="sm" onClick={() => setIsModalOpen(false)}>
-                  Fechar
-                </Button>
-              </div>
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => downloadAttachment(selectedAttachment)}
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? (
+                      <Loader2 size={14} className="mr-1 animate-spin" />
+                    ) : (
+                      <Download size={14} className="mr-1" />
+                    )}
+                    {isDownloading ? "Baixando..." : "Baixar"}
+                  </Button>
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsModalOpen(false)}
+                  >
+                    Fechar
+                  </Button>
+                </div>
+              </motion.div>
             </motion.div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
 
         <ScrollToTop threshold={300} />
       </main>
