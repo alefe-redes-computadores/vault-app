@@ -14,12 +14,12 @@ interface PersonCardProps {
   isDeleting?: boolean;
 }
 
-function PersonCardComponent({ 
-  person, 
-  isActive, 
-  onClick, 
+function PersonCardComponent({
+  person,
+  isActive,
+  onClick,
   onDelete,
-  isDeleting = false 
+  isDeleting = false,
 }: PersonCardProps) {
   const { trigger } = useHapticFeedback();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -42,34 +42,42 @@ function PersonCardComponent({
       <div className="relative flex items-center gap-2">
         <button
           onClick={onClick}
-          className={`
-            flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-150 active:scale-90
-            ${isActive
+          className={`group flex items-center gap-2 rounded-full border px-4 py-2 transition-all duration-200 active:scale-95 ${
+            isActive
               ? "border-ice bg-ice/10 text-ice shadow-lg shadow-ice/10"
-              : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary hover:border-surface-border"
-            }
-          `}
+              : "border-surface-border/50 bg-surface-raised text-ink-muted hover:border-surface-border hover:text-ink-primary"
+          }`}
         >
           {person.avatar_url ? (
             <img
               src={person.avatar_url}
               alt={person.name}
               loading="lazy"
-              className="w-6 h-6 rounded-full object-cover"
+              className="h-6 w-6 rounded-full border border-white/5 object-cover"
             />
           ) : (
-            <User size={14} />
+            <div
+              className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                isActive ? "bg-ice/15" : "bg-surface"
+              }`}
+            >
+              <User size={13} />
+            </div>
           )}
-          <span className="text-sm font-medium">{person.name}</span>
+
+          <span className="text-sm font-medium whitespace-nowrap">
+            {person.name}
+          </span>
         </button>
+
         {onDelete && (
           <button
             onClick={handleDeleteClick}
             disabled={isDeleting}
-            className="p-1 rounded-full hover:bg-surface-border/50 transition-colors duration-150 disabled:opacity-50 active:scale-90"
             title="Remover pessoa"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-all duration-150 active:scale-95 hover:bg-surface-border/50 hover:text-coral disabled:opacity-50"
           >
-            <Trash2 size={14} className="text-ink-muted hover:text-coral transition-colors duration-150" />
+            <Trash2 size={14} />
           </button>
         )}
       </div>
