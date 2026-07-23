@@ -2,8 +2,19 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Upload, Camera, X, Loader2, Save, Shield } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft,
+  Upload,
+  Camera,
+  X,
+  Loader2,
+  Save,
+  Shield,
+  FileText,
+  Image as ImageIcon,
+  ChevronRight,
+} from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,35 +42,35 @@ import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
 
 const applyMask = (value: string, type: string): string => {
-  const digits = value.replace(/\D/g, '');
-  
-  if (type === 'cpf') {
+  const digits = value.replace(/D/g, "");
+
+  if (type === "cpf") {
     return digits
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(d{3})(d)/, "$1.$2")
+      .replace(/(d{3})(d)/, "$1.$2")
+      .replace(/(d{3})(d{1,2})/, "$1-$2")
       .slice(0, 14);
   }
-  
-  if (type === 'rg') {
+
+  if (type === "rg") {
     return digits
-      .replace(/(\d{2})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(d{2})(d)/, "$1.$2")
+      .replace(/(d{3})(d)/, "$1.$2")
+      .replace(/(d{3})(d{1,2})/, "$1-$2")
       .slice(0, 13);
   }
-  
-  if (type === 'cnh') {
+
+  if (type === "cnh") {
     return digits.slice(0, 11);
   }
-  
+
   return value;
 };
 
 const getMaskType = (fieldKey: string, docType: DocumentType): string | null => {
-  if (docType === 'cpf' && fieldKey === 'number') return 'cpf';
-  if (docType === 'rg' && fieldKey === 'number') return 'rg';
-  if (docType === 'cnh' && fieldKey === 'number') return 'cnh';
+  if (docType === "cpf" && fieldKey === "number") return "cpf";
+  if (docType === "rg" && fieldKey === "number") return "rg";
+  if (docType === "cnh" && fieldKey === "number") return "cnh";
   return null;
 };
 
@@ -84,6 +95,11 @@ const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   laudo: "Laudo",
   encaminhamento: "Encaminhamento",
   outro: "Outro",
+};
+
+const fadeUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
 };
 
 export default function NewDocumentPage() {
@@ -123,7 +139,7 @@ export default function NewDocumentPage() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const userVaults = useLiveQuery(
-    () => db.vaults.where('user_id').equals(user?.id || '').toArray(),
+    () => db.vaults.where("user_id").equals(user?.id || "").toArray(),
     [user?.id],
     []
   );
@@ -196,7 +212,7 @@ export default function NewDocumentPage() {
 
   const removeAttachment = (id: string) => {
     const attachmentToRemove = formData.attachments.find((a) => a.id === id);
-    if (attachmentToRemove && attachmentToRemove.url.startsWith('blob:')) {
+    if (attachmentToRemove && attachmentToRemove.url.startsWith("blob:")) {
       URL.revokeObjectURL(attachmentToRemove.url);
       const fileIndex = localFiles.findIndex((f) => f.name === attachmentToRemove.name);
       if (fileIndex !== -1) {
@@ -205,22 +221,20 @@ export default function NewDocumentPage() {
         setLocalFiles(newFiles);
       }
     }
+
     setFormData((prev) => ({
       ...prev,
       attachments: prev.attachments.filter((a) => a.id !== id),
     }));
+
     trigger("vibrate");
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.person_id) {
-      newErrors.person_id = "Selecione uma pessoa";
-    }
-    if (!formData.title.trim()) {
-      newErrors.title = "Título é obrigatório";
-    }
+    if (!formData.person_id) newErrors.person_id = "Selecione uma pessoa";
+    if (!formData.title.trim()) newErrors.title = "Título é obrigatório";
 
     const fields = DOCUMENT_FIELDS[formData.type] || [];
     fields.forEach((field) => {
@@ -235,15 +249,26 @@ export default function NewDocumentPage() {
 
   const handleSubmit = async () => {
     trigger("vibrate");
-    
-    if (!validate()) {
+
+    const newErrors: Record<string, string> = {};
+    if (!formData.person_id) newErrors.person_id = "Selecione uma pessoa";
+    if (!formData.title.trim()) newErrors.title = "Título é obrigatório";
+
+    const dynamicFields = DOCUMENT_FIELDS[formData.type] || [];
+    dynamicFields.forEach((field) => {
+      if (field.required && !formData.metadata[field.key]?.trim()) {
+        newErrors[field.key] = `${field.label} é obrigatório(a)`;
+      }
+    });
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
       trigger("error");
-      const firstErrorKey = Object.keys(errors)[0];
-      if (firstErrorKey) {
-        const element = document.querySelector(`[data-field="${firstErrorKey}"]`);
-        if (element) {
-          (element as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+      const firstErrorKey = Object.keys(newErrors)[0];
+      const element = document.querySelector(`[data-field="${firstErrorKey}"]`);
+      if (element) {
+        (element as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
       }
       return;
     }
@@ -274,21 +299,15 @@ export default function NewDocumentPage() {
         for (let i = 0; i < localFiles.length; i++) {
           const file = localFiles[i];
           const attachment = formData.attachments[i];
-
           if (!attachment) continue;
 
           const { url, error } = await uploadFile(user.id, file, folder);
           if (error) {
-            console.error('Erro no upload:', error);
+            console.error("Erro no upload:", error);
             continue;
           }
 
-          const updatedAttachment: Attachment = {
-            ...attachment,
-            url: url,
-          };
-          uploadedAttachments.push(updatedAttachment);
-
+          uploadedAttachments.push({ ...attachment, url });
           setUploadProgress(Math.round(((i + 1) / localFiles.length) * 100));
         }
 
@@ -305,9 +324,7 @@ export default function NewDocumentPage() {
           });
 
           formData.attachments.forEach((att) => {
-            if (att.url.startsWith('blob:')) {
-              URL.revokeObjectURL(att.url);
-            }
+            if (att.url.startsWith("blob:")) URL.revokeObjectURL(att.url);
           });
 
           setLocalFiles([]);
@@ -337,7 +354,6 @@ export default function NewDocumentPage() {
 
   const fields = DOCUMENT_FIELDS[formData.type] || [];
 
-  // Renderiza um input date nativo estilizado (fallback)
   const renderDateInput = (field: any) => {
     return (
       <div key={field.key} className="space-y-1.5">
@@ -347,26 +363,23 @@ export default function NewDocumentPage() {
         <input
           type="date"
           data-field={field.key}
-          value={formData.metadata[field.key] || ''}
+          value={formData.metadata[field.key] || ""}
           onChange={(e) => handleMetadataChange(field.key, e.target.value)}
           className={`
-            w-full rounded-xl bg-surface-raised border 
-            px-4 py-3 text-ink-primary placeholder:text-ink-muted/50
-            focus:outline-none focus:border-ice/50 focus:ring-2 focus:ring-ice/20
-            transition-all duration-150
-            ${errors[field.key] ? "border-coral/50 focus:border-coral/50 focus:ring-coral/20" : "border-surface-border/50"}
+            w-full rounded-2xl border bg-surface-raised px-4 py-3 text-ink-primary
+            placeholder:text-ink-muted/50 outline-none transition-all duration-200
+            focus:border-ice/50 focus:ring-2 focus:ring-ice/15
+            ${errors[field.key] ? "border-coral/50 focus:border-coral/50 focus:ring-coral/15" : "border-surface-border/50"}
           `}
         />
-        {errors[field.key] && (
-          <p className="text-xs text-coral">{errors[field.key]}</p>
-        )}
+        {errors[field.key] && <p className="text-xs text-coral">{errors[field.key]}</p>}
       </div>
     );
   };
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
+      <main className="min-h-screen bg-void pb-[calc(7rem+env(safe-area-inset-bottom))]">
         <input
           ref={fileInputRef}
           type="file"
@@ -383,117 +396,137 @@ export default function NewDocumentPage() {
           onChange={handleCameraCapture}
         />
 
-        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
-            <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">
+
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                Vault
+              </p>
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Novo documento
               </h1>
+              <p className="mt-1 text-sm text-ink-muted">
+                Preencha os dados e anexe arquivos com segurança.
+              </p>
             </div>
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
-          {/* Pessoa */}
+        <section className="space-y-4 px-5 pt-6">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="block text-sm font-medium text-ink-primary mb-1.5">
+            <p className="mb-3 text-sm font-medium text-ink-primary">
               Pessoa <span className="text-coral">*</span>
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {persons.map((person: any) => (
-                <button
-                  key={person.id}
-                  onClick={() => {
-                    trigger("vibrate");
-                    handleChange("person_id", person.id!);
-                  }}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
-                    formData.person_id === person.id
-                      ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                  }`}
-                >
-                  <span className="text-sm font-medium">{person.name}</span>
-                </button>
-              ))}
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              {persons.map((person: any) => {
+                const active = formData.person_id === person.id;
+                return (
+                  <button
+                    key={person.id}
+                    onClick={() => {
+                      trigger("vibrate");
+                      handleChange("person_id", person.id!);
+                    }}
+                    className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
+                      active
+                        ? "border-ice bg-ice/12 text-ice shadow-[0_0_0_1px_rgba(125,211,252,0.1)]"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                    }`}
+                  >
+                    {person.name}
+                  </button>
+                );
+              })}
             </div>
-            {errors.person_id && (
-              <p className="text-xs text-coral mt-1">{errors.person_id}</p>
-            )}
+
+            {errors.person_id && <p className="mt-2 text-xs text-coral">{errors.person_id}</p>}
           </motion.div>
 
-          {/* Categoria */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.04 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="block text-sm font-medium text-ink-primary mb-1.5">
+            <p className="mb-3 text-sm font-medium text-ink-primary">
               Categoria <span className="text-coral">*</span>
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {Object.values(CATEGORIES).map((cat: any) => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    trigger("vibrate");
-                    handleChange("category_id", cat.id);
-                  }}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
-                    formData.category_id === cat.id
-                      ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                  }`}
-                >
-                  <span className="text-sm font-medium">{cat.name}</span>
-                </button>
-              ))}
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              {Object.values(CATEGORIES).map((cat: any) => {
+                const active = formData.category_id === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      trigger("vibrate");
+                      handleChange("category_id", cat.id);
+                    }}
+                    className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
+                      active
+                        ? "border-ice bg-ice/12 text-ice shadow-[0_0_0_1px_rgba(125,211,252,0.1)]"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
 
-          {/* Tipo */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.08 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="block text-sm font-medium text-ink-primary mb-1.5">
+            <label className="mb-2 block text-sm font-medium text-ink-primary">
               Tipo de documento <span className="text-coral">*</span>
             </label>
+
             <button
               onClick={() => {
                 trigger("vibrate");
                 setIsTypeModalOpen(true);
               }}
-              className="w-full text-left px-4 py-3 rounded-xl bg-surface-raised border border-surface-border/50 text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors"
             >
-              {DOCUMENT_TYPE_LABELS[formData.type] || "Selecionar tipo..."}
+              <span>{DOCUMENT_TYPE_LABELS[formData.type] || "Selecionar tipo..."}</span>
+              <ChevronRight size={16} className="text-ink-muted" />
             </button>
           </motion.div>
 
-          {/* Título */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.15 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.12 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <Input
               label="Título do documento"
-              placeholder="Ex: Minha CNH, Receita Losartana, etc."
+              placeholder="Ex: Minha CNH, Receita Losartana..."
               value={formData.title}
               onChange={(e) => handleChange("title", e.target.value)}
               error={errors.title}
@@ -501,190 +534,211 @@ export default function NewDocumentPage() {
             />
           </motion.div>
 
-          {/* Campos dinâmicos */}
-          {fields.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.2 }}
-              className="space-y-3 border-t border-surface-border/50 pt-4"
-            >
-              <p className="text-sm font-medium text-ink-muted">Campos específicos</p>
-              {fields.map((field) => {
-                const maskType = getMaskType(field.key, formData.type);
-                const rawValue = formData.metadata[field.key] || '';
-                const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
+          <AnimatePresence mode="wait">
+            {fields.length > 0 && (
+              <motion.div
+                key={formData.type}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.22 }}
+                className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+              >
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-ink-primary">Campos específicos</p>
+                  <p className="mt-1 text-xs text-ink-muted">
+                    Os campos abaixo mudam conforme o tipo selecionado.
+                  </p>
+                </div>
 
-                // === CORREÇÃO: Input date nativo com tema escuro ===
-                if (field.type === "date") {
-                  return renderDateInput(field);
-                }
+                <div className="space-y-3">
+                  {fields.map((field) => {
+                    const maskType = getMaskType(field.key, formData.type);
+                    const rawValue = formData.metadata[field.key] || "";
+                    const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
 
-                if (field.type === "select") {
-                  let items: any[] = [];
-                  let renderItem: any;
-                  let getItemLabel: any;
-                  let getItemId: any;
-                  let isModalOpen = false;
-                  let setIsModalOpen: any;
-                  let onSelect: any;
-                  let placeholder = "";
-                  let title = "";
-                  let createPath = "";
+                    if (field.type === "date") {
+                      return renderDateInput(field);
+                    }
 
-                  if (field.key === "doctor") {
-                    items = medicos;
-                    renderItem = (item: any) => (
-                      <div>
-                        <p className="text-ink-primary font-medium">{item.nome}</p>
-                        {item.especialidade && (
-                          <p className="text-xs text-ink-muted">{item.especialidade}</p>
-                        )}
-                      </div>
-                    );
-                    getItemLabel = (item: any) => item.nome;
-                    getItemId = (item: any) => item.id!;
-                    isModalOpen = isDoctorModalOpen;
-                    setIsModalOpen = setIsDoctorModalOpen;
-                    onSelect = (item: any) => {
-                      trigger("vibrate");
-                      handleMetadataChange(field.key, String(item.id));
-                    };
-                    placeholder = "Buscar médico...";
-                    title = "Selecionar médico";
-                    createPath = "/saude/medicos/novo";
-                  } else if (field.key === "pharmacy") {
-                    items = farmacias;
-                    renderItem = (item: any) => (
-                      <div>
-                        <p className="text-ink-primary font-medium">{item.nome}</p>
-                        {item.endereco && (
-                          <p className="text-xs text-ink-muted">{item.endereco}</p>
-                        )}
-                      </div>
-                    );
-                    getItemLabel = (item: any) => item.nome;
-                    getItemId = (item: any) => item.id!;
-                    isModalOpen = isPharmacyModalOpen;
-                    setIsModalOpen = setIsPharmacyModalOpen;
-                    onSelect = (item: any) => {
-                      trigger("vibrate");
-                      handleMetadataChange(field.key, String(item.id));
-                    };
-                    placeholder = "Buscar farmácia...";
-                    title = "Selecionar farmácia";
-                    createPath = "/saude/farmacias/novo";
-                  } else if (field.key === "hospital") {
-                    items = hospitais;
-                    renderItem = (item: any) => (
-                      <div>
-                        <p className="text-ink-primary font-medium">{item.nome}</p>
-                        {item.endereco && (
-                          <p className="text-xs text-ink-muted">{item.endereco}</p>
-                        )}
-                      </div>
-                    );
-                    getItemLabel = (item: any) => item.nome;
-                    getItemId = (item: any) => item.id!;
-                    isModalOpen = isHospitalModalOpen;
-                    setIsModalOpen = setIsHospitalModalOpen;
-                    onSelect = (item: any) => {
-                      trigger("vibrate");
-                      handleMetadataChange(field.key, String(item.id));
-                    };
-                    placeholder = "Buscar hospital...";
-                    title = "Selecionar hospital";
-                    createPath = "/saude/hospitais/novo";
-                  }
+                    if (field.type === "select") {
+                      let items: any[] = [];
+                      let renderItem: any;
+                      let getItemLabel: any;
+                      let getItemId: any;
+                      let isModalOpen = false;
+                      let setIsModalOpen: any;
+                      let onSelect: any;
+                      let placeholder = "";
+                      let title = "";
+                      let createPath = "";
 
-                  const selectedId = formData.metadata[field.key];
-                  const selectedItem = items.find((item: any) => String(item.id) === selectedId);
-
-                  return (
-                    <div key={field.key}>
-                      <button
-                        onClick={() => {
+                      if (field.key === "doctor") {
+                        items = medicos;
+                        renderItem = (item: any) => (
+                          <div>
+                            <p className="font-medium text-ink-primary">{item.nome}</p>
+                            {item.especialidade && (
+                              <p className="text-xs text-ink-muted">{item.especialidade}</p>
+                            )}
+                          </div>
+                        );
+                        getItemLabel = (item: any) => item.nome;
+                        getItemId = (item: any) => item.id!;
+                        isModalOpen = isDoctorModalOpen;
+                        setIsModalOpen = setIsDoctorModalOpen;
+                        onSelect = (item: any) => {
                           trigger("vibrate");
-                          setIsModalOpen(true);
-                        }}
-                        className={`w-full text-left px-4 py-3 rounded-xl bg-surface-raised border transition-colors ${
-                          errors[field.key]
-                            ? "border-coral/50 focus:border-coral"
-                            : "border-surface-border/50 focus:border-steel-light"
-                        } text-ink-primary focus:outline-none`}
-                      >
-                        {selectedItem ? selectedItem.nome : `Selecionar ${field.label.toLowerCase()}`}
-                      </button>
-                      {errors[field.key] && (
-                        <p className="text-xs text-coral mt-1">{errors[field.key]}</p>
-                      )}
-                      <SelectionModal
-                        isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
-                        onSelect={onSelect}
-                        items={items}
-                        title={title}
-                        placeholder={placeholder}
-                        renderItem={renderItem}
-                        getItemId={getItemId}
-                        getItemLabel={getItemLabel}
-                        onCreateNew={() => {
-                          setIsModalOpen(false);
+                          handleMetadataChange(field.key, String(item.id));
+                        };
+                        placeholder = "Buscar médico...";
+                        title = "Selecionar médico";
+                        createPath = "/saude/medicos/novo";
+                      } else if (field.key === "pharmacy") {
+                        items = farmacias;
+                        renderItem = (item: any) => (
+                          <div>
+                            <p className="font-medium text-ink-primary">{item.nome}</p>
+                            {item.endereco && (
+                              <p className="text-xs text-ink-muted">{item.endereco}</p>
+                            )}
+                          </div>
+                        );
+                        getItemLabel = (item: any) => item.nome;
+                        getItemId = (item: any) => item.id!;
+                        isModalOpen = isPharmacyModalOpen;
+                        setIsModalOpen = setIsPharmacyModalOpen;
+                        onSelect = (item: any) => {
                           trigger("vibrate");
-                          router.push(createPath);
+                          handleMetadataChange(field.key, String(item.id));
+                        };
+                        placeholder = "Buscar farmácia...";
+                        title = "Selecionar farmácia";
+                        createPath = "/saude/farmacias/novo";
+                      } else if (field.key === "hospital") {
+                        items = hospitais;
+                        renderItem = (item: any) => (
+                          <div>
+                            <p className="font-medium text-ink-primary">{item.nome}</p>
+                            {item.endereco && (
+                              <p className="text-xs text-ink-muted">{item.endereco}</p>
+                            )}
+                          </div>
+                        );
+                        getItemLabel = (item: any) => item.nome;
+                        getItemId = (item: any) => item.id!;
+                        isModalOpen = isHospitalModalOpen;
+                        setIsModalOpen = setIsHospitalModalOpen;
+                        onSelect = (item: any) => {
+                          trigger("vibrate");
+                          handleMetadataChange(field.key, String(item.id));
+                        };
+                        placeholder = "Buscar hospital...";
+                        title = "Selecionar hospital";
+                        createPath = "/saude/hospitais/novo";
+                      }
+
+                      const selectedId = formData.metadata[field.key];
+                      const selectedItem = items.find((item: any) => String(item.id) === selectedId);
+
+                      return (
+                        <div key={field.key}>
+                          <label className="mb-1.5 block text-sm font-medium text-ink-primary">
+                            {field.label} {field.required && <span className="text-coral">*</span>}
+                          </label>
+
+                          <button
+                            onClick={() => {
+                              trigger("vibrate");
+                              setIsModalOpen(true);
+                            }}
+                            className={`w-full rounded-2xl border px-4 py-3 text-left text-ink-primary transition-colors ${
+                              errors[field.key]
+                                ? "border-coral/50 bg-surface-raised"
+                                : "border-surface-border/50 bg-surface-raised"
+                            }`}
+                          >
+                            {selectedItem
+                              ? selectedItem.nome
+                              : `Selecionar ${field.label.toLowerCase()}`}
+                          </button>
+
+                          {errors[field.key] && (
+                            <p className="mt-1 text-xs text-coral">{errors[field.key]}</p>
+                          )}
+
+                          <SelectionModal
+                            isOpen={isModalOpen}
+                            onClose={() => setIsModalOpen(false)}
+                            onSelect={onSelect}
+                            items={items}
+                            title={title}
+                            placeholder={placeholder}
+                            renderItem={renderItem}
+                            getItemId={getItemId}
+                            getItemLabel={getItemLabel}
+                            onCreateNew={() => {
+                              setIsModalOpen(false);
+                              trigger("vibrate");
+                              router.push(createPath);
+                            }}
+                            createNewLabel={`Criar ${field.label.toLowerCase()}`}
+                          />
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <Input
+                        key={field.key}
+                        data-field={field.key}
+                        label={field.label}
+                        type="text"
+                        value={displayedValue}
+                        onChange={(e) => {
+                          const raw = maskType
+                            ? e.target.value.replace(/D/g, "")
+                            : e.target.value;
+                          handleMetadataChange(field.key, raw);
                         }}
-                        createNewLabel={`Criar ${field.label.toLowerCase()}`}
+                        placeholder={`Digite ${field.label.toLowerCase()}...`}
+                        required={field.required}
+                        error={errors[field.key]}
                       />
-                    </div>
-                  );
-                }
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                return (
-                  <Input
-                    key={field.key}
-                    data-field={field.key}
-                    label={field.label}
-                    type="text"
-                    value={displayedValue}
-                    onChange={(e) => {
-                      const raw = maskType 
-                        ? e.target.value.replace(/\D/g, '')
-                        : e.target.value;
-                      handleMetadataChange(field.key, raw);
-                    }}
-                    placeholder={field.options ? "Selecione..." : `Digite ${field.label.toLowerCase()}...`}
-                    required={field.required}
-                    error={errors[field.key]}
-                  />
-                );
-              })}
-            </motion.div>
-          )}
-
-          {/* Cofre */}
           {userVaults && userVaults.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.25 }}
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ duration: 0.28, delay: 0.16 }}
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
             >
-              <label className="block text-sm font-medium text-ink-primary mb-1.5">
-                Compartilhar com cofre (opcional)
+              <label className="mb-3 block text-sm font-medium text-ink-primary">
+                Compartilhar com cofre
               </label>
+
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => {
                     trigger("vibrate");
                     handleChange("vault_id", undefined);
                   }}
-                  className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 ${
+                  className={`rounded-full border px-3 py-2 text-xs font-medium transition-all active:scale-95 ${
                     formData.vault_id === undefined
-                      ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border/50 bg-surface text-ink-muted hover:text-ink-primary"
+                      ? "border-ice bg-ice/12 text-ice"
+                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                   }`}
                 >
                   Nenhum
                 </button>
+
                 {userVaults.map((vault: any) => (
                   <button
                     key={vault.id}
@@ -692,10 +746,10 @@ export default function NewDocumentPage() {
                       trigger("vibrate");
                       handleChange("vault_id", vault.id!);
                     }}
-                    className={`px-3 py-1.5 rounded-full border text-xs transition-all active:scale-95 flex items-center gap-1 ${
+                    className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition-all active:scale-95 ${
                       formData.vault_id === vault.id
-                        ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border/50 bg-surface text-ink-muted hover:text-ink-primary"
+                        ? "border-ice bg-ice/12 text-ice"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                     }`}
                   >
                     <Shield size={12} />
@@ -706,11 +760,12 @@ export default function NewDocumentPage() {
             </motion.div>
           )}
 
-          {/* Notas */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.2 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <TextArea
               label="Notas (opcional)"
@@ -720,14 +775,20 @@ export default function NewDocumentPage() {
             />
           </motion.div>
 
-          {/* Upload */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.35 }}
-            className="space-y-2"
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.24 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="block text-sm font-medium text-ink-primary">Anexos</label>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-ink-primary">Anexos</label>
+              <p className="mt-1 text-xs text-ink-muted">
+                Envie PDF ou imagem, ou capture direto pela câmera.
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="secondary"
@@ -741,6 +802,7 @@ export default function NewDocumentPage() {
                 <Upload size={16} />
                 Upload
               </Button>
+
               <Button
                 variant="secondary"
                 className="flex items-center justify-center gap-2"
@@ -755,60 +817,96 @@ export default function NewDocumentPage() {
               </Button>
             </div>
 
-            {formData.attachments.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {formData.attachments.map((att) => (
-                  <div
-                    key={att.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-surface-raised border border-surface-border/50"
-                  >
-                    <span className="text-sm text-ink-muted truncate flex-1">{att.name}</span>
-                    <button
-                      onClick={() => removeAttachment(att.id)}
-                      className="p-1 rounded-full hover:bg-surface-border/50 transition-colors"
-                      disabled={loading}
+            <AnimatePresence>
+              {formData.attachments.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-4 space-y-2"
+                >
+                  {formData.attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3"
                     >
-                      <X size={14} className="text-ink-muted" />
-                    </button>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface border border-surface-border/40">
+                        {att.type === "image" ? (
+                          <ImageIcon size={16} className="text-ice" />
+                        ) : (
+                          <FileText size={16} className="text-ice" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-ink-primary">{att.name}</p>
+                        <p className="text-xs text-ink-muted">
+                          {att.type === "image" ? "Imagem" : "PDF"}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => removeAttachment(att.id)}
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-border/40 hover:text-ink-primary"
+                        disabled={loading}
+                        aria-label={`Remover ${att.name}`}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {localFiles.length > 0 && (
+              <div className="mt-3 rounded-2xl border border-ice/15 bg-ice/5 px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-medium text-ink-primary">
+                    {localFiles.length} arquivo{localFiles.length > 1 ? "s" : ""} pronto
+                    {localFiles.length > 1 ? "s" : ""} para upload
+                  </p>
+                  {uploadProgress > 0 && (
+                    <span className="text-xs font-medium text-ice">{uploadProgress}%</span>
+                  )}
+                </div>
+
+                {uploadProgress > 0 && (
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-border/40">
+                    <div
+                      className="h-full rounded-full bg-ice transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
                   </div>
-                ))}
+                )}
               </div>
             )}
-            {localFiles.length > 0 && (
-              <p className="text-xs text-ink-muted">
-                {localFiles.length} arquivo{localFiles.length > 1 ? 's' : ''} pronto{localFiles.length > 1 ? 's' : ''} para upload
-                {uploadProgress > 0 && ` (${uploadProgress}%)`}
-              </p>
-            )}
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.4 }}
-          >
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={handleSubmit}
-              disabled={loading || uploading}
-              className="flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  {uploadProgress > 0 ? `Enviando anexos ${uploadProgress}%` : 'Salvando...'}
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Salvar documento
-                </>
-              )}
-            </Button>
           </motion.div>
         </section>
+
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSubmit}
+            disabled={loading || uploading}
+            className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                {uploadProgress > 0 ? `Enviando anexos ${uploadProgress}%` : "Salvando..."}
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Salvar documento
+              </>
+            )}
+          </Button>
+        </div>
 
         <DocumentTypeSelector
           selected={formData.type}
