@@ -3,7 +3,15 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  Loader2,
+  User,
+  Layers3,
+  FileText,
+  ChevronDown,
+} from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -13,8 +21,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
+import { useToast } from "@/components/ToastProvider";
 
-// Mapeamento manual de campos por tipo
 const getFieldsForType = (type: DocumentType) => {
   const commonFields = [
     { key: "number", label: "Número", type: "text" },
@@ -23,7 +31,10 @@ const getFieldsForType = (type: DocumentType) => {
     { key: "issuer", label: "Órgão emissor", type: "text" },
   ];
 
-  const fieldMap: Record<DocumentType, Array<{ key: string; label: string; type: string }>> = {
+  const fieldMap: Record<
+    DocumentType,
+    Array<{ key: string; label: string; type: string }>
+  > = {
     rg: commonFields,
     cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
     cnh: [
@@ -78,6 +89,7 @@ export default function EditarDetalhePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { showToast } = useToast();
 
   const doc = useDocument(id || "");
   const persons = usePersons();
@@ -136,6 +148,7 @@ export default function EditarDetalhePage() {
     }
 
     setLoading(true);
+
     try {
       await updateDocument(id, {
         person_id: formData.person_id,
@@ -146,11 +159,14 @@ export default function EditarDetalhePage() {
         metadata: formData.metadata,
         attachments: formData.attachments,
       });
+
       trigger("success");
+      showToast("Documento atualizado com sucesso!", "success");
       router.push(`/detalhes?id=${id}`);
     } catch (error) {
       console.error("Erro ao atualizar:", error);
       trigger("error");
+      showToast("Erro ao atualizar documento", "error");
     } finally {
       setLoading(false);
     }
@@ -159,10 +175,14 @@ export default function EditarDetalhePage() {
   if (!doc) {
     return (
       <PageTransition>
-        <main className="min-h-screen bg-void flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-ink-muted">Documento não encontrado</p>
-            <Button variant="primary" onClick={() => router.push("/")} className="mt-4">
+        <main className="flex min-h-screen items-center justify-center bg-void px-5">
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
+            <p className="text-sm text-ink-muted">Documento não encontrado</p>
+            <Button
+              variant="primary"
+              onClick={() => router.push("/")}
+              className="mt-4"
+            >
               Voltar
             </Button>
           </div>
@@ -173,116 +193,203 @@ export default function EditarDetalhePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+      <main className="min-h-screen bg-void pb-32">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              aria-label="Voltar"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
-            <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">Editar documento</h1>
+
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                Vault
+              </p>
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+                Editar documento
+              </h1>
+              <p className="mt-1 truncate text-sm text-ink-muted">
+                Atualize as informações de “{doc.title}”
+              </p>
             </div>
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
-          {/* Pessoa */}
-          <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1.5">Pessoa</label>
-            <div className="flex gap-2 flex-wrap">
+        <section className="space-y-4 px-5 pt-6">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-surface-border/50 bg-surface-raised shadow-sm">
+                <FileText size={28} className="text-ice" />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-sm text-ink-muted">Edição</p>
+                <p className="truncate font-display text-lg font-semibold text-ink-primary">
+                  {formData.title || "Sem título"}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-ink-faint">
+                  Revise os dados do documento e salve as alterações com segurança.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: 0.03 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm"
+          >
+            <div className="mb-5 flex items-center gap-2">
+              <User size={16} className="text-ice" />
+              <h2 className="font-display text-lg font-semibold text-ink-primary">
+                Pessoa vinculada
+              </h2>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
               {persons.map((person: any) => (
                 <button
                   key={person.id}
                   onClick={() => handleChange("person_id", person.id!)}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
+                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
                     formData.person_id === person.id
                       ? "border-ice bg-ice/10 text-ice"
                       : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                   }`}
                 >
-                  <span className="text-sm font-medium">{person.name}</span>
+                  {person.name}
                 </button>
               ))}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Categoria */}
-          <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1.5">Categoria</label>
-            <div className="flex gap-2 flex-wrap">
-              {Object.values(CATEGORIES).map((cat: any) => (
-                <button
-                  key={cat.id}
-                  onClick={() => handleChange("category_id", cat.id)}
-                  className={`px-4 py-2 rounded-full border transition-all active:scale-95 ${
-                    formData.category_id === cat.id
-                      ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                  }`}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: 0.06 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm"
+          >
+            <div className="mb-5 flex items-center gap-2">
+              <Layers3 size={16} className="text-ice" />
+              <h2 className="font-display text-lg font-semibold text-ink-primary">
+                Classificação
+              </h2>
+            </div>
+
+            <div className="mb-5">
+              <label className="mb-2 block text-sm font-medium text-ink-primary">
+                Categoria
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {Object.values(CATEGORIES).map((cat: any) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleChange("category_id", cat.id)}
+                    className={`rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
+                      formData.category_id === cat.id
+                        ? "border-ice bg-ice/10 text-ice"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-ink-primary">
+                Tipo
+              </label>
+              <div className="relative">
+                <select
+                  value={formData.type}
+                  onChange={(e) =>
+                    handleChange("type", e.target.value as DocumentType)
+                  }
+                  className="w-full appearance-none rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 pr-10 text-ink-primary outline-none transition-colors focus:border-ice/50"
                 >
-                  <span className="text-sm font-medium">{cat.name}</span>
-                </button>
-              ))}
+                  <option value="rg">RG</option>
+                  <option value="cpf">CPF</option>
+                  <option value="cnh">CNH</option>
+                  <option value="certificado">Certificado</option>
+                  <option value="receita">Receita</option>
+                  <option value="prontuario">Prontuário</option>
+                  <option value="laudo">Laudo</option>
+                  <option value="encaminhamento">Encaminhamento</option>
+                  <option value="outro">Outro</option>
+                </select>
+                <ChevronDown
+                  size={16}
+                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-muted"
+                />
+              </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Tipo */}
-          <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1.5">Tipo</label>
-            <select
-              value={formData.type}
-              onChange={(e) => handleChange("type", e.target.value as DocumentType)}
-              className="w-full rounded-xl bg-surface-raised border border-surface-border/50 px-4 py-3 text-ink-primary focus:outline-none focus:border-steel-light transition-colors"
-            >
-              <option value="rg">RG</option>
-              <option value="cpf">CPF</option>
-              <option value="cnh">CNH</option>
-              <option value="certificado">Certificado</option>
-              <option value="receita">Receita</option>
-              <option value="prontuario">Prontuário</option>
-              <option value="laudo">Laudo</option>
-              <option value="encaminhamento">Encaminhamento</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: 0.09 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm"
+          >
+            <div className="mb-5 flex items-center gap-2">
+              <FileText size={16} className="text-ice" />
+              <h2 className="font-display text-lg font-semibold text-ink-primary">
+                Informações principais
+              </h2>
+            </div>
 
-          {/* Título */}
-          <Input
-            label="Título"
-            value={formData.title}
-            onChange={(e) => handleChange("title", e.target.value)}
-            error={errors.title}
-          />
+            <div className="space-y-4">
+              <Input
+                label="Título"
+                value={formData.title}
+                onChange={(e) => handleChange("title", e.target.value)}
+                error={errors.title}
+              />
 
-          {/* Campos dinâmicos */}
-          {fields.map((field: any) => (
-            <Input
-              key={field.key}
-              label={field.label}
-              type={field.type === "date" ? "date" : "text"}
-              value={formData.metadata[field.key] || ""}
-              onChange={(e) => handleMetadataChange(field.key, e.target.value)}
-            />
-          ))}
+              {fields.map((field: any, index: number) => (
+                <motion.div
+                  key={field.key}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18, delay: 0.02 * index }}
+                >
+                  <Input
+                    label={field.label}
+                    type={field.type === "date" ? "date" : "text"}
+                    value={formData.metadata[field.key] || ""}
+                    onChange={(e) =>
+                      handleMetadataChange(field.key, e.target.value)
+                    }
+                  />
+                </motion.div>
+              ))}
 
-          {/* Notas */}
-          <TextArea
-            label="Notas"
-            value={formData.description}
-            onChange={(e) => handleChange("description", e.target.value)}
-          />
+              <TextArea
+                label="Notas"
+                value={formData.description}
+                onChange={(e) => handleChange("description", e.target.value)}
+              />
+            </div>
+          </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
+            transition={{ duration: 0.24, delay: 0.16 }}
           >
             <Button
               variant="primary"
