@@ -1,191 +1,263 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, User, Trash2, Loader2, Users, Edit } from "lucide-react";
-import { usePersons } from "@/hooks/usePersons";
+import { ArrowLeft, Save, Loader2, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
-import { ScrollToTop } from "@/components/ScrollToTop";
 
-export default function PessoasPage() {
+export default function EditarPessoaPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
+  const { user } = useAuth();
   const { showToast, showSuccess } = useToast();
+
+  const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null); // ← string
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
 
-  const persons = usePersons();
-
+  // ============================================================
+  // CARREGAR DADOS DA PESSOA
+  // ============================================================
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 600);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!id) {
+      showToast("ID da pessoa não informado", "error");
+      router.push("/pessoas");
+      return;
+    }
 
-  const handleDeleteClick = async (id: string, name: string) => { // ← string
-    trigger("vibrate");
-
-    const toastId = showSuccess(
-      `"${name}" foi removido(a)`,
-      5000,
-      {
-        label: "Desfazer",
-        onClick: () => {
-          showToast("Restauração em breve...", "info");
+    const loadPerson = async () => {
+      try {
+        const person = await db.persons.get(id);
+        if (!person) {
+          showToast("Pessoa não encontrada", "error");
+          router.push("/pessoas");
+          return;
         }
+        setFormData({
+          name: person.name || "",
+          email: person.email || "",
+          phone: person.phone || "",
+        });
+      } catch (error) {
+        console.error("Erro ao carregar pessoa:", error);
+        showToast("Erro ao carregar dados", "error");
+      } finally {
+        setIsLoading(false);
       }
-    );
+    };
 
-    setIsDeleting(id);
-    try {
-      await db.transaction('rw', db.persons, db.documents, async () => {
-        await db.documents.where('person_id').equals(id).delete();
-        await db.persons.delete(id);
-      });
-      trigger("success");
-    } catch (error) {
-      console.error("Erro ao remover pessoa:", error);
+    loadPerson();
+  }, [id, router, showToast]);
+
+  // ============================================================
+  // VALIDAÇÃO
+  // ============================================================
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name.trim()) {
+      newErrors.name = "Nome é obrigatório";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // ============================================================
+  // SALVAR (com sync)
+  // ============================================================
+  const handleSubmit = async () => {
+    if (!validate() || !id) {
       trigger("error");
-      showToast("Erro ao remover pessoa", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Atualiza a pessoa no Dexie
+      await db.persons.update(id, {
+        name: formData.name.trim(),
+        email: formData.email.trim() || null,
+        phone: formData.phone.trim() || null,
+        updated_at: new Date().toISOString(),
+        synced: false,
+      });
+
+      // Busca a pessoa atualizada
+      const updatedPerson = await db.persons.get(id);
+
+      // Adiciona na fila de sincronização (update)
+      await db.syncQueue.add({
+        id: crypto.randomUUID(),
+        table: "persons",
+        operation: "update",
+        payload: updatedPerson,
+        created_at: new Date().toISOString(),
+        retry_count: 0,
+        failed: false,
+      });
+
+      trigger("success");
+      showSuccess("Pessoa atualizada com sucesso!", 3000);
+
+      setTimeout(() => {
+        router.push("/pessoas");
+      }, 500);
+
+    } catch (error) {
+      console.error("Erro ao atualizar pessoa:", error);
+      trigger("error");
+      showToast("Erro ao atualizar pessoa", "error");
     } finally {
-      setIsDeleting(null);
+      setLoading(false);
     }
   };
 
-  const handlePersonClick = (id: string) => { // ← string
-    trigger("vibrate");
-    router.push(`/pessoas/editar?id=${id}`);
-  };
-
+  // ============================================================
+  // LOADING
+  // ============================================================
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return (
+      <PageTransition>
+        <main className="min-h-screen bg-void flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-ice border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-ink-muted mt-4">Carregando...</p>
+          </div>
+        </main>
+      </PageTransition>
+    );
   }
 
+  // ============================================================
+  // RENDER
+  // ============================================================
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">
-                Pessoas
-              </h1>
-              <p className="text-sm text-ink-muted">
-                {persons.length} pessoa{persons.length !== 1 ? "s" : ""} cadastrada{persons.length !== 1 ? "s" : ""}
-              </p>
-            </div>
+        <header className="glass-header sticky top-0 z-10 px-5 pt-6 pb-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
-                router.push("/pessoas/novo");
+                router.back();
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void active:scale-95 transition-all"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
             >
-              <Plus size={18} strokeWidth={2.5} />
+              <ArrowLeft size={18} className="text-ink-primary" />
             </button>
+            <div>
+              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
+                Editar pessoa
+              </h1>
+            </div>
           </div>
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {persons.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-16 text-center"
-            >
-              <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
-                <Users size={32} className="text-ink-muted" />
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center">
+                <User size={28} className="text-ink-muted" />
               </div>
-              <h3 className="font-display text-lg text-ink-primary">Nenhuma pessoa</h3>
-              <p className="text-sm text-ink-muted mt-1 max-w-xs">
-                Cadastre pessoas para começar a organizar seus documentos.
-              </p>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  trigger("vibrate");
-                  router.push("/pessoas/novo");
-                }}
-                className="mt-6"
-              >
-                Adicionar pessoa
-              </Button>
-            </motion.div>
-          ) : (
-            persons.map((person, index) => (
-              <motion.div
-                key={person.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
-                className="flex items-center justify-between p-4 rounded-xl border border-surface-border/50 bg-surface shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-95"
-                onClick={() => handlePersonClick(person.id!)}
-              >
-                <div className="flex items-center gap-3">
-                  {person.avatar_url ? (
-                    <img
-                      src={person.avatar_url}
-                      alt={person.name}
-                      className="w-12 h-12 rounded-full border-2 border-ice/20"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-lg font-medium">
-                      {person.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="font-display text-[15px] font-medium text-ink-primary">
-                      {person.name}
-                    </h3>
-                    {person.email && (
-                      <p className="text-xs text-ink-muted">{person.email}</p>
-                    )}
-                    {person.phone && (
-                      <p className="text-xs text-ink-muted">{person.phone}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      trigger("vibrate");
-                      router.push(`/pessoas/editar?id=${person.id}`);
-                    }}
-                    className="p-2 rounded-full hover:bg-surface-border transition-colors"
-                    title="Editar pessoa"
-                  >
-                    <Edit size={16} className="text-ink-muted hover:text-ice transition-colors" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteClick(person.id!, person.name);
-                    }}
-                    disabled={isDeleting === person.id}
-                    className="p-2 rounded-full hover:bg-surface-border transition-colors disabled:opacity-50"
-                    title="Remover pessoa"
-                  >
-                    {isDeleting === person.id ? (
-                      <Loader2 size={16} className="animate-spin text-coral" />
-                    ) : (
-                      <Trash2 size={16} className="text-ink-muted hover:text-coral transition-colors" />
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            ))
-          )}
-        </section>
+              <div>
+                <p className="text-sm text-ink-muted">Editando</p>
+                <p className="font-display text-lg font-semibold text-ink-primary">
+                  {formData.name || "Sem nome"}
+                </p>
+              </div>
+            </div>
+          </motion.div>
 
-        <ScrollToTop threshold={400} />
+          {/* Nome */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+          >
+            <Input
+              label="Nome completo"
+              placeholder="Digite o nome"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              error={errors.name}
+              required
+            />
+          </motion.div>
+
+          {/* Email */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <Input
+              label="E-mail"
+              placeholder="Digite o e-mail"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              type="email"
+            />
+          </motion.div>
+
+          {/* Telefone */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+          >
+            <Input
+              label="Telefone"
+              placeholder="Digite o telefone"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Salvar alterações
+                </>
+              )}
+            </Button>
+          </motion.div>
+        </section>
       </main>
     </PageTransition>
   );
