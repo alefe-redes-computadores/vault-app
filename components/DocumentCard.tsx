@@ -54,10 +54,16 @@ const formatDate = (date?: string) => {
   }
 };
 
-function DocumentCardComponent({ document, personName, onFavoriteToggle, compact = false }: DocumentCardProps) {
+function DocumentCardComponent({
+  document,
+  personName,
+  onFavoriteToggle,
+  compact = false,
+}: DocumentCardProps) {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast } = useToast();
+
   const [showSyncTooltip, setShowSyncTooltip] = useState(false);
   const [isFavoriteAnimating, setIsFavoriteAnimating] = useState(false);
 
@@ -70,83 +76,92 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
     router.push(`/detalhes?id=${document.id}`);
   }, [trigger, router, document.id]);
 
-  const handleFavorite = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    trigger("success");
-    setIsFavoriteAnimating(true);
-    setTimeout(() => setIsFavoriteAnimating(false), 500);
-    showToast(
-      document.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
-      "info"
-    );
-    onFavoriteToggle?.(document.id!);
-  }, [trigger, document.is_favorite, document.id, onFavoriteToggle, showToast]);
+  const handleFavorite = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      trigger("success");
+      setIsFavoriteAnimating(true);
+      setTimeout(() => setIsFavoriteAnimating(false), 420);
+      showToast(
+        document.is_favorite
+          ? "Removido dos favoritos"
+          : "Adicionado aos favoritos",
+        "info"
+      );
+      onFavoriteToggle?.(document.id!);
+    },
+    [trigger, document.is_favorite, document.id, onFavoriteToggle, showToast]
+  );
 
   const hasAttachments = document.attachments && document.attachments.length > 0;
-  const hasImageAttachment = document.attachments?.some(a => a.type === 'image');
+  const hasImageAttachment = document.attachments?.some((a) => a.type === "image");
 
   const metadataKeys = Object.keys(document.metadata || {}).filter(
-    (key) => !["issue_date", "expiry_date", "renewal_date", "prescription_date", "date"].includes(key)
+    (key) =>
+      !["issue_date", "expiry_date", "renewal_date", "prescription_date", "date"].includes(key)
   );
-  const firstMetadata = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
+  const firstMetadata =
+    metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
 
   const expiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date;
-  const isExpiring = expiryDate && new Date(expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const isExpiring =
+    expiryDate &&
+    new Date(expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const isExpired = expiryDate && new Date(expiryDate) < new Date();
 
   const syncIcon = document.synced ? (
-    <CheckCircle size={12} className="text-green-400" />
+    <CheckCircle size={12} className="text-emerald-400" />
   ) : (
-    <Loader2 size={12} className="text-coral animate-spin" />
+    <Loader2 size={12} className="animate-spin text-coral" />
   );
   const syncLabel = document.synced ? "Sincronizado" : "Pendente de sincronização";
 
-  const handleSyncIconClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowSyncTooltip((prev) => !prev);
-    trigger("vibrate");
-  }, [trigger]);
+  const handleSyncIconClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setShowSyncTooltip((prev) => !prev);
+      trigger("vibrate");
+    },
+    [trigger]
+  );
 
   return (
     <div
       onClick={handlePress}
-      className="relative overflow-hidden rounded-xl border p-4 shadow-vault cursor-pointer bg-surface hover:shadow-lg hover:border-ice/20 transition-all duration-200 active:scale-[0.97]"
-      style={{ borderColor: `${color}25` }}
+      className="relative cursor-pointer overflow-hidden rounded-[24px] border bg-surface p-4 shadow-sm transition-all duration-200 active:scale-[0.985] hover:border-ice/15 hover:shadow-lg"
+      style={{ borderColor: `${color}22` }}
     >
-      <span className="rivet rivet-tl" />
-      <span className="rivet rivet-br" />
-
       <div className="flex items-start gap-3">
         <div
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-all duration-200"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all duration-200"
           style={{ backgroundColor: `${color}15` }}
         >
           <TypeIcon size={18} style={{ color }} />
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h3 className="font-display text-[15px] font-medium text-ink-primary truncate">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
                 {document.title}
               </h3>
-              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <span className="text-xs text-ink-muted">{category?.name}</span>
-                <span className="w-1 h-1 rounded-full bg-ink-faint" />
-                {personName && (
-                  <span className="text-xs text-ink-muted">{personName}</span>
+
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+                <span>{category?.name}</span>
+                <span className="h-1 w-1 rounded-full bg-ink-faint" />
+                {personName ? (
+                  <span>{personName}</span>
+                ) : (
+                  <span className="capitalize">{document.type}</span>
                 )}
-                {!personName && (
-                  <span className="text-xs text-ink-muted capitalize">{document.type}</span>
-                )}
-                {/* Badge de categoria com cor */}
+
                 {category && (
-                  <span 
-                    className="category-badge text-[9px]"
-                    style={{ 
-                      backgroundColor: `${color}15`, 
-                      borderColor: `${color}30`,
-                      color: color 
+                  <span
+                    className="rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                    style={{
+                      backgroundColor: `${color}12`,
+                      borderColor: `${color}28`,
+                      color,
                     }}
                   >
                     {category.name}
@@ -157,19 +172,23 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
 
             <button
               onClick={handleFavorite}
-              className="flex-shrink-0 p-1 rounded-full hover:bg-surface-border/50 transition-colors duration-150 active:scale-90"
+              className="shrink-0 rounded-full p-1.5 transition-colors duration-150 active:scale-90 hover:bg-surface-border/50"
             >
               <AnimatePresence>
                 <motion.div
-                  animate={isFavoriteAnimating ? { scale: 1.3, rotate: 20 } : { scale: 1, rotate: 0 }}
-                  transition={{ duration: 0.2 }}
+                  animate={
+                    isFavoriteAnimating
+                      ? { scale: 1.22, rotate: 16 }
+                      : { scale: 1, rotate: 0 }
+                  }
+                  transition={{ duration: 0.18 }}
                 >
                   <Star
                     size={16}
                     className={
-                      document.is_favorite 
-                        ? "fill-ice text-ice" 
-                        : "text-ink-muted/50"
+                      document.is_favorite
+                        ? "fill-ice text-ice"
+                        : "text-ink-muted/55"
                     }
                   />
                 </motion.div>
@@ -178,12 +197,12 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
           </div>
 
           {firstMetadata && (
-            <p className="text-sm text-ink-primary font-medium mt-1 truncate">
+            <p className="mt-1 truncate text-sm font-medium text-ink-primary">
               {firstMetadata}
             </p>
           )}
 
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <div className="mt-2 flex flex-wrap items-center gap-3">
             {document.metadata?.issue_date && (
               <div className="flex items-center gap-1 text-xs text-ink-muted">
                 <Calendar size={12} />
@@ -194,46 +213,59 @@ function DocumentCardComponent({ document, personName, onFavoriteToggle, compact
             {expiryDate && (
               <div
                 className={`flex items-center gap-1 text-xs transition-colors duration-150 ${
-                  isExpired ? "text-coral" : isExpiring ? "text-coral/80" : "text-ink-muted"
+                  isExpired
+                    ? "text-coral"
+                    : isExpiring
+                    ? "text-coral/80"
+                    : "text-ink-muted"
                 }`}
               >
                 <Calendar size={12} />
-                <span>{isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"} {formatDate(expiryDate)}</span>
+                <span>
+                  {isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"}{" "}
+                  {formatDate(expiryDate)}
+                </span>
               </div>
             )}
           </div>
 
           {document.description && !compact && (
-            <p className="mt-2 text-sm text-ink-muted line-clamp-2">{document.description}</p>
+            <p className="mt-2 line-clamp-2 text-sm text-ink-muted">
+              {document.description}
+            </p>
           )}
         </div>
       </div>
 
-      {/* Badge de anexo */}
-      {hasAttachments && (
-        <div className="absolute bottom-3 left-3">
-          {hasImageAttachment ? (
-            <ImageIcon size={14} className="text-ink-muted/50" />
-          ) : (
-            <Paperclip size={14} className="text-ink-muted/50" />
+      <div className="mt-3 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-ink-faint">
+          {hasAttachments && (
+            <span className="inline-flex items-center gap-1">
+              {hasImageAttachment ? (
+                <ImageIcon size={13} />
+              ) : (
+                <Paperclip size={13} />
+              )}
+              <span>Anexo</span>
+            </span>
           )}
         </div>
-      )}
 
-      {/* TOOLTIP DE SYNC - tap-to-show */}
-      <div className="absolute top-3 right-12">
-        <button
-          onClick={handleSyncIconClick}
-          className="flex items-center gap-1 p-1 rounded hover:bg-surface-border/50 transition-colors duration-150 active:scale-90"
-          aria-label="Status de sincronização"
-        >
-          {syncIcon}
-        </button>
-        {showSyncTooltip && (
-          <span className="absolute -top-6 right-0 text-[10px] bg-surface-raised border border-surface-border/50 px-2 py-0.5 rounded whitespace-nowrap text-ink-muted shadow-md pointer-events-none">
-            {syncLabel}
-          </span>
-        )}
+        <div className="relative">
+          <button
+            onClick={handleSyncIconClick}
+            className="flex items-center gap-1 rounded-full p-1 transition-colors duration-150 active:scale-90 hover:bg-surface-border/50"
+            aria-label="Status de sincronização"
+          >
+            {syncIcon}
+          </button>
+
+          {showSyncTooltip && (
+            <span className="absolute right-0 top-[-1.9rem] whitespace-nowrap rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted shadow-md">
+              {syncLabel}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
