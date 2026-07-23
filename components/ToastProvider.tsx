@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Toast, ToastType } from "./Toast";
 
 interface ToastAction {
@@ -18,7 +18,12 @@ interface ToastData {
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType, duration?: number, action?: ToastAction) => string;
+  showToast: (
+    message: string,
+    type?: ToastType,
+    duration?: number,
+    action?: ToastAction
+  ) => string;
   showSuccess: (message: string, duration?: number, action?: ToastAction) => string;
   showError: (message: string, duration?: number) => string;
   showInfo: (message: string, duration?: number, action?: ToastAction) => string;
@@ -40,21 +45,33 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const hideToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
   const showToast = useCallback(
-    (message: string, type: ToastType = "info", duration: number = 3000, action?: ToastAction) => {
-      const id = Date.now().toString() + Math.random().toString(36).substr(2, 6);
-      setToasts((prev) => [...prev, { id, message, type, duration, action }]);
-      
-      if (type !== "loading") {
-        setTimeout(() => hideToast(id), duration);
-      }
-      
+    (
+      message: string,
+      type: ToastType = "info",
+      duration: number = 3000,
+      action?: ToastAction
+    ) => {
+      const id =
+        Date.now().toString() + Math.random().toString(36).slice(2, 8);
+
+      setToasts((prev) => [
+        ...prev,
+        {
+          id,
+          message,
+          type,
+          duration,
+          action,
+        },
+      ]);
+
       return id;
     },
-    [hideToast]
+    []
   );
 
   const showSuccess = useCallback(
@@ -97,19 +114,30 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 pointer-events-none">
-        <div className="space-y-2">
-          <AnimatePresence mode="popLayout">
-            {toasts.map((toast) => (
-              <Toast
-                key={toast.id}
-                message={toast.message}
-                type={toast.type}
-                duration={toast.duration}
-                onClose={() => hideToast(toast.id)}
-                action={toast.action}
-              />
-            ))}
+
+      <div className="pointer-events-none fixed inset-x-0 top-4 z-[70] flex justify-center px-4 sm:top-5">
+        <div className="w-full max-w-sm">
+          <AnimatePresence initial={false} mode="popLayout">
+            <motion.div layout className="space-y-2">
+              {toasts.map((toast) => (
+                <motion.div
+                  key={toast.id}
+                  layout
+                  initial={{ opacity: 0, y: -12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    duration={toast.duration}
+                    onClose={() => hideToast(toast.id)}
+                    action={toast.action}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
           </AnimatePresence>
         </div>
       </div>
