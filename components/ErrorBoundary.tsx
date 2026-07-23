@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, ReactNode } from "react";
+import { AlertTriangle } from "lucide-react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -13,7 +14,10 @@ interface ErrorBoundaryState {
   errorInfo: React.ErrorInfo | null;
 }
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
@@ -43,27 +47,33 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="min-h-screen bg-void flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-surface-raised rounded-2xl border border-coral/20 p-6 shadow-vault">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-coral/20 flex items-center justify-center flex-shrink-0">
-                <span className="text-coral text-lg">⚠️</span>
+        <div className="flex min-h-screen items-center justify-center bg-void p-4">
+          <div className="w-full max-w-md rounded-[28px] border border-coral/20 bg-surface p-6 shadow-vault">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-coral/12">
+                <AlertTriangle size={20} className="text-coral" />
               </div>
-              <h2 className="font-display text-lg font-semibold text-ink-primary">
-                Algo deu errado
-              </h2>
+              <div>
+                <h2 className="font-display text-lg font-semibold text-ink-primary">
+                  Algo deu errado
+                </h2>
+                <p className="text-xs text-ink-muted">
+                  O app encontrou um problema inesperado
+                </p>
+              </div>
             </div>
-            
-            <div className="bg-void/50 rounded-xl p-4 mb-4 overflow-auto max-h-[200px]">
-              <p className="text-sm text-coral font-mono">
+
+            <div className="mb-4 max-h-[220px] overflow-auto rounded-[20px] border border-surface-border/50 bg-void/45 p-4">
+              <p className="font-mono text-sm text-coral">
                 {this.state.error?.message || "Erro desconhecido"}
               </p>
+
               {this.state.errorInfo && (
-                <details className="mt-2">
-                  <summary className="text-xs text-ink-muted cursor-pointer">
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-xs text-ink-muted">
                     Ver detalhes técnicos
                   </summary>
-                  <pre className="text-xs text-ink-muted/60 mt-2 whitespace-pre-wrap break-words">
+                  <pre className="mt-2 whitespace-pre-wrap break-words text-xs text-ink-muted/60">
                     {this.state.errorInfo.componentStack}
                   </pre>
                 </details>
@@ -72,12 +82,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             <button
               onClick={() => window.location.reload()}
-              className="w-full py-2.5 rounded-xl bg-ice text-void font-medium active:scale-95 transition-all"
+              className="w-full rounded-2xl bg-ice py-2.5 text-sm font-medium text-void transition-all active:scale-95"
             >
               Recarregar aplicativo
             </button>
-            
-            <p className="text-xs text-ink-muted/60 text-center mt-3">
+
+            <p className="mt-3 text-center text-xs text-ink-muted/60">
               Se o problema persistir, entre em contato com o suporte
             </p>
           </div>
