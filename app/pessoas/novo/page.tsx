@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { ArrowLeft, User, Mail, Phone, Save, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -64,21 +65,24 @@ export default function NewPersonPage() {
 
   const handlePreencherDados = () => {
     trigger("vibrate");
+
     const nome = user?.user_metadata?.full_name || "";
     const email = user?.email || "";
     const avatar = user?.user_metadata?.avatar_url || "";
+
     setFormData({
       name: nome,
       email: email,
       phone: "",
       avatar_url: avatar,
     });
+
     showToast("Dados preenchidos com seu perfil!", "info");
   };
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
+      <main className="min-h-screen bg-void pb-32">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -99,42 +103,84 @@ export default function NewPersonPage() {
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Nova pessoa
               </h1>
+              <p className="mt-1 text-sm text-ink-muted">
+                Cadastre uma pessoa para vincular documentos com mais rapidez
+              </p>
             </div>
           </div>
         </header>
 
         <section className="px-5 pt-6">
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm">
-            <div className="mb-6 flex flex-col items-center text-center">
-              <div className="flex h-24 w-24 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised shadow-sm">
-                <User size={40} className="text-ink-muted" />
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm"
+          >
+            <div className="mb-6 flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-surface-border/50 bg-surface-raised shadow-sm">
+                <User size={28} className="text-ice" />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-sm text-ink-muted">Cadastro</p>
+                <h2 className="font-display text-lg font-semibold text-ink-primary">
+                  Dados da pessoa
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-ink-faint">
+                  Salve os dados principais para reutilizar em documentos e registros do app.
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-[22px] border border-surface-border/40 bg-surface-raised/60 px-4 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-surface-border/50 bg-surface">
+                  <User size={20} className="text-ink-muted" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-ink-primary">
+                    Preencher com meus dados
+                  </p>
+                  <p className="mt-0.5 text-xs leading-5 text-ink-faint">
+                    Usa nome, e-mail e avatar do seu perfil atual para acelerar o cadastro.
+                  </p>
+                </div>
               </div>
 
               <button
                 onClick={handlePreencherDados}
-                className="mt-4 text-sm font-medium text-ice transition-colors active:scale-95 hover:text-ice/80"
+                className="mt-3 inline-flex rounded-full bg-ice/12 px-3.5 py-2 text-sm font-medium text-ice transition-all active:scale-95 hover:bg-ice/16"
               >
-                Preencher com meus dados
+                Usar meu perfil
               </button>
-
-              <p className="mt-2 max-w-xs text-xs leading-5 text-ink-faint">
-                Use seus dados do perfil para acelerar o cadastro e manter o fluxo consistente.
-              </p>
             </div>
 
             <div className="space-y-4">
-              <Input
-                label="Nome completo"
-                placeholder="Ex: Alefe Gomes"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
-                error={error}
-                required
-              />
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, delay: 0.04 }}
+              >
+                <Input
+                  label="Nome completo"
+                  placeholder="Ex: Alefe Gomes"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  error={error}
+                  required
+                />
+              </motion.div>
 
-              <div className="relative">
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, delay: 0.08 }}
+                className="relative"
+              >
                 <Mail
                   size={16}
                   className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
@@ -148,9 +194,14 @@ export default function NewPersonPage() {
                   }
                   className="pl-9"
                 />
-              </div>
+              </motion.div>
 
-              <div className="relative">
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, delay: 0.12 }}
+                className="relative"
+              >
                 <Phone
                   size={16}
                   className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
@@ -164,30 +215,36 @@ export default function NewPersonPage() {
                   }
                   className="pl-9"
                 />
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
 
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={handleSubmit}
-            disabled={loading}
-            className="mt-4 flex items-center justify-center gap-2"
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.16 }}
           >
-            {loading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <Save size={16} />
-                Adicionar pessoa
-              </>
-            )}
-          </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleSubmit}
+              disabled={loading}
+              className="mt-4 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Adicionar pessoa
+                </>
+              )}
+            </Button>
+          </motion.div>
         </section>
       </main>
     </PageTransition>
