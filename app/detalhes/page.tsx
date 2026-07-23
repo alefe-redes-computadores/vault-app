@@ -201,6 +201,10 @@ export default function DocumentDetailPage() {
     ? getFileIcon(selectedAttachment.type)
     : File;
 
+  // Pega o primeiro anexo para miniatura
+  const firstAttachment = hasAttachments ? doc.attachments[0] : null;
+  const isImageAttachment = firstAttachment?.type === 'image';
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
@@ -279,7 +283,7 @@ export default function DocumentDetailPage() {
               </div>
             </div>
 
-            {/* Metadados */}
+            {/* Metadados - TRADUZIDOS PARA PORTUGUÊS */}
             {hasMetadata && (
               <div className="border-t border-surface-border/50 pt-4 space-y-2">
                 {Object.entries(doc.metadata || {}).map(([key, value]) => {
@@ -288,11 +292,39 @@ export default function DocumentDetailPage() {
                   if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)) {
                     displayValue = formatDate(value);
                   }
+                  
+                  // Tradução das chaves
+                  const labels: Record<string, string> = {
+                    number: "Número",
+                    issue_date: "Data de emissão",
+                    expiry_date: "Data de validade",
+                    issuer: "Órgão emissor",
+                    category: "Categoria",
+                    institution: "Instituição",
+                    course: "Curso",
+                    duration: "Duração",
+                    completion_date: "Data de conclusão",
+                    medication: "Medicamento",
+                    dosage: "Dosagem",
+                    doctor: "Médico",
+                    pharmacy: "Farmácia",
+                    prescription_date: "Data da receita",
+                    renewal_date: "Próxima renovação",
+                    hospital: "Hospital",
+                    specialty: "Especialidade",
+                    date: "Data",
+                    from: "Quem encaminhou",
+                    to: "Para quem",
+                    reason: "Motivo",
+                    custom_field_1: "Campo 1",
+                    custom_field_2: "Campo 2",
+                  };
+                  
+                  const label = labels[key] || key.replace(/_/g, " ").toUpperCase();
+                  
                   return (
                     <div key={key} className="flex justify-between items-center">
-                      <span className="text-sm text-ink-muted">
-                        {key.replace(/_/g, " ").toUpperCase()}:
-                      </span>
+                      <span className="text-sm text-ink-muted">{label}:</span>
                       <span className="text-sm text-ink-primary font-medium">
                         {displayValue}
                       </span>
@@ -323,7 +355,7 @@ export default function DocumentDetailPage() {
             </div>
           </motion.div>
 
-          {/* ANEXOS */}
+          {/* ANEXOS COM MINIATURA */}
           {hasAttachments && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -339,13 +371,27 @@ export default function DocumentDetailPage() {
               <div className="grid grid-cols-2 gap-2">
                 {doc.attachments.map((attachment: any) => {
                   const Icon = getFileIcon(attachment.type);
+                  const isImage = attachment.type === 'image';
+                  
                   return (
                     <button
                       key={attachment.id}
                       onClick={() => openAttachment(attachment)}
-                      className="flex flex-col items-center justify-center p-4 rounded-xl bg-surface-raised border border-surface-border/50 hover:border-surface-border transition-colors active:scale-95"
+                      className="flex flex-col items-center justify-center p-4 rounded-xl bg-surface-raised border border-surface-border/50 hover:border-surface-border transition-colors active:scale-95 relative overflow-hidden"
                     >
-                      <Icon size={24} className="text-ink-muted" />
+                      {isImage ? (
+                        <img
+                          src={attachment.url}
+                          alt={attachment.name}
+                          className="w-full h-20 object-cover rounded-lg"
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <Icon size={24} className="text-ink-muted" />
+                      )}
                       <span className="text-xs text-ink-muted truncate w-full text-center mt-1">
                         {attachment.name}
                       </span>
@@ -376,7 +422,7 @@ export default function DocumentDetailPage() {
               className="flex items-center justify-center gap-2"
               onClick={() => {
                 trigger("vibrate");
-                router.push(`/editar?id=${doc.id}`);
+                router.push(`/detalhes/editar?id=${doc.id}`);
               }}
             >
               <Edit size={16} />
@@ -399,7 +445,7 @@ export default function DocumentDetailPage() {
           </motion.div>
         </section>
 
-        {/* MODAL DE ANEXO - CORRIGIDO */}
+        {/* MODAL DE ANEXO */}
         {isModalOpen && selectedAttachment && (
           <div
             className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
@@ -487,7 +533,7 @@ export default function DocumentDetailPage() {
                 </div>
               </div>
 
-              {/* VISUALIZAÇÃO - CORRIGIDO */}
+              {/* Visualização */}
               <div className="flex items-center justify-center min-h-[300px] bg-surface rounded-xl border border-surface-border/50 p-4 overflow-auto">
                 {selectedAttachment.type === 'image' ? (
                   !imageError ? (
