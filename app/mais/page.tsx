@@ -7,14 +7,11 @@ import {
   Shield,
   User,
   Settings,
-  BarChart3,
   LogOut,
   HardDrive,
   Users,
   ChevronRight,
   HelpCircle,
-  FileText,
-  Database,
   Download,
   RefreshCw,
   Camera,
@@ -36,12 +33,8 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { pullAllData } from "@/lib/sync/pull";
 
-// Versão do aplicativo (extraída do package.json ou definida manualmente)
 const APP_VERSION = "1.0.0";
 
-// ============================================================
-// TIPO PARA OS ITENS DO MENU (com component opcional)
-// ============================================================
 interface MenuItem {
   id: string;
   icon: any;
@@ -84,11 +77,9 @@ export default function MaisPage() {
     }
   };
 
-  // ✅ CORRIGIDO: Limpar dados usando transações separadas
   const clearLocalData = async () => {
     setIsLoading(true);
     try {
-      // Limpar cada tabela individualmente
       await db.persons.clear();
       await db.documents.clear();
       await db.medicamentos.clear();
@@ -113,7 +104,7 @@ export default function MaisPage() {
   };
 
   // ============================================================
-  // ✅ NOVO: Botão de sincronização com PULL + PUSH + RELOAD
+  // ✅ ÚNICA MUDANÇA: handleSync com pullAllData + processQueue
   // ============================================================
   const handleSync = useCallback(async () => {
     if (!user?.id) {
@@ -133,19 +124,9 @@ export default function MaisPage() {
     showInfo("Sincronizando dados...", 5000);
 
     try {
-      // ✅ PASSO 1: PULL (baixar dados da nuvem)
-      console.log("🔵 Iniciando pull...");
       await pullAllData(user.id);
-      
-      const personsCount = await db.persons.count();
-      const docsCount = await db.documents.count();
-      console.log(`✅ Pull concluído: ${personsCount} pessoas, ${docsCount} documentos`);
-
-      // ✅ PASSO 2: PUSH (enviar dados locais para a nuvem)
-      console.log("🔄 Iniciando push...");
       await processQueue();
 
-      // ✅ PASSO 3: Contar novamente para mostrar resultado final
       const finalPersons = await db.persons.count();
       const finalDocs = await db.documents.count();
 
@@ -154,7 +135,6 @@ export default function MaisPage() {
         5000
       );
 
-      // ✅ PASSO 4: Recarregar a página para atualizar a UI
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -200,6 +180,7 @@ export default function MaisPage() {
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
+  // ✅ MENU ORIGINAL (SEM DUPLICAÇÃO)
   const menuSections: MenuSection[] = [
     {
       title: "Geral",
@@ -231,13 +212,6 @@ export default function MaisPage() {
       title: "Dados",
       items: [
         {
-          id: "exportar",
-          icon: Download,
-          label: "Exportar dados",
-          description: "Baixe todos os seus dados em JSON",
-          onClick: () => showToast("Em breve...", "info"),
-        },
-        {
           id: "sync",
           icon: RefreshCw,
           label: "Sincronizar agora",
@@ -248,6 +222,13 @@ export default function MaisPage() {
             : "Sem conexão",
           onClick: handleSync,
           disabled: !isOnline || isSyncing,
+        },
+        {
+          id: "exportar",
+          icon: Download,
+          label: "Exportar dados",
+          description: "Baixe todos os seus dados em JSON",
+          onClick: () => showToast("Em breve...", "info"),
         },
         {
           id: "limpar",
@@ -294,7 +275,7 @@ export default function MaisPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          {/* PERFIL — INTEGRADO NO TOPO COM BOTÃO DE EDIÇÃO */}
+          {/* PERFIL */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -307,7 +288,8 @@ export default function MaisPage() {
                   <img
                     src={avatarUrl}
                     alt={displayName}
-                    className="w-20 h-20 rounded-full border-2 border-ice/20"
+                    loading="lazy"
+                    className="w-20 h-20 rounded-full border-2 border-ice/20 object-cover"
                   />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-3xl">
@@ -357,7 +339,7 @@ export default function MaisPage() {
               <div className="space-y-2">
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  // ✅ Tema: renderizado como componente isolado (sem button wrapper)
+                  // ✅ TEMA: renderizado como componente isolado
                   if (item.id === "tema") {
                     return (
                       <div
@@ -428,7 +410,7 @@ export default function MaisPage() {
             </button>
           </motion.div>
 
-          {/* RODAPÉ COM VERSÃO E CRÉDITOS */}
+          {/* RODAPÉ */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -447,7 +429,7 @@ export default function MaisPage() {
           </motion.div>
         </section>
 
-        {/* MODAL DE CONFIRMAÇÃO - LOGOUT */}
+        {/* MODAIS */}
         <ConfirmationModal
           isOpen={showLogoutModal}
           onClose={() => setShowLogoutModal(false)}
@@ -460,7 +442,6 @@ export default function MaisPage() {
           type="warning"
         />
 
-        {/* MODAL DE CONFIRMAÇÃO - LIMPAR DADOS LOCAIS */}
         <ConfirmationModal
           isOpen={showClearDataModal}
           onClose={() => setShowClearDataModal(false)}
