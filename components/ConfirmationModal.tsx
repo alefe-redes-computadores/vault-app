@@ -27,63 +27,69 @@ export function ConfirmationModal({
   isLoading = false,
   type = "danger",
 }: ConfirmationModalProps) {
-  if (!isOpen) return null;
-
-  const colors = {
+  const tones = {
     danger: {
       icon: "text-coral",
-      border: "border-coral/30",
-      button: "bg-coral hover:bg-coral/90 text-white",
+      ring: "border-coral/20",
+      iconBg: "bg-coral/10",
     },
     warning: {
-      icon: "text-yellow-500",
-      border: "border-yellow-500/30",
-      button: "bg-yellow-500 hover:bg-yellow-600 text-white",
+      icon: "text-amber-400",
+      ring: "border-amber-400/20",
+      iconBg: "bg-amber-400/10",
     },
     info: {
       icon: "text-ice",
-      border: "border-ice/30",
-      button: "bg-ice hover:bg-ice/90 text-void",
+      ring: "border-ice/20",
+      iconBg: "bg-ice/10",
     },
   };
 
-  const color = colors[type];
+  const tone = tones[type];
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-md"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+        >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="relative w-full max-w-md rounded-2xl bg-surface border border-surface-border shadow-vault p-6"
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.97 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-md rounded-[28px] border border-surface-border/60 bg-surface p-6 shadow-vault"
           >
-            {/* Rivet decorativo */}
-            <span className="rivet rivet-tl" />
-            <span className="rivet rivet-br" />
-
-            {/* Fechar */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-1 rounded-full hover:bg-surface-border transition-colors"
               disabled={isLoading}
+              aria-label="Fechar modal"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary disabled:opacity-50"
             >
-              <X size={18} className="text-ink-muted" />
+              <X size={18} />
             </button>
 
-            {/* Conteúdo */}
             <div className="flex flex-col items-center text-center">
-              <div className={`w-14 h-14 rounded-full bg-surface-raised border ${color.border} flex items-center justify-center mb-4`}>
-                <AlertTriangle size={28} className={color.icon} />
+              <div
+                className={`mb-4 flex h-14 w-14 items-center justify-center rounded-full border ${tone.ring} ${tone.iconBg}`}
+              >
+                <AlertTriangle size={26} className={tone.icon} />
               </div>
-              <h3 className="font-display text-lg font-semibold text-ink-primary">{title}</h3>
-              <p className="text-sm text-ink-muted mt-2">{message}</p>
+
+              <h3 className="font-display text-lg font-semibold text-ink-primary">
+                {title}
+              </h3>
+
+              <p className="mt-2 max-w-sm text-sm leading-6 text-ink-muted">
+                {message}
+              </p>
             </div>
 
-            {/* Ações */}
-            <div className="flex gap-3 mt-6">
+            <div className="mt-6 flex gap-3">
               <Button
                 variant="secondary"
                 className="flex-1"
@@ -92,9 +98,10 @@ export function ConfirmationModal({
               >
                 {cancelLabel}
               </Button>
+
               <Button
                 variant={type === "danger" ? "danger" : "primary"}
-                className="flex-1 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2"
                 onClick={onConfirm}
                 disabled={isLoading}
               >
@@ -103,7 +110,7 @@ export function ConfirmationModal({
               </Button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
