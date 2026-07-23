@@ -20,11 +20,10 @@ export async function pullAllData(userId: string): Promise<void> {
   try {
     console.log('🔄 Iniciando pull de dados (merge upsert)...');
 
-    // Buscar itens pendentes na syncQueue para não sobrescrevê-los
+    // Buscar itens pendentes na syncQueue (NÃO filtrar por user_id, pois a syncQueue não tem esse campo)
     const pendingItems = await db.syncQueue
-      .where('user_id')
-      .equals(userId)
-      .and((item) => !item.failed)
+      .toCollection()
+      .filter((item) => !item.failed)
       .toArray();
     
     const pendingIds = new Set<string>();
@@ -53,7 +52,6 @@ export async function pullAllData(userId: string): Promise<void> {
     if (personsError) throw personsError;
     if (persons && persons.length > 0) {
       const pendingIdsForTable = pendingTables.get('persons') || new Set();
-      // Filtrar apenas registros que não estão pendentes
       const toUpsert = persons.filter(p => !pendingIdsForTable.has(p.id));
       
       if (toUpsert.length > 0) {
