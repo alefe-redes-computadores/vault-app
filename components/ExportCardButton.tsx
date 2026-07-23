@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useRef } from 'react';
-import { FileDown, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { useHapticFeedback } from '@/lib/haptics';
-import { exportCardToPDF, exportCardsToPDF } from '@/lib/pdfExport';
-import type { Document } from '@/lib/types';
+import { useState } from "react";
+import { FileDown, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { useHapticFeedback } from "@/lib/haptics";
+import { exportCardToPDF, exportCardsToPDF } from "@/lib/pdfExport";
 
 interface ExportCardButtonProps {
   cardRef?: React.RefObject<HTMLElement>;
-  cards?: Array<{ ref: React.RefObject<HTMLElement>; id: string }>; // ← string
+  cards?: Array<{ ref: React.RefObject<HTMLElement>; id: string }>;
   title?: string;
-  variant?: 'primary' | 'secondary';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary";
+  size?: "sm" | "md" | "lg";
   className?: string;
   label?: string;
 }
@@ -20,11 +19,11 @@ interface ExportCardButtonProps {
 export function ExportCardButton({
   cardRef,
   cards,
-  title = 'Documento',
-  variant = 'secondary',
-  size = 'sm',
-  className = '',
-  label = 'Exportar PDF',
+  title = "Documento",
+  variant = "secondary",
+  size = "sm",
+  className = "",
+  label = "Exportar PDF",
 }: ExportCardButtonProps) {
   const { trigger } = useHapticFeedback();
   const [isLoading, setIsLoading] = useState(false);
@@ -35,7 +34,7 @@ export function ExportCardButton({
     setIsLoading(true);
     setError(null);
     setProgress(0);
-    trigger('vibrate');
+    trigger("vibrate");
 
     try {
       if (cards && cards.length > 0) {
@@ -55,14 +54,14 @@ export function ExportCardButton({
           filename: `documento_${new Date().getTime()}.pdf`,
         });
       } else {
-        throw new Error('Nenhum card ou lista de cards fornecida');
+        throw new Error("Nenhum card ou lista de cards fornecida");
       }
 
-      trigger('success');
+      trigger("success");
     } catch (err) {
-      console.error('Erro ao exportar:', err);
-      setError('Erro ao gerar o PDF. Tente novamente.');
-      trigger('error');
+      console.error("Erro ao exportar:", err);
+      setError("Erro ao gerar o PDF. Tente novamente.");
+      trigger("error");
     } finally {
       setIsLoading(false);
       setProgress(0);
@@ -70,7 +69,7 @@ export function ExportCardButton({
   };
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <Button
         variant={variant}
         size={size}
@@ -81,7 +80,7 @@ export function ExportCardButton({
         {isLoading ? (
           <>
             <Loader2 size={16} className="animate-spin" />
-            {cards && cards.length > 0 ? `${progress}%` : 'Gerando...'}
+            {cards && cards.length > 0 ? `${progress}%` : "Gerando..."}
           </>
         ) : (
           <>
@@ -90,9 +89,8 @@ export function ExportCardButton({
           </>
         )}
       </Button>
-      {error && (
-        <p className="text-xs text-coral">{error}</p>
-      )}
+
+      {error && <p className="text-xs text-coral">{error}</p>}
     </div>
   );
 }
