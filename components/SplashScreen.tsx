@@ -9,7 +9,10 @@ interface SplashScreenProps {
   minDisplayTime?: number;
 }
 
-export function SplashScreen({ children, minDisplayTime = 1500 }: SplashScreenProps) {
+export function SplashScreen({
+  children,
+  minDisplayTime = 1500,
+}: SplashScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -26,77 +29,70 @@ export function SplashScreen({ children, minDisplayTime = 1500 }: SplashScreenPr
         {isLoading && (
           <motion.div
             key="splash"
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-void"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-void px-6"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
           >
-            {/* Logo/Ícone animado */}
             <motion.div
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-              className="relative"
+              initial={{ scale: 0.92, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ duration: 0.42, delay: 0.12 }}
+              className="w-full max-w-xs rounded-[32px] border border-surface-border/50 bg-surface px-8 py-12 text-center shadow-vault"
             >
               <motion.div
-                animate={{
-                  scale: [1, 1.06, 1],
-                  rotate: [0, 2, -2, 0],
-                }}
+                animate={{ scale: [1, 1.035, 1] }}
                 transition={{
-                  duration: 2.5,
+                  duration: 2,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
-                className="w-20 h-20 rounded-2xl bg-gradient-to-br from-ice/20 to-ice/5 border border-ice/20 flex items-center justify-center shadow-2xl shadow-ice/10"
+                className="mx-auto flex h-20 w-20 items-center justify-center rounded-[24px] border border-ice/15 bg-surface-raised"
               >
-                <Shield size={40} className="text-ice" strokeWidth={1.5} />
+                <Shield size={38} className="text-ice" strokeWidth={1.6} />
               </motion.div>
-            </motion.div>
 
-            {/* Nome do app */}
-            <motion.h1
-              className="mt-6 font-display text-2xl font-semibold text-ink-primary tracking-tight"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.35 }}
-            >
-              Vault
-            </motion.h1>
+              <motion.h1
+                className="mt-6 font-display text-2xl font-semibold tracking-tight text-ink-primary"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.24 }}
+              >
+                Vault
+              </motion.h1>
 
-            {/* Subtítulo */}
-            <motion.p
-              className="mt-1 text-sm text-ink-muted"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.55 }}
-            >
-              Seus documentos, sempre à mão
-            </motion.p>
+              <motion.p
+                className="mt-1 text-sm text-ink-muted"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, delay: 0.38 }}
+              >
+                Seus documentos, sempre à mão
+              </motion.p>
 
-            {/* Bolinhas pulsantes (mais suaves) */}
-            <motion.div
-              className="mt-8 flex items-center gap-2.5"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.75 }}
-            >
-              {[0, 0.2, 0.4].map((delay) => (
-                <motion.div
-                  key={delay}
-                  animate={{
-                    scale: [1, 1.4, 1],
-                    opacity: [0.3, 1, 0.3],
-                  }}
-                  transition={{
-                    duration: 1.2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay,
-                  }}
-                  className="w-2.5 h-2.5 rounded-full bg-ice/50"
-                />
-              ))}
+              <motion.div
+                className="mt-8 flex items-center justify-center gap-2.5"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, delay: 0.5 }}
+              >
+                {[0, 0.16, 0.32].map((delay) => (
+                  <motion.div
+                    key={delay}
+                    animate={{
+                      scale: [1, 1.35, 1],
+                      opacity: [0.28, 1, 0.28],
+                    }}
+                    transition={{
+                      duration: 1.1,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay,
+                    }}
+                    className="h-2.5 w-2.5 rounded-full bg-ice/45"
+                  />
+                ))}
+              </motion.div>
             </motion.div>
           </motion.div>
         )}
