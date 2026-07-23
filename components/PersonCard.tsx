@@ -65,7 +65,7 @@ function PersonCardComponent({
             </div>
           )}
 
-          <span className="text-sm font-medium whitespace-nowrap">
+          <span className="whitespace-nowrap text-sm font-medium">
             {person.name}
           </span>
         </button>
