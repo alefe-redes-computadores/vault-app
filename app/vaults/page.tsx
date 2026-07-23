@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Lock } from "lucide-react";
+import { motion } from "framer-motion";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,10 +18,10 @@ export default function VaultsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({}); // ← string
+  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
 
   const vaults = useLiveQuery(
-    () => db.vaults.where('user_id').equals(user?.id || '').toArray(),
+    () => db.vaults.where("user_id").equals(user?.id || "").toArray(),
     [user?.id],
     []
   );
@@ -28,20 +29,22 @@ export default function VaultsPage() {
   useEffect(() => {
     const countMembers = async () => {
       if (!vaults || vaults.length === 0) return;
+
       const counts: Record<string, number> = {};
       for (const vault of vaults) {
         if (vault.id) {
-          const count = await db.vaultMembers.where('vault_id').equals(vault.id).count();
+          const count = await db.vaultMembers.where("vault_id").equals(vault.id).count();
           counts[vault.id] = count;
         }
       }
       setMemberCounts(counts);
     };
+
     countMembers();
   }, [vaults]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 600);
+    const timer = setTimeout(() => setIsLoading(false), 560);
     return () => clearTimeout(timer);
   }, []);
 
@@ -52,39 +55,52 @@ export default function VaultsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pb-4 pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">
-                Meus Cofres
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                Vault
+              </p>
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+                Meus cofres
               </h1>
-              <p className="text-sm text-ink-muted">
-                Compartilhe documentos com sua família
+              <p className="mt-1 text-sm text-ink-muted">
+                Compartilhe documentos com família, médicos e cuidadores
               </p>
             </div>
+
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.push("/vaults/novo");
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void active:scale-[0.98] transition-all"
+              aria-label="Criar cofre"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 transition-all active:scale-95"
             >
               <Plus size={18} strokeWidth={2.5} />
             </button>
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
+        <section className="space-y-4 px-5 pt-6">
           {!vaults || vaults.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.28 }}
+              className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
+            >
+              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
                 <Lock size={32} className="text-ink-muted" />
               </div>
-              <h3 className="font-display text-lg text-ink-primary">Nenhum cofre criado</h3>
-              <p className="text-sm text-ink-muted mt-1 max-w-xs">
+
+              <h3 className="font-display text-lg font-semibold text-ink-primary">
+                Nenhum cofre criado
+              </h3>
+              <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-ink-muted">
                 Crie um cofre para compartilhar documentos com sua família, médicos ou cuidadores.
               </p>
+
               <Button
                 variant="primary"
                 onClick={() => {
@@ -95,14 +111,20 @@ export default function VaultsPage() {
               >
                 Criar cofre
               </Button>
-            </div>
+            </motion.div>
           ) : (
-            vaults.map((vault) => (
-              <VaultCard
+            vaults.map((vault, index) => (
+              <motion.div
                 key={vault.id}
-                vault={vault}
-                memberCount={memberCounts[vault.id!] || 0}
-              />
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.24, delay: Math.min(index * 0.05, 0.24) }}
+              >
+                <VaultCard
+                  vault={vault}
+                  memberCount={memberCounts[vault.id!] || 0}
+                />
+              </motion.div>
             ))
           )}
         </section>
