@@ -7,14 +7,11 @@ import {
   Shield,
   User,
   Settings,
-  BarChart3,
   LogOut,
   HardDrive,
   Users,
   ChevronRight,
   HelpCircle,
-  FileText,
-  Database,
   Download,
   RefreshCw,
   Camera,
@@ -107,7 +104,7 @@ export default function MaisPage() {
   };
 
   // ============================================================
-  // BOTÃO DE SINCRONIZAÇÃO CORRIGIDO (PULL + PUSH)
+  // BOTÃO DE SINCRONIZAÇÃO CORRIGIDO (PULL + PUSH + RELOAD)
   // ============================================================
   const handleSync = useCallback(async () => {
     if (!user?.id) {
@@ -148,14 +145,13 @@ export default function MaisPage() {
       // ============================================================
       const finalPersons = await db.persons.count();
       const finalDocs = await db.documents.count();
-      const finalMedicamentos = await db.medicamentos.count();
 
       showSuccess(
         `Sincronizado! ${finalPersons} pessoas, ${finalDocs} documentos`,
         5000
       );
 
-      // Força recarregamento da UI
+      // ✅ FORÇA RECARREGAMENTO DA PÁGINA PARA ATUALIZAR A UI
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -232,13 +228,6 @@ export default function MaisPage() {
       title: "Dados",
       items: [
         {
-          id: "exportar",
-          icon: Download,
-          label: "Exportar dados",
-          description: "Baixe todos os seus dados em JSON",
-          onClick: () => showToast("Em breve...", "info"),
-        },
-        {
           id: "sync",
           icon: RefreshCw,
           label: "Sincronizar agora",
@@ -249,6 +238,13 @@ export default function MaisPage() {
             : "Sem conexão",
           onClick: handleSync,
           disabled: !isOnline || isSyncing,
+        },
+        {
+          id: "exportar",
+          icon: Download,
+          label: "Exportar dados",
+          description: "Baixe todos os seus dados em JSON",
+          onClick: () => showToast("Em breve...", "info"),
         },
         {
           id: "limpar",
