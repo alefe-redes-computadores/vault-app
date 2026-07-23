@@ -14,7 +14,6 @@ import {
   HelpCircle,
   Download,
   RefreshCw,
-  Camera,
   Fingerprint,
   Pencil,
   Heart,
@@ -28,7 +27,6 @@ import { useToast } from "@/components/ToastProvider";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { useState, ReactNode, useCallback } from "react";
-import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { pullAllData } from "@/lib/sync/pull";
@@ -57,7 +55,7 @@ export default function MaisPage() {
   const { showToast, showSuccess, showError, showInfo } = useToast();
   const { processQueue, isOnline } = useSyncQueue();
   const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
-  const [isChangingPhoto, setIsChangingPhoto] = useState(false);
+
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -90,7 +88,7 @@ export default function MaisPage() {
       await db.farmacias.clear();
       await db.hospitais.clear();
       await db.syncQueue.clear();
-      
+
       trigger("success");
       showToast("Dados locais limpos com sucesso!", "success");
       router.push("/login");
@@ -103,9 +101,6 @@ export default function MaisPage() {
     }
   };
 
-  // ============================================================
-  // ✅ ÚNICA MUDANÇA: handleSync com pullAllData + processQueue
-  // ============================================================
   const handleSync = useCallback(async () => {
     if (!user?.id) {
       showError("Usuário não autenticado");
@@ -138,30 +133,13 @@ export default function MaisPage() {
       setTimeout(() => {
         window.location.reload();
       }, 1500);
-
     } catch (error: any) {
-      console.error("❌ Erro na sincronização:", error);
+      console.error("Erro na sincronização:", error);
       showError(`Erro ao sincronizar: ${error?.message || "Erro desconhecido"}`);
     } finally {
       setIsSyncing(false);
     }
   }, [user, isOnline, isSyncing, trigger, showInfo, showSuccess, showError, processQueue]);
-
-  const handleChangePhoto = () => {
-    trigger("vibrate");
-    setIsChangingPhoto(true);
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        showToast("Foto atualizada com sucesso!", "success");
-      }
-      setIsChangingPhoto(false);
-    };
-    input.click();
-  };
 
   const handleEditProfile = () => {
     trigger("vibrate");
@@ -178,9 +156,11 @@ export default function MaisPage() {
   };
 
   const avatarUrl = user?.user_metadata?.avatar_url;
-  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
+  const displayName =
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "Usuário";
 
-  // ✅ MENU ORIGINAL (SEM DUPLICAÇÃO)
   const menuSections: MenuSection[] = [
     {
       title: "Geral",
@@ -215,9 +195,9 @@ export default function MaisPage() {
           id: "sync",
           icon: RefreshCw,
           label: "Sincronizar agora",
-          description: isOnline 
-            ? isSyncing 
-              ? "Baixando e enviando dados..." 
+          description: isOnline
+            ? isSyncing
+              ? "Baixando e enviando dados..."
               : "Forçar sincronização com a nuvem (pull + push)"
             : "Sem conexão",
           onClick: handleSync,
@@ -256,132 +236,184 @@ export default function MaisPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.back();
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+              aria-label="Voltar"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
+
             <div>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">Mais</h1>
-              <p className="text-sm text-ink-muted">Configurações e opções extras</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                Vault
+              </p>
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+                Mais
+              </h1>
+              <p className="mt-1 text-sm text-ink-muted">
+                Configurações, dados e opções da conta
+              </p>
             </div>
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-6">
-          {/* PERFIL */}
+        <section className="space-y-6 px-5 pt-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="rounded-xl border border-surface-border/50 bg-surface p-6 shadow-sm"
+            transition={{ duration: 0.28 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
           >
-            <div className="flex flex-col items-center gap-3">
-              <div className="relative">
+            <div className="flex items-start gap-4">
+              <div className="relative shrink-0">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
                     alt={displayName}
                     loading="lazy"
-                    className="w-20 h-20 rounded-full border-2 border-ice/20 object-cover"
+                    className="h-20 w-20 rounded-full border-2 border-ice/20 object-cover"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted text-3xl">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-3xl text-ink-muted">
                     {displayName.charAt(0).toUpperCase()}
                   </div>
                 )}
+
                 <button
                   onClick={handleEditProfile}
-                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-ice text-void border-2 border-void hover:bg-ice/80 transition-colors active:scale-95"
+                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-void bg-ice text-void transition-colors active:scale-95 hover:bg-ice/85"
                 >
-                  <Pencil size={14} />
+                  <Pencil size={13} />
                 </button>
               </div>
-              <h2 className="font-display text-lg font-semibold text-ink-primary">{displayName}</h2>
-              <p className="text-sm text-ink-muted">{user?.email}</p>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-ink-muted">Conta</p>
+                <h2 className="truncate font-display text-lg font-semibold text-ink-primary">
+                  {displayName}
+                </h2>
+                <p className="mt-1 truncate text-sm text-ink-muted">
+                  {user?.email}
+                </p>
+              </div>
             </div>
 
-            <div className="mt-4 border-t border-surface-border/50 pt-4 space-y-2">
+            <div className="mt-5 rounded-[22px] border border-surface-border/40 bg-surface-raised/60 px-4 py-3">
               <button
                 onClick={handleBiometricToggle}
-                className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-surface-border transition-colors active:scale-95"
+                className="flex w-full items-center gap-3 rounded-xl text-left transition-all active:scale-[0.99]"
               >
-                <Fingerprint size={18} className={isBiometricEnabled ? "text-ice" : "text-ink-muted"} />
-                <span className="text-sm text-ink-primary flex-1">Biometria</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  isBiometricEnabled
-                    ? "bg-ice/20 text-ice"
-                    : "bg-surface-border text-ink-muted"
-                }`}>
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border ${
+                    isBiometricEnabled
+                      ? "border-ice/20 bg-ice/10"
+                      : "border-surface-border/50 bg-surface"
+                  }`}
+                >
+                  <Fingerprint
+                    size={18}
+                    className={isBiometricEnabled ? "text-ice" : "text-ink-muted"}
+                  />
+                </div>
+
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-ink-primary">
+                    Biometria
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    Desbloqueio rápido e seguro no dispositivo
+                  </p>
+                </div>
+
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    isBiometricEnabled
+                      ? "bg-ice/15 text-ice"
+                      : "bg-surface-border text-ink-muted"
+                  }`}
+                >
                   {isBiometricEnabled ? "Ativada" : "Desativada"}
                 </span>
               </button>
             </div>
           </motion.div>
 
-          {/* SEÇÕES DO MENU */}
           {menuSections.map((section, sectionIndex) => (
             <motion.div
               key={section.title}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: sectionIndex * 0.05 }}
+              transition={{ duration: 0.28, delay: sectionIndex * 0.04 }}
             >
-              <h2 className="text-xs font-medium text-ink-muted uppercase tracking-wider mb-2">
+              <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
                 {section.title}
               </h2>
+
               <div className="space-y-2">
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  // ✅ TEMA: renderizado como componente isolado
+
                   if (item.id === "tema") {
                     return (
                       <div
                         key={item.id}
-                        className="flex items-center gap-4 w-full p-3 rounded-xl bg-surface border border-surface-border/50"
+                        className="flex items-center gap-4 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 shadow-sm"
                       >
-                        <div className="w-10 h-10 rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center flex-shrink-0">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
                           <Icon size={18} className="text-ink-muted" />
                         </div>
+
                         <div className="flex-1 text-left">
-                          <p className="text-sm font-medium text-ink-primary">{item.label}</p>
-                          <p className="text-xs text-ink-muted">{item.description}</p>
+                          <p className="text-sm font-medium text-ink-primary">
+                            {item.label}
+                          </p>
+                          <p className="text-xs text-ink-muted">
+                            {item.description}
+                          </p>
                         </div>
-                        <div className="flex-shrink-0">
-                          {item.component}
-                        </div>
+
+                        <div className="shrink-0">{item.component}</div>
                       </div>
                     );
                   }
 
                   const isSyncItem = item.id === "sync";
+
                   return (
                     <button
                       key={item.id}
                       onClick={item.onClick}
                       disabled={item.disabled || isSyncing}
-                      className={`flex items-center gap-4 w-full p-3 rounded-xl bg-surface border border-surface-border/50 hover:bg-surface-border transition-all active:scale-95 ${
-                        item.disabled || isSyncing ? "opacity-50 cursor-not-allowed" : ""
+                      className={`flex w-full items-center gap-4 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] ${
+                        item.disabled || isSyncing
+                          ? "cursor-not-allowed opacity-50"
+                          : "hover:bg-surface-raised/80"
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center flex-shrink-0">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
                         {isSyncItem && isSyncing ? (
-                          <Loader2 size={18} className="text-ice animate-spin" />
+                          <Loader2 size={18} className="animate-spin text-ice" />
                         ) : (
                           <Icon size={18} className="text-ink-muted" />
                         )}
                       </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium text-ink-primary">{item.label}</p>
-                        <p className="text-xs text-ink-muted">{item.description}</p>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-ink-primary">
+                          {item.label}
+                        </p>
+                        <p className="text-xs leading-5 text-ink-muted">
+                          {item.description}
+                        </p>
                       </div>
-                      <ChevronRight size={16} className="text-ink-muted/40 flex-shrink-0" />
+
+                      <ChevronRight size={16} className="shrink-0 text-ink-faint" />
                     </button>
                   );
                 })}
@@ -389,47 +421,46 @@ export default function MaisPage() {
             </motion.div>
           ))}
 
-          {/* SAIR DA CONTA */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
+            transition={{ duration: 0.28, delay: 0.18 }}
           >
             <button
               onClick={() => setShowLogoutModal(true)}
-              className="flex items-center gap-4 w-full p-3 rounded-xl bg-coral/10 border border-coral/20 hover:bg-coral/20 transition-all active:scale-95"
+              className="flex w-full items-center gap-4 rounded-[22px] border border-coral/20 bg-coral/10 p-3.5 text-left transition-all active:scale-[0.985] hover:bg-coral/15"
             >
-              <div className="w-10 h-10 rounded-full bg-coral/20 flex items-center justify-center flex-shrink-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-coral/15">
                 <LogOut size={18} className="text-coral" />
               </div>
-              <div className="flex-1 text-left">
+
+              <div className="flex-1">
                 <p className="text-sm font-medium text-coral">Sair da conta</p>
-                <p className="text-xs text-coral/70">Desconectar e limpar sessão</p>
+                <p className="text-xs text-coral/70">
+                  Desconectar e encerrar sua sessão atual
+                </p>
               </div>
-              <ChevronRight size={16} className="text-coral/40 flex-shrink-0" />
+
+              <ChevronRight size={16} className="shrink-0 text-coral/40" />
             </button>
           </motion.div>
 
-          {/* RODAPÉ */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-            className="pt-4 pb-8 text-center"
+            transition={{ duration: 0.34, delay: 0.24 }}
+            className="pb-8 pt-2 text-center"
           >
-            <p className="text-xs text-ink-faint">
-              Vault v{APP_VERSION}
+            <p className="text-xs text-ink-faint">Vault v{APP_VERSION}</p>
+            <p className="mt-1 flex items-center justify-center gap-1 text-xs text-ink-faint">
+              Desenvolvido com <Heart size={12} className="fill-coral text-coral" /> por Álefe Jôhsefe
             </p>
-            <p className="text-xs text-ink-faint mt-1 flex items-center justify-center gap-1">
-              Desenvolvido com <Heart size={12} className="text-coral fill-coral" /> por Álefe Jôhsefe
-            </p>
-            <p className="text-[10px] text-ink-faint/50 mt-2">
+            <p className="mt-2 text-[10px] text-ink-faint/50">
               © {new Date().getFullYear()} — Todos os direitos reservados
             </p>
           </motion.div>
         </section>
 
-        {/* MODAIS */}
         <ConfirmationModal
           isOpen={showLogoutModal}
           onClose={() => setShowLogoutModal(false)}
