@@ -1,31 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plus, Building2, Trash2, Edit, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Building2,
+  Trash2,
+  Edit,
+  Loader2,
+  MapPin,
+  Phone,
+} from "lucide-react";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useToast } from "@/components/ToastProvider";
+import { Button } from "@/components/ui/Button";
 
 export default function HospitaisPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast } = useToast();
   const { hospitais, deleteHospital } = useHospitais();
-  const [isDeleting, setIsDeleting] = useState<string | null>(null); // ← string
-  const [showDeleteModal, setShowDeleteModal] = useState<{ id: string; nome: string } | null>(null); // ← string
 
-  const handleDeleteClick = (id: string, nome: string) => { // ← string
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState<{ id: string; nome: string } | null>(null);
+
+  const sortedHospitais = useMemo(() => {
+    return [...hospitais].sort((a, b) => (a.nome || "").localeCompare(b.nome || ""));
+  }, [hospitais]);
+
+  const handleDeleteClick = (id: string, nome: string) => {
     setShowDeleteModal({ id, nome });
   };
 
   const confirmDelete = async () => {
     if (!showDeleteModal) return;
+
     setIsDeleting(showDeleteModal.id);
+
     try {
       await deleteHospital(showDeleteModal.id);
       trigger("success");
@@ -41,102 +58,155 @@ export default function HospitaisPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-surface-border/30 px-5 pt-6 pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
               <button
                 onClick={() => {
                   trigger("vibrate");
                   router.back();
                 }}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+                aria-label="Voltar"
+                className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
                 <ArrowLeft size={18} className="text-ink-primary" />
               </button>
-              <div>
-                <h1 className="font-display text-xl font-semibold text-ink-primary">Hospitais</h1>
-                <p className="text-sm text-ink-muted">
-                  {hospitais.length} hospital{hospitais.length !== 1 ? "s" : ""} cadastrado{hospitais.length !== 1 ? "s" : ""}
+
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                  Saúde
+                </p>
+                <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+                  Hospitais
+                </h1>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {sortedHospitais.length} hospital
+                  {sortedHospitais.length !== 1 ? "s" : ""} cadastrado
+                  {sortedHospitais.length !== 1 ? "s" : ""}
                 </p>
               </div>
             </div>
+
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.push("/saude/hospitais/novo");
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void active:scale-95 transition-all"
+              aria-label="Adicionar hospital"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 transition-all active:scale-95"
             >
               <Plus size={18} strokeWidth={2.5} />
             </button>
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
-          {hospitais.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-20 h-20 rounded-full bg-surface-raised flex items-center justify-center mb-4 border border-surface-border/50">
+        <section className="px-5 pt-6">
+          {sortedHospitais.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.28 }}
+              className="flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
+            >
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
                 <Building2 size={32} className="text-ink-muted" />
               </div>
-              <h3 className="font-display text-lg text-ink-primary">Nenhum hospital</h3>
-              <p className="text-sm text-ink-muted mt-1 max-w-xs">
-                Cadastre hospitais para facilitar o preenchimento de prontuários e laudos.
+
+              <h3 className="font-display text-lg font-semibold text-ink-primary">
+                Nenhum hospital cadastrado
+              </h3>
+
+              <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
+                Cadastre hospitais para agilizar o preenchimento de prontuários, exames e laudos.
               </p>
-              <button
+
+              <Button
+                variant="primary"
                 onClick={() => {
                   trigger("vibrate");
                   router.push("/saude/hospitais/novo");
                 }}
-                className="mt-6 flex items-center gap-2 rounded-full bg-ice px-5 py-2 text-void font-medium text-sm active:scale-95 transition-all"
+                className="mt-6"
               >
-                <Plus size={16} />
                 Adicionar hospital
-              </button>
-            </div>
+              </Button>
+            </motion.div>
           ) : (
-            hospitais.map((hospital, index) => (
-              <motion.div
-                key={hospital.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
-                className="flex items-center justify-between p-4 rounded-xl border border-surface-border/50 bg-surface shadow-sm"
-              >
-                <div>
-                  <h3 className="font-display text-[15px] font-medium text-ink-primary">
-                    {hospital.nome}
-                  </h3>
-                  {hospital.endereco && (
-                    <p className="text-sm text-ink-muted">{hospital.endereco}</p>
-                  )}
-                  {hospital.telefone && (
-                    <span className="text-xs text-ink-muted">{hospital.telefone}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
+            <div className="space-y-3">
+              {sortedHospitais.map((hospital, index) => (
+                <motion.article
+                  key={hospital.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, delay: index * 0.04 }}
+                  className="group flex items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm transition-all duration-200 active:scale-[0.99]"
+                >
                   <button
                     onClick={() => {
                       trigger("vibrate");
                       router.push(`/saude/hospitais/editar?id=${hospital.id}`);
                     }}
-                    className="p-2 rounded-full hover:bg-surface-border/50 transition-colors"
+                    className="flex min-w-0 flex-1 items-start gap-3 text-left"
                   >
-                    <Edit size={16} className="text-ink-muted hover:text-ice transition-colors" />
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised">
+                      <Building2 size={20} className="text-ice" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
+                        {hospital.nome}
+                      </h3>
+
+                      <div className="mt-1 space-y-1">
+                        {hospital.endereco && (
+                          <p className="flex items-start gap-1.5 text-xs leading-5 text-ink-muted">
+                            <MapPin size={12} className="mt-0.5 shrink-0" />
+                            <span className="line-clamp-2">{hospital.endereco}</span>
+                          </p>
+                        )}
+
+                        {hospital.telefone && (
+                          <p className="flex items-center gap-1.5 text-xs text-ink-muted">
+                            <Phone size={12} className="shrink-0" />
+                            <span className="truncate">{hospital.telefone}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </button>
-                  <button
-                    onClick={() => handleDeleteClick(hospital.id!, hospital.nome)}
-                    disabled={isDeleting === hospital.id}
-                    className="p-2 rounded-full hover:bg-surface-border/50 transition-colors disabled:opacity-50"
-                  >
-                    {isDeleting === hospital.id ? (
-                      <Loader2 size={16} className="animate-spin text-coral" />
-                    ) : (
-                      <Trash2 size={16} className="text-ink-muted hover:text-coral transition-colors" />
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            ))
+
+                  <div className="ml-3 flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        trigger("vibrate");
+                        router.push(`/saude/hospitais/editar?id=${hospital.id}`);
+                      }}
+                      aria-label={`Editar ${hospital.nome}`}
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-colors active:scale-95 hover:bg-surface-raised hover:text-ice"
+                    >
+                      <Edit size={16} />
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(hospital.id!, hospital.nome);
+                      }}
+                      disabled={isDeleting === hospital.id}
+                      aria-label={`Remover ${hospital.nome}`}
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-colors active:scale-95 hover:bg-surface-raised hover:text-coral disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isDeleting === hospital.id ? (
+                        <Loader2 size={16} className="animate-spin text-coral" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
+                  </div>
+                </motion.article>
+              ))}
+            </div>
           )}
         </section>
 
