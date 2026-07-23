@@ -396,7 +396,7 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // processQueue (memoizado com useCallback + lock + retry)
+  // processQueue
   // ============================================================
   const processQueue = useCallback(async () => {
     if (processingRef.current || !isOnline) {
@@ -485,17 +485,32 @@ export function useSyncQueue() {
   }, [isOnline]);
 
   // ============================================================
-  // ✅ CORREÇÃO 1: Processar fila na montagem do componente
+  // ESCUTA O EVENTO sync:process (disparado ao criar documento)
+  // ============================================================
+  useEffect(() => {
+    const handleProcess = () => {
+      console.log('🔔 Evento sync:process recebido!');
+      if (isOnline && !processingRef.current) {
+        processQueue();
+      }
+    };
+    
+    window.addEventListener('sync:process', handleProcess);
+    return () => window.removeEventListener('sync:process', handleProcess);
+  }, [isOnline, processQueue]);
+
+  // ============================================================
+  // PROCESSAR FILA NA MONTAGEM
   // ============================================================
   useEffect(() => {
     if (isOnline) {
       console.log('🔄 Executando sync na montagem...');
       processQueue();
     }
-  }, []); // Executa UMA VEZ quando o componente monta
+  }, []);
 
   // ============================================================
-  // ✅ CORREÇÃO 2: Processar fila quando online
+  // PROCESSAR FILA QUANDO FICAR ONLINE
   // ============================================================
   useEffect(() => {
     if (isOnline) {
@@ -507,7 +522,7 @@ export function useSyncQueue() {
   }, [isOnline, processQueue]);
 
   // ============================================================
-  // ✅ CORREÇÃO 3: Verificar fila periodicamente (a cada 10s)
+  // VERIFICAR FILA PERIODICAMENTE (a cada 10s)
   // ============================================================
   useEffect(() => {
     if (!isOnline) return;
