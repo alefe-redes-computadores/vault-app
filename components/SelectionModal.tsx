@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Search, Loader2 } from "lucide-react";
+import { X, Plus, Loader2, Search } from "lucide-react";
 import { Input } from "./ui/Input";
 import { Button } from "./ui/Button";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -15,7 +15,7 @@ interface SelectionModalProps<T> {
   title: string;
   placeholder?: string;
   renderItem: (item: T) => React.ReactNode;
-  getItemId: (item: T) => string; // ← string
+  getItemId: (item: T) => string;
   getItemLabel: (item: T) => string;
   onCreateNew?: () => void;
   createNewLabel?: string;
@@ -39,9 +39,11 @@ export function SelectionModal<T>({
   const { trigger } = useHapticFeedback();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredItems = items.filter(item =>
-    getItemLabel(item).toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredItems = useMemo(() => {
+    return items.filter((item) =>
+      getItemLabel(item).toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [items, getItemLabel, searchQuery]);
 
   const handleSelect = (item: T) => {
     trigger("vibrate");
@@ -49,57 +51,80 @@ export function SelectionModal<T>({
     onClose();
   };
 
-  if (!isOpen) return null;
+  const handleCreateNew = () => {
+    trigger("vibrate");
+    onCreateNew?.();
+  };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-md"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+        >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="relative w-full max-w-md rounded-2xl bg-surface border border-surface-border/50 shadow-vault p-4 max-h-[80vh] flex flex-col"
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.97 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-surface-border/60 bg-surface p-4 shadow-vault"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display text-lg font-semibold text-ink-primary">{title}</h3>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-ink-faint">
+                  Seleção
+                </p>
+                <h3 className="mt-1 font-display text-lg font-semibold text-ink-primary">
+                  {title}
+                </h3>
+              </div>
+
               <button
                 onClick={onClose}
-                className="p-1 rounded-full hover:bg-surface-border/50 transition-colors"
+                aria-label="Fechar modal"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary"
               >
-                <X size={18} className="text-ink-muted" />
+                <X size={18} />
               </button>
             </div>
 
-            {/* Busca */}
-            <div className="mb-4">
+            <div className="mb-4 relative">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+              />
               <Input
                 placeholder={placeholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
-                className="w-full"
+                className="w-full pl-9"
               />
             </div>
 
-            {/* Lista */}
-            <div className="flex-1 overflow-y-auto space-y-2">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {loading ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex flex-col items-center justify-center py-10 text-center">
                   <Loader2 size={24} className="animate-spin text-ice" />
+                  <p className="mt-3 text-sm text-ink-muted">Carregando itens...</p>
                 </div>
               ) : filteredItems.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-ink-muted text-sm">Nenhum item encontrado</p>
+                <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised px-5 py-10 text-center">
+                  <p className="font-display text-base font-semibold text-ink-primary">
+                    Nenhum item encontrado
+                  </p>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    Tente outro termo de busca ou crie um novo item.
+                  </p>
+
                   {onCreateNew && (
                     <button
-                      onClick={() => {
-                        trigger("vibrate");
-                        onCreateNew();
-                      }}
-                      className="mt-4 flex items-center gap-2 mx-auto text-ice hover:text-ice/80 transition-colors"
+                      onClick={handleCreateNew}
+                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-ice/12 px-4 py-2 text-sm font-medium text-ice transition-all active:scale-95 hover:bg-ice/16"
                     >
                       <Plus size={16} />
                       {createNewLabel}
@@ -111,7 +136,7 @@ export function SelectionModal<T>({
                   <button
                     key={getItemId(item)}
                     onClick={() => handleSelect(item)}
-                    className="w-full text-left p-3 rounded-xl bg-surface-raised border border-surface-border/50 hover:border-ice/30 transition-all active:scale-95"
+                    className="w-full rounded-[22px] border border-surface-border/50 bg-surface-raised p-3 text-left transition-all active:scale-[0.985] hover:border-ice/20 hover:bg-surface-border/50"
                   >
                     {renderItem(item)}
                   </button>
@@ -119,16 +144,12 @@ export function SelectionModal<T>({
               )}
             </div>
 
-            {/* Botão criar novo (fixo no rodapé) */}
             {onCreateNew && filteredItems.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-surface-border/50">
+              <div className="mt-4 border-t border-surface-border/50 pt-4">
                 <Button
                   variant="secondary"
                   fullWidth
-                  onClick={() => {
-                    trigger("vibrate");
-                    onCreateNew();
-                  }}
+                  onClick={handleCreateNew}
                   className="flex items-center justify-center gap-2"
                 >
                   <Plus size={16} />
@@ -137,7 +158,7 @@ export function SelectionModal<T>({
               </div>
             )}
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
