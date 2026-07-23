@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, User, Trash2, Loader2, Users, Edit } from "lucide-react";
+import { Plus, Trash2, Loader2, Users, Edit, Mail, Phone, User } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +18,7 @@ export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast } = useToast();
+
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<{ id: string; name: string } | null>(null);
@@ -39,6 +40,7 @@ export default function PessoasPage() {
 
   const confirmDelete = async () => {
     if (!showDeleteModal) return;
+
     const { id, name } = showDeleteModal;
 
     trigger("vibrate");
@@ -49,6 +51,7 @@ export default function PessoasPage() {
         await db.documents.where("person_id").equals(id).delete();
         await db.persons.delete(id);
       });
+
       trigger("success");
       showToast(`"${name}" foi removido(a)`, "success");
     } catch (error) {
@@ -83,7 +86,8 @@ export default function PessoasPage() {
                 Pessoas
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
-                {sortedPersons.length} pessoa{sortedPersons.length !== 1 ? "s" : ""} cadastrada
+                {sortedPersons.length} pessoa
+                {sortedPersons.length !== 1 ? "s" : ""} cadastrada
                 {sortedPersons.length !== 1 ? "s" : ""}
               </p>
             </div>
@@ -112,12 +116,15 @@ export default function PessoasPage() {
               <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
                 <Users size={32} className="text-ink-muted" />
               </div>
+
               <h3 className="font-display text-lg font-semibold text-ink-primary">
                 Nenhuma pessoa cadastrada
               </h3>
+
               <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
                 Cadastre pessoas para vincular documentos e deixar sua organização mais rápida.
               </p>
+
               <Button
                 variant="primary"
                 onClick={() => {
@@ -159,12 +166,27 @@ export default function PessoasPage() {
                       <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
                         {person.name}
                       </h3>
-                      <div className="mt-1 space-y-0.5">
+
+                      <div className="mt-1 space-y-1">
                         {person.email && (
-                          <p className="truncate text-xs text-ink-muted">{person.email}</p>
+                          <p className="flex items-center gap-1.5 truncate text-xs text-ink-muted">
+                            <Mail size={12} className="shrink-0" />
+                            <span className="truncate">{person.email}</span>
+                          </p>
                         )}
+
                         {person.phone && (
-                          <p className="truncate text-xs text-ink-muted">{person.phone}</p>
+                          <p className="flex items-center gap-1.5 truncate text-xs text-ink-muted">
+                            <Phone size={12} className="shrink-0" />
+                            <span className="truncate">{person.phone}</span>
+                          </p>
+                        )}
+
+                        {!person.email && !person.phone && (
+                          <p className="flex items-center gap-1.5 text-xs text-ink-faint">
+                            <User size={12} className="shrink-0" />
+                            <span>Sem informações adicionais</span>
+                          </p>
                         )}
                       </div>
                     </div>
