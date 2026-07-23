@@ -104,7 +104,7 @@ export default function MaisPage() {
   };
 
   // ============================================================
-  // BOTÃO DE SINCRONIZAÇÃO CORRIGIDO (PULL + PUSH + RELOAD)
+  // BOTÃO DE SINCRONIZAÇÃO (PULL + PUSH + RELOAD)
   // ============================================================
   const handleSync = useCallback(async () => {
     if (!user?.id) {
@@ -124,9 +124,6 @@ export default function MaisPage() {
     showInfo("Sincronizando dados...", 5000);
 
     try {
-      // ============================================================
-      // PASSO 1: PULL (baixar dados da nuvem)
-      // ============================================================
       console.log("🔵 Iniciando pull...");
       await pullAllData(user.id);
       
@@ -134,15 +131,9 @@ export default function MaisPage() {
       const docsCount = await db.documents.count();
       console.log(`✅ Pull concluído: ${personsCount} pessoas, ${docsCount} documentos`);
 
-      // ============================================================
-      // PASSO 2: PUSH (enviar dados locais para a nuvem)
-      // ============================================================
       console.log("🔄 Iniciando push...");
       await processQueue();
 
-      // ============================================================
-      // PASSO 3: Contar novamente para mostrar resultado final
-      // ============================================================
       const finalPersons = await db.persons.count();
       const finalDocs = await db.documents.count();
 
@@ -151,7 +142,6 @@ export default function MaisPage() {
         5000
       );
 
-      // ✅ FORÇA RECARREGAMENTO DA PÁGINA PARA ATUALIZAR A UI
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -355,9 +345,27 @@ export default function MaisPage() {
               <div className="space-y-2">
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  if (item.component) {
-                    return <div key={item.id}>{item.component}</div>;
+                  // ✅ Se for o item "tema", renderiza o componente sem o button wrapper
+                  if (item.id === "tema") {
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-4 w-full p-3 rounded-xl bg-surface border border-surface-border/50"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-surface-raised border border-surface-border/50 flex items-center justify-center flex-shrink-0">
+                          <Icon size={18} className="text-ink-muted" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium text-ink-primary">{item.label}</p>
+                          <p className="text-xs text-ink-muted">{item.description}</p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {item.component}
+                        </div>
+                      </div>
+                    );
                   }
+
                   const isSyncItem = item.id === "sync";
                   return (
                     <button
