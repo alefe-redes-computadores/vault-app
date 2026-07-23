@@ -99,3 +99,120 @@ export default function LoginPage() {
       setError("Erro ao entrar com Google.");
       setLoading(false);
       trigger("error");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-void flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="text-center mb-8"
+        >
+          <div className="inline-block p-3 rounded-2xl bg-surface-raised border border-surface-border/50 shadow-vault mb-3">
+            <ShieldCheck size={32} className="text-ice" />
+          </div>
+          <h1 className="font-display text-3xl font-bold text-ink-primary">Vault</h1>
+          <p className="text-ink-muted text-sm mt-1">Seus documentos, sempre à mão</p>
+        </motion.div>
+
+        {/* Card de Login */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="bg-surface rounded-2xl border border-surface-border/50 p-6 shadow-vault"
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              label="E-mail"
+              type="email"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+
+            <Input
+              label="Senha"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-sm text-coral"
+              >
+                {error}
+              </motion.p>
+            )}
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              disabled={loading}
+              className="flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <>
+                  {isLogin ? "Entrar" : "Criar conta"}
+                  <ArrowRight size={16} />
+                </>
+              )}
+            </Button>
+          </form>
+
+          {/* Divisor */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-surface-border/50" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-surface px-3 text-ink-muted">ou</span>
+            </div>
+          </div>
+
+          {/* Google Login */}
+          <Button
+            variant="secondary"
+            size="lg"
+            fullWidth
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="flex items-center justify-center gap-3"
+          >
+            <GoogleIcon />
+            Entrar com Google
+          </Button>
+
+          {/* Alternar Login/Cadastro */}
+          <p className="text-center text-sm text-ink-muted mt-6">
+            {isLogin ? "Não tem uma conta?" : "Já tem uma conta?"}
+            <button
+              type="button"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError("");
+              }}
+              className="ml-2 text-ice hover:text-ice/80 transition-colors"
+            >
+              {isLogin ? "Cadastre-se" : "Faça login"}
+            </button>
+          </p>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
