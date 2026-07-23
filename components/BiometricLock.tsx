@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Fingerprint } from "lucide-react";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -12,21 +12,21 @@ interface BiometricLockProps {
 }
 
 export function BiometricLock({ children }: BiometricLockProps) {
-  const { isEnabled, isLoading: isBiometricLoading, toggle } = useBiometricPreference();
+  const { isEnabled } = useBiometricPreference();
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
+
   const [isAuthenticated, setIsAuthenticated] = useState(!isEnabled);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ Atualiza classe do body e dispara evento para BottomNav
   useEffect(() => {
     if (isAuthenticated) {
-      document.body.classList.remove('biometric-locked');
+      document.body.classList.remove("biometric-locked");
     } else {
-      document.body.classList.add('biometric-locked');
+      document.body.classList.add("biometric-locked");
     }
-    // Dispara evento personalizado para o BottomNav reagir
-    window.dispatchEvent(new Event('biometric:lockchange'));
+
+    window.dispatchEvent(new Event("biometric:lockchange"));
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -60,95 +60,71 @@ export function BiometricLock({ children }: BiometricLockProps) {
     }, 1200);
   };
 
-  if (!isEnabled) {
-    return <>{children}</>;
-  }
-
-  if (isAuthenticated) {
-    return <>{children}</>;
-  }
+  if (!isEnabled) return <>{children}</>;
+  if (isAuthenticated) return <>{children}</>;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-void">
-      {/* Ícone animado */}
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-void px-6">
       <motion.div
-        initial={{ scale: 0.85, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative"
+        initial={{ opacity: 0, y: 16, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.28 }}
+        className="w-full max-w-sm rounded-[32px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-vault"
       >
-        <motion.div
-          animate={{
-            scale: [1, 1.06, 1],
-          }}
-          transition={{
-            duration: 2.5,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="w-20 h-20 rounded-2xl bg-gradient-to-br from-ice/20 to-ice/5 border border-ice/20 flex items-center justify-center shadow-2xl shadow-ice/10"
-        >
-          <Fingerprint size={40} className="text-ice" strokeWidth={1.5} />
-        </motion.div>
-      </motion.div>
-
-      {/* Título */}
-      <motion.h1
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
-        className="mt-6 font-display text-xl font-semibold text-ink-primary"
-      >
-        Desbloquear Vault
-      </motion.h1>
-
-      {/* Subtítulo */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.5 }}
-        className="mt-1 text-sm text-ink-muted"
-      >
-        {isLoading ? "Verificando..." : "Toque no sensor para desbloquear"}
-      </motion.p>
-
-      {/* Bolinhas pulsantes */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.7 }}
-        className="mt-8 flex items-center gap-2.5"
-      >
-        {[0, 0.2, 0.4].map((delay) => (
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[24px] border border-ice/15 bg-surface-raised">
           <motion.div
-            key={delay}
-            animate={{
-              scale: [1, 1.4, 1],
-              opacity: [0.3, 1, 0.3],
-            }}
+            animate={isLoading ? { scale: [1, 1.06, 1] } : {}}
             transition={{
-              duration: 1.2,
-              repeat: Infinity,
+              duration: 1.1,
+              repeat: isLoading ? Infinity : 0,
               ease: "easeInOut",
-              delay,
             }}
-            className="w-2.5 h-2.5 rounded-full bg-ice/50"
-          />
-        ))}
-      </motion.div>
+          >
+            <Fingerprint size={38} className="text-ice" strokeWidth={1.7} />
+          </motion.div>
+        </div>
 
-      {/* Botão para tentar novamente */}
-      {!isLoading && (
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.9 }}
-          onClick={handleAuthenticate}
-          className="mt-6 text-sm text-ice/70 hover:text-ice transition-colors"
-        >
-          Tentar novamente
-        </motion.button>
-      )}
+        <h1 className="mt-6 font-display text-xl font-semibold text-ink-primary">
+          Desbloquear Vault
+        </h1>
+
+        <p className="mt-2 text-sm text-ink-muted">
+          {isLoading
+            ? "Verificando sua biometria..."
+            : "Use a biometria para continuar com segurança"}
+        </p>
+
+        <div className="mt-7 flex items-center justify-center gap-2.5">
+          {[0, 0.18, 0.36].map((delay) => (
+            <motion.div
+              key={delay}
+              animate={{
+                scale: [1, 1.35, 1],
+                opacity: [0.25, 1, 0.25],
+              }}
+              transition={{
+                duration: 1.15,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay,
+              }}
+              className="h-2.5 w-2.5 rounded-full bg-ice/45"
+            />
+          ))}
+        </div>
+
+        {!isLoading && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.24, delay: 0.12 }}
+            onClick={handleAuthenticate}
+            className="mt-7 rounded-full bg-ice/10 px-4 py-2 text-sm font-medium text-ice transition-colors active:scale-95 hover:bg-ice/15"
+          >
+            Tentar novamente
+          </motion.button>
+        )}
+      </motion.div>
     </div>
   );
 }
