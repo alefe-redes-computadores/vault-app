@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, ArrowRight, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthDeepLink } from "@/lib/hooks/useAuthDeepLink";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -69,20 +71,20 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setError("");
     setLoading(true);
-    
+
     try {
       const isNative = Capacitor.isNativePlatform();
-      
-      const redirectUrl = isNative 
-        ? 'vault://callback' 
+
+      const redirectUrl = isNative
+        ? "vault://callback"
         : `${window.location.origin}/auth/callback`;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { 
+        provider: "google",
+        options: {
           redirectTo: redirectUrl,
           skipBrowserRedirect: isNative,
-        }
+        },
       });
 
       if (error) {
@@ -90,110 +92,10 @@ export default function LoginPage() {
       }
 
       if (isNative && data?.url) {
-        await Browser.open({ url: data.url, presentationStyle: 'popover' });
+        await Browser.open({ url: data.url, presentationStyle: "popover" });
         setLoading(false);
       }
-      
     } catch (err) {
       setError("Erro ao entrar com Google.");
       setLoading(false);
-    }
-  };
-
-  const isBusy = loading || isProcessing;
-
-  return (
-    <main className="min-h-screen bg-void flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-surface-raised border border-surface-border/50 p-3 mb-4">
-            <Image
-              src="/icon-512x512.png"
-              alt="Vault Logo"
-              width={72}
-              height={72}
-              className="object-contain"
-              priority
-            />
-          </div>
-          <p className="font-mono text-xs uppercase tracking-widest text-ice">Vault</p>
-          <h1 className="font-display text-2xl font-semibold text-ink-primary mt-2">
-            {isLogin ? "Entrar" : "Criar conta"}
-          </h1>
-          <p className="text-sm text-ink-muted mt-1">
-            {isLogin ? "Acesse seus documentos" : "Comece a guardar seus documentos"}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            type="email"
-            label="E-mail"
-            placeholder="seu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          <Input
-            type="password"
-            label="Senha"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-
-          {error && (
-            <p className="text-sm text-coral bg-coral/10 p-3 rounded-xl border border-coral/20">
-              {error}
-            </p>
-          )}
-
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            fullWidth
-            disabled={isBusy}
-          >
-            {isBusy ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
-          </Button>
-        </form>
-
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-surface-border/50" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-void px-2 text-ink-muted">ou</span>
-          </div>
-        </div>
-
-        <Button
-          variant="secondary"
-          size="lg"
-          fullWidth
-          onClick={handleGoogleLogin}
-          disabled={isBusy}
-          className="flex items-center justify-center gap-2"
-        >
-          <GoogleIcon />
-          {isProcessing ? "Conectando..." : "Entrar com Google"}
-        </Button>
-
-        <button
-          type="button"
-          onClick={() => {
-            trigger("vibrate");
-            setIsLogin(!isLogin);
-            setError("");
-          }}
-          className="w-full text-center text-sm text-ink-muted hover:text-ink-primary transition-colors mt-4"
-        >
-          {isLogin ? "Não tem conta? Cadastre-se" : "Já tem conta? Entre"}
-        </button>
-      </div>
-    </main>
-  );
-}
+      trigger("error");
