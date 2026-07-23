@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2, User } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { ArrowLeft, Save, Loader2, User, Mail, Phone } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -17,7 +16,6 @@ export default function EditarPessoaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { user } = useAuth();
   const { showToast, showSuccess } = useToast();
 
   const [loading, setLoading] = useState(false);
@@ -39,6 +37,7 @@ export default function EditarPessoaPage() {
     const loadPerson = async () => {
       try {
         const person = await db.persons.get(id);
+
         if (!person) {
           showToast("Pessoa não encontrada", "error");
           router.push("/pessoas");
@@ -63,9 +62,11 @@ export default function EditarPessoaPage() {
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
+
     if (!formData.name.trim()) {
       newErrors.name = "Nome é obrigatório";
     }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -139,7 +140,9 @@ export default function EditarPessoaPage() {
         <main className="min-h-screen bg-void px-5 pb-28 pt-6">
           <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-8 shadow-sm">
             <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-ice border-t-transparent" />
-            <p className="mt-4 text-center text-sm text-ink-muted">Carregando dados...</p>
+            <p className="mt-4 text-center text-sm text-ink-muted">
+              Carregando dados...
+            </p>
           </div>
         </main>
       </PageTransition>
@@ -148,7 +151,7 @@ export default function EditarPessoaPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
+      <main className="min-h-screen bg-void pb-32">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -169,6 +172,9 @@ export default function EditarPessoaPage() {
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Editar pessoa
               </h1>
+              <p className="mt-1 text-sm text-ink-muted">
+                Atualize os dados vinculados aos documentos dessa pessoa
+              </p>
             </div>
           </div>
         </header>
@@ -181,91 +187,112 @@ export default function EditarPessoaPage() {
             className="mb-4 rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm"
           >
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
-                <User size={28} className="text-ink-muted" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-surface-border/50 bg-surface-raised shadow-sm">
+                <User size={28} className="text-ice" />
               </div>
+
               <div className="min-w-0">
                 <p className="text-sm text-ink-muted">Editando</p>
                 <p className="truncate font-display text-lg font-semibold text-ink-primary">
                   {formData.name || "Sem nome"}
                 </p>
-                <p className="mt-1 text-xs text-ink-faint">
-                  Atualize os dados da pessoa e salve para manter o cadastro sincronizado.
+                <p className="mt-1 text-xs leading-5 text-ink-faint">
+                  Revise e salve os dados para manter o cadastro atualizado e consistente.
                 </p>
               </div>
             </div>
           </motion.div>
 
-          <div className="space-y-4">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.05 }}
-            >
-              <Input
-                label="Nome completo"
-                placeholder="Digite o nome"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                error={errors.name}
-                required
-              />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.1 }}
-            >
-              <Input
-                label="E-mail"
-                placeholder="Digite o e-mail"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                type="email"
-              />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.15 }}
-            >
-              <Input
-                label="Telefone"
-                placeholder="Digite o telefone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.2 }}
-            >
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                onClick={handleSubmit}
-                disabled={loading}
-                className="mt-2 flex items-center justify-center gap-2"
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm">
+            <div className="space-y-4">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.24, delay: 0.05 }}
               >
-                {loading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    Salvar alterações
-                  </>
-                )}
-              </Button>
-            </motion.div>
+                <Input
+                  label="Nome completo"
+                  placeholder="Digite o nome"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  error={errors.name}
+                  required
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.24, delay: 0.1 }}
+                className="relative"
+              >
+                <Mail
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
+                />
+                <Input
+                  label="E-mail"
+                  placeholder="Digite o e-mail"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  type="email"
+                  className="pl-9"
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.24, delay: 0.15 }}
+                className="relative"
+              >
+                <Phone
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
+                />
+                <Input
+                  label="Telefone"
+                  placeholder="Digite o telefone"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  className="pl-9"
+                />
+              </motion.div>
+            </div>
           </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.2 }}
+          >
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleSubmit}
+              disabled={loading}
+              className="mt-4 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Salvar alterações
+                </>
+              )}
+            </Button>
+          </motion.div>
         </section>
       </main>
     </PageTransition>
