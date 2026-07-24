@@ -181,8 +181,9 @@ export default function MaisPage() {
         },
         {
           id: "tema",
-          // ✅ Remove ícone/label/descrição para evitar duplicação
-          // O ThemeToggle já tem tudo isso no modo full
+          icon: Settings,           // placeholder
+          label: "Tema",             // placeholder
+          description: "Claro, Escuro ou Automático", // placeholder
           component: <ThemeToggle />,
         },
       ],
@@ -358,13 +359,9 @@ export default function MaisPage() {
 
               <div className="space-y-2">
                 {section.items.map((item) => {
-                  // ✅ Para o item "tema", renderizamos apenas o ThemeToggle (que já é um card completo)
+                  // ✅ Para o item "tema", renderizamos apenas o ThemeToggle
                   if (item.id === "tema") {
-                    return (
-                      <div key={item.id}>
-                        {item.component}
-                      </div>
-                    );
+                    return <div key={item.id}>{item.component}</div>;
                   }
 
                   const Icon = item.icon;
