@@ -41,22 +41,23 @@ import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
 
+// ✅ Máscara corrigida (remove todos os não-dígitos)
 const applyMask = (value: string, type: string): string => {
-  const digits = value.replace(/D/g, "");
+  const digits = value.replace(/\D/g, "");
 
   if (type === "cpf") {
     return digits
-      .replace(/(d{3})(d)/, "$1.$2")
-      .replace(/(d{3})(d)/, "$1.$2")
-      .replace(/(d{3})(d{1,2})/, "$1-$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
       .slice(0, 14);
   }
 
   if (type === "rg") {
     return digits
-      .replace(/(d{2})(d)/, "$1.$2")
-      .replace(/(d{3})(d)/, "$1.$2")
-      .replace(/(d{3})(d{1,2})/, "$1-$2")
+      .replace(/(\d{2})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
       .slice(0, 13);
   }
 
@@ -130,11 +131,9 @@ export default function NewDocumentPage() {
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
-
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
-
   const [localFiles, setLocalFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
@@ -250,25 +249,14 @@ export default function NewDocumentPage() {
   const handleSubmit = async () => {
     trigger("vibrate");
 
-    const newErrors: Record<string, string> = {};
-    if (!formData.person_id) newErrors.person_id = "Selecione uma pessoa";
-    if (!formData.title.trim()) newErrors.title = "Título é obrigatório";
-
-    const dynamicFields = DOCUMENT_FIELDS[formData.type] || [];
-    dynamicFields.forEach((field) => {
-      if (field.required && !formData.metadata[field.key]?.trim()) {
-        newErrors[field.key] = `${field.label} é obrigatório(a)`;
-      }
-    });
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) {
+    if (!validate()) {
       trigger("error");
-      const firstErrorKey = Object.keys(newErrors)[0];
-      const element = document.querySelector(`[data-field="${firstErrorKey}"]`);
-      if (element) {
-        (element as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+      const firstErrorKey = Object.keys(errors)[0];
+      if (firstErrorKey) {
+        const element = document.querySelector(`[data-field="${firstErrorKey}"]`);
+        if (element) {
+          (element as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+        }
       }
       return;
     }
@@ -379,7 +367,8 @@ export default function NewDocumentPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(7rem+env(safe-area-inset-bottom))]">
+      {/* ✅ Aumentei o padding inferior para evitar sobreposição do botão fixo */}
+      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input
           ref={fileInputRef}
           type="file"
@@ -424,6 +413,7 @@ export default function NewDocumentPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
+          {/* Pessoa */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -460,6 +450,7 @@ export default function NewDocumentPage() {
             {errors.person_id && <p className="mt-2 text-xs text-coral">{errors.person_id}</p>}
           </motion.div>
 
+          {/* Categoria */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -494,6 +485,7 @@ export default function NewDocumentPage() {
             </div>
           </motion.div>
 
+          {/* Tipo */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -517,6 +509,7 @@ export default function NewDocumentPage() {
             </button>
           </motion.div>
 
+          {/* Título */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -534,6 +527,7 @@ export default function NewDocumentPage() {
             />
           </motion.div>
 
+          {/* Campos dinâmicos com máscara */}
           <AnimatePresence mode="wait">
             {fields.length > 0 && (
               <motion.div
@@ -562,6 +556,8 @@ export default function NewDocumentPage() {
                     }
 
                     if (field.type === "select") {
+                      // ... (código de select já existente)
+                      // Mantive igual ao original para não quebrar
                       let items: any[] = [];
                       let renderItem: any;
                       let getItemLabel: any;
@@ -688,6 +684,7 @@ export default function NewDocumentPage() {
                       );
                     }
 
+                    // ✅ Campos de texto com máscara
                     return (
                       <Input
                         key={field.key}
@@ -697,7 +694,7 @@ export default function NewDocumentPage() {
                         value={displayedValue}
                         onChange={(e) => {
                           const raw = maskType
-                            ? e.target.value.replace(/D/g, "")
+                            ? e.target.value.replace(/\D/g, "")
                             : e.target.value;
                           handleMetadataChange(field.key, raw);
                         }}
@@ -712,6 +709,7 @@ export default function NewDocumentPage() {
             )}
           </AnimatePresence>
 
+          {/* Cofre */}
           {userVaults && userVaults.length > 0 && (
             <motion.div
               variants={fadeUp}
@@ -760,6 +758,7 @@ export default function NewDocumentPage() {
             </motion.div>
           )}
 
+          {/* Notas */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -775,6 +774,7 @@ export default function NewDocumentPage() {
             />
           </motion.div>
 
+          {/* Anexos */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -885,6 +885,7 @@ export default function NewDocumentPage() {
           </motion.div>
         </section>
 
+        {/* ✅ Botão fixo com fundo escuro e sem faixa azul */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button
             variant="primary"
