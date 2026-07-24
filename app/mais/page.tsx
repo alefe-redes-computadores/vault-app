@@ -18,6 +18,7 @@ import {
   Pencil,
   Heart,
   Loader2,
+  Terminal,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -53,7 +54,7 @@ export default function MaisPage() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { showToast, showSuccess, showError, showInfo } = useToast();
-  const { processQueue, isOnline } = useSyncQueue();
+  const { processQueue, isOnline, syncLogs, clearLogs } = useSyncQueue();
   const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -161,6 +162,23 @@ export default function MaisPage() {
     user?.email?.split("@")[0] ||
     "Usuário";
 
+  // ============================================================
+  // Função para mostrar logs em um alerta
+  // ============================================================
+  const showLogsAlert = useCallback(() => {
+    if (syncLogs.length === 0) {
+      showToast("Nenhum log disponível", "info");
+      return;
+    }
+
+    const logText = syncLogs.map(l => 
+      `[${l.time}] ${l.type.toUpperCase()}: ${l.message}`
+    ).join('\n');
+
+    // Usa alert nativo (funciona em qualquer dispositivo)
+    alert(`📋 LOGS DE SINCRONIZAÇÃO\n\n${logText}\n\nTotal: ${syncLogs.length} eventos`);
+  }, [syncLogs, showToast]);
+
   const menuSections: MenuSection[] = [
     {
       title: "Geral",
@@ -181,9 +199,9 @@ export default function MaisPage() {
         },
         {
           id: "tema",
-          icon: Settings,           // placeholder
-          label: "Tema",             // placeholder
-          description: "Claro, Escuro ou Automático", // placeholder
+          icon: Settings,
+          label: "Tema",
+          description: "Claro, Escuro ou Automático",
           component: <ThemeToggle />,
         },
       ],
@@ -216,6 +234,35 @@ export default function MaisPage() {
           label: "Limpar dados locais",
           description: "Remove todos os dados do dispositivo",
           onClick: () => setShowClearDataModal(true),
+        },
+      ],
+    },
+    // ============================================================
+    // ✅ NOVA SEÇÃO: LOGS DE SINCRONIZAÇÃO
+    // ============================================================
+    {
+      title: "Diagnóstico",
+      items: [
+        {
+          id: "ver-logs",
+          icon: Terminal,
+          label: "Ver logs de sincronização",
+          description: syncLogs.length > 0 
+            ? `${syncLogs.length} eventos registrados` 
+            : "Nenhum log disponível",
+          onClick: showLogsAlert,
+          disabled: syncLogs.length === 0,
+        },
+        {
+          id: "limpar-logs",
+          icon: RefreshCw,
+          label: "Limpar logs",
+          description: "Remove todos os logs de sincronização",
+          onClick: () => {
+            clearLogs();
+            showToast("Logs limpos com sucesso!", "info");
+          },
+          disabled: syncLogs.length === 0,
         },
       ],
     },
@@ -359,13 +406,13 @@ export default function MaisPage() {
 
               <div className="space-y-2">
                 {section.items.map((item) => {
-                  // ✅ Para o item "tema", renderizamos apenas o ThemeToggle
                   if (item.id === "tema") {
                     return <div key={item.id}>{item.component}</div>;
                   }
 
                   const Icon = item.icon;
                   const isSyncItem = item.id === "sync";
+                  const isLogItem = item.id === "ver-logs" || item.id === "limpar-logs";
 
                   return (
                     <button
@@ -378,11 +425,13 @@ export default function MaisPage() {
                           : "hover:bg-surface-raised/80"
                       }`}
                     >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
+                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 ${
+                        isLogItem ? "bg-ice/10 border-ice/20" : "bg-surface-raised"
+                      }`}>
                         {isSyncItem && isSyncing ? (
                           <Loader2 size={18} className="animate-spin text-ice" />
                         ) : (
-                          <Icon size={18} className="text-ink-muted" />
+                          <Icon size={18} className={isLogItem ? "text-ice" : "text-ink-muted"} />
                         )}
                       </div>
 
