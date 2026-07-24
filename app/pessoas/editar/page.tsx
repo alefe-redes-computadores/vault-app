@@ -1,30 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2, User, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Save, Loader2, User, Mail, Phone, Camera, X } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
+import { uploadFile } from "@/lib/supabase/storage";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function EditarPessoaPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { user } = useAuth();
   const { showToast, showSuccess } = useToast();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
+    avatar_url: "",
   });
 
   useEffect(() => {
@@ -48,6 +55,7 @@ export default function EditarPessoaPage() {
           name: person.name || "",
           email: person.email || "",
           phone: person.phone || "",
+          avatar_url: person.avatar_url || "",
         });
       } catch (error) {
         console.error("Erro ao carregar pessoa:", error);
@@ -60,6 +68,28 @@ export default function EditarPessoaPage() {
 
     loadPerson();
   }, [id, router, showToast]);
+
+  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    setUploadingPhoto(true);
+    trigger("vibrate");
+
+    try {
+      const { url, error } = await uploadFile(user.id, file, "avatars");
+      if (error) throw new Error(error);
+
+      setFormData((prev) => ({ ...prev, avatar_url: url }));
+      showToast("Foto enviada com sucesso!", "success");
+    } catch (error) {
+      console.error("Erro ao enviar foto:", error);
+      showToast("Erro ao enviar foto", "error");
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -83,6 +113,7 @@ export default function EditarPessoaPage() {
     try {
       const updateData: any = {
         name: formData.name.trim(),
+        avatar_url: formData.avatar_url || undefined,
         updated_at: new Date().toISOString(),
         synced: false,
       };
@@ -153,6 +184,14 @@ export default function EditarPessoaPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleUploadPhoto}
+        />
+
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -188,8 +227,30 @@ export default function EditarPessoaPage() {
             className="mb-4 rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm"
           >
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-surface-border/50 bg-surface-raised shadow-sm">
-                <User size={28} className="text-ice" />
+              <div className="relative">
+                {formData.avatar_url ? (
+                  <img
+                    src={formData.avatar_url}
+                    alt={formData.name}
+                    className="h-16 w-16 rounded-full border-2 border-ice/20 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
+                    <User size={28} className="text-ice" />
+                  </div>
+                )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-void bg-ice text-void transition-all active:scale-95 disabled:opacity-50"
+                  title="Alterar foto"
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Camera size={12} />
+                  )}
+                </button>
               </div>
 
               <div className="min-w-0">
