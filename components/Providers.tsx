@@ -22,7 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [pullAttempted, setPullAttempted] = useState(false);
 
   // ============================================================
-  // 1. PULL DOS DADOS (tenta no login E quando ficar online)
+  // 1. PULL DOS DADOS (executado no login)
   // ============================================================
   useEffect(() => {
     if (user && !loading && !isPullDone) {
@@ -34,14 +34,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
         })
         .catch((err) => {
           console.error("❌ Erro no pull:", err);
-          setIsPullDone(true); // Marcamos como tentado, mas o usuário pode forçar via botão
+          // ✅ Mesmo com erro, marca como tentado para não bloquear
+          setIsPullDone(true);
         })
         .finally(() => setPullAttempted(true));
     }
   }, [user, loading, isPullDone]);
 
   // ============================================================
-  // 2. REPULL AO FICAR ONLINE (se já tiver tentado antes)
+  // 2. REPULL AO FICAR ONLINE (se o pull inicial falhou ou não rodou)
   // ============================================================
   useEffect(() => {
     if (isOnline && user && pullAttempted && !isPullDone) {
