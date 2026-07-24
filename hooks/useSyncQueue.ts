@@ -4,18 +4,36 @@ import { db } from '@/lib/db';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital } from '@/lib/types';
-import { useToast } from '@/components/ToastProvider';
 
 const MAX_RETRIES = 5;
 
 export function useSyncQueue() {
-  const { showToast, showError, showSuccess, showInfo } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== 'undefined' ? navigator.onLine : false
   );
+  const [syncLogs, setSyncLogs] = useState<{ time: string; message: string; type: 'info' | 'success' | 'error' }[]>([]);
   const processingRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ============================================================
+  // ADICIONAR LOG (visível na tela)
+  // ============================================================
+  const addLog = useCallback((message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    const time = new Date().toLocaleTimeString();
+    setSyncLogs((prev) => {
+      const newLogs = [{ time, message, type }, ...prev];
+      // Mantém apenas os últimos 50 logs
+      return newLogs.slice(0, 50);
+    });
+  }, []);
+
+  // ============================================================
+  // LIMPAR LOGS
+  // ============================================================
+  const clearLogs = useCallback(() => {
+    setSyncLogs([]);
+  }, []);
 
   // ============================================================
   // DETECTAR MUDANÇAS DE CONEXÃO
@@ -180,9 +198,6 @@ export function useSyncQueue() {
     if (!supabase) return;
     const doc = item.payload as Document;
 
-    console.log('📤 Enviando documento para Supabase:', doc);
-
-    // Verifica se a pessoa referenciada existe localmente
     if (doc.person_id) {
       const person = await db.persons.get(doc.person_id);
       if (!person) {
@@ -208,10 +223,8 @@ export function useSyncQueue() {
           updated_at: doc.updated_at,
         });
         if (error) {
-          console.error('❌ Erro no insert do documento:', error);
           throw error;
         }
-        console.log('✅ Documento enviado com sucesso:', data);
         break;
       }
       case 'update': {
@@ -473,23 +486,23 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // processQueue (COM ORDEM PRIORIZANDO PESSOAS)
+  // processQueue
   // ============================================================
   const processQueue = useCallback(async () => {
     if (processingRef.current || !isOnline) {
-      console.log('⏳ Sync já em andamento ou offline, ignorando');
+      addLog('Sync ignorado: já em andamento ou offline', 'info');
       return;
     }
 
     const count = await db.syncQueue.count();
     if (count === 0) {
-      console.log('📭 Fila de sincronização vazia');
+      addLog('Fila de sincronização vazia', 'info');
       return;
     }
 
     processingRef.current = true;
     setIsProcessing(true);
-    window.dispatchEvent(new Event('sync:start'));
+    addLog(`🔄 Iniciando sync: ${count} itens na fila`, 'info');
 
     try {
       const queue = await db.syncQueue
@@ -497,20 +510,18 @@ export function useSyncQueue() {
         .filter((item) => item.failed !== true && (item.retry_count || 0) < MAX_RETRIES)
         .toArray();
 
-      console.log(`🔄 Processando ${queue.length} itens da fila...`);
-
       if (queue.length === 0) {
         const failedCount = await db.syncQueue
           .toCollection()
           .filter((item) => item.failed === true)
           .count();
         if (failedCount > 0) {
-          showToast(`${failedCount} item(ns) falharam permanentemente. Toque para reenviar.`, 'error');
+          addLog(`❌ ${failedCount} itens falharam permanentemente`, 'error');
         }
         return;
       }
 
-      // Reordenar: persons primeiro, depois documents
+      // Reordenar: persons primeiro
       const priorityOrder = ['persons', 'documents', 'medicamentos', 'renovacoes', 'vaults', 'vaultMembers', 'medicos', 'farmacias', 'hospitais'];
       queue.sort((a, b) => {
         const aIndex = priorityOrder.indexOf(a.table);
@@ -519,7 +530,6 @@ export function useSyncQueue() {
       });
 
       let successCount = 0;
-      let errorCount = 0;
 
       for (const item of queue) {
         try {
@@ -544,10 +554,8 @@ export function useSyncQueue() {
           }
           await db.syncQueue.delete(item.id!);
           successCount++;
+          addLog(`✅ ${item.table} sincronizado`, 'success');
         } catch (error: any) {
-          console.error('Erro ao sincronizar item:', item, error);
-          errorCount++;
-          
           const retryCount = (item.retry_count || 0) + 1;
           const failed = retryCount >= MAX_RETRIES;
           
@@ -557,16 +565,15 @@ export function useSyncQueue() {
           });
           
           if (failed) {
-            console.error(`❌ Item falhou permanentemente após ${MAX_RETRIES} tentativas:`, item);
-            showToast(`❌ Falha ao enviar "${item.payload?.title || item.table}" (tabela ${item.table})`, 'error');
+            addLog(`❌ Falha permanente em ${item.table}: ${error?.message || 'Erro desconhecido'}`, 'error');
           } else {
-            showToast(`⚠️ Falha ao enviar (tentativa ${retryCount}/${MAX_RETRIES}): ${error?.message || 'Erro desconhecido'}`, 'error');
+            addLog(`⚠️ Falha em ${item.table} (tentativa ${retryCount}/${MAX_RETRIES}): ${error?.message || 'Erro desconhecido'}`, 'error');
           }
         }
       }
 
       if (successCount > 0) {
-        showToast(`${successCount} item(ns) sincronizados com sucesso!`, 'success');
+        addLog(`✅ ${successCount} itens sincronizados com sucesso!`, 'success');
       }
 
       const remaining = await db.syncQueue
@@ -575,26 +582,22 @@ export function useSyncQueue() {
         .count();
 
       if (remaining > 0) {
-        console.log(`⏳ ${remaining} itens ainda pendentes, agendando nova tentativa...`);
+        addLog(`⏳ ${remaining} itens pendentes, agendando nova tentativa...`, 'info');
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
           processQueue();
         }, 5000);
       }
-
-      console.log('✅ Sincronização concluída!');
     } catch (error) {
-      console.error('❌ Erro ao processar fila:', error);
-      showToast('Erro ao processar fila de sincronização', 'error');
+      addLog(`❌ Erro ao processar fila: ${error}`, 'error');
     } finally {
       processingRef.current = false;
       setIsProcessing(false);
-      window.dispatchEvent(new Event('sync:end'));
     }
-  }, [isOnline, showToast]);
+  }, [isOnline, addLog]);
 
   // ============================================================
-  // resetFailedItems (AGORA DEPOIS de processQueue)
+  // resetFailedItems
   // ============================================================
   const resetFailedItems = useCallback(async () => {
     const failedItems = await db.syncQueue
@@ -603,7 +606,7 @@ export function useSyncQueue() {
       .toArray();
 
     if (failedItems.length === 0) {
-      showToast('Nenhum item com falha para reenviar', 'info');
+      addLog('Nenhum item com falha para reenviar', 'info');
       return;
     }
 
@@ -614,16 +617,15 @@ export function useSyncQueue() {
       });
     }
 
-    showToast(`${failedItems.length} item(ns) redefinidos para reenvio`, 'success');
+    addLog(`✅ ${failedItems.length} itens redefinidos para reenvio`, 'success');
     processQueue();
-  }, [showToast, processQueue]);
+  }, [processQueue, addLog]);
 
   // ============================================================
   // ESCUTA O EVENTO sync:process
   // ============================================================
   useEffect(() => {
     const handleProcess = () => {
-      console.log('🔔 Evento sync:process recebido!');
       if (isOnline && !processingRef.current) {
         processQueue();
       }
@@ -638,7 +640,6 @@ export function useSyncQueue() {
   // ============================================================
   useEffect(() => {
     if (isOnline) {
-      console.log('🔄 Executando sync na montagem...');
       processQueue();
     }
   }, []);
@@ -656,7 +657,7 @@ export function useSyncQueue() {
   }, [isOnline, processQueue]);
 
   // ============================================================
-  // VERIFICAR FILA PERIODICAMENTE (a cada 10s)
+  // VERIFICAR FILA PERIODICAMENTE
   // ============================================================
   useEffect(() => {
     if (!isOnline) return;
@@ -664,7 +665,6 @@ export function useSyncQueue() {
     const checkQueue = async () => {
       const count = await db.syncQueue.count();
       if (count > 0 && !processingRef.current) {
-        console.log(`🔍 Detectados ${count} itens na fila, processando...`);
         processQueue();
       }
     };
@@ -678,5 +678,7 @@ export function useSyncQueue() {
     isProcessing,
     isOnline,
     resetFailedItems,
+    syncLogs,
+    clearLogs,
   };
 }
