@@ -52,6 +52,7 @@ export default function EditarPessoaPage() {
       } catch (error) {
         console.error("Erro ao carregar pessoa:", error);
         showToast("Erro ao carregar dados", "error");
+        router.push("/pessoas");
       } finally {
         setIsLoading(false);
       }
