@@ -39,11 +39,12 @@ export async function pullAllData(userId: string): Promise<void> {
 
     // ============================================================
     // Função auxiliar para processar uma tabela com try/catch
+    // (sem restrição de tipo para evitar conflito com id opcional)
     // ============================================================
-    const processTable = async <T extends { id: string; user_id: string }>(
+    const processTable = async (
       tableName: string,
       localTable: any,
-      query: () => Promise<{ data: T[] | null; error: any }>
+      query: () => Promise<{ data: any[] | null; error: any }>
     ) => {
       try {
         const { data, error } = await query();
@@ -57,7 +58,11 @@ export async function pullAllData(userId: string): Promise<void> {
         }
 
         const pendingIds = pendingTables.get(tableName) || new Set();
-        const toUpsert = data.filter((item) => !pendingIds.has(item.id));
+        const toUpsert = data.filter((item) => {
+          // Se o item não tiver id, ignoramos (não deve acontecer)
+          if (!item.id) return false;
+          return !pendingIds.has(item.id);
+        });
 
         if (toUpsert.length > 0) {
           await db.transaction('rw', localTable, async () => {
@@ -74,17 +79,17 @@ export async function pullAllData(userId: string): Promise<void> {
     };
 
     // ---- Persons ----
-    await processTable<Person>('persons', db.persons, () =>
+    await processTable('persons', db.persons, () =>
       supabase.from('persons').select('*').eq('user_id', userId)
     );
 
     // ---- Documents ----
-    await processTable<Document>('documents', db.documents, () =>
+    await processTable('documents', db.documents, () =>
       supabase.from('documents').select('*').eq('user_id', userId)
     );
 
     // ---- Medicamentos ----
-    await processTable<Medicamento>('medicamentos', db.medicamentos, () =>
+    await processTable('medicamentos', db.medicamentos, () =>
       supabase.from('medicamentos').select('*').eq('user_id', userId)
     );
 
@@ -104,7 +109,10 @@ export async function pullAllData(userId: string): Promise<void> {
           console.error('❌ Erro ao buscar renovacoes sem filtro:', fallbackError);
         } else {
           const pendingIds = pendingTables.get('renovacoes') || new Set();
-          const toUpsert = (fallbackData || []).filter((r: any) => !pendingIds.has(r.id));
+          const toUpsert = (fallbackData || []).filter((r: any) => {
+            if (!r.id) return false;
+            return !pendingIds.has(r.id);
+          });
           if (toUpsert.length > 0) {
             await db.transaction('rw', db.renovacoes, async () => {
               for (const ren of toUpsert) {
@@ -116,7 +124,10 @@ export async function pullAllData(userId: string): Promise<void> {
         }
       } else {
         const pendingIds = pendingTables.get('renovacoes') || new Set();
-        const toUpsert = (data || []).filter((r: any) => !pendingIds.has(r.id));
+        const toUpsert = (data || []).filter((r: any) => {
+          if (!r.id) return false;
+          return !pendingIds.has(r.id);
+        });
         if (toUpsert.length > 0) {
           await db.transaction('rw', db.renovacoes, async () => {
             for (const ren of toUpsert) {
@@ -131,27 +142,27 @@ export async function pullAllData(userId: string): Promise<void> {
     }
 
     // ---- Vaults ----
-    await processTable<Vault>('vaults', db.vaults, () =>
+    await processTable('vaults', db.vaults, () =>
       supabase.from('vaults').select('*').eq('user_id', userId)
     );
 
     // ---- Vault Members ----
-    await processTable<VaultMember>('vault_members', db.vaultMembers, () =>
+    await processTable('vault_members', db.vaultMembers, () =>
       supabase.from('vault_members').select('*').eq('user_id', userId)
     );
 
     // ---- Medicos ----
-    await processTable<Medico>('medicos', db.medicos, () =>
+    await processTable('medicos', db.medicos, () =>
       supabase.from('medicos').select('*').eq('user_id', userId)
     );
 
     // ---- Farmacias ----
-    await processTable<Farmacia>('farmacias', db.farmacias, () =>
+    await processTable('farmacias', db.farmacias, () =>
       supabase.from('farmacias').select('*').eq('user_id', userId)
     );
 
     // ---- Hospitais ----
-    await processTable<Hospital>('hospitais', db.hospitais, () =>
+    await processTable('hospitais', db.hospitais, () =>
       supabase.from('hospitais').select('*').eq('user_id', userId)
     );
 
