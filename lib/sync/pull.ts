@@ -39,11 +39,11 @@ export async function pullAllData(userId: string): Promise<void> {
 
     // ============================================================
     // Função auxiliar para processar uma tabela com try/catch
-    // (sem restrição de tipo para evitar conflito com id opcional)
     // ============================================================
     const processTable = async (
       tableName: string,
       localTable: any,
+      // ✅ Agora espera uma função assíncrona que retorna { data, error }
       query: () => Promise<{ data: any[] | null; error: any }>
     ) => {
       try {
@@ -59,7 +59,6 @@ export async function pullAllData(userId: string): Promise<void> {
 
         const pendingIds = pendingTables.get(tableName) || new Set();
         const toUpsert = data.filter((item) => {
-          // Se o item não tiver id, ignoramos (não deve acontecer)
           if (!item.id) return false;
           return !pendingIds.has(item.id);
         });
@@ -79,19 +78,22 @@ export async function pullAllData(userId: string): Promise<void> {
     };
 
     // ---- Persons ----
-    await processTable('persons', db.persons, () =>
-      supabase.from('persons').select('*').eq('user_id', userId)
-    );
+    await processTable('persons', db.persons, async () => {
+      const result = await supabase.from('persons').select('*').eq('user_id', userId);
+      return result;
+    });
 
     // ---- Documents ----
-    await processTable('documents', db.documents, () =>
-      supabase.from('documents').select('*').eq('user_id', userId)
-    );
+    await processTable('documents', db.documents, async () => {
+      const result = await supabase.from('documents').select('*').eq('user_id', userId);
+      return result;
+    });
 
     // ---- Medicamentos ----
-    await processTable('medicamentos', db.medicamentos, () =>
-      supabase.from('medicamentos').select('*').eq('user_id', userId)
-    );
+    await processTable('medicamentos', db.medicamentos, async () => {
+      const result = await supabase.from('medicamentos').select('*').eq('user_id', userId);
+      return result;
+    });
 
     // ---- Renovacoes (com fallback se user_id não existir) ----
     try {
@@ -142,29 +144,34 @@ export async function pullAllData(userId: string): Promise<void> {
     }
 
     // ---- Vaults ----
-    await processTable('vaults', db.vaults, () =>
-      supabase.from('vaults').select('*').eq('user_id', userId)
-    );
+    await processTable('vaults', db.vaults, async () => {
+      const result = await supabase.from('vaults').select('*').eq('user_id', userId);
+      return result;
+    });
 
     // ---- Vault Members ----
-    await processTable('vault_members', db.vaultMembers, () =>
-      supabase.from('vault_members').select('*').eq('user_id', userId)
-    );
+    await processTable('vault_members', db.vaultMembers, async () => {
+      const result = await supabase.from('vault_members').select('*').eq('user_id', userId);
+      return result;
+    });
 
     // ---- Medicos ----
-    await processTable('medicos', db.medicos, () =>
-      supabase.from('medicos').select('*').eq('user_id', userId)
-    );
+    await processTable('medicos', db.medicos, async () => {
+      const result = await supabase.from('medicos').select('*').eq('user_id', userId);
+      return result;
+    });
 
     // ---- Farmacias ----
-    await processTable('farmacias', db.farmacias, () =>
-      supabase.from('farmacias').select('*').eq('user_id', userId)
-    );
+    await processTable('farmacias', db.farmacias, async () => {
+      const result = await supabase.from('farmacias').select('*').eq('user_id', userId);
+      return result;
+    });
 
     // ---- Hospitais ----
-    await processTable('hospitais', db.hospitais, () =>
-      supabase.from('hospitais').select('*').eq('user_id', userId)
-    );
+    await processTable('hospitais', db.hospitais, async () => {
+      const result = await supabase.from('hospitais').select('*').eq('user_id', userId);
+      return result;
+    });
 
     window.dispatchEvent(new Event('sync:end'));
     console.log('✅ Pull de dados concluído com sucesso!');
