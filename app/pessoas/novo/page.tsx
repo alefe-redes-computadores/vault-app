@@ -9,7 +9,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { db } from "@/lib/db";
+import { safeAddPerson } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 
 export default function NewPersonPage() {
@@ -36,28 +36,33 @@ export default function NewPersonPage() {
       return;
     }
 
+    if (!user?.id) {
+      setError("Usuário não autenticado");
+      trigger("error");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      await db.persons.add({
-        user_id: user?.id || "",
+      // ✅ Usa safeAddPerson que já cuida da transação e sync
+      await safeAddPerson({
+        user_id: user.id,
         name: formData.name.trim(),
         email: formData.email.trim() || undefined,
         phone: formData.phone.trim() || undefined,
         avatar_url: formData.avatar_url || undefined,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        synced: false,
       });
 
       trigger("success");
       showToast("Pessoa adicionada com sucesso!", "success");
       router.push("/pessoas");
-    } catch (err) {
-      setError("Erro ao salvar pessoa");
+    } catch (err: any) {
+      console.error("Erro ao salvar pessoa:", err);
+      setError(err?.message || "Erro ao salvar pessoa");
       trigger("error");
-      console.error(err);
+      showToast("Erro ao salvar pessoa", "error");
     } finally {
       setLoading(false);
     }
