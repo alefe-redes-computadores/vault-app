@@ -78,7 +78,8 @@ export default function EditarPessoaPage() {
 
     try {
       const { url, error } = await uploadFile(user.id, file, "avatars");
-      if (error) throw new Error(error);
+      // ✅ CORRIGIDO: error já é um objeto Error, não precisa de new Error()
+      if (error) throw error;
 
       setFormData((prev) => ({ ...prev, avatar_url: url }));
       showToast("Foto enviada com sucesso!", "success");
