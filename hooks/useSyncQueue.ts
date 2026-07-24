@@ -35,7 +35,7 @@ export function useSyncQueue() {
   }, []);
 
   // ============================================================
-  // FUNÇÕES DE SYNC POR TABELA (com checagem de erro)
+  // FUNÇÕES DE SYNC POR TABELA
   // ============================================================
 
   const syncPerson = async (item: any) => {
@@ -182,7 +182,7 @@ export function useSyncQueue() {
 
     console.log('📤 Enviando documento para Supabase:', doc);
 
-    // Verifica se a pessoa referenciada existe localmente (opcional)
+    // Verifica se a pessoa referenciada existe localmente
     if (doc.person_id) {
       const person = await db.persons.get(doc.person_id);
       if (!person) {
@@ -473,31 +473,6 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // FUNÇÃO PARA RESETAR ITENS COM FALHA
-  // ============================================================
-  const resetFailedItems = useCallback(async () => {
-    const failedItems = await db.syncQueue
-      .toCollection()
-      .filter((item) => item.failed === true)
-      .toArray();
-
-    if (failedItems.length === 0) {
-      showToast('Nenhum item com falha para reenviar', 'info');
-      return;
-    }
-
-    for (const item of failedItems) {
-      await db.syncQueue.update(item.id!, {
-        failed: false,
-        retry_count: 0,
-      });
-    }
-
-    showToast(`${failedItems.length} item(ns) redefinidos para reenvio`, 'success');
-    processQueue();
-  }, [showToast, processQueue]);
-
-  // ============================================================
   // processQueue (COM ORDEM PRIORIZANDO PESSOAS)
   // ============================================================
   const processQueue = useCallback(async () => {
@@ -517,7 +492,6 @@ export function useSyncQueue() {
     window.dispatchEvent(new Event('sync:start'));
 
     try {
-      // Pega todos os itens da fila (não falhos e com tentativas < MAX_RETRIES)
       const queue = await db.syncQueue
         .toCollection()
         .filter((item) => item.failed !== true && (item.retry_count || 0) < MAX_RETRIES)
@@ -536,7 +510,7 @@ export function useSyncQueue() {
         return;
       }
 
-      // ✅ Reordenar a fila: persons primeiro, depois documents, depois o resto
+      // Reordenar: persons primeiro, depois documents
       const priorityOrder = ['persons', 'documents', 'medicamentos', 'renovacoes', 'vaults', 'vaultMembers', 'medicos', 'farmacias', 'hospitais'];
       queue.sort((a, b) => {
         const aIndex = priorityOrder.indexOf(a.table);
@@ -620,7 +594,32 @@ export function useSyncQueue() {
   }, [isOnline, showToast]);
 
   // ============================================================
-  // ESCUTA O EVENTO sync:process (disparado ao criar documento)
+  // resetFailedItems (AGORA DEPOIS de processQueue)
+  // ============================================================
+  const resetFailedItems = useCallback(async () => {
+    const failedItems = await db.syncQueue
+      .toCollection()
+      .filter((item) => item.failed === true)
+      .toArray();
+
+    if (failedItems.length === 0) {
+      showToast('Nenhum item com falha para reenviar', 'info');
+      return;
+    }
+
+    for (const item of failedItems) {
+      await db.syncQueue.update(item.id!, {
+        failed: false,
+        retry_count: 0,
+      });
+    }
+
+    showToast(`${failedItems.length} item(ns) redefinidos para reenvio`, 'success');
+    processQueue();
+  }, [showToast, processQueue]);
+
+  // ============================================================
+  // ESCUTA O EVENTO sync:process
   // ============================================================
   useEffect(() => {
     const handleProcess = () => {
