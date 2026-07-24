@@ -184,7 +184,8 @@ export default function MaisPage() {
           icon: Settings,
           label: "Tema",
           description: "Claro, Escuro ou Automático",
-          component: <ThemeToggle />,
+          // compact: evita duplicar ícone/label, já mostrados no wrapper deste item
+          component: <ThemeToggle compact />,
         },
       ],
     },
