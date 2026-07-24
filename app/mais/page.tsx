@@ -181,11 +181,9 @@ export default function MaisPage() {
         },
         {
           id: "tema",
-          icon: Settings,
-          label: "Tema",
-          description: "Claro, Escuro ou Automático",
-          // compact: evita duplicar ícone/label, já mostrados no wrapper deste item
-          component: <ThemeToggle compact />,
+          // ✅ Remove ícone/label/descrição para evitar duplicação
+          // O ThemeToggle já tem tudo isso no modo full
+          component: <ThemeToggle />,
         },
       ],
     },
@@ -265,6 +263,7 @@ export default function MaisPage() {
         </header>
 
         <section className="space-y-6 px-5 pt-6">
+          {/* Perfil */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -345,6 +344,7 @@ export default function MaisPage() {
             </div>
           </motion.div>
 
+          {/* Menu Sections */}
           {menuSections.map((section, sectionIndex) => (
             <motion.div
               key={section.title}
@@ -358,32 +358,16 @@ export default function MaisPage() {
 
               <div className="space-y-2">
                 {section.items.map((item) => {
-                  const Icon = item.icon;
-
+                  // ✅ Para o item "tema", renderizamos apenas o ThemeToggle (que já é um card completo)
                   if (item.id === "tema") {
                     return (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-4 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 shadow-sm"
-                      >
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
-                          <Icon size={18} className="text-ink-muted" />
-                        </div>
-
-                        <div className="flex-1 text-left">
-                          <p className="text-sm font-medium text-ink-primary">
-                            {item.label}
-                          </p>
-                          <p className="text-xs text-ink-muted">
-                            {item.description}
-                          </p>
-                        </div>
-
-                        <div className="shrink-0">{item.component}</div>
+                      <div key={item.id}>
+                        {item.component}
                       </div>
                     );
                   }
 
+                  const Icon = item.icon;
                   const isSyncItem = item.id === "sync";
 
                   return (
@@ -422,6 +406,7 @@ export default function MaisPage() {
             </motion.div>
           ))}
 
+          {/* Logout */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -446,6 +431,7 @@ export default function MaisPage() {
             </button>
           </motion.div>
 
+          {/* Footer */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -462,6 +448,7 @@ export default function MaisPage() {
           </motion.div>
         </section>
 
+        {/* Modais */}
         <ConfirmationModal
           isOpen={showLogoutModal}
           onClose={() => setShowLogoutModal(false)}
