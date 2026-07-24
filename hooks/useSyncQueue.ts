@@ -46,14 +46,11 @@ export function useSyncQueue() {
   }, []);
 
   // ============================================================
-  // FUNÇÕES DE SYNC POR TABELA (com checagem de erro detalhada)
+  // syncPerson
   // ============================================================
-
   const syncPerson = async (item: any) => {
     if (!supabase) return;
     const person = item.payload as any;
-
-    console.log('📤 Enviando person para Supabase:', person);
 
     switch (item.operation) {
       case 'add': {
@@ -68,10 +65,9 @@ export function useSyncQueue() {
           updated_at: person.updated_at,
         });
         if (error) {
-          console.error('❌ Erro no insert do person:', error);
+          addLog(`❌ Erro em persons: ${error.message} (code: ${error.code})`, 'error');
           throw new Error(`Persons insert error: ${error.message} (code: ${error.code})`);
         }
-        console.log('✅ Person enviado com sucesso:', data);
         break;
       }
       case 'update': {
@@ -84,12 +80,18 @@ export function useSyncQueue() {
             updated_at: person.updated_at,
           })
           .eq('id', person.id);
-        if (error) throw new Error(`Persons update error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em persons (update): ${error.message}`, 'error');
+          throw new Error(`Persons update error: ${error.message}`);
+        }
         break;
       }
       case 'delete': {
         const { error } = await supabase.from('persons').delete().eq('id', item.payload.id);
-        if (error) throw new Error(`Persons delete error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em persons (delete): ${error.message}`, 'error');
+          throw new Error(`Persons delete error: ${error.message}`);
+        }
         break;
       }
     }
@@ -99,6 +101,9 @@ export function useSyncQueue() {
     }
   };
 
+  // ============================================================
+  // syncMedicamento
+  // ============================================================
   const syncMedicamento = async (item: any) => {
     if (!supabase) return;
     const med = item.payload as any;
@@ -119,7 +124,10 @@ export function useSyncQueue() {
           created_at: med.created_at,
           updated_at: med.updated_at,
         });
-        if (error) throw new Error(`Medicamentos insert error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em medicamentos: ${error.message}`, 'error');
+          throw new Error(`Medicamentos insert error: ${error.message}`);
+        }
         break;
       }
       case 'update': {
@@ -135,12 +143,18 @@ export function useSyncQueue() {
             updated_at: med.updated_at,
           })
           .eq('id', med.id);
-        if (error) throw new Error(`Medicamentos update error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em medicamentos (update): ${error.message}`, 'error');
+          throw new Error(`Medicamentos update error: ${error.message}`);
+        }
         break;
       }
       case 'delete': {
         const { error } = await supabase.from('medicamentos').delete().eq('id', item.payload.id);
-        if (error) throw new Error(`Medicamentos delete error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em medicamentos (delete): ${error.message}`, 'error');
+          throw new Error(`Medicamentos delete error: ${error.message}`);
+        }
         break;
       }
     }
@@ -150,6 +164,9 @@ export function useSyncQueue() {
     }
   };
 
+  // ============================================================
+  // syncRenovacao
+  // ============================================================
   const syncRenovacao = async (item: any) => {
     if (!supabase) return;
     const ren = item.payload as any;
@@ -166,7 +183,10 @@ export function useSyncQueue() {
           created_at: ren.created_at,
           updated_at: ren.updated_at,
         });
-        if (error) throw new Error(`Renovacoes insert error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em renovacoes: ${error.message}`, 'error');
+          throw new Error(`Renovacoes insert error: ${error.message}`);
+        }
         break;
       }
       case 'update': {
@@ -178,12 +198,18 @@ export function useSyncQueue() {
             updated_at: ren.updated_at,
           })
           .eq('id', ren.id);
-        if (error) throw new Error(`Renovacoes update error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em renovacoes (update): ${error.message}`, 'error');
+          throw new Error(`Renovacoes update error: ${error.message}`);
+        }
         break;
       }
       case 'delete': {
         const { error } = await supabase.from('renovacoes').delete().eq('id', item.payload.id);
-        if (error) throw new Error(`Renovacoes delete error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em renovacoes (delete): ${error.message}`, 'error');
+          throw new Error(`Renovacoes delete error: ${error.message}`);
+        }
         break;
       }
     }
@@ -193,15 +219,17 @@ export function useSyncQueue() {
     }
   };
 
+  // ============================================================
+  // syncDocument
+  // ============================================================
   const syncDocument = async (item: any) => {
     if (!supabase) return;
     const doc = item.payload as Document;
 
-    console.log('📤 Enviando documento para Supabase:', doc);
-
     if (doc.person_id) {
       const person = await db.persons.get(doc.person_id);
       if (!person) {
+        addLog(`❌ Pessoa com ID ${doc.person_id} não encontrada localmente`, 'error');
         throw new Error(`Pessoa com ID ${doc.person_id} não encontrada localmente`);
       }
     }
@@ -224,10 +252,9 @@ export function useSyncQueue() {
           updated_at: doc.updated_at,
         });
         if (error) {
-          console.error('❌ Erro no insert do documento:', error);
+          addLog(`❌ Erro em documents: ${error.message} (code: ${error.code})`, 'error');
           throw new Error(`Documents insert error: ${error.message} (code: ${error.code})`);
         }
-        console.log('✅ Documento enviado com sucesso:', data);
         break;
       }
       case 'update': {
@@ -242,14 +269,20 @@ export function useSyncQueue() {
             updated_at: doc.updated_at,
           })
           .eq('id', doc.id);
-        if (error) throw new Error(`Documents update error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em documents (update): ${error.message}`, 'error');
+          throw new Error(`Documents update error: ${error.message}`);
+        }
         break;
       }
       case 'delete': {
         const { error } = await supabase.from('documents')
           .delete()
           .eq('id', item.payload.id);
-        if (error) throw new Error(`Documents delete error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em documents (delete): ${error.message}`, 'error');
+          throw new Error(`Documents delete error: ${error.message}`);
+        }
         break;
       }
     }
@@ -259,6 +292,9 @@ export function useSyncQueue() {
     }
   };
 
+  // ============================================================
+  // syncVault, syncVaultMember, syncMedico, syncFarmacia, syncHospital
+  // ============================================================
   const syncVault = async (item: any) => {
     if (!supabase) return;
     const vault = item.payload as Vault;
@@ -275,7 +311,10 @@ export function useSyncQueue() {
           created_at: vault.created_at,
           updated_at: vault.updated_at,
         });
-        if (error) throw new Error(`Vaults insert error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em vaults: ${error.message}`, 'error');
+          throw new Error(`Vaults insert error: ${error.message}`);
+        }
         break;
       }
       case 'update': {
@@ -288,14 +327,20 @@ export function useSyncQueue() {
             updated_at: vault.updated_at,
           })
           .eq('id', vault.id);
-        if (error) throw new Error(`Vaults update error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em vaults (update): ${error.message}`, 'error');
+          throw new Error(`Vaults update error: ${error.message}`);
+        }
         break;
       }
       case 'delete': {
         const { error } = await supabase.from('vaults')
           .delete()
           .eq('id', item.payload.id);
-        if (error) throw new Error(`Vaults delete error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em vaults (delete): ${error.message}`, 'error');
+          throw new Error(`Vaults delete error: ${error.message}`);
+        }
         break;
       }
     }
@@ -323,7 +368,10 @@ export function useSyncQueue() {
           invited_at: member.invited_at,
           updated_at: member.updated_at,
         });
-        if (error) throw new Error(`Vault_members insert error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em vault_members: ${error.message}`, 'error');
+          throw new Error(`Vault_members insert error: ${error.message}`);
+        }
         break;
       }
       case 'update': {
@@ -335,14 +383,20 @@ export function useSyncQueue() {
             updated_at: member.updated_at,
           })
           .eq('id', member.id);
-        if (error) throw new Error(`Vault_members update error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em vault_members (update): ${error.message}`, 'error');
+          throw new Error(`Vault_members update error: ${error.message}`);
+        }
         break;
       }
       case 'delete': {
         const { error } = await supabase.from('vault_members')
           .delete()
           .eq('id', item.payload.id);
-        if (error) throw new Error(`Vault_members delete error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em vault_members (delete): ${error.message}`, 'error');
+          throw new Error(`Vault_members delete error: ${error.message}`);
+        }
         break;
       }
     }
@@ -369,7 +423,10 @@ export function useSyncQueue() {
           created_at: medico.created_at,
           updated_at: medico.updated_at,
         });
-        if (error) throw new Error(`Medicos insert error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em medicos: ${error.message}`, 'error');
+          throw new Error(`Medicos insert error: ${error.message}`);
+        }
         break;
       }
       case 'update': {
@@ -383,14 +440,20 @@ export function useSyncQueue() {
             updated_at: medico.updated_at,
           })
           .eq('id', medico.id);
-        if (error) throw new Error(`Medicos update error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em medicos (update): ${error.message}`, 'error');
+          throw new Error(`Medicos update error: ${error.message}`);
+        }
         break;
       }
       case 'delete': {
         const { error } = await supabase.from('medicos')
           .delete()
           .eq('id', item.payload.id);
-        if (error) throw new Error(`Medicos delete error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em medicos (delete): ${error.message}`, 'error');
+          throw new Error(`Medicos delete error: ${error.message}`);
+        }
         break;
       }
     }
@@ -415,7 +478,10 @@ export function useSyncQueue() {
           created_at: farmacia.created_at,
           updated_at: farmacia.updated_at,
         });
-        if (error) throw new Error(`Farmacias insert error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em farmacias: ${error.message}`, 'error');
+          throw new Error(`Farmacias insert error: ${error.message}`);
+        }
         break;
       }
       case 'update': {
@@ -427,14 +493,20 @@ export function useSyncQueue() {
             updated_at: farmacia.updated_at,
           })
           .eq('id', farmacia.id);
-        if (error) throw new Error(`Farmacias update error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em farmacias (update): ${error.message}`, 'error');
+          throw new Error(`Farmacias update error: ${error.message}`);
+        }
         break;
       }
       case 'delete': {
         const { error } = await supabase.from('farmacias')
           .delete()
           .eq('id', item.payload.id);
-        if (error) throw new Error(`Farmacias delete error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em farmacias (delete): ${error.message}`, 'error');
+          throw new Error(`Farmacias delete error: ${error.message}`);
+        }
         break;
       }
     }
@@ -459,7 +531,10 @@ export function useSyncQueue() {
           created_at: hospital.created_at,
           updated_at: hospital.updated_at,
         });
-        if (error) throw new Error(`Hospitais insert error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em hospitais: ${error.message}`, 'error');
+          throw new Error(`Hospitais insert error: ${error.message}`);
+        }
         break;
       }
       case 'update': {
@@ -471,14 +546,20 @@ export function useSyncQueue() {
             updated_at: hospital.updated_at,
           })
           .eq('id', hospital.id);
-        if (error) throw new Error(`Hospitais update error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em hospitais (update): ${error.message}`, 'error');
+          throw new Error(`Hospitais update error: ${error.message}`);
+        }
         break;
       }
       case 'delete': {
         const { error } = await supabase.from('hospitais')
           .delete()
           .eq('id', item.payload.id);
-        if (error) throw new Error(`Hospitais delete error: ${error.message}`);
+        if (error) {
+          addLog(`❌ Erro em hospitais (delete): ${error.message}`, 'error');
+          throw new Error(`Hospitais delete error: ${error.message}`);
+        }
         break;
       }
     }
@@ -489,23 +570,23 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // processQueue
+  // processQueue (com logs mais limpos)
   // ============================================================
   const processQueue = useCallback(async () => {
     if (processingRef.current || !isOnline) {
-      addLog('Sync ignorado: já em andamento ou offline', 'info');
+      // ✅ Não adiciona log para evitar spam
       return;
     }
 
     const count = await db.syncQueue.count();
     if (count === 0) {
-      addLog('Fila de sincronização vazia', 'info');
+      // ✅ Não adiciona log para evitar spam
       return;
     }
 
     processingRef.current = true;
     setIsProcessing(true);
-    addLog(`🔒 Iniciando sync: ${count} itens na fila`, 'info');
+    addLog(`🟢 Iniciando sync: ${count} itens na fila`, 'info');
 
     try {
       const queue = await db.syncQueue
@@ -562,7 +643,6 @@ export function useSyncQueue() {
           const retryCount = (item.retry_count || 0) + 1;
           const failed = retryCount >= MAX_RETRIES;
           
-          // ✅ Mostra o erro detalhado no log
           const errorMessage = error?.message || error?.toString() || 'Erro desconhecido';
           
           await db.syncQueue.update(item.id!, {
@@ -573,7 +653,8 @@ export function useSyncQueue() {
           if (failed) {
             addLog(`✖️ Falha permanente em ${item.table}: ${errorMessage}`, 'error');
           } else {
-            addLog(`⚠️ Falha em ${item.table} (tentativa ${retryCount}/${MAX_RETRIES}): ${errorMessage}`, 'error');
+            // ✅ Não adiciona log para tentativas intermediárias (evita spam)
+            // addLog(`⚠️ Falha em ${item.table} (tentativa ${retryCount}/${MAX_RETRIES}): ${errorMessage}`, 'error');
           }
         }
       }
