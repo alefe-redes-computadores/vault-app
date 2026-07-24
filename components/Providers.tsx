@@ -19,7 +19,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const { setUser, captureException } = useSentry();
   const { processQueue, isOnline } = useSyncQueue();
   const [isPullDone, setIsPullDone] = useState(false);
+  const [pullAttempted, setPullAttempted] = useState(false);
 
+  // ============================================================
+  // 1. PULL DOS DADOS (tenta no login E quando ficar online)
+  // ============================================================
   useEffect(() => {
     if (user && !loading && !isPullDone) {
       console.log("🔵 Usuário logado, executando pullAllData...");
@@ -30,11 +34,30 @@ export function Providers({ children }: { children: React.ReactNode }) {
         })
         .catch((err) => {
           console.error("❌ Erro no pull:", err);
-          setIsPullDone(true);
-        });
+          setIsPullDone(true); // Marcamos como tentado, mas o usuário pode forçar via botão
+        })
+        .finally(() => setPullAttempted(true));
     }
   }, [user, loading, isPullDone]);
 
+  // ============================================================
+  // 2. REPULL AO FICAR ONLINE (se já tiver tentado antes)
+  // ============================================================
+  useEffect(() => {
+    if (isOnline && user && pullAttempted && !isPullDone) {
+      console.log("🔵 Reconectado, tentando pull novamente...");
+      pullAllData(user.id)
+        .then(() => {
+          console.log("✅ Pull concluído com sucesso!");
+          setIsPullDone(true);
+        })
+        .catch((err) => console.error("❌ Erro no pull após reconectar:", err));
+    }
+  }, [isOnline, user, pullAttempted, isPullDone]);
+
+  // ============================================================
+  // 3. PUSH (processQueue) DEPOIS DO PULL
+  // ============================================================
   useEffect(() => {
     if (isOnline && user && isPullDone) {
       console.log("🔄 Executando push (processQueue)...");
@@ -42,6 +65,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [isOnline, user, isPullDone, processQueue]);
 
+  // ============================================================
+  // 4. SENTRY: definir usuário
+  // ============================================================
   useEffect(() => {
     if (user) {
       setUser({
@@ -52,6 +78,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [user, setUser]);
 
+  // ============================================================
+  // 5. CAPTURA DE ERROS GLOBAIS
+  // ============================================================
   useEffect(() => {
     const errorHandler = (event: ErrorEvent) => {
       captureException(event.error, {
@@ -78,6 +107,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     };
   }, [captureException]);
 
+  // ============================================================
+  // 6. AUTH POPUP (Google)
+  // ============================================================
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data === "auth-success") {
@@ -88,31 +120,35 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
+  // ============================================================
+  // 7. NOTIFICAÇÕES
+  // ============================================================
   useEffect(() => {
     const removeListener = handleNotificationAction((data) => {
       console.log("Notificação clicada:", data);
-
       if (data?.type === "document_expiry" && data?.docId) {
         router.push(`/detalhes?id=${data.docId}`);
       } else if (data?.type === "medication_renewal" && data?.medicamentoId) {
         router.push(`/saude/medicamentos/detalhes?id=${data.medicamentoId}`);
       }
     });
-
-    return () => {
-      removeListener?.();
-    };
+    return () => removeListener?.();
   }, [handleNotificationAction, router]);
 
+  // ============================================================
+  // 8. REDIRECIONAMENTO
+  // ============================================================
   useEffect(() => {
     if (loading) return;
     if (pathname === "/login" || pathname === "/auth/callback") return;
-
     if (!user) {
       router.push("/login");
     }
   }, [loading, user, pathname, router]);
 
+  // ============================================================
+  // RENDER
+  // ============================================================
   if (loading) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center px-6">
