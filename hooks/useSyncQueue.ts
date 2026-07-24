@@ -9,7 +9,7 @@ import { useToast } from '@/components/ToastProvider';
 const MAX_RETRIES = 5;
 
 export function useSyncQueue() {
-  const { showToast, showError, showSuccess } = useToast();
+  const { showToast, showError, showSuccess, showInfo } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== 'undefined' ? navigator.onLine : false
@@ -35,7 +35,7 @@ export function useSyncQueue() {
   }, []);
 
   // ============================================================
-  // FUNÇÕES DE SYNC POR TABELA (com checagem de erro e toast)
+  // FUNÇÕES DE SYNC POR TABELA (com checagem de erro)
   // ============================================================
 
   const syncPerson = async (item: any) => {
@@ -181,6 +181,14 @@ export function useSyncQueue() {
     const doc = item.payload as Document;
 
     console.log('📤 Enviando documento para Supabase:', doc);
+
+    // Verifica se a pessoa referenciada existe localmente (opcional)
+    if (doc.person_id) {
+      const person = await db.persons.get(doc.person_id);
+      if (!person) {
+        throw new Error(`Pessoa com ID ${doc.person_id} não encontrada localmente`);
+      }
+    }
 
     switch (item.operation) {
       case 'add': {
@@ -490,7 +498,7 @@ export function useSyncQueue() {
   }, [showToast, processQueue]);
 
   // ============================================================
-  // processQueue (com toast para cada erro)
+  // processQueue (COM ORDEM PRIORIZANDO PESSOAS)
   // ============================================================
   const processQueue = useCallback(async () => {
     if (processingRef.current || !isOnline) {
@@ -509,6 +517,7 @@ export function useSyncQueue() {
     window.dispatchEvent(new Event('sync:start'));
 
     try {
+      // Pega todos os itens da fila (não falhos e com tentativas < MAX_RETRIES)
       const queue = await db.syncQueue
         .toCollection()
         .filter((item) => item.failed !== true && (item.retry_count || 0) < MAX_RETRIES)
@@ -517,7 +526,6 @@ export function useSyncQueue() {
       console.log(`🔄 Processando ${queue.length} itens da fila...`);
 
       if (queue.length === 0) {
-        // Verifica se há itens com failed true
         const failedCount = await db.syncQueue
           .toCollection()
           .filter((item) => item.failed === true)
@@ -528,19 +536,27 @@ export function useSyncQueue() {
         return;
       }
 
+      // ✅ Reordenar a fila: persons primeiro, depois documents, depois o resto
+      const priorityOrder = ['persons', 'documents', 'medicamentos', 'renovacoes', 'vaults', 'vaultMembers', 'medicos', 'farmacias', 'hospitais'];
+      queue.sort((a, b) => {
+        const aIndex = priorityOrder.indexOf(a.table);
+        const bIndex = priorityOrder.indexOf(b.table);
+        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+      });
+
       let successCount = 0;
       let errorCount = 0;
 
       for (const item of queue) {
         try {
-          if (item.table === 'documents') {
+          if (item.table === 'persons') {
+            await syncPerson(item);
+          } else if (item.table === 'documents') {
             await syncDocument(item);
           } else if (item.table === 'vaults') {
             await syncVault(item);
           } else if (item.table === 'vaultMembers') {
             await syncVaultMember(item);
-          } else if (item.table === 'persons') {
-            await syncPerson(item);
           } else if (item.table === 'medicamentos') {
             await syncMedicamento(item);
           } else if (item.table === 'renovacoes') {
@@ -604,7 +620,7 @@ export function useSyncQueue() {
   }, [isOnline, showToast]);
 
   // ============================================================
-  // ESCUTA O EVENTO sync:process
+  // ESCUTA O EVENTO sync:process (disparado ao criar documento)
   // ============================================================
   useEffect(() => {
     const handleProcess = () => {
@@ -662,6 +678,6 @@ export function useSyncQueue() {
     processQueue,
     isProcessing,
     isOnline,
-    resetFailedItems, // <-- nova função para redefinir itens com falha
+    resetFailedItems,
   };
 }
