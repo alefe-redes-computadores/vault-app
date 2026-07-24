@@ -8,12 +8,6 @@ import { useHapticFeedback } from "@/lib/haptics";
 type Theme = "light" | "dark" | "system";
 
 interface ThemeToggleProps {
-  /**
-   * Quando true, renderiza apenas o seletor (ícone atual + dots + chevron),
-   * sem o card completo, ícone circular e label "Tema".
-   * Use esse modo quando o componente pai já renderiza esse contexto
-   * (ex: dentro de um item de menu que já mostra ícone/label/descrição).
-   */
   compact?: boolean;
 }
 
@@ -41,7 +35,8 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
     return themes[(index + 1) % themes.length].value;
   };
 
-  const handleToggle = () => {
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation(); // ✅ Impede que o clique seja capturado por pais
     const next = getNextTheme();
     setTheme(next);
     trigger("vibrate");
@@ -54,7 +49,7 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
         : "Automático · Claro"
       : currentConfig.label;
 
-  // --- MODO COMPACT: só o seletor, sem card/ícone-circular/label "Tema" ---
+  // --- MODO COMPACT: só o seletor ---
   if (compact) {
     if (!mounted) {
       return (
@@ -92,7 +87,7 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
     );
   }
 
-  // --- MODO FULL (padrão): card completo, standalone ---
+  // --- MODO FULL ---
   if (!mounted) {
     return (
       <div className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5">
