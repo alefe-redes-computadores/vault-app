@@ -21,6 +21,22 @@ const navItems: NavItem[] = [
   { id: "mais", icon: LayoutGrid, label: "Mais", path: "/mais" },
 ];
 
+// Rotas que têm sua própria barra de ação fixa no rodapé (ex: botão "Salvar").
+// O BottomNav não pode aparecer nelas, senão as duas barras fixas se sobrepõem.
+const HIDDEN_ON_PATHS = ["/novo", "/login", "/auth/callback"];
+
+function shouldHideNav(pathname: string): boolean {
+  // match exato ou rota "filha" (ex: /novo/algo, /pessoas/123/editar)
+  if (HIDDEN_ON_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return true;
+  }
+  // qualquer rota de edição, onde quer que ela esteja na árvore
+  if (pathname.includes("/editar")) {
+    return true;
+  }
+  return false;
+}
+
 export function BottomNav() {
   const { trigger } = useHapticFeedback();
   const pathname = usePathname();
@@ -62,12 +78,7 @@ export function BottomNav() {
     router.push(path);
   };
 
-  if (
-    pathname === "/login" ||
-    pathname === "/auth/callback" ||
-    isBiometricLocked
-  )
-    return null;
+  if (shouldHideNav(pathname) || isBiometricLocked) return null;
 
   const isActive = (path: string) => {
     return pathname === path || (path === "/" && pathname === "/");
