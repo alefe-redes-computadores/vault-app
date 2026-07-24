@@ -5,6 +5,7 @@ import { Providers } from "@/components/Providers";
 import { SplashScreen } from "@/components/SplashScreen";
 import { BiometricLock } from "@/components/BiometricLock";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -57,7 +58,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={`${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      className={`${display.variable} ${body.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
@@ -69,13 +74,23 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-void min-h-screen transition-colors duration-300 pb-safe">
         <ErrorBoundary>
-          <Providers>
-            <SplashScreen>
-              <BiometricLock>
-                {children}
-              </BiometricLock>
-            </SplashScreen>
-          </Providers>
+          {/*
+            ThemeProvider precisa envolver tudo que usa useTheme() (ex: ThemeToggle).
+            attribute="class" -> aplica a classe "dark"/"light" na tag <html>,
+            que é exatamente o que o globals.css espera (html.dark / html.light).
+          */}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            storageKey="vault-theme"
+          >
+            <Providers>
+              <SplashScreen>
+                <BiometricLock>{children}</BiometricLock>
+              </SplashScreen>
+            </Providers>
+          </ThemeProvider>
         </ErrorBoundary>
       </body>
     </html>
