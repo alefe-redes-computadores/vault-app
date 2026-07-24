@@ -4,10 +4,12 @@ import { db } from '@/lib/db';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital } from '@/lib/types';
+import { useToast } from '@/components/ToastProvider';
 
 const MAX_RETRIES = 5;
 
 export function useSyncQueue() {
+  const { showToast, showError, showSuccess } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== 'undefined' ? navigator.onLine : false
@@ -33,10 +35,9 @@ export function useSyncQueue() {
   }, []);
 
   // ============================================================
-  // FUNÇÕES DE SYNC POR TABELA (CORRIGIDAS COM CHECAGEM DE ERRO)
+  // FUNÇÕES DE SYNC POR TABELA (com checagem de erro e toast)
   // ============================================================
 
-  // ---- PERSONS ----
   const syncPerson = async (item: any) => {
     if (!supabase) return;
     const person = item.payload as any;
@@ -81,7 +82,6 @@ export function useSyncQueue() {
     }
   };
 
-  // ---- MEDICAMENTOS ----
   const syncMedicamento = async (item: any) => {
     if (!supabase) return;
     const med = item.payload as any;
@@ -133,7 +133,6 @@ export function useSyncQueue() {
     }
   };
 
-  // ---- RENOVACOES (CORRIGIDO: adicionado user_id) ----
   const syncRenovacao = async (item: any) => {
     if (!supabase) return;
     const ren = item.payload as any;
@@ -143,7 +142,7 @@ export function useSyncQueue() {
         const { error } = await supabase.from('renovacoes').insert({
           id: ren.id,
           medicamento_id: ren.medicamento_id,
-          user_id: ren.user_id, // ✅ CORRIGIDO: agora envia user_id
+          user_id: ren.user_id,
           data: ren.data,
           anexo_url: ren.anexo_url || null,
           observacoes: ren.observacoes || null,
@@ -177,7 +176,6 @@ export function useSyncQueue() {
     }
   };
 
-  // ---- DOCUMENTS (já estava correto, mantido) ----
   const syncDocument = async (item: any) => {
     if (!supabase) return;
     const doc = item.payload as Document;
@@ -237,7 +235,6 @@ export function useSyncQueue() {
     }
   };
 
-  // ---- VAULTS ----
   const syncVault = async (item: any) => {
     if (!supabase) return;
     const vault = item.payload as Vault;
@@ -284,7 +281,6 @@ export function useSyncQueue() {
     }
   };
 
-  // ---- VAULT MEMBERS ----
   const syncVaultMember = async (item: any) => {
     if (!supabase) return;
     const member = item.payload as VaultMember;
@@ -332,7 +328,6 @@ export function useSyncQueue() {
     }
   };
 
-  // ---- MEDICOS ----
   const syncMedico = async (item: any) => {
     if (!supabase) return;
     const medico = item.payload as Medico;
@@ -381,7 +376,6 @@ export function useSyncQueue() {
     }
   };
 
-  // ---- FARMACIAS ----
   const syncFarmacia = async (item: any) => {
     if (!supabase) return;
     const farmacia = item.payload as Farmacia;
@@ -426,7 +420,6 @@ export function useSyncQueue() {
     }
   };
 
-  // ---- HOSPITAIS ----
   const syncHospital = async (item: any) => {
     if (!supabase) return;
     const hospital = item.payload as Hospital;
@@ -472,7 +465,32 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // processQueue
+  // FUNÇÃO PARA RESETAR ITENS COM FALHA
+  // ============================================================
+  const resetFailedItems = useCallback(async () => {
+    const failedItems = await db.syncQueue
+      .toCollection()
+      .filter((item) => item.failed === true)
+      .toArray();
+
+    if (failedItems.length === 0) {
+      showToast('Nenhum item com falha para reenviar', 'info');
+      return;
+    }
+
+    for (const item of failedItems) {
+      await db.syncQueue.update(item.id!, {
+        failed: false,
+        retry_count: 0,
+      });
+    }
+
+    showToast(`${failedItems.length} item(ns) redefinidos para reenvio`, 'success');
+    processQueue();
+  }, [showToast, processQueue]);
+
+  // ============================================================
+  // processQueue (com toast para cada erro)
   // ============================================================
   const processQueue = useCallback(async () => {
     if (processingRef.current || !isOnline) {
@@ -498,6 +516,21 @@ export function useSyncQueue() {
 
       console.log(`🔄 Processando ${queue.length} itens da fila...`);
 
+      if (queue.length === 0) {
+        // Verifica se há itens com failed true
+        const failedCount = await db.syncQueue
+          .toCollection()
+          .filter((item) => item.failed === true)
+          .count();
+        if (failedCount > 0) {
+          showToast(`${failedCount} item(ns) falharam permanentemente. Toque para reenviar.`, 'error');
+        }
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
       for (const item of queue) {
         try {
           if (item.table === 'documents') {
@@ -520,8 +553,10 @@ export function useSyncQueue() {
             await syncHospital(item);
           }
           await db.syncQueue.delete(item.id!);
-        } catch (error) {
+          successCount++;
+        } catch (error: any) {
           console.error('Erro ao sincronizar item:', item, error);
+          errorCount++;
           
           const retryCount = (item.retry_count || 0) + 1;
           const failed = retryCount >= MAX_RETRIES;
@@ -533,8 +568,15 @@ export function useSyncQueue() {
           
           if (failed) {
             console.error(`❌ Item falhou permanentemente após ${MAX_RETRIES} tentativas:`, item);
+            showToast(`❌ Falha ao enviar "${item.payload?.title || item.table}" (tabela ${item.table})`, 'error');
+          } else {
+            showToast(`⚠️ Falha ao enviar (tentativa ${retryCount}/${MAX_RETRIES}): ${error?.message || 'Erro desconhecido'}`, 'error');
           }
         }
+      }
+
+      if (successCount > 0) {
+        showToast(`${successCount} item(ns) sincronizados com sucesso!`, 'success');
       }
 
       const remaining = await db.syncQueue
@@ -553,15 +595,16 @@ export function useSyncQueue() {
       console.log('✅ Sincronização concluída!');
     } catch (error) {
       console.error('❌ Erro ao processar fila:', error);
+      showToast('Erro ao processar fila de sincronização', 'error');
     } finally {
       processingRef.current = false;
       setIsProcessing(false);
       window.dispatchEvent(new Event('sync:end'));
     }
-  }, [isOnline]);
+  }, [isOnline, showToast]);
 
   // ============================================================
-  // ESCUTA O EVENTO sync:process (disparado ao criar documento)
+  // ESCUTA O EVENTO sync:process
   // ============================================================
   useEffect(() => {
     const handleProcess = () => {
@@ -619,5 +662,6 @@ export function useSyncQueue() {
     processQueue,
     isProcessing,
     isOnline,
+    resetFailedItems, // <-- nova função para redefinir itens com falha
   };
 }
