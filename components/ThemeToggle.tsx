@@ -7,7 +7,17 @@ import { useHapticFeedback } from "@/lib/haptics";
 
 type Theme = "light" | "dark" | "system";
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  /**
+   * Quando true, renderiza apenas o seletor (ícone atual + dots + chevron),
+   * sem o card completo, ícone circular e label "Tema".
+   * Use esse modo quando o componente pai já renderiza esse contexto
+   * (ex: dentro de um item de menu que já mostra ícone/label/descrição).
+   */
+  compact?: boolean;
+}
+
+export function ThemeToggle({ compact = false }: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const { trigger } = useHapticFeedback();
@@ -15,18 +25,6 @@ export function ThemeToggle() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  if (!mounted) {
-    return (
-      <div className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5">
-        <div className="h-10 w-10 rounded-full bg-surface-border animate-pulse" />
-        <div className="flex-1">
-          <div className="h-4 w-20 rounded bg-surface-border animate-pulse" />
-          <div className="mt-1 h-3 w-28 rounded bg-surface-border animate-pulse" />
-        </div>
-      </div>
-    );
-  }
 
   const themes: { value: Theme; icon: typeof Sun; label: string }[] = [
     { value: "light", icon: Sun, label: "Claro" },
@@ -55,6 +53,57 @@ export function ThemeToggle() {
         ? "Automático · Escuro"
         : "Automático · Claro"
       : currentConfig.label;
+
+  // --- MODO COMPACT: só o seletor, sem card/ícone-circular/label "Tema" ---
+  if (compact) {
+    if (!mounted) {
+      return (
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-4 rounded-full bg-surface-border animate-pulse" />
+          <div className="h-3 w-16 rounded bg-surface-border animate-pulse" />
+        </div>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="flex items-center gap-2 rounded-full py-1.5 pl-1 pr-2 transition-all active:scale-95"
+        aria-label={`Alternar tema. Atual: ${resolvedLabel}`}
+      >
+        <CurrentIcon size={16} className="text-ink-muted" />
+        <span className="text-xs font-medium text-ink-muted">
+          {resolvedLabel}
+        </span>
+        <div className="flex items-center gap-1">
+          {themes.map((t) => (
+            <div
+              key={t.value}
+              className={`h-1.5 w-1.5 rounded-full transition-all ${
+                currentTheme === t.value
+                  ? "scale-125 bg-ice"
+                  : "bg-surface-border"
+              }`}
+            />
+          ))}
+        </div>
+      </button>
+    );
+  }
+
+  // --- MODO FULL (padrão): card completo, standalone ---
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5">
+        <div className="h-10 w-10 rounded-full bg-surface-border animate-pulse" />
+        <div className="flex-1">
+          <div className="h-4 w-20 rounded bg-surface-border animate-pulse" />
+          <div className="mt-1 h-3 w-28 rounded bg-surface-border animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <button
