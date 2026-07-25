@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Users, Star, LayoutGrid, Plus } from "lucide-react";
+import { Home, Heart, Star, LayoutGrid, Plus } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -16,7 +16,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
-  { id: "pessoas", icon: Users, label: "Pessoas", path: "/pessoas" },
+  { id: "saude", icon: Heart, label: "Saúde", path: "/saude" },
   { id: "favoritos", icon: Star, label: "Favoritos", path: "/favoritos" },
   { id: "mais", icon: LayoutGrid, label: "Mais", path: "/mais" },
 ];
@@ -94,7 +94,7 @@ export function BottomNav() {
 
             const colMap: Record<string, string> = {
               home: "col-start-1",
-              pessoas: "col-start-2",
+              saude: "col-start-2",
               favoritos: "col-start-4",
               mais: "col-start-5",
             };
