@@ -203,6 +203,7 @@ export interface Medicamento {
 
 export interface Renovacao {
   id?: string;
+  user_id: string; // ✅ ADICIONADO — coluna criada no Supabase, necessária pro sync funcionar
   medicamento_id: string;
   data: string;
   anexo_url?: string;
