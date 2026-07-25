@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Search,
   Plus,
-  User,
   ChevronRight,
   Sparkles,
   FileText,
@@ -14,13 +13,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
 import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
-import { useFavorites } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { CATEGORIES, type CategoryId, type Document } from "@/lib/types";
 import { PersonCard } from "@/components/PersonCard";
 import { CategorySection } from "@/components/CategorySection";
-import { FavoritesSection } from "@/components/FavoritesSection";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -101,8 +98,6 @@ export default function HomePage() {
     searchQuery: debouncedSearch,
     initialPage: 1,
   });
-
-  const favorites = useFavorites(selectedPersonId || undefined) || [];
 
   const handleFavoriteToggle = useCallback(
     async (id: string) => {
@@ -261,23 +256,8 @@ export default function HomePage() {
           </motion.div>
         </header>
 
-        <section className="space-y-6 px-5 pt-5">
+        <section className="space-y-5 px-5 pt-5">
           <AnimatePresence mode="popLayout">
-            {favorites.length > 0 && (
-              <motion.div
-                key="favorites"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.26 }}
-              >
-                <FavoritesSection
-                  favorites={favorites}
-                  onFavoriteToggle={handleFavoriteToggle}
-                />
-              </motion.div>
-            )}
-
             {Object.keys(CATEGORIES).map((categoryId: any, index: number) => {
               const preview = getCategoryPreview(categoryId as CategoryId);
               const total = (docsByCategory[categoryId as CategoryId] || []).length;
@@ -361,7 +341,7 @@ export default function HomePage() {
                       Acesso rápido
                     </p>
                     <p className="mt-1 text-xs leading-5 text-ink-muted">
-                      Use os favoritos e os filtros por pessoa para encontrar documentos sem navegar por listas longas.
+                      Toque no título de uma categoria para minimizá-la. Seus favoritos ficam a um toque no menu inferior.
                     </p>
                   </div>
                 </div>
