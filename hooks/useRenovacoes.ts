@@ -11,13 +11,13 @@ export function useRenovacoes(medicamentoId?: string) {
 
   const renovacoes = useLiveQuery(
     () => {
-      let query = db.renovacoes.toCollection();
+      let query = db.renovacoes.where("user_id").equals(user?.id || "");
       if (medicamentoId) {
-        query = query.filter((r) => r.medicamento_id === medicamentoId);
+        query = query.and((r) => r.medicamento_id === medicamentoId);
       }
       return query.reverse().sortBy("data");
     },
-    [medicamentoId],
+    [user?.id, medicamentoId],
     []
   );
 
