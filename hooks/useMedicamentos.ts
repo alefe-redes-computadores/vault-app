@@ -1,7 +1,7 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { db, safeAddMedicamento, safeUpdateMedicamento, safeDeleteMedicamento } from "@/lib/db";
 import { useAuth } from "./useAuth";
 import { useCallback } from "react";
 import type { Medicamento } from "@/lib/types";
@@ -15,37 +15,23 @@ export function useMedicamentos() {
     []
   );
 
-  const getMedicamento = useCallback((id: string) => { // ← string
+  const getMedicamento = useCallback((id: string) => {
     return db.medicamentos.get(id);
   }, []);
 
-  const addMedicamento = useCallback(async (data: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'>) => {
-    const now = new Date().toISOString();
-    const id = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-    await db.medicamentos.add({
-      ...data,
-      id,
-      created_at: now,
-      updated_at: now,
-      synced: false,
-    });
-    return id;
+  const addMedicamento = useCallback(
+    async (data: Omit<Medicamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
+      return safeAddMedicamento({ ...data, user_id: user?.id || "" });
+    },
+    [user]
+  );
+
+  const updateMedicamento = useCallback(async (id: string, data: Partial<Medicamento>) => {
+    return safeUpdateMedicamento(id, data);
   }, []);
 
-  const updateMedicamento = useCallback(async (id: string, data: Partial<Medicamento>) => { // ← string
-    await db.medicamentos.update(id, {
-      ...data,
-      updated_at: new Date().toISOString(),
-      synced: false,
-    });
-  }, []);
-
-  const deleteMedicamento = useCallback(async (id: string) => { // ← string
-    await db.medicamentos.delete(id);
+  const deleteMedicamento = useCallback(async (id: string) => {
+    return safeDeleteMedicamento(id);
   }, []);
 
   return {
