@@ -3,60 +3,40 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  ArrowLeft,
-  Save,
-  Loader2,
-  Stethoscope,
-  BadgeInfo,
-  Phone,
-  Mail,
-  User,
-} from "lucide-react";
+import { ArrowLeft, Loader2, Save, Stethoscope } from "lucide-react";
 import { useMedicos } from "@/hooks/useMedicos";
-import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { useToast } from "@/components/ToastProvider";
+
+const fadeUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+};
 
 export default function NovoMedicoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { user } = useAuth();
   const { addMedico } = useMedicos();
-  const { showToast } = useToast();
 
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    nome: "",
-    especialidade: "",
-    crm: "",
-    telefone: "",
-    email: "",
-  });
+  const [nome, setNome] = useState("");
+  const [especialidade, setEspecialidade] = useState("");
+  const [crm, setCrm] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
-  };
+  const [loading, setLoading] = useState(false);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.nome.trim()) {
-      newErrors.nome = "Nome é obrigatório";
-    }
+    if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
     trigger("vibrate");
-
     if (!validate()) {
       trigger("error");
       return;
@@ -65,18 +45,16 @@ export default function NovoMedicoPage() {
     setLoading(true);
     try {
       await addMedico({
-        user_id: user?.id || "",
-        nome: formData.nome.trim(),
-        especialidade: formData.especialidade.trim() || undefined,
-        crm: formData.crm.trim() || undefined,
-        telefone: formData.telefone.trim() || undefined,
-        email: formData.email.trim() || undefined,
+        nome: nome.trim(),
+        especialidade: especialidade.trim() || undefined,
+        crm: crm.trim() || undefined,
+        telefone: telefone.trim() || undefined,
+        email: email.trim() || undefined,
       });
       trigger("success");
-      showToast("Médico cadastrado com sucesso!", "success");
-      router.push("/saude/medicos");
+      router.back();
     } catch (error) {
-      showToast("Erro ao cadastrar médico", "error");
+      console.error("Erro ao salvar médico:", error);
       trigger("error");
     } finally {
       setLoading(false);
@@ -85,7 +63,7 @@ export default function NovoMedicoPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
+      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -93,21 +71,24 @@ export default function NovoMedicoPage() {
                 trigger("vibrate");
                 router.back();
               }}
-              aria-label="Voltar"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
 
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                Saúde
-              </p>
+              <div className="flex items-center gap-2">
+                <Stethoscope size={16} className="text-ice" />
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                  Vault
+                </p>
+              </div>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Novo médico
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
-                Cadastre um profissional de saúde
+                Cadastre pra vincular em receitas e consultas.
               </p>
             </div>
           </div>
@@ -115,122 +96,70 @@ export default function NovoMedicoPage() {
 
         <section className="space-y-4 px-5 pt-6">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.26 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm"
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28 }}
+            className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <div className="mb-5 flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised">
-                <Stethoscope size={18} className="text-ice" />
-              </div>
-
-              <div>
-                <h2 className="font-display text-base font-semibold text-ink-primary">
-                  Dados do profissional
-                </h2>
-                <p className="mt-1 text-sm leading-5 text-ink-muted">
-                  Preencha os dados principais para reutilizar esse médico em receitas e registros.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="relative">
-                <User
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
-                />
-                <Input
-                  label="Nome completo"
-                  placeholder="Ex: Dr. João Silva"
-                  value={formData.nome}
-                  onChange={(e) => handleChange("nome", e.target.value)}
-                  error={errors.nome}
-                  required
-                  className="pl-9"
-                />
-              </div>
-
-              <Input
-                label="Especialidade"
-                placeholder="Ex: Cardiologia, Pediatria..."
-                value={formData.especialidade}
-                onChange={(e) => handleChange("especialidade", e.target.value)}
-              />
-
-              <div className="relative">
-                <BadgeInfo
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
-                />
-                <Input
-                  label="CRM"
-                  placeholder="Ex: SP-123456"
-                  value={formData.crm}
-                  onChange={(e) => handleChange("crm", e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-
-              <div className="relative">
-                <Phone
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
-                />
-                <Input
-                  label="Telefone"
-                  placeholder="(11) 99999-9999"
-                  value={formData.telefone}
-                  onChange={(e) => handleChange("telefone", e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-
-              <div className="relative">
-                <Mail
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
-                />
-                <Input
-                  label="E-mail"
-                  placeholder="medico@exemplo.com"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleChange("email", e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.26, delay: 0.04 }}
-          >
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Salvar médico
-                </>
-              )}
-            </Button>
+            <Input
+              label="Nome"
+              placeholder="Dr(a). Nome completo"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              error={errors.nome}
+              required
+            />
+            <Input
+              label="Especialidade"
+              placeholder="Ex: Cardiologia, Ortopedia..."
+              value={especialidade}
+              onChange={(e) => setEspecialidade(e.target.value)}
+            />
+            <Input
+              label="CRM"
+              placeholder="Ex: 12345-MG"
+              value={crm}
+              onChange={(e) => setCrm(e.target.value)}
+            />
+            <Input
+              label="Telefone"
+              placeholder="(00) 00000-0000"
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+            />
+            <Input
+              label="E-mail"
+              type="email"
+              placeholder="opcional"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </motion.div>
         </section>
+
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSubmit}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Salvar médico
+              </>
+            )}
+          </Button>
+        </div>
       </main>
     </PageTransition>
   );
