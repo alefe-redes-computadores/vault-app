@@ -350,17 +350,6 @@ export default function HomePage() {
           </AnimatePresence>
         </section>
 
-        <button
-          onClick={() => {
-            trigger("success");
-            router.push("/novo");
-          }}
-          aria-label="Adicionar documento"
-          className="fixed bottom-24 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-[0_18px_40px_rgba(125,211,252,0.22)] transition-all duration-200 active:scale-95"
-        >
-          <Plus size={22} strokeWidth={2.5} />
-        </button>
-
         <BottomSheet
           isOpen={isSearchOpen}
           onClose={() => setIsSearchOpen(false)}
