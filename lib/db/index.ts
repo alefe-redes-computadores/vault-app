@@ -142,7 +142,6 @@ export async function safeAddPerson(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
     return id;
   });
@@ -172,7 +171,6 @@ export async function safeAddDocument(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
     return id;
   });
@@ -198,7 +196,6 @@ export async function safeUpdateDocument(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
   });
 }
@@ -231,7 +228,6 @@ export async function safeDeleteDocument(id: string): Promise<void> {
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
   });
 }
@@ -268,9 +264,51 @@ export async function safeAddMedicamento(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
     return id;
+  });
+}
+
+// ✅ NOVO — faltava, updates de medicamento não sincronizavam
+export async function safeUpdateMedicamento(
+  id: string,
+  changes: Partial<Medicamento>
+): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.medicamentos.get(id);
+  if (!item) throw new Error('Medicamento não encontrado');
+
+  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.medicamentos.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicamentos',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+// ✅ NOVO — faltava, exclusão de medicamento não sincronizava
+export async function safeDeleteMedicamento(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicamentos',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
   });
 }
 
@@ -297,9 +335,33 @@ export async function safeAddRenovacao(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
     return id;
+  });
+}
+
+// ✅ NOVO — faltava, updates de renovação não sincronizavam
+export async function safeUpdateRenovacao(
+  id: string,
+  changes: Partial<Renovacao>
+): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.renovacoes.get(id);
+  if (!item) throw new Error('Renovação não encontrada');
+
+  await db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
+    await db.renovacoes.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.renovacoes.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'renovacoes',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
   });
 }
 
@@ -329,7 +391,6 @@ export async function safeAddVault(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
     return id;
   });
@@ -358,7 +419,6 @@ export async function safeAddVaultMember(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
     return id;
   });
@@ -384,7 +444,6 @@ export async function safeUpdateVaultMember(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
   });
 }
@@ -432,9 +491,48 @@ export async function safeAddMedico(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
     return id;
+  });
+}
+
+// ✅ NOVO
+export async function safeUpdateMedico(id: string, changes: Partial<Medico>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.medicos.get(id);
+  if (!item) throw new Error('Médico não encontrado');
+
+  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.medicos.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicos',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+// ✅ NOVO
+export async function safeDeleteMedico(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicos',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
   });
 }
 
@@ -461,9 +559,48 @@ export async function safeAddFarmacia(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
     return id;
+  });
+}
+
+// ✅ NOVO
+export async function safeUpdateFarmacia(id: string, changes: Partial<Farmacia>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.farmacias.get(id);
+  if (!item) throw new Error('Farmácia não encontrada');
+
+  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.farmacias.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'farmacias',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+// ✅ NOVO
+export async function safeDeleteFarmacia(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'farmacias',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
   });
 }
 
@@ -490,8 +627,47 @@ export async function safeAddHospital(
       retry_count: 0,
       failed: false,
     });
-    // ✅ FORÇA PROCESSAMENTO IMEDIATO DA FILA
     triggerSyncProcess();
     return id;
+  });
+}
+
+// ✅ NOVO
+export async function safeUpdateHospital(id: string, changes: Partial<Hospital>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.hospitais.get(id);
+  if (!item) throw new Error('Hospital não encontrado');
+
+  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.hospitais.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'hospitais',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+// ✅ NOVO
+export async function safeDeleteHospital(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'hospitais',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
   });
 }
