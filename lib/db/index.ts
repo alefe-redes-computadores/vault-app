@@ -94,6 +94,25 @@ class VaultDB extends Dexie {
       console.log('🔄 Migrando para versão 6: convertendo IDs para UUID...');
       console.log('✅ Migração concluída! Novos registros usarão UUID.');
     });
+
+    // ✅ NOVA — corrige "KeyPath user_id on object store medicamentos is not indexed".
+    // medicamentos e renovacoes nunca tiveram user_id como índice pesquisável no Dexie,
+    // mesmo depois de o campo existir no tipo/Supabase. Sem isso, qualquer
+    // `.where('user_id')` nessas duas tabelas quebra o app.
+    this.version(7).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: 'id, user_id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+    }).upgrade(async (tx) => {
+      console.log('🔄 Migrando para versão 7: indexando user_id em medicamentos e renovacoes...');
+    });
   }
 }
 
@@ -269,7 +288,6 @@ export async function safeAddMedicamento(
   });
 }
 
-// ✅ NOVO — faltava, updates de medicamento não sincronizavam
 export async function safeUpdateMedicamento(
   id: string,
   changes: Partial<Medicamento>
@@ -294,7 +312,6 @@ export async function safeUpdateMedicamento(
   });
 }
 
-// ✅ NOVO — faltava, exclusão de medicamento não sincronizava
 export async function safeDeleteMedicamento(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
@@ -340,7 +357,6 @@ export async function safeAddRenovacao(
   });
 }
 
-// ✅ NOVO — faltava, updates de renovação não sincronizavam
 export async function safeUpdateRenovacao(
   id: string,
   changes: Partial<Renovacao>
@@ -496,7 +512,6 @@ export async function safeAddMedico(
   });
 }
 
-// ✅ NOVO
 export async function safeUpdateMedico(id: string, changes: Partial<Medico>): Promise<void> {
   const timestamp = nowIso();
   const item = await db.medicos.get(id);
@@ -518,7 +533,6 @@ export async function safeUpdateMedico(id: string, changes: Partial<Medico>): Pr
   });
 }
 
-// ✅ NOVO
 export async function safeDeleteMedico(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.medicos, db.syncQueue, async () => {
@@ -564,7 +578,6 @@ export async function safeAddFarmacia(
   });
 }
 
-// ✅ NOVO
 export async function safeUpdateFarmacia(id: string, changes: Partial<Farmacia>): Promise<void> {
   const timestamp = nowIso();
   const item = await db.farmacias.get(id);
@@ -586,7 +599,6 @@ export async function safeUpdateFarmacia(id: string, changes: Partial<Farmacia>)
   });
 }
 
-// ✅ NOVO
 export async function safeDeleteFarmacia(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
@@ -632,7 +644,6 @@ export async function safeAddHospital(
   });
 }
 
-// ✅ NOVO
 export async function safeUpdateHospital(id: string, changes: Partial<Hospital>): Promise<void> {
   const timestamp = nowIso();
   const item = await db.hospitais.get(id);
@@ -654,7 +665,6 @@ export async function safeUpdateHospital(id: string, changes: Partial<Hospital>)
   });
 }
 
-// ✅ NOVO
 export async function safeDeleteHospital(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
