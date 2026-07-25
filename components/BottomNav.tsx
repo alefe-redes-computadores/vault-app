@@ -34,7 +34,19 @@ function shouldHideNav(pathname: string): boolean {
   if (pathname.includes("/editar")) {
     return true;
   }
+  // qualquer subpágina de /saude que NÃO seja o dashboard em si
+  // (medicamentos/novo, renovacao/nova, medicos/novo, farmacias/novo,
+  // hospitais/novo, locais/novo etc. — todas têm botão "Salvar" fixo próprio)
+  if (pathname !== "/saude" && pathname.startsWith("/saude/")) {
+    return true;
+  }
   return false;
+}
+
+// Pra onde o botão "+" central deve levar, dependendo de onde você está
+function getComposePath(pathname: string): string {
+  if (pathname === "/saude") return "/saude/medicamentos/novo";
+  return "/novo";
 }
 
 export function BottomNav() {
@@ -83,6 +95,8 @@ export function BottomNav() {
   const isActive = (path: string) => {
     return pathname === path || (path === "/" && pathname === "/");
   };
+
+  const composePath = getComposePath(pathname);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 pb-safe">
@@ -134,9 +148,9 @@ export function BottomNav() {
           <button
             onClick={() => {
               trigger("success");
-              router.push("/novo");
+              router.push(composePath);
             }}
-            aria-label="Novo documento"
+            aria-label={composePath === "/saude/medicamentos/novo" ? "Novo medicamento" : "Novo documento"}
             className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(125,211,252,0.28)] transition-all duration-200 active:scale-95"
           >
             <Plus size={24} strokeWidth={2.6} />
