@@ -1,290 +1,683 @@
+import Dexie, { type Table } from 'dexie';
+import type { 
+  Person, Document, SyncQueueItem, Medicamento, Renovacao, 
+  Vault, VaultMember, Medico, Farmacia, Hospital 
+} from '@/lib/types';
+import { deleteFile } from '@/lib/supabase/storage';
+
+// Gerador de UUID compatível com todos os ambientes
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+class VaultDB extends Dexie {
+  persons!: Table<Person, string>;
+  documents!: Table<Document, string>;
+  syncQueue!: Table<SyncQueueItem, string>;
+  medicamentos!: Table<Medicamento, string>;
+  renovacoes!: Table<Renovacao, string>;
+  vaults!: Table<Vault, string>;
+  vaultMembers!: Table<VaultMember, string>;
+  medicos!: Table<Medico, string>;
+  farmacias!: Table<Farmacia, string>;
+  hospitais!: Table<Hospital, string>;
+
+  constructor() {
+    super('vault-db');
+    
+    this.version(2).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+    });
+    
+    this.version(3).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: 'id, medicamento_id, data',
+    });
+    
+    this.version(4).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: 'id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+    });
+    
+    this.version(5).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: 'id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+    }).upgrade(async (tx) => {
+      await tx.table('medicos').toCollection().modify((item: any) => {
+        if (!item.synced) item.synced = true;
+      });
+      await tx.table('farmacias').toCollection().modify((item: any) => {
+        if (!item.synced) item.synced = true;
+      });
+      await tx.table('hospitais').toCollection().modify((item: any) => {
+        if (!item.synced) item.synced = true;
+      });
+    });
+
+    this.version(6).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: 'id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+    }).upgrade(async (tx) => {
+      console.log('🔄 Migrando para versão 6: convertendo IDs para UUID...');
+      console.log('✅ Migração concluída! Novos registros usarão UUID.');
+    });
+
+    // ✅ NOVA — corrige "KeyPath user_id on object store medicamentos is not indexed".
+    // medicamentos e renovacoes nunca tiveram user_id como índice pesquisável no Dexie,
+    // mesmo depois de o campo existir no tipo/Supabase. Sem isso, qualquer
+    // `.where('user_id')` nessas duas tabelas quebra o app.
+    this.version(7).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: 'id, user_id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+    }).upgrade(async (tx) => {
+      console.log('🔄 Migrando para versão 7: indexando user_id em medicamentos e renovacoes...');
+    });
+  }
+}
+
+export const db = new VaultDB();
+
 // ============================================================
-// 1. PESSOAS
+// UTILITÁRIOS
 // ============================================================
-export interface Person {
-  id?: string;
-  user_id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  avatar_url?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
+function nowIso() {
+  return new Date().toISOString();
 }
 
 // ============================================================
-// 2. CATEGORIAS
+// DISPARA EVENTO PARA PROCESSAR FILA IMEDIATAMENTE
 // ============================================================
-export type CategoryId = 'saude' | 'pessoal' | 'empresa' | 'outros';
-
-export interface Category {
-  id: CategoryId;
-  name: string;
-  icon: string;
-  color: string;
-  description?: string;
-}
-
-export const CATEGORIES: Record<CategoryId, Category> = {
-  saude: {
-    id: 'saude',
-    name: 'Saúde',
-    icon: 'Heart',
-    color: '#EC4899',
-    description: 'Prontuários, receitas, laudos, medicamentos',
-  },
-  pessoal: {
-    id: 'pessoal',
-    name: 'Pessoal',
-    icon: 'User',
-    color: '#3B82F6',
-    description: 'RG, CPF, CNH, carteira de trabalho',
-  },
-  empresa: {
-    id: 'empresa',
-    name: 'Empresa',
-    icon: 'Building2',
-    color: '#7C9CB5', // ← steel-light (em vez de amarelo)
-    description: 'Documentos corporativos',
-  },
-  outros: {
-    id: 'outros',
-    name: 'Outros',
-    icon: 'FolderOpen',
-    color: '#6B7280',
-    description: 'Documentos diversos',
-  },
-};
-
-export const AREAS = CATEGORIES;
-export const CATEGORY_META = CATEGORIES;
-
-// ============================================================
-// 3. DOCUMENTOS
-// ============================================================
-export type DocumentType =
-  | 'rg'
-  | 'cpf'
-  | 'cnh'
-  | 'certificado'
-  | 'receita'
-  | 'prontuario'
-  | 'laudo'
-  | 'encaminhamento'
-  | 'outro';
-
-export interface Attachment {
-  id: string;
-  url: string;
-  name: string;
-  type: 'image' | 'pdf';
-  uploaded_at: string;
-}
-
-export interface Document {
-  id?: string;
-  user_id: string;
-  person_id: string;
-  category_id: CategoryId;
-  type: DocumentType;
-  title: string;
-  description?: string;
-  metadata: Record<string, any>;
-  attachments: Attachment[];
-  is_favorite: boolean;
-  vault_id?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
+function triggerSyncProcess() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('sync:process'));
+  }
 }
 
 // ============================================================
-// 3.1 CAMPOS POR TIPO DE DOCUMENTO
+// OPERAÇÕES ATÔMICAS (safeAdd / safeUpdate / safeDelete)
 // ============================================================
-export const DOCUMENT_FIELDS: Record<
-  DocumentType,
-  Array<{ key: string; label: string; type: 'text' | 'date' | 'select'; options?: string[]; required?: boolean }>
-> = {
-  rg: [
-    { key: 'number', label: 'Número do RG', type: 'text', required: true },
-    { key: 'issue_date', label: 'Data de emissão', type: 'date', required: true },
-    { key: 'expiry_date', label: 'Data de validade', type: 'date', required: true },
-    { key: 'issuer', label: 'Órgão emissor', type: 'text', required: true },
-  ],
-  cpf: [{ key: 'number', label: 'Número do CPF', type: 'text', required: true }],
-  cnh: [
-    { key: 'number', label: 'Número da CNH', type: 'text', required: true },
-    { key: 'category', label: 'Categoria', type: 'select', options: ['A', 'B', 'C', 'D', 'E'], required: true },
-    { key: 'issue_date', label: 'Data de emissão', type: 'date', required: true },
-    { key: 'expiry_date', label: 'Data de validade', type: 'date', required: true },
-  ],
-  certificado: [
-    { key: 'institution', label: 'Instituição de ensino', type: 'text', required: true },
-    { key: 'course', label: 'Curso', type: 'text', required: true },
-    { key: 'duration', label: 'Duração (ex: 120 horas)', type: 'text', required: true },
-    { key: 'completion_date', label: 'Data de conclusão', type: 'date' },
-  ],
-  receita: [
-    { key: 'medication', label: 'Medicamento', type: 'text', required: true },
-    { key: 'dosage', label: 'Dosagem', type: 'text', required: true },
-    { key: 'doctor', label: 'Médico', type: 'select', required: true },
-    { key: 'pharmacy', label: 'Farmácia', type: 'select' },
-    { key: 'prescription_date', label: 'Data da receita', type: 'date', required: true },
-    { key: 'renewal_date', label: 'Próxima renovação', type: 'date', required: true },
-  ],
-  prontuario: [
-    { key: 'hospital', label: 'Hospital', type: 'select', required: true },
-    { key: 'doctor', label: 'Médico', type: 'select', required: true },
-    { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
-    { key: 'date', label: 'Data', type: 'date', required: true },
-  ],
-  laudo: [
-    { key: 'doctor', label: 'Médico', type: 'select', required: true },
-    { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
-    { key: 'hospital', label: 'Hospital', type: 'select', required: true },
-    { key: 'date', label: 'Data', type: 'date', required: true },
-  ],
-  encaminhamento: [
-    { key: 'from', label: 'Quem encaminhou', type: 'text', required: true },
-    { key: 'to', label: 'Para quem (opcional)', type: 'text' },
-    { key: 'reason', label: 'Motivo', type: 'text', required: true },
-    { key: 'date', label: 'Data', type: 'date', required: true },
-  ],
-  outro: [
-    { key: 'custom_field_1', label: 'Campo personalizado 1', type: 'text' },
-    { key: 'custom_field_2', label: 'Campo personalizado 2', type: 'text' },
-  ],
-};
+export async function safeAddPerson(
+  person: Omit<Person, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Person = {
+    ...person,
+    id,
+    synced: false,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
 
-// ============================================================
-// 4. METADADOS
-// ============================================================
-export type RGMetadata = { number: string; issue_date: string; expiry_date: string; issuer: string; };
-export type CPFMetadata = { number: string; };
-export type CNHMetadata = { number: string; category: 'A' | 'B' | 'C' | 'D' | 'E'; issue_date: string; expiry_date: string; };
-export type CertificadoMetadata = { institution: string; course: string; duration: string; completion_date?: string; };
-export type ReceitaMetadata = { medication: string; dosage: string; doctor: string; pharmacy?: string; prescription_date: string; renewal_date: string; };
-export type ProntuarioMetadata = { hospital: string; doctor: string; specialty: string; date: string; };
-export type LaudoMetadata = { doctor: string; specialty: string; hospital: string; date: string; };
-export type EncaminhamentoMetadata = { from: string; to?: string; reason: string; date: string; };
+  return db.transaction('rw', db.persons, db.syncQueue, async () => {
+    await db.persons.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'persons',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
 
-// ============================================================
-// 5. FILA DE SINCRONIZAÇÃO
-// ============================================================
-export interface SyncQueueItem {
-  id?: string;
-  table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes' | 'vaults' | 'vaultMembers' | 'medicos' | 'farmacias' | 'hospitais';
-  operation: 'add' | 'update' | 'delete';
-  payload: Record<string, unknown>;
-  created_at: string;
-  retry_count?: number;
-  failed?: boolean;
+export async function safeAddDocument(
+  doc: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Document = {
+    ...doc,
+    id,
+    synced: false,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+
+  return db.transaction('rw', db.documents, db.syncQueue, async () => {
+    await db.documents.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'documents',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateDocument(
+  id: string,
+  changes: Partial<Document>
+): Promise<void> {
+  const timestamp = nowIso();
+  const doc = await db.documents.get(id);
+  if (!doc) throw new Error('Documento não encontrado');
+
+  await db.transaction('rw', db.documents, db.syncQueue, async () => {
+    await db.documents.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.documents.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'documents',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteDocument(id: string): Promise<void> {
+  const timestamp = nowIso();
+  const doc = await db.documents.get(id);
+  if (!doc) throw new Error('Documento não encontrado');
+
+  if (doc.attachments && doc.attachments.length > 0) {
+    for (const attachment of doc.attachments) {
+      if (attachment.url && !attachment.url.startsWith('blob:')) {
+        try {
+          await deleteFile(attachment.url);
+        } catch (error) {
+          console.error('Erro ao deletar anexo:', attachment.url, error);
+        }
+      }
+    }
+  }
+
+  await db.transaction('rw', db.documents, db.syncQueue, async () => {
+    await db.documents.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'documents',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function toggleFavorite(id: string): Promise<void> {
+  const doc = await db.documents.get(id);
+  if (!doc) return;
+  await safeUpdateDocument(id, { is_favorite: !doc.is_favorite });
 }
 
 // ============================================================
-// 6. MÓDULO SAÚDE
+// OPERAÇÕES PARA MEDICAMENTOS
 // ============================================================
-export interface Medicamento {
-  id?: string;
-  user_id: string;
-  document_id: string;
-  nome: string;
-  dosagem: string;
-  medico: string;
-  farmacia?: string;
-  data_receita: string;
-  proxima_renovacao: string;
-  observacoes?: string;
-  created_at?: string;
-  updated_at?: string;
-  synced?: boolean;
+export async function safeAddMedicamento(
+  med: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Medicamento = {
+    ...med,
+    id,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicamentos',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
 }
 
-export interface Renovacao {
-  id?: string;
-  user_id: string; // ✅ ADICIONADO — coluna criada no Supabase, necessária pro sync funcionar
-  medicamento_id: string;
-  data: string;
-  anexo_url?: string;
-  observacoes?: string;
-  created_at?: string;
-  updated_at?: string;
-  synced?: boolean;
+export async function safeUpdateMedicamento(
+  id: string,
+  changes: Partial<Medicamento>
+): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.medicamentos.get(id);
+  if (!item) throw new Error('Medicamento não encontrado');
+
+  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.medicamentos.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicamentos',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteMedicamento(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicamentos',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeAddRenovacao(
+  ren: Omit<Renovacao, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Renovacao = {
+    ...ren,
+    id,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
+    await db.renovacoes.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'renovacoes',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateRenovacao(
+  id: string,
+  changes: Partial<Renovacao>
+): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.renovacoes.get(id);
+  if (!item) throw new Error('Renovação não encontrada');
+
+  await db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
+    await db.renovacoes.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.renovacoes.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'renovacoes',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
 }
 
 // ============================================================
-// 7. COFRES FAMILIARES
+// OPERAÇÕES PARA COFRES
 // ============================================================
-export type VaultPermission = 'view' | 'edit' | 'admin';
-
-export interface Vault {
-  id?: string;
-  user_id: string;
-  name: string;
-  description?: string;
-  icon: string;
-  color: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
+export async function safeAddVault(
+  vault: Omit<Vault, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Vault = {
+    ...vault,
+    id,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.vaults, db.syncQueue, async () => {
+    await db.vaults.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'vaults',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
 }
 
-export interface VaultMember {
-  id?: string;
-  vault_id: string;
-  user_id: string;
-  email: string;
-  name?: string;
-  permission: VaultPermission;
-  invited_by: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  invited_at: string;
-  updated_at: string;
-  synced: boolean;
+export async function safeAddVaultMember(
+  member: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: VaultMember = {
+    ...member,
+    id,
+    invited_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
+    await db.vaultMembers.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'vaultMembers',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
 }
 
-export interface VaultDocument {
-  document_id: string;
-  vault_id: string;
-  shared_by: string;
-  shared_at: string;
+export async function safeUpdateVaultMember(
+  id: string,
+  changes: Partial<VaultMember>
+): Promise<void> {
+  const timestamp = nowIso();
+  const member = await db.vaultMembers.get(id);
+  if (!member) throw new Error('Membro não encontrado');
+
+  await db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
+    await db.vaultMembers.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.vaultMembers.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'vaultMembers',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function shareDocumentWithVault(
+  documentId: string,
+  vaultId: string
+): Promise<void> {
+  await db.transaction('rw', db.documents, async () => {
+    await db.documents.update(documentId, { vault_id: vaultId });
+  });
+}
+
+export async function getVaultDocuments(vaultId: string): Promise<Document[]> {
+  return db.documents.where('vault_id').equals(vaultId).toArray();
+}
+
+export async function getVaultMembers(vaultId: string): Promise<VaultMember[]> {
+  return db.vaultMembers.where('vault_id').equals(vaultId).toArray();
 }
 
 // ============================================================
-// 8. MÓDULO SAÚDE — MÉDICOS, FARMÁCIAS, HOSPITAIS
+// OPERAÇÕES PARA MÉDICOS, FARMÁCIAS, HOSPITAIS
 // ============================================================
-export interface Medico {
-  id?: string;
-  user_id: string;
-  nome: string;
-  especialidade?: string;
-  crm?: string;
-  telefone?: string;
-  email?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
+export async function safeAddMedico(
+  data: Omit<Medico, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Medico = {
+    ...data,
+    id,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicos',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
 }
 
-export interface Farmacia {
-  id?: string;
-  user_id: string;
-  nome: string;
-  endereco?: string;
-  telefone?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
+export async function safeUpdateMedico(id: string, changes: Partial<Medico>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.medicos.get(id);
+  if (!item) throw new Error('Médico não encontrado');
+
+  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.medicos.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicos',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
 }
 
-export interface Hospital {
-  id?: string;
-  user_id: string;
-  nome: string;
-  endereco?: string;
-  telefone?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
+export async function safeDeleteMedico(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'medicos',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeAddFarmacia(
+  data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Farmacia = {
+    ...data,
+    id,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'farmacias',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateFarmacia(id: string, changes: Partial<Farmacia>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.farmacias.get(id);
+  if (!item) throw new Error('Farmácia não encontrada');
+
+  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.farmacias.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'farmacias',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteFarmacia(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'farmacias',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeAddHospital(
+  data: Omit<Hospital, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Hospital = {
+    ...data,
+    id,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'hospitais',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateHospital(id: string, changes: Partial<Hospital>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.hospitais.get(id);
+  if (!item) throw new Error('Hospital não encontrado');
+
+  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.hospitais.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'hospitais',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteHospital(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'hospitais',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
 }
