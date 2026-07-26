@@ -19,6 +19,7 @@ import {
   Heart,
   Loader2,
   Terminal,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -238,11 +239,18 @@ export default function MaisPage() {
       ],
     },
     // ============================================================
-    // ✅ NOVA SEÇÃO: LOGS DE SINCRONIZAÇÃO
+    // ✅ SEÇÃO DE DIAGNÓSTICO — agora com o comparador visual local vs nuvem
     // ============================================================
     {
       title: "Diagnóstico",
       items: [
+        {
+          id: "diagnostico-dados",
+          icon: Activity,
+          label: "Diagnóstico de dados",
+          description: "Compara o que está no aparelho com o que está na nuvem, tabela por tabela",
+          onClick: () => router.push("/diagnostico"),
+        },
         {
           id: "ver-logs",
           icon: Terminal,
@@ -413,6 +421,7 @@ export default function MaisPage() {
                   const Icon = item.icon;
                   const isSyncItem = item.id === "sync";
                   const isLogItem = item.id === "ver-logs" || item.id === "limpar-logs";
+                  const isDiagnosticoItem = item.id === "diagnostico-dados";
 
                   return (
                     <button
@@ -426,12 +435,12 @@ export default function MaisPage() {
                       }`}
                     >
                       <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 ${
-                        isLogItem ? "bg-ice/10 border-ice/20" : "bg-surface-raised"
+                        isLogItem || isDiagnosticoItem ? "bg-ice/10 border-ice/20" : "bg-surface-raised"
                       }`}>
                         {isSyncItem && isSyncing ? (
                           <Loader2 size={18} className="animate-spin text-ice" />
                         ) : (
-                          <Icon size={18} className={isLogItem ? "text-ice" : "text-ink-muted"} />
+                          <Icon size={18} className={isLogItem || isDiagnosticoItem ? "text-ice" : "text-ink-muted"} />
                         )}
                       </div>
 
