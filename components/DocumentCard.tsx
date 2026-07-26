@@ -17,7 +17,7 @@ import {
   Building2,
   FolderOpen,
   type LucideIcon,
-  CheckCircle,
+  CheckCircle2,
   Loader2,
   Image as ImageIcon,
 } from "lucide-react";
@@ -109,13 +109,6 @@ function DocumentCardComponent({
     new Date(expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const isExpired = expiryDate && new Date(expiryDate) < new Date();
 
-  const syncIcon = document.synced ? (
-    <CheckCircle size={12} className="text-emerald-400" />
-  ) : (
-    <Loader2 size={12} className="animate-spin text-coral" />
-  );
-  const syncLabel = document.synced ? "Sincronizado" : "Pendente de sincronização";
-
   const handleSyncIconClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -128,143 +121,166 @@ function DocumentCardComponent({
   return (
     <div
       onClick={handlePress}
-      className="relative cursor-pointer overflow-hidden rounded-[24px] border bg-surface p-4 shadow-sm transition-all duration-200 active:scale-[0.985] hover:border-ice/15 hover:shadow-lg"
-      style={{ borderColor: `${color}22` }}
+      className="group relative cursor-pointer overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface shadow-sm transition-all duration-200 active:scale-[0.985] hover:border-ice/20 hover:shadow-lg"
     >
-      <div className="flex items-start gap-3">
-        <div
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all duration-200"
-          style={{ backgroundColor: `${color}15` }}
-        >
-          <TypeIcon size={18} style={{ color }} />
-        </div>
+      {/* Barra de acento lateral com a cor da categoria */}
+      <div
+        className="absolute inset-y-0 left-0 w-[3px]"
+        style={{ backgroundColor: color }}
+      />
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
-                {document.title}
-              </h3>
-
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
-                <span>{category?.name}</span>
-                <span className="h-1 w-1 rounded-full bg-ink-faint" />
-                {personName ? (
-                  <span>{personName}</span>
-                ) : (
-                  <span className="capitalize">{document.type}</span>
-                )}
-
-                {category && (
-                  <span
-                    className="rounded-full border px-2 py-0.5 text-[10px] font-medium"
-                    style={{
-                      backgroundColor: `${color}12`,
-                      borderColor: `${color}28`,
-                      color,
-                    }}
-                  >
-                    {category.name}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={handleFavorite}
-              className="shrink-0 rounded-full p-1.5 transition-colors duration-150 active:scale-90 hover:bg-surface-border/50"
-            >
-              <AnimatePresence>
-                <motion.div
-                  animate={
-                    isFavoriteAnimating
-                      ? { scale: 1.22, rotate: 16 }
-                      : { scale: 1, rotate: 0 }
-                  }
-                  transition={{ duration: 0.18 }}
-                >
-                  <Star
-                    size={16}
-                    className={
-                      document.is_favorite
-                        ? "fill-ice text-ice"
-                        : "text-ink-muted/55"
-                    }
-                  />
-                </motion.div>
-              </AnimatePresence>
-            </button>
+      <div className="p-4 pl-5">
+        <div className="flex items-start gap-3">
+          <div
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] transition-all duration-200"
+            style={{
+              background: `linear-gradient(135deg, ${color}26, ${color}0d)`,
+            }}
+          >
+            <TypeIcon size={18} style={{ color }} />
           </div>
 
-          {firstMetadata && (
-            <p className="mt-1 truncate text-sm font-medium text-ink-primary">
-              {firstMetadata}
-            </p>
-          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
+                  {document.title}
+                </h3>
 
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            {document.metadata?.issue_date && (
-              <div className="flex items-center gap-1 text-xs text-ink-muted">
-                <Calendar size={12} />
-                <span>Emissão: {formatDate(document.metadata.issue_date)}</span>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+                  {personName ? (
+                    <span>{personName}</span>
+                  ) : (
+                    <span className="capitalize">{document.type}</span>
+                  )}
+
+                  {category && (
+                    <span
+                      className="rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                      style={{
+                        backgroundColor: `${color}14`,
+                        borderColor: `${color}2c`,
+                        color,
+                      }}
+                    >
+                      {category.name}
+                    </span>
+                  )}
+                </div>
               </div>
-            )}
 
-            {expiryDate && (
-              <div
-                className={`flex items-center gap-1 text-xs transition-colors duration-150 ${
-                  isExpired
-                    ? "text-coral"
-                    : isExpiring
-                    ? "text-coral/80"
-                    : "text-ink-muted"
+              <button
+                onClick={handleFavorite}
+                className={`shrink-0 rounded-full p-1.5 transition-all duration-150 active:scale-90 ${
+                  document.is_favorite
+                    ? "bg-ice/12"
+                    : "hover:bg-surface-border/50"
                 }`}
               >
-                <Calendar size={12} />
+                <AnimatePresence>
+                  <motion.div
+                    animate={
+                      isFavoriteAnimating
+                        ? { scale: 1.22, rotate: 16 }
+                        : { scale: 1, rotate: 0 }
+                    }
+                    transition={{ duration: 0.18 }}
+                  >
+                    <Star
+                      size={16}
+                      className={
+                        document.is_favorite
+                          ? "fill-ice text-ice"
+                          : "text-ink-muted/55"
+                      }
+                    />
+                  </motion.div>
+                </AnimatePresence>
+              </button>
+            </div>
+
+            {firstMetadata && (
+              <p className="mt-1.5 truncate text-sm font-medium text-ink-primary">
+                {firstMetadata}
+              </p>
+            )}
+
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              {document.metadata?.issue_date && (
+                <div className="flex items-center gap-1 text-xs text-ink-muted">
+                  <Calendar size={12} />
+                  <span>Emissão: {formatDate(document.metadata.issue_date)}</span>
+                </div>
+              )}
+
+              {expiryDate && (
+                <div
+                  className={`flex items-center gap-1 text-xs font-medium transition-colors duration-150 ${
+                    isExpired
+                      ? "text-coral"
+                      : isExpiring
+                      ? "text-coral/85"
+                      : "text-ink-muted"
+                  }`}
+                >
+                  <Calendar size={12} />
+                  <span>
+                    {isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"}{" "}
+                    {formatDate(expiryDate)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {document.description && !compact && (
+              <p className="mt-2 line-clamp-2 text-sm text-ink-muted">
+                {document.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between border-t border-surface-border/40 pt-3">
+          <div className="flex items-center gap-2 text-xs text-ink-faint">
+            {hasAttachments && (
+              <span className="inline-flex items-center gap-1">
+                {hasImageAttachment ? (
+                  <ImageIcon size={13} />
+                ) : (
+                  <Paperclip size={13} />
+                )}
                 <span>
-                  {isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"}{" "}
-                  {formatDate(expiryDate)}
+                  {document.attachments.length} anexo
+                  {document.attachments.length !== 1 ? "s" : ""}
                 </span>
-              </div>
+              </span>
             )}
           </div>
 
-          {document.description && !compact && (
-            <p className="mt-2 line-clamp-2 text-sm text-ink-muted">
-              {document.description}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-ink-faint">
-          {hasAttachments && (
-            <span className="inline-flex items-center gap-1">
-              {hasImageAttachment ? (
-                <ImageIcon size={13} />
+          <div className="relative">
+            <button
+              onClick={handleSyncIconClick}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors duration-150 active:scale-95 ${
+                document.synced
+                  ? "bg-emerald-400/10 text-emerald-400"
+                  : "bg-coral/10 text-coral"
+              }`}
+              aria-label="Status de sincronização"
+            >
+              {document.synced ? (
+                <CheckCircle2 size={11} />
               ) : (
-                <Paperclip size={13} />
+                <Loader2 size={11} className="animate-spin" />
               )}
-              <span>Anexo</span>
-            </span>
-          )}
-        </div>
+              {document.synced ? "Sincronizado" : "Pendente"}
+            </button>
 
-        <div className="relative">
-          <button
-            onClick={handleSyncIconClick}
-            className="flex items-center gap-1 rounded-full p-1 transition-colors duration-150 active:scale-90 hover:bg-surface-border/50"
-            aria-label="Status de sincronização"
-          >
-            {syncIcon}
-          </button>
-
-          {showSyncTooltip && (
-            <span className="absolute right-0 top-[-1.9rem] whitespace-nowrap rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted shadow-md">
-              {syncLabel}
-            </span>
-          )}
+            {showSyncTooltip && (
+              <span className="absolute right-0 top-[-1.9rem] whitespace-nowrap rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted shadow-md">
+                {document.synced ? "Sincronizado com a nuvem" : "Aguardando sincronização"}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
