@@ -56,7 +56,9 @@ export function getMedicamentoAlerts(medicamentos: Medicamento[]): HealthAlert[]
         date: med.proxima_renovacao,
         daysUntil: daysUntil ?? 999,
         level: getAlertLevel(daysUntil),
-        href: `/saude/medicamentos/detalhes?id=${med.id}`,
+        // ✅ corrigido: apontava pra uma rota "/detalhes" que nunca existiu.
+        // Agora vai direto pra edição, onde também dá pra ajustar a data.
+        href: `/saude/medicamentos/editar?id=${med.id}`,
       };
     })
     .filter((a) => a.level !== "ok")
