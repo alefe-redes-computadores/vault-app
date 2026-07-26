@@ -95,11 +95,33 @@ class VaultDB extends Dexie {
       console.log('✅ Migração concluída! Novos registros usarão UUID.');
     });
 
-    // ✅ NOVA — corrige "KeyPath user_id on object store medicamentos is not indexed".
-    // medicamentos e renovacoes nunca tiveram user_id como índice pesquisável no Dexie,
-    // mesmo depois de o campo existir no tipo/Supabase. Sem isso, qualquer
-    // `.where('user_id')` nessas duas tabelas quebra o app.
+    // ❌ A versão 7 anterior tentava inserir "user_id" no meio da lista de
+    // campos de medicamentos/renovacoes. O Dexie interpretou isso como troca
+    // de chave primária e travou com "UpgradeError: Not yet support for
+    // changing primary key" — o app ficava sem conseguir abrir o banco local.
+    //
+    // ✅ Correção: apaga essas duas tabelas (v7) e recria do zero já com
+    // user_id indexado (v8). É o jeito seguro e documentado no Dexie de
+    // reestruturar uma tabela sem ambiguidade de chave primária.
+    //
+    // Efeito colateral: qualquer medicamento/renovação salvo *apenas* localmente
+    // (que não tenha sincronizado ainda) será perdido nesse device. Documentos,
+    // pessoas, médicos, farmácias e hospitais NÃO são afetados — só essas duas
+    // tabelas foram apagadas e recriadas.
     this.version(7).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: null,
+      renovacoes: null,
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+    });
+
+    this.version(8).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
       syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
@@ -111,7 +133,7 @@ class VaultDB extends Dexie {
       farmacias: 'id, user_id, nome, synced',
       hospitais: 'id, user_id, nome, synced',
     }).upgrade(async (tx) => {
-      console.log('🔄 Migrando para versão 7: indexando user_id em medicamentos e renovacoes...');
+      console.log('✅ v8: medicamentos e renovacoes recriadas com user_id indexado.');
     });
   }
 }
