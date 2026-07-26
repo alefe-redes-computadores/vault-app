@@ -11,6 +11,7 @@ import {
   Plus,
   Phone,
   MapPin,
+  ChevronRight,
 } from "lucide-react";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
@@ -29,10 +30,28 @@ export default function RedeSaudePage() {
 
   const [tab, setTab] = useState<Tab>("medicos");
 
-  const tabs: { id: Tab; label: string; icon: any; createPath: string }[] = [
-    { id: "medicos", label: "Médicos", icon: Stethoscope, createPath: "/saude/medicos/novo" },
-    { id: "farmacias", label: "Farmácias", icon: Pill, createPath: "/saude/farmacias/novo" },
-    { id: "hospitais", label: "Hospitais", icon: Building2, createPath: "/saude/hospitais/novo" },
+  const tabs: { id: Tab; label: string; icon: any; createPath: string; editPath: string }[] = [
+    {
+      id: "medicos",
+      label: "Médicos",
+      icon: Stethoscope,
+      createPath: "/saude/medicos/novo",
+      editPath: "/saude/medicos/editar",
+    },
+    {
+      id: "farmacias",
+      label: "Farmácias",
+      icon: Pill,
+      createPath: "/saude/farmacias/novo",
+      editPath: "/saude/farmacias/editar",
+    },
+    {
+      id: "hospitais",
+      label: "Hospitais",
+      icon: Building2,
+      createPath: "/saude/hospitais/novo",
+      editPath: "/saude/hospitais/editar",
+    },
   ];
 
   const activeTab = tabs.find((t) => t.id === tab)!;
@@ -64,7 +83,7 @@ export default function RedeSaudePage() {
                 Sua rede
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
-                Médicos, farmácias e hospitais cadastrados.
+                Toque em um item pra editar ou excluir.
               </p>
             </div>
           </div>
@@ -125,42 +144,45 @@ export default function RedeSaudePage() {
           ) : (
             <>
               {items.map((item: any, index: number) => (
-                <motion.div
+                <motion.button
                   key={item.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.3) }}
-                  className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(`${activeTab.editPath}?id=${item.id}`);
+                  }}
+                  className="flex w-full items-start gap-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                      <activeTab.icon size={18} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-display text-sm font-semibold text-ink-primary">
-                        {item.nome}
-                      </p>
-                      {tab === "medicos" && item.especialidade && (
-                        <p className="mt-0.5 text-xs text-ink-muted">{item.especialidade}</p>
-                      )}
-                      {tab === "medicos" && item.crm && (
-                        <p className="mt-0.5 text-xs text-ink-faint">CRM {item.crm}</p>
-                      )}
-                      {(tab === "farmacias" || tab === "hospitais") && item.endereco && (
-                        <div className="mt-1 flex items-center gap-1 text-xs text-ink-muted">
-                          <MapPin size={11} />
-                          <span className="truncate">{item.endereco}</span>
-                        </div>
-                      )}
-                      {item.telefone && (
-                        <div className="mt-1 flex items-center gap-1 text-xs text-ink-muted">
-                          <Phone size={11} />
-                          <span>{item.telefone}</span>
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                    <activeTab.icon size={18} />
                   </div>
-                </motion.div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-sm font-semibold text-ink-primary">
+                      {item.nome}
+                    </p>
+                    {tab === "medicos" && item.especialidade && (
+                      <p className="mt-0.5 text-xs text-ink-muted">{item.especialidade}</p>
+                    )}
+                    {tab === "medicos" && item.crm && (
+                      <p className="mt-0.5 text-xs text-ink-faint">CRM {item.crm}</p>
+                    )}
+                    {(tab === "farmacias" || tab === "hospitais") && item.endereco && (
+                      <div className="mt-1 flex items-center gap-1 text-xs text-ink-muted">
+                        <MapPin size={11} />
+                        <span className="truncate">{item.endereco}</span>
+                      </div>
+                    )}
+                    {item.telefone && (
+                      <div className="mt-1 flex items-center gap-1 text-xs text-ink-muted">
+                        <Phone size={11} />
+                        <span>{item.telefone}</span>
+                      </div>
+                    )}
+                  </div>
+                  <ChevronRight size={16} className="mt-1 shrink-0 text-ink-faint" />
+                </motion.button>
               ))}
 
               <button
