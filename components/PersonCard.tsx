@@ -39,26 +39,32 @@ function PersonCardComponent({
 
   return (
     <>
-      <div className="relative flex items-center gap-2">
+      <div className="relative flex items-center gap-1.5">
         <button
           onClick={onClick}
-          className={`group flex items-center gap-2 rounded-full border px-4 py-2 transition-all duration-200 active:scale-95 ${
+          className={`group relative flex items-center gap-2 rounded-full border px-4 py-2 transition-all duration-200 active:scale-95 ${
             isActive
-              ? "border-ice bg-ice/10 text-ice shadow-lg shadow-ice/10"
+              ? "border-transparent bg-ice/12 text-ice shadow-[0_0_0_1.5px_rgba(47,227,201,0.55),0_8px_20px_-8px_rgba(47,227,201,0.35)]"
               : "border-surface-border/50 bg-surface-raised text-ink-muted hover:border-surface-border hover:text-ink-primary"
           }`}
         >
           {person.avatar_url ? (
-            <img
-              src={person.avatar_url}
-              alt={person.name}
-              loading="lazy"
-              className="h-6 w-6 rounded-full border border-white/5 object-cover"
-            />
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                isActive ? "ring-gradient p-[1.5px]" : ""
+              }`}
+            >
+              <img
+                src={person.avatar_url}
+                alt={person.name}
+                loading="lazy"
+                className="h-full w-full rounded-full border border-white/5 object-cover"
+              />
+            </span>
           ) : (
             <div
               className={`flex h-6 w-6 items-center justify-center rounded-full ${
-                isActive ? "bg-ice/15" : "bg-surface"
+                isActive ? "ring-gradient text-void" : "bg-surface"
               }`}
             >
               <User size={13} />
