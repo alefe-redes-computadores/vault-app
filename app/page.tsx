@@ -149,7 +149,7 @@ export default function HomePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[8.5rem]">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <motion.div
             {...pageEnter}
             transition={{ duration: 0.24 }}
@@ -163,14 +163,16 @@ export default function HomePage() {
               className="flex min-w-0 items-center gap-3 text-left"
             >
               {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={displayName}
-                  loading="lazy"
-                  className="h-10 w-10 rounded-full border border-ice/15 object-cover shadow-sm"
-                />
+                <span className="glow-ice flex h-11 w-11 shrink-0 items-center justify-center rounded-full">
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    loading="lazy"
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                </span>
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-sm font-semibold text-ink-muted">
+                <div className="ring-gradient glow-ice flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-void">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -297,8 +299,8 @@ export default function HomePage() {
                 transition={{ duration: 0.28 }}
                 className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
               >
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised">
-                  <FileText size={24} className="text-ink-muted" />
+                <div className="ring-gradient mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl">
+                  <FileText size={24} className="text-void" />
                 </div>
 
                 <h3 className="font-display text-lg font-semibold text-ink-primary">
@@ -316,7 +318,7 @@ export default function HomePage() {
                     trigger("success");
                     router.push("/novo");
                   }}
-                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void shadow-lg shadow-ice/15 transition-all duration-200 active:scale-95"
+                  className="glow-ice mt-6 inline-flex items-center gap-2 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void transition-all duration-200 active:scale-95"
                 >
                   <Plus size={16} />
                   Adicionar documento
@@ -330,10 +332,14 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.24, delay: 0.08 }}
-                className="rounded-[22px] border border-ice/10 bg-gradient-to-br from-ice/10 via-ice/5 to-transparent px-4 py-4"
+                className="relative overflow-hidden rounded-[22px] border border-ice/10 px-4 py-4"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgb(var(--ice-rgb) / 0.10), rgb(var(--violet-rgb) / 0.06))",
+                }}
               >
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-ice/12 text-ice">
+                  <div className="ring-gradient mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-void">
                     <Sparkles size={16} />
                   </div>
                   <div>
