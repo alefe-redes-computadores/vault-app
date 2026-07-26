@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Loader2, ArrowRight, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthDeepLink } from "@/lib/hooks/useAuthDeepLink";
@@ -103,20 +102,31 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-void flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="bg-aurora relative flex min-h-screen items-center justify-center overflow-hidden bg-void p-4">
+      {/* Halo decorativo de fundo, puramente visual */}
+      <div
+        className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full opacity-40 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, rgb(var(--ice-rgb) / 0.35), transparent 70%)",
+        }}
+      />
+
+      <div className="relative w-full max-w-md">
         {/* Logo */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="text-center mb-8"
+          className="mb-8 text-center"
         >
-          <div className="inline-block p-3 rounded-2xl bg-surface-raised border border-surface-border/50 shadow-vault mb-3">
-            <ShieldCheck size={32} className="text-ice" />
+          <div className="ring-gradient glow-ice mb-4 inline-flex h-16 w-16 items-center justify-center rounded-[22px]">
+            <ShieldCheck size={30} className="text-void" strokeWidth={2.2} />
           </div>
-          <h1 className="font-display text-3xl font-bold text-ink-primary">Vault</h1>
-          <p className="text-ink-muted text-sm mt-1">Seus documentos, sempre à mão</p>
+          <h1 className="text-gradient font-display text-3xl font-bold">Vault</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Seus documentos, sempre à mão
+          </p>
         </motion.div>
 
         {/* Card de Login */}
@@ -124,7 +134,7 @@ export default function LoginPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="bg-surface rounded-2xl border border-surface-border/50 p-6 shadow-vault"
+          className="shadow-vault rounded-[28px] border border-surface-border/50 bg-surface/90 p-6 backdrop-blur-xl"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
@@ -149,7 +159,7 @@ export default function LoginPage() {
               <motion.p
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-sm text-coral"
+                className="rounded-xl bg-coral/10 px-3 py-2 text-sm text-coral"
               >
                 {error}
               </motion.p>
@@ -161,7 +171,7 @@ export default function LoginPage() {
               size="lg"
               fullWidth
               disabled={loading}
-              className="flex items-center justify-center gap-2"
+              className="glow-ice flex items-center justify-center gap-2"
             >
               {loading ? (
                 <Loader2 size={18} className="animate-spin" />
@@ -198,7 +208,7 @@ export default function LoginPage() {
           </Button>
 
           {/* Alternar Login/Cadastro */}
-          <p className="text-center text-sm text-ink-muted mt-6">
+          <p className="mt-6 text-center text-sm text-ink-muted">
             {isLogin ? "Não tem uma conta?" : "Já tem uma conta?"}
             <button
               type="button"
@@ -206,12 +216,16 @@ export default function LoginPage() {
                 setIsLogin(!isLogin);
                 setError("");
               }}
-              className="ml-2 text-ice hover:text-ice/80 transition-colors"
+              className="ml-2 font-medium text-ice transition-colors hover:text-ice/80"
             >
               {isLogin ? "Cadastre-se" : "Faça login"}
             </button>
           </p>
         </motion.div>
+
+        <p className="mt-6 text-center text-[11px] text-ink-faint">
+          Seus dados ficam protegidos e sincronizados com segurança.
+        </p>
       </div>
     </div>
   );
