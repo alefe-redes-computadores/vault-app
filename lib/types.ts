@@ -45,7 +45,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     id: 'empresa',
     name: 'Empresa',
     icon: 'Building2',
-    color: '#7C9CB5', // ← steel-light (em vez de amarelo)
+    color: '#7C9CB5',
     description: 'Documentos corporativos',
   },
   outros: {
@@ -185,6 +185,11 @@ export interface SyncQueueItem {
 // ============================================================
 // 6. MÓDULO SAÚDE
 // ============================================================
+// ✅ ATUALIZADO — antes era só 'comum' | 'controlada'. Agora diferencia
+// a cor da receita controlada, já que cada uma tem validade diferente
+// na prática (amarela = 30 dias, azul e branca controlada = 60 dias).
+export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
+
 export interface Medicamento {
   id?: string;
   user_id: string;
@@ -196,6 +201,7 @@ export interface Medicamento {
   data_receita: string;
   proxima_renovacao: string;
   observacoes?: string;
+  tipo_receita?: TipoReceita;
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -203,7 +209,7 @@ export interface Medicamento {
 
 export interface Renovacao {
   id?: string;
-  user_id: string; // ✅ ADICIONADO — coluna criada no Supabase, necessária pro sync funcionar
+  user_id: string;
   medicamento_id: string;
   data: string;
   anexo_url?: string;
