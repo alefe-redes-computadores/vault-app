@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Fingerprint } from "lucide-react";
+import { Fingerprint, ShieldAlert } from "lucide-react";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
+import { useBiometric } from "@/hooks/useBiometric";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 
@@ -17,7 +18,29 @@ export function BiometricLock({ children }: BiometricLockProps) {
   const { showToast } = useToast();
 
   const [isAuthenticated, setIsAuthenticated] = useState(!isEnabled);
-  const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const hasAutoPrompted = useRef(false);
+
+  const { isAvailable, isLoading, authenticate } = useBiometric({
+    title: "Desbloquear Vault",
+    subtitle: "Use sua impressão digital ou Face ID para acessar",
+    description: "Mantenha seus documentos seguros",
+    fallbackTitle: "Usar senha",
+    onSuccess: () => {
+      setAuthError(null);
+      setIsAuthenticated(true);
+      trigger("success");
+      showToast("Autenticado com sucesso!", "success");
+    },
+    onError: (error) => {
+      trigger("error");
+      setAuthError(
+        error?.message?.includes("cancel")
+          ? "Autenticação cancelada"
+          : "Não foi possível reconhecer sua biometria. Tente novamente."
+      );
+    },
+  });
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -25,39 +48,30 @@ export function BiometricLock({ children }: BiometricLockProps) {
     } else {
       document.body.classList.add("biometric-locked");
     }
-
     window.dispatchEvent(new Event("biometric:lockchange"));
   }, [isAuthenticated]);
 
+  // Dispara a biometria automaticamente assim que a tela de bloqueio aparece
+  // (só uma vez, evita loop se o usuário cancelar)
   useEffect(() => {
-    if (!isEnabled) {
-      setIsAuthenticated(true);
-      return;
-    }
+    if (!isEnabled || isAuthenticated || isLoading) return;
+    if (hasAutoPrompted.current) return;
+    if (!isAvailable) return; // ainda checando disponibilidade
 
-    const timer = setTimeout(() => {
-      setIsAuthenticated(true);
-      trigger("success");
-    }, 1200);
-
-    return () => clearTimeout(timer);
-  }, [isEnabled, trigger]);
+    hasAutoPrompted.current = true;
+    authenticate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEnabled, isAuthenticated, isAvailable, isLoading]);
 
   const handleAuthenticate = () => {
-    if (!isEnabled) {
-      setIsAuthenticated(true);
-      return;
-    }
-
-    setIsLoading(true);
     trigger("vibrate");
+    setAuthError(null);
+    authenticate();
+  };
 
-    setTimeout(() => {
-      setIsAuthenticated(true);
-      setIsLoading(false);
-      trigger("success");
-      showToast("Autenticado com sucesso!", "success");
-    }, 1200);
+  const handleContinueWithoutBiometric = () => {
+    trigger("vibrate");
+    setIsAuthenticated(true);
   };
 
   if (!isEnabled) return <>{children}</>;
@@ -91,29 +105,42 @@ export function BiometricLock({ children }: BiometricLockProps) {
         <p className="mt-2 text-sm text-ink-muted">
           {isLoading
             ? "Verificando sua biometria..."
+            : authError
+            ? authError
+            : isAvailable === false
+            ? "Biometria não configurada neste aparelho"
             : "Use a biometria para continuar com segurança"}
         </p>
 
-        <div className="mt-7 flex items-center justify-center gap-2.5">
-          {[0, 0.18, 0.36].map((delay) => (
-            <motion.div
-              key={delay}
-              animate={{
-                scale: [1, 1.35, 1],
-                opacity: [0.25, 1, 0.25],
-              }}
-              transition={{
-                duration: 1.15,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay,
-              }}
-              className="h-2.5 w-2.5 rounded-full bg-ice/45"
-            />
-          ))}
-        </div>
+        {isLoading && (
+          <div className="mt-7 flex items-center justify-center gap-2.5">
+            {[0, 0.18, 0.36].map((delay) => (
+              <motion.div
+                key={delay}
+                animate={{
+                  scale: [1, 1.35, 1],
+                  opacity: [0.25, 1, 0.25],
+                }}
+                transition={{
+                  duration: 1.15,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay,
+                }}
+                className="h-2.5 w-2.5 rounded-full bg-ice/45"
+              />
+            ))}
+          </div>
+        )}
 
-        {!isLoading && (
+        {authError && !isLoading && (
+          <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-coral">
+            <ShieldAlert size={13} />
+            <span>{authError}</span>
+          </div>
+        )}
+
+        {!isLoading && isAvailable !== false && (
           <motion.button
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -121,7 +148,19 @@ export function BiometricLock({ children }: BiometricLockProps) {
             onClick={handleAuthenticate}
             className="mt-7 rounded-full bg-ice/10 px-4 py-2 text-sm font-medium text-ice transition-colors active:scale-95 hover:bg-ice/15"
           >
-            Tentar novamente
+            {authError ? "Tentar novamente" : "Desbloquear"}
+          </motion.button>
+        )}
+
+        {!isLoading && isAvailable === false && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.24, delay: 0.12 }}
+            onClick={handleContinueWithoutBiometric}
+            className="mt-7 rounded-full bg-ice/10 px-4 py-2 text-sm font-medium text-ice transition-colors active:scale-95 hover:bg-ice/15"
+          >
+            Continuar mesmo assim
           </motion.button>
         )}
       </motion.div>
