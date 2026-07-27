@@ -13,6 +13,7 @@ import {
   X,
   FileText,
   Image as ImageIcon,
+  AlertTriangle,
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,8 +23,13 @@ import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
+import {
+  suggestRenewalDate,
+  VALIDADE_RECEITA_DIAS,
+  TIPO_RECEITA_LABELS,
+} from "@/lib/health-utils";
 import { db } from "@/lib/db";
-import type { Attachment, Document } from "@/lib/types";
+import type { Attachment, Document, TipoReceita } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -34,6 +40,8 @@ const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
 };
+
+const TIPO_OPTIONS: TipoReceita[] = ["comum", "amarela", "azul", "branca"];
 
 export default function NovoMedicamentoPage() {
   const { trigger } = useHapticFeedback();
@@ -53,8 +61,10 @@ export default function NovoMedicamentoPage() {
   const [dosagem, setDosagem] = useState("");
   const [medicoId, setMedicoId] = useState<string>("");
   const [farmaciaId, setFarmaciaId] = useState<string>("");
+  const [tipoReceita, setTipoReceita] = useState<TipoReceita>("comum");
   const [dataReceita, setDataReceita] = useState("");
   const [proximaRenovacao, setProximaRenovacao] = useState("");
+  const [renovacaoEditadaManualmente, setRenovacaoEditadaManualmente] = useState(false);
   const [observacoes, setObservacoes] = useState("");
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
@@ -67,6 +77,23 @@ export default function NovoMedicamentoPage() {
 
   const selectedMedico = medicos.find((m: any) => m.id === medicoId);
   const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId);
+  const diasValidade = VALIDADE_RECEITA_DIAS[tipoReceita];
+
+  const handleDataReceitaChange = (value: string) => {
+    setDataReceita(value);
+    if (diasValidade && !renovacaoEditadaManualmente && value) {
+      setProximaRenovacao(suggestRenewalDate(value, tipoReceita));
+    }
+  };
+
+  const handleTipoReceitaChange = (tipo: TipoReceita) => {
+    trigger("vibrate");
+    setTipoReceita(tipo);
+    const dias = VALIDADE_RECEITA_DIAS[tipo];
+    if (dias && dataReceita && !renovacaoEditadaManualmente) {
+      setProximaRenovacao(suggestRenewalDate(dataReceita, tipo));
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -132,7 +159,6 @@ export default function NovoMedicamentoPage() {
     setUploadProgress(0);
 
     try {
-      // 1. Cria o documento "receita" vinculado (aparece também na categoria Saúde da Home)
       const docData: Omit<Document, "id" | "created_at" | "updated_at" | "synced"> = {
         user_id: user?.id || "",
         person_id: personId,
@@ -154,7 +180,6 @@ export default function NovoMedicamentoPage() {
 
       const docId = await addDocument(docData);
 
-      // 2. Upload do anexo (se houver) e atualização do documento com a URL final
       if (localFile && user && attachment) {
         const { url, error } = await uploadFile(user.id, localFile, "saude");
         if (!error && url) {
@@ -168,7 +193,6 @@ export default function NovoMedicamentoPage() {
         }
       }
 
-      // 3. Cria o registro de medicamento, já ligado ao documento da receita
       await addMedicamento({
         document_id: docId,
         nome: nome.trim(),
@@ -178,6 +202,7 @@ export default function NovoMedicamentoPage() {
         data_receita: dataReceita,
         proxima_renovacao: proximaRenovacao,
         observacoes: observacoes.trim() || undefined,
+        tipo_receita: tipoReceita,
       });
 
       trigger("success");
@@ -276,6 +301,48 @@ export default function NovoMedicamentoPage() {
             {errors.personId && <p className="mt-2 text-xs text-coral">{errors.personId}</p>}
           </motion.div>
 
+          {/* Tipo de receita */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.02 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <p className="mb-3 text-sm font-medium text-ink-primary">Tipo de receita</p>
+            <div className="grid grid-cols-2 gap-2">
+              {TIPO_OPTIONS.map((tipo) => {
+                const active = tipoReceita === tipo;
+                return (
+                  <button
+                    key={tipo}
+                    onClick={() => handleTipoReceitaChange(tipo)}
+                    className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
+                      active
+                        ? tipo === "comum"
+                          ? "border-ice bg-ice/12 text-ice"
+                          : "border-violet-400 bg-violet-400/12 text-violet-300"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                    }`}
+                  >
+                    {TIPO_RECEITA_LABELS[tipo]}
+                  </button>
+                );
+              })}
+            </div>
+
+            {diasValidade && (
+              <div className="mt-3 flex items-start gap-2 rounded-2xl bg-violet-400/8 px-3 py-2.5">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0 text-violet-300" />
+                <p className="text-xs leading-5 text-ink-muted">
+                  Receita {TIPO_RECEITA_LABELS[tipoReceita].toLowerCase()} vale{" "}
+                  <span className="font-medium text-ink-primary">{diasValidade} dias</span>. Já
+                  sugeri a próxima renovação com base nisso — ajuste se precisar.
+                </p>
+              </div>
+            )}
+          </motion.div>
+
           {/* Dados do medicamento */}
           <motion.div
             variants={fadeUp}
@@ -342,7 +409,7 @@ export default function NovoMedicamentoPage() {
                 <input
                   type="date"
                   value={dataReceita}
-                  onChange={(e) => setDataReceita(e.target.value)}
+                  onChange={(e) => handleDataReceitaChange(e.target.value)}
                   className={`w-full rounded-2xl border bg-surface-raised px-4 py-3 text-ink-primary outline-none transition-all duration-200 focus:border-ice/50 focus:ring-2 focus:ring-ice/15 ${
                     errors.dataReceita ? "border-coral/50" : "border-surface-border/50"
                   }`}
@@ -359,7 +426,10 @@ export default function NovoMedicamentoPage() {
                 <input
                   type="date"
                   value={proximaRenovacao}
-                  onChange={(e) => setProximaRenovacao(e.target.value)}
+                  onChange={(e) => {
+                    setProximaRenovacao(e.target.value);
+                    setRenovacaoEditadaManualmente(true);
+                  }}
                   className={`w-full rounded-2xl border bg-surface-raised px-4 py-3 text-ink-primary outline-none transition-all duration-200 focus:border-ice/50 focus:ring-2 focus:ring-ice/15 ${
                     errors.proximaRenovacao ? "border-coral/50" : "border-surface-border/50"
                   }`}
