@@ -1,4 +1,4 @@
-import type { Document, Medicamento } from "@/lib/types";
+import type { Document, Medicamento, TipoReceita } from "@/lib/types";
 
 export type AlertLevel = "vencido" | "urgente" | "atencao" | "ok";
 
@@ -11,13 +11,39 @@ export interface HealthAlert {
   daysUntil: number;
   level: AlertLevel;
   href: string;
+  tipoReceita?: TipoReceita;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Janelas de alerta — ajustável sem mexer no resto da lógica
-const URGENTE_DIAS = 5; // vermelho/laranja: renovar/comprar já
-const ATENCAO_DIAS = 15; // amarelo: fica de olho
+// Janelas de alerta padrão (receita comum)
+const URGENTE_DIAS = 5;
+const ATENCAO_DIAS = 15;
+
+// Janelas mais rigorosas para qualquer receita controlada (amarela/azul/branca) —
+// tem validade curta e é mais difícil de renovar em cima da hora.
+const URGENTE_DIAS_CONTROLADA = 7;
+const ATENCAO_DIAS_CONTROLADA = 18;
+
+// Validade padrão de cada cor de receita, em dias, usada só pra SUGERIR
+// a "próxima renovação" no formulário — o usuário pode sempre ajustar.
+export const VALIDADE_RECEITA_DIAS: Record<TipoReceita, number | null> = {
+  comum: null,
+  amarela: 30,
+  azul: 60,
+  branca: 60,
+};
+
+export const TIPO_RECEITA_LABELS: Record<TipoReceita, string> = {
+  comum: "Comum",
+  amarela: "Amarela",
+  azul: "Azul",
+  branca: "Branca controlada",
+};
+
+export function isControlada(tipo?: TipoReceita): boolean {
+  return !!tipo && tipo !== "comum";
+}
 
 export function getDaysUntil(dateStr?: string | null): number | null {
   if (!dateStr) return null;
@@ -29,24 +55,41 @@ export function getDaysUntil(dateStr?: string | null): number | null {
   return Math.round((target.getTime() - today.getTime()) / DAY_MS);
 }
 
-export function getAlertLevel(daysUntil: number | null): AlertLevel {
+export function getAlertLevel(
+  daysUntil: number | null,
+  controlada: boolean = false
+): AlertLevel {
   if (daysUntil === null) return "ok";
   if (daysUntil < 0) return "vencido";
-  if (daysUntil <= URGENTE_DIAS) return "urgente";
-  if (daysUntil <= ATENCAO_DIAS) return "atencao";
+  const urgenteLimite = controlada ? URGENTE_DIAS_CONTROLADA : URGENTE_DIAS;
+  const atencaoLimite = controlada ? ATENCAO_DIAS_CONTROLADA : ATENCAO_DIAS;
+  if (daysUntil <= urgenteLimite) return "urgente";
+  if (daysUntil <= atencaoLimite) return "atencao";
   return "ok";
 }
 
 /**
+ * Sugere a data de próxima renovação com base na cor da receita.
+ * Amarela = +30 dias, Azul/Branca controlada = +60 dias, Comum = sem sugestão.
+ */
+export function suggestRenewalDate(dataReceita: string, tipo: TipoReceita): string {
+  const dias = VALIDADE_RECEITA_DIAS[tipo];
+  if (!dias) return "";
+  const date = new Date(dataReceita);
+  if (isNaN(date.getTime())) return "";
+  date.setDate(date.getDate() + dias);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
  * Alertas de medicamento — baseado em `proxima_renovacao`.
- * Cobre tanto "receita vencendo" quanto "hora de renovar/comprar de novo",
- * já que esse campo representa a data em que o medicamento precisa ser
- * reposto (você define essa data ao cadastrar, considerando estoque + validade da receita).
+ * Qualquer receita controlada (amarela/azul/branca) usa janelas mais rigorosas.
  */
 export function getMedicamentoAlerts(medicamentos: Medicamento[]): HealthAlert[] {
   return medicamentos
     .filter((med) => !!med.id)
     .map((med) => {
+      const controlada = isControlada(med.tipo_receita);
       const daysUntil = getDaysUntil(med.proxima_renovacao);
       return {
         id: med.id!,
@@ -55,10 +98,9 @@ export function getMedicamentoAlerts(medicamentos: Medicamento[]): HealthAlert[]
         subtitle: `${med.dosagem} · Dr(a). ${med.medico}`,
         date: med.proxima_renovacao,
         daysUntil: daysUntil ?? 999,
-        level: getAlertLevel(daysUntil),
-        // ✅ corrigido: apontava pra uma rota "/detalhes" que nunca existiu.
-        // Agora vai direto pra edição, onde também dá pra ajustar a data.
+        level: getAlertLevel(daysUntil, controlada),
         href: `/saude/medicamentos/editar?id=${med.id}`,
+        tipoReceita: med.tipo_receita,
       };
     })
     .filter((a) => a.level !== "ok")
