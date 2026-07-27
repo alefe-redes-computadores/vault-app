@@ -27,6 +27,8 @@ import {
   getUpcomingAppointments,
   alertLevelColor,
   alertLevelLabel,
+  isControlada,
+  TIPO_RECEITA_LABELS,
   type HealthAlert,
 } from "@/lib/health-utils";
 
@@ -34,6 +36,7 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const color = alertLevelColor(alert.level);
+  const controlada = isControlada(alert.tipoReceita);
 
   return (
     <button
@@ -55,9 +58,16 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-ink-primary">
-          {alert.title}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-sm font-semibold text-ink-primary">
+            {alert.title}
+          </p>
+          {controlada && alert.tipoReceita && (
+            <span className="shrink-0 rounded-full bg-violet-400/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-300">
+              {TIPO_RECEITA_LABELS[alert.tipoReceita]}
+            </span>
+          )}
+        </div>
         <p className="truncate text-xs text-ink-muted">{alert.subtitle}</p>
       </div>
       <span
