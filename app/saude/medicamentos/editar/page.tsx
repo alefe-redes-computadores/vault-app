@@ -3,11 +3,17 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Pill, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Pill, Trash2, AlertTriangle } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHapticFeedback } from "@/lib/haptics";
+import {
+  suggestRenewalDate,
+  VALIDADE_RECEITA_DIAS,
+  TIPO_RECEITA_LABELS,
+} from "@/lib/health-utils";
+import type { TipoReceita } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -20,6 +26,8 @@ const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
 };
+
+const TIPO_OPTIONS: TipoReceita[] = ["comum", "amarela", "azul", "branca"];
 
 export default function EditarMedicamentoPage() {
   const { trigger } = useHapticFeedback();
@@ -35,10 +43,9 @@ export default function EditarMedicamentoPage() {
 
   const [nome, setNome] = useState("");
   const [dosagem, setDosagem] = useState("");
-  // Guardamos o nome do médico/farmácia como veio salvo (são strings no registro,
-  // não IDs) — ao trocar pelo modal, atualizamos esse texto direto.
   const [medicoNome, setMedicoNome] = useState("");
   const [farmaciaNome, setFarmaciaNome] = useState("");
+  const [tipoReceita, setTipoReceita] = useState<TipoReceita>("comum");
   const [dataReceita, setDataReceita] = useState("");
   const [proximaRenovacao, setProximaRenovacao] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -49,6 +56,8 @@ export default function EditarMedicamentoPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const diasValidade = VALIDADE_RECEITA_DIAS[tipoReceita];
 
   useEffect(() => {
     if (!id) {
@@ -67,11 +76,23 @@ export default function EditarMedicamentoPage() {
         setDataReceita(item.data_receita || "");
         setProximaRenovacao(item.proxima_renovacao || "");
         setObservacoes(item.observacoes || "");
+        setTipoReceita((item.tipo_receita as TipoReceita) || "comum");
       }
       setIsLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const handleTipoReceitaChange = (tipo: TipoReceita) => {
+    trigger("vibrate");
+    setTipoReceita(tipo);
+  };
+
+  const aplicarSugestaoValidade = () => {
+    if (!dataReceita || !diasValidade) return;
+    trigger("vibrate");
+    setProximaRenovacao(suggestRenewalDate(dataReceita, tipoReceita));
+  };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -101,6 +122,7 @@ export default function EditarMedicamentoPage() {
         data_receita: dataReceita,
         proxima_renovacao: proximaRenovacao,
         observacoes: observacoes.trim() || undefined,
+        tipo_receita: tipoReceita,
       });
       trigger("success");
       router.push("/saude");
@@ -191,11 +213,60 @@ export default function EditarMedicamentoPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
+          {/* Tipo de receita */}
           <motion.div
             variants={fadeUp}
             initial="initial"
             animate="animate"
             transition={{ duration: 0.28 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <p className="mb-3 text-sm font-medium text-ink-primary">Tipo de receita</p>
+            <div className="grid grid-cols-2 gap-2">
+              {TIPO_OPTIONS.map((tipo) => {
+                const active = tipoReceita === tipo;
+                return (
+                  <button
+                    key={tipo}
+                    onClick={() => handleTipoReceitaChange(tipo)}
+                    className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
+                      active
+                        ? tipo === "comum"
+                          ? "border-ice bg-ice/12 text-ice"
+                          : "border-violet-400 bg-violet-400/12 text-violet-300"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                    }`}
+                  >
+                    {TIPO_RECEITA_LABELS[tipo]}
+                  </button>
+                );
+              })}
+            </div>
+
+            {diasValidade && (
+              <div className="mt-3 flex items-start justify-between gap-2 rounded-2xl bg-violet-400/8 px-3 py-2.5">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0 text-violet-300" />
+                  <p className="text-xs leading-5 text-ink-muted">
+                    Receita {TIPO_RECEITA_LABELS[tipoReceita].toLowerCase()} vale{" "}
+                    <span className="font-medium text-ink-primary">{diasValidade} dias</span>.
+                  </p>
+                </div>
+                <button
+                  onClick={aplicarSugestaoValidade}
+                  className="shrink-0 whitespace-nowrap text-xs font-medium text-violet-300 hover:text-violet-200"
+                >
+                  Aplicar +{diasValidade}d
+                </button>
+              </div>
+            )}
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.04 }}
             className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <Input
@@ -289,7 +360,7 @@ export default function EditarMedicamentoPage() {
             variants={fadeUp}
             initial="initial"
             animate="animate"
-            transition={{ duration: 0.28, delay: 0.04 }}
+            transition={{ duration: 0.28, delay: 0.08 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <TextArea
