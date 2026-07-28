@@ -57,7 +57,7 @@ export default function FavoritesPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -72,7 +72,9 @@ export default function FavoritesPage() {
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <Star size={18} className="fill-ice text-ice" />
+                <span className="ring-gradient flex h-6 w-6 items-center justify-center rounded-full">
+                  <Star size={12} className="fill-void text-void" />
+                </span>
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
                   Vault
                 </p>
@@ -163,8 +165,8 @@ export default function FavoritesPage() {
                 transition={{ duration: 0.28 }}
                 className="flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface px-6 py-16 text-center shadow-sm"
               >
-                <div className="mb-5 flex h-24 w-24 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
-                  <Heart size={36} className="text-ink-muted/40" />
+                <div className="glow-ice mb-5 flex h-24 w-24 items-center justify-center rounded-full border border-ice/15 bg-surface-raised">
+                  <Heart size={36} className="text-ice/50" />
                 </div>
 
                 <h3 className="font-display text-xl font-semibold text-ink-primary">
@@ -181,7 +183,7 @@ export default function FavoritesPage() {
                     trigger("vibrate");
                     router.push("/");
                   }}
-                  className="mt-6 flex items-center gap-2 rounded-full bg-ice px-6 py-3 text-sm font-medium text-void transition-all active:scale-95"
+                  className="glow-ice mt-6 flex items-center gap-2 rounded-full bg-ice px-6 py-3 text-sm font-medium text-void transition-all active:scale-95"
                 >
                   <ArrowLeft size={16} />
                   Voltar para a Home
