@@ -4,10 +4,8 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
-  Filter,
   X,
   Calendar,
-  ChevronDown,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
@@ -168,7 +166,7 @@ export default function DocumentsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-6">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
@@ -404,8 +402,8 @@ export default function DocumentsPage() {
               transition={{ duration: 0.24 }}
               className="flex flex-col items-center justify-center rounded-[30px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
             >
-              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
-                <Search size={28} className="text-ink-muted" />
+              <div className="glow-ice mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-ice/15 bg-surface-raised">
+                <Search size={28} className="text-ice/60" />
               </div>
 
               <h3 className="font-display text-lg font-semibold text-ink-primary">
