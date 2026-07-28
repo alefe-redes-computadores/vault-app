@@ -4,7 +4,7 @@ export type AlertLevel = "vencido" | "urgente" | "atencao" | "ok";
 
 export interface HealthAlert {
   id: string;
-  kind: "medicamento" | "documento" | "consulta";
+  kind: "medicamento" | "documento" | "consulta" | "estoque";
   title: string;
   subtitle: string;
   date: string;
@@ -16,17 +16,16 @@ export interface HealthAlert {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Janelas de alerta padrão (receita comum)
 const URGENTE_DIAS = 5;
 const ATENCAO_DIAS = 15;
-
-// Janelas mais rigorosas para qualquer receita controlada (amarela/azul/branca) —
-// tem validade curta e é mais difícil de renovar em cima da hora.
 const URGENTE_DIAS_CONTROLADA = 7;
 const ATENCAO_DIAS_CONTROLADA = 18;
 
-// Validade padrão de cada cor de receita, em dias, usada só pra SUGERIR
-// a "próxima renovação" no formulário — o usuário pode sempre ajustar.
+// Estoque usa uma janela um pouco mais folgada que renovação, porque
+// dá tempo de ir na farmácia sem depender de consulta médica nova.
+const URGENTE_DIAS_ESTOQUE = 3;
+const ATENCAO_DIAS_ESTOQUE = 7;
+
 export const VALIDADE_RECEITA_DIAS: Record<TipoReceita, number | null> = {
   comum: null,
   amarela: 30,
@@ -68,10 +67,6 @@ export function getAlertLevel(
   return "ok";
 }
 
-/**
- * Sugere a data de próxima renovação com base na cor da receita.
- * Amarela = +30 dias, Azul/Branca controlada = +60 dias, Comum = sem sugestão.
- */
 export function suggestRenewalDate(dataReceita: string, tipo: TipoReceita): string {
   const dias = VALIDADE_RECEITA_DIAS[tipo];
   if (!dias) return "";
@@ -81,9 +76,86 @@ export function suggestRenewalDate(dataReceita: string, tipo: TipoReceita): stri
   return date.toISOString().slice(0, 10);
 }
 
+// ============================================================
+// ESTOQUE — cálculo de "quantos dias faltam" a partir de uma
+// contagem feita numa data de referência + horários de dose.
+// Não precisa de job em background: sempre recalcula na hora,
+// olhando quantos dias já se passaram desde a referência.
+// ============================================================
+export interface EstoqueInfo {
+  consumoDiario: number;
+  quantidadeInicial: number;
+  quantidadeRestante: number;
+  diasRestantes: number;
+  unidade: string;
+}
+
+export function temEstoqueConfigurado(med: Medicamento): boolean {
+  return (
+    typeof med.estoque_quantidade === "number" &&
+    !!med.estoque_data_referencia &&
+    !!med.estoque_horarios &&
+    med.estoque_horarios.length > 0
+  );
+}
+
+export function computeEstoqueInfo(med: Medicamento): EstoqueInfo | null {
+  if (!temEstoqueConfigurado(med)) return null;
+
+  const horarios = med.estoque_horarios!;
+  const unidadePorDose = med.estoque_unidade_por_dose || 1;
+  const consumoDiario = horarios.length * unidadePorDose;
+  if (consumoDiario <= 0) return null;
+
+  const diasDesdeReferencia = getDaysUntil(med.estoque_data_referencia);
+  if (diasDesdeReferencia === null) return null;
+  // diasDesdeReferencia é negativo quando a referência é no passado
+  // (o que é o caso normal — contamos o estoque hoje ou no passado)
+  const diasPassados = Math.max(0, -diasDesdeReferencia);
+
+  const quantidadeInicial = med.estoque_quantidade!;
+  const consumido = diasPassados * consumoDiario;
+  const quantidadeRestante = Math.max(0, quantidadeInicial - consumido);
+  const diasRestantes = Math.floor(quantidadeRestante / consumoDiario);
+
+  return {
+    consumoDiario,
+    quantidadeInicial,
+    quantidadeRestante,
+    diasRestantes,
+    unidade: med.estoque_unidade_medida || "unidade(s)",
+  };
+}
+
+export function getEstoqueAlerts(medicamentos: Medicamento[]): HealthAlert[] {
+  return medicamentos
+    .filter((med) => !!med.id && temEstoqueConfigurado(med))
+    .map((med) => {
+      const info = computeEstoqueInfo(med)!;
+      const daysUntil = info.diasRestantes;
+      let level: AlertLevel = "ok";
+      if (daysUntil <= 0) level = "vencido";
+      else if (daysUntil <= URGENTE_DIAS_ESTOQUE) level = "urgente";
+      else if (daysUntil <= ATENCAO_DIAS_ESTOQUE) level = "atencao";
+
+      return {
+        id: med.id!,
+        kind: "estoque" as const,
+        title: med.nome,
+        subtitle: `${info.quantidadeRestante} ${info.unidade} restantes`,
+        date: "",
+        daysUntil,
+        level,
+        href: `/saude/medicamentos/editar?id=${med.id}`,
+        tipoReceita: med.tipo_receita,
+      };
+    })
+    .filter((a) => a.level !== "ok")
+    .sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
 /**
  * Alertas de medicamento — baseado em `proxima_renovacao`.
- * Qualquer receita controlada (amarela/azul/branca) usa janelas mais rigorosas.
  */
 export function getMedicamentoAlerts(medicamentos: Medicamento[]): HealthAlert[] {
   return medicamentos
@@ -107,10 +179,6 @@ export function getMedicamentoAlerts(medicamentos: Medicamento[]): HealthAlert[]
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
-/**
- * Alertas de documentos da categoria Saúde (receitas, RG de convênio etc.)
- * que tenham `expiry_date` ou `renewal_date` no metadata.
- */
 export function getDocumentAlerts(documents: Document[]): HealthAlert[] {
   return documents
     .filter((doc) => doc.category_id === "saude" && !!doc.id)
@@ -132,10 +200,6 @@ export function getDocumentAlerts(documents: Document[]): HealthAlert[] {
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
-/**
- * Consultas/exames próximos — usa a data de documentos do tipo
- * prontuario/laudo/encaminhamento que caiam nos próximos 30 dias.
- */
 export function getUpcomingAppointments(documents: Document[]): HealthAlert[] {
   const relevantTypes = ["prontuario", "laudo", "encaminhamento"];
   return documents
@@ -177,8 +241,14 @@ export function alertLevelColor(level: AlertLevel): string {
 export function alertLevelLabel(level: AlertLevel, daysUntil: number): string {
   if (level === "vencido") {
     const dias = Math.abs(daysUntil);
-    return `Vencido há ${dias} dia${dias !== 1 ? "s" : ""}`;
+    return dias === 0 ? "Acabou hoje" : `Acabou há ${dias} dia${dias !== 1 ? "s" : ""}`;
   }
   if (daysUntil === 0) return "Vence hoje";
   return `Vence em ${daysUntil} dia${daysUntil !== 1 ? "s" : ""}`;
+}
+
+export function estoqueLevelLabel(level: AlertLevel, diasRestantes: number): string {
+  if (level === "vencido") return "Acabou";
+  if (diasRestantes === 0) return "Acaba hoje";
+  return `Acaba em ${diasRestantes} dia${diasRestantes !== 1 ? "s" : ""}`;
 }
