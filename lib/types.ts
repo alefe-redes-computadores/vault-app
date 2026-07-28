@@ -185,9 +185,6 @@ export interface SyncQueueItem {
 // ============================================================
 // 6. MÓDULO SAÚDE
 // ============================================================
-// ✅ ATUALIZADO — antes era só 'comum' | 'controlada'. Agora diferencia
-// a cor da receita controlada, já que cada uma tem validade diferente
-// na prática (amarela = 30 dias, azul e branca controlada = 60 dias).
 export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
 
 export interface Medicamento {
@@ -202,6 +199,16 @@ export interface Medicamento {
   proxima_renovacao: string;
   observacoes?: string;
   tipo_receita?: TipoReceita;
+
+  // ✅ NOVO — rastreio de estoque real ("faltam X dias")
+  // estoque_quantidade = quantas unidades você tinha em `estoque_data_referencia`.
+  // O restante é calculado a partir daí (não precisa atualizar todo dia).
+  estoque_quantidade?: number;
+  estoque_data_referencia?: string; // ISO date
+  estoque_horarios?: string[]; // ex: ["08:00", "20:00"]
+  estoque_unidade_por_dose?: number; // quantas unidades por dose (padrão 1)
+  estoque_unidade_medida?: string; // ex: "comprimido(s)", "ml", "gota(s)"
+
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
