@@ -103,6 +103,10 @@ export function useSyncQueue() {
 
   // ============================================================
   // syncMedicamento
+  // ✅ CORRIGIDO — antes não mandava tipo_receita nem os campos de
+  // estoque (estoque_quantidade, estoque_data_referencia,
+  // estoque_horarios, estoque_unidade_por_dose, estoque_unidade_medida)
+  // pro Supabase. Ficavam só salvos localmente, nunca sincronizavam.
   // ============================================================
   const syncMedicamento = async (item: any) => {
     if (!supabase) return;
@@ -121,6 +125,12 @@ export function useSyncQueue() {
           data_receita: med.data_receita,
           proxima_renovacao: med.proxima_renovacao,
           observacoes: med.observacoes || null,
+          tipo_receita: med.tipo_receita || 'comum',
+          estoque_quantidade: med.estoque_quantidade ?? null,
+          estoque_data_referencia: med.estoque_data_referencia || null,
+          estoque_horarios: med.estoque_horarios || null,
+          estoque_unidade_por_dose: med.estoque_unidade_por_dose ?? null,
+          estoque_unidade_medida: med.estoque_unidade_medida || null,
           created_at: med.created_at,
           updated_at: med.updated_at,
         });
@@ -140,6 +150,12 @@ export function useSyncQueue() {
             data_receita: med.data_receita,
             proxima_renovacao: med.proxima_renovacao,
             observacoes: med.observacoes || null,
+            tipo_receita: med.tipo_receita || 'comum',
+            estoque_quantidade: med.estoque_quantidade ?? null,
+            estoque_data_referencia: med.estoque_data_referencia || null,
+            estoque_horarios: med.estoque_horarios || null,
+            estoque_unidade_por_dose: med.estoque_unidade_por_dose ?? null,
+            estoque_unidade_medida: med.estoque_unidade_medida || null,
             updated_at: med.updated_at,
           })
           .eq('id', med.id);
@@ -574,13 +590,11 @@ export function useSyncQueue() {
   // ============================================================
   const processQueue = useCallback(async () => {
     if (processingRef.current || !isOnline) {
-      // ✅ Não adiciona log para evitar spam
       return;
     }
 
     const count = await db.syncQueue.count();
     if (count === 0) {
-      // ✅ Não adiciona log para evitar spam
       return;
     }
 
@@ -605,7 +619,6 @@ export function useSyncQueue() {
         return;
       }
 
-      // Reordenar: persons primeiro
       const priorityOrder = ['persons', 'documents', 'medicamentos', 'renovacoes', 'vaults', 'vaultMembers', 'medicos', 'farmacias', 'hospitais'];
       queue.sort((a, b) => {
         const aIndex = priorityOrder.indexOf(a.table);
@@ -642,19 +655,16 @@ export function useSyncQueue() {
         } catch (error: any) {
           const retryCount = (item.retry_count || 0) + 1;
           const failed = retryCount >= MAX_RETRIES;
-          
+
           const errorMessage = error?.message || error?.toString() || 'Erro desconhecido';
-          
+
           await db.syncQueue.update(item.id!, {
             retry_count: retryCount,
             failed: failed,
           });
-          
+
           if (failed) {
             addLog(`✖️ Falha permanente em ${item.table}: ${errorMessage}`, 'error');
-          } else {
-            // ✅ Não adiciona log para tentativas intermediárias (evita spam)
-            // addLog(`⚠️ Falha em ${item.table} (tentativa ${retryCount}/${MAX_RETRIES}): ${errorMessage}`, 'error');
           }
         }
       }
@@ -714,7 +724,7 @@ export function useSyncQueue() {
         processQueue();
       }
     };
-    
+
     window.addEventListener('sync:process', handleProcess);
     return () => window.removeEventListener('sync:process', handleProcess);
   }, [isOnline, processQueue]);
@@ -745,14 +755,14 @@ export function useSyncQueue() {
   // ============================================================
   useEffect(() => {
     if (!isOnline) return;
-    
+
     const checkQueue = async () => {
       const count = await db.syncQueue.count();
       if (count > 0 && !processingRef.current) {
         processQueue();
       }
     };
-    
+
     const interval = setInterval(checkQueue, 10000);
     return () => clearInterval(interval);
   }, [isOnline, processQueue]);
