@@ -12,6 +12,7 @@ import {
   Stethoscope,
   Building2,
   ChevronRight,
+  PackageX,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -25,8 +26,10 @@ import {
   getMedicamentoAlerts,
   getDocumentAlerts,
   getUpcomingAppointments,
+  getEstoqueAlerts,
   alertLevelColor,
   alertLevelLabel,
+  estoqueLevelLabel,
   isControlada,
   TIPO_RECEITA_LABELS,
   type HealthAlert,
@@ -80,6 +83,42 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
   );
 }
 
+function EstoqueRow({ alert }: { alert: HealthAlert }) {
+  const router = useRouter();
+  const { trigger } = useHapticFeedback();
+  const color = alertLevelColor(alert.level);
+
+  return (
+    <button
+      onClick={() => {
+        trigger("vibrate");
+        router.push(alert.href);
+      }}
+      className="flex w-full items-center gap-3 rounded-[22px] border bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+      style={{ borderColor: `${color}30` }}
+    >
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+        style={{ backgroundColor: `${color}18` }}
+      >
+        <PackageX size={18} style={{ color }} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-ink-primary">
+          {alert.title}
+        </p>
+        <p className="truncate text-xs text-ink-muted">{alert.subtitle}</p>
+      </div>
+      <span
+        className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold"
+        style={{ backgroundColor: `${color}18`, color }}
+      >
+        {estoqueLevelLabel(alert.level, alert.daysUntil)}
+      </span>
+    </button>
+  );
+}
+
 function AppointmentRow({ alert }: { alert: HealthAlert }) {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
@@ -126,6 +165,10 @@ export default function SaudePage() {
     () => getDocumentAlerts(documents || []),
     [documents]
   );
+  const estoqueAlerts = useMemo(
+    () => getEstoqueAlerts(medicamentos || []),
+    [medicamentos]
+  );
   const appointments = useMemo(
     () => getUpcomingAppointments(documents || []),
     [documents]
@@ -141,6 +184,8 @@ export default function SaudePage() {
   if (isLoading) {
     return <LoadingSkeleton />;
   }
+
+  const totalAlertas = allAlerts.length + estoqueAlerts.length;
 
   const quickActions = [
     { id: "novo-medicamento", label: "Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
@@ -176,8 +221,8 @@ export default function SaudePage() {
                 Saúde
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
-                {allAlerts.length > 0
-                  ? `${allAlerts.length} alerta${allAlerts.length !== 1 ? "s" : ""} para revisar`
+                {totalAlertas > 0
+                  ? `${totalAlertas} alerta${totalAlertas !== 1 ? "s" : ""} para revisar`
                   : "Tudo em dia por aqui"}
               </p>
             </div>
@@ -214,7 +259,28 @@ export default function SaudePage() {
             })}
           </motion.div>
 
-          {/* Alertas */}
+          {/* Estoque acabando */}
+          {estoqueAlerts.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: 0.02 }}
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <PackageX size={15} className="text-coral" />
+                <h2 className="font-display text-sm font-semibold text-ink-primary">
+                  Estoque acabando
+                </h2>
+              </div>
+              <div className="space-y-2.5">
+                {estoqueAlerts.map((alert) => (
+                  <EstoqueRow key={`estoque-${alert.id}`} alert={alert} />
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Alertas de renovação */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
