@@ -14,6 +14,10 @@ import {
   FileText,
   Image as ImageIcon,
   AlertTriangle,
+  Package,
+  Plus,
+  Trash2,
+  Clock,
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +47,10 @@ const fadeUp = {
 
 const TIPO_OPTIONS: TipoReceita[] = ["comum", "amarela", "azul", "branca"];
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function NovoMedicamentoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -69,6 +77,14 @@ export default function NovoMedicamentoPage() {
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
 
+  // Estoque
+  const [estoqueAtivo, setEstoqueAtivo] = useState(false);
+  const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
+  const [estoqueDataReferencia, setEstoqueDataReferencia] = useState(todayISO());
+  const [estoqueUnidade, setEstoqueUnidade] = useState("comprimido(s)");
+  const [estoqueUnidadePorDose, setEstoqueUnidadePorDose] = useState("1");
+  const [horarios, setHorarios] = useState<string[]>([""]);
+
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,6 +110,32 @@ export default function NovoMedicamentoPage() {
       setProximaRenovacao(suggestRenewalDate(dataReceita, tipo));
     }
   };
+
+  const toggleEstoque = () => {
+    trigger("vibrate");
+    setEstoqueAtivo((prev) => !prev);
+  };
+
+  const updateHorario = (index: number, value: string) => {
+    setHorarios((prev) => prev.map((h, i) => (i === index ? value : h)));
+  };
+
+  const addHorario = () => {
+    trigger("vibrate");
+    setHorarios((prev) => [...prev, ""]);
+  };
+
+  const removeHorario = (index: number) => {
+    trigger("vibrate");
+    setHorarios((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const consumoDiario =
+    horarios.filter((h) => h).length * (Number(estoqueUnidadePorDose) || 1);
+  const diasEstimados =
+    estoqueAtivo && consumoDiario > 0 && Number(estoqueQuantidade) > 0
+      ? Math.floor(Number(estoqueQuantidade) / consumoDiario)
+      : null;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,6 +186,20 @@ export default function NovoMedicamentoPage() {
     if (!medicoId) newErrors.medicoId = "Selecione o médico";
     if (!dataReceita) newErrors.dataReceita = "Data da receita é obrigatória";
     if (!proximaRenovacao) newErrors.proximaRenovacao = "Data da próxima renovação é obrigatória";
+
+    if (estoqueAtivo) {
+      if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) {
+        newErrors.estoqueQuantidade = "Informe a quantidade atual";
+      }
+      if (!estoqueDataReferencia) {
+        newErrors.estoqueDataReferencia = "Informe a data dessa contagem";
+      }
+      const horariosPreenchidos = horarios.filter((h) => h);
+      if (horariosPreenchidos.length === 0) {
+        newErrors.horarios = "Adicione pelo menos um horário";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -203,6 +259,13 @@ export default function NovoMedicamentoPage() {
         proxima_renovacao: proximaRenovacao,
         observacoes: observacoes.trim() || undefined,
         tipo_receita: tipoReceita,
+        estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
+        estoque_data_referencia: estoqueAtivo ? estoqueDataReferencia : undefined,
+        estoque_horarios: estoqueAtivo ? horarios.filter((h) => h) : undefined,
+        estoque_unidade_por_dose: estoqueAtivo
+          ? Number(estoqueUnidadePorDose) || 1
+          : undefined,
+        estoque_unidade_medida: estoqueAtivo ? estoqueUnidade.trim() || "comprimido(s)" : undefined,
       });
 
       trigger("success");
@@ -439,6 +502,171 @@ export default function NovoMedicamentoPage() {
                 )}
               </div>
             </div>
+          </motion.div>
+
+          {/* Estoque */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.06 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <button
+              onClick={toggleEstoque}
+              className="flex w-full items-center justify-between"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                  <Package size={16} />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-ink-primary">
+                    Acompanhar estoque
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    Receba alerta quando estiver acabando
+                  </p>
+                </div>
+              </div>
+              <div
+                className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+                  estoqueAtivo ? "bg-ice" : "bg-surface-border"
+                }`}
+              >
+                <div
+                  className={`h-5 w-5 rounded-full bg-void transition-transform ${
+                    estoqueAtivo ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {estoqueAtivo && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.22 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-4 space-y-3 border-t border-surface-border/40 pt-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-ink-primary">
+                          Quantidade atual <span className="text-coral">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          inputMode="numeric"
+                          placeholder="Ex: 30"
+                          value={estoqueQuantidade}
+                          onChange={(e) => setEstoqueQuantidade(e.target.value)}
+                          className={`w-full rounded-2xl border bg-surface-raised px-4 py-3 text-ink-primary outline-none transition-all duration-200 focus:border-ice/50 focus:ring-2 focus:ring-ice/15 ${
+                            errors.estoqueQuantidade ? "border-coral/50" : "border-surface-border/50"
+                          }`}
+                        />
+                        {errors.estoqueQuantidade && (
+                          <p className="text-xs text-coral">{errors.estoqueQuantidade}</p>
+                        )}
+                      </div>
+
+                      <Input
+                        label="Unidade"
+                        placeholder="comprimido(s)"
+                        value={estoqueUnidade}
+                        onChange={(e) => setEstoqueUnidade(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-ink-primary">
+                          Contado em <span className="text-coral">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={estoqueDataReferencia}
+                          onChange={(e) => setEstoqueDataReferencia(e.target.value)}
+                          className={`w-full rounded-2xl border bg-surface-raised px-4 py-3 text-ink-primary outline-none transition-all duration-200 focus:border-ice/50 focus:ring-2 focus:ring-ice/15 ${
+                            errors.estoqueDataReferencia ? "border-coral/50" : "border-surface-border/50"
+                          }`}
+                        />
+                        {errors.estoqueDataReferencia && (
+                          <p className="text-xs text-coral">{errors.estoqueDataReferencia}</p>
+                        )}
+                      </div>
+
+                      <Input
+                        label="Unid. por dose"
+                        type="number"
+                        min="1"
+                        inputMode="numeric"
+                        value={estoqueUnidadePorDose}
+                        onChange={(e) => setEstoqueUnidadePorDose(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <label className="block text-sm font-medium text-ink-primary">
+                          Horários de dose <span className="text-coral">*</span>
+                        </label>
+                        <button
+                          onClick={addHorario}
+                          className="flex items-center gap-1 text-xs font-medium text-ice hover:text-ice/80"
+                        >
+                          <Plus size={13} />
+                          Adicionar
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {horarios.map((horario, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                              <Clock
+                                size={14}
+                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                              />
+                              <input
+                                type="time"
+                                value={horario}
+                                onChange={(e) => updateHorario(index, e.target.value)}
+                                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised py-3 pl-9 pr-3 text-ink-primary outline-none transition-all duration-200 focus:border-ice/50 focus:ring-2 focus:ring-ice/15"
+                              />
+                            </div>
+                            {horarios.length > 1 && (
+                              <button
+                                onClick={() => removeHorario(index)}
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-border/40 hover:text-coral"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {errors.horarios && (
+                        <p className="mt-1 text-xs text-coral">{errors.horarios}</p>
+                      )}
+                    </div>
+
+                    {diasEstimados !== null && (
+                      <div className="rounded-2xl bg-ice/8 px-3 py-2.5 text-xs text-ink-muted">
+                        Com esse ritmo, dá pra{" "}
+                        <span className="font-medium text-ink-primary">
+                          {diasEstimados} dia{diasEstimados !== 1 ? "s" : ""}
+                        </span>{" "}
+                        a partir da data contada.
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Notas */}
