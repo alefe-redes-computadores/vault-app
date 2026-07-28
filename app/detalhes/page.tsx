@@ -243,6 +243,7 @@ export default function DocumentDetailPage() {
 
   const categoryId = doc.category_id as CategoryId;
   const category = CATEGORIES[categoryId];
+  const color = category?.color || "#6B7280";
   const CategoryIcon = CATEGORY_ICONS[doc.category_id] || FolderOpen;
   const hasMetadata = Object.keys(doc.metadata || {}).length > 0;
   const hasAttachments = doc.attachments && doc.attachments.length > 0;
@@ -251,7 +252,7 @@ export default function DocumentDetailPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button
@@ -282,7 +283,11 @@ export default function DocumentDetailPage() {
               <button
                 onClick={handleFavoriteToggle}
                 aria-label="Favoritar documento"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all active:scale-95 ${
+                  doc.is_favorite
+                    ? "border-transparent bg-ice/12"
+                    : "border-surface-border/50 bg-surface-raised"
+                }`}
               >
                 <Star
                   size={18}
@@ -309,18 +314,22 @@ export default function DocumentDetailPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28 }}
-            className="rounded-[28px] border bg-surface p-5 shadow-sm"
-            style={{ borderColor: `${category?.color || "#6B7280"}25` }}
+            className="relative overflow-hidden rounded-[28px] border bg-surface p-5 shadow-sm"
+            style={{ borderColor: `${color}25` }}
           >
+            <div
+              className="absolute inset-x-0 top-0 h-[3px]"
+              style={{ backgroundColor: color }}
+            />
+
             <div className="flex items-start gap-4">
               <div
                 className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: `${category?.color || "#6B7280"}15` }}
+                style={{
+                  background: `linear-gradient(135deg, ${color}30, ${color}0d)`,
+                }}
               >
-                <CategoryIcon
-                  size={24}
-                  style={{ color: category?.color || "#6B7280" }}
-                />
+                <CategoryIcon size={24} style={{ color }} />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -329,7 +338,16 @@ export default function DocumentDetailPage() {
                 </h2>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
-                  <span>{category?.name || "Outros"}</span>
+                  <span
+                    className="rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                    style={{
+                      backgroundColor: `${color}12`,
+                      borderColor: `${color}28`,
+                      color,
+                    }}
+                  >
+                    {category?.name || "Outros"}
+                  </span>
                   <span className="h-1 w-1 rounded-full bg-ink-faint" />
                   <span className="capitalize">{doc.type}</span>
                   {doc.vault_id && (
@@ -424,9 +442,13 @@ export default function DocumentDetailPage() {
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <p className="text-ink-muted">
                   {doc.synced ? (
-                    <span className="text-emerald-400">✓ Sincronizado</span>
+                    <span className="inline-flex items-center gap-1 text-emerald-400">
+                      ✓ Sincronizado
+                    </span>
                   ) : (
-                    <span className="animate-pulse text-coral">↻ Pendente</span>
+                    <span className="inline-flex animate-pulse items-center gap-1 text-coral">
+                      ↻ Pendente
+                    </span>
                   )}
                 </p>
                 <p className="text-ink-muted">
@@ -460,7 +482,7 @@ export default function DocumentDetailPage() {
                     <button
                       key={attachment.id}
                       onClick={() => openAttachment(attachment)}
-                      className="group relative overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface-raised p-3 text-left transition-all active:scale-[0.985]"
+                      className="group relative overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface-raised p-3 text-left transition-all active:scale-[0.985] hover:border-ice/25"
                     >
                       {isImage ? (
                         <img
@@ -482,7 +504,7 @@ export default function DocumentDetailPage() {
                         />
                       ) : (
                         <div className="flex h-24 items-center justify-center rounded-xl bg-surface">
-                          <Icon size={26} className="text-ink-muted" />
+                          <Icon size={26} className="text-ice/50" />
                         </div>
                       )}
 
@@ -552,7 +574,7 @@ export default function DocumentDetailPage() {
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.96, opacity: 0, y: 8 }}
                 transition={{ duration: 0.22 }}
-                className="relative w-full max-w-4xl rounded-[28px] border border-surface-border bg-surface-raised p-4 shadow-vault"
+                className="shadow-vault relative w-full max-w-4xl rounded-[28px] border border-surface-border bg-surface-raised p-4"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-4 flex items-center justify-between gap-3">
