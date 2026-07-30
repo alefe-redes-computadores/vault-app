@@ -53,14 +53,14 @@ export function BottomSheet({ isOpen, onClose, children, title, height = "auto" 
       <div
         ref={sheetRef}
         className={`
-          w-full max-w-lg rounded-sheet bg-surface-raised border border-surface-border
+          relative w-full max-w-lg rounded-sheet bg-surface-raised border border-surface-border
           shadow-vault animate-in slide-in-from-bottom duration-300
           ${heights[height]}
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-surface-border">
-          <div className="w-10 h-1 rounded-full bg-ink-faint mx-auto absolute left-1/2 -translate-x-1/2 -top-3" />
+        <div className="relative flex items-center justify-between p-4 border-b border-surface-border">
+          <div className="w-10 h-1 rounded-full bg-ice/30 mx-auto absolute left-1/2 -translate-x-1/2 -top-3" />
           {title && (
             <h2 className="font-display text-lg text-ink-primary">{title}</h2>
           )}
@@ -69,7 +69,7 @@ export function BottomSheet({ isOpen, onClose, children, title, height = "auto" 
               trigger("vibrate");
               onClose();
             }}
-            className="ml-auto p-1 rounded-full hover:bg-surface-border transition-colors"
+            className="ml-auto p-1 rounded-full transition-colors hover:bg-ice/10 hover:text-ice"
           >
             <X size={20} className="text-ink-muted" />
           </button>
