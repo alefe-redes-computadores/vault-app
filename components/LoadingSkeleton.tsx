@@ -39,7 +39,7 @@ export function LoadingSkeleton() {
         {[1, 2].map((i) => (
           <div
             key={i}
-            className="mb-3 rounded-[22px] bg-surface-raised/80 p-4 animate-pulse"
+            className="relative mb-3 overflow-hidden rounded-[22px] bg-surface-raised/80 p-4"
           >
             <div className="flex items-start gap-3">
               <div className="h-10 w-10 rounded-2xl bg-surface-border/70" />
@@ -49,6 +49,7 @@ export function LoadingSkeleton() {
                 <div className="mt-3 h-3 w-40 rounded bg-surface-border/50" />
               </div>
             </div>
+            <div className="shimmer-overlay" />
           </div>
         ))}
       </div>
@@ -63,7 +64,7 @@ export function LoadingSkeleton() {
           {[1, 2, 3].map((card) => (
             <div
               key={card}
-              className="mb-3 rounded-[22px] bg-surface-raised/80 p-4 animate-pulse"
+              className="relative mb-3 overflow-hidden rounded-[22px] bg-surface-raised/80 p-4"
             >
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-2xl bg-surface-border/70" />
@@ -74,16 +75,41 @@ export function LoadingSkeleton() {
                   <div className="mt-2 h-3 w-32 rounded bg-surface-border/50" />
                 </div>
               </div>
+              <div className="shimmer-overlay" style={{ animationDelay: `${category * 0.15}s` }} />
             </div>
           ))}
         </div>
       ))}
 
       <div className="fixed bottom-24 left-1/2 flex -translate-x-1/2 items-center gap-2">
-        <div className="h-2.5 w-2.5 rounded-full bg-ice/60 animate-pulse" />
+        <div className="glow-ice h-2.5 w-2.5 rounded-full bg-ice/70 animate-pulse" />
         <div className="h-2.5 w-2.5 rounded-full bg-ice/40 animate-pulse [animation-delay:120ms]" />
         <div className="h-2.5 w-2.5 rounded-full bg-ice/20 animate-pulse [animation-delay:240ms]" />
       </div>
+
+      <style jsx>{`
+        .shimmer-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            110deg,
+            transparent 20%,
+            rgba(47, 227, 201, 0.06) 45%,
+            rgba(155, 140, 255, 0.05) 55%,
+            transparent 80%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 1.8s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+          0% {
+            background-position: 200% 0;
+          }
+          100% {
+            background-position: -200% 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }
