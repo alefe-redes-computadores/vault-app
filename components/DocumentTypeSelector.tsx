@@ -63,7 +63,7 @@ export function DocumentTypeSelector({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.97 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="relative max-h-[82vh] w-full max-w-md overflow-y-auto rounded-[28px] border border-surface-border/60 bg-surface p-5 shadow-vault"
+            className="shadow-vault relative max-h-[82vh] w-full max-w-md overflow-y-auto rounded-[28px] border border-surface-border/60 bg-surface p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -100,11 +100,15 @@ export function DocumentTypeSelector({
                     }}
                     className={`rounded-[22px] border p-4 text-left transition-all active:scale-[0.985] ${
                       isSelected
-                        ? "border-ice bg-ice/10 text-ice shadow-sm shadow-ice/10"
+                        ? "glow-ice border-ice bg-ice/10 text-ice"
                         : "border-surface-border/50 bg-surface-raised text-ink-muted hover:border-surface-border hover:text-ink-primary"
                     }`}
                   >
-                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/[0.03]">
+                    <div
+                      className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl transition-colors ${
+                        isSelected ? "ring-gradient text-void" : "bg-black/5 dark:bg-white/[0.03]"
+                      }`}
+                    >
                       <Icon size={20} />
                     </div>
                     <span className="block text-sm font-semibold">{type.label}</span>
