@@ -149,11 +149,12 @@ export default function HomePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[8.5rem]">
-        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        {/* HEADER CORRIGIDO: Fundo sólido (bg-void) e pt-safe aplicado */}
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void px-5 pb-4 pt-safe">
           <motion.div
             {...pageEnter}
             transition={{ duration: 0.24 }}
-            className="flex items-start justify-between gap-3"
+            className="flex items-start justify-between gap-3 pt-4"
           >
             <button
               onClick={() => {
