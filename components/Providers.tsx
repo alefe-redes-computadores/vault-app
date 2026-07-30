@@ -24,13 +24,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [pullAttempted, setPullAttempted] = useState(false);
 
   // ============================================================
-  // 0. STATUS BAR NATIVA (Tela Cheia Imersiva)
+  // 0. STATUS BAR NATIVA (Sólida e Estável)
   // ============================================================
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       try {
-        StatusBar.setOverlaysWebView({ overlay: true });
+        StatusBar.setOverlaysWebView({ overlay: false });
         StatusBar.setStyle({ style: Style.Dark });
+        StatusBar.setBackgroundColor({ color: "#06090E" });
       } catch (e) {
         console.error("Erro ao configurar StatusBar nativa:", e);
       }
@@ -193,7 +194,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return (
       <ToastProvider>
         <ErrorBoundary>
-          <div className="min-h-screen pt-safe">{children}</div>
+          <div className="min-h-screen">{children}</div>
         </ErrorBoundary>
       </ToastProvider>
     );
@@ -202,7 +203,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <ErrorBoundary>
-        <div className="min-h-screen pt-safe pb-24">
+        <div className="min-h-screen pb-24">
           {children}
           <BottomNav />
         </div>
