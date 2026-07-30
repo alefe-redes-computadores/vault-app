@@ -10,6 +10,8 @@ import { BottomNav } from "./BottomNav";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
 import { pullAllData } from "@/lib/sync/pull";
+import { Capacitor } from "@capacitor/core";
+import { StatusBar, Style } from "@capacitor/status-bar";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -20,6 +22,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const { processQueue, isOnline } = useSyncQueue();
   const [isPullDone, setIsPullDone] = useState(false);
   const [pullAttempted, setPullAttempted] = useState(false);
+
+  // ============================================================
+  // 0. STATUS BAR NATIVA (Tela Cheia Imersiva)
+  // ============================================================
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        StatusBar.setOverlaysWebView({ overlay: true });
+        StatusBar.setStyle({ style: Style.Dark });
+      } catch (e) {
+        console.error("Erro ao configurar StatusBar nativa:", e);
+      }
+    }
+  }, []);
 
   // ============================================================
   // 1. PULL DOS DADOS (executado no login)
@@ -34,7 +50,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         })
         .catch((err) => {
           console.error("❌ Erro no pull:", err);
-          // ✅ Mesmo com erro, marca como tentado para não bloquear
           setIsPullDone(true);
         })
         .finally(() => setPullAttempted(true));
