@@ -275,11 +275,10 @@ html.light input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 /* ============================================================
    SAFE AREA (iOS/Android)
    ============================================================ */
-@supports (padding: max(0px)) {
-  .pb-safe {
-    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
-  }
-  .pt-safe {
-    padding-top: max(env(safe-area-inset-top, 0px), 0px);
-  }
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 24px), 24px);
 }
