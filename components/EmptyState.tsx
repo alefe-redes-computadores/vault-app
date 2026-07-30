@@ -48,14 +48,11 @@ export function EmptyState({
       }`}
     >
       <div
-        className={`flex items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised ${
+        className={`glow-ice flex items-center justify-center rounded-full border border-ice/15 bg-surface-raised ${
           compact ? "mb-3 h-16 w-16" : "mb-5 h-24 w-24"
         }`}
       >
-        <Icon
-          size={compact ? 28 : 38}
-          className="text-ink-muted/45"
-        />
+        <Icon size={compact ? 26 : 34} className="text-ice/55" />
       </div>
 
       <h3
@@ -80,7 +77,7 @@ export function EmptyState({
             <Button
               variant="primary"
               onClick={handleAction}
-              className="flex items-center gap-2"
+              className="glow-ice flex items-center gap-2"
             >
               <Plus size={16} />
               {actionLabel}
