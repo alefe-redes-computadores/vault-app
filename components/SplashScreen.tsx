@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 interface SplashScreenProps {
   children: React.ReactNode;
@@ -29,7 +29,7 @@ export function SplashScreen({
         {isLoading && (
           <motion.div
             key="splash"
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-void px-6"
+            className="bg-aurora fixed inset-0 z-50 flex flex-col items-center justify-center bg-void px-6"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
@@ -38,7 +38,7 @@ export function SplashScreen({
               initial={{ scale: 0.92, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               transition={{ duration: 0.42, delay: 0.12 }}
-              className="w-full max-w-xs rounded-[32px] border border-surface-border/50 bg-surface px-8 py-12 text-center shadow-vault"
+              className="shadow-vault w-full max-w-xs rounded-[32px] border border-surface-border/50 bg-surface px-8 py-12 text-center"
             >
               <motion.div
                 animate={{ scale: [1, 1.035, 1] }}
@@ -47,13 +47,13 @@ export function SplashScreen({
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
-                className="mx-auto flex h-20 w-20 items-center justify-center rounded-[24px] border border-ice/15 bg-surface-raised"
+                className="ring-gradient glow-ice mx-auto flex h-20 w-20 items-center justify-center rounded-[24px]"
               >
-                <Shield size={38} className="text-ice" strokeWidth={1.6} />
+                <ShieldCheck size={38} className="text-void" strokeWidth={1.8} />
               </motion.div>
 
               <motion.h1
-                className="mt-6 font-display text-2xl font-semibold tracking-tight text-ink-primary"
+                className="text-gradient mt-6 font-display text-2xl font-semibold tracking-tight"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.24 }}
