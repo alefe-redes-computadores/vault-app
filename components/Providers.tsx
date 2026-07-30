@@ -193,7 +193,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return (
       <ToastProvider>
         <ErrorBoundary>
-          <div className="min-h-screen">{children}</div>
+          <div className="min-h-screen pt-safe">{children}</div>
         </ErrorBoundary>
       </ToastProvider>
     );
@@ -202,7 +202,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <ErrorBoundary>
-        <div className="min-h-screen pb-24">
+        <div className="min-h-screen pt-safe pb-24">
           {children}
           <BottomNav />
         </div>
