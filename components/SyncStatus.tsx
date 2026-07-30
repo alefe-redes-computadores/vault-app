@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   RefreshCw,
   CheckCircle,
@@ -127,7 +127,9 @@ export function SyncStatus({
       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-coral" />
     </span>
   ) : (
-    <div className="h-2.5 w-2.5 rounded-full bg-emerald-400/60" />
+    // Sincronizado e ocioso — pequeno glow teal em vez do verde neutro,
+    // pra reforçar a identidade sem perder o significado semântico
+    <span className="glow-ice relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
   );
 
   return (
@@ -156,7 +158,7 @@ export function SyncStatus({
         className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-all active:scale-[0.97] ${
           isSyncingAll || !isOnline
             ? "cursor-not-allowed text-ink-muted/45"
-            : "text-ink-muted hover:bg-surface-raised hover:text-ink-primary"
+            : "text-ink-muted hover:bg-ice/8 hover:text-ice"
         }`}
       >
         <RefreshCw size={13} className={isSyncingAll ? "animate-spin" : ""} />
