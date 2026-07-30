@@ -1,10 +1,21 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Heart, Star, LayoutGrid, Plus } from "lucide-react";
+import {
+  Home,
+  Heart,
+  Star,
+  LayoutGrid,
+  Plus,
+  Pill,
+  FileWarning,
+  Stethoscope,
+  Building2,
+  type LucideIcon,
+} from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 
 interface NavItem {
@@ -21,32 +32,46 @@ const navItems: NavItem[] = [
   { id: "mais", icon: LayoutGrid, label: "Mais", path: "/mais" },
 ];
 
+interface ComposeOption {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  path: string;
+}
+
+// Opções do botão "+" por seção. Quando só tem uma opção, o botão navega
+// direto (sem menu) pra não criar fricção no caso mais comum (Home).
+const DEFAULT_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "documento", label: "Novo documento", icon: Plus, path: "/novo" },
+];
+
+const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "medicamento", label: "Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
+  { id: "renovacao", label: "Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
+  { id: "medico", label: "Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
+  { id: "local", label: "Farmácia/Hospital", icon: Building2, path: "/saude/locais/novo" },
+];
+
 // Rotas que têm sua própria barra de ação fixa no rodapé (ex: botão "Salvar").
 // O BottomNav não pode aparecer nelas, senão as duas barras fixas se sobrepõem.
 const HIDDEN_ON_PATHS = ["/novo", "/login", "/auth/callback"];
 
 function shouldHideNav(pathname: string): boolean {
-  // match exato ou rota "filha" (ex: /novo/algo, /pessoas/123/editar)
   if (HIDDEN_ON_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return true;
   }
-  // qualquer rota de edição, onde quer que ela esteja na árvore
   if (pathname.includes("/editar")) {
     return true;
   }
-  // qualquer subpágina de /saude que NÃO seja o dashboard em si
-  // (medicamentos/novo, renovacao/nova, medicos/novo, farmacias/novo,
-  // hospitais/novo, locais/novo etc. — todas têm botão "Salvar" fixo próprio)
   if (pathname !== "/saude" && pathname.startsWith("/saude/")) {
     return true;
   }
   return false;
 }
 
-// Pra onde o botão "+" central deve levar, dependendo de onde você está
-function getComposePath(pathname: string): string {
-  if (pathname === "/saude") return "/saude/medicamentos/novo";
-  return "/novo";
+function getComposeOptions(pathname: string): ComposeOption[] {
+  if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
+  return DEFAULT_COMPOSE_OPTIONS;
 }
 
 export function BottomNav() {
@@ -55,6 +80,7 @@ export function BottomNav() {
   const router = useRouter();
   const { isEnabled: isBiometricEnabled } = useBiometricPreference();
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
+  const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkLock = () => {
@@ -84,6 +110,11 @@ export function BottomNav() {
     };
   }, []);
 
+  // Fecha o menu do "+" sempre que a rota muda
+  useEffect(() => {
+    setIsComposeMenuOpen(false);
+  }, [pathname]);
+
   const handleNavigate = (path: string) => {
     if (path === pathname) return;
     trigger("vibrate");
@@ -96,67 +127,138 @@ export function BottomNav() {
     return pathname === path || (path === "/" && pathname === "/");
   };
 
-  const composePath = getComposePath(pathname);
+  const composeOptions = getComposeOptions(pathname);
+  const hasComposeMenu = composeOptions.length > 1;
+
+  const handleComposePress = () => {
+    if (!hasComposeMenu) {
+      trigger("success");
+      router.push(composeOptions[0].path);
+      return;
+    }
+    trigger("vibrate");
+    setIsComposeMenuOpen((prev) => !prev);
+  };
+
+  const handleComposeOptionPress = (path: string) => {
+    trigger("success");
+    setIsComposeMenuOpen(false);
+    router.push(path);
+  };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 pb-safe">
-      <div className="border-t border-surface-border/40 bg-surface/92 px-4 pb-5 pt-2 backdrop-blur-2xl">
-        <div className="relative mx-auto grid max-w-md grid-cols-5 items-end justify-items-center">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
+    <>
+      {/* Backdrop + menu do "+" contextual */}
+      <AnimatePresence>
+        {isComposeMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16 }}
+              onClick={() => setIsComposeMenuOpen(false)}
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            />
 
-            const colMap: Record<string, string> = {
-              home: "col-start-1",
-              saude: "col-start-2",
-              favoritos: "col-start-4",
-              mais: "col-start-5",
-            };
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.97 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="shadow-vault fixed bottom-[6.5rem] left-1/2 z-50 w-[calc(100%-2.5rem)] max-w-xs -translate-x-1/2 overflow-hidden rounded-[26px] border border-surface-border/60 bg-surface"
+            >
+              <div className="px-4 pb-1 pt-3.5">
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-faint">
+                  Adicionar em Saúde
+                </p>
+              </div>
+              <div className="px-2 pb-2">
+                {composeOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => handleComposeOptionPress(option.path)}
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                        <Icon size={16} />
+                      </div>
+                      <span className="text-sm font-medium text-ink-primary">
+                        {option.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavigate(item.path)}
-                className={`
-                  relative flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5 transition-all duration-200 active:scale-95
-                  ${active ? "text-ice" : "text-ink-muted/65 hover:text-ink-primary"}
-                  ${colMap[item.id] || ""}
-                `}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 pb-safe">
+        <div className="border-t border-surface-border/40 bg-surface/92 px-4 pb-5 pt-2 backdrop-blur-2xl">
+          <div className="relative mx-auto grid max-w-md grid-cols-5 items-end justify-items-center">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.path);
+
+              const colMap: Record<string, string> = {
+                home: "col-start-1",
+                saude: "col-start-2",
+                favoritos: "col-start-4",
+                mais: "col-start-5",
+              };
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavigate(item.path)}
+                  className={`
+                    relative flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5 transition-all duration-200 active:scale-95
+                    ${active ? "text-ice" : "text-ink-muted/65 hover:text-ink-primary"}
+                    ${colMap[item.id] || ""}
+                  `}
+                >
+                  {active && (
+                    <motion.div
+                      layoutId="active-pill"
+                      className="absolute inset-0 rounded-2xl bg-ice/10"
+                      transition={{ type: "spring", stiffness: 320, damping: 28 }}
+                    />
+                  )}
+
+                  <div className="relative z-[1] flex flex-col items-center gap-1">
+                    <Icon size={22} strokeWidth={active ? 2.4 : 2} />
+                    <span
+                      className={`text-[10px] font-medium ${
+                        active ? "text-ice" : "text-ink-muted/65"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+
+            <button
+              onClick={handleComposePress}
+              aria-label={hasComposeMenu ? "Adicionar" : composeOptions[0].label}
+              aria-expanded={hasComposeMenu ? isComposeMenuOpen : undefined}
+              className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(47,227,201,0.28)] transition-all duration-200 active:scale-95"
+            >
+              <motion.div
+                animate={{ rotate: isComposeMenuOpen ? 45 : 0 }}
+                transition={{ duration: 0.2 }}
               >
-                {active && (
-                  <motion.div
-                    layoutId="active-pill"
-                    className="absolute inset-0 rounded-2xl bg-ice/10"
-                    transition={{ type: "spring", stiffness: 320, damping: 28 }}
-                  />
-                )}
-
-                <div className="relative z-[1] flex flex-col items-center gap-1">
-                  <Icon size={22} strokeWidth={active ? 2.4 : 2} />
-                  <span
-                    className={`text-[10px] font-medium ${
-                      active ? "text-ice" : "text-ink-muted/65"
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-
-          <button
-            onClick={() => {
-              trigger("success");
-              router.push(composePath);
-            }}
-            aria-label={composePath === "/saude/medicamentos/novo" ? "Novo medicamento" : "Novo documento"}
-            className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(125,211,252,0.28)] transition-all duration-200 active:scale-95"
-          >
-            <Plus size={24} strokeWidth={2.6} />
-          </button>
+                <Plus size={24} strokeWidth={2.6} />
+              </motion.div>
+            </button>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }
