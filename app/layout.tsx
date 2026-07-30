@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0A0C0F",
+  themeColor: "#06090E",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -68,11 +68,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="theme-color" content="#0A0C0F" />
-        <meta name="msapplication-TileColor" content="#0A0C0F" />
+        <meta name="theme-color" content="#06090E" />
+        <meta name="msapplication-TileColor" content="#06090E" />
         <meta name="msapplication-TileImage" content="/icon-144x144.png" />
       </head>
-      {/* ⚠️ Removido o pt-safe daqui para evitar duplicação */}
       <body className="font-body antialiased bg-void min-h-screen transition-colors duration-300 pb-safe">
         <ErrorBoundary>
           <ThemeProvider
