@@ -42,13 +42,19 @@ export function VaultCard({ vault, memberCount = 0 }: VaultCardProps) {
   };
 
   const Icon = ICON_MAP[vault.icon] || Home;
-  const accent = vault.color || "#7DD3FC";
+  // Fallback agora usa o teal da identidade nova em vez do sky-blue antigo
+  const accent = vault.color || "#2FE3C9";
 
   return (
     <button
       onClick={handlePress}
-      className="group relative w-full overflow-hidden rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all duration-200 active:scale-[0.985]"
+      className="group relative w-full overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface text-left shadow-sm transition-all duration-200 active:scale-[0.985] hover:border-ice/20 hover:shadow-lg"
     >
+      <div
+        className="absolute inset-y-0 left-0 w-[3px]"
+        style={{ backgroundColor: accent }}
+      />
+
       <div
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
         style={{
@@ -56,10 +62,12 @@ export function VaultCard({ vault, memberCount = 0 }: VaultCardProps) {
         }}
       />
 
-      <div className="relative flex items-start gap-3">
+      <div className="relative flex items-start gap-3 p-4 pl-5">
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/5"
-          style={{ backgroundColor: `${accent}1A` }}
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+          style={{
+            background: `linear-gradient(135deg, ${accent}26, ${accent}0d)`,
+          }}
         >
           <Icon size={22} style={{ color: accent }} />
         </div>
