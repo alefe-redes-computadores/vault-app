@@ -24,14 +24,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [pullAttempted, setPullAttempted] = useState(false);
 
   // ============================================================
-  // 0. STATUS BAR NATIVA (Sólida e Estável)
+  // 0. STATUS BAR NATIVA — imersiva (overlay), consistente com
+  // capacitor.config.ts. Antes esse useEffect fazia
+  // setOverlaysWebView({ overlay: false }), o que CONTRADIZIA o
+  // "overlaysWebView: true" do config e causava o WebView
+  // redimensionar no meio do carregamento (o "pulo" de espaçamento).
+  // Agora os dois lugares concordam: overlay sempre true.
   // ============================================================
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       try {
-        StatusBar.setOverlaysWebView({ overlay: false });
-        StatusBar.setStyle({ style: Style.Dark });
-        StatusBar.setBackgroundColor({ color: "#06090E" });
+        StatusBar.setOverlaysWebView({ overlay: true });
+        StatusBar.setStyle({ style: Style.Dark }); // ícones claros p/ fundo escuro
+        // Com overlay:true a cor de fundo da status bar não é pintada
+        // (ela fica transparente, mostrando o próprio app por trás) —
+        // por isso não chamamos mais setBackgroundColor aqui.
       } catch (e) {
         console.error("Erro ao configurar StatusBar nativa:", e);
       }
