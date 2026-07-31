@@ -149,8 +149,12 @@ export default function HomePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[8.5rem]">
-        {/* HEADER SEM pt-safe, puxando o conteúdo para cima na medida certa */}
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void px-5 pb-4 pt-3">
+        {/*
+          header-safe-top substitui o antigo "pt-6" — reserva o espaço
+          certo da status bar imersiva via env(safe-area-inset-top),
+          em vez do remendo manual que existia aqui antes.
+        */}
+        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <motion.div
             {...pageEnter}
             transition={{ duration: 0.24 }}
