@@ -4,49 +4,43 @@
 
 /* ============================================================
    CORES FIXAS (não dependem de tema)
-   ── Nova identidade: teal profundo como acento primário
-   (no lugar do sky-blue genérico), violeta como acento
-   secundário para gradientes, coral mantido para alerta/perigo.
    ============================================================ */
 :root {
-  --ice: #2FE3C9;       /* era #7DD3FC — teal vibrante, mais "cofre" que "clima" */
+  --ice: #2FE3C9;
   --ice-rgb: 47 227 201;
-  --coral: #FF6B57;     /* levemente mais vívido, mantém função de alerta */
+  --coral: #FF6B57;
   --coral-rgb: 255 107 87;
   --steel: #6C89A6;
-  --violet: #9B8CFF;    /* novo — acento secundário, só para gradientes/detalhes */
+  --violet: #9B8CFF;
   --violet-rgb: 155 140 255;
 }
 
 /* ============================================================
-   CORES DO TEMA (em RGB, sem "rgb()", pra funcionar com
-   rgb(var(--x) / <alpha-value>) no tailwind.config.ts)
+   CORES DO TEMA
    ============================================================ */
 :root,
 html.dark {
-  /* Escuro (padrão) — fundo mais profundo e com leve tom azul-petróleo,
-     em vez do cinza neutro anterior */
-  --bg-void: 6 9 14;                /* #06090E */
-  --bg-surface: 15 19 26;           /* #0F131A */
-  --bg-surface-raised: 22 27 36;    /* #161B24 */
-  --bg-surface-raised-2: 31 38 50;  /* #1F2632 */
-  --border-surface: 31 38 50;       /* #1F2632 */
-  --text-ink-primary: 236 240 244;  /* #ECF0F4 */
-  --text-ink-muted: 138 148 163;    /* #8A94A3 */
-  --text-ink-faint: 79 88 102;      /* #4F5866 */
+  --bg-void: 6 9 14;
+  --bg-surface: 15 19 26;
+  --bg-surface-raised: 22 27 36;
+  --bg-surface-raised-2: 31 38 50;
+  --border-surface: 31 38 50;
+  --text-ink-primary: 236 240 244;
+  --text-ink-muted: 138 148 163;
+  --text-ink-faint: 79 88 102;
   --shadow-vault: 0 14px 42px -12px rgba(0,0,0,0.5);
   color-scheme: dark;
 }
 
 html.light {
-  --bg-void: 244 247 250;           /* #F4F7FA */
-  --bg-surface: 255 255 255;        /* #FFFFFF */
-  --bg-surface-raised: 247 250 252; /* #F7FAFC */
-  --bg-surface-raised-2: 228 233 239; /* #E4E9EF */
-  --border-surface: 224 229 236;    /* #E0E5EC */
-  --text-ink-primary: 13 20 30;     /* #0D141E */
-  --text-ink-muted: 79 92 110;      /* #4F5C6E */
-  --text-ink-faint: 156 167 181;    /* #9CA7B5 */
+  --bg-void: 244 247 250;
+  --bg-surface: 255 255 255;
+  --bg-surface-raised: 247 250 252;
+  --bg-surface-raised-2: 228 233 239;
+  --border-surface: 224 229 236;
+  --text-ink-primary: 13 20 30;
+  --text-ink-muted: 79 92 110;
+  --text-ink-faint: 156 167 181;
   --shadow-vault: 0 10px 34px -10px rgba(15,23,42,0.08);
   color-scheme: light;
 }
@@ -61,7 +55,6 @@ body {
   transition: background-color 300ms ease, color 300ms ease;
 }
 
-/* Prevenir scroll durante transições */
 body.page-transitioning {
   overflow: hidden !important;
 }
@@ -75,34 +68,47 @@ body.page-transitioning {
 }
 
 /* ============================================================
-   NOVOS UTILITÁRIOS — gradientes e glow da nova identidade
+   UTILITÁRIOS — gradientes e glow da identidade
    ============================================================ */
-
-/* Fundo "aurora" sutil pra cabeçalhos de telas principais */
 .bg-aurora {
   background:
     radial-gradient(120% 120% at 12% -10%, rgb(var(--ice-rgb) / 0.14), transparent 58%),
     radial-gradient(120% 130% at 105% 0%, rgb(var(--violet-rgb) / 0.10), transparent 55%);
 }
 
-/* Halo suave em torno de elementos de destaque (avatar, ícone hero) */
 .glow-ice {
   box-shadow:
     0 0 0 1px rgb(var(--ice-rgb) / 0.16),
     0 10px 32px -10px rgb(var(--ice-rgb) / 0.35);
 }
 
-/* Anel gradiente teal → violeta, usado em avatares/ícones ativos */
 .ring-gradient {
   background: linear-gradient(135deg, rgb(var(--ice-rgb)), rgb(var(--violet-rgb)));
 }
 
-/* Texto com gradiente teal → violeta, para títulos de destaque pontuais */
 .text-gradient {
   background: linear-gradient(135deg, rgb(var(--ice-rgb)), rgb(var(--violet-rgb)));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* ============================================================
+   STATUS BAR IMERSIVA (Capacitor overlaysWebView: true)
+   ============================================================
+   Com a status bar em modo overlay, o WebView desenha por baixo
+   dela — então QUALQUER header fixo/sticky no topo precisa
+   reservar esse espaço manualmente via env(safe-area-inset-top).
+   No navegador comum essa variável é 0px, então não afeta o PWA
+   nem o preview web; só entra em ação dentro do app nativo.
+
+   Uso: troque "pt-6" (ou o padding-top que o header já tiver)
+   por "header-safe-top" nos headers sticky do app. O valor de
+   1.5rem abaixo é o antigo pt-6 — ajuste aqui se mudar em algum
+   lugar e quiser manter todos os headers consistentes.
+   ============================================================ */
+.header-safe-top {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
 }
 
 /* ============================================================
@@ -127,7 +133,6 @@ body.page-transitioning {
   background: rgb(var(--border-surface) / 0.9);
 }
 
-/* Firefox */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgb(var(--border-surface) / 0.6) transparent;
@@ -165,7 +170,7 @@ body.page-transitioning {
 }
 
 /* ============================================================
-   SCROLLBAR HIDE (para scroll horizontal)
+   SCROLLBAR HIDE
    ============================================================ */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -196,8 +201,6 @@ body.page-transitioning {
 /* ============================================================
    CALENDÁRIO - CORREÇÃO TEMA ESCURO
    ============================================================ */
-
-/* Força o tema escuro no calendário */
 input[type="date"],
 input[type="datetime-local"],
 input[type="time"] {
@@ -206,7 +209,6 @@ input[type="time"] {
   color: rgb(var(--text-ink-primary));
 }
 
-/* Ícone do calendário (branco no escuro) */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
@@ -222,7 +224,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
 
-/* Estilização do texto do calendário (WebKit) */
 ::-webkit-datetime-edit {
   color: rgb(var(--text-ink-primary));
 }
@@ -241,7 +242,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   color: rgb(var(--text-ink-primary));
 }
 
-/* Tema claro - override */
 html.light input[type="date"],
 html.light input[type="datetime-local"],
 html.light input[type="time"] {
@@ -275,10 +275,11 @@ html.light input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 /* ============================================================
    SAFE AREA (iOS/Android)
    ============================================================ */
-.pb-safe {
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
-}
-
-.pt-safe {
-  padding-top: max(env(safe-area-inset-top, 24px), 24px);
+@supports (padding: max(0px)) {
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+  }
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top, 0px), 0px);
+  }
 }
