@@ -166,7 +166,7 @@ export default function DocumentsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-6">
-        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
