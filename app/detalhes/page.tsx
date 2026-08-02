@@ -252,7 +252,7 @@ export default function DocumentDetailPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button
@@ -379,7 +379,7 @@ export default function DocumentDetailPage() {
                     let displayValue: string = String(value);
                     if (
                       typeof value === "string" &&
-                      value.match(/^d{4}-d{2}-d{2}/)
+                      value.match(/^\d{4}-\d{2}-\d{2}/)
                     ) {
                       displayValue = formatDate(value);
                     }
@@ -537,7 +537,7 @@ export default function DocumentDetailPage() {
               className="flex items-center justify-center gap-2"
               onClick={() => {
                 trigger("vibrate");
-                router.push(`/detalhes/editar?id=${doc.id}`);
+                router.push(`/editar?id=${doc.id}`);
               }}
             >
               <Edit size={16} />
