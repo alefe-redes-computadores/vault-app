@@ -78,7 +78,6 @@ export default function EditarPessoaPage() {
 
     try {
       const { url, error } = await uploadFile(user.id, file, "avatars");
-      // ✅ CORRIGIDO: error já é um objeto Error, não precisa de new Error()
       if (error) throw error;
 
       setFormData((prev) => ({ ...prev, avatar_url: url }));
@@ -193,7 +192,7 @@ export default function EditarPessoaPage() {
           onChange={handleUploadPhoto}
         />
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
