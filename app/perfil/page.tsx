@@ -98,7 +98,7 @@ export default function ProfilePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
             Vault
           </p>
