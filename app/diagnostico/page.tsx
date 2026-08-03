@@ -99,7 +99,7 @@ export default function DiagnosticoPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -215,7 +215,7 @@ export default function DiagnosticoPage() {
               <span className="font-semibold text-ink-primary">Aparelho / Nuvem</span> — se os
               números baterem, está tudo sincronizado. Se o aparelho tiver mais que a nuvem,
               use "Sincronizar agora" em Mais. Se a nuvem tiver mais que o aparelho, é sinal de
-              que o pull não trouxe tudo ainda — tente sincronizar de novo ou reinstalar o app
+              que o pull não trouxe tudo ainda — tente sincronizar de novo ou reinstale o app
               pra testar a recuperação completa.
             </p>
           </div>
