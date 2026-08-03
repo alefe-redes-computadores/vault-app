@@ -46,7 +46,6 @@ export default function NewPersonPage() {
     setError("");
 
     try {
-      // ✅ Usa safeAddPerson que já cuida da transação e sync
       await safeAddPerson({
         user_id: user.id,
         name: formData.name.trim(),
@@ -88,7 +87,7 @@ export default function NewPersonPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
