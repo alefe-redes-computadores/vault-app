@@ -197,7 +197,8 @@ export default function SaudePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        {/* header-safe-top reserva o espaço da status bar imersiva */}
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -259,12 +260,40 @@ export default function SaudePage() {
             })}
           </motion.div>
 
+          {/* Meus medicamentos — NOVO: acesso à lista completa */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.02 }}
+          >
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                router.push("/saude/medicamentos");
+              }}
+              className="flex w-full items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/12 text-ice">
+                <Pill size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-ink-primary">
+                  Meus medicamentos
+                </p>
+                <p className="text-xs text-ink-muted">
+                  {(medicamentos || []).length} cadastrado{(medicamentos || []).length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <ChevronRight size={16} className="shrink-0 text-ink-faint" />
+            </button>
+          </motion.div>
+
           {/* Estoque acabando */}
           {estoqueAlerts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.02 }}
+              transition={{ duration: 0.24, delay: 0.03 }}
             >
               <div className="mb-3 flex items-center gap-2">
                 <PackageX size={15} className="text-coral" />
