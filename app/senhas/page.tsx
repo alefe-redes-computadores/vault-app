@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { Search, X, Plus, KeyRound, Lock } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { useCredentials } from "@/hooks/useCredentials";
@@ -15,6 +14,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { CredentialCard } from "@/components/CredentialCard";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useToast } from "@/components/ToastProvider";
+import { normalizeText } from "@/lib/utils/credential-helper";
 
 const CATEGORIES = [
   { id: "all", label: "Todas" },
@@ -30,10 +30,8 @@ export default function PasswordsPage() {
   const { showToast } = useToast();
   const { credentials } = useCredentials();
   
-  // 1. Injetando a proteção de segundo plano
   const { isLocked } = useSecureScreen(); 
   
-  // 2. Adicionando o fallback da biometria
   const { authenticate } = useBiometric({
     title: "Copiar Senha",
     subtitle: "Confirme sua identidade para copiar a senha para a área de transferência.",
@@ -43,12 +41,18 @@ export default function PasswordsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
+  // Busca inteligente ignorando acentos e maiúsculas/minúsculas
   const filteredCredentials = useMemo(() => {
+    const query = normalizeText(searchQuery);
+
     return credentials.filter((cred) => {
-      const matchesSearch =
-        cred.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (cred.username && cred.username.toLowerCase().includes(searchQuery.toLowerCase()));
+      const titleMatch = normalizeText(cred.title).includes(query);
+      const userMatch = cred.username ? normalizeText(cred.username).includes(query) : false;
+      const urlMatch = cred.url ? normalizeText(cred.url).includes(query) : false;
+
+      const matchesSearch = !query || titleMatch || userMatch || urlMatch;
       const matchesCategory = selectedCategory === "all" || cred.category === selectedCategory;
+      
       return matchesSearch && matchesCategory;
     });
   }, [credentials, searchQuery, selectedCategory]);
@@ -60,12 +64,10 @@ export default function PasswordsPage() {
 
       const plainText = decryptPassword(encryptedPassword);
       if (plainText) {
-        // 3. Usando o plugin nativo do Capacitor
         await Clipboard.write({ string: plainText });
         trigger("success");
         showToast("Senha copiada! Será limpa em 60s.", "success");
 
-        // Magia: Limpa a área de transferência após 60 segundos
         setTimeout(() => {
           Clipboard.write({ string: "" });
         }, 60000);
@@ -76,7 +78,6 @@ export default function PasswordsPage() {
     }
   };
 
-  // Se o app foi minimizado, esconde os dados e mostra o cadeado
   if (isLocked) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-void">
@@ -113,7 +114,7 @@ export default function PasswordsPage() {
           <div className="relative mt-4">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-muted" />
             <Input
-              placeholder="Buscar senhas, logins..."
+              placeholder="Buscar senhas, logins ou sites..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="border-surface-border/50 bg-surface-raised pl-9"
