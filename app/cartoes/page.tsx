@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { 
   ArrowLeft, Plus, Search, CreditCard, Landmark, ShieldCheck, Trash2, ChevronRight, Loader2, Wallet 
 } from "lucide-react";
@@ -16,6 +16,8 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+const ITEMS_PER_PAGE = 20;
+
 export default function CardsPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -23,6 +25,7 @@ export default function CardsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [displayLimit, setDisplayLimit] = useState(ITEMS_PER_PAGE);
 
   const filteredCards = useMemo(() => {
     return cards.filter((item) => {
@@ -35,6 +38,18 @@ export default function CardsPage() {
       return matchesSearch && matchesType;
     });
   }, [cards, searchQuery, selectedType]);
+
+  // Paginação em blocos para performance extrema (+1.000 itens)
+  const paginatedCards = useMemo(() => {
+    return filteredCards.slice(0, displayLimit);
+  }, [filteredCards, displayLimit]);
+
+  const hasMore = displayLimit < filteredCards.length;
+
+  const handleLoadMore = () => {
+    trigger("vibrate");
+    setDisplayLimit((prev) => prev + ITEMS_PER_PAGE);
+  };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -86,7 +101,7 @@ export default function CardsPage() {
               type="text"
               placeholder="Buscar por título ou banco..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setDisplayLimit(ITEMS_PER_PAGE); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface px-4 py-3.5 pl-11 text-sm text-ink-primary outline-none transition-all focus:border-ice/50 focus:ring-2 focus:ring-ice/15"
             />
           </div>
@@ -101,7 +116,7 @@ export default function CardsPage() {
             ].map((filter) => (
               <button
                 key={filter.id}
-                onClick={() => { trigger("vibrate"); setSelectedType(filter.id); }}
+                onClick={() => { trigger("vibrate"); setSelectedType(filter.id); setDisplayLimit(ITEMS_PER_PAGE); }}
                 className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-medium transition-all active:scale-95 ${
                   selectedType === filter.id 
                     ? "border-ice bg-ice/12 text-ice" 
@@ -114,7 +129,7 @@ export default function CardsPage() {
           </div>
         </section>
 
-        {/* Listagem */}
+        {/* Listagem com Paginação em Blocos */}
         <section className="px-5 pt-4">
           {loading ? (
             <div className="flex justify-center py-20">
@@ -130,7 +145,7 @@ export default function CardsPage() {
             </motion.div>
           ) : (
             <div className="space-y-3">
-              {filteredCards.map((item, index) => {
+              {paginatedCards.map((item, index) => {
                 const logoUrl = getBankLogoUrl(item.bank_name);
                 const brandLabel = item.brand ? getBrandLabel(item.brand) : null;
 
@@ -140,7 +155,7 @@ export default function CardsPage() {
                     variants={fadeUp}
                     initial="initial"
                     animate="animate"
-                    transition={{ delay: index * 0.04 }}
+                    transition={{ delay: (index % ITEMS_PER_PAGE) * 0.03 }}
                     onClick={() => { trigger("vibrate"); router.push(`/cartoes/detalhes?id=${item.id}`); }}
                     className="group flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 transition-all active:scale-[0.99] hover:border-ice/30 shadow-sm"
                   >
@@ -179,6 +194,17 @@ export default function CardsPage() {
                   </motion.div>
                 );
               })}
+
+              {hasMore && (
+                <div className="pt-4 text-center">
+                  <button
+                    onClick={handleLoadMore}
+                    className="rounded-2xl border border-surface-border/50 bg-surface px-6 py-3 text-xs font-medium text-ink-primary transition-all active:scale-95 hover:border-ice/40"
+                  >
+                    Carregar mais ({filteredCards.length - displayLimit} restantes)
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </section>
