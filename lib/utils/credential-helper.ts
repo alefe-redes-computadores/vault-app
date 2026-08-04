@@ -8,7 +8,7 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
-// Dicionário rápido para marcas populares brasileiras/globais comuns
+// Dicionário de marcas comuns para auto-preenchimento rápido
 const POPULAR_DOMAINS: Record<string, string> = {
   itau: "itau.com.br",
   "banco do brasil": "bb.com.br",
@@ -19,7 +19,7 @@ const POPULAR_DOMAINS: Record<string, string> = {
   c6: "c6bank.com.br",
   caixa: "caixa.gov.br",
   globo: "globo.com",
-  mercado livre: "mercadolivre.com.br",
+  "mercado livre": "mercadolivre.com.br",
   amazon: "amazon.com.br",
   netflix: "netflix.com",
   spotify: "spotify.com",
@@ -35,19 +35,17 @@ const POPULAR_DOMAINS: Record<string, string> = {
 };
 
 /**
- * Tenta adivinhar o site com base no que o usuário digitou no título.
+ * Tenta adivinhar o site com base no título digitado.
  */
 export function guessWebsiteFromTitle(title: string): string {
   const clean = normalizeText(title);
   
-  // Verifica se bate com algum conhecido direto
   for (const [key, domain] of Object.entries(POPULAR_DOMAINS)) {
     if (clean.includes(key)) {
       return `https://${domain}`;
     }
   }
 
-  // Se não achar nos conhecidos, tenta transformar o título em um domínio limpo (ex: "Meu Site" -> "meusite.com.br")
   if (clean.length > 0) {
     const slug = clean.replace(/[^a-z0-9]/g, "");
     if (slug) {
@@ -59,8 +57,7 @@ export function guessWebsiteFromTitle(title: string): string {
 }
 
 /**
- * Retorna a URL do favicon usando o serviço público do Google ou DuckDuckGo,
- * garantindo padronização de tamanho.
+ * Retorna a URL do favicon padronizada pelo serviço do Google.
  */
 export function getFaviconUrl(websiteUrl: string): string {
   if (!websiteUrl) return "";
@@ -70,10 +67,7 @@ export function getFaviconUrl(websiteUrl: string): string {
       domain = `https://${domain}`;
     }
     const urlObj = new URL(domain);
-    const hostname = urlObj.hostname;
-    
-    // Usando o serviço de favicon do Google (tamanho padronizado de 128px)
-    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
+    return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
   } catch (e) {
     return "";
   }
