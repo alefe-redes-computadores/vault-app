@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark, CreditCard } from "lucide-react";
+import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
 import { useCards } from "@/hooks/useCards";
 import { useHapticFeedback } from "@/lib/haptics";
 import { encryptPassword } from "@/lib/crypto";
@@ -69,7 +69,6 @@ export default function NewCardPage() {
 
     setSaving(true);
     try {
-      // Criptografa dados sensíveis com E2EE antes de salvar no Dexie e nuvem
       const cardNumberEncrypted = formData.card_number ? encryptPassword(formData.card_number) : undefined;
       const cvvEncrypted = formData.cvv ? encryptPassword(formData.cvv) : undefined;
 
@@ -90,7 +89,7 @@ export default function NewCardPage() {
       trigger("success");
       router.back();
     } catch (error) {
-      console.error("Erro ao salvar cartão/conta:", error);
+      console.error("Erro ao salvar cartão:", error);
       trigger("error");
     } finally {
       setSaving(false);
@@ -99,7 +98,8 @@ export default function NewCardPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
+      {/* Padding inferior aumentado para pb-44 garantindo que o conteúdo nunca fique sob o botão flutuante */}
+      <main className="min-h-screen bg-void pb-44">
         {/* Header Fixo */}
         <header className="header-safe-top sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <button 
@@ -109,14 +109,14 @@ export default function NewCardPage() {
             <ArrowLeft size={18} className="text-ink-primary" />
           </button>
           <div>
-            <h1 className="font-display text-lg font-semibold text-ink-primary">Adicionar Banco ou Cartão</h1>
+            <h1 className="font-display text-lg font-semibold text-ink-primary">Adicionar Cartão</h1>
             <p className="text-xs text-ink-muted flex items-center gap-1">
               <ShieldCheck size={12} className="text-ice" /> Criptografia E2EE ativada
             </p>
           </div>
         </header>
 
-        {/* Ícone Dinâmico no Topo (Logotipo do Banco ou Ícone Padrão) */}
+        {/* Ícone Dinâmico no Topo */}
         <div className="flex flex-col items-center pt-6 px-5">
           <div className="relative flex h-20 w-20 items-center justify-center rounded-[28px] border border-surface-border/60 bg-surface shadow-md overflow-hidden">
             {logoUrl ? (
@@ -131,7 +131,7 @@ export default function NewCardPage() {
           {/* Informações Básicas */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <Input 
-              label="Título (ex: Nubank Ultravioleta, Conta Corrente)" 
+              label="Título (ex: Nubank Ultravioleta, Cartão Principal)" 
               value={formData.title} 
               onChange={(e) => handleChange("title", e.target.value)} 
               error={errors.title} 
@@ -146,16 +146,13 @@ export default function NewCardPage() {
             />
           </motion.div>
 
-          {/* Seletor de Tipo */}
+          {/* Seletor Focado em Cartões */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <p className="mb-3 text-sm font-medium text-ink-primary">Tipo de Registro</p>
+            <p className="mb-3 text-sm font-medium text-ink-primary">Tipo de Cartão</p>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: "cartao_credito", label: "Cartão de Crédito" },
                 { id: "cartao_debito", label: "Cartão de Débito" },
-                { id: "conta_corrente", label: "Conta Corrente" },
-                { id: "conta_poupanca", label: "Conta Poupança" },
-                { id: "conta_digital", label: "Conta Digital" },
               ].map((typeItem) => (
                 <button
                   key={typeItem.id}
@@ -172,7 +169,7 @@ export default function NewCardPage() {
             </div>
           </motion.div>
 
-          {/* Dados do Cartão (se aplicável) */}
+          {/* Dados Exclusivos do Cartão */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="relative">
               <Input 
@@ -212,16 +209,16 @@ export default function NewCardPage() {
             </div>
           </motion.div>
 
-          {/* Dados Bancários / Agência e Conta */}
+          {/* Agência/Conta (Opcional para Cartão) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="grid grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <Input 
-              label="Agência" 
+              label="Agência (Opcional)" 
               value={formData.agency} 
               onChange={(e) => handleChange("agency", e.target.value)} 
               placeholder="0000" 
             />
             <Input 
-              label="Conta / Digito" 
+              label="Conta / Digito (Opcional)" 
               value={formData.account} 
               onChange={(e) => handleChange("account", e.target.value)} 
               placeholder="00000-0" 
@@ -239,11 +236,11 @@ export default function NewCardPage() {
           </motion.div>
         </section>
 
-        {/* Botão Salvar Fixo */}
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
+        {/* Botão Salvar Fixo com SafeArea perfeitamente tratada */}
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/90 px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl">
           <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {saving ? "Salvando com Segurança..." : "Salvar Registro"}
+            {saving ? "Salvando com Segurança..." : "Salvar Cartão"}
           </Button>
         </div>
       </main>
