@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Plus, KeyRound, Lock } from "lucide-react";
+import { Search, X, Plus, KeyRound, Lock, Loader2 } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
-import { useCredentials } from "@/hooks/useCredentials";
+import { usePaginatedCredentials } from "@/hooks/usePaginatedCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
 import { useSecureScreen } from "@/hooks/useSecureScreen";
 import { decryptPassword } from "@/lib/crypto";
@@ -15,7 +15,6 @@ import { PageTransition } from "@/components/PageTransition";
 import { CredentialCard } from "@/components/CredentialCard";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useToast } from "@/components/ToastProvider";
-import { normalizeText } from "@/lib/utils/credential-helper";
 
 const CATEGORIES = [
   { id: "all", label: "Todas" },
@@ -29,7 +28,15 @@ export default function PasswordsPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast } = useToast();
-  const { credentials } = useCredentials();
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
+  const { credentials, totalCount, hasMore, isLoadingMore, loadMore, deleteCredential } = usePaginatedCredentials({
+    searchQuery: debouncedQuery,
+    category: selectedCategory,
+  });
   
   const { isLocked } = useSecureScreen(); 
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
@@ -40,11 +47,7 @@ export default function PasswordsPage() {
     fallbackTitle: "Usar senha do dispositivo",
   });
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-
-  // Implementação do Debounce (300ms) para otimizar a performance da busca
+  // Debounce (300ms) para performance otimizada na busca
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
@@ -52,21 +55,6 @@ export default function PasswordsPage() {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
-
-  const filteredCredentials = useMemo(() => {
-    const query = normalizeText(debouncedQuery);
-
-    return credentials.filter((cred) => {
-      const titleMatch = normalizeText(cred.title).includes(query);
-      const userMatch = cred.username ? normalizeText(cred.username).includes(query) : false;
-      const urlMatch = cred.url ? normalizeText(cred.url).includes(query) : false;
-
-      const matchesSearch = !query || titleMatch || userMatch || urlMatch;
-      const matchesCategory = selectedCategory === "all" || cred.category === selectedCategory;
-      
-      return matchesSearch && matchesCategory;
-    });
-  }, [credentials, debouncedQuery, selectedCategory]);
 
   const handleCopyPassword = async (encryptedPassword: string) => {
     try {
@@ -118,7 +106,7 @@ export default function PasswordsPage() {
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Senhas</h1>
               <p className="mt-1 text-sm text-ink-muted">
-                {filteredCredentials.length} senha{filteredCredentials.length !== 1 ? "s" : ""}
+                {totalCount} senha{totalCount !== 1 ? "s" : ""} cadastrada{totalCount !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
@@ -162,16 +150,16 @@ export default function PasswordsPage() {
         </header>
 
         <section className="px-5 pt-5">
-          {filteredCredentials.length === 0 ? (
+          {credentials.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-[30px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm">
               <div className="glow-ice mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-ice/15 bg-surface-raised">
                 <KeyRound size={28} className="text-ice/60" />
               </div>
-              <h3 className="font-display text-lg font-semibold text-ink-primary">Nenhuma senha</h3>
+              <h3 className="font-display text-lg font-semibold text-ink-primary">Nenhuma senha encontrada</h3>
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredCredentials.map((cred) => (
+              {credentials.map((cred) => (
                 <CredentialCard
                   key={cred.id}
                   credential={cred}
@@ -183,6 +171,19 @@ export default function PasswordsPage() {
                   }}
                 />
               ))}
+
+              {hasMore && (
+                <div className="pt-4 text-center">
+                  <button
+                    onClick={() => { trigger("vibrate"); loadMore(); }}
+                    disabled={isLoadingMore}
+                    className="rounded-2xl border border-surface-border/50 bg-surface px-6 py-3 text-xs font-medium text-ink-primary transition-all active:scale-95 hover:border-ice/40 disabled:opacity-50"
+                  >
+                    {isLoadingMore ? <Loader2 size={16} className="animate-spin inline mr-1" /> : null}
+                    Carregar mais registros
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </section>
