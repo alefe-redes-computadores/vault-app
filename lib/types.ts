@@ -170,7 +170,7 @@ export type LaudoMetadata = { doctor: string; specialty: string; hospital: strin
 export type EncaminhamentoMetadata = { from: string; to?: string; reason: string; date: string; };
 
 // ============================================================
-// 5. FILA DE SINCRONIZAÇÃO
+// 5. FILA DE SINCRONIZAÇÃO (ATUALIZADA)
 // ============================================================
 export interface SyncQueueItem {
   id?: string;
@@ -185,8 +185,8 @@ export interface SyncQueueItem {
     | 'farmacias'
     | 'hospitais'
     | 'doseLogs'
-    | 'credentials'
-    | 'cards'; // ✅ Adicionado cards na fila de sincronização
+    | 'credentials' // ✅ Nossas adições
+    | 'cards';      // ✅ Nossas adições
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -237,9 +237,9 @@ export interface DoseLog {
   id?: string;
   user_id: string;
   medicamento_id: string;
-  data: string;
-  horario: string;
-  tomado_em?: string;
+  data: string; 
+  horario: string; 
+  tomado_em?: string; 
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -322,7 +322,7 @@ export interface Hospital {
 }
 
 // ============================================================
-// 9. GERENCIADOR DE SENHAS (CREDENCIAIS)
+// 9. GERENCIADOR DE SENHAS (CREDENCIAIS) ✅ NOVO
 // ============================================================
 export interface Credential {
   id?: string;
@@ -340,7 +340,7 @@ export interface Credential {
 }
 
 // ============================================================
-// 10. BANCOS & CARTÕES (NOVO MÓDULO)
+// 10. BANCOS & CARTÕES (CARDS) ✅ NOVO
 // ============================================================
 export type CardType = 'cartao_credito' | 'cartao_debito' | 'conta_corrente' | 'conta_poupanca' | 'conta_digital';
 export type CardBrand = 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard' | 'unknown';
@@ -348,17 +348,17 @@ export type CardBrand = 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard' | '
 export interface BankCard {
   id?: string;
   user_id: string;
-  title: string;                    // Ex: "Nubank Ultravioleta" ou "Conta Itaú"
-  bank_name: string;                // Ex: "Nubank", "Itaú"
-  type: CardType;                   // Tipo da conta ou cartão
-  card_number_encrypted?: string;   // Número criptografado (para cartões)
-  card_holder?: string;             // Nome impresso no cartão
-  brand?: CardBrand;                // Bandeira detectada automaticamente
-  expiry_date?: string;             // Validade (MM/AA)
-  cvv_encrypted?: string;           // CVV criptografado
-  agency?: string;                  // Agência (para contas bancárias)
-  account?: string;                 // Número da conta e dígito
-  notes?: string;                   // Observações
+  title: string;                    
+  bank_name: string;                
+  type: CardType;                   
+  card_number_encrypted?: string;   
+  card_holder?: string;             
+  brand?: CardBrand;                
+  expiry_date?: string;             
+  cvv_encrypted?: string;           
+  agency?: string;                  
+  account?: string;                 
+  notes?: string;                   
   created_at: string;
   updated_at: string;
   synced: boolean;
