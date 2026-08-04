@@ -16,6 +16,7 @@
     "@capacitor/android": "^6.1.0",
     "@capacitor/app": "^6.0.0",
     "@capacitor/browser": "^6.0.0",
+    "@capacitor/clipboard": "^6.0.0",
     "@capacitor/core": "^6.1.0",
     "@capacitor/status-bar": "^6.0.0",
     "capacitor-native-biometric": "latest",
