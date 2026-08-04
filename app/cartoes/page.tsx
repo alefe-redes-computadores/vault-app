@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
-  ArrowLeft, Plus, Search, CreditCard, Landmark, ShieldCheck, Trash2, ChevronRight, Loader2, Wallet 
+  ArrowLeft, Plus, Search, Landmark, ShieldCheck, Trash2, ChevronRight, Loader2, Wallet 
 } from "lucide-react";
-import { useCards } from "@/hooks/useCards";
+import { usePaginatedCards } from "@/hooks/usePaginatedCards";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { getBankLogoUrl, getBrandLabel } from "@/lib/utils/card-helper";
@@ -16,40 +16,26 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-const ITEMS_PER_PAGE = 20;
-
 export default function CardsPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { cards, loading, deleteCard } = useCards();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
-  const [displayLimit, setDisplayLimit] = useState(ITEMS_PER_PAGE);
 
-  const filteredCards = useMemo(() => {
-    return cards.filter((item) => {
-      const matchesSearch = 
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.bank_name.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesType = selectedType === "all" || item.type === selectedType;
+  const { cards, totalCount, hasMore, isLoadingMore, loadMore, deleteCard } = usePaginatedCards({
+    searchQuery: debouncedQuery,
+    selectedType,
+  });
 
-      return matchesSearch && matchesType;
-    });
-  }, [cards, searchQuery, selectedType]);
-
-  // Paginação em blocos para performance extrema (+1.000 itens)
-  const paginatedCards = useMemo(() => {
-    return filteredCards.slice(0, displayLimit);
-  }, [filteredCards, displayLimit]);
-
-  const hasMore = displayLimit < filteredCards.length;
-
-  const handleLoadMore = () => {
-    trigger("vibrate");
-    setDisplayLimit((prev) => prev + ITEMS_PER_PAGE);
-  };
+  // Debounce (300ms) para otimizar busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -79,7 +65,7 @@ export default function CardsPage() {
             <div>
               <h1 className="font-display text-lg font-semibold text-ink-primary">Bancos & Cartões</h1>
               <p className="text-xs text-ink-muted flex items-center gap-1">
-                <ShieldCheck size={12} className="text-ice" /> Cofre criptografado
+                <ShieldCheck size={12} className="text-ice" /> Cofre criptografado ({totalCount})
               </p>
             </div>
           </div>
@@ -101,7 +87,7 @@ export default function CardsPage() {
               type="text"
               placeholder="Buscar por título ou banco..."
               value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setDisplayLimit(ITEMS_PER_PAGE); }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface px-4 py-3.5 pl-11 text-sm text-ink-primary outline-none transition-all focus:border-ice/50 focus:ring-2 focus:ring-ice/15"
             />
           </div>
@@ -116,7 +102,7 @@ export default function CardsPage() {
             ].map((filter) => (
               <button
                 key={filter.id}
-                onClick={() => { trigger("vibrate"); setSelectedType(filter.id); setDisplayLimit(ITEMS_PER_PAGE); }}
+                onClick={() => { trigger("vibrate"); setSelectedType(filter.id); }}
                 className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-medium transition-all active:scale-95 ${
                   selectedType === filter.id 
                     ? "border-ice bg-ice/12 text-ice" 
@@ -131,11 +117,7 @@ export default function CardsPage() {
 
         {/* Listagem com Paginação em Blocos */}
         <section className="px-5 pt-4">
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="animate-spin text-ice" size={32} />
-            </div>
-          ) : filteredCards.length === 0 ? (
+          {cards.length === 0 ? (
             <motion.div variants={fadeUp} initial="initial" animate="animate" className="flex flex-col items-center justify-center py-20 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-surface-border/50 bg-surface text-ink-faint mb-4">
                 <Wallet size={28} />
@@ -145,7 +127,7 @@ export default function CardsPage() {
             </motion.div>
           ) : (
             <div className="space-y-3">
-              {paginatedCards.map((item, index) => {
+              {cards.map((item, index) => {
                 const logoUrl = getBankLogoUrl(item.bank_name);
                 const brandLabel = item.brand ? getBrandLabel(item.brand) : null;
 
@@ -155,7 +137,7 @@ export default function CardsPage() {
                     variants={fadeUp}
                     initial="initial"
                     animate="animate"
-                    transition={{ delay: (index % ITEMS_PER_PAGE) * 0.03 }}
+                    transition={{ delay: (index % 20) * 0.03 }}
                     onClick={() => { trigger("vibrate"); router.push(`/cartoes/detalhes?id=${item.id}`); }}
                     className="group flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 transition-all active:scale-[0.99] hover:border-ice/30 shadow-sm"
                   >
@@ -198,10 +180,12 @@ export default function CardsPage() {
               {hasMore && (
                 <div className="pt-4 text-center">
                   <button
-                    onClick={handleLoadMore}
-                    className="rounded-2xl border border-surface-border/50 bg-surface px-6 py-3 text-xs font-medium text-ink-primary transition-all active:scale-95 hover:border-ice/40"
+                    onClick={() => { trigger("vibrate"); loadMore(); }}
+                    disabled={isLoadingMore}
+                    className="rounded-2xl border border-surface-border/50 bg-surface px-6 py-3 text-xs font-medium text-ink-primary transition-all active:scale-95 hover:border-ice/40 disabled:opacity-50"
                   >
-                    Carregar mais ({filteredCards.length - displayLimit} restantes)
+                    {isLoadingMore ? <Loader2 size={16} className="animate-spin inline mr-1" /> : null}
+                    Carregar mais cartões
                   </button>
                 </div>
               )}
