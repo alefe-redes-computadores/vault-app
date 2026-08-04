@@ -2,41 +2,32 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
 import { 
-  ArrowLeft, 
-  Trash2, 
-  Eye, 
-  EyeOff, 
-  Copy, 
-  Check, 
-  ExternalLink, 
-  KeyRound, 
-  Lock, 
-  ShieldCheck, 
-  User, 
-  FileText,
-  Loader2
+  ArrowLeft, Trash2, Eye, EyeOff, Copy, Check, ExternalLink, ShieldCheck, Loader2, Lock 
 } from "lucide-react";
 import { useCredentials } from "@/hooks/useCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
+import { useSecureScreen } from "@/hooks/useSecureScreen";
 import { decryptPassword } from "@/lib/crypto";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { PageTransition } from "@/components/PageTransition";
 import { db } from "@/lib/db";
 import type { Credential } from "@/lib/types";
+import { useToast } from "@/components/ToastProvider";
 
 function CredentialDetailsContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { showToast } = useToast();
 
+  const { isLocked } = useSecureScreen();
   const { deleteCredential } = useCredentials();
   const { authenticate } = useBiometric({
     title: "Revelar Senha",
-    subtitle: "Confirme sua identidade para visualizar a senha descriptografada.",
+    subtitle: "Confirme sua identidade para visualizar a senha.",
   });
 
   const [credential, setCredential] = useState<Credential | null>(null);
@@ -53,7 +44,7 @@ function CredentialDetailsContent() {
         const item = await db.credentials.get(id);
         if (item) setCredential(item);
       } catch (error) {
-        console.error("Erro ao carregar credencial:", error);
+        console.error("Erro:", error);
       } finally {
         setLoading(false);
       }
@@ -66,10 +57,8 @@ function CredentialDetailsContent() {
     if (!credential) return;
 
     if (!revealed) {
-      // Exige biometria para mostrar a senha
       const isAuth = await authenticate();
       if (!isAuth) return;
-
       const decrypted = decryptPassword(credential.password_encrypted);
       setPlainPassword(decrypted);
       setRevealed(true);
@@ -85,13 +74,18 @@ function CredentialDetailsContent() {
       await navigator.clipboard.writeText(text);
       setCopiedField(fieldName);
       trigger("success");
+      
+      if (fieldName === "password") {
+         showToast("Senha copiada! Será limpa em 60s.", "success");
+         setTimeout(() => navigator.clipboard.writeText(" "), 60000);
+      }
+      
       setTimeout(() => setCopiedField(null), 2000);
     }
   };
 
   const handleDelete = async () => {
-    if (!id || !confirm("Tem certeza que deseja excluir esta senha permanentemente?")) return;
-    
+    if (!id || !confirm("Deseja excluir esta senha?")) return;
     trigger("vibrate");
     setIsDeleting(true);
     try {
@@ -99,143 +93,74 @@ function CredentialDetailsContent() {
       trigger("success");
       router.back();
     } catch (error) {
-      console.error("Erro ao deletar:", error);
       trigger("error");
       setIsDeleting(false);
     }
   };
 
-  if (loading) {
+  if (isLocked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-void">
-        <Loader2 size={32} className="animate-spin text-ice" />
+      <div className="flex min-h-screen flex-col items-center justify-center bg-void">
+        <Lock size={48} className="text-ice mb-4" />
+        <h2 className="font-display text-xl text-ink-primary">Vault Bloqueado</h2>
       </div>
     );
   }
 
-  if (!credential) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-void px-5 text-center">
-        <h2 className="font-display text-lg font-semibold text-ink-primary">Senha não encontrada</h2>
-        <p className="mt-1 text-sm text-ink-muted">O registro pode ter sido removido ou o link está incorreto.</p>
-        <Button variant="secondary" className="mt-5" onClick={() => router.back()}>
-          Voltar
-        </Button>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-void"><Loader2 className="animate-spin text-ice" /></div>;
+  if (!credential) return <div className="flex min-h-screen flex-col items-center justify-center bg-void"><p>Não encontrada.</p></div>;
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-            >
+            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95">
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <h1 className="font-display text-lg font-semibold text-ink-primary truncate">
-                {credential.title}
-              </h1>
-              <span className="inline-block rounded-full bg-ice/15 px-2.5 py-0.5 text-[11px] font-medium text-ice capitalize">
-                {credential.category}
-              </span>
+              <h1 className="font-display text-lg font-semibold text-ink-primary truncate">{credential.title}</h1>
+              <span className="inline-block rounded-full bg-ice/15 px-2.5 py-0.5 text-[11px] font-medium text-ice capitalize">{credential.category}</span>
             </div>
           </div>
-
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral transition-all active:scale-95"
-            aria-label="Excluir senha"
-          >
+          <button onClick={handleDelete} disabled={isDeleting} className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral active:scale-95">
             {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
           </button>
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* Usuário / Login */}
           {credential.username && (
-            <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm flex items-center justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs uppercase tracking-[0.18em] text-ink-faint">Usuário / E-mail</p>
-                <p className="mt-1 truncate text-base font-medium text-ink-primary">{credential.username}</p>
+            <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 flex justify-between items-center">
+              <div>
+                <p className="text-xs uppercase text-ink-faint">Usuário / E-mail</p>
+                <p className="mt-1 text-base font-medium">{credential.username}</p>
               </div>
-              <button
-                onClick={() => handleCopy(credential.username!, "username")}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary transition-all"
-              >
+              <button onClick={() => handleCopy(credential.username!, "username")} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border/50">
                 {copiedField === "username" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
               </button>
             </div>
           )}
 
-          {/* Senha Segura */}
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-[0.18em] text-ink-faint">Senha criptografada</p>
-              <span className="flex items-center gap-1 text-[11px] text-ice">
-                <ShieldCheck size={12} /> E2EE
-              </span>
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <p className="text-xs uppercase text-ink-faint">Senha criptografada</p>
+              <span className="flex items-center gap-1 text-[11px] text-ice"><ShieldCheck size={12} /> E2EE</span>
             </div>
-
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3">
-              <span className="font-mono text-base tracking-wider text-ink-primary">
-                {revealed ? plainPassword : "••••••••••••••••"}
-              </span>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleRevealPassword}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:text-ice transition-all"
-                  aria-label="Revelar/Ocultar senha"
-                >
+            <div className="flex justify-between items-center gap-3 bg-surface-raised rounded-2xl p-3 border border-surface-border/50">
+              <span className="font-mono text-base text-ink-primary">{revealed ? plainPassword : "••••••••••••••••"}</span>
+              <div className="flex gap-2">
+                <button onClick={handleRevealPassword} className="h-9 w-9 flex items-center justify-center rounded-xl bg-surface">
                   {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
-                <button
-                  onClick={async () => {
-                    const decrypted = revealed ? plainPassword : decryptPassword(credential.password_encrypted);
-                    handleCopy(decrypted, "password");
-                  }}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-surface-border/50 bg-surface text-ink-muted hover:text-ink-primary transition-all"
-                  aria-label="Copiar senha"
-                >
+                <button onClick={() => {
+                  const val = revealed ? plainPassword : decryptPassword(credential.password_encrypted);
+                  handleCopy(val, "password");
+                }} className="h-9 w-9 flex items-center justify-center rounded-xl bg-surface">
                   {copiedField === "password" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
                 </button>
               </div>
             </div>
           </div>
-
-          {/* URL do Site */}
-          {credential.url && (
-            <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm flex items-center justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs uppercase tracking-[0.18em] text-ink-faint">Website</p>
-                <a 
-                  href={credential.url.startsWith("http") ? credential.url : `https://${credential.url}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="mt-1 truncate text-sm font-medium text-ice hover:underline flex items-center gap-1"
-                >
-                  {credential.url} <ExternalLink size={12} />
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* Notas */}
-          {credential.notes && (
-            <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-              <p className="text-xs uppercase tracking-[0.18em] text-ink-faint">Notas e Dicas</p>
-              <p className="text-sm text-ink-muted whitespace-pre-wrap mt-2">{credential.notes}</p>
-            </div>
-          )}
         </section>
       </main>
     </PageTransition>
@@ -244,11 +169,7 @@ function CredentialDetailsContent() {
 
 export default function CredentialDetailsPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-void">
-        <Loader2 size={32} className="animate-spin text-ice" />
-      </div>
-    }>
+    <Suspense fallback={<div className="flex min-h-screen justify-center items-center bg-void"><Loader2 className="animate-spin text-ice" /></div>}>
       <CredentialDetailsContent />
     </Suspense>
   );
