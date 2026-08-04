@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Search, X, Plus, KeyRound, Lock } from "lucide-react";
+import { Clipboard } from "@capacitor/clipboard";
 import { useCredentials } from "@/hooks/useCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
 import { useSecureScreen } from "@/hooks/useSecureScreen";
@@ -28,11 +29,15 @@ export default function PasswordsPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { credentials } = useCredentials();
-  const { isLocked } = useSecureScreen(); // Proteção contra Background
   
+  // 1. Injetando a proteção de segundo plano
+  const { isLocked } = useSecureScreen(); 
+  
+  // 2. Adicionando o fallback da biometria
   const { authenticate } = useBiometric({
     title: "Copiar Senha",
     subtitle: "Confirme sua identidade para copiar a senha para a área de transferência.",
+    fallbackTitle: "Usar senha do dispositivo",
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,14 +59,15 @@ export default function PasswordsPage() {
       if (!isAuth) return;
 
       const plainText = decryptPassword(encryptedPassword);
-      if (plainText && navigator.clipboard) {
-        await navigator.clipboard.writeText(plainText);
+      if (plainText) {
+        // 3. Usando o plugin nativo do Capacitor
+        await Clipboard.write({ string: plainText });
         trigger("success");
         showToast("Senha copiada! Será limpa em 60s.", "success");
 
         // Magia: Limpa a área de transferência após 60 segundos
         setTimeout(() => {
-          navigator.clipboard.writeText(" ");
+          Clipboard.write({ string: "" });
         }, 60000);
       }
     } catch (error) {
@@ -70,11 +76,11 @@ export default function PasswordsPage() {
     }
   };
 
-  // Se o app foi minimizado, esconde os dados e mostra um cadeado
+  // Se o app foi minimizado, esconde os dados e mostra o cadeado
   if (isLocked) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-void">
-        <Lock size={48} className="text-ice mb-4" />
+        <Lock size={48} className="mb-4 text-ice" />
         <h2 className="font-display text-xl text-ink-primary">Vault Bloqueado</h2>
       </div>
     );
@@ -83,7 +89,7 @@ export default function PasswordsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        <header className="header-safe-top sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
@@ -105,7 +111,7 @@ export default function PasswordsPage() {
           </div>
 
           <div className="relative mt-4">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-muted" />
             <Input
               placeholder="Buscar senhas, logins..."
               value={searchQuery}
@@ -122,7 +128,7 @@ export default function PasswordsPage() {
             )}
           </div>
 
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="scrollbar-hide mt-4 flex gap-2 overflow-x-auto pb-1">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
@@ -157,8 +163,9 @@ export default function PasswordsPage() {
                   key={cred.id}
                   credential={cred}
                   onClick={() => router.push(`/senhas/detalhes?id=${cred.id}`)}
-                  onCopy={(e) => {
+                  onCopy={(e: React.MouseEvent) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     handleCopyPassword(cred.password_encrypted);
                   }}
                 />
