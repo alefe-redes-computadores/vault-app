@@ -199,7 +199,7 @@ export default function CardsPage() {
           )}
         </section>
 
-        {/* Menu Flutuante Contextual de Adição (Idêntico ao de Senhas) */}
+        {/* Menu Flutuante Contextual Separado (Cartão e Conta) */}
         <AnimatePresence>
           {isComposeMenuOpen && (
             <>
@@ -221,10 +221,10 @@ export default function CardsPage() {
               >
                 <div className="px-4 pb-1 pt-3.5">
                   <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-faint">
-                    Gerenciar Cartões
+                    Gerenciar Bancos & Cartões
                   </p>
                 </div>
-                <div className="px-2 pb-2">
+                <div className="px-2 pb-2 space-y-1">
                   <button
                     onClick={() => handleOptionPress("/cartoes/novo")}
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
@@ -233,7 +233,19 @@ export default function CardsPage() {
                       <CreditCard size={16} />
                     </div>
                     <span className="text-sm font-medium text-ink-primary">
-                      Novo cartão ou conta
+                      Novo cartão
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => handleOptionPress("/contas/novo")}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                      <Landmark size={16} />
+                    </div>
+                    <span className="text-sm font-medium text-ink-primary">
+                      Nova conta bancária
                     </span>
                   </button>
                 </div>
