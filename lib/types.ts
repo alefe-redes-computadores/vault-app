@@ -174,7 +174,17 @@ export type EncaminhamentoMetadata = { from: string; to?: string; reason: string
 // ============================================================
 export interface SyncQueueItem {
   id?: string;
-  table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes' | 'vaults' | 'vaultMembers' | 'medicos' | 'farmacias' | 'hospitais';
+  table:
+    | 'persons'
+    | 'documents'
+    | 'medicamentos'
+    | 'renovacoes'
+    | 'vaults'
+    | 'vaultMembers'
+    | 'medicos'
+    | 'farmacias'
+    | 'hospitais'
+    | 'doseLogs';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -199,16 +209,11 @@ export interface Medicamento {
   proxima_renovacao: string;
   observacoes?: string;
   tipo_receita?: TipoReceita;
-
-  // ✅ NOVO — rastreio de estoque real ("faltam X dias")
-  // estoque_quantidade = quantas unidades você tinha em `estoque_data_referencia`.
-  // O restante é calculado a partir daí (não precisa atualizar todo dia).
   estoque_quantidade?: number;
-  estoque_data_referencia?: string; // ISO date
-  estoque_horarios?: string[]; // ex: ["08:00", "20:00"]
-  estoque_unidade_por_dose?: number; // quantas unidades por dose (padrão 1)
-  estoque_unidade_medida?: string; // ex: "comprimido(s)", "ml", "gota(s)"
-
+  estoque_data_referencia?: string;
+  estoque_horarios?: string[];
+  estoque_unidade_por_dose?: number;
+  estoque_unidade_medida?: string;
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -221,6 +226,20 @@ export interface Renovacao {
   data: string;
   anexo_url?: string;
   observacoes?: string;
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
+}
+
+// ✅ NOVO — registro de dose marcada como tomada num dia+horário
+// específico. Usado pelo checklist "Hoje" e pelas notificações.
+export interface DoseLog {
+  id?: string;
+  user_id: string;
+  medicamento_id: string;
+  data: string; // "YYYY-MM-DD" — o dia a que a dose pertence
+  horario: string; // "HH:MM" — qual dos horários do medicamento
+  tomado_em?: string; // ISO datetime de quando foi marcado, ou undefined = não tomada
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
