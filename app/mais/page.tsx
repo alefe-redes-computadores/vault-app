@@ -21,7 +21,7 @@ import {
   Terminal,
   Activity,
   KeyRound,
-  CreditCard, // ✅ Ícone adicionado para o módulo de Bancos & Cartões
+  CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -30,10 +30,11 @@ import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
-import { useState, ReactNode, useCallback } from "react";
+import { useState, useEffect, ReactNode, useCallback } from "react";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { pullAllData } from "@/lib/sync/pull";
+import { useLiveQuery } from "dexie-react-hooks";
 
 const APP_VERSION = "1.0.0";
 
@@ -65,6 +66,9 @@ export default function MaisPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Consulta reativa em tempo real da quantidade de itens pendentes na fila
+  const pendingQueueCount = useLiveQuery(() => db.syncQueue.count(), []) ?? 0;
+
   const handleLogout = async () => {
     setIsLoading(true);
     try {
@@ -93,7 +97,7 @@ export default function MaisPage() {
       await db.hospitais.clear();
       await db.syncQueue.clear();
       await db.credentials.clear();
-      await db.cards.clear(); // ✅ Adicionada a limpeza da tabela de cartões locais!
+      await db.cards.clear();
 
       trigger("success");
       showToast("Dados locais limpos com sucesso!", "success");
@@ -110,11 +114,13 @@ export default function MaisPage() {
   const handleSync = useCallback(async () => {
     if (!user?.id) {
       showError("Usuário não autenticado");
+      trigger("error");
       return;
     }
 
     if (!isOnline) {
       showError("Sem conexão com a internet");
+      trigger("error");
       return;
     }
 
@@ -122,7 +128,7 @@ export default function MaisPage() {
 
     setIsSyncing(true);
     trigger("vibrate");
-    showInfo("Sincronizando dados...", 5000);
+    showInfo("Sincronizando dados com a nuvem...", 5000);
 
     try {
       await pullAllData(user.id);
@@ -131,8 +137,9 @@ export default function MaisPage() {
       const finalPersons = await db.persons.count();
       const finalDocs = await db.documents.count();
 
+      trigger("success");
       showSuccess(
-        `Sincronizado! ${finalPersons} pessoas, ${finalDocs} documentos`,
+        `Sincronizado com sucesso! (${finalPersons} pessoas, ${finalDocs} docs)`,
         5000
       );
 
@@ -141,6 +148,7 @@ export default function MaisPage() {
       }, 1500);
     } catch (error: any) {
       console.error("Erro na sincronização:", error);
+      trigger("error");
       showError(`Erro ao sincronizar: ${error?.message || "Erro desconhecido"}`);
     } finally {
       setIsSyncing(false);
@@ -189,28 +197,28 @@ export default function MaisPage() {
           icon: KeyRound,
           label: "Senhas",
           description: "Gerenciador de credenciais com criptografia",
-          onClick: () => router.push("/senhas"),
+          onClick: () => { trigger("vibrate"); router.push("/senhas"); },
         },
         {
           id: "cartoes",
           icon: CreditCard,
           label: "Bancos & Cartões",
           description: "Gerencie suas contas e cartões com segurança",
-          onClick: () => router.push("/cartoes"),
+          onClick: () => { trigger("vibrate"); router.push("/cartoes"); },
         },
         {
           id: "cofres",
           icon: Shield,
           label: "Cofres",
           description: "Documentos compartilhados com sua família",
-          onClick: () => router.push("/vaults"),
+          onClick: () => { trigger("vibrate"); router.push("/vaults"); },
         },
         {
           id: "pessoas",
           icon: Users,
           label: "Pessoas",
           description: "Gerencie as pessoas do seu vault",
-          onClick: () => router.push("/pessoas"),
+          onClick: () => { trigger("vibrate"); router.push("/pessoas"); },
         },
         {
           id: "tema",
@@ -228,11 +236,13 @@ export default function MaisPage() {
           id: "sync",
           icon: RefreshCw,
           label: "Sincronizar agora",
-          description: isOnline
-            ? isSyncing
-              ? "Baixando e enviando dados..."
-              : "Forçar sincronização com a nuvem (pull + push)"
-            : "Sem conexão",
+          description: !isOnline
+            ? "Sem conexão com a internet"
+            : isSyncing
+            ? "Baixando e enviando dados..."
+            : pendingQueueCount > 0
+            ? `${pendingQueueCount} ${pendingQueueCount === 1 ? "item pendente" : "itens pendentes"} na fila`
+            : "Tudo sincronizado com a nuvem",
           onClick: handleSync,
           disabled: !isOnline || isSyncing,
         },
@@ -241,14 +251,14 @@ export default function MaisPage() {
           icon: Download,
           label: "Exportar dados",
           description: "Baixe todos os seus dados em JSON",
-          onClick: () => showToast("Em breve...", "info"),
+          onClick: () => { trigger("vibrate"); showToast("Em breve...", "info"); },
         },
         {
           id: "limpar",
           icon: HardDrive,
           label: "Limpar dados locais",
           description: "Remove todos os dados do dispositivo",
-          onClick: () => setShowClearDataModal(true),
+          onClick: () => { trigger("vibrate"); setShowClearDataModal(true); },
         },
       ],
     },
@@ -259,17 +269,15 @@ export default function MaisPage() {
           id: "diagnostico-dados",
           icon: Activity,
           label: "Diagnóstico de dados",
-          description: "Compara o que está no aparelho com o que está na nuvem, tabela por tabela",
-          onClick: () => router.push("/diagnostico"),
+          description: "Compara o que está no aparelho com o que está na nuvem",
+          onClick: () => { trigger("vibrate"); router.push("/diagnostico"); },
         },
         {
           id: "ver-logs",
           icon: Terminal,
           label: "Ver logs de sincronização",
-          description: syncLogs.length > 0 
-            ? `${syncLogs.length} eventos registrados` 
-            : "Nenhum log disponível",
-          onClick: showLogsAlert,
+          description: syncLogs.length > 0 ? `${syncLogs.length} eventos registrados` : "Nenhum log disponível",
+          onClick: () => { trigger("vibrate"); showLogsAlert(); },
           disabled: syncLogs.length === 0,
         },
         {
@@ -278,6 +286,7 @@ export default function MaisPage() {
           label: "Limpar logs",
           description: "Remove todos os logs de sincronização",
           onClick: () => {
+            trigger("vibrate");
             clearLogs();
             showToast("Logs limpos com sucesso!", "info");
           },
@@ -293,7 +302,7 @@ export default function MaisPage() {
           icon: HelpCircle,
           label: "Ajuda",
           description: "Dúvidas e suporte",
-          onClick: () => showToast("Em breve...", "info"),
+          onClick: () => { trigger("vibrate"); showToast("Em breve...", "info"); },
         },
       ],
     },
