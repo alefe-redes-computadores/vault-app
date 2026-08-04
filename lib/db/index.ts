@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { 
   Person, Document, SyncQueueItem, Medicamento, Renovacao, 
-  Vault, VaultMember, Medico, Farmacia, Hospital, Credential, BankCard, DoseLog 
+  Vault, VaultMember, Medico, Farmacia, Hospital, Credential, BankCard 
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
 
@@ -350,6 +350,31 @@ export async function safeAddMedico(data: Omit<Medico, 'id' | 'created_at' | 'up
   });
 }
 
+export async function safeUpdateMedico(id: string, changes: Partial<Medico>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.medicos.get(id);
+  if (!item) throw new Error('Médico não encontrado');
+  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.medicos.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicos', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteMedico(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.delete(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicos', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
 export async function safeAddFarmacia(data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -364,6 +389,31 @@ export async function safeAddFarmacia(data: Omit<Farmacia, 'id' | 'created_at' |
   });
 }
 
+export async function safeUpdateFarmacia(id: string, changes: Partial<Farmacia>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.farmacias.get(id);
+  if (!item) throw new Error('Farmácia não encontrada');
+  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.farmacias.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'farmacias', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteFarmacia(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.delete(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'farmacias', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
 export async function safeAddHospital(data: Omit<Hospital, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -375,6 +425,109 @@ export async function safeAddHospital(data: Omit<Hospital, 'id' | 'created_at' |
     });
     triggerSyncProcess();
     return id;
+  });
+}
+
+export async function safeUpdateHospital(id: string, changes: Partial<Hospital>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.hospitais.get(id);
+  if (!item) throw new Error('Hospital não encontrado');
+  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.hospitais.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'hospitais', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteHospital(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.delete(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'hospitais', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeAddMedicamento(data: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Medicamento = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicamentos', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateMedicamento(id: string, changes: Partial<Medicamento>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.medicamentos.get(id);
+  if (!item) throw new Error('Medicamento não encontrado');
+  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.medicamentos.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicamentos', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteMedicamento(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.delete(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicamentos', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeAddRenovacao(data: Omit<Renovacao, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Renovacao = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
+    await db.renovacoes.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'renovacoes', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateRenovacao(id: string, changes: Partial<Renovacao>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.renovacoes.get(id);
+  if (!item) throw new Error('Renovação não encontrada');
+  await db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
+    await db.renovacoes.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.renovacoes.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'renovacoes', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteRenovacao(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
+    await db.renovacoes.delete(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'renovacoes', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
   });
 }
 
