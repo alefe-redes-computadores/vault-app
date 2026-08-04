@@ -20,6 +20,7 @@ import {
   Loader2,
   Terminal,
   Activity,
+  KeyRound, // <-- Adicionado o ícone da chave
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -90,6 +91,7 @@ export default function MaisPage() {
       await db.farmacias.clear();
       await db.hospitais.clear();
       await db.syncQueue.clear();
+      await db.credentials.clear(); // <-- Adicionada a limpeza das senhas!
 
       trigger("success");
       showToast("Dados locais limpos com sucesso!", "success");
@@ -163,9 +165,6 @@ export default function MaisPage() {
     user?.email?.split("@")[0] ||
     "Usuário";
 
-  // ============================================================
-  // Função para mostrar logs em um alerta
-  // ============================================================
   const showLogsAlert = useCallback(() => {
     if (syncLogs.length === 0) {
       showToast("Nenhum log disponível", "info");
@@ -176,7 +175,6 @@ export default function MaisPage() {
       `[${l.time}] ${l.type.toUpperCase()}: ${l.message}`
     ).join('\n');
 
-    // Usa alert nativo (funciona em qualquer dispositivo)
     alert(`📋 LOGS DE SINCRONIZAÇÃO\n\n${logText}\n\nTotal: ${syncLogs.length} eventos`);
   }, [syncLogs, showToast]);
 
@@ -184,6 +182,13 @@ export default function MaisPage() {
     {
       title: "Geral",
       items: [
+        {
+          id: "senhas",
+          icon: KeyRound,
+          label: "Senhas",
+          description: "Gerenciador de credenciais com criptografia",
+          onClick: () => router.push("/senhas"),
+        },
         {
           id: "cofres",
           icon: Shield,
@@ -238,9 +243,6 @@ export default function MaisPage() {
         },
       ],
     },
-    // ============================================================
-    // ✅ SEÇÃO DE DIAGNÓSTICO — agora com o comparador visual local vs nuvem
-    // ============================================================
     {
       title: "Diagnóstico",
       items: [
@@ -319,7 +321,6 @@ export default function MaisPage() {
         </header>
 
         <section className="space-y-6 px-5 pt-6">
-          {/* Perfil */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -400,7 +401,6 @@ export default function MaisPage() {
             </div>
           </motion.div>
 
-          {/* Menu Sections */}
           {menuSections.map((section, sectionIndex) => (
             <motion.div
               key={section.title}
@@ -461,7 +461,6 @@ export default function MaisPage() {
             </motion.div>
           ))}
 
-          {/* Logout */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -486,7 +485,6 @@ export default function MaisPage() {
             </button>
           </motion.div>
 
-          {/* Footer */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -503,7 +501,6 @@ export default function MaisPage() {
           </motion.div>
         </section>
 
-        {/* Modais */}
         <ConfirmationModal
           isOpen={showLogoutModal}
           onClose={() => setShowLogoutModal(false)}
