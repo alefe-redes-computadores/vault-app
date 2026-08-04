@@ -184,7 +184,8 @@ export interface SyncQueueItem {
     | 'medicos'
     | 'farmacias'
     | 'hospitais'
-    | 'doseLogs';
+    | 'doseLogs'
+    | 'credentials';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -327,10 +328,10 @@ export interface Hospital {
 export interface Credential {
   id?: string;
   user_id: string;
-  vault_id?: string; // Para compartilhar senhas no cofre familiar
+  vault_id?: string;
   title: string;
   username?: string;
-  password_encrypted: string; // Só salvamos e sincronizamos isso
+  password_encrypted: string;
   url?: string;
   notes?: string;
   category: 'banco' | 'social' | 'trabalho' | 'outros';
