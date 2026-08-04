@@ -185,7 +185,8 @@ export interface SyncQueueItem {
     | 'farmacias'
     | 'hospitais'
     | 'doseLogs'
-    | 'credentials';
+    | 'credentials'
+    | 'cards'; // ✅ Adicionado cards na fila de sincronização
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -232,15 +233,13 @@ export interface Renovacao {
   synced?: boolean;
 }
 
-// ✅ NOVO — registro de dose marcada como tomada num dia+horário
-// específico. Usado pelo checklist "Hoje" e pelas notificações.
 export interface DoseLog {
   id?: string;
   user_id: string;
   medicamento_id: string;
-  data: string; // "YYYY-MM-DD" — o dia a que a dose pertence
-  horario: string; // "HH:MM" — qual dos horários do medicamento
-  tomado_em?: string; // ISO datetime de quando foi marcado, ou undefined = não tomada
+  data: string;
+  horario: string;
+  tomado_em?: string;
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -335,6 +334,31 @@ export interface Credential {
   url?: string;
   notes?: string;
   category: 'banco' | 'social' | 'trabalho' | 'outros';
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+// ============================================================
+// 10. BANCOS & CARTÕES (NOVO MÓDULO)
+// ============================================================
+export type CardType = 'cartao_credito' | 'cartao_debito' | 'conta_corrente' | 'conta_poupanca' | 'conta_digital';
+export type CardBrand = 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard' | 'unknown';
+
+export interface BankCard {
+  id?: string;
+  user_id: string;
+  title: string;                    // Ex: "Nubank Ultravioleta" ou "Conta Itaú"
+  bank_name: string;                // Ex: "Nubank", "Itaú"
+  type: CardType;                   // Tipo da conta ou cartão
+  card_number_encrypted?: string;   // Número criptografado (para cartões)
+  card_holder?: string;             // Nome impresso no cartão
+  brand?: CardBrand;                // Bandeira detectada automaticamente
+  expiry_date?: string;             // Validade (MM/AA)
+  cvv_encrypted?: string;           // CVV criptografado
+  agency?: string;                  // Agência (para contas bancárias)
+  account?: string;                 // Número da conta e dígito
+  notes?: string;                   // Observações
   created_at: string;
   updated_at: string;
   synced: boolean;
