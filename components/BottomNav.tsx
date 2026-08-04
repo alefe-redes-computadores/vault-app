@@ -39,8 +39,6 @@ interface ComposeOption {
   path: string;
 }
 
-// Opções do botão "+" por seção. Quando só tem uma opção, o botão navega
-// direto (sem menu) pra não criar fricção no caso mais comum (Home).
 const DEFAULT_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "documento", label: "Novo documento", icon: Plus, path: "/novo" },
 ];
@@ -52,8 +50,6 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "local", label: "Farmácia/Hospital", icon: Building2, path: "/saude/locais/novo" },
 ];
 
-// Rotas que têm sua própria barra de ação fixa no rodapé (ex: botão "Salvar").
-// O BottomNav não pode aparecer nelas, senão as duas barras fixas se sobrepõem.
 const HIDDEN_ON_PATHS = ["/novo", "/login", "/auth/callback"];
 
 function shouldHideNav(pathname: string): boolean {
@@ -64,6 +60,10 @@ function shouldHideNav(pathname: string): boolean {
     return true;
   }
   if (pathname !== "/saude" && pathname.startsWith("/saude/")) {
+    return true;
+  }
+  // ✅ CORREÇÃO AQUI: Oculta a barra em TODAS as telas do gerenciador de senhas
+  if (pathname.startsWith("/senhas")) {
     return true;
   }
   return false;
@@ -110,7 +110,6 @@ export function BottomNav() {
     };
   }, []);
 
-  // Fecha o menu do "+" sempre que a rota muda
   useEffect(() => {
     setIsComposeMenuOpen(false);
   }, [pathname]);
@@ -148,7 +147,6 @@ export function BottomNav() {
 
   return (
     <>
-      {/* Backdrop + menu do "+" contextual */}
       <AnimatePresence>
         {isComposeMenuOpen && (
           <>
@@ -170,7 +168,7 @@ export function BottomNav() {
             >
               <div className="px-4 pb-1 pt-3.5">
                 <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-faint">
-                  Adicionar em Saúde
+                  Adicionar
                 </p>
               </div>
               <div className="px-2 pb-2">
