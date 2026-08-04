@@ -1,11 +1,11 @@
 import Dexie, { type Table } from 'dexie';
 import type { 
   Person, Document, SyncQueueItem, Medicamento, Renovacao, 
-  Vault, VaultMember, Medico, Farmacia, Hospital, Credential, BankCard 
+  Vault, VaultMember, Medico, Farmacia, Hospital, DoseLog,
+  Credential, BankCard // ✅ Importações Nossas
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
 
-// Gerador de UUID compatível com todos os ambientes
 function generateId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -28,8 +28,9 @@ class VaultDB extends Dexie {
   medicos!: Table<Medico, string>;
   farmacias!: Table<Farmacia, string>;
   hospitais!: Table<Hospital, string>;
-  credentials!: Table<Credential, string>;
-  cards!: Table<BankCard, string>;
+  doseLogs!: Table<DoseLog, string>;
+  credentials!: Table<Credential, string>; // ✅ Nossa Tabela
+  cards!: Table<BankCard, string>;         // ✅ Nossa Tabela
 
   constructor() {
     super('vault-db');
@@ -93,8 +94,7 @@ class VaultDB extends Dexie {
       farmacias: 'id, user_id, nome, synced',
       hospitais: 'id, user_id, nome, synced',
     }).upgrade(async (tx) => {
-      console.log('🔄 Migrando para versão 6: convertendo IDs para UUID...');
-      console.log('✅ Migração concluída! Novos registros usarão UUID.');
+      console.log('🔄 Migrando para versão 6...');
     });
 
     this.version(7).stores({
@@ -136,11 +136,12 @@ class VaultDB extends Dexie {
       medicos: 'id, user_id, nome, especialidade, synced',
       farmacias: 'id, user_id, nome, synced',
       hospitais: 'id, user_id, nome, synced',
-      credentials: 'id, user_id, vault_id, title, category, synced',
-    }).upgrade(async () => {
-      console.log('✅ v9: tabela de credenciais (senhas) adicionada.');
+      doseLogs: 'id, user_id, medicamento_id, data, horario',
+    }).upgrade(async (tx) => {
+      console.log('✅ v9: tabela doseLogs criada.');
     });
 
+    // ✅ NOSSAS ADIÇÕES - VERSÕES 10 E 11
     this.version(10).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -152,26 +153,38 @@ class VaultDB extends Dexie {
       medicos: 'id, user_id, nome, especialidade, synced',
       farmacias: 'id, user_id, nome, synced',
       hospitais: 'id, user_id, nome, synced',
+      doseLogs: 'id, user_id, medicamento_id, data, horario',
+      credentials: 'id, user_id, vault_id, title, category, synced',
+    }).upgrade(async () => {
+      console.log('✅ v10: tabela de credenciais (senhas) adicionada.');
+    });
+
+    this.version(11).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: 'id, user_id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+      doseLogs: 'id, user_id, medicamento_id, data, horario',
       credentials: 'id, user_id, vault_id, title, category, synced',
       cards: 'id, user_id, title, bank_name, type, brand, synced',
     }).upgrade(async () => {
-      console.log('✅ v10: tabela de cartões e contas (cards) adicionada.');
+      console.log('✅ v11: tabela de cartões e contas (cards) adicionada.');
     });
   }
 }
 
 export const db = new VaultDB();
 
-// ============================================================
-// UTILITÁRIOS
-// ============================================================
 function nowIso() {
   return new Date().toISOString();
 }
 
-// ============================================================
-// DISPARA EVENTO PARA PROCESSAR FILA IMEDIATAMENTE
-// ============================================================
 function triggerSyncProcess() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('sync:process'));
@@ -179,70 +192,48 @@ function triggerSyncProcess() {
 }
 
 // ============================================================
-// OPERAÇÕES ATÔMICAS (safeAdd / safeUpdate / safeDelete)
+// PERSONS
 // ============================================================
 export async function safeAddPerson(
   person: Omit<Person, 'id' | 'created_at' | 'updated_at' | 'synced'>
 ): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
-  const full: Person = {
-    ...person,
-    id,
-    synced: false,
-    created_at: timestamp,
-    updated_at: timestamp,
-  };
+  const full: Person = { ...person, id, synced: false, created_at: timestamp, updated_at: timestamp };
 
   return db.transaction('rw', db.persons, db.syncQueue, async () => {
     await db.persons.add(full);
     await db.syncQueue.add({
-      id: generateId(),
-      table: 'persons',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
+      id: generateId(), table: 'persons', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
     });
     triggerSyncProcess();
     return id;
   });
 }
 
+// ============================================================
+// DOCUMENTS
+// ============================================================
 export async function safeAddDocument(
   doc: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'>
 ): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
-  const full: Document = {
-    ...doc,
-    id,
-    synced: false,
-    created_at: timestamp,
-    updated_at: timestamp,
-  };
+  const full: Document = { ...doc, id, synced: false, created_at: timestamp, updated_at: timestamp };
 
   return db.transaction('rw', db.documents, db.syncQueue, async () => {
     await db.documents.add(full);
     await db.syncQueue.add({
-      id: generateId(),
-      table: 'documents',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
+      id: generateId(), table: 'documents', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
     });
     triggerSyncProcess();
     return id;
   });
 }
 
-export async function safeUpdateDocument(
-  id: string,
-  changes: Partial<Document>
-): Promise<void> {
+export async function safeUpdateDocument(id: string, changes: Partial<Document>): Promise<void> {
   const timestamp = nowIso();
   const doc = await db.documents.get(id);
   if (!doc) throw new Error('Documento não encontrado');
@@ -251,13 +242,8 @@ export async function safeUpdateDocument(
     await db.documents.update(id, { ...changes, updated_at: timestamp, synced: false });
     const updated = await db.documents.get(id);
     await db.syncQueue.add({
-      id: generateId(),
-      table: 'documents',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
+      id: generateId(), table: 'documents', operation: 'update', payload: { ...updated },
+      created_at: timestamp, retry_count: 0, failed: false,
     });
     triggerSyncProcess();
   });
@@ -283,13 +269,8 @@ export async function safeDeleteDocument(id: string): Promise<void> {
   await db.transaction('rw', db.documents, db.syncQueue, async () => {
     await db.documents.delete(id);
     await db.syncQueue.add({
-      id: generateId(),
-      table: 'documents',
-      operation: 'delete',
-      payload: { id },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
+      id: generateId(), table: 'documents', operation: 'delete', payload: { id },
+      created_at: timestamp, retry_count: 0, failed: false,
     });
     triggerSyncProcess();
   });
@@ -302,7 +283,340 @@ export async function toggleFavorite(id: string): Promise<void> {
 }
 
 // ============================================================
-// OPERAÇÕES PARA CREDENCIAIS (SENHAS) ✅ NOVO
+// MEDICAMENTOS
+// ============================================================
+export async function safeAddMedicamento(
+  med: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Medicamento = { ...med, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicamentos', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateMedicamento(id: string, changes: Partial<Medicamento>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.medicamentos.get(id);
+  if (!item) throw new Error('Medicamento não encontrado');
+
+  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.medicamentos.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicamentos', operation: 'update', payload: { ...updated },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteMedicamento(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+    await db.medicamentos.delete(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicamentos', operation: 'delete', payload: { id },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+// ============================================================
+// RENOVACOES
+// ============================================================
+export async function safeAddRenovacao(
+  ren: Omit<Renovacao, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Renovacao = { ...ren, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
+    await db.renovacoes.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'renovacoes', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateRenovacao(id: string, changes: Partial<Renovacao>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.renovacoes.get(id);
+  if (!item) throw new Error('Renovação não encontrada');
+
+  await db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
+    await db.renovacoes.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.renovacoes.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'renovacoes', operation: 'update', payload: { ...updated },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+// ============================================================
+// DOSE LOGS
+// ============================================================
+export async function safeSetDoseLog(
+  data: Omit<DoseLog, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+
+  const existing = await db.doseLogs
+    .where('medicamento_id')
+    .equals(data.medicamento_id)
+    .filter((l) => l.data === data.data && l.horario === data.horario)
+    .first();
+
+  if (existing) {
+    await db.transaction('rw', db.doseLogs, db.syncQueue, async () => {
+      await db.doseLogs.update(existing.id!, {
+        tomado_em: data.tomado_em,
+        updated_at: timestamp,
+        synced: false,
+      });
+      const updated = await db.doseLogs.get(existing.id!);
+      await db.syncQueue.add({
+        id: generateId(), table: 'doseLogs', operation: 'update', payload: { ...updated },
+        created_at: timestamp, retry_count: 0, failed: false,
+      });
+      triggerSyncProcess();
+    });
+    return existing.id!;
+  }
+
+  const id = generateId();
+  const full: DoseLog = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.doseLogs, db.syncQueue, async () => {
+    await db.doseLogs.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'doseLogs', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+// ============================================================
+// VAULTS
+// ============================================================
+export async function safeAddVault(
+  vault: Omit<Vault, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Vault = { ...vault, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.vaults, db.syncQueue, async () => {
+    await db.vaults.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'vaults', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeAddVaultMember(
+  member: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: VaultMember = { ...member, id, invited_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
+    await db.vaultMembers.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'vaultMembers', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateVaultMember(id: string, changes: Partial<VaultMember>): Promise<void> {
+  const timestamp = nowIso();
+  const member = await db.vaultMembers.get(id);
+  if (!member) throw new Error('Membro não encontrado');
+
+  await db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
+    await db.vaultMembers.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.vaultMembers.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'vaultMembers', operation: 'update', payload: { ...updated },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function shareDocumentWithVault(documentId: string, vaultId: string): Promise<void> {
+  await db.transaction('rw', db.documents, async () => {
+    await db.documents.update(documentId, { vault_id: vaultId });
+  });
+}
+
+export async function getVaultDocuments(vaultId: string): Promise<Document[]> {
+  return db.documents.where('vault_id').equals(vaultId).toArray();
+}
+
+export async function getVaultMembers(vaultId: string): Promise<VaultMember[]> {
+  return db.vaultMembers.where('vault_id').equals(vaultId).toArray();
+}
+
+// ============================================================
+// MÉDICOS, FARMÁCIAS, HOSPITAIS
+// ============================================================
+export async function safeAddMedico(
+  data: Omit<Medico, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Medico = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicos', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateMedico(id: string, changes: Partial<Medico>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.medicos.get(id);
+  if (!item) throw new Error('Médico não encontrado');
+
+  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.medicos.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicos', operation: 'update', payload: { ...updated },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteMedico(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.delete(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicos', operation: 'delete', payload: { id },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeAddFarmacia(
+  data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Farmacia = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'farmacias', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateFarmacia(id: string, changes: Partial<Farmacia>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.farmacias.get(id);
+  if (!item) throw new Error('Farmácia não encontrada');
+
+  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.farmacias.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'farmacias', operation: 'update', payload: { ...updated },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteFarmacia(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.delete(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'farmacias', operation: 'delete', payload: { id },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeAddHospital(
+  data: Omit<Hospital, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Hospital = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'hospitais', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateHospital(id: string, changes: Partial<Hospital>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.hospitais.get(id);
+  if (!item) throw new Error('Hospital não encontrado');
+
+  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.hospitais.get(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'hospitais', operation: 'update', payload: { ...updated },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteHospital(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.delete(id);
+    await db.syncQueue.add({
+      id: generateId(), table: 'hospitais', operation: 'delete', payload: { id },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+// ============================================================
+// CREDENCIAIS (SENHAS) ✅ NOVO
 // ============================================================
 export async function safeAddCredential(
   cred: Omit<Credential, 'id' | 'created_at' | 'updated_at' | 'synced'>
@@ -374,432 +688,7 @@ export async function safeDeleteCredential(id: string): Promise<void> {
 }
 
 // ============================================================
-// OPERAÇÕES PARA MEDICAMENTOS
-// ============================================================
-export async function safeAddMedicamento(
-  med: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'>
-): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
-  const full: Medicamento = {
-    ...med,
-    id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
-  };
-  return db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
-    await db.medicamentos.add(full);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'medicamentos',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-    return id;
-  });
-}
-
-export async function safeUpdateMedicamento(
-  id: string,
-  changes: Partial<Medicamento>
-): Promise<void> {
-  const timestamp = nowIso();
-  const item = await db.medicamentos.get(id);
-  if (!item) throw new Error('Medicamento não encontrado');
-
-  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
-    await db.medicamentos.update(id, { ...changes, updated_at: timestamp, synced: false });
-    const updated = await db.medicamentos.get(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'medicamentos',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-export async function safeDeleteMedicamento(id: string): Promise<void> {
-  const timestamp = nowIso();
-  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
-    await db.medicamentos.delete(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'medicamentos',
-      operation: 'delete',
-      payload: { id },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-export async function safeAddRenovacao(
-  ren: Omit<Renovacao, 'id' | 'created_at' | 'updated_at' | 'synced'>
-): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
-  const full: Renovacao = {
-    ...ren,
-    id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
-  };
-  return db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
-    await db.renovacoes.add(full);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'renovacoes',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-    return id;
-  });
-}
-
-export async function safeUpdateRenovacao(
-  id: string,
-  changes: Partial<Renovacao>
-): Promise<void> {
-  const timestamp = nowIso();
-  const item = await db.renovacoes.get(id);
-  if (!item) throw new Error('Renovação não encontrada');
-
-  await db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
-    await db.renovacoes.update(id, { ...changes, updated_at: timestamp, synced: false });
-    const updated = await db.renovacoes.get(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'renovacoes',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-// ============================================================
-// OPERAÇÕES PARA COFRES
-// ============================================================
-export async function safeAddVault(
-  vault: Omit<Vault, 'id' | 'created_at' | 'updated_at' | 'synced'>
-): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
-  const full: Vault = {
-    ...vault,
-    id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
-  };
-  return db.transaction('rw', db.vaults, db.syncQueue, async () => {
-    await db.vaults.add(full);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'vaults',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-    return id;
-  });
-}
-
-export async function safeAddVaultMember(
-  member: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>
-): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
-  const full: VaultMember = {
-    ...member,
-    id,
-    invited_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
-  };
-  return db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
-    await db.vaultMembers.add(full);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'vaultMembers',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-    return id;
-  });
-}
-
-export async function safeUpdateVaultMember(
-  id: string,
-  changes: Partial<VaultMember>
-): Promise<void> {
-  const timestamp = nowIso();
-  const member = await db.vaultMembers.get(id);
-  if (!member) throw new Error('Membro não encontrado');
-
-  await db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
-    await db.vaultMembers.update(id, { ...changes, updated_at: timestamp, synced: false });
-    const updated = await db.vaultMembers.get(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'vaultMembers',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-export async function shareDocumentWithVault(
-  documentId: string,
-  vaultId: string
-): Promise<void> {
-  await db.transaction('rw', db.documents, async () => {
-    await db.documents.update(documentId, { vault_id: vaultId });
-  });
-}
-
-export async function getVaultDocuments(vaultId: string): Promise<Document[]> {
-  return db.documents.where('vault_id').equals(vaultId).toArray();
-}
-
-export async function getVaultMembers(vaultId: string): Promise<VaultMember[]> {
-  return db.vaultMembers.where('vault_id').equals(vaultId).toArray();
-}
-
-// ============================================================
-// OPERAÇÕES PARA MÉDICOS, FARMÁCIAS, HOSPITAIS
-// ============================================================
-export async function safeAddMedico(
-  data: Omit<Medico, 'id' | 'created_at' | 'updated_at' | 'synced'>
-): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
-  const full: Medico = {
-    ...data,
-    id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
-  };
-  return db.transaction('rw', db.medicos, db.syncQueue, async () => {
-    await db.medicos.add(full);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'medicos',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-    return id;
-  });
-}
-
-export async function safeUpdateMedico(id: string, changes: Partial<Medico>): Promise<void> {
-  const timestamp = nowIso();
-  const item = await db.medicos.get(id);
-  if (!item) throw new Error('Médico não encontrado');
-
-  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
-    await db.medicos.update(id, { ...changes, updated_at: timestamp, synced: false });
-    const updated = await db.medicos.get(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'medicos',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-export async function safeDeleteMedico(id: string): Promise<void> {
-  const timestamp = nowIso();
-  await db.transaction('rw', db.medicos, db.syncQueue, async () => {
-    await db.medicos.delete(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'medicos',
-      operation: 'delete',
-      payload: { id },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-export async function safeAddFarmacia(
-  data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>
-): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
-  const full: Farmacia = {
-    ...data,
-    id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
-  };
-  return db.transaction('rw', db.farmacias, db.syncQueue, async () => {
-    await db.farmacias.add(full);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'farmacias',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-    return id;
-  });
-}
-
-export async function safeUpdateFarmacia(id: string, changes: Partial<Farmacia>): Promise<void> {
-  const timestamp = nowIso();
-  const item = await db.farmacias.get(id);
-  if (!item) throw new Error('Farmácia não encontrada');
-
-  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
-    await db.farmacias.update(id, { ...changes, updated_at: timestamp, synced: false });
-    const updated = await db.farmacias.get(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'farmacias',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-export async function safeDeleteFarmacia(id: string): Promise<void> {
-  const timestamp = nowIso();
-  await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
-    await db.farmacias.delete(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'farmacias',
-      operation: 'delete',
-      payload: { id },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-export async function safeAddHospital(
-  data: Omit<Hospital, 'id' | 'created_at' | 'updated_at' | 'synced'>
-): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
-  const full: Hospital = {
-    ...data,
-    id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
-  };
-  return db.transaction('rw', db.hospitais, db.syncQueue, async () => {
-    await db.hospitais.add(full);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'hospitais',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-    return id;
-  });
-}
-
-export async function safeUpdateHospital(id: string, changes: Partial<Hospital>): Promise<void> {
-  const timestamp = nowIso();
-  const item = await db.hospitais.get(id);
-  if (!item) throw new Error('Hospital não encontrado');
-
-  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
-    await db.hospitais.update(id, { ...changes, updated_at: timestamp, synced: false });
-    const updated = await db.hospitais.get(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'hospitais',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-export async function safeDeleteHospital(id: string): Promise<void> {
-  const timestamp = nowIso();
-  await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
-    await db.hospitais.delete(id);
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'hospitais',
-      operation: 'delete',
-      payload: { id },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
-    triggerSyncProcess();
-  });
-}
-
-// ============================================================
-// OPERAÇÕES PARA BANCOS E CARTÕES (CARDS) ✅ NOVO
+// BANCOS E CARTÕES (CARDS) ✅ NOVO
 // ============================================================
 export async function safeAddCard(card: Omit<BankCard, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
