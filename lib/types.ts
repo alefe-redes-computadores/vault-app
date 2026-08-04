@@ -320,3 +320,21 @@ export interface Hospital {
   updated_at: string;
   synced: boolean;
 }
+
+// ============================================================
+// 9. GERENCIADOR DE SENHAS (CREDENCIAIS)
+// ============================================================
+export interface Credential {
+  id?: string;
+  user_id: string;
+  vault_id?: string; // Para compartilhar senhas no cofre familiar
+  title: string;
+  username?: string;
+  password_encrypted: string; // Só salvamos e sincronizamos isso
+  url?: string;
+  notes?: string;
+  category: 'banco' | 'social' | 'trabalho' | 'outros';
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
