@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
+import type { Credential } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -38,13 +39,14 @@ function EditPasswordContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasAuthenticated, setHasAuthenticated] = useState(false);
 
+  // ✅ Correção do tipo da categoria para aceitar todas as opções do Vault
   const [formData, setFormData] = useState({
     title: "",
     username: "",
     password_plain: "",
     url: "",
     notes: "",
-    category: "outros" as const,
+    category: "outros" as Credential["category"],
   });
 
   useEffect(() => {
@@ -53,7 +55,6 @@ function EditPasswordContent() {
       try {
         const item = await db.credentials.get(id);
         if (item) {
-          // Exige biometria antes de popular o formulário e revelar a senha real
           const isAuth = await authenticate();
           if (!isAuth) {
             router.back();
@@ -81,7 +82,7 @@ function EditPasswordContent() {
     loadCredential();
   }, [id, authenticate, router]);
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
@@ -189,7 +190,7 @@ function EditPasswordContent() {
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Categoria</p>
             <div className="flex flex-wrap gap-2">
-              {["banco", "social", "trabalho", "outros"].map((cat) => (
+              {(["banco", "social", "trabalho", "outros"] as const).map((cat) => (
                 <button
                   key={cat}
                   onClick={() => { trigger("vibrate"); handleChange("category", cat); }}
