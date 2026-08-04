@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase/client';
 import { db } from '@/lib/db';
 import type { 
   Person, Document, Medicamento, Renovacao, Vault, 
-  VaultMember, Medico, Farmacia, Hospital, Credential 
+  VaultMember, Medico, Farmacia, Hospital, Credential, BankCard 
 } from '@/lib/types';
 
 // Lock para evitar execução simultânea
@@ -40,9 +40,6 @@ export async function pullAllData(userId: string): Promise<void> {
 
     console.log(`📌 ${pendingItems.length} itens pendentes na fila, serão preservados`);
 
-    // ============================================================
-    // Função auxiliar para processar uma tabela com try/catch
-    // ============================================================
     const processTable = async (
       tableName: string,
       localTable: any,
@@ -75,71 +72,46 @@ export async function pullAllData(userId: string): Promise<void> {
         console.log(`✅ ${toUpsert.length} registros de ${tableName} sincronizados (${data.length - toUpsert.length} pendentes preservados)`);
       } catch (err) {
         console.error(`❌ Erro ao processar tabela ${tableName}:`, err);
-        // Não relança para não interromper as demais
       }
     };
 
     // ---- Persons ----
     await processTable('persons', db.persons, async () => {
-      const result = await supabase.from('persons').select('*').eq('user_id', userId);
-      return result;
+      return await supabase.from('persons').select('*').eq('user_id', userId);
     });
 
     // ---- Documents ----
     await processTable('documents', db.documents, async () => {
-      const result = await supabase.from('documents').select('*').eq('user_id', userId);
-      return result;
+      return await supabase.from('documents').select('*').eq('user_id', userId);
     });
 
     // ---- Medicamentos ----
     await processTable('medicamentos', db.medicamentos, async () => {
-      const result = await supabase.from('medicamentos').select('*').eq('user_id', userId);
-      return result;
+      return await supabase.from('medicamentos').select('*').eq('user_id', userId);
     });
 
-    // ---- Renovacoes (com fallback se user_id não existir) ----
+    // ---- Renovacoes ----
     try {
-      const { data, error } = await supabase
-        .from('renovacoes')
-        .select('*')
-        .eq('user_id', userId);
+      const { data, error } = await supabase.from('renovacoes').select('*').eq('user_id', userId);
       if (error) {
-        console.warn('⚠️ Tabela renovacoes sem user_id ou erro na consulta:', error.message);
-        // Tenta buscar sem filtro user_id (caso a coluna não exista)
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('renovacoes')
-          .select('*');
-        if (fallbackError) {
-          console.error('❌ Erro ao buscar renovacoes sem filtro:', fallbackError);
-        } else {
+        const { data: fallbackData, error: fallbackError } = await supabase.from('renovacoes').select('*');
+        if (!fallbackError && fallbackData) {
           const pendingIds = pendingTables.get('renovacoes') || new Set();
-          const toUpsert = (fallbackData || []).filter((r: any) => {
-            if (!r.id) return false;
-            return !pendingIds.has(r.id);
-          });
+          const toUpsert = fallbackData.filter((r: any) => r.id && !pendingIds.has(r.id));
           if (toUpsert.length > 0) {
             await db.transaction('rw', db.renovacoes, async () => {
-              for (const ren of toUpsert) {
-                await db.renovacoes.put(ren);
-              }
+              for (const ren of toUpsert) { await db.renovacoes.put(ren); }
             });
           }
-          console.log(`✅ ${toUpsert.length} renovações sincronizadas (fallback sem user_id)`);
         }
-      } else {
+      } else if (data) {
         const pendingIds = pendingTables.get('renovacoes') || new Set();
-        const toUpsert = (data || []).filter((r: any) => {
-          if (!r.id) return false;
-          return !pendingIds.has(r.id);
-        });
+        const toUpsert = data.filter((r: any) => r.id && !pendingIds.has(r.id));
         if (toUpsert.length > 0) {
           await db.transaction('rw', db.renovacoes, async () => {
-            for (const ren of toUpsert) {
-              await db.renovacoes.put(ren);
-            }
+            for (const ren of toUpsert) { await db.renovacoes.put(ren); }
           });
         }
-        console.log(`✅ ${toUpsert.length} renovações sincronizadas`);
       }
     } catch (err) {
       console.error('❌ Erro inesperado ao processar renovacoes:', err);
@@ -147,38 +119,37 @@ export async function pullAllData(userId: string): Promise<void> {
 
     // ---- Vaults ----
     await processTable('vaults', db.vaults, async () => {
-      const result = await supabase.from('vaults').select('*').eq('user_id', userId);
-      return result;
+      return await supabase.from('vaults').select('*').eq('user_id', userId);
     });
 
     // ---- Vault Members ----
     await processTable('vault_members', db.vaultMembers, async () => {
-      const result = await supabase.from('vault_members').select('*').eq('user_id', userId);
-      return result;
+      return await supabase.from('vault_members').select('*').eq('user_id', userId);
     });
 
     // ---- Medicos ----
     await processTable('medicos', db.medicos, async () => {
-      const result = await supabase.from('medicos').select('*').eq('user_id', userId);
-      return result;
+      return await supabase.from('medicos').select('*').eq('user_id', userId);
     });
 
     // ---- Farmacias ----
     await processTable('farmacias', db.farmacias, async () => {
-      const result = await supabase.from('farmacias').select('*').eq('user_id', userId);
-      return result;
+      return await supabase.from('farmacias').select('*').eq('user_id', userId);
     });
 
     // ---- Hospitais ----
     await processTable('hospitais', db.hospitais, async () => {
-      const result = await supabase.from('hospitais').select('*').eq('user_id', userId);
-      return result;
+      return await supabase.from('hospitais').select('*').eq('user_id', userId);
     });
 
-    // ---- Credentials (Senhas) ----
+    // ---- Credentials ----
     await processTable('credentials', db.credentials, async () => {
-      const result = await supabase.from('credentials').select('*').eq('user_id', userId);
-      return result;
+      return await supabase.from('credentials').select('*').eq('user_id', userId);
+    });
+
+    // ---- Cards (Bancos & Cartões) ✅ NOVO ----
+    await processTable('cards', db.cards, async () => {
+      return await supabase.from('cards').select('*').eq('user_id', userId);
     });
 
     window.dispatchEvent(new Event('sync:end'));
