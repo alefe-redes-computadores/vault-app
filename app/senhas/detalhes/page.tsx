@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   ArrowLeft, Trash2, Pencil, Eye, EyeOff, Copy, Check, ExternalLink, ShieldCheck, Loader2, Lock 
@@ -39,6 +39,9 @@ function CredentialDetailsContent() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Referência para gerenciar o timeout do clipboard com segurança contra memory leaks
+  const clipboardTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     async function loadCredential() {
       if (!id) return;
@@ -52,6 +55,12 @@ function CredentialDetailsContent() {
       }
     }
     loadCredential();
+
+    // Limpa o timer e a senha da memória ao desmontar o componente
+    return () => {
+      if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
+      setPlainPassword("");
+    };
   }, [id]);
 
   const handleRevealPassword = async () => {
@@ -80,8 +89,15 @@ function CredentialDetailsContent() {
       
       if (fieldName === "password") {
          showToast("Senha copiada! Será limpa em 60s.", "success");
-         setTimeout(() => {
-           Clipboard.write({ string: "" });
+         
+         if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
+         
+         clipboardTimeoutRef.current = setTimeout(async () => {
+           try {
+             await Clipboard.write({ string: "" });
+           } catch (e) {
+             console.error("Erro ao limpar clipboard:", e);
+           }
          }, 60000);
       }
       
