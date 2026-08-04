@@ -29,7 +29,7 @@ class VaultDB extends Dexie {
   farmacias!: Table<Farmacia, string>;
   hospitais!: Table<Hospital, string>;
   credentials!: Table<Credential, string>;
-  cards!: Table<BankCard, string>; // ✅ Nova tabela de Bancos e Cartões
+  cards!: Table<BankCard, string>;
 
   constructor() {
     super('vault-db');
@@ -146,7 +146,7 @@ class VaultDB extends Dexie {
       farmacias: 'id, user_id, nome, synced',
       hospitais: 'id, user_id, nome, synced',
       credentials: 'id, user_id, vault_id, title, category, synced',
-      cards: 'id, user_id, title, bank_name, type, brand, synced', // ✅ Nova tabela indexada
+      cards: 'id, user_id, title, bank_name, type, brand, synced',
     }).upgrade(async () => {
       console.log('✅ v10: tabela de cartões e contas (cards) adicionada.');
     });
@@ -276,6 +276,61 @@ export async function safeDeleteCredential(id: string): Promise<void> {
     await db.credentials.delete(id);
     await db.syncQueue.add({
       id: generateId(), table: 'credentials', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+// ============================================================
+// OPERAÇÕES PARA MEMBROS DE COFRES (VAULTS)
+// ============================================================
+export async function safeAddVaultMember(
+  member: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: VaultMember = {
+    ...member,
+    id,
+    invited_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
+    await db.vaultMembers.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'vaultMembers',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateVaultMember(
+  id: string,
+  changes: Partial<VaultMember>
+): Promise<void> {
+  const timestamp = nowIso();
+  const member = await db.vaultMembers.get(id);
+  if (!member) throw new Error('Membro não encontrado');
+
+  await db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
+    await db.vaultMembers.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.vaultMembers.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'vaultMembers',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
     });
     triggerSyncProcess();
   });
