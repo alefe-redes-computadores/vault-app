@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { 
   Person, Document, SyncQueueItem, Medicamento, Renovacao, 
-  Vault, VaultMember, Medico, Farmacia, Hospital 
+  Vault, VaultMember, Medico, Farmacia, Hospital, Credential 
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
 
@@ -28,6 +28,7 @@ class VaultDB extends Dexie {
   medicos!: Table<Medico, string>;
   farmacias!: Table<Farmacia, string>;
   hospitais!: Table<Hospital, string>;
+  credentials!: Table<Credential, string>;
 
   constructor() {
     super('vault-db');
@@ -95,19 +96,6 @@ class VaultDB extends Dexie {
       console.log('✅ Migração concluída! Novos registros usarão UUID.');
     });
 
-    // ❌ A versão 7 anterior tentava inserir "user_id" no meio da lista de
-    // campos de medicamentos/renovacoes. O Dexie interpretou isso como troca
-    // de chave primária e travou com "UpgradeError: Not yet support for
-    // changing primary key" — o app ficava sem conseguir abrir o banco local.
-    //
-    // ✅ Correção: apaga essas duas tabelas (v7) e recria do zero já com
-    // user_id indexado (v8). É o jeito seguro e documentado no Dexie de
-    // reestruturar uma tabela sem ambiguidade de chave primária.
-    //
-    // Efeito colateral: qualquer medicamento/renovação salvo *apenas* localmente
-    // (que não tenha sincronizado ainda) será perdido nesse device. Documentos,
-    // pessoas, médicos, farmácias e hospitais NÃO são afetados — só essas duas
-    // tabelas foram apagadas e recriadas.
     this.version(7).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -134,6 +122,22 @@ class VaultDB extends Dexie {
       hospitais: 'id, user_id, nome, synced',
     }).upgrade(async (tx) => {
       console.log('✅ v8: medicamentos e renovacoes recriadas com user_id indexado.');
+    });
+
+    this.version(9).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao',
+      renovacoes: 'id, user_id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+      credentials: 'id, user_id, vault_id, title, category, synced',
+    }).upgrade(async (tx) => {
+      console.log('✅ v9: tabela de credenciais (senhas) adicionada.');
     });
   }
 }
@@ -694,6 +698,75 @@ export async function safeDeleteHospital(id: string): Promise<void> {
     await db.syncQueue.add({
       id: generateId(),
       table: 'hospitais',
+      operation: 'delete',
+      payload: { id },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+// ============================================================
+// OPERAÇÕES PARA CREDENCIAIS (SENHAS)
+// ============================================================
+export async function safeAddCredential(
+  cred: Omit<Credential, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Credential = {
+    ...cred,
+    id,
+    created_at: timestamp,
+    updated_at: timestamp,
+    synced: false,
+  };
+  return db.transaction('rw', db.credentials, db.syncQueue, async () => {
+    await db.credentials.add(full);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'credentials',
+      operation: 'add',
+      payload: { ...full },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateCredential(id: string, changes: Partial<Credential>): Promise<void> {
+  const timestamp = nowIso();
+  const item = await db.credentials.get(id);
+  if (!item) throw new Error('Credencial não encontrada');
+
+  await db.transaction('rw', db.credentials, db.syncQueue, async () => {
+    await db.credentials.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.credentials.get(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'credentials',
+      operation: 'update',
+      payload: { ...updated },
+      created_at: timestamp,
+      retry_count: 0,
+      failed: false,
+    });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteCredential(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.credentials, db.syncQueue, async () => {
+    await db.credentials.delete(id);
+    await db.syncQueue.add({
+      id: generateId(),
+      table: 'credentials',
       operation: 'delete',
       payload: { id },
       created_at: timestamp,
