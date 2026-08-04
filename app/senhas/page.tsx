@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Plus, KeyRound, Lock, FileUp } from "lucide-react";
+import { Search, X, Plus, KeyRound, Lock } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { useCredentials } from "@/hooks/useCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
@@ -41,10 +41,20 @@ export default function PasswordsPage() {
   });
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
+  // Implementação do Debounce (300ms) para otimizar a performance da busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const filteredCredentials = useMemo(() => {
-    const query = normalizeText(searchQuery);
+    const query = normalizeText(debouncedQuery);
 
     return credentials.filter((cred) => {
       const titleMatch = normalizeText(cred.title).includes(query);
@@ -56,7 +66,7 @@ export default function PasswordsPage() {
       
       return matchesSearch && matchesCategory;
     });
-  }, [credentials, searchQuery, selectedCategory]);
+  }, [credentials, debouncedQuery, selectedCategory]);
 
   const handleCopyPassword = async (encryptedPassword: string) => {
     try {
@@ -102,7 +112,7 @@ export default function PasswordsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="header-safe-top sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
+        <header className="header-safe-top sticky top-0 z-25 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
@@ -177,7 +187,7 @@ export default function PasswordsPage() {
           )}
         </section>
 
-        {/* Menu Flutuante Contextual de Adição (Idêntico ao de Saúde) */}
+        {/* Menu Flutuante Contextual de Adição */}
         <AnimatePresence>
           {isComposeMenuOpen && (
             <>
