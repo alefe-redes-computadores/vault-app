@@ -66,7 +66,7 @@ function shouldHideNav(pathname: string): boolean {
   if (pathname === "/senhas" || pathname.startsWith("/senhas/")) {
     return true;
   }
-  // Oculta nas futuras telas de cartões/bancos
+  // Oculta nas telas de cartões/bancos
   if (pathname === "/cartoes" || pathname.startsWith("/cartoes/")) {
     return true;
   }
