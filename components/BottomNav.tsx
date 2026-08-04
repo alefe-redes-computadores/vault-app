@@ -62,8 +62,12 @@ function shouldHideNav(pathname: string): boolean {
   if (pathname !== "/saude" && pathname.startsWith("/saude/")) {
     return true;
   }
-  // ✅ CORREÇÃO AQUI: Oculta a barra em TODAS as telas do gerenciador de senhas
-  if (pathname.startsWith("/senhas")) {
+  // Oculta nas telas de senhas
+  if (pathname === "/senhas" || pathname.startsWith("/senhas/")) {
+    return true;
+  }
+  // Oculta nas futuras telas de cartões/bancos
+  if (pathname === "/cartoes" || pathname.startsWith("/cartoes/")) {
     return true;
   }
   return false;
