@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { 
   Person, Document, SyncQueueItem, Medicamento, Renovacao, 
-  Vault, VaultMember, Medico, Farmacia, Hospital, Credential, BankCard 
+  Vault, VaultMember, Medico, Farmacia, Hospital, Credential, BankCard, DoseLog 
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
 
@@ -166,7 +166,7 @@ function triggerSyncProcess() {
 }
 
 // ============================================================
-// OPERAÇÕES ATÔMICAS (Pessoas, Documentos, Saúde, Cofres, Senhas)
+// PESSOAS
 // ============================================================
 export async function safeAddPerson(person: Omit<Person, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
@@ -183,6 +183,9 @@ export async function safeAddPerson(person: Omit<Person, 'id' | 'created_at' | '
   });
 }
 
+// ============================================================
+// DOCUMENTOS
+// ============================================================
 export async function safeAddDocument(doc: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -241,6 +244,9 @@ export async function toggleFavorite(id: string): Promise<void> {
   await safeUpdateDocument(id, { is_favorite: !doc.is_favorite });
 }
 
+// ============================================================
+// CREDENCIAIS (SENHAS)
+// ============================================================
 export async function safeAddCredential(cred: Omit<Credential, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -282,40 +288,37 @@ export async function safeDeleteCredential(id: string): Promise<void> {
 }
 
 // ============================================================
-// OPERAÇÕES PARA MEMBROS DE COFRES (VAULTS)
+// COFRES E MEMBROS
 // ============================================================
-export async function safeAddVaultMember(
-  member: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>
-): Promise<string> {
+export async function safeAddVault(vault: Omit<Vault, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
-  const full: VaultMember = {
-    ...member,
-    id,
-    invited_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
-  };
-  return db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
-    await db.vaultMembers.add(full);
+  const full: Vault = { ...vault, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.vaults, db.syncQueue, async () => {
+    await db.vaults.add(full);
     await db.syncQueue.add({
-      id: generateId(),
-      table: 'vaultMembers',
-      operation: 'add',
-      payload: { ...full },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
+      id: generateId(), table: 'vaults', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false,
     });
     triggerSyncProcess();
     return id;
   });
 }
 
-export async function safeUpdateVaultMember(
-  id: string,
-  changes: Partial<VaultMember>
-): Promise<void> {
+export async function safeAddVaultMember(member: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: VaultMember = { ...member, id, invited_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
+    await db.vaultMembers.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'vaultMembers', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateVaultMember(id: string, changes: Partial<VaultMember>): Promise<void> {
   const timestamp = nowIso();
   const member = await db.vaultMembers.get(id);
   if (!member) throw new Error('Membro não encontrado');
@@ -324,20 +327,59 @@ export async function safeUpdateVaultMember(
     await db.vaultMembers.update(id, { ...changes, updated_at: timestamp, synced: false });
     const updated = await db.vaultMembers.get(id);
     await db.syncQueue.add({
-      id: generateId(),
-      table: 'vaultMembers',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
+      id: generateId(), table: 'vaultMembers', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false,
     });
     triggerSyncProcess();
   });
 }
 
 // ============================================================
-// OPERAÇÕES PARA BANCOS E CARTÕES (CARDS)
+// SAÚDE (MÉDICOS, FARMÁCIAS, HOSPITAIS, MEDICAMENTOS, RENOVAÇÕES)
+// ============================================================
+export async function safeAddMedico(data: Omit<Medico, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Medico = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.medicos, db.syncQueue, async () => {
+    await db.medicos.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'medicos', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeAddFarmacia(data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Farmacia = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.farmacias, db.syncQueue, async () => {
+    await db.farmacias.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'farmacias', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeAddHospital(data: Omit<Hospital, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Hospital = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.hospitais, db.syncQueue, async () => {
+    await db.hospitais.add(full);
+    await db.syncQueue.add({
+      id: generateId(), table: 'hospitais', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false,
+    });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+// ============================================================
+// BANCOS E CARTÕES (CARDS)
 // ============================================================
 export async function safeAddCard(card: Omit<BankCard, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
