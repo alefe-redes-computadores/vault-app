@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
-  ArrowLeft, Trash2, Eye, EyeOff, Copy, Check, ExternalLink, ShieldCheck, Loader2, Lock 
+  ArrowLeft, Trash2, Pencil, Eye, EyeOff, Copy, Check, ExternalLink, ShieldCheck, Loader2, Lock 
 } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { useCredentials } from "@/hooks/useCredentials";
@@ -130,9 +130,26 @@ function CredentialDetailsContent() {
               <span className="inline-block rounded-full bg-ice/15 px-2.5 py-0.5 text-[11px] font-medium capitalize text-ice">{credential.category}</span>
             </div>
           </div>
-          <button onClick={handleDelete} disabled={isDeleting} className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral active:scale-95">
-            {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => {
+                trigger("vibrate");
+                router.push(`/senhas/editar?id=${id}`);
+              }} 
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
+              aria-label="Editar senha"
+            >
+              <Pencil size={18} />
+            </button>
+            <button 
+              onClick={handleDelete} 
+              disabled={isDeleting} 
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral transition-all active:scale-95"
+              aria-label="Excluir senha"
+            >
+              {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+            </button>
+          </div>
         </header>
 
         <section className="space-y-4 px-5 pt-6">
