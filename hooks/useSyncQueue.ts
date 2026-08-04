@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital } from '@/lib/types';
+import type { Document, Vault, VaultMember, Medico, Farmacia, Hospital, Credential } from '@/lib/types';
 
 const MAX_RETRIES = 5;
 
@@ -103,10 +103,6 @@ export function useSyncQueue() {
 
   // ============================================================
   // syncMedicamento
-  // ✅ CORRIGIDO — antes não mandava tipo_receita nem os campos de
-  // estoque (estoque_quantidade, estoque_data_referencia,
-  // estoque_horarios, estoque_unidade_por_dose, estoque_unidade_medida)
-  // pro Supabase. Ficavam só salvos localmente, nunca sincronizavam.
   // ============================================================
   const syncMedicamento = async (item: any) => {
     if (!supabase) return;
@@ -586,7 +582,59 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // processQueue (com logs mais limpos)
+  // syncCredential (NOVO: Sincronização de Senhas E2EE)
+  // ============================================================
+  const syncCredential = async (item: any) => {
+    if (!supabase) return;
+    const cred = item.payload as Credential;
+
+    switch (item.operation) {
+      case 'add': {
+        const { error } = await supabase.from('credentials').insert({
+          id: cred.id,
+          user_id: cred.user_id,
+          vault_id: cred.vault_id || null,
+          title: cred.title,
+          username: cred.username || null,
+          password_encrypted: cred.password_encrypted,
+          url: cred.url || null,
+          notes: cred.notes || null,
+          category: cred.category,
+          created_at: cred.created_at,
+          updated_at: cred.updated_at,
+        });
+        if (error) throw new Error(`Credentials insert error: ${error.message}`);
+        break;
+      }
+      case 'update': {
+        const { error } = await supabase.from('credentials')
+          .update({
+            title: cred.title,
+            username: cred.username || null,
+            password_encrypted: cred.password_encrypted,
+            url: cred.url || null,
+            notes: cred.notes || null,
+            category: cred.category,
+            updated_at: cred.updated_at,
+          })
+          .eq('id', cred.id);
+        if (error) throw new Error(`Credentials update error: ${error.message}`);
+        break;
+      }
+      case 'delete': {
+        const { error } = await supabase.from('credentials').delete().eq('id', item.payload.id);
+        if (error) throw new Error(`Credentials delete error: ${error.message}`);
+        break;
+      }
+    }
+
+    if (item.operation !== 'delete' && cred.id) {
+      await db.credentials.update(cred.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // processQueue
   // ============================================================
   const processQueue = useCallback(async () => {
     if (processingRef.current || !isOnline) {
@@ -619,7 +667,8 @@ export function useSyncQueue() {
         return;
       }
 
-      const priorityOrder = ['persons', 'documents', 'medicamentos', 'renovacoes', 'vaults', 'vaultMembers', 'medicos', 'farmacias', 'hospitais'];
+      // Adicionado 'credentials' na ordem de prioridade
+      const priorityOrder = ['persons', 'documents', 'medicamentos', 'renovacoes', 'vaults', 'vaultMembers', 'medicos', 'farmacias', 'hospitais', 'credentials'];
       queue.sort((a, b) => {
         const aIndex = priorityOrder.indexOf(a.table);
         const bIndex = priorityOrder.indexOf(b.table);
@@ -648,6 +697,8 @@ export function useSyncQueue() {
             await syncFarmacia(item);
           } else if (item.table === 'hospitais') {
             await syncHospital(item);
+          } else if (item.table === 'credentials') {
+            await syncCredential(item); // Processando as senhas
           }
           await db.syncQueue.delete(item.id!);
           successCount++;
