@@ -11,6 +11,8 @@ import {
   FileWarning,
   Stethoscope,
   Building2,
+  CreditCard,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -50,7 +52,13 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "local", label: "Farmácia/Hospital", icon: Building2, path: "/saude/locais/novo" },
 ];
 
-const HIDDEN_ON_PATHS = ["/novo", "/login", "/auth/callback"];
+// ✅ NOVO: Opções de adição para Cartões e Contas
+const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "cartao", label: "Novo cartão", icon: CreditCard, path: "/cartoes/novo" },
+  { id: "conta", label: "Nova conta bancária", icon: Landmark, path: "/contas/novo" },
+];
+
+const HIDDEN_ON_PATHS = ["/novo", "/login", "/auth/callback", "/cartoes/novo", "/contas/novo"];
 
 function shouldHideNav(pathname: string): boolean {
   if (HIDDEN_ON_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
@@ -62,12 +70,12 @@ function shouldHideNav(pathname: string): boolean {
   if (pathname !== "/saude" && pathname.startsWith("/saude/")) {
     return true;
   }
-  // Oculta nas telas de senhas
+  // Oculta nas telas de senhas (exceto na listagem principal se quiser manter o menu, ou oculta se preferir)
   if (pathname === "/senhas" || pathname.startsWith("/senhas/")) {
     return true;
   }
-  // Oculta nas telas de cartões/bancos
-  if (pathname === "/cartoes" || pathname.startsWith("/cartoes/")) {
+  // Oculta nas subpáginas de cartões (detalhes, etc), mas mantém na listagem principal (/cartoes)
+  if (pathname.startsWith("/cartoes/") && pathname !== "/cartoes") {
     return true;
   }
   return false;
@@ -75,6 +83,7 @@ function shouldHideNav(pathname: string): boolean {
 
 function getComposeOptions(pathname: string): ComposeOption[] {
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
+  if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS; // ✅ Retorna as opções separadas de cartão e conta
   return DEFAULT_COMPOSE_OPTIONS;
 }
 
