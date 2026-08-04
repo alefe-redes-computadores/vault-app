@@ -20,7 +20,8 @@ import {
   Loader2,
   Terminal,
   Activity,
-  KeyRound, // <-- Adicionado o ícone da chave
+  KeyRound,
+  CreditCard, // ✅ Ícone adicionado para o módulo de Bancos & Cartões
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -91,7 +92,8 @@ export default function MaisPage() {
       await db.farmacias.clear();
       await db.hospitais.clear();
       await db.syncQueue.clear();
-      await db.credentials.clear(); // <-- Adicionada a limpeza das senhas!
+      await db.credentials.clear();
+      await db.cards.clear(); // ✅ Adicionada a limpeza da tabela de cartões locais!
 
       trigger("success");
       showToast("Dados locais limpos com sucesso!", "success");
@@ -188,6 +190,13 @@ export default function MaisPage() {
           label: "Senhas",
           description: "Gerenciador de credenciais com criptografia",
           onClick: () => router.push("/senhas"),
+        },
+        {
+          id: "cartoes",
+          icon: CreditCard,
+          label: "Bancos & Cartões",
+          description: "Gerencie suas contas e cartões com segurança",
+          onClick: () => router.push("/cartoes"),
         },
         {
           id: "cofres",
