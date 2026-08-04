@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase/client';
 import { db } from '@/lib/db';
-import type { Person, Document, Medicamento, Renovacao, Vault, VaultMember, Medico, Farmacia, Hospital } from '@/lib/types';
+import type { 
+  Person, Document, Medicamento, Renovacao, Vault, 
+  VaultMember, Medico, Farmacia, Hospital, Credential 
+} from '@/lib/types';
 
 // Lock para evitar execução simultânea
 let isPulling = false;
@@ -43,7 +46,6 @@ export async function pullAllData(userId: string): Promise<void> {
     const processTable = async (
       tableName: string,
       localTable: any,
-      // ✅ Agora espera uma função assíncrona que retorna { data, error }
       query: () => Promise<{ data: any[] | null; error: any }>
     ) => {
       try {
@@ -170,6 +172,12 @@ export async function pullAllData(userId: string): Promise<void> {
     // ---- Hospitais ----
     await processTable('hospitais', db.hospitais, async () => {
       const result = await supabase.from('hospitais').select('*').eq('user_id', userId);
+      return result;
+    });
+
+    // ---- Credentials (Senhas) ----
+    await processTable('credentials', db.credentials, async () => {
+      const result = await supabase.from('credentials').select('*').eq('user_id', userId);
       return result;
     });
 
