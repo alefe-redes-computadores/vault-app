@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowLeft, Plus, Search, Landmark, ShieldCheck, Trash2, ChevronRight, Loader2, Wallet, CreditCard 
+  ArrowLeft, Plus, Search, Landmark, ShieldCheck, Trash2, ChevronRight, Loader2, Wallet, CreditCard, Eye, EyeOff 
 } from "lucide-react";
 import { usePaginatedCards } from "@/hooks/usePaginatedCards";
 import { useHapticFeedback } from "@/lib/haptics";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { PageTransition } from "@/components/PageTransition";
 import { getBankLogoUrl, getBrandLabel } from "@/lib/utils/card-helper";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -25,6 +26,8 @@ export default function CardsPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
+
+  const { isPrivate, togglePrivacy } = usePrivacyMode();
 
   const { cards, totalCount, hasMore, isLoadingMore, loadMore, deleteCard } = usePaginatedCards({
     searchQuery: debouncedQuery,
@@ -48,6 +51,11 @@ export default function CardsPage() {
     trigger("success");
     setIsComposeMenuOpen(false);
     router.push(path);
+  };
+
+  const handleTogglePrivacy = () => {
+    trigger("vibrate");
+    togglePrivacy();
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -83,6 +91,17 @@ export default function CardsPage() {
               </p>
             </div>
           </div>
+
+          {/* ✅ Botão Mágico de Privacidade */}
+          <button
+            onClick={handleTogglePrivacy}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
+              isPrivate ? "border-ice bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ice"
+            }`}
+            aria-label="Modo Privacidade"
+          >
+            {isPrivate ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
         </header>
 
         {/* Barra de Busca e Filtros */}
@@ -157,9 +176,13 @@ export default function CardsPage() {
                       </div>
 
                       <div className="min-w-0">
-                        <h2 className="font-display text-sm font-semibold truncate text-ink-primary">{item.title}</h2>
+                        <h2 className="font-display text-sm font-semibold truncate text-ink-primary">
+                          {isPrivate ? "••••••••••••" : item.title}
+                        </h2>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-ink-muted capitalize">{item.bank_name}</span>
+                          <span className="text-xs text-ink-muted capitalize">
+                            {isPrivate ? "••••••" : item.bank_name}
+                          </span>
                           {brandLabel && (
                             <span className="rounded-md bg-surface-raised px-1.5 py-0.5 text-[10px] font-medium text-ice border border-surface-border/30">
                               {brandLabel}
