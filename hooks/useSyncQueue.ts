@@ -351,7 +351,9 @@ export function useSyncQueue() {
         const { error } = await supabase.from('credentials').insert({
           id: cred.id, user_id: cred.user_id, vault_id: cred.vault_id || null,
           title: cred.title, username: cred.username || null, password_encrypted: cred.password_encrypted,
-          url: cred.url || null, notes: cred.notes || null, category: cred.category, created_at: cred.created_at, updated_at: cred.updated_at,
+          url: cred.url || null, notes: cred.notes || null, category: cred.category, 
+          password_history: cred.password_history || null, // ✅ Adicionado
+          created_at: cred.created_at, updated_at: cred.updated_at,
         });
         if (error) throw new Error(`Credentials insert error: ${error.message}`);
         break;
@@ -359,7 +361,9 @@ export function useSyncQueue() {
       case 'update': {
         const { error } = await supabase.from('credentials').update({
           title: cred.title, username: cred.username || null, password_encrypted: cred.password_encrypted,
-          url: cred.url || null, notes: cred.notes || null, category: cred.category, updated_at: cred.updated_at,
+          url: cred.url || null, notes: cred.notes || null, category: cred.category, 
+          password_history: cred.password_history || null, // ✅ Adicionado
+          updated_at: cred.updated_at,
         }).eq('id', cred.id);
         if (error) throw new Error(`Credentials update error: ${error.message}`);
         break;
@@ -376,7 +380,7 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // syncCard (NOVO: Sincronização de Bancos & Cartões E2EE)
+  // syncCard (Sincronização de Bancos & Cartões E2EE)
   // ============================================================
   const syncCard = async (item: any) => {
     if (!supabase) return;
@@ -477,7 +481,7 @@ export function useSyncQueue() {
           else if (item.table === 'farmacias') await syncFarmacia(item);
           else if (item.table === 'hospitais') await syncHospital(item);
           else if (item.table === 'credentials') await syncCredential(item);
-          else if (item.table === 'cards') await syncCard(item); // ✅ Processando cartões
+          else if (item.table === 'cards') await syncCard(item); 
 
           await db.syncQueue.delete(item.id!);
           successCount++;
