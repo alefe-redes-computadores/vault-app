@@ -22,7 +22,10 @@ export function useSecureScreen() {
     overlay.style.inset = "0";
     overlay.style.backgroundColor = "rgba(9, 9, 11, 0.95)"; // Cor Void com opacidade
     overlay.style.backdropFilter = "blur(24px)";
-    overlay.style.WebkitBackdropFilter = "blur(24px)";
+    
+    // ✅ Correção TypeScript para evitar erro de propriedade no Webkit
+    (overlay.style as any).WebkitBackdropFilter = "blur(24px)";
+    
     overlay.style.zIndex = "999999";
     overlay.style.display = "none";
     overlay.style.flexDirection = "column";
