@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Copy, Check, Lock } from "lucide-react";
+import { KeyRound, Copy, Check, Lock, User } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { getFaviconUrl } from "@/lib/utils/credential-helper";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import type { Credential } from "@/lib/types";
 
 interface CredentialCardProps {
@@ -14,6 +15,7 @@ interface CredentialCardProps {
 
 export function CredentialCard({ credential, onClick, onCopy }: CredentialCardProps) {
   const { trigger } = useHapticFeedback();
+  const { isPrivate } = usePrivacyMode();
   const [copied, setCopied] = useState(false);
   const [hasIconError, setHasIconError] = useState(false);
 
@@ -36,7 +38,7 @@ export function CredentialCard({ credential, onClick, onCopy }: CredentialCardPr
       className="card-hover group flex cursor-pointer items-center justify-between gap-4 rounded-[26px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.98]"
     >
       <div className="flex min-w-0 items-center gap-4">
-        {/* Container com tamanho fixo padronizado */}
+        {/* Logo Automática ou Ícone Padrão */}
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-surface-border/40 bg-surface-raised">
           {faviconUrl && !hasIconError ? (
             <img
@@ -55,13 +57,14 @@ export function CredentialCard({ credential, onClick, onCopy }: CredentialCardPr
             {credential.title}
           </h3>
           {credential.username ? (
-            <p className="truncate text-sm text-ink-muted">
-              {credential.username}
+            <p className="truncate text-sm text-ink-muted flex items-center gap-1.5 mt-0.5">
+              <User size={12} className="text-ink-faint" />
+              {isPrivate ? "••••••••••••" : credential.username}
             </p>
           ) : (
             <div className="mt-0.5 flex items-center gap-1 text-xs text-ink-faint">
               <Lock size={10} />
-              <span>Protegido</span>
+              <span>Sem usuário</span>
             </div>
           )}
         </div>
