@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Plus, KeyRound, Lock, Loader2 } from "lucide-react";
+import { Search, X, Plus, KeyRound, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { usePaginatedCredentials } from "@/hooks/usePaginatedCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
 import { useSecureScreen } from "@/hooks/useSecureScreen";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode"; // ✅ Importando nosso modo privacidade
 import { decryptPassword } from "@/lib/crypto";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Input } from "@/components/ui/Input";
@@ -33,12 +34,13 @@ export default function PasswordsPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
-  const { credentials, totalCount, hasMore, isLoadingMore, loadMore, deleteCredential } = usePaginatedCredentials({
+  const { credentials, totalCount, hasMore, isLoadingMore, loadMore } = usePaginatedCredentials({
     searchQuery: debouncedQuery,
     category: selectedCategory,
   });
   
   const { isLocked } = useSecureScreen(); 
+  const { isPrivate, togglePrivacy } = usePrivacyMode(); // ✅ Consumindo o estado
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
   
   const { authenticate } = useBiometric({
@@ -47,12 +49,10 @@ export default function PasswordsPage() {
     fallbackTitle: "Usar senha do dispositivo",
   });
 
-  // Debounce (300ms) para performance otimizada na busca
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -88,6 +88,11 @@ export default function PasswordsPage() {
     router.push(path);
   };
 
+  const handleTogglePrivacy = () => {
+    trigger("vibrate");
+    togglePrivacy();
+  };
+
   if (isLocked) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-void">
@@ -109,6 +114,16 @@ export default function PasswordsPage() {
                 {totalCount} senha{totalCount !== 1 ? "s" : ""} cadastrada{totalCount !== 1 ? "s" : ""}
               </p>
             </div>
+            {/* ✅ Botão Mágico de Privacidade */}
+            <button
+              onClick={handleTogglePrivacy}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
+                isPrivate ? "border-ice bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ice"
+              }`}
+              aria-label="Modo Privacidade"
+            >
+              {isPrivate ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
 
           <div className="relative mt-4">
@@ -133,14 +148,9 @@ export default function PasswordsPage() {
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => {
-                  trigger("vibrate");
-                  setSelectedCategory(cat.id);
-                }}
+                onClick={() => { trigger("vibrate"); setSelectedCategory(cat.id); }}
                 className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-medium transition-all active:scale-95 ${
-                  selectedCategory === cat.id
-                    ? "border-ice bg-ice/12 text-ice"
-                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                  selectedCategory === cat.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
                 }`}
               >
                 {cat.label}
@@ -188,42 +198,16 @@ export default function PasswordsPage() {
           )}
         </section>
 
-        {/* Menu Flutuante Contextual de Adição */}
         <AnimatePresence>
           {isComposeMenuOpen && (
             <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.16 }}
-                onClick={() => setIsComposeMenuOpen(false)}
-                className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-              />
-
-              <motion.div
-                initial={{ opacity: 0, y: 16, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.97 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className="shadow-vault fixed bottom-[5.5rem] left-1/2 z-50 w-[calc(100%-2.5rem)] max-w-xs -translate-x-1/2 overflow-hidden rounded-[26px] border border-surface-border/60 bg-surface"
-              >
-                <div className="px-4 pb-1 pt-3.5">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-faint">
-                    Gerenciar Senhas
-                  </p>
-                </div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} onClick={() => setIsComposeMenuOpen(false)} className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
+              <motion.div initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.97 }} transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }} className="shadow-vault fixed bottom-[5.5rem] left-1/2 z-50 w-[calc(100%-2.5rem)] max-w-xs -translate-x-1/2 overflow-hidden rounded-[26px] border border-surface-border/60 bg-surface">
+                <div className="px-4 pb-1 pt-3.5"><p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-faint">Gerenciar Senhas</p></div>
                 <div className="px-2 pb-2">
-                  <button
-                    onClick={() => handleOptionPress("/senhas/novo")}
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                      <KeyRound size={16} />
-                    </div>
-                    <span className="text-sm font-medium text-ink-primary">
-                      Nova senha
-                    </span>
+                  <button onClick={() => handleOptionPress("/senhas/novo")} className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] hover:bg-ice/8">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice"><KeyRound size={16} /></div>
+                    <span className="text-sm font-medium text-ink-primary">Nova senha</span>
                   </button>
                 </div>
               </motion.div>
@@ -231,19 +215,9 @@ export default function PasswordsPage() {
           )}
         </AnimatePresence>
 
-        {/* Botão Flutuante Inferior Centralizado */}
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
-          <button
-            onClick={handleComposePress}
-            aria-label="Adicionar senha"
-            className="flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(47,227,201,0.28)] transition-all duration-200 active:scale-95"
-          >
-            <motion.div
-              animate={{ rotate: isComposeMenuOpen ? 45 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Plus size={24} strokeWidth={2.6} />
-            </motion.div>
+          <button onClick={handleComposePress} aria-label="Adicionar senha" className="flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(47,227,201,0.28)] transition-all duration-200 active:scale-95">
+            <motion.div animate={{ rotate: isComposeMenuOpen ? 45 : 0 }} transition={{ duration: 0.2 }}><Plus size={24} strokeWidth={2.6} /></motion.div>
           </button>
         </div>
 
