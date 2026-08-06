@@ -15,20 +15,46 @@ export function useSecureScreen() {
   });
 
   useEffect(() => {
+    // Cria a camada de ofuscação (Blur) diretamente no DOM para ser imediato
+    const overlay = document.createElement("div");
+    overlay.id = "vault-secure-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.backgroundColor = "rgba(9, 9, 11, 0.95)"; // Cor Void com opacidade
+    overlay.style.backdropFilter = "blur(24px)";
+    overlay.style.WebkitBackdropFilter = "blur(24px)";
+    overlay.style.zIndex = "999999";
+    overlay.style.display = "none";
+    overlay.style.flexDirection = "column";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    overlay.style.gap = "16px";
+    overlay.innerHTML = `
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2FE3C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+      <span style="color: #F8FAFC; font-family: sans-serif; font-weight: 500;">Vault Protegido</span>
+    `;
+    document.body.appendChild(overlay);
+
     // Escuta mudanças de estado do aplicativo (Background / Foreground)
     const listener = App.addListener("appStateChange", async ({ isActive }) => {
       if (!isActive) {
-        // O app foi minimizado (Background)
+        // App minimizado: Exibe o overlay imediatamente
+        overlay.style.display = "flex";
         setIsLocked(true);
       } else {
-        // O app voltou para a tela (Foreground)
-        setIsLocked(true); // Garante que a interface seja escondida antes de ler a biometria
+        // App voltou: Mantém o overlay até passar pela biometria
+        overlay.style.display = "flex";
+        setIsLocked(true);
         
         const success = await authenticate();
         if (success) {
+          overlay.style.display = "none";
           setIsLocked(false);
         } else {
-          // Se falhar ou cancelar, chuta o usuário pra fora da área de senhas
+          overlay.style.display = "none";
           router.replace("/mais");
         }
       }
@@ -36,6 +62,8 @@ export function useSecureScreen() {
 
     return () => {
       listener.then((l) => l.remove());
+      const existingOverlay = document.getElementById("vault-secure-overlay");
+      if (existingOverlay) existingOverlay.remove();
     };
   }, [authenticate, router]);
 
