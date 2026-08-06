@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -43,7 +43,7 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function EditarMedicamentoPage() {
+function EditarMedicamentoContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -707,5 +707,13 @@ export default function EditarMedicamentoPage() {
         />
       </main>
     </PageTransition>
+  );
+}
+
+export default function EditarMedicamentoPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <EditarMedicamentoContent />
+    </Suspense>
   );
 }
