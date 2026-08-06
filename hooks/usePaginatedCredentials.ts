@@ -1,12 +1,24 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, safeAddCredential, safeUpdateCredential, safeDeleteCredential } from "@/lib/db";
 import { useAuth } from "./useAuth";
+import { decryptPassword } from "@/lib/crypto";
 import type { Credential } from "@/lib/types";
 
 const PAGE_SIZE = 20;
+
+// Função auxiliar para calcular a força da senha (mesma lógica do gerador)
+const calculateStrength = (password: string) => {
+  let score = 0;
+  if (!password) return score;
+  if (password.length >= 8) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/[0-9]/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  return score;
+};
 
 interface UsePaginatedCredentialsOptions {
   searchQuery?: string;
@@ -29,9 +41,20 @@ export function usePaginatedCredentials({
       if (!user) return 0;
       let allCreds = await db.credentials.where('user_id').equals(user.id).toArray();
 
-      if (category !== "all") {
+      // Filtros de Categoria ou Auditoria Especial
+      if (category === "fracas") {
+        allCreds = allCreds.filter((item: Credential) => {
+          const plain = decryptPassword(item.password_encrypted) || "";
+          return calculateStrength(plain) <= 2; // Considera fraca se score for menor ou igual a 2
+        });
+      } else if (category === "recentes") {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        allCreds = allCreds.filter((item: Credential) => new Date(item.created_at) >= sevenDaysAgo);
+      } else if (category !== "all") {
         allCreds = allCreds.filter((item: Credential) => item.category === category);
       }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         allCreds = allCreds.filter((item: Credential) =>
@@ -50,9 +73,20 @@ export function usePaginatedCredentials({
       if (!user) return [];
       let allCreds = await db.credentials.where('user_id').equals(user.id).toArray();
 
-      if (category !== "all") {
+      // Filtros de Categoria ou Auditoria Especial
+      if (category === "fracas") {
+        allCreds = allCreds.filter((item: Credential) => {
+          const plain = decryptPassword(item.password_encrypted) || "";
+          return calculateStrength(plain) <= 2;
+        });
+      } else if (category === "recentes") {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        allCreds = allCreds.filter((item: Credential) => new Date(item.created_at) >= sevenDaysAgo);
+      } else if (category !== "all") {
         allCreds = allCreds.filter((item: Credential) => item.category === category);
       }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         allCreds = allCreds.filter((item: Credential) =>
