@@ -185,8 +185,8 @@ export interface SyncQueueItem {
     | 'farmacias'
     | 'hospitais'
     | 'doseLogs'
-    | 'credentials' // ✅ Nossas adições
-    | 'cards';      // ✅ Nossas adições
+    | 'credentials' 
+    | 'cards';      
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -322,7 +322,7 @@ export interface Hospital {
 }
 
 // ============================================================
-// 9. GERENCIADOR DE SENHAS (CREDENCIAIS) ✅ NOVO
+// 9. GERENCIADOR DE SENHAS (CREDENCIAIS) 
 // ============================================================
 export interface Credential {
   id?: string;
@@ -334,13 +334,14 @@ export interface Credential {
   url?: string;
   notes?: string;
   category: 'banco' | 'social' | 'trabalho' | 'outros';
+  password_history?: { encrypted: string; date: string }[]; // ✅ Nova linha adicionada
   created_at: string;
   updated_at: string;
   synced: boolean;
 }
 
 // ============================================================
-// 10. BANCOS & CARTÕES (CARDS) ✅ NOVO
+// 10. BANCOS & CARTÕES (CARDS) 
 // ============================================================
 export type CardType = 'cartao_credito' | 'cartao_debito' | 'conta_corrente' | 'conta_poupanca' | 'conta_digital';
 export type CardBrand = 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard' | 'unknown';
