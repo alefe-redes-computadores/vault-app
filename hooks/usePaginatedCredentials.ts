@@ -9,7 +9,7 @@ import type { Credential } from "@/lib/types";
 
 const PAGE_SIZE = 20;
 
-// Função auxiliar para calcular a força da senha (mesma lógica do gerador)
+// Função auxiliar para calcular a força da senha
 const calculateStrength = (password: string) => {
   let score = 0;
   if (!password) return score;
@@ -41,11 +41,10 @@ export function usePaginatedCredentials({
       if (!user) return 0;
       let allCreds = await db.credentials.where('user_id').equals(user.id).toArray();
 
-      // Filtros de Categoria ou Auditoria Especial
       if (category === "fracas") {
         allCreds = allCreds.filter((item: Credential) => {
           const plain = decryptPassword(item.password_encrypted) || "";
-          return calculateStrength(plain) <= 2; // Considera fraca se score for menor ou igual a 2
+          return calculateStrength(plain) <= 2;
         });
       } else if (category === "recentes") {
         const sevenDaysAgo = new Date();
@@ -73,7 +72,6 @@ export function usePaginatedCredentials({
       if (!user) return [];
       let allCreds = await db.credentials.where('user_id').equals(user.id).toArray();
 
-      // Filtros de Categoria ou Auditoria Especial
       if (category === "fracas") {
         allCreds = allCreds.filter((item: Credential) => {
           const plain = decryptPassword(item.password_encrypted) || "";
