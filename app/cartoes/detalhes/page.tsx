@@ -4,10 +4,11 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
-  ArrowLeft, Edit3, ShieldCheck, Copy, Check, Eye, EyeOff, Landmark, CreditCard, Loader2, Trash2 
+  ArrowLeft, Edit3, ShieldCheck, Copy, Check, Eye, EyeOff, Landmark, CreditCard, Loader2, Trash2, Wifi 
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useCards } from "@/hooks/useCards";
+import { useBiometric } from "@/hooks/useBiometric";
 import { useHapticFeedback } from "@/lib/haptics";
 import { decryptPassword } from "@/lib/crypto";
 import { getBankLogoUrl, getBrandLabel } from "@/lib/utils/card-helper";
@@ -19,12 +20,40 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+// Formatar número do cartão (XXXX XXXX XXXX XXXX)
+const formatCardNumber = (num: string) => {
+  const digits = num.replace(/\D/g, "");
+  const match = digits.match(/.{1,4}/g);
+  return match ? match.join(" ") : num;
+};
+
+// Cores dinâmicas baseadas no Banco
+const getBankStyle = (bankName: string) => {
+  const name = bankName.toLowerCase();
+  if (name.includes('nubank')) return 'from-[#820ad1] to-[#590494] text-white';
+  if (name.includes('itaú') || name.includes('itau')) return 'from-[#ec7000] to-[#ff9900] text-white';
+  if (name.includes('inter')) return 'from-[#ff7a00] to-[#ff500f] text-white';
+  if (name.includes('c6')) return 'from-[#242424] to-[#000000] text-white border-white/10';
+  if (name.includes('bradesco')) return 'from-[#cc092f] to-[#ff1a4a] text-white';
+  if (name.includes('santander')) return 'from-[#cc0000] to-[#ff0000] text-white';
+  if (name.includes('caixa')) return 'from-[#005CA9] to-[#007cc7] text-white';
+  if (name.includes('brasil') || name.includes('bb')) return 'from-[#003da5] to-[#0052cc] text-white';
+  if (name.includes('xp')) return 'from-[#000000] to-[#1a1a1a] text-white';
+  if (name.includes('sicredi')) return 'from-[#008736] to-[#00b046] text-white';
+  // Padrão (Dark/Premium)
+  return 'from-surface-raised to-surface border-surface-border/50 text-ink-primary';
+};
+
 function CardDetailsContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { deleteCard } = useCards();
+  const { authenticate } = useBiometric({
+    title: "Revelar Dados",
+    subtitle: "Confirme sua identidade para exibir os números do cartão e CVV.",
+  });
 
   const [card, setCard] = useState<BankCard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,9 +65,7 @@ function CardDetailsContent() {
       if (!id) return;
       try {
         const item = await db.cards.get(id);
-        if (item) {
-          setCard(item);
-        }
+        if (item) setCard(item);
       } catch (error) {
         console.error("Erro ao carregar detalhes:", error);
       } finally {
@@ -59,6 +86,15 @@ function CardDetailsContent() {
     }
   };
 
+  const handleToggleSensitive = async () => {
+    trigger("vibrate");
+    if (!showSensitive) {
+      const isAuth = await authenticate();
+      if (!isAuth) return;
+    }
+    setShowSensitive(!showSensitive);
+  };
+
   const handleDelete = async () => {
     if (!id || !confirm("Deseja realmente excluir este item do cofre?")) return;
     trigger("vibrate");
@@ -73,17 +109,16 @@ function CardDetailsContent() {
   };
 
   if (loading || !card) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-void">
-        <Loader2 size={32} className="animate-spin text-ice" />
-      </div>
-    );
+    return <div className="flex min-h-screen items-center justify-center bg-void"><Loader2 size={32} className="animate-spin text-ice" /></div>;
   }
 
   const plainCardNumber = card.card_number_encrypted ? decryptPassword(card.card_number_encrypted) : "";
   const plainCvv = card.cvv_encrypted ? decryptPassword(card.cvv_encrypted) : "";
   const logoUrl = getBankLogoUrl(card.bank_name);
   const brandLabel = card.brand ? getBrandLabel(card.brand) : null;
+  
+  // Pegamos a cor/estilo de acordo com o banco
+  const cardStyle = getBankStyle(card.bank_name);
 
   return (
     <PageTransition>
@@ -91,130 +126,150 @@ function CardDetailsContent() {
         {/* Header Fixo */}
         <header className="header-safe-top sticky top-0 z-20 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => { trigger("vibrate"); router.back(); }} 
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
-            >
+            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95">
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div>
               <h1 className="font-display text-lg font-semibold text-ink-primary truncate max-w-[180px]">{card.title}</h1>
-              <p className="text-xs text-ink-muted flex items-center gap-1">
-                <ShieldCheck size={12} className="text-ice" /> Protegido com E2EE
+              <p className="text-[11px] text-ink-muted flex items-center gap-1 mt-0.5">
+                <ShieldCheck size={12} className="text-ice" /> Protegido (E2EE)
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => { trigger("vibrate"); router.push(`/cartoes/editar?id=${card.id}`); }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95"
-              aria-label="Editar"
-            >
+            <button onClick={() => { trigger("vibrate"); router.push(`/cartoes/editar?id=${card.id}`); }} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95">
               <Edit3 size={18} />
             </button>
-            <button
-              onClick={handleDelete}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral active:scale-95"
-              aria-label="Excluir"
-            >
+            <button onClick={handleDelete} className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral active:scale-95">
               <Trash2 size={18} />
             </button>
           </div>
         </header>
 
-        {/* Ícone e Resumo Visual */}
-        <div className="flex flex-col items-center pt-6 px-5">
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-[28px] border border-surface-border/60 bg-surface shadow-md overflow-hidden mb-3">
-            {logoUrl ? (
-              <img src={logoUrl} alt={card.bank_name} className="h-10 w-10 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-            ) : (
-              <Landmark size={32} className="text-ice" />
-            )}
-          </div>
-          <h2 className="font-display text-xl font-semibold text-ink-primary text-center">{card.title}</h2>
-          <p className="text-xs text-ink-muted capitalize mt-0.5">{card.bank_name} • {card.type.replace("_", " ")}</p>
-        </div>
-
-        {/* Detalhes e Dados Sensíveis */}
-        <section className="space-y-4 px-5 pt-6">
-          {plainCardNumber && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">Número do Cartão</span>
-                {brandLabel && (
-                  <span className="rounded-md bg-surface-raised px-2 py-0.5 text-[10px] font-semibold text-ice border border-surface-border/30">
-                    {brandLabel}
-                  </span>
+        <section className="px-5 pt-6">
+          {/* ✅ O CARTÃO VIRTUAL (Premium Glassmorphism) */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="relative w-full">
+            {/* Sombra Glow do Cartão */}
+            <div className={`absolute -inset-1 blur-2xl opacity-20 bg-gradient-to-br ${cardStyle}`} />
+            
+            <div className={`relative aspect-[1.58/1] w-full rounded-3xl border p-6 flex flex-col justify-between overflow-hidden shadow-2xl bg-gradient-to-br ${cardStyle}`}>
+              
+              {/* Efeito de Reflexo (Glass) */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+              
+              {/* Topo do Cartão: Logo + Bandeira */}
+              <div className="relative z-10 flex justify-between items-start">
+                {logoUrl ? (
+                  <div className="bg-white/90 p-1.5 rounded-lg backdrop-blur-md">
+                    <img src={logoUrl} alt={card.bank_name} className="h-5 object-contain mix-blend-multiply" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                  </div>
+                ) : (
+                  <span className="font-display font-bold text-lg">{card.bank_name}</span>
                 )}
+                {brandLabel && <span className="font-bold italic text-white/90 uppercase tracking-widest text-sm">{brandLabel}</span>}
               </div>
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-base font-semibold text-ink-primary tracking-wider">
-                  {showSensitive ? plainCardNumber : "•••• •••• •••• " + plainCardNumber.slice(-4)}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button onClick={() => setShowSensitive(!showSensitive)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-raised text-ink-muted hover:text-ice active:scale-95 transition-all">
-                    {showSensitive ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                  <button onClick={() => handleCopy(plainCardNumber, "card")} className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice active:scale-95 transition-all">
-                    {copiedField === "card" ? <Check size={16} /> : <Copy size={16} />}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
 
-          {card.card_holder && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-              <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">Titular</span>
-              <p className="text-sm font-semibold text-ink-primary">{card.card_holder}</p>
-            </motion.div>
-          )}
-
-          {(card.expiry_date || plainCvv) && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-3">
-              {card.expiry_date && (
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-                  <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">Validade</span>
-                  <p className="font-mono text-sm font-semibold text-ink-primary">{card.expiry_date}</p>
+              {/* Meio: Chip & NFC */}
+              {plainCardNumber && (
+                <div className="relative z-10 flex items-center gap-3 mt-4">
+                  {/* Chip de Cobre */}
+                  <div className="w-11 h-8 rounded-md bg-gradient-to-br from-amber-200 to-amber-500 border border-amber-600/50 flex flex-col justify-around p-1 shadow-inner">
+                    <div className="w-full h-[1px] bg-amber-700/30" />
+                    <div className="w-full h-[1px] bg-amber-700/30" />
+                    <div className="w-full h-[1px] bg-amber-700/30" />
+                  </div>
+                  <Wifi size={24} className="text-white/60 rotate-90" />
                 </div>
               )}
-              {plainCvv && (
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-                  <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">CVV</span>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm font-semibold text-ink-primary">
-                      {showSensitive ? plainCvv : "•••"}
-                    </span>
-                    <button onClick={() => handleCopy(plainCvv, "cvv")} className="flex h-8 w-8 items-center justify-center rounded-lg bg-ice/10 text-ice active:scale-95">
-                      {copiedField === "cvv" ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
+
+              {/* Base do Cartão: Número, Nome e Validade */}
+              <div className="relative z-10 mt-auto pt-4 space-y-2">
+                {plainCardNumber ? (
+                  <div className="font-mono text-xl md:text-2xl tracking-[0.12em] text-white drop-shadow-sm">
+                    {showSensitive ? formatCardNumber(plainCardNumber) : "••••  ••••  ••••  " + plainCardNumber.slice(-4)}
+                  </div>
+                ) : (
+                  <div className="font-mono text-xl tracking-widest text-white/50">CONTA BANCÁRIA</div>
+                )}
+                
+                <div className="flex justify-between items-end">
+                  <div className="uppercase tracking-widest text-[10px] text-white/80 font-medium truncate pr-4">
+                    {card.card_holder || "TITULAR DO CARTÃO"}
+                  </div>
+                  
+                  <div className="flex gap-4 text-right">
+                    {card.expiry_date && (
+                      <div className="flex flex-col">
+                        <span className="text-[7px] uppercase text-white/60 tracking-wider">Validade</span>
+                        <span className="font-mono text-sm text-white">{card.expiry_date}</span>
+                      </div>
+                    )}
+                    {plainCvv && (
+                      <div className="flex flex-col">
+                        <span className="text-[7px] uppercase text-white/60 tracking-wider">CVV</span>
+                        <span className="font-mono text-sm text-white">{showSensitive ? plainCvv : "•••"}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </motion.div>
-          )}
+              </div>
+            </div>
+          </motion.div>
 
+          {/* ✅ BARRA DE AÇÕES RÁPIDAS (Debaixo do Cartão) */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="flex justify-center gap-3 mt-6">
+            <button 
+              onClick={handleToggleSensitive} 
+              className={`flex flex-col items-center gap-1.5 transition-all active:scale-95 ${showSensitive ? "text-ice" : "text-ink-muted hover:text-ink-primary"}`}
+            >
+              <div className={`flex h-12 w-12 items-center justify-center rounded-full border ${showSensitive ? "bg-ice/15 border-ice/30" : "bg-surface-raised border-surface-border/50"}`}>
+                {showSensitive ? <EyeOff size={18} /> : <Eye size={18} />}
+              </div>
+              <span className="text-[10px] font-medium uppercase tracking-wider">{showSensitive ? "Ocultar" : "Revelar"}</span>
+            </button>
+
+            {plainCardNumber && (
+              <button onClick={() => handleCopy(plainCardNumber, "card")} className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
+                  {copiedField === "card" ? <Check size={18} className="text-ice" /> : <CreditCard size={18} />}
+                </div>
+                <span className="text-[10px] font-medium uppercase tracking-wider">Copiar Nº</span>
+              </button>
+            )}
+
+            {card.account && (
+              <button onClick={() => handleCopy(card.account!, "account")} className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
+                  {copiedField === "account" ? <Check size={18} className="text-ice" /> : <Landmark size={18} />}
+                </div>
+                <span className="text-[10px] font-medium uppercase tracking-wider">Copiar C/C</span>
+              </button>
+            )}
+          </motion.div>
+        </section>
+
+        {/* Detalhes Adicionais (Agência, Conta, Notas) */}
+        <section className="space-y-3 px-5 pt-8">
           {(card.agency || card.account) && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="grid grid-cols-2 gap-3">
               {card.agency && (
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-                  <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">Agência</span>
+                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
+                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Agência</span>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm font-semibold text-ink-primary">{card.agency}</span>
-                    <button onClick={() => handleCopy(card.agency!, "agency")} className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-raised text-ink-muted active:scale-95">
-                      {copiedField === "agency" ? <Check size={14} /> : <Copy size={14} />}
+                    <span className="font-mono text-base font-semibold text-ink-primary">{card.agency}</span>
+                    <button onClick={() => handleCopy(card.agency!, "agency")} className="text-ink-muted active:scale-95 p-1">
+                      {copiedField === "agency" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
                     </button>
                   </div>
                 </div>
               )}
               {card.account && (
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-                  <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">Conta / Dígito</span>
+                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
+                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Conta</span>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm font-semibold text-ink-primary">{card.account}</span>
-                    <button onClick={() => handleCopy(card.account!, "account")} className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-raised text-ink-muted active:scale-95">
-                      {copiedField === "account" ? <Check size={14} /> : <Copy size={14} />}
+                    <span className="font-mono text-base font-semibold text-ink-primary">{card.account}</span>
+                    <button onClick={() => handleCopy(card.account!, "account_only")} className="text-ink-muted active:scale-95 p-1">
+                      {copiedField === "account_only" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
                     </button>
                   </div>
                 </div>
@@ -223,9 +278,9 @@ function CardDetailsContent() {
           )}
 
           {card.notes && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-              <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">Observações</span>
-              <p className="text-sm text-ink-primary whitespace-pre-wrap">{card.notes}</p>
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-2">
+              <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Anotações</span>
+              <p className="text-sm text-ink-primary whitespace-pre-wrap leading-relaxed">{card.notes}</p>
             </motion.div>
           )}
         </section>
