@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Plus, KeyRound, Lock, Loader2, Eye, EyeOff } from "lucide-react";
+import { Search, X, Plus, KeyRound, Lock, Loader2, Eye, EyeOff, ShieldAlert, Clock } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { usePaginatedCredentials } from "@/hooks/usePaginatedCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
 import { useSecureScreen } from "@/hooks/useSecureScreen";
-import { usePrivacyMode } from "@/hooks/usePrivacyMode"; // ✅ Importando nosso modo privacidade
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { decryptPassword } from "@/lib/crypto";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Input } from "@/components/ui/Input";
@@ -17,8 +17,11 @@ import { CredentialCard } from "@/components/CredentialCard";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useToast } from "@/components/ToastProvider";
 
+// ✅ Incluímos "fracas" e "recentes" nas opções de filtro
 const CATEGORIES = [
   { id: "all", label: "Todas" },
+  { id: "fracas", label: "⚠️ Senhas Fracas", icon: ShieldAlert },
+  { id: "recentes", label: "🕒 Recentes", icon: Clock },
   { id: "banco", label: "Bancos" },
   { id: "social", label: "Redes Sociais" },
   { id: "trabalho", label: "Trabalho" },
@@ -40,7 +43,7 @@ export default function PasswordsPage() {
   });
   
   const { isLocked } = useSecureScreen(); 
-  const { isPrivate, togglePrivacy } = usePrivacyMode(); // ✅ Consumindo o estado
+  const { isPrivate, togglePrivacy } = usePrivacyMode();
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
   
   const { authenticate } = useBiometric({
@@ -111,10 +114,10 @@ export default function PasswordsPage() {
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Senhas</h1>
               <p className="mt-1 text-sm text-ink-muted">
-                {totalCount} senha{totalCount !== 1 ? "s" : ""} cadastrada{totalCount !== 1 ? "s" : ""}
+                {totalCount} senha{totalCount !== 1 ? "s" : ""} encontrada{totalCount !== 1 ? "s" : ""}
               </p>
             </div>
-            {/* ✅ Botão Mágico de Privacidade */}
+            
             <button
               onClick={handleTogglePrivacy}
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
@@ -150,7 +153,11 @@ export default function PasswordsPage() {
                 key={cat.id}
                 onClick={() => { trigger("vibrate"); setSelectedCategory(cat.id); }}
                 className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-medium transition-all active:scale-95 ${
-                  selectedCategory === cat.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                  selectedCategory === cat.id 
+                    ? cat.id === "fracas" 
+                      ? "border-coral bg-coral/15 text-coral" 
+                      : "border-ice bg-ice/12 text-ice" 
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
                 }`}
               >
                 {cat.label}
@@ -166,6 +173,7 @@ export default function PasswordsPage() {
                 <KeyRound size={28} className="text-ice/60" />
               </div>
               <h3 className="font-display text-lg font-semibold text-ink-primary">Nenhuma senha encontrada</h3>
+              <p className="text-xs text-ink-muted mt-1">Tente alterar os filtros de busca ou auditoria.</p>
             </div>
           ) : (
             <div className="space-y-3">
