@@ -1,4 +1,4 @@
-name: Compilar APK Vault
+Name: Compilar APK Vault
 
 on:
   push:
@@ -53,3 +53,4 @@ jobs:
         with:
           name: Vault-App
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 1
