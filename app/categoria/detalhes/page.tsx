@@ -22,6 +22,7 @@ const getFieldsForType = (type: DocumentType) => {
     { key: "issuer", label: "Órgão emissor", type: "text" },
   ];
 
+  // AQUI ESTÁ A CORREÇÃO QUE A VERCEL ESTÁ PEDINDO:
   const fieldMap: Record<DocumentType, Array<{ key: string; label: string; type: string }>> = {
     rg: commonFields,
     cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
