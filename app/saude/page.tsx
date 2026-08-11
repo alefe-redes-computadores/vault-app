@@ -13,6 +13,7 @@ import {
   Building2,
   ChevronRight,
   PackageX,
+  Clock,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -197,7 +198,6 @@ export default function SaudePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* header-safe-top reserva o espaço da status bar imersiva */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -260,31 +260,45 @@ export default function SaudePage() {
             })}
           </motion.div>
 
-          {/* Meus medicamentos — NOVO: acesso à lista completa */}
+          {/* Meus medicamentos + Hoje */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24, delay: 0.02 }}
+            className="grid grid-cols-2 gap-2.5"
           >
             <button
               onClick={() => {
                 trigger("vibrate");
                 router.push("/saude/medicamentos");
               }}
-              className="flex w-full items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/12 text-ice">
                 <Pill size={18} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-ink-primary">
-                  Meus medicamentos
-                </p>
+                <p className="text-sm font-semibold text-ink-primary">Medicamentos</p>
                 <p className="text-xs text-ink-muted">
                   {(medicamentos || []).length} cadastrado{(medicamentos || []).length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <ChevronRight size={16} className="shrink-0 text-ink-faint" />
+            </button>
+
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                router.push("/saude/hoje");
+              }}
+              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/12 text-violet-300">
+                <Clock size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-ink-primary">Hoje</p>
+                <p className="text-xs text-ink-muted">Checklist de doses</p>
+              </div>
             </button>
           </motion.div>
 
