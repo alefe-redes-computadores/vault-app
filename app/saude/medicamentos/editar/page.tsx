@@ -57,8 +57,8 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Ícones dinâmicos baseados no nome do tratamento para dar um visual limpo e bonito
-export function getTratamentoIcon(nome: string) {
+// Função auxiliar interna (sem export) para evitar erro de build na Vercel
+function getTratamentoIcon(nome: string) {
   const n = nome.toLowerCase();
   if (n.includes("tdah")) return Brain;
   if (n.includes("dor") || n.includes("neuropática")) return Flame;
@@ -399,7 +399,6 @@ export default function EditarMedicamentoPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* CAMPO DE TRATAMENTO BEM VISÍVEL NO TOPO COM ÍCONE DINÂMICO */}
           <motion.div
             variants={fadeUp}
             initial="initial"
