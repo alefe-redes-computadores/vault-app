@@ -31,8 +31,8 @@ class VaultDB extends Dexie {
   doseLogs!: Table<DoseLog, string>;
   credentials!: Table<Credential, string>; 
   cards!: Table<BankCard, string>;         
-  instituicoes!: Table<InstituicaoEnsino, string>; // ✅ Entidade Pai de Certificados
-  tratamentos!: Table<Tratamento, string>;         // ✅ Entidade Pai de Saúde
+  instituicoes!: Table<InstituicaoEnsino, string>; 
+  tratamentos!: Table<Tratamento, string>;         
 
   constructor() {
     super('vault-db');
@@ -178,12 +178,11 @@ class VaultDB extends Dexie {
       console.log('✅ v11: tabela de cartões e contas (cards) adicionada.');
     });
 
-    // ✅ NOSSAS ADIÇÕES - ENTIDADES PAI E AGRUPAMENTO
     this.version(12).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
       syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao',
+      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id',
       renovacoes: 'id, user_id, medicamento_id, data',
       vaults: 'id, user_id, name, synced, created_at',
       vaultMembers: 'id, vault_id, user_id, email, status, synced',
@@ -196,26 +195,17 @@ class VaultDB extends Dexie {
       instituicoes: 'id, user_id, nome, synced',
       tratamentos: 'id, user_id, nome, status, synced',
     }).upgrade(async () => {
-      console.log('✅ v12: tabelas de Instituições (Certificados) e Tratamentos (Saúde) criadas.');
+      console.log('✅ v12: tabelas de Instituições e Tratamentos criadas.');
     });
   }
 }
 
 export const db = new VaultDB();
 
-function nowIso() {
-  return new Date().toISOString();
-}
+function nowIso() { return new Date().toISOString(); }
+function triggerSyncProcess() { if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync:process')); }
 
-function triggerSyncProcess() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('sync:process'));
-  }
-}
-
-// ============================================================
-// CRUD - PESSOAS E DOCUMENTOS (Mantidos iguais)
-// ============================================================
+// (As funções CRUD continuam abaixo, mantendo as suas inalteradas conforme solicitado)
 export async function safeAddPerson(person: Omit<Person, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -276,9 +266,6 @@ export async function toggleFavorite(id: string): Promise<void> {
   await safeUpdateDocument(id, { is_favorite: !doc.is_favorite });
 }
 
-// ============================================================
-// CRUD - MEDICAMENTOS, RENOVACOES, DOSELOGS (Mantidos iguais)
-// ============================================================
 export async function safeAddMedicamento(med: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -290,6 +277,7 @@ export async function safeAddMedicamento(med: Omit<Medicamento, 'id' | 'created_
     return id;
   });
 }
+
 export async function safeUpdateMedicamento(id: string, changes: Partial<Medicamento>): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
@@ -299,6 +287,7 @@ export async function safeUpdateMedicamento(id: string, changes: Partial<Medicam
     triggerSyncProcess();
   });
 }
+
 export async function safeDeleteMedicamento(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
@@ -307,6 +296,7 @@ export async function safeDeleteMedicamento(id: string): Promise<void> {
     triggerSyncProcess();
   });
 }
+
 export async function safeAddRenovacao(ren: Omit<Renovacao, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -318,6 +308,7 @@ export async function safeAddRenovacao(ren: Omit<Renovacao, 'id' | 'created_at' 
     return id;
   });
 }
+
 export async function safeUpdateRenovacao(id: string, changes: Partial<Renovacao>): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.renovacoes, db.syncQueue, async () => {
@@ -327,6 +318,7 @@ export async function safeUpdateRenovacao(id: string, changes: Partial<Renovacao
     triggerSyncProcess();
   });
 }
+
 export async function safeSetDoseLog(data: Omit<DoseLog, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const existing = await db.doseLogs.where('medicamento_id').equals(data.medicamento_id).filter((l) => l.data === data.data && l.horario === data.horario).first();
@@ -349,9 +341,6 @@ export async function safeSetDoseLog(data: Omit<DoseLog, 'id' | 'created_at' | '
   });
 }
 
-// ============================================================
-// CRUD - VAULTS (Mantidos iguais)
-// ============================================================
 export async function safeAddVault(vault: Omit<Vault, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -363,6 +352,7 @@ export async function safeAddVault(vault: Omit<Vault, 'id' | 'created_at' | 'upd
     return id;
   });
 }
+
 export async function safeAddVaultMember(member: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -374,6 +364,7 @@ export async function safeAddVaultMember(member: Omit<VaultMember, 'id' | 'invit
     return id;
   });
 }
+
 export async function safeUpdateVaultMember(id: string, changes: Partial<VaultMember>): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.vaultMembers, db.syncQueue, async () => {
@@ -383,15 +374,14 @@ export async function safeUpdateVaultMember(id: string, changes: Partial<VaultMe
     triggerSyncProcess();
   });
 }
+
 export async function shareDocumentWithVault(documentId: string, vaultId: string): Promise<void> {
   await db.transaction('rw', db.documents, async () => { await db.documents.update(documentId, { vault_id: vaultId }); });
 }
+
 export async function getVaultDocuments(vaultId: string): Promise<Document[]> { return db.documents.where('vault_id').equals(vaultId).toArray(); }
 export async function getVaultMembers(vaultId: string): Promise<VaultMember[]> { return db.vaultMembers.where('vault_id').equals(vaultId).toArray(); }
 
-// ============================================================
-// CRUD - MÉDICOS, FARMÁCIAS, HOSPITAIS (Mantidos iguais)
-// ============================================================
 export async function safeAddMedico(data: Omit<Medico, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -403,6 +393,7 @@ export async function safeAddMedico(data: Omit<Medico, 'id' | 'created_at' | 'up
     return id;
   });
 }
+
 export async function safeUpdateMedico(id: string, changes: Partial<Medico>): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.medicos, db.syncQueue, async () => {
@@ -412,6 +403,7 @@ export async function safeUpdateMedico(id: string, changes: Partial<Medico>): Pr
     triggerSyncProcess();
   });
 }
+
 export async function safeDeleteMedico(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.medicos, db.syncQueue, async () => {
@@ -420,6 +412,7 @@ export async function safeDeleteMedico(id: string): Promise<void> {
     triggerSyncProcess();
   });
 }
+
 export async function safeAddFarmacia(data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -431,6 +424,7 @@ export async function safeAddFarmacia(data: Omit<Farmacia, 'id' | 'created_at' |
     return id;
   });
 }
+
 export async function safeUpdateFarmacia(id: string, changes: Partial<Farmacia>): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
@@ -440,6 +434,7 @@ export async function safeUpdateFarmacia(id: string, changes: Partial<Farmacia>)
     triggerSyncProcess();
   });
 }
+
 export async function safeDeleteFarmacia(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.farmacias, db.syncQueue, async () => {
@@ -448,6 +443,7 @@ export async function safeDeleteFarmacia(id: string): Promise<void> {
     triggerSyncProcess();
   });
 }
+
 export async function safeAddHospital(data: Omit<Hospital, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -459,6 +455,7 @@ export async function safeAddHospital(data: Omit<Hospital, 'id' | 'created_at' |
     return id;
   });
 }
+
 export async function safeUpdateHospital(id: string, changes: Partial<Hospital>): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
@@ -468,6 +465,7 @@ export async function safeUpdateHospital(id: string, changes: Partial<Hospital>)
     triggerSyncProcess();
   });
 }
+
 export async function safeDeleteHospital(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
@@ -477,9 +475,6 @@ export async function safeDeleteHospital(id: string): Promise<void> {
   });
 }
 
-// ============================================================
-// CRUD - CREDENCIAIS E CARTÕES (Mantidos iguais)
-// ============================================================
 export async function safeAddCredential(cred: Omit<Credential, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -491,6 +486,7 @@ export async function safeAddCredential(cred: Omit<Credential, 'id' | 'created_a
     return id;
   });
 }
+
 export async function safeUpdateCredential(id: string, changes: Partial<Credential>): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.credentials, db.syncQueue, async () => {
@@ -500,6 +496,7 @@ export async function safeUpdateCredential(id: string, changes: Partial<Credenti
     triggerSyncProcess();
   });
 }
+
 export async function safeDeleteCredential(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.credentials, db.syncQueue, async () => {
@@ -508,6 +505,7 @@ export async function safeDeleteCredential(id: string): Promise<void> {
     triggerSyncProcess();
   });
 }
+
 export async function safeAddCard(card: Omit<BankCard, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -519,6 +517,7 @@ export async function safeAddCard(card: Omit<BankCard, 'id' | 'created_at' | 'up
     return id;
   });
 }
+
 export async function safeUpdateCard(id: string, changes: Partial<BankCard>): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.cards, db.syncQueue, async () => {
@@ -528,6 +527,7 @@ export async function safeUpdateCard(id: string, changes: Partial<BankCard>): Pr
     triggerSyncProcess();
   });
 }
+
 export async function safeDeleteCard(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.cards, db.syncQueue, async () => {
@@ -537,9 +537,6 @@ export async function safeDeleteCard(id: string): Promise<void> {
   });
 }
 
-// ============================================================
-// ✅ NOVOS CRUDS - INSTITUIÇÕES (Certificados) E TRATAMENTOS (Saúde)
-// ============================================================
 export async function safeAddInstituicao(data: Omit<InstituicaoEnsino, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
