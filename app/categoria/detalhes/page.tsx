@@ -63,6 +63,19 @@ const getFieldsForType = (type: DocumentType) => {
       { key: "reason", label: "Motivo", type: "text" },
       { key: "date", label: "Data", type: "date" },
     ],
+    consulta: [
+      { key: "doctor", label: "Médico", type: "text" },
+      { key: "specialty", label: "Especialidade", type: "text" },
+      { key: "hospital", label: "Clínica / Hospital", type: "text" },
+      { key: "date", label: "Data da Consulta", type: "date" },
+      { key: "reason", label: "Motivo da Consulta", type: "text" },
+    ],
+    cirurgia: [
+      { key: "procedure", label: "Procedimento", type: "text" },
+      { key: "doctor", label: "Médico Cirurgião", type: "text" },
+      { key: "hospital", label: "Hospital", type: "text" },
+      { key: "date", label: "Data da Cirurgia", type: "date" },
+    ],
     outro: [
       { key: "custom_field_1", label: "Campo 1", type: "text" },
       { key: "custom_field_2", label: "Campo 2", type: "text" },
@@ -298,6 +311,8 @@ export default function EditarDetalhePage() {
                 <option value="prontuario">Prontuário</option>
                 <option value="laudo">Laudo</option>
                 <option value="encaminhamento">Encaminhamento</option>
+                <option value="consulta">Consulta</option>
+                <option value="cirurgia">Cirurgia</option>
                 <option value="outro">Outro</option>
               </select>
             </div>
