@@ -15,8 +15,11 @@ import {
   PackageX,
   Clock,
   Activity,
-  Plus,
-  FolderHeart
+  FolderHeart,
+  Brain,
+  ShieldAlert,
+  HeartPulse,
+  Flame,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -40,6 +43,16 @@ import {
   TIPO_RECEITA_LABELS,
   type HealthAlert,
 } from "@/lib/health-utils";
+
+// Função para retornar o ícone perfeito baseado no nome do tratamento cadastrado
+function getTratamentoIcon(nome: string) {
+  const n = nome.toLowerCase();
+  if (n.includes("tdah")) return Brain;
+  if (n.includes("dor") || n.includes("neuropática")) return Flame;
+  if (n.includes("depress")) return HeartPulse;
+  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
+  return Activity;
+}
 
 function AlertRow({ alert }: { alert: HealthAlert }) {
   const router = useRouter();
@@ -235,17 +248,6 @@ export default function SaudePage() {
                   : "Tudo em dia por aqui"}
               </p>
             </div>
-            
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.push("/novo");
-              }}
-              aria-label="Novo documento de saúde"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void transition-all active:scale-95 shadow-md shadow-ice/20"
-            >
-              <Plus size={20} />
-            </button>
           </div>
         </header>
 
@@ -300,7 +302,7 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* Meus Tratamentos (Agrupadores Pais) */}
+          {/* Meus Tratamentos com Ícones Dinâmicos (TDAH, Dor Crônica, Depressão, Ansiedade) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -321,37 +323,39 @@ export default function SaudePage() {
                   Nenhum tratamento cadastrado.
                 </p>
                 <p className="mt-1 text-xs text-ink-faint">
-                  Eles aparecerão aqui quando você criar um documento vinculado.
+                  Eles aparecerão aqui quando você criar um documento ou medicamento vinculado.
                 </p>
               </div>
             ) : (
               <div className="space-y-2.5">
-                {tratamentos.map((tratamento) => (
-                  <button
-                    key={tratamento.id}
-                    onClick={() => {
-                      trigger("vibrate");
-                      // A rota abaixo pode ser ajustada conforme você for criar a visualização do tratamento específico
-                      router.push(`/saude/tratamentos?id=${tratamento.id}`); 
-                    }}
-                    className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
-                        <Activity size={18} />
+                {tratamentos.map((tratamento) => {
+                  const IconComponent = getTratamentoIcon(tratamento.nome);
+                  return (
+                    <button
+                      key={tratamento.id}
+                      onClick={() => {
+                        trigger("vibrate");
+                        router.push(`/saude/tratamentos?id=${tratamento.id}`); 
+                      }}
+                      className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
+                          <IconComponent size={20} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink-primary">
+                            {tratamento.nome}
+                          </p>
+                          <p className="truncate text-xs text-ink-muted capitalize">
+                            {tratamento.status === 'ativo' ? 'Em andamento' : tratamento.status === 'concluido' ? 'Concluído' : 'Suspenso'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-ink-primary">
-                          {tratamento.nome}
-                        </p>
-                        <p className="truncate text-xs text-ink-muted">
-                          {tratamento.status === 'ativo' ? 'Em andamento' : tratamento.status === 'concluido' ? 'Concluído' : 'Suspenso'}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="shrink-0 text-ink-faint" />
-                  </button>
-                ))}
+                      <ChevronRight size={16} className="shrink-0 text-ink-faint" />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </motion.div>
