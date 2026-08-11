@@ -57,7 +57,6 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Função auxiliar interna (sem export) para evitar erro de build na Vercel
 function getTratamentoIcon(nome: string) {
   const n = nome.toLowerCase();
   if (n.includes("tdah")) return Brain;
@@ -90,7 +89,6 @@ export default function EditarMedicamentoPage() {
   const [proximaRenovacao, setProximaRenovacao] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
-  // Tratamentos
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const [tratamentoId, setTratamentoId] = useState<string>("");
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
@@ -263,7 +261,7 @@ export default function EditarMedicamentoPage() {
 
       if (documentId) {
         const doc = await db.documents.get(documentId);
-        if (doc) {
+        if (doc && doc.id) {
           await db.documents.update(doc.id, {
             metadata: {
               ...doc.metadata,
