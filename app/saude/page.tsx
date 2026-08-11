@@ -44,7 +44,6 @@ import {
   type HealthAlert,
 } from "@/lib/health-utils";
 
-// Função para retornar o ícone perfeito baseado no nome do tratamento cadastrado
 function getTratamentoIcon(nome: string) {
   const n = nome.toLowerCase();
   if (n.includes("tdah")) return Brain;
@@ -176,7 +175,6 @@ export default function SaudePage() {
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
 
-  // Busca os Tratamentos (Entidades Pai) em tempo real
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
 
   const medAlerts = useMemo(
@@ -248,11 +246,11 @@ export default function SaudePage() {
                   : "Tudo em dia por aqui"}
               </p>
             </div>
+            {/* Botão + removido daqui para não duplicar */}
           </div>
         </header>
 
         <section className="space-y-6 px-5 pt-5">
-          {/* Ações rápidas */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -281,7 +279,6 @@ export default function SaudePage() {
             })}
           </motion.div>
 
-          {/* Próximas consultas e Cirurgias */}
           {appointments.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -302,7 +299,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* Meus Tratamentos com Ícones Dinâmicos (TDAH, Dor Crônica, Depressão, Ansiedade) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -360,7 +356,6 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* Alertas Críticos (Estoque e Renovação) */}
           {(estoqueAlerts.length > 0 || allAlerts.length > 0) && (
              <motion.div
                initial={{ opacity: 0, y: 10 }}
@@ -385,7 +380,6 @@ export default function SaudePage() {
              </motion.div>
           )}
 
-          {/* Ferramentas de Saúde e Rede */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
