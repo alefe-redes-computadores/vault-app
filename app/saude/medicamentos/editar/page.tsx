@@ -3,7 +3,22 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Pill, Trash2, AlertTriangle, Package, Plus, Clock, Activity } from "lucide-react";
+import { 
+  ArrowLeft, 
+  Loader2, 
+  Save, 
+  Pill, 
+  Trash2, 
+  AlertTriangle, 
+  Package, 
+  Plus, 
+  Clock, 
+  Activity,
+  Brain,
+  ShieldAlert,
+  HeartPulse,
+  Flame
+} from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
@@ -40,6 +55,16 @@ const TIPO_OPTIONS: TipoReceita[] = ["comum", "amarela", "azul", "branca"];
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Ícones dinâmicos baseados no nome do tratamento para dar um visual limpo e bonito
+export function getTratamentoIcon(nome: string) {
+  const n = nome.toLowerCase();
+  if (n.includes("tdah")) return Brain;
+  if (n.includes("dor") || n.includes("neuropática")) return Flame;
+  if (n.includes("depress")) return HeartPulse;
+  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
+  return Activity;
 }
 
 export default function EditarMedicamentoPage() {
@@ -374,13 +399,13 @@ export default function EditarMedicamentoPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* TRATAMENTO AGORA FICA BEM NO TOPO EM DESTAQUE */}
+          {/* CAMPO DE TRATAMENTO BEM VISÍVEL NO TOPO COM ÍCONE DINÂMICO */}
           <motion.div
             variants={fadeUp}
             initial="initial"
             animate="animate"
             transition={{ duration: 0.28 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm"
           >
             <div className="flex items-center gap-2 mb-2">
               <Activity size={16} className="text-violet-400" />
@@ -393,9 +418,18 @@ export default function EditarMedicamentoPage() {
                 trigger("vibrate");
                 setIsTratamentoModalOpen(true);
               }}
-              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-violet-400/40"
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-violet-400/40"
             >
-              {selectedTratamento ? selectedTratamento.nome : "Vincular a um tratamento (Opcional)"}
+              <div className="flex items-center gap-2.5 min-w-0">
+                {selectedTratamento ? (() => {
+                  const IconComp = getTratamentoIcon(selectedTratamento.nome);
+                  return <IconComp size={18} className="text-violet-400 shrink-0" />;
+                })() : <Activity size={18} className="text-ink-muted shrink-0" />}
+                <span className="truncate font-medium">
+                  {selectedTratamento ? selectedTratamento.nome : "Vincular a um tratamento (Opcional)"}
+                </span>
+              </div>
+              <span className="text-xs text-violet-400 shrink-0 font-medium">Alterar</span>
             </button>
           </motion.div>
 
@@ -750,14 +784,22 @@ export default function EditarMedicamentoPage() {
           items={tratamentos}
           title="Vincular a Tratamento"
           placeholder="Buscar tratamento..."
-          renderItem={(item: any) => (
-            <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
-              {item.condicao && (
-                <p className="text-xs text-ink-muted capitalize">{item.condicao}</p>
-              )}
-            </div>
-          )}
+          renderItem={(item: any) => {
+            const IconComp = getTratamentoIcon(item.nome);
+            return (
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                  <IconComp size={18} />
+                </div>
+                <div>
+                  <p className="font-medium text-ink-primary">{item.nome}</p>
+                  {item.condicao && (
+                    <p className="text-xs text-ink-muted capitalize">{item.condicao}</p>
+                  )}
+                </div>
+              </div>
+            );
+          }}
           getItemId={(item: any) => item.id!}
           getItemLabel={(item: any) => item.nome}
           onCreateNew={() => {
@@ -780,7 +822,7 @@ export default function EditarMedicamentoPage() {
           <div className="space-y-4 px-1 pb-2">
             <Input
               label="Nome do Tratamento"
-              placeholder="Ex: Fisioterapia, Acompanhamento..."
+              placeholder="Ex: TDAH, Dor Crônica, Depressão, Ansiedade..."
               value={newTratamentoName}
               onChange={(e) => setNewTratamentoName(e.target.value)}
               autoFocus
