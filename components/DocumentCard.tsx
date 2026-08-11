@@ -16,6 +16,8 @@ import {
   File,
   Building2,
   FolderOpen,
+  Stethoscope,
+  Activity,
   type LucideIcon,
   CheckCircle2,
   Loader2,
@@ -42,6 +44,8 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   prontuario: Heart,
   laudo: ClipboardList,
   encaminhamento: Building2,
+  consulta: Stethoscope,
+  cirurgia: Activity,
   outro: FolderOpen,
 };
 
@@ -96,9 +100,20 @@ function DocumentCardComponent({
   const hasAttachments = document.attachments && document.attachments.length > 0;
   const hasImageAttachment = document.attachments?.some((a) => a.type === "image");
 
+  // Oculta campos de data e IDs de relacionamento para não exibir códigos feios no resumo
   const metadataKeys = Object.keys(document.metadata || {}).filter(
     (key) =>
-      !["issue_date", "expiry_date", "renewal_date", "prescription_date", "date"].includes(key)
+      ![
+        "issue_date", 
+        "expiry_date", 
+        "renewal_date", 
+        "prescription_date", 
+        "date",
+        "doctor",
+        "hospital",
+        "institution",
+        "medication"
+      ].includes(key)
   );
   const firstMetadata =
     metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
@@ -123,7 +138,6 @@ function DocumentCardComponent({
       onClick={handlePress}
       className="group relative cursor-pointer overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface shadow-sm transition-all duration-200 active:scale-[0.985] hover:border-ice/20 hover:shadow-lg"
     >
-      {/* Barra de acento lateral com a cor da categoria */}
       <div
         className="absolute inset-y-0 left-0 w-[3px]"
         style={{ backgroundColor: color }}
@@ -210,6 +224,13 @@ function DocumentCardComponent({
                 <div className="flex items-center gap-1 text-xs text-ink-muted">
                   <Calendar size={12} />
                   <span>Emissão: {formatDate(document.metadata.issue_date)}</span>
+                </div>
+              )}
+
+              {document.metadata?.date && (
+                <div className="flex items-center gap-1 text-xs text-ink-muted">
+                  <Calendar size={12} />
+                  <span>Data: {formatDate(document.metadata.date)}</span>
                 </div>
               )}
 
