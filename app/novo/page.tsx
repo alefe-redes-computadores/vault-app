@@ -14,6 +14,7 @@ import {
   FileText,
   Image as ImageIcon,
   ChevronRight,
+  Plus,
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -34,14 +35,14 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { DocumentTypeSelector } from "@/components/DocumentTypeSelector";
 import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
-import { db } from "@/lib/db";
+import { db, safeAddInstituicao, safeAddTratamento } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { SelectionModal } from "@/components/SelectionModal";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
 
-// ✅ Máscara corrigida (remove todos os não-dígitos)
 const applyMask = (value: string, type: string): string => {
   const digits = value.replace(/\D/g, "");
 
@@ -109,9 +110,15 @@ export default function NewDocumentPage() {
   const { user } = useAuth();
   const { addDocument } = useSafeDb();
   const persons = usePersons();
+  
+  // Entidades base
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
+
+  // Novas entidades Pais agrupadoras
+  const instituicoes = useLiveQuery(() => db.instituicoes.toArray(), []) || [];
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -130,12 +137,21 @@ export default function NewDocumentPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [localFiles, setLocalFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+
+  // Controle de Modais
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
-  const [localFiles, setLocalFiles] = useState<File[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isInstituicaoModalOpen, setIsInstituicaoModalOpen] = useState(false);
+  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
+
+  // Estado para Criação Rápida de Entidade Pai
+  const [isCreatingParent, setIsCreatingParent] = useState<{ type: "instituicao" | "tratamento" | null }>({ type: null });
+  const [newParentName, setNewParentName] = useState("");
+  const [isSavingParent, setIsSavingParent] = useState(false);
 
   const userVaults = useLiveQuery(
     () => db.vaults.where("user_id").equals(user?.id || "").toArray(),
@@ -166,6 +182,38 @@ export default function NewDocumentPage() {
     }));
     if (errors[key]) {
       setErrors((prev) => ({ ...prev, [key]: "" }));
+    }
+  };
+
+  const handleCreateParent = async () => {
+    if (!newParentName.trim()) return;
+    setIsSavingParent(true);
+    trigger("vibrate");
+    
+    try {
+      if (isCreatingParent.type === "instituicao") {
+        const id = await safeAddInstituicao({
+          user_id: user?.id || "",
+          nome: newParentName.trim(),
+        });
+        handleMetadataChange("institution", id);
+      } else if (isCreatingParent.type === "tratamento") {
+        const id = await safeAddTratamento({
+          user_id: user?.id || "",
+          nome: newParentName.trim(),
+          status: "ativo",
+        });
+        handleMetadataChange("medication", id);
+      }
+      
+      trigger("success");
+      setIsCreatingParent({ type: null });
+      setNewParentName("");
+    } catch (error) {
+      console.error("Erro ao criar cadastro rápido:", error);
+      trigger("error");
+    } finally {
+      setIsSavingParent(false);
     }
   };
 
@@ -367,7 +415,6 @@ export default function NewDocumentPage() {
 
   return (
     <PageTransition>
-      {/* ✅ Aumentei o padding inferior para evitar sobreposição do botão fixo */}
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input
           ref={fileInputRef}
@@ -527,7 +574,7 @@ export default function NewDocumentPage() {
             />
           </motion.div>
 
-          {/* Campos dinâmicos com máscara */}
+          {/* Campos dinâmicos (Máscaras e Selects Inteligentes) */}
           <AnimatePresence mode="wait">
             {fields.length > 0 && (
               <motion.div
@@ -555,8 +602,13 @@ export default function NewDocumentPage() {
                       return renderDateInput(field);
                     }
 
-                    if (field.type === "select") {
-                      // Código de select já existente - mantido
+                    // Identifica se o campo deve renderizar como modal de seleção
+                    const isSelectField = 
+                      field.type === "select" || 
+                      field.key === "institution" || 
+                      field.key === "medication";
+
+                    if (isSelectField) {
                       let items: any[] = [];
                       let renderItem: any;
                       let getItemLabel: any;
@@ -567,70 +619,96 @@ export default function NewDocumentPage() {
                       let placeholder = "";
                       let title = "";
                       let createPath = "";
+                      let onCreateNew: any;
+                      let createNewLabel = "";
 
                       if (field.key === "doctor") {
                         items = medicos;
                         renderItem = (item: any) => (
                           <div>
                             <p className="font-medium text-ink-primary">{item.nome}</p>
-                            {item.especialidade && (
-                              <p className="text-xs text-ink-muted">{item.especialidade}</p>
-                            )}
+                            {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
                           </div>
                         );
                         getItemLabel = (item: any) => item.nome;
                         getItemId = (item: any) => item.id!;
                         isModalOpen = isDoctorModalOpen;
                         setIsModalOpen = setIsDoctorModalOpen;
-                        onSelect = (item: any) => {
-                          trigger("vibrate");
-                          handleMetadataChange(field.key, String(item.id));
-                        };
+                        onSelect = (item: any) => { trigger("vibrate"); handleMetadataChange(field.key, String(item.id)); };
                         placeholder = "Buscar médico...";
                         title = "Selecionar médico";
                         createPath = "/saude/medicos/novo";
+                        createNewLabel = "Criar médico";
+                        onCreateNew = () => { setIsModalOpen(false); trigger("vibrate"); router.push(createPath); };
+                      
                       } else if (field.key === "pharmacy") {
                         items = farmacias;
                         renderItem = (item: any) => (
                           <div>
                             <p className="font-medium text-ink-primary">{item.nome}</p>
-                            {item.endereco && (
-                              <p className="text-xs text-ink-muted">{item.endereco}</p>
-                            )}
+                            {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
                           </div>
                         );
                         getItemLabel = (item: any) => item.nome;
                         getItemId = (item: any) => item.id!;
                         isModalOpen = isPharmacyModalOpen;
                         setIsModalOpen = setIsPharmacyModalOpen;
-                        onSelect = (item: any) => {
-                          trigger("vibrate");
-                          handleMetadataChange(field.key, String(item.id));
-                        };
+                        onSelect = (item: any) => { trigger("vibrate"); handleMetadataChange(field.key, String(item.id)); };
                         placeholder = "Buscar farmácia...";
                         title = "Selecionar farmácia";
                         createPath = "/saude/farmacias/novo";
+                        createNewLabel = "Criar farmácia";
+                        onCreateNew = () => { setIsModalOpen(false); trigger("vibrate"); router.push(createPath); };
+
                       } else if (field.key === "hospital") {
                         items = hospitais;
                         renderItem = (item: any) => (
                           <div>
                             <p className="font-medium text-ink-primary">{item.nome}</p>
-                            {item.endereco && (
-                              <p className="text-xs text-ink-muted">{item.endereco}</p>
-                            )}
+                            {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
                           </div>
                         );
                         getItemLabel = (item: any) => item.nome;
                         getItemId = (item: any) => item.id!;
                         isModalOpen = isHospitalModalOpen;
                         setIsModalOpen = setIsHospitalModalOpen;
-                        onSelect = (item: any) => {
-                          trigger("vibrate");
-                          handleMetadataChange(field.key, String(item.id));
-                        };
+                        onSelect = (item: any) => { trigger("vibrate"); handleMetadataChange(field.key, String(item.id)); };
                         placeholder = "Buscar hospital...";
                         title = "Selecionar hospital";
                         createPath = "/saude/hospitais/novo";
+                        createNewLabel = "Criar hospital";
+                        onCreateNew = () => { setIsModalOpen(false); trigger("vibrate"); router.push(createPath); };
+
+                      } else if (field.key === "institution") {
+                        items = instituicoes;
+                        renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
+                        getItemLabel = (item: any) => item.nome;
+                        getItemId = (item: any) => item.id!;
+                        isModalOpen = isInstituicaoModalOpen;
+                        setIsModalOpen = setIsInstituicaoModalOpen;
+                        onSelect = (item: any) => { trigger("vibrate"); handleMetadataChange(field.key, String(item.id)); };
+                        placeholder = "Buscar instituição de ensino...";
+                        title = "Selecionar instituição";
+                        createNewLabel = "Nova Instituição";
+                        onCreateNew = () => { setIsModalOpen(false); trigger("vibrate"); setIsCreatingParent({ type: "instituicao" }); };
+
+                      } else if (field.key === "medication") {
+                        items = tratamentos;
+                        renderItem = (item: any) => (
+                          <div>
+                            <p className="font-medium text-ink-primary">{item.nome}</p>
+                            {item.condicao && <p className="text-xs text-ink-muted capitalize">{item.condicao}</p>}
+                          </div>
+                        );
+                        getItemLabel = (item: any) => item.nome;
+                        getItemId = (item: any) => item.id!;
+                        isModalOpen = isTratamentoModalOpen;
+                        setIsModalOpen = setIsTratamentoModalOpen;
+                        onSelect = (item: any) => { trigger("vibrate"); handleMetadataChange(field.key, String(item.id)); };
+                        placeholder = "Buscar tratamento/medicamento pai...";
+                        title = "Selecionar Tratamento";
+                        createNewLabel = "Novo Tratamento";
+                        onCreateNew = () => { setIsModalOpen(false); trigger("vibrate"); setIsCreatingParent({ type: "tratamento" }); };
                       }
 
                       const selectedId = formData.metadata[field.key];
@@ -662,28 +740,26 @@ export default function NewDocumentPage() {
                             <p className="mt-1 text-xs text-coral">{errors[field.key]}</p>
                           )}
 
-                          <SelectionModal
-                            isOpen={isModalOpen}
-                            onClose={() => setIsModalOpen(false)}
-                            onSelect={onSelect}
-                            items={items}
-                            title={title}
-                            placeholder={placeholder}
-                            renderItem={renderItem}
-                            getItemId={getItemId}
-                            getItemLabel={getItemLabel}
-                            onCreateNew={() => {
-                              setIsModalOpen(false);
-                              trigger("vibrate");
-                              router.push(createPath);
-                            }}
-                            createNewLabel={`Criar ${field.label.toLowerCase()}`}
-                          />
+                          {isModalOpen && (
+                             <SelectionModal
+                               isOpen={isModalOpen}
+                               onClose={() => setIsModalOpen(false)}
+                               onSelect={onSelect}
+                               items={items}
+                               title={title}
+                               placeholder={placeholder}
+                               renderItem={renderItem}
+                               getItemId={getItemId}
+                               getItemLabel={getItemLabel}
+                               onCreateNew={onCreateNew}
+                               createNewLabel={createNewLabel}
+                             />
+                          )}
                         </div>
                       );
                     }
 
-                    // ✅ Campos de texto com máscara
+                    // Campos de texto convencionais
                     return (
                       <Input
                         key={field.key}
@@ -884,7 +960,42 @@ export default function NewDocumentPage() {
           </motion.div>
         </section>
 
-        {/* ✅ Botão fixo com fundo escuro e sem faixa azul */}
+        {/* Modal de Criação In-line (Instituição e Tratamento) */}
+        <BottomSheet
+          isOpen={isCreatingParent.type !== null}
+          onClose={() => {
+            trigger("vibrate");
+            setIsCreatingParent({ type: null });
+            setNewParentName("");
+          }}
+          title={`Cadastrar ${isCreatingParent.type === "instituicao" ? "Instituição" : "Tratamento"}`}
+        >
+          <div className="space-y-4 px-1 pb-2">
+            <Input
+              label={`Nome do(a) ${isCreatingParent.type === "instituicao" ? "Instituição" : "Tratamento"}`}
+              placeholder="Digite o nome..."
+              value={newParentName}
+              onChange={(e) => setNewParentName(e.target.value)}
+              autoFocus
+            />
+            
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleCreateParent}
+              disabled={isSavingParent || !newParentName.trim()}
+              className="flex items-center justify-center gap-2"
+            >
+              {isSavingParent ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Plus size={16} />
+              )}
+              {isSavingParent ? "Salvando..." : "Salvar e selecionar"}
+            </Button>
+          </div>
+        </BottomSheet>
+
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button
             variant="primary"
