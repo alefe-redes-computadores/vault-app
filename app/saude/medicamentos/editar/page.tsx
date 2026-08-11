@@ -236,7 +236,6 @@ export default function EditarMedicamentoPage() {
     try {
       const horariosFiltrados = horarios.filter((h) => h);
 
-      // Atualiza o documento pai (Receita) para que ele apareça na tela do Tratamento
       if (documentId) {
         const doc = await db.documents.get(documentId);
         if (doc) {
@@ -375,11 +374,36 @@ export default function EditarMedicamentoPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
+          {/* TRATAMENTO AGORA FICA BEM NO TOPO EM DESTAQUE */}
           <motion.div
             variants={fadeUp}
             initial="initial"
             animate="animate"
             transition={{ duration: 0.28 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Activity size={16} className="text-violet-400" />
+              <label className="text-sm font-semibold text-ink-primary">
+                Tratamento Vinculado
+              </label>
+            </div>
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                setIsTratamentoModalOpen(true);
+              }}
+              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-violet-400/40"
+            >
+              {selectedTratamento ? selectedTratamento.nome : "Vincular a um tratamento (Opcional)"}
+            </button>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.02 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <p className="mb-3 text-sm font-medium text-ink-primary">Tipo de receita</p>
@@ -430,21 +454,6 @@ export default function EditarMedicamentoPage() {
             transition={{ duration: 0.28, delay: 0.04 }}
             className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-                Tratamento (Opcional)
-              </label>
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-                  setIsTratamentoModalOpen(true);
-                }}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors"
-              >
-                {selectedTratamento ? selectedTratamento.nome : "Vincular a um tratamento"}
-              </button>
-            </div>
-
             <Input
               label="Medicamento"
               placeholder="Ex: Losartana, Sertralina..."
