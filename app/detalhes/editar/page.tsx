@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Save,
@@ -155,7 +155,7 @@ export default function EditarDetalhePage() {
   }, [doc]);
 
   const selectedTratamento = tratamentos.find(
-    (t: any) => String(t.id) === formData.metadata.tratamento_id
+    (t: any) => String(t.id) === formData.metadata?.tratamento_id
   );
 
   const fields = getFieldsForType(formData.type);
@@ -282,37 +282,6 @@ export default function EditarDetalhePage() {
             </div>
           </motion.div>
 
-          {/* VÍNCULO COM TRATAMENTO */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, delay: 0.02 }}
-            className="rounded-[28px] border border-violet-500/30 bg-surface px-5 py-6 shadow-sm"
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <Activity size={16} className="text-violet-400" />
-              <h2 className="font-display text-lg font-semibold text-ink-primary">
-                Tratamento Vinculado
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setIsTratamentoModalOpen(true);
-              }}
-              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-violet-400/40"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Activity size={18} className="text-violet-400 shrink-0" />
-                <span className="truncate font-medium">
-                  {selectedTratamento ? selectedTratamento.nome : "Nenhum tratamento vinculado (Opcional)"}
-                </span>
-              </div>
-              <span className="text-xs text-violet-400 shrink-0 font-medium">Alterar</span>
-            </button>
-          </motion.div>
-
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -342,6 +311,39 @@ export default function EditarDetalhePage() {
               ))}
             </div>
           </motion.div>
+
+          {/* VÍNCULO DE TRATAMENTO FICA AQUI CASO SEJA UM DOCUMENTO DE SAÚDE */}
+          {formData.category_id === "saude" && (
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: 0.05 }}
+              className="rounded-[28px] border border-violet-500/30 bg-surface px-5 py-6 shadow-sm"
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <Activity size={16} className="text-violet-400" />
+                <h2 className="font-display text-lg font-semibold text-ink-primary">
+                  Tratamento Vinculado
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setIsTratamentoModalOpen(true);
+                }}
+                className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-violet-400/40"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Activity size={18} className="text-violet-400 shrink-0" />
+                  <span className="truncate font-medium">
+                    {selectedTratamento ? selectedTratamento.nome : "Nenhum tratamento vinculado (Opcional)"}
+                  </span>
+                </div>
+                <span className="text-xs text-violet-400 shrink-0 font-medium">Alterar</span>
+              </button>
+            </motion.div>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 14 }}
@@ -377,7 +379,7 @@ export default function EditarDetalhePage() {
               </div>
             </div>
 
-            {/* SELETOR DE TIPO ESTILIZADO EM CARDS (SUBSTITUINDO O SELECT NATIVO) */}
+            {/* SELETOR EM GRID: Tchau `<select>` branco e feio! */}
             <div>
               <label className="mb-2 block text-sm font-medium text-ink-primary">
                 Tipo de documento
