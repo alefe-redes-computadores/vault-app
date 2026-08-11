@@ -72,6 +72,8 @@ export type DocumentType =
   | 'prontuario'
   | 'laudo'
   | 'encaminhamento'
+  | 'consulta'
+  | 'cirurgia'
   | 'outro';
 
 export interface Attachment {
@@ -151,6 +153,19 @@ export const DOCUMENT_FIELDS: Record<
     { key: 'reason', label: 'Motivo', type: 'text', required: true },
     { key: 'date', label: 'Data', type: 'date', required: true },
   ],
+  consulta: [
+    { key: 'doctor', label: 'Médico', type: 'select', required: true },
+    { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
+    { key: 'hospital', label: 'Clínica / Hospital', type: 'select' },
+    { key: 'date', label: 'Data da Consulta', type: 'date', required: true },
+    { key: 'reason', label: 'Motivo da Consulta', type: 'text' },
+  ],
+  cirurgia: [
+    { key: 'procedure', label: 'Procedimento', type: 'text', required: true },
+    { key: 'doctor', label: 'Médico Cirurgião', type: 'select', required: true },
+    { key: 'hospital', label: 'Hospital', type: 'select', required: true },
+    { key: 'date', label: 'Data da Cirurgia', type: 'date', required: true },
+  ],
   outro: [
     { key: 'custom_field_1', label: 'Campo personalizado 1', type: 'text' },
     { key: 'custom_field_2', label: 'Campo personalizado 2', type: 'text' },
@@ -168,6 +183,8 @@ export type ReceitaMetadata = { medication: string; dosage: string; doctor: stri
 export type ProntuarioMetadata = { hospital: string; doctor: string; specialty: string; date: string; };
 export type LaudoMetadata = { doctor: string; specialty: string; hospital: string; date: string; };
 export type EncaminhamentoMetadata = { from: string; to?: string; reason: string; date: string; };
+export type ConsultaMetadata = { doctor: string; specialty: string; hospital?: string; date: string; reason?: string; };
+export type CirurgiaMetadata = { procedure: string; doctor: string; hospital: string; date: string; };
 
 // ============================================================
 // 5. FILA DE SINCRONIZAÇÃO (ATUALIZADA)
