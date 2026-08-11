@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Pill, Trash2, AlertTriangle, Package, Plus, Clock } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Pill, Trash2, AlertTriangle, Package, Plus, Clock, Activity } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
@@ -26,6 +26,10 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
+import { db, safeAddTratamento } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { useAuth } from "@/hooks/useAuth";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -43,12 +47,14 @@ export default function EditarMedicamentoPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
+  const { user } = useAuth();
   const { getMedicamento, updateMedicamento, deleteMedicamento } = useMedicamentos();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [documentId, setDocumentId] = useState<string>("");
 
   const [nome, setNome] = useState("");
   const [dosagem, setDosagem] = useState("");
@@ -58,6 +64,14 @@ export default function EditarMedicamentoPage() {
   const [dataReceita, setDataReceita] = useState("");
   const [proximaRenovacao, setProximaRenovacao] = useState("");
   const [observacoes, setObservacoes] = useState("");
+
+  // Tratamentos
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const [tratamentoId, setTratamentoId] = useState<string>("");
+  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
+  const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
+  const [newTratamentoName, setNewTratamentoName] = useState("");
+  const [isSavingTratamento, setIsSavingTratamento] = useState(false);
 
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
@@ -74,6 +88,7 @@ export default function EditarMedicamentoPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  const selectedTratamento = tratamentos.find((t: any) => String(t.id) === tratamentoId);
   const diasValidade = VALIDADE_RECEITA_DIAS[tipoReceita];
   const consumoDiario =
     horarios.filter((h) => h).length * (Number(estoqueUnidadePorDose) || 1);
@@ -88,7 +103,7 @@ export default function EditarMedicamentoPage() {
       setIsLoading(false);
       return;
     }
-    getMedicamento(id).then((item) => {
+    getMedicamento(id).then(async (item) => {
       if (!item) {
         setNotFound(true);
       } else {
@@ -100,6 +115,14 @@ export default function EditarMedicamentoPage() {
         setProximaRenovacao(item.proxima_renovacao || "");
         setObservacoes(item.observacoes || "");
         setTipoReceita((item.tipo_receita as TipoReceita) || "comum");
+        
+        if (item.document_id) {
+          setDocumentId(item.document_id);
+          const doc = await db.documents.get(item.document_id);
+          if (doc && doc.metadata?.tratamento_id) {
+            setTratamentoId(doc.metadata.tratamento_id);
+          }
+        }
 
         if (
           typeof item.estoque_quantidade === "number" &&
@@ -118,7 +141,6 @@ export default function EditarMedicamentoPage() {
       }
       setIsLoading(false);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const handleTipoReceitaChange = (tipo: TipoReceita) => {
@@ -154,6 +176,28 @@ export default function EditarMedicamentoPage() {
   const registrarContagemHoje = () => {
     trigger("vibrate");
     setEstoqueDataReferencia(todayISO());
+  };
+
+  const handleCreateTratamento = async () => {
+    if (!newTratamentoName.trim()) return;
+    setIsSavingTratamento(true);
+    trigger("vibrate");
+    try {
+      const newId = await safeAddTratamento({
+        user_id: user?.id || "",
+        nome: newTratamentoName.trim(),
+        status: "ativo",
+      });
+      setTratamentoId(newId);
+      trigger("success");
+      setIsCreatingTratamento(false);
+      setNewTratamentoName("");
+    } catch (error) {
+      console.error(error);
+      trigger("error");
+    } finally {
+      setIsSavingTratamento(false);
+    }
   };
 
   const validate = (): boolean => {
@@ -192,6 +236,21 @@ export default function EditarMedicamentoPage() {
     try {
       const horariosFiltrados = horarios.filter((h) => h);
 
+      // Atualiza o documento pai (Receita) para que ele apareça na tela do Tratamento
+      if (documentId) {
+        const doc = await db.documents.get(documentId);
+        if (doc) {
+          await db.documents.update(doc.id, {
+            metadata: {
+              ...doc.metadata,
+              tratamento_id: tratamentoId || undefined,
+            },
+            updated_at: new Date().toISOString(),
+            synced: false,
+          });
+        }
+      }
+
       await updateMedicamento(id, {
         nome: nome.trim(),
         dosagem: dosagem.trim(),
@@ -210,7 +269,6 @@ export default function EditarMedicamentoPage() {
         estoque_unidade_medida: estoqueAtivo ? estoqueUnidade.trim() || "comprimido(s)" : undefined,
       });
 
-      // ✅ NOVO — reagenda ou cancela o lembrete nativo conforme o toggle
       if (estoqueAtivo && horariosFiltrados.length > 0) {
         const granted = await requestNotificationPermission();
         if (granted) {
@@ -222,7 +280,6 @@ export default function EditarMedicamentoPage() {
           } as any);
         }
       } else if (horariosOriginais.length > 0) {
-        // estoque foi desativado — cancela o que tinha antes
         await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as any);
       }
 
@@ -373,6 +430,21 @@ export default function EditarMedicamentoPage() {
             transition={{ duration: 0.28, delay: 0.04 }}
             className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink-primary">
+                Tratamento (Opcional)
+              </label>
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  setIsTratamentoModalOpen(true);
+                }}
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors"
+              >
+                {selectedTratamento ? selectedTratamento.nome : "Vincular a um tratamento"}
+              </button>
+            </div>
+
             <Input
               label="Medicamento"
               placeholder="Ex: Losartana, Sertralina..."
@@ -658,6 +730,69 @@ export default function EditarMedicamentoPage() {
             )}
           </Button>
         </div>
+
+        <SelectionModal
+          isOpen={isTratamentoModalOpen}
+          onClose={() => setIsTratamentoModalOpen(false)}
+          onSelect={(item: any) => {
+            trigger("vibrate");
+            setTratamentoId(item.id!);
+          }}
+          items={tratamentos}
+          title="Vincular a Tratamento"
+          placeholder="Buscar tratamento..."
+          renderItem={(item: any) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              {item.condicao && (
+                <p className="text-xs text-ink-muted capitalize">{item.condicao}</p>
+              )}
+            </div>
+          )}
+          getItemId={(item: any) => item.id!}
+          getItemLabel={(item: any) => item.nome}
+          onCreateNew={() => {
+            setIsTratamentoModalOpen(false);
+            trigger("vibrate");
+            setIsCreatingTratamento(true);
+          }}
+          createNewLabel="Novo Tratamento"
+        />
+
+        <BottomSheet
+          isOpen={isCreatingTratamento}
+          onClose={() => {
+            trigger("vibrate");
+            setIsCreatingTratamento(false);
+            setNewTratamentoName("");
+          }}
+          title="Cadastrar Tratamento"
+        >
+          <div className="space-y-4 px-1 pb-2">
+            <Input
+              label="Nome do Tratamento"
+              placeholder="Ex: Fisioterapia, Acompanhamento..."
+              value={newTratamentoName}
+              onChange={(e) => setNewTratamentoName(e.target.value)}
+              autoFocus
+            />
+            
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleCreateTratamento}
+              disabled={isSavingTratamento || !newTratamentoName.trim()}
+              className="flex items-center justify-center gap-2"
+            >
+              {isSavingTratamento ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Plus size={16} />
+              )}
+              {isSavingTratamento ? "Salvando..." : "Salvar e selecionar"}
+            </Button>
+          </div>
+        </BottomSheet>
 
         <SelectionModal
           isOpen={isDoctorModalOpen}
