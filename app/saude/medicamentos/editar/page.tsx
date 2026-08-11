@@ -139,6 +139,11 @@ export default function EditarMedicamentoPage() {
         setObservacoes(item.observacoes || "");
         setTipoReceita((item.tipo_receita as TipoReceita) || "comum");
         
+        // Pega o tratamento_id direto do medicamento se salvo lá
+        if (item.tratamento_id) {
+          setTratamentoId(item.tratamento_id);
+        }
+
         if (item.document_id) {
           setDocumentId(item.document_id);
           const doc = await db.documents.get(item.document_id);
@@ -282,6 +287,7 @@ export default function EditarMedicamentoPage() {
         proxima_renovacao: proximaRenovacao,
         observacoes: observacoes.trim() || undefined,
         tipo_receita: tipoReceita,
+        tratamento_id: tratamentoId || undefined,
         estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
         estoque_data_referencia: estoqueAtivo ? estoqueDataReferencia : undefined,
         estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
