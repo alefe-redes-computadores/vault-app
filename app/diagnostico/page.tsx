@@ -100,49 +100,52 @@ export default function DiagnosticoPage() {
     trigger("success");
   }, [user, trigger]);
 
+  // Nova função de Push Direto (Ignora a Fila e fala direto com a nuvem)
   const forcePushAll = async () => {
     if (!user?.id) return;
     trigger("vibrate");
     setIsPushing(true);
-    showToast("Enfileirando todos os dados locais...", "info");
+    showToast("Enviando direto para a nuvem...", "info");
+
+    let errorMsg = "";
 
     try {
-      let totalQueued = 0;
-      for (const table of TABLES) {
-        const items = await (db as any)[table.key].toArray();
-        for (const item of items) {
-          // Garante que o item seja marcado como não sincronizado
-          await (db as any)[table.key].update(item.id, { synced: false });
-          
-          await db.syncQueue.add({
-            id: crypto.randomUUID(),
-            table: table.key as any,
-            operation: 'update', // Update age como UPSERT (cria se não existir, atualiza se existir)
-            payload: item,
-            created_at: new Date().toISOString(),
-            retry_count: 0,
-            failed: false
-          });
-          totalQueued++;
+      // Focando nas tabelas que estão travadas
+      const tablesToPush = ["tratamentos", "medicamentos", "doseLogs"];
+      let count = 0;
+
+      for (const tableName of tablesToPush) {
+        const items = await (db as any)[tableName].toArray();
+
+        if (items.length > 0) {
+          // Burlar a fila de sync e enviar como UPSERT (cria se não existir, atualiza se existir)
+          const { error } = await supabase.from(tableName).upsert(items);
+
+          if (error) {
+            errorMsg = `Tabela ${tableName}: ${error.message || error.details}`;
+            break; // Para no primeiro erro para vermos a causa
+          } else {
+            count += items.length;
+            // Atualiza localmente para dizer que agora está na nuvem
+            for (const item of items) {
+              await (db as any)[tableName].update(item.id, { synced: true });
+            }
+          }
         }
       }
 
-      showToast(`${totalQueued} itens enviados para a fila! Sincronizando...`, "success");
-      
-      // Dispara o evento de sync para a nuvem processar a fila criada
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("sync:process"));
+      if (errorMsg) {
+        alert(`🚨 O Supabase bloqueou o envio!\n\nMotivo Exato:\n${errorMsg}\n\nTire um print dessa tela e me mande!`);
+        showToast("Erro direto da nuvem", "error");
+      } else {
+        showToast(`Sucesso absoluto! ${count} itens subiram pra nuvem.`, "success");
+        setTimeout(() => runCheck(), 1500);
       }
 
-      // Aguarda uns segundos para a sincronização ocorrer e refaz a verificação
-      setTimeout(() => {
-        runCheck();
-        setIsPushing(false);
-      }, 4000);
-
-    } catch (error) {
-      console.error("Erro ao forçar upload:", error);
-      showToast("Erro ao forçar upload", "error");
+    } catch (error: any) {
+      alert(`🚨 Erro Crítico: ${error?.message}`);
+      setIsPushing(false);
+    } finally {
       setIsPushing(false);
     }
   };
@@ -216,12 +219,12 @@ export default function DiagnosticoPage() {
               {isPushing ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Forçando envio...
+                  Conectando direto...
                 </>
               ) : (
                 <>
                   <UploadCloud size={16} />
-                  Forçar Upload (Reparo)
+                  Forçar Upload (Direto na Nuvem)
                 </>
               )}
             </motion.button>
@@ -291,7 +294,7 @@ export default function DiagnosticoPage() {
 
           <div className="rounded-[22px] border border-surface-border/40 bg-surface/50 px-4 py-3.5">
             <p className="text-xs leading-5 text-ink-muted">
-              Use o botão <span className="font-semibold text-violet-300">Forçar Upload</span> se o aparelho tiver dados que não sobem para a nuvem. Ele varre o celular e empurra tudo para o servidor novamente.
+              Use o botão <span className="font-semibold text-violet-300">Forçar Upload</span> se o aparelho tiver dados que não sobem para a nuvem. Ele burla a fila de sincronização e avisa o erro exato caso o banco rejeite os dados.
             </p>
           </div>
         </section>
