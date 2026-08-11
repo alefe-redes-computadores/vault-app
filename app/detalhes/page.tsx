@@ -537,7 +537,7 @@ export default function DocumentDetailPage() {
               className="flex items-center justify-center gap-2"
               onClick={() => {
                 trigger("vibrate");
-                router.push(`/editar?id=${doc.id}`);
+                router.push(`/detalhes/editar?id=${doc.id}`);
               }}
             >
               <Edit size={16} />
