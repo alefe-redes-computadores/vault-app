@@ -13,6 +13,7 @@ import {
   Building2,
   CreditCard,
   Landmark,
+  FolderHeart,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -47,12 +48,12 @@ const DEFAULT_COMPOSE_OPTIONS: ComposeOption[] = [
 
 const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "medicamento", label: "Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
+  { id: "tratamento", label: "Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" },
   { id: "renovacao", label: "Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
   { id: "medico", label: "Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
   { id: "local", label: "Farmácia/Hospital", icon: Building2, path: "/saude/locais/novo" },
 ];
 
-// ✅ NOVO: Opções de adição para Cartões e Contas
 const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "cartao", label: "Novo cartão", icon: CreditCard, path: "/cartoes/novo" },
   { id: "conta", label: "Nova conta bancária", icon: Landmark, path: "/contas/novo" },
@@ -70,11 +71,9 @@ function shouldHideNav(pathname: string): boolean {
   if (pathname !== "/saude" && pathname.startsWith("/saude/")) {
     return true;
   }
-  // Oculta nas telas de senhas (exceto na listagem principal se quiser manter o menu, ou oculta se preferir)
   if (pathname === "/senhas" || pathname.startsWith("/senhas/")) {
     return true;
   }
-  // Oculta nas subpáginas de cartões (detalhes, etc), mas mantém na listagem principal (/cartoes)
   if (pathname.startsWith("/cartoes/") && pathname !== "/cartoes") {
     return true;
   }
@@ -83,7 +82,7 @@ function shouldHideNav(pathname: string): boolean {
 
 function getComposeOptions(pathname: string): ComposeOption[] {
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
-  if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS; // ✅ Retorna as opções separadas de cartão e conta
+  if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
   return DEFAULT_COMPOSE_OPTIONS;
 }
 
@@ -99,24 +98,11 @@ export function BottomNav() {
     const checkLock = () => {
       setIsBiometricLocked(document.body.classList.contains("biometric-locked"));
     };
-
     checkLock();
-
-    const handleLockChange = () => {
-      checkLock();
-    };
-
+    const handleLockChange = () => checkLock();
     window.addEventListener("biometric:lockchange", handleLockChange);
-
-    const observer = new MutationObserver(() => {
-      checkLock();
-    });
-
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-
+    const observer = new MutationObserver(() => checkLock());
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
     return () => {
       window.removeEventListener("biometric:lockchange", handleLockChange);
       observer.disconnect();
@@ -171,7 +157,6 @@ export function BottomNav() {
               onClick={() => setIsComposeMenuOpen(false)}
               className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
             />
-
             <motion.div
               initial={{ opacity: 0, y: 16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -214,7 +199,6 @@ export function BottomNav() {
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
-
               const colMap: Record<string, string> = {
                 home: "col-start-1",
                 saude: "col-start-2",
@@ -226,11 +210,7 @@ export function BottomNav() {
                 <button
                   key={item.id}
                   onClick={() => handleNavigate(item.path)}
-                  className={`
-                    relative flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5 transition-all duration-200 active:scale-95
-                    ${active ? "text-ice" : "text-ink-muted/65 hover:text-ink-primary"}
-                    ${colMap[item.id] || ""}
-                  `}
+                  className={`relative flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5 transition-all duration-200 active:scale-95 ${active ? "text-ice" : "text-ink-muted/65 hover:text-ink-primary"} ${colMap[item.id] || ""}`}
                 >
                   {active && (
                     <motion.div
@@ -239,14 +219,9 @@ export function BottomNav() {
                       transition={{ type: "spring", stiffness: 320, damping: 28 }}
                     />
                   )}
-
                   <div className="relative z-[1] flex flex-col items-center gap-1">
                     <Icon size={22} strokeWidth={active ? 2.4 : 2} />
-                    <span
-                      className={`text-[10px] font-medium ${
-                        active ? "text-ice" : "text-ink-muted/65"
-                      }`}
-                    >
+                    <span className={`text-[10px] font-medium ${active ? "text-ice" : "text-ink-muted/65"}`}>
                       {item.label}
                     </span>
                   </div>
@@ -257,13 +232,9 @@ export function BottomNav() {
             <button
               onClick={handleComposePress}
               aria-label={hasComposeMenu ? "Adicionar" : composeOptions[0].label}
-              aria-expanded={hasComposeMenu ? isComposeMenuOpen : undefined}
               className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(47,227,201,0.28)] transition-all duration-200 active:scale-95"
             >
-              <motion.div
-                animate={{ rotate: isComposeMenuOpen ? 45 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
+              <motion.div animate={{ rotate: isComposeMenuOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
                 <Plus size={24} strokeWidth={2.6} />
               </motion.div>
             </button>
