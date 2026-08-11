@@ -187,7 +187,7 @@ export type ConsultaMetadata = { doctor: string; specialty: string; hospital?: s
 export type CirurgiaMetadata = { procedure: string; doctor: string; hospital: string; date: string; };
 
 // ============================================================
-// 5. FILA DE SINCRONIZAÇÃO (ATUALIZADA)
+// 5. FILA DE SINCRONIZAÇÃO
 // ============================================================
 export interface SyncQueueItem {
   id?: string;
@@ -230,6 +230,7 @@ export interface Medicamento {
   proxima_renovacao: string;
   observacoes?: string;
   tipo_receita?: TipoReceita;
+  tratamento_id?: string; // ✅ CAMPO ADICIONADO PARA PERSISTÊNCIA
   estoque_quantidade?: number;
   estoque_data_referencia?: string;
   estoque_horarios?: string[];
@@ -340,7 +341,6 @@ export interface Hospital {
   synced: boolean;
 }
 
-// ✅ NOVAS ENTIDADES (Agrupadores / Categorias Pai)
 export interface InstituicaoEnsino {
   id?: string;
   user_id: string;
