@@ -32,6 +32,10 @@ import {
   VALIDADE_RECEITA_DIAS,
   TIPO_RECEITA_LABELS,
 } from "@/lib/health-utils";
+import {
+  scheduleDoseNotifications,
+  requestNotificationPermission,
+} from "@/lib/dose-notifications";
 import { db } from "@/lib/db";
 import type { Attachment, Document, TipoReceita } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
@@ -249,7 +253,9 @@ export default function NovoMedicamentoPage() {
         }
       }
 
-      await addMedicamento({
+      const horariosFiltrados = horarios.filter((h) => h);
+
+      const medicamentoId = await addMedicamento({
         document_id: docId,
         nome: nome.trim(),
         dosagem: dosagem.trim(),
@@ -261,12 +267,25 @@ export default function NovoMedicamentoPage() {
         tipo_receita: tipoReceita,
         estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
         estoque_data_referencia: estoqueAtivo ? estoqueDataReferencia : undefined,
-        estoque_horarios: estoqueAtivo ? horarios.filter((h) => h) : undefined,
+        estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
         estoque_unidade_por_dose: estoqueAtivo
           ? Number(estoqueUnidadePorDose) || 1
           : undefined,
         estoque_unidade_medida: estoqueAtivo ? estoqueUnidade.trim() || "comprimido(s)" : undefined,
       });
+
+      // ✅ NOVO — agenda o lembrete nativo se o estoque/horários estiverem ativos
+      if (estoqueAtivo && horariosFiltrados.length > 0) {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+          await scheduleDoseNotifications({
+            id: medicamentoId,
+            nome: nome.trim(),
+            dosagem: dosagem.trim(),
+            estoque_horarios: horariosFiltrados,
+          } as any);
+        }
+      }
 
       trigger("success");
       router.push("/saude");
@@ -298,7 +317,7 @@ export default function NovoMedicamentoPage() {
           onChange={handleCameraCapture}
         />
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -525,7 +544,7 @@ export default function NovoMedicamentoPage() {
                     Acompanhar estoque
                   </p>
                   <p className="text-xs text-ink-muted">
-                    Receba alerta quando estiver acabando
+                    Receba alerta e lembrete de dose
                   </p>
                 </div>
               </div>
@@ -652,6 +671,10 @@ export default function NovoMedicamentoPage() {
                       {errors.horarios && (
                         <p className="mt-1 text-xs text-coral">{errors.horarios}</p>
                       )}
+                      <p className="mt-2 text-[11px] text-ink-muted">
+                        Um lembrete nativo vai tocar em cada horário — pode pedir
+                        permissão de notificação ao salvar.
+                      </p>
                     </div>
 
                     {diasEstimados !== null && (
