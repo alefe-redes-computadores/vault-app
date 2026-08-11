@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Save,
@@ -10,7 +10,7 @@ import {
   User,
   Layers3,
   FileText,
-  ChevronDown,
+  Activity,
 } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
@@ -22,6 +22,9 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
+import { SelectionModal } from "@/components/SelectionModal";
+import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 const getFieldsForType = (type: DocumentType) => {
   const commonFields = [
@@ -97,6 +100,20 @@ const getFieldsForType = (type: DocumentType) => {
   return fieldMap[type] || [];
 };
 
+const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
+  { id: "rg", label: "RG" },
+  { id: "cpf", label: "CPF" },
+  { id: "cnh", label: "CNH" },
+  { id: "certificado", label: "Certificado" },
+  { id: "receita", label: "Receita" },
+  { id: "prontuario", label: "Prontuário" },
+  { id: "laudo", label: "Laudo" },
+  { id: "encaminhamento", label: "Encaminhamento" },
+  { id: "consulta", label: "Consulta" },
+  { id: "cirurgia", label: "Cirurgia" },
+  { id: "outro", label: "Outro" },
+];
+
 export default function EditarDetalhePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -107,6 +124,9 @@ export default function EditarDetalhePage() {
   const doc = useDocument(id || "");
   const persons = usePersons();
   const { updateDocument } = useSafeDb();
+
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -133,6 +153,10 @@ export default function EditarDetalhePage() {
       });
     }
   }, [doc]);
+
+  const selectedTratamento = tratamentos.find(
+    (t: any) => String(t.id) === formData.metadata.tratamento_id
+  );
 
   const fields = getFieldsForType(formData.type);
 
@@ -258,6 +282,37 @@ export default function EditarDetalhePage() {
             </div>
           </motion.div>
 
+          {/* VÍNCULO COM TRATAMENTO */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: 0.02 }}
+            className="rounded-[28px] border border-violet-500/30 bg-surface px-5 py-6 shadow-sm"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <Activity size={16} className="text-violet-400" />
+              <h2 className="font-display text-lg font-semibold text-ink-primary">
+                Tratamento Vinculado
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                trigger("vibrate");
+                setIsTratamentoModalOpen(true);
+              }}
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-violet-400/40"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Activity size={18} className="text-violet-400 shrink-0" />
+                <span className="truncate font-medium">
+                  {selectedTratamento ? selectedTratamento.nome : "Nenhum tratamento vinculado (Opcional)"}
+                </span>
+              </div>
+              <span className="text-xs text-violet-400 shrink-0 font-medium">Alterar</span>
+            </button>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -322,34 +377,32 @@ export default function EditarDetalhePage() {
               </div>
             </div>
 
+            {/* SELETOR DE TIPO ESTILIZADO EM CARDS (SUBSTITUINDO O SELECT NATIVO) */}
             <div>
               <label className="mb-2 block text-sm font-medium text-ink-primary">
-                Tipo
+                Tipo de documento
               </label>
-              <div className="relative">
-                <select
-                  value={formData.type}
-                  onChange={(e) =>
-                    handleChange("type", e.target.value as DocumentType)
-                  }
-                  className="w-full appearance-none rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 pr-10 text-ink-primary outline-none transition-colors focus:border-ice/50"
-                >
-                  <option value="rg">RG</option>
-                  <option value="cpf">CPF</option>
-                  <option value="cnh">CNH</option>
-                  <option value="certificado">Certificado</option>
-                  <option value="receita">Receita</option>
-                  <option value="prontuario">Prontuário</option>
-                  <option value="laudo">Laudo</option>
-                  <option value="encaminhamento">Encaminhamento</option>
-                  <option value="consulta">Consulta</option>
-                  <option value="cirurgia">Cirurgia</option>
-                  <option value="outro">Outro</option>
-                </select>
-                <ChevronDown
-                  size={16}
-                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-muted"
-                />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {DOCUMENT_TYPES.map((typeObj) => {
+                  const active = formData.type === typeObj.id;
+                  return (
+                    <button
+                      key={typeObj.id}
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        handleChange("type", typeObj.id);
+                      }}
+                      className={`rounded-2xl border px-3 py-3 text-left text-xs font-medium transition-all active:scale-95 ${
+                        active
+                          ? "border-ice bg-ice/12 text-ice"
+                          : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                      }`}
+                    >
+                      {typeObj.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </motion.div>
@@ -428,6 +481,35 @@ export default function EditarDetalhePage() {
             </Button>
           </motion.div>
         </section>
+
+        {/* MODAL PARA SELECIONAR O TRATAMENTO */}
+        <SelectionModal
+          isOpen={isTratamentoModalOpen}
+          onClose={() => setIsTratamentoModalOpen(false)}
+          onSelect={(item: any) => {
+            trigger("vibrate");
+            handleMetadataChange("tratamento_id", item.id!);
+          }}
+          items={tratamentos}
+          title="Vincular a Tratamento"
+          placeholder="Buscar tratamento..."
+          renderItem={(item: any) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              {item.condicao && (
+                <p className="text-xs text-ink-muted capitalize">{item.condicao}</p>
+              )}
+            </div>
+          )}
+          getItemId={(item: any) => item.id!}
+          getItemLabel={(item: any) => item.nome}
+          onCreateNew={() => {
+            setIsTratamentoModalOpen(false);
+            trigger("vibrate");
+            router.push("/saude/tratamentos/novo");
+          }}
+          createNewLabel="Novo Tratamento"
+        />
       </main>
     </PageTransition>
   );
