@@ -26,6 +26,12 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { useToast } from "@/components/ToastProvider";
 import { ExportButton } from "@/components/ExportButton";
 
+// Função para remover extensões (.pdf, .jpg, etc) visualmente
+const cleanTitle = (title: string) => {
+  if (!title) return "";
+  return title.replace(/\.[a-zA-Z0-9]+$/g, "");
+};
+
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -119,10 +125,28 @@ export default function HomePage() {
     );
   }, [allDocs]);
 
+  // Função inteligente que limpa os títulos visualmente e esconde arquivos velhos de saúde
   const getCategoryPreview = useCallback(
     (categoryId: CategoryId) => {
-      const docs = docsByCategory[categoryId] || [];
-      return docs.slice(0, 3);
+      let docs = docsByCategory[categoryId] || [];
+      
+      // Filtro para limpar a Home de arquivos de saúde velhos (ex: receitas acumuladas)
+      if (categoryId === 'saude') {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        docs = docs.filter(d => {
+          if (d.is_favorite) return true; // Favoritos sempre aparecem
+          const docDate = new Date(d.created_at);
+          return docDate >= thirtyDaysAgo;
+        });
+      }
+
+      // Remove extensão do nome para os primeiros 3 itens da visualização
+      return docs.slice(0, 3).map(doc => ({
+        ...doc,
+        title: cleanTitle(doc.title)
+      }));
     },
     [docsByCategory]
   );
@@ -149,11 +173,6 @@ export default function HomePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[8.5rem]">
-        {/*
-          header-safe-top substitui o antigo "pt-6" — reserva o espaço
-          certo da status bar imersiva via env(safe-area-inset-top),
-          em vez do remendo manual que existia aqui antes.
-        */}
         <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <motion.div
             {...pageEnter}
@@ -401,7 +420,7 @@ export default function HomePage() {
                     className="w-full rounded-2xl border border-surface-border/50 bg-surface p-3 text-left transition-all duration-200 active:scale-[0.99] hover:bg-surface-border"
                   >
                     <p className="text-sm font-semibold text-ink-primary">
-                      {doc.title}
+                      {cleanTitle(doc.title)}
                     </p>
                     <p className="mt-1 text-xs text-ink-muted">
                       {doc.category_id} · {doc.type}
