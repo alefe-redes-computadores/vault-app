@@ -11,6 +11,8 @@ import {
   Building2,
   FolderOpen,
   X,
+  Stethoscope,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 import { type DocumentType } from "@/lib/types";
@@ -31,6 +33,8 @@ const DOCUMENT_TYPES: DocumentTypeOption[] = [
   { id: "prontuario", label: "Prontuário", icon: Heart, description: "Prontuários médicos" },
   { id: "laudo", label: "Laudo", icon: ClipboardList, description: "Laudos e exames" },
   { id: "encaminhamento", label: "Encaminhamento", icon: Building2, description: "Encaminhamentos médicos" },
+  { id: "consulta", label: "Consulta", icon: Stethoscope, description: "Consultas médicas" },
+  { id: "cirurgia", label: "Cirurgia", icon: Activity, description: "Cirurgias e procedimentos" },
   { id: "outro", label: "Outro", icon: FolderOpen, description: "Outros documentos" },
 ];
 
