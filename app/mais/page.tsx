@@ -22,6 +22,7 @@ import {
   Activity,
   KeyRound,
   CreditCard,
+  ShieldAlert,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -63,6 +64,7 @@ export default function MaisPage() {
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -108,6 +110,21 @@ export default function MaisPage() {
     } finally {
       setIsLoading(false);
       setShowClearDataModal(false);
+    }
+  };
+
+  const unlockSyncQueue = async () => {
+    setIsLoading(true);
+    try {
+      await db.syncQueue.clear();
+      trigger("success");
+      showSuccess("Fila destravada com sucesso! Você já pode salvar os itens novamente.", 4000);
+    } catch (error) {
+      console.error("Erro ao destravar fila:", error);
+      showToast("Erro ao destravar a fila", "error");
+    } finally {
+      setIsLoading(false);
+      setShowUnlockModal(false);
     }
   };
 
@@ -271,6 +288,14 @@ export default function MaisPage() {
           label: "Diagnóstico de dados",
           description: "Compara o que está no aparelho com o que está na nuvem",
           onClick: () => { trigger("vibrate"); router.push("/diagnostico"); },
+        },
+        {
+          id: "destravar-sync",
+          icon: ShieldAlert,
+          label: "Destravar Sincronização",
+          description: "Remove itens presos em falha para a fila voltar a andar",
+          onClick: () => { trigger("vibrate"); setShowUnlockModal(true); },
+          disabled: pendingQueueCount === 0,
         },
         {
           id: "ver-logs",
@@ -440,6 +465,7 @@ export default function MaisPage() {
                   const isSyncItem = item.id === "sync";
                   const isLogItem = item.id === "ver-logs" || item.id === "limpar-logs";
                   const isDiagnosticoItem = item.id === "diagnostico-dados";
+                  const isUnlockItem = item.id === "destravar-sync";
 
                   return (
                     <button
@@ -453,20 +479,20 @@ export default function MaisPage() {
                       }`}
                     >
                       <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 ${
-                        isLogItem || isDiagnosticoItem ? "bg-ice/10 border-ice/20" : "bg-surface-raised"
+                        isLogItem || isDiagnosticoItem ? "bg-ice/10 border-ice/20" : isUnlockItem && !item.disabled ? "bg-coral/10 border-coral/20" : "bg-surface-raised"
                       }`}>
                         {isSyncItem && isSyncing ? (
                           <Loader2 size={18} className="animate-spin text-ice" />
                         ) : (
-                          <Icon size={18} className={isLogItem || isDiagnosticoItem ? "text-ice" : "text-ink-muted"} />
+                          <Icon size={18} className={isLogItem || isDiagnosticoItem ? "text-ice" : isUnlockItem && !item.disabled ? "text-coral" : "text-ink-muted"} />
                         )}
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink-primary">
+                        <p className={`text-sm font-medium ${isUnlockItem && !item.disabled ? "text-coral" : "text-ink-primary"}`}>
                           {item.label}
                         </p>
-                        <p className="text-xs leading-5 text-ink-muted">
+                        <p className={`text-xs leading-5 ${isUnlockItem && !item.disabled ? "text-coral/70" : "text-ink-muted"}`}>
                           {item.description}
                         </p>
                       </div>
@@ -541,6 +567,18 @@ export default function MaisPage() {
           cancelLabel="Cancelar"
           isLoading={isLoading}
           type="danger"
+        />
+
+        <ConfirmationModal
+          isOpen={showUnlockModal}
+          onClose={() => setShowUnlockModal(false)}
+          onConfirm={unlockSyncQueue}
+          title="Destravar Sincronização"
+          message="Isso apagará os itens que falharam permanentemente e estão travando a fila. Você precisará abrir os registros no app e salvá-los novamente para enviá-los à nuvem. Deseja continuar?"
+          confirmLabel="Limpar Fila"
+          cancelLabel="Cancelar"
+          isLoading={isLoading}
+          type="warning"
         />
       </main>
     </PageTransition>
