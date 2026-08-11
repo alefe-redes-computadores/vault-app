@@ -65,6 +65,31 @@ export default function HomePage() {
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Ordena as pessoas garantindo que o seu usuário logado seja SEMPRE o primeiro
+  const sortedPersonsForDisplay = useMemo(() => {
+    if (!user || persons.length === 0) return persons;
+    const userEmail = user.email?.toLowerCase();
+    const userName = (user.user_metadata?.full_name || "").toLowerCase();
+
+    return [...persons].sort((a: any, b: any) => {
+      const aEmail = (a.email || "").toLowerCase();
+      const aName = (a.name || "").toLowerCase();
+      const bEmail = (b.email || "").toLowerCase();
+      const bName = (b.name || "").toLowerCase();
+
+      const isAUser =
+        (userEmail && aEmail === userEmail) ||
+        (userName && aName.includes(userName.split(" ")[0]));
+      const isBUser =
+        (userEmail && bEmail === userEmail) ||
+        (userName && bName.includes(userName.split(" ")[0]));
+
+      if (isAUser && !isBUser) return -1; // 'a' passa pra frente
+      if (!isAUser && isBUser) return 1;  // 'b' passa pra frente
+      return 0; // mantém a ordem do resto
+    });
+  }, [persons, user]);
+
   useEffect(() => {
     if (!loading && user && !welcomeShown) {
       const hasSeenWelcome =
@@ -90,14 +115,15 @@ export default function HomePage() {
     }
   }, [loading, user, showToast, welcomeShown]);
 
+  // Seleciona a primeira pessoa da lista (que agora é obrigatoriamente você)
   useEffect(() => {
-    if (persons.length > 0 && selectedPersonId === null) {
-      setSelectedPersonId(persons[0].id!);
+    if (sortedPersonsForDisplay.length > 0 && selectedPersonId === null) {
+      setSelectedPersonId(sortedPersonsForDisplay[0].id!);
     }
 
     const timer = setTimeout(() => setIsLoading(false), 650);
     return () => clearTimeout(timer);
-  }, [persons, selectedPersonId]);
+  }, [sortedPersonsForDisplay, selectedPersonId]);
 
   const { documents: allDocs } = usePaginatedDocuments({
     personId: selectedPersonId || undefined,
@@ -163,8 +189,8 @@ export default function HomePage() {
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
   const MAX_VISIBLE_PERSONS = 5;
-  const visiblePersons = persons.slice(0, MAX_VISIBLE_PERSONS);
-  const hasMorePersons = persons.length > MAX_VISIBLE_PERSONS;
+  const visiblePersons = sortedPersonsForDisplay.slice(0, MAX_VISIBLE_PERSONS);
+  const hasMorePersons = sortedPersonsForDisplay.length > MAX_VISIBLE_PERSONS;
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -275,7 +301,7 @@ export default function HomePage() {
                   }}
                   className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-xs font-medium text-ink-muted transition-all duration-200 active:scale-95 hover:bg-surface-border hover:text-ink-primary"
                 >
-                  +{persons.length - MAX_VISIBLE_PERSONS}
+                  +{sortedPersonsForDisplay.length - MAX_VISIBLE_PERSONS}
                 </button>
               )}
             </div>
@@ -438,7 +464,7 @@ export default function HomePage() {
           title="Todas as pessoas"
         >
           <div className="space-y-2">
-            {persons.map((person: any) => (
+            {sortedPersonsForDisplay.map((person: any) => (
               <button
                 key={person.id}
                 onClick={() => {
