@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Activity, Plus, FolderHeart, Calendar, Pill } from "lucide-react";
+import { ArrowLeft, Activity, Plus, FolderHeart, Calendar, Pill, Edit3 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -68,7 +68,6 @@ function TratamentoContent() {
 
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
 
-  // Filtra documentos vinculados (onde o tratamento_id está no metadata)
   const linkedDocuments = useMemo(() => {
     if (!id) return [];
     return allDocuments.filter((doc: Document) => {
@@ -76,7 +75,6 @@ function TratamentoContent() {
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [allDocuments, id]);
 
-  // Filtra medicamentos vinculados diretamente pelo tratamento_id ou pelo document_id da receita
   const linkedMedicamentos = useMemo(() => {
     if (!id || !medicamentos) return [];
     return medicamentos.filter((m: any) => {
@@ -112,12 +110,23 @@ function TratamentoContent() {
                 <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">{tratamento.nome}</h1>
               </div>
             </div>
-            <button
-              onClick={() => { trigger("vibrate"); router.push("/novo"); }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ice text-void transition-all active:scale-95 shadow-md shadow-ice/20"
-            >
-              <Plus size={20} />
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/editar?id=${tratamento.id}`); }}
+                aria-label="Editar tratamento"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
+              >
+                <Edit3 size={18} />
+              </button>
+              <button
+                onClick={() => { trigger("vibrate"); router.push("/novo"); }}
+                aria-label="Adicionar documento"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ice text-void transition-all active:scale-95 shadow-md shadow-ice/20"
+              >
+                <Plus size={20} />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -127,24 +136,27 @@ function TratamentoContent() {
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-violet-400/10 text-violet-400">
                 <Activity size={24} />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <h2 className="font-display text-base font-semibold text-ink-primary">Detalhes do quadro</h2>
                 <div className="mt-2 space-y-1 text-sm text-ink-muted">
                   <p><span className="font-medium text-ink-primary">Status:</span> {tratamento.status === "ativo" ? "Em andamento" : tratamento.status === "concluido" ? "Concluído" : "Suspenso"}</p>
-                  {tratamento.condicao && <p><span className="font-medium text-ink-primary">Condição:</span> {tratamento.condicao}</p>}
+                  {tratamento.condicao && <p><span className="font-medium text-ink-primary">CID / Condição:</span> {tratamento.condicao}</p>}
+                  <p className="flex items-center gap-1.5 mt-1">
+                    <Calendar size={14} className="text-ink-faint" />
+                    <span>Iniciado em {new Date(tratamento.created_at).toLocaleDateString("pt-BR")}</span>
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Seção de Medicamentos em Uso */}
           <div>
             <h3 className="font-display text-sm font-semibold text-ink-primary mb-3">
               Medicamentos em uso ({linkedMedicamentos.length})
             </h3>
             {linkedMedicamentos.length === 0 ? (
               <div className="rounded-[20px] border border-dashed border-surface-border/60 bg-surface/30 p-4 text-center text-xs text-ink-muted">
-                Nenhum medicamento vinculado diretamente. Edite o medicamento no estoque e selecione este tratamento.
+                Nenhum medicamento vinculado. Edite o medicamento no estoque e selecione este tratamento.
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -171,7 +183,6 @@ function TratamentoContent() {
             )}
           </div>
 
-          {/* Seção de Documentos e Receitas */}
           <div>
             <h3 className="font-display text-sm font-semibold text-ink-primary mb-3">
               Documentos e Receitas ({linkedDocuments.length})
