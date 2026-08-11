@@ -68,7 +68,7 @@ function TratamentoContent() {
 
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
 
-  // Filtra documentos vinculados (verifica se o id do tratamento está nos metadados)
+  // Filtra documentos vinculados (onde o tratamento_id está no metadata)
   const linkedDocuments = useMemo(() => {
     if (!id) return [];
     return allDocuments.filter((doc: Document) => {
@@ -76,11 +76,15 @@ function TratamentoContent() {
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [allDocuments, id]);
 
-  // Filtra medicamentos vinculados (verifica se o medicamento aponta para este tratamento_id)
+  // Filtra medicamentos vinculados diretamente pelo tratamento_id ou pelo document_id da receita
   const linkedMedicamentos = useMemo(() => {
     if (!id || !medicamentos) return [];
-    return medicamentos.filter((m: any) => m.tratamento_id === id);
-  }, [medicamentos, id]);
+    return medicamentos.filter((m: any) => {
+      const matchTratamentoId = m.tratamento_id === id;
+      const matchDocumentId = m.document_id && linkedDocuments.some(d => d.id === m.document_id);
+      return matchTratamentoId || matchDocumentId;
+    });
+  }, [medicamentos, id, linkedDocuments]);
 
   const handleFavoriteToggle = async (docId: string) => {
     await favorite(docId);
@@ -133,34 +137,48 @@ function TratamentoContent() {
             </div>
           </div>
 
+          {/* Seção de Medicamentos em Uso */}
           <div>
-            <h3 className="font-display text-sm font-semibold text-ink-primary mb-3">Medicamentos em uso ({linkedMedicamentos.length})</h3>
-            <div className="space-y-2.5">
-              {linkedMedicamentos.map((med: any) => (
-                <div
-                  key={med.id}
-                  onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${med.id}`); }}
-                  className="flex items-center justify-between rounded-[20px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 cursor-pointer"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                      <Pill size={18} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-ink-primary">{med.nome}</p>
-                      <p className="text-xs text-ink-muted">{med.dosagem}</p>
+            <h3 className="font-display text-sm font-semibold text-ink-primary mb-3">
+              Medicamentos em uso ({linkedMedicamentos.length})
+            </h3>
+            {linkedMedicamentos.length === 0 ? (
+              <div className="rounded-[20px] border border-dashed border-surface-border/60 bg-surface/30 p-4 text-center text-xs text-ink-muted">
+                Nenhum medicamento vinculado diretamente. Edite o medicamento no estoque e selecione este tratamento.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {linkedMedicamentos.map((med: any) => (
+                  <div
+                    key={med.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${med.id}`); }}
+                    className="flex items-center justify-between rounded-[20px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                        <Pill size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink-primary">
+                          {med.nome} <span className="text-xs font-normal text-ink-muted">({med.dosagem})</span>
+                        </p>
+                        <p className="text-xs text-ink-muted">Dr(a). {med.medico}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* Seção de Documentos e Receitas */}
           <div>
-            <h3 className="font-display text-sm font-semibold text-ink-primary mb-3">Documentos e Receitas ({linkedDocuments.length})</h3>
+            <h3 className="font-display text-sm font-semibold text-ink-primary mb-3">
+              Documentos e Receitas ({linkedDocuments.length})
+            </h3>
             {linkedDocuments.length === 0 ? (
-              <div className="text-center py-10 border-2 border-dashed border-surface-border rounded-3xl text-ink-muted text-sm">
-                Nenhum documento vinculado ainda.
+              <div className="text-center py-6 border border-dashed border-surface-border rounded-2xl text-ink-muted text-xs">
+                Nenhum documento ou receita vinculada.
               </div>
             ) : (
               <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-4">
