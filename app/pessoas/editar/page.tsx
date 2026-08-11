@@ -73,18 +73,37 @@ export default function EditarPessoaPage() {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
 
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("A imagem é muito grande. Escolha uma de até 5MB.", "error");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setUploadingPhoto(true);
     trigger("vibrate");
 
     try {
       const { url, error } = await uploadFile(user.id, file, "avatars");
-      if (error) throw error;
+      
+      if (error) {
+        console.error("Erro detalhado do Supabase Storage:", error);
+        throw new Error(error.message || "Erro no storage");
+      }
+
+      if (!url) {
+        throw new Error("URL de retorno vazia");
+      }
 
       setFormData((prev) => ({ ...prev, avatar_url: url }));
       showToast("Foto enviada com sucesso!", "success");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao enviar foto:", error);
-      showToast("Erro ao enviar foto", "error");
+      showToast(
+        error?.message?.includes("Bucket not found") || error?.message?.includes("bucket")
+          ? "Erro: O bucket 'avatars' precisa ser criado no Supabase."
+          : "Erro ao enviar foto. Verifique a conexão e as permissões.",
+        "error"
+      );
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
