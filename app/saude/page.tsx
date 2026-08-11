@@ -14,6 +14,9 @@ import {
   ChevronRight,
   PackageX,
   Clock,
+  Activity,
+  Plus,
+  FolderHeart
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -23,6 +26,8 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import {
   getMedicamentoAlerts,
   getDocumentAlerts,
@@ -158,6 +163,9 @@ export default function SaudePage() {
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
 
+  // Busca os Tratamentos (Entidades Pai) em tempo real
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+
   const medAlerts = useMemo(
     () => getMedicamentoAlerts(medicamentos || []),
     [medicamentos]
@@ -211,7 +219,7 @@ export default function SaudePage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <Heart size={18} className="text-coral" />
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
@@ -227,6 +235,17 @@ export default function SaudePage() {
                   : "Tudo em dia por aqui"}
               </p>
             </div>
+            
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                router.push("/novo");
+              }}
+              aria-label="Novo documento de saúde"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void transition-all active:scale-95 shadow-md shadow-ice/20"
+            >
+              <Plus size={20} />
+            </button>
           </div>
         </header>
 
@@ -260,11 +279,113 @@ export default function SaudePage() {
             })}
           </motion.div>
 
-          {/* Meus medicamentos + Hoje */}
+          {/* Próximas consultas e Cirurgias */}
+          {appointments.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: 0.03 }}
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <CalendarClock size={15} className="text-ice" />
+                <h2 className="font-display text-sm font-semibold text-ink-primary">
+                  Consultas e Procedimentos
+                </h2>
+              </div>
+              <div className="space-y-2.5">
+                {appointments.map((appt) => (
+                  <AppointmentRow key={appt.id} alert={appt} />
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Meus Tratamentos (Agrupadores Pais) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.02 }}
+            transition={{ duration: 0.24, delay: 0.05 }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FolderHeart size={15} className="text-violet-400" />
+                <h2 className="font-display text-sm font-semibold text-ink-primary">
+                  Tratamentos
+                </h2>
+              </div>
+            </div>
+
+            {tratamentos.length === 0 ? (
+              <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-6 text-center">
+                <p className="text-sm text-ink-muted">
+                  Nenhum tratamento cadastrado.
+                </p>
+                <p className="mt-1 text-xs text-ink-faint">
+                  Eles aparecerão aqui quando você criar um documento vinculado.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {tratamentos.map((tratamento) => (
+                  <button
+                    key={tratamento.id}
+                    onClick={() => {
+                      trigger("vibrate");
+                      // A rota abaixo pode ser ajustada conforme você for criar a visualização do tratamento específico
+                      router.push(`/saude/tratamentos?id=${tratamento.id}`); 
+                    }}
+                    className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                        <Activity size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink-primary">
+                          {tratamento.nome}
+                        </p>
+                        <p className="truncate text-xs text-ink-muted">
+                          {tratamento.status === 'ativo' ? 'Em andamento' : tratamento.status === 'concluido' ? 'Concluído' : 'Suspenso'}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="shrink-0 text-ink-faint" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Alertas Críticos (Estoque e Renovação) */}
+          {(estoqueAlerts.length > 0 || allAlerts.length > 0) && (
+             <motion.div
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ duration: 0.24, delay: 0.08 }}
+             >
+               <div className="mb-3 flex items-center gap-2">
+                 <FileWarning size={15} className="text-coral" />
+                 <h2 className="font-display text-sm font-semibold text-ink-primary">
+                   Requer Atenção
+                 </h2>
+               </div>
+               
+               <div className="space-y-2.5">
+                 {estoqueAlerts.map((alert) => (
+                   <EstoqueRow key={`estoque-${alert.id}`} alert={alert} />
+                 ))}
+                 {allAlerts.map((alert) => (
+                   <AlertRow key={`${alert.kind}-${alert.id}`} alert={alert} />
+                 ))}
+               </div>
+             </motion.div>
+          )}
+
+          {/* Ferramentas de Saúde e Rede */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.12 }}
             className="grid grid-cols-2 gap-2.5"
           >
             <button
@@ -272,15 +393,15 @@ export default function SaudePage() {
                 trigger("vibrate");
                 router.push("/saude/medicamentos");
               }}
-              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+              className="flex flex-col gap-2 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/12 text-ice">
-                <Pill size={18} />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/12 text-ice">
+                <Pill size={16} />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-ink-primary">Medicamentos</p>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink-primary">Estoque Físico</p>
                 <p className="text-xs text-ink-muted">
-                  {(medicamentos || []).length} cadastrado{(medicamentos || []).length !== 1 ? "s" : ""}
+                  {(medicamentos || []).length} na gaveta
                 </p>
               </div>
             </button>
@@ -290,100 +411,22 @@ export default function SaudePage() {
                 trigger("vibrate");
                 router.push("/saude/hoje");
               }}
-              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+              className="flex flex-col gap-2 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/12 text-violet-300">
-                <Clock size={18} />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/12 text-emerald-400">
+                <Clock size={16} />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-ink-primary">Hoje</p>
-                <p className="text-xs text-ink-muted">Checklist de doses</p>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink-primary">Doses de Hoje</p>
+                <p className="text-xs text-ink-muted">Controle diário</p>
               </div>
             </button>
           </motion.div>
 
-          {/* Estoque acabando */}
-          {estoqueAlerts.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.03 }}
-            >
-              <div className="mb-3 flex items-center gap-2">
-                <PackageX size={15} className="text-coral" />
-                <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Estoque acabando
-                </h2>
-              </div>
-              <div className="space-y-2.5">
-                {estoqueAlerts.map((alert) => (
-                  <EstoqueRow key={`estoque-${alert.id}`} alert={alert} />
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Alertas de renovação */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.04 }}
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <FileWarning size={15} className="text-coral" />
-              <h2 className="font-display text-sm font-semibold text-ink-primary">
-                Precisa de atenção
-              </h2>
-            </div>
-
-            {allAlerts.length === 0 ? (
-              <div className="rounded-[22px] border border-surface-border/50 bg-surface px-4 py-6 text-center">
-                <p className="text-sm text-ink-muted">
-                  Nenhum medicamento ou receita vencendo nos próximos dias.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {allAlerts.map((alert) => (
-                  <AlertRow key={`${alert.kind}-${alert.id}`} alert={alert} />
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-          {/* Próximas consultas */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.08 }}
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <CalendarClock size={15} className="text-ice" />
-              <h2 className="font-display text-sm font-semibold text-ink-primary">
-                Próximas consultas e exames
-              </h2>
-            </div>
-
-            {appointments.length === 0 ? (
-              <div className="rounded-[22px] border border-surface-border/50 bg-surface px-4 py-6 text-center">
-                <p className="text-sm text-ink-muted">
-                  Nada agendado nos próximos 30 dias.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {appointments.map((appt) => (
-                  <AppointmentRow key={appt.id} alert={appt} />
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-          {/* Rede de saúde cadastrada */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.12 }}
+            transition={{ duration: 0.24, delay: 0.14 }}
             className="rounded-[24px] border border-surface-border/50 bg-surface p-4"
           >
             <div className="mb-3 flex items-center justify-between">
