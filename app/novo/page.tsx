@@ -96,6 +96,8 @@ const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   prontuario: "Prontuário",
   laudo: "Laudo",
   encaminhamento: "Encaminhamento",
+  consulta: "Consulta", // <--- CORREÇÃO AQUI
+  cirurgia: "Cirurgia", // <--- CORREÇÃO AQUI
   outro: "Outro",
 };
 
