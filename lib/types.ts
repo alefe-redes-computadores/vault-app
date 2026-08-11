@@ -186,7 +186,9 @@ export interface SyncQueueItem {
     | 'hospitais'
     | 'doseLogs'
     | 'credentials' 
-    | 'cards';      
+    | 'cards'
+    | 'instituicoes'
+    | 'tratamentos';      
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -284,7 +286,7 @@ export interface VaultDocument {
 }
 
 // ============================================================
-// 8. MÓDULO SAÚDE — MÉDICOS, FARMÁCIAS, HOSPITAIS
+// 8. MÓDULO SAÚDE E ENTIDADES PAI
 // ============================================================
 export interface Medico {
   id?: string;
@@ -321,6 +323,29 @@ export interface Hospital {
   synced: boolean;
 }
 
+// ✅ NOVAS ENTIDADES (Agrupadores / Categorias Pai)
+export interface InstituicaoEnsino {
+  id?: string;
+  user_id: string;
+  nome: string;
+  cnpj?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface Tratamento {
+  id?: string;
+  user_id: string;
+  nome: string;
+  condicao?: string;
+  data_inicio?: string;
+  status: 'ativo' | 'concluido' | 'suspenso';
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
 // ============================================================
 // 9. GERENCIADOR DE SENHAS (CREDENCIAIS) 
 // ============================================================
@@ -334,7 +359,7 @@ export interface Credential {
   url?: string;
   notes?: string;
   category: 'banco' | 'social' | 'trabalho' | 'outros';
-  password_history?: { encrypted: string; date: string }[]; // ✅ Nova linha adicionada
+  password_history?: { encrypted: string; date: string }[];
   created_at: string;
   updated_at: string;
   synced: boolean;
