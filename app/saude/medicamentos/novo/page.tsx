@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef } from "react";
@@ -18,6 +19,7 @@ import {
   Plus,
   Trash2,
   Clock,
+  Activity,
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,13 +38,15 @@ import {
   scheduleDoseNotifications,
   requestNotificationPermission,
 } from "@/lib/dose-notifications";
-import { db } from "@/lib/db";
+import { db, safeAddTratamento } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import type { Attachment, Document, TipoReceita } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -81,6 +85,14 @@ export default function NovoMedicamentoPage() {
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
 
+  // Tratamentos
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const [tratamentoId, setTratamentoId] = useState<string>("");
+  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
+  const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
+  const [newTratamentoName, setNewTratamentoName] = useState("");
+  const [isSavingTratamento, setIsSavingTratamento] = useState(false);
+
   // Estoque
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
@@ -97,6 +109,7 @@ export default function NovoMedicamentoPage() {
 
   const selectedMedico = medicos.find((m: any) => m.id === medicoId);
   const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId);
+  const selectedTratamento = tratamentos.find((t: any) => String(t.id) === tratamentoId);
   const diasValidade = VALIDADE_RECEITA_DIAS[tipoReceita];
 
   const handleDataReceitaChange = (value: string) => {
@@ -182,6 +195,28 @@ export default function NovoMedicamentoPage() {
     trigger("vibrate");
   };
 
+  const handleCreateTratamento = async () => {
+    if (!newTratamentoName.trim()) return;
+    setIsSavingTratamento(true);
+    trigger("vibrate");
+    try {
+      const id = await safeAddTratamento({
+        user_id: user?.id || "",
+        nome: newTratamentoName.trim(),
+        status: "ativo",
+      });
+      setTratamentoId(id);
+      trigger("success");
+      setIsCreatingTratamento(false);
+      setNewTratamentoName("");
+    } catch (error) {
+      console.error(error);
+      trigger("error");
+    } finally {
+      setIsSavingTratamento(false);
+    }
+  };
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!personId) newErrors.personId = "Selecione uma pessoa";
@@ -233,6 +268,7 @@ export default function NovoMedicamentoPage() {
           pharmacy: selectedFarmacia?.nome || "",
           prescription_date: dataReceita,
           renewal_date: proximaRenovacao,
+          tratamento_id: tratamentoId || undefined, 
         },
         attachments: attachment ? [attachment] : [],
         is_favorite: false,
@@ -274,7 +310,6 @@ export default function NovoMedicamentoPage() {
         estoque_unidade_medida: estoqueAtivo ? estoqueUnidade.trim() || "comprimido(s)" : undefined,
       });
 
-      // ✅ NOVO — agenda o lembrete nativo se o estoque/horários estiverem ativos
       if (estoqueAtivo && horariosFiltrados.length > 0) {
         const granted = await requestNotificationPermission();
         if (granted) {
@@ -348,7 +383,6 @@ export default function NovoMedicamentoPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* Pessoa */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -383,7 +417,6 @@ export default function NovoMedicamentoPage() {
             {errors.personId && <p className="mt-2 text-xs text-coral">{errors.personId}</p>}
           </motion.div>
 
-          {/* Tipo de receita */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -425,7 +458,6 @@ export default function NovoMedicamentoPage() {
             )}
           </motion.div>
 
-          {/* Dados do medicamento */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -433,6 +465,21 @@ export default function NovoMedicamentoPage() {
             transition={{ duration: 0.28, delay: 0.04 }}
             className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink-primary">
+                Tratamento (Opcional)
+              </label>
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  setIsTratamentoModalOpen(true);
+                }}
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors"
+              >
+                {selectedTratamento ? selectedTratamento.nome : "Vincular a um tratamento"}
+              </button>
+            </div>
+
             <Input
               label="Medicamento"
               placeholder="Ex: Losartana, Sertralina..."
@@ -523,7 +570,6 @@ export default function NovoMedicamentoPage() {
             </div>
           </motion.div>
 
-          {/* Estoque */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -692,7 +738,6 @@ export default function NovoMedicamentoPage() {
             </AnimatePresence>
           </motion.div>
 
-          {/* Notas */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -708,7 +753,6 @@ export default function NovoMedicamentoPage() {
             />
           </motion.div>
 
-          {/* Anexo da receita */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -811,6 +855,69 @@ export default function NovoMedicamentoPage() {
             )}
           </Button>
         </div>
+
+        <SelectionModal
+          isOpen={isTratamentoModalOpen}
+          onClose={() => setIsTratamentoModalOpen(false)}
+          onSelect={(item: any) => {
+            trigger("vibrate");
+            setTratamentoId(item.id!);
+          }}
+          items={tratamentos}
+          title="Vincular a Tratamento"
+          placeholder="Buscar tratamento..."
+          renderItem={(item: any) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              {item.condicao && (
+                <p className="text-xs text-ink-muted capitalize">{item.condicao}</p>
+              )}
+            </div>
+          )}
+          getItemId={(item: any) => item.id!}
+          getItemLabel={(item: any) => item.nome}
+          onCreateNew={() => {
+            setIsTratamentoModalOpen(false);
+            trigger("vibrate");
+            setIsCreatingTratamento(true);
+          }}
+          createNewLabel="Novo Tratamento"
+        />
+
+        <BottomSheet
+          isOpen={isCreatingTratamento}
+          onClose={() => {
+            trigger("vibrate");
+            setIsCreatingTratamento(false);
+            setNewTratamentoName("");
+          }}
+          title="Cadastrar Tratamento"
+        >
+          <div className="space-y-4 px-1 pb-2">
+            <Input
+              label="Nome do Tratamento"
+              placeholder="Ex: Fisioterapia, Acompanhamento..."
+              value={newTratamentoName}
+              onChange={(e) => setNewTratamentoName(e.target.value)}
+              autoFocus
+            />
+            
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleCreateTratamento}
+              disabled={isSavingTratamento || !newTratamentoName.trim()}
+              className="flex items-center justify-center gap-2"
+            >
+              {isSavingTratamento ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Plus size={16} />
+              )}
+              {isSavingTratamento ? "Salvando..." : "Salvar e selecionar"}
+            </Button>
+          </div>
+        </BottomSheet>
 
         <SelectionModal
           isOpen={isDoctorModalOpen}
