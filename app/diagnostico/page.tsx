@@ -27,14 +27,20 @@ interface TableCheck {
   error?: string;
 }
 
+// Adicionamos TODAS as novas tabelas aqui!
 const TABLES: { key: string; label: string }[] = [
   { key: "persons", label: "Pessoas" },
   { key: "documents", label: "Documentos" },
   { key: "medicamentos", label: "Medicamentos" },
   { key: "renovacoes", label: "Renovações" },
+  { key: "tratamentos", label: "Tratamentos" },
+  { key: "credentials", label: "Senhas e Acessos" },
+  { key: "cards", label: "Contas e Cartões" },
+  { key: "instituicoes", label: "Instituições" },
   { key: "medicos", label: "Médicos" },
   { key: "farmacias", label: "Farmácias" },
   { key: "hospitais", label: "Hospitais" },
+  { key: "doseLogs", label: "Registro de Doses" },
   { key: "vaults", label: "Cofres" },
 ];
 
