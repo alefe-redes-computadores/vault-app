@@ -1,19 +1,9 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowLeft,
-  Loader2,
-  Save,
-  Pill,
-  Trash2,
-  AlertTriangle,
-  Package,
-  Plus,
-  Clock,
-} from "lucide-react";
+import { ArrowLeft, Loader2, Save, Pill, Trash2, AlertTriangle, Package, Plus, Clock } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
@@ -23,6 +13,11 @@ import {
   VALIDADE_RECEITA_DIAS,
   TIPO_RECEITA_LABELS,
 } from "@/lib/health-utils";
+import {
+  scheduleDoseNotifications,
+  cancelDoseNotifications,
+  requestNotificationPermission,
+} from "@/lib/dose-notifications";
 import type { TipoReceita } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -43,7 +38,7 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function EditarMedicamentoContent() {
+export default function EditarMedicamentoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -70,6 +65,7 @@ function EditarMedicamentoContent() {
   const [estoqueUnidade, setEstoqueUnidade] = useState("comprimido(s)");
   const [estoqueUnidadePorDose, setEstoqueUnidadePorDose] = useState("1");
   const [horarios, setHorarios] = useState<string[]>([""]);
+  const [horariosOriginais, setHorariosOriginais] = useState<string[]>([]);
 
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
@@ -117,6 +113,7 @@ function EditarMedicamentoContent() {
           setEstoqueUnidade(item.estoque_unidade_medida || "comprimido(s)");
           setEstoqueUnidadePorDose(String(item.estoque_unidade_por_dose || 1));
           setHorarios(item.estoque_horarios);
+          setHorariosOriginais(item.estoque_horarios);
         }
       }
       setIsLoading(false);
@@ -193,6 +190,8 @@ function EditarMedicamentoContent() {
 
     setSaving(true);
     try {
+      const horariosFiltrados = horarios.filter((h) => h);
+
       await updateMedicamento(id, {
         nome: nome.trim(),
         dosagem: dosagem.trim(),
@@ -204,12 +203,29 @@ function EditarMedicamentoContent() {
         tipo_receita: tipoReceita,
         estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
         estoque_data_referencia: estoqueAtivo ? estoqueDataReferencia : undefined,
-        estoque_horarios: estoqueAtivo ? horarios.filter((h) => h) : undefined,
+        estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
         estoque_unidade_por_dose: estoqueAtivo
           ? Number(estoqueUnidadePorDose) || 1
           : undefined,
         estoque_unidade_medida: estoqueAtivo ? estoqueUnidade.trim() || "comprimido(s)" : undefined,
       });
+
+      // ✅ NOVO — reagenda ou cancela o lembrete nativo conforme o toggle
+      if (estoqueAtivo && horariosFiltrados.length > 0) {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+          await scheduleDoseNotifications({
+            id,
+            nome: nome.trim(),
+            dosagem: dosagem.trim(),
+            estoque_horarios: horariosFiltrados,
+          } as any);
+        }
+      } else if (horariosOriginais.length > 0) {
+        // estoque foi desativado — cancela o que tinha antes
+        await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as any);
+      }
+
       trigger("success");
       router.push("/saude");
     } catch (error) {
@@ -223,6 +239,9 @@ function EditarMedicamentoContent() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
+      if (horariosOriginais.length > 0) {
+        await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as any);
+      }
       await deleteMedicamento(id);
       trigger("success");
       router.push("/saude");
@@ -260,7 +279,7 @@ function EditarMedicamentoContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -461,7 +480,7 @@ function EditarMedicamentoContent() {
                     Acompanhar estoque
                   </p>
                   <p className="text-xs text-ink-muted">
-                    Receba alerta quando estiver acabando
+                    Receba alerta e lembrete de dose
                   </p>
                 </div>
               </div>
@@ -707,13 +726,5 @@ function EditarMedicamentoContent() {
         />
       </main>
     </PageTransition>
-  );
-}
-
-export default function EditarMedicamentoPage() {
-  return (
-    <Suspense fallback={<LoadingSkeleton />}>
-      <EditarMedicamentoContent />
-    </Suspense>
   );
 }
