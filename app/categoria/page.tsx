@@ -13,28 +13,6 @@ import { DocumentCard } from "@/components/DocumentCard";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
-const listVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.04,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.24,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-};
-
 export default function CategoryPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -131,13 +109,14 @@ export default function CategoryPage() {
                 </div>
               </div>
 
+              {/* CORREÇÃO DO NOME ESMAGADO: Adicionado shrink-0 nos botões */}
               <div className="mt-4 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
                 <button
                   onClick={() => {
                     trigger("vibrate");
                     setSelectedPersonId(null);
                   }}
-                  className={`whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
                     selectedPersonId === null
                       ? "border-ice bg-ice/12 text-ice shadow-[0_0_0_1px_rgba(125,211,252,0.08)]"
                       : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
@@ -153,24 +132,22 @@ export default function CategoryPage() {
                       trigger("vibrate");
                       setSelectedPersonId(person.id!);
                     }}
-                    className={`flex whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
+                    className={`shrink-0 flex items-center gap-2 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
                       selectedPersonId === person.id
                         ? "border-ice bg-ice/12 text-ice shadow-[0_0_0_1px_rgba(125,211,252,0.08)]"
                         : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                     }`}
                   >
-                    <span className="flex items-center gap-2">
-                      {person.avatar_url ? (
-                        <img
-                          src={person.avatar_url}
-                          alt={person.name}
-                          className="h-4 w-4 rounded-full object-cover"
-                        />
-                      ) : (
-                        <User size={12} />
-                      )}
-                      <span>{person.name}</span>
-                    </span>
+                    {person.avatar_url ? (
+                      <img
+                        src={person.avatar_url}
+                        alt={person.name}
+                        className="h-4 w-4 rounded-full object-cover"
+                      />
+                    ) : (
+                      <User size={12} />
+                    )}
+                    <span>{person.name}</span>
                   </button>
                 ))}
               </div>
@@ -219,21 +196,22 @@ export default function CategoryPage() {
               </button>
             </motion.div>
           ) : (
-            <motion.div
-              variants={listVariants}
-              initial="hidden"
-              animate="show"
-              className="space-y-4"
-            >
-              {documents.map((doc: any) => (
-                <motion.div key={doc.id} variants={itemVariants}>
+            /* CORREÇÃO DA LISTA PRETA: Removido stagger global e adicionado animação inline segura */
+            <div className="space-y-4">
+              {documents.map((doc: any, index: number) => (
+                <motion.div 
+                  key={doc.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.24, delay: index * 0.03 }}
+                >
                   <DocumentCard
                     document={doc}
                     onFavoriteToggle={handleFavoriteToggle}
                   />
                 </motion.div>
               ))}
-            </motion.div>
+            </div>
           )}
         </section>
       </main>
