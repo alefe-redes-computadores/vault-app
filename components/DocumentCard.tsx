@@ -46,13 +46,17 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   encaminhamento: Building2,
   consulta: Stethoscope,
   cirurgia: Activity,
+  exame_sangue: Activity,
+  exame_imagem: Activity,
+  credencial: Contact,
   outro: FolderOpen,
 };
 
 const formatDate = (date?: string) => {
   if (!date) return null;
   try {
-    return format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
+    const [year, month, day] = date.split("-").map(Number);
+    return format(new Date(year, month - 1, day), "dd/MM/yy", { locale: ptBR });
   } catch {
     return null;
   }
@@ -100,28 +104,32 @@ function DocumentCardComponent({
   const hasAttachments = document.attachments && document.attachments.length > 0;
   const hasImageAttachment = document.attachments?.some((a) => a.type === "image");
 
-  // Oculta campos de data e IDs de relacionamento para não exibir códigos feios no resumo
+  // Oculta campos internos de data/IDs do resumo principal
   const metadataKeys = Object.keys(document.metadata || {}).filter(
     (key) =>
       ![
-        "issue_date", 
-        "expiry_date", 
-        "renewal_date", 
-        "prescription_date", 
+        "issue_date",
+        "expiry_date",
+        "renewal_date",
+        "prescription_date",
+        "date_exame",
+        "data_exame",
+        "data_nascimento",
         "date",
         "doctor",
         "hospital",
         "institution",
-        "medication"
+        "medication",
       ].includes(key)
   );
-  const firstMetadata =
-    metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
+  
+  const firstMetadata = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
 
-  const expiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date;
-  const isExpiring =
-    expiryDate &&
-    new Date(expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  // Lógica para puxar a data correta baseada no tipo de documento
+  const issueDate = document.metadata?.issue_date || document.metadata?.data_nascimento || document.metadata?.data_exame || document.metadata?.date;
+  const expiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date || document.metadata?.validade;
+  
+  const isExpiring = expiryDate && new Date(expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const isExpired = expiryDate && new Date(expiryDate) < new Date();
 
   const handleSyncIconClick = useCallback(
@@ -165,7 +173,7 @@ function DocumentCardComponent({
                   {personName ? (
                     <span>{personName}</span>
                   ) : (
-                    <span className="capitalize">{document.type}</span>
+                    <span className="capitalize">{document.type.replace('_', ' ')}</span>
                   )}
 
                   {category && (
@@ -186,9 +194,7 @@ function DocumentCardComponent({
               <button
                 onClick={handleFavorite}
                 className={`shrink-0 rounded-full p-1.5 transition-all duration-150 active:scale-90 ${
-                  document.is_favorite
-                    ? "bg-ice/12"
-                    : "hover:bg-surface-border/50"
+                  document.is_favorite ? "bg-ice/12" : "hover:bg-surface-border/50"
                 }`}
               >
                 <AnimatePresence>
@@ -203,9 +209,7 @@ function DocumentCardComponent({
                     <Star
                       size={16}
                       className={
-                        document.is_favorite
-                          ? "fill-ice text-ice"
-                          : "text-ink-muted/55"
+                        document.is_favorite ? "fill-ice text-ice" : "text-ink-muted/55"
                       }
                     />
                   </motion.div>
@@ -220,17 +224,12 @@ function DocumentCardComponent({
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              {document.metadata?.issue_date && (
+              {issueDate && (
                 <div className="flex items-center gap-1 text-xs text-ink-muted">
                   <Calendar size={12} />
-                  <span>Emissão: {formatDate(document.metadata.issue_date)}</span>
-                </div>
-              )}
-
-              {document.metadata?.date && (
-                <div className="flex items-center gap-1 text-xs text-ink-muted">
-                  <Calendar size={12} />
-                  <span>Data: {formatDate(document.metadata.date)}</span>
+                  <span>
+                    {document.type === "certidao_nascimento" ? "Nascimento:" : "Data:"} {formatDate(issueDate)}
+                  </span>
                 </div>
               )}
 
@@ -246,8 +245,7 @@ function DocumentCardComponent({
                 >
                   <Calendar size={12} />
                   <span>
-                    {isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"}{" "}
-                    {formatDate(expiryDate)}
+                    {isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"} {formatDate(expiryDate)}
                   </span>
                 </div>
               )}
