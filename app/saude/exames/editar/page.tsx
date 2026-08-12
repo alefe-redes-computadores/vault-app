@@ -241,7 +241,11 @@ export default function EditarExamePage() {
             <Input label="Nome" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} autoFocus />
             <Input label="Especialidade" value={newDocEspecialidade} onChange={(e) => setNewDocEspecialidade(e.target.value)} />
             <Button variant="primary" fullWidth onClick={async () => {
-              await safeAddMedico({ nome: newDocName, especialidade: newDocEspecialidade });
+              await safeAddMedico({ 
+                user_id: "default_user", 
+                nome: newDocName, 
+                especialidade: newDocEspecialidade 
+              });
               setMedico(newDocName);
               setIsCreatingDoctor(false);
             }}>Salvar e Selecionar</Button>
@@ -252,7 +256,10 @@ export default function EditarExamePage() {
           <div className="space-y-4 px-1 pb-2">
             <Input label="Nome" value={newLocalName} onChange={(e) => setNewLocalName(e.target.value)} autoFocus />
             <Button variant="primary" fullWidth onClick={async () => {
-              await safeAddHospital({ nome: newLocalName });
+              await safeAddHospital({ 
+                user_id: "default_user", 
+                nome: newLocalName 
+              });
               setLaboratorio(newLocalName);
               setIsCreatingLocal(false);
             }}>Salvar e Selecionar</Button>
