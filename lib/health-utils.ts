@@ -4,7 +4,7 @@ export type AlertLevel = "vencido" | "urgente" | "atencao" | "ok";
 
 export interface HealthAlert {
   id: string;
-  kind: "medicamento" | "documento" | "consulta" | "estoque";
+  kind: "medicamento" | "documento" | "consulta" | "estoque" | "exame";
   title: string;
   subtitle: string;
   date: string;
@@ -79,8 +79,6 @@ export function suggestRenewalDate(dataReceita: string, tipo: TipoReceita): stri
 // ============================================================
 // ESTOQUE — cálculo de "quantos dias faltam" a partir de uma
 // contagem feita numa data de referência + horários de dose.
-// Não precisa de job em background: sempre recalcula na hora,
-// olhando quantos dias já se passaram desde a referência.
 // ============================================================
 export interface EstoqueInfo {
   consumoDiario: number;
@@ -109,8 +107,6 @@ export function computeEstoqueInfo(med: Medicamento): EstoqueInfo | null {
 
   const diasDesdeReferencia = getDaysUntil(med.estoque_data_referencia);
   if (diasDesdeReferencia === null) return null;
-  // diasDesdeReferencia é negativo quando a referência é no passado
-  // (o que é o caso normal — contamos o estoque hoje ou no passado)
   const diasPassados = Math.max(0, -diasDesdeReferencia);
 
   const quantidadeInicial = med.estoque_quantidade!;
@@ -222,6 +218,29 @@ export function getUpcomingAppointments(documents: Document[]): HealthAlert[] {
       };
     })
     .filter((a) => a.date && a.daysUntil >= 0 && a.daysUntil <= 30)
+    .sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
+/**
+ * Alertas de exames — baseado em datas de retorno ou prazos importantes.
+ */
+export function getExameAlerts(exames: any[]): HealthAlert[] {
+  return exames
+    .filter((exame) => !!exame.id && !!exame.data_retorno)
+    .map((exame) => {
+      const daysUntil = getDaysUntil(exame.data_retorno);
+      return {
+        id: exame.id,
+        kind: "exame" as const,
+        title: `Retorno Exame: ${exame.nome}`,
+        subtitle: `Laboratório: ${exame.laboratorio || "Não informado"}`,
+        date: exame.data_retorno,
+        daysUntil: daysUntil ?? 999,
+        level: getAlertLevel(daysUntil),
+        href: `/saude/exames/detalhes?id=${exame.id}`,
+      };
+    })
+    .filter((a) => a.level !== "ok")
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
