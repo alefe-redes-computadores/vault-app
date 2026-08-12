@@ -9,10 +9,9 @@ import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
-import { db, safeAddExame, safeAddMedico, safeAddHospital, safeAddLaboratorio } from "@/lib/db";
+import { db, safeAddExame, safeAddMedico, safeAddHospital } from "@/lib/db";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
-import { useLaboratorios } from "@/hooks/useLaboratorios"; // Certifique-se de ter ou use hospitais/farmacias
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
@@ -27,7 +26,7 @@ export default function NovoExamePage() {
   const { hospitais } = useHospitais();
 
   // Estados do Formulário
-  const [nomesExames, setNomesExames] = useState(""); // Suporta múltiplos exames separados por vírgula ou linha
+  const [nomesExames, setNomesExames] = useState(""); 
   const [localRealizacao, setLocalRealizacao] = useState("");
   const [medicoSolicitante, setMedicoSolicitante] = useState("");
   const [dataSolicitacao, setDataSolicitacao] = useState(todayISO());
@@ -55,6 +54,7 @@ export default function NovoExamePage() {
     trigger("vibrate");
     try {
       await safeAddMedico({
+        user_id: "default_user",
         nome: newDocName.trim(),
         especialidade: newDocEspecialidade.trim() || "Geral",
       });
@@ -74,6 +74,7 @@ export default function NovoExamePage() {
     trigger("vibrate");
     try {
       await safeAddHospital({
+        user_id: "default_user",
         nome: newLocalName.trim(),
       });
       setLocalRealizacao(newLocalName.trim());
@@ -96,11 +97,11 @@ export default function NovoExamePage() {
 
     setSaving(true);
     try {
-      // Separa os exames por vírgula ou quebra de linha para permitir múltiplos cadastros de uma vez
       const listaExames = nomesExames.split(/,|\n/).map(item => item.trim()).filter(Boolean);
 
       for (const nomeExame of listaExames) {
         await safeAddExame({
+          user_id: "default_user",
           nome: nomeExame,
           laboratorio: localRealizacao.trim() || undefined,
           medico: medicoSolicitante.trim() || undefined,
