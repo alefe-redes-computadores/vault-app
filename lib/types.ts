@@ -39,7 +39,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     name: 'Pessoal',
     icon: 'User',
     color: '#3B82F6',
-    description: 'RG, CPF, CNH, carteira de trabalho',
+    description: 'C.I.N, CPF, CNH, Certidões',
   },
   empresa: {
     id: 'empresa',
@@ -67,6 +67,8 @@ export type DocumentType =
   | 'rg'
   | 'cpf'
   | 'cnh'
+  | 'certidao_nascimento'
+  | 'titulo_eleitor'
   | 'certificado'
   | 'receita'
   | 'prontuario'
@@ -101,6 +103,23 @@ export interface Document {
   synced: boolean;
 }
 
+// MAPA DE RELAÇÃO: Quais tipos de documento pertencem a quais categorias
+export const TYPE_CATEGORY_MAP: Record<DocumentType, CategoryId[]> = {
+  rg: ['pessoal'],
+  cpf: ['pessoal'],
+  cnh: ['pessoal'],
+  certidao_nascimento: ['pessoal'],
+  titulo_eleitor: ['pessoal'],
+  receita: ['saude'],
+  prontuario: ['saude'],
+  laudo: ['saude'],
+  encaminhamento: ['saude'],
+  consulta: ['saude'],
+  cirurgia: ['saude'],
+  certificado: ['pessoal', 'empresa', 'outros'],
+  outro: ['pessoal', 'saude', 'empresa', 'outros']
+};
+
 // ============================================================
 // 3.1 CAMPOS POR TIPO DE DOCUMENTO
 // ============================================================
@@ -109,17 +128,33 @@ export const DOCUMENT_FIELDS: Record<
   Array<{ key: string; label: string; type: 'text' | 'date' | 'select'; options?: string[]; required?: boolean }>
 > = {
   rg: [
-    { key: 'number', label: 'Número do RG', type: 'text', required: true },
+    { key: 'modelo', label: 'Modelo do Documento', type: 'select', options: ['C.I.N (Nova Identidade)', 'RG (Antigo)'], required: true },
+    { key: 'cpf', label: 'Número do CPF', type: 'text', required: true },
+    { key: 'rg_number', label: 'Número do RG (Se modelo antigo)', type: 'text' },
     { key: 'issue_date', label: 'Data de emissão', type: 'date', required: true },
-    { key: 'expiry_date', label: 'Data de validade', type: 'date', required: true },
+    { key: 'expiry_date', label: 'Data de validade', type: 'date' },
     { key: 'issuer', label: 'Órgão emissor', type: 'text', required: true },
   ],
   cpf: [{ key: 'number', label: 'Número do CPF', type: 'text', required: true }],
   cnh: [
     { key: 'number', label: 'Número da CNH', type: 'text', required: true },
-    { key: 'category', label: 'Categoria', type: 'select', options: ['A', 'B', 'C', 'D', 'E'], required: true },
+    { key: 'category', label: 'Categoria', type: 'select', options: ['A', 'B', 'AB', 'C', 'D', 'E'], required: true },
     { key: 'issue_date', label: 'Data de emissão', type: 'date', required: true },
     { key: 'expiry_date', label: 'Data de validade', type: 'date', required: true },
+  ],
+  certidao_nascimento: [
+    { key: 'nome_registrado', label: 'Nome Registrado', type: 'text', required: true },
+    { key: 'matricula', label: 'Matrícula', type: 'text', required: true },
+    { key: 'livro', label: 'Livro', type: 'text' },
+    { key: 'folha', label: 'Folha', type: 'text' },
+    { key: 'termo', label: 'Termo', type: 'text' },
+    { key: 'cartorio', label: 'Cartório de Registro', type: 'text' },
+    { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date', required: true },
+  ],
+  titulo_eleitor: [
+    { key: 'number', label: 'Número do Título', type: 'text', required: true },
+    { key: 'zona', label: 'Zona Eleitoral', type: 'text', required: true },
+    { key: 'secao', label: 'Seção', type: 'text', required: true },
   ],
   certificado: [
     { key: 'institution', label: 'Instituição de ensino', type: 'text', required: true },
@@ -175,9 +210,11 @@ export const DOCUMENT_FIELDS: Record<
 // ============================================================
 // 4. METADADOS
 // ============================================================
-export type RGMetadata = { number: string; issue_date: string; expiry_date: string; issuer: string; };
+export type RGMetadata = { modelo: string; cpf: string; rg_number?: string; issue_date: string; expiry_date: string; issuer: string; };
 export type CPFMetadata = { number: string; };
-export type CNHMetadata = { number: string; category: 'A' | 'B' | 'C' | 'D' | 'E'; issue_date: string; expiry_date: string; };
+export type CNHMetadata = { number: string; category: 'A' | 'B' | 'AB' | 'C' | 'D' | 'E'; issue_date: string; expiry_date: string; };
+export type CertidaoMetadata = { nome_registrado: string; matricula: string; livro?: string; folha?: string; termo?: string; cartorio?: string; data_nascimento: string; };
+export type TituloEleitorMetadata = { number: string; zona: string; secao: string; };
 export type CertificadoMetadata = { institution: string; course: string; duration: string; completion_date?: string; };
 export type ReceitaMetadata = { medication: string; dosage: string; doctor: string; pharmacy?: string; prescription_date: string; renewal_date: string; };
 export type ProntuarioMetadata = { hospital: string; doctor: string; specialty: string; date: string; };
@@ -230,7 +267,7 @@ export interface Medicamento {
   proxima_renovacao: string;
   observacoes?: string;
   tipo_receita?: TipoReceita;
-  tratamento_id?: string; // ✅ CAMPO ADICIONADO PARA PERSISTÊNCIA
+  tratamento_id?: string;
   estoque_quantidade?: number;
   estoque_data_referencia?: string;
   estoque_horarios?: string[];
