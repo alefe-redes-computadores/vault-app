@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2, FileText, Layers3 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, FileText, Layers3, Trash2 } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { db } from "@/lib/db";
 
 const getFieldsForType = (type: DocumentType) => {
   const commonFields = [
@@ -101,6 +103,9 @@ export default function EditarDetalhePage() {
   const { updateDocument } = useSafeDb();
 
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     person_id: "",
@@ -173,6 +178,33 @@ export default function EditarDetalhePage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      // Deleta do Dexie local
+      await db.documents.delete(id);
+      
+      // Envia comando para apagar na nuvem
+      await db.syncQueue.add({
+        id: crypto.randomUUID(),
+        table: 'documents',
+        operation: 'delete',
+        payload: { id },
+        created_at: new Date().toISOString()
+      });
+
+      trigger("success");
+      router.push("/"); // Volta para a home ao excluir
+    } catch (error) {
+      console.error("Erro ao excluir:", error);
+      trigger("error");
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   if (!doc) {
     return (
       <PageTransition>
@@ -204,7 +236,7 @@ export default function EditarDetalhePage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
                 Vault
               </p>
@@ -212,6 +244,18 @@ export default function EditarDetalhePage() {
                 Editar documento
               </h1>
             </div>
+
+            {/* BOTÃO DE EXCLUIR */}
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                setShowDeleteModal(true);
+              }}
+              aria-label="Excluir documento"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+            >
+              <Trash2 size={16} />
+            </button>
           </div>
         </header>
 
@@ -356,7 +400,7 @@ export default function EditarDetalhePage() {
               size="lg"
               fullWidth
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading || deleting}
               className="flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -373,6 +417,19 @@ export default function EditarDetalhePage() {
             </Button>
           </motion.div>
         </section>
+
+        {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir documento"
+          message={`Tem certeza que deseja excluir "${formData.title}"? Esta ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          cancelLabel="Cancelar"
+          isLoading={deleting}
+          type="danger"
+        />
       </main>
     </PageTransition>
   );
