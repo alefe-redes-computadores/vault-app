@@ -33,6 +33,20 @@ const getFieldsForType = (type: DocumentType) => {
       { key: "issue_date", label: "Data de emissão", type: "date" },
       { key: "expiry_date", label: "Data de validade", type: "date" },
     ],
+    certidao_nascimento: [
+      { key: 'nome_registrado', label: 'Nome Registrado', type: 'text' },
+      { key: 'matricula', label: 'Matrícula', type: 'text' },
+      { key: 'livro', label: 'Livro', type: 'text' },
+      { key: 'folha', label: 'Folha', type: 'text' },
+      { key: 'termo', label: 'Termo', type: 'text' },
+      { key: 'cartorio', label: 'Cartório de Registro', type: 'text' },
+      { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date' },
+    ],
+    titulo_eleitor: [
+      { key: 'number', label: 'Número do Título', type: 'text' },
+      { key: 'zona', label: 'Zona Eleitoral', type: 'text' },
+      { key: 'secao', label: 'Seção', type: 'text' },
+    ],
     certificado: [
       { key: "institution", label: "Instituição", type: "text" },
       { key: "course", label: "Curso", type: "text" },
@@ -182,10 +196,8 @@ export default function EditarDetalhePage() {
     if (!id) return;
     setDeleting(true);
     try {
-      // Deleta do Dexie local
       await db.documents.delete(id);
       
-      // Envia comando para apagar na nuvem
       await db.syncQueue.add({
         id: crypto.randomUUID(),
         table: 'documents',
@@ -195,7 +207,7 @@ export default function EditarDetalhePage() {
       });
 
       trigger("success");
-      router.push("/"); // Volta para a home ao excluir
+      router.push("/");
     } catch (error) {
       console.error("Erro ao excluir:", error);
       trigger("error");
@@ -245,7 +257,6 @@ export default function EditarDetalhePage() {
               </h1>
             </div>
 
-            {/* BOTÃO DE EXCLUIR */}
             <button
               onClick={() => {
                 trigger("vibrate");
@@ -350,6 +361,8 @@ export default function EditarDetalhePage() {
                 <option value="rg">RG</option>
                 <option value="cpf">CPF</option>
                 <option value="cnh">CNH</option>
+                <option value="certidao_nascimento">Certidão de Nascimento</option>
+                <option value="titulo_eleitor">Título de Eleitor</option>
                 <option value="certificado">Certificado</option>
                 <option value="receita">Receita</option>
                 <option value="prontuario">Prontuário</option>
@@ -418,7 +431,6 @@ export default function EditarDetalhePage() {
           </motion.div>
         </section>
 
-        {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
         <ConfirmationModal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}
