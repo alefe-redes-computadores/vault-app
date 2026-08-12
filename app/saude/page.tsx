@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Heart,
@@ -31,8 +31,6 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
-import { Button } from "@/components/ui/Button";
-import { DocumentCard } from "@/components/DocumentCard";
 import {
   getMedicamentoAlerts,
   getDocumentAlerts,
@@ -178,8 +176,6 @@ export default function SaudePage() {
   const { hospitais } = useHospitais();
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-
-  const [isDocSectionOpen, setIsDocSectionOpen] = useState(false);
 
   const medAlerts = useMemo(
     () => getMedicamentoAlerts(medicamentos || []),
@@ -362,88 +358,35 @@ export default function SaudePage() {
           </motion.div>
 
           {/* ============================================================ */}
-          {/* ACORDEÃO DE DOCUMENTOS — INSERIDO AQUI */}
+          {/* ACERVO DE DOCUMENTOS (Padrão Nativo idêntico aos Tratamentos) */}
           {/* ============================================================ */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.06 }}
-            className="rounded-[24px] border border-surface-border/50 bg-surface overflow-hidden"
+            transition={{ duration: 0.24, delay: 0.04 }}
           >
             <button
               onClick={() => {
                 trigger("vibrate");
-                setIsDocSectionOpen(!isDocSectionOpen);
+                router.push("/saude/documentos");
               }}
-              className="flex w-full items-center justify-between p-4 text-left transition-all hover:bg-surface-raised/40"
+              className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
-                  <FolderHeart size={16} />
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
+                  <FolderHeart size={20} />
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-ink-primary">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink-primary">
                     Acervo de Documentos
                   </p>
-                  <p className="text-xs text-ink-muted">
+                  <p className="truncate text-xs text-ink-muted">
                     {saudeDocuments.length} documento{saudeDocuments.length !== 1 ? "s" : ""} na saúde
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-ink-muted">
-                  {isDocSectionOpen ? "▲" : "▼"}
-                </span>
-              </div>
+              <ChevronRight size={16} className="shrink-0 text-ink-faint" />
             </button>
-
-            <AnimatePresence>
-              {isDocSectionOpen && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.25, ease: "easeInOut" }}
-                  className="overflow-hidden"
-                >
-                  <div className="px-4 pb-4 space-y-3">
-                    {saudeDocuments.length === 0 ? (
-                      <div className="rounded-[18px] border border-dashed border-surface-border/60 bg-surface/30 px-4 py-6 text-center">
-                        <p className="text-sm text-ink-muted">
-                          Nenhum documento de saúde cadastrado.
-                        </p>
-                        <p className="mt-1 text-xs text-ink-faint">
-                          Adicione documentos como receitas, laudos ou prontuários.
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        {saudeDocuments.slice(0, 3).map((doc) => (
-                          <DocumentCard
-                            key={doc.id}
-                            document={doc}
-                            onFavoriteToggle={() => {}}
-                          />
-                        ))}
-                        {saudeDocuments.length > 3 && (
-                          <Button
-                            fullWidth
-                            variant="secondary"
-                            onClick={() => {
-                              trigger("vibrate");
-                              router.push("/saude/documentos");
-                            }}
-                            className="mt-2"
-                          >
-                            Ver todo o acervo ({saudeDocuments.length} documentos)
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
 
           {(estoqueAlerts.length > 0 || allAlerts.length > 0) && (
