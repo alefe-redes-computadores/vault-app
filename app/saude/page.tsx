@@ -37,6 +37,7 @@ import {
   getDocumentAlerts,
   getUpcomingAppointments,
   getEstoqueAlerts,
+  getExameAlerts,
   alertLevelColor,
   alertLevelLabel,
   estoqueLevelLabel,
@@ -75,6 +76,8 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
       >
         {alert.kind === "medicamento" ? (
           <Pill size={18} style={{ color }} />
+        ) : alert.kind === "exame" ? (
+          <FlaskConical size={18} style={{ color }} />
         ) : (
           <FileWarning size={18} style={{ color }} />
         )}
@@ -177,6 +180,7 @@ export default function SaudePage() {
   const { hospitais } = useHospitais();
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
 
   const medAlerts = useMemo(
     () => getMedicamentoAlerts(medicamentos || []),
@@ -194,13 +198,17 @@ export default function SaudePage() {
     () => getUpcomingAppointments(documents || []),
     [documents]
   );
-
-  const allAlerts = useMemo(
-    () => [...medAlerts, ...docAlerts].sort((a, b) => a.daysUntil - b.daysUntil),
-    [medAlerts, docAlerts]
+  const exameAlerts = useMemo(
+    () => getExameAlerts(exames || []),
+    [exames]
   );
 
-  const isLoading = documents === undefined || medicamentos === undefined;
+  const allAlerts = useMemo(
+    () => [...medAlerts, ...docAlerts, ...exameAlerts].sort((a, b) => a.daysUntil - b.daysUntil),
+    [medAlerts, docAlerts, exameAlerts]
+  );
+
+  const isLoading = documents === undefined || medicamentos === undefined || exames === undefined;
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -358,9 +366,7 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* ============================================================ */}
           {/* ACERVO DE DOCUMENTOS (Destaque Âmbar/Laranja) */}
-          {/* ============================================================ */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -456,7 +462,7 @@ export default function SaudePage() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-ink-primary">Exames</p>
-                <p className="text-[10px] text-ink-muted">Laboratoriais</p>
+                <p className="text-[10px] text-ink-muted">{exames.length} registrados</p>
               </div>
             </button>
           </motion.div>
