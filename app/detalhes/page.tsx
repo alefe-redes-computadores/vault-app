@@ -45,7 +45,19 @@ const CATEGORY_ICONS: Record<string, typeof Heart> = {
   outros: FolderOpen,
 };
 
-// Formatação inteligente para datas bugadas (DDMMYYYY) ou padrão (YYYY-MM-DD)
+// Formatação limpa para a data de criação do rodapé
+const formatCreationDate = (dateString?: string): string => {
+  if (!dateString) return "";
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  } catch {
+    return dateString;
+  }
+};
+
+// Formatação inteligente para datas
 const formatDate = (dateString?: string): string => {
   if (!dateString || dateString.trim() === "") return "Data inválida";
   try {
@@ -63,6 +75,15 @@ const formatDate = (dateString?: string): string => {
   } catch {
     return dateString;
   }
+};
+
+// Formatação automática para CPF
+const formatCPF = (value: string): string => {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 11) {
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  }
+  return value;
 };
 
 const getFileIcon = (type: string) => {
@@ -391,7 +412,11 @@ export default function DocumentDetailPage() {
 
                     let displayValue: string = String(value);
 
-                    // Verifica se a chave corresponde a um campo de data
+                    // Formata CPFs automaticamente e limpa duplicidades
+                    if (key === 'cpf' || key === 'number') {
+                      displayValue = formatCPF(displayValue);
+                    }
+
                     if (dateFields.includes(key) && typeof value === "string") {
                       displayValue = formatDate(value);
                     } else if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)) {
@@ -469,7 +494,7 @@ export default function DocumentDetailPage() {
                   )}
                 </p>
                 <p className="text-ink-muted">
-                  Criado em {formatDate(doc.created_at)}
+                  Criado em {formatCreationDate(doc.created_at)}
                 </p>
               </div>
             </div>
