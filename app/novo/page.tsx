@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Upload, Camera, X, Loader2, Save, Shield, FileText, Image as ImageIcon, ChevronRight, Plus,
+  ArrowLeft, Upload, Camera, X, Loader2, Save, Shield, FileText, Image as ImageIcon, ChevronRight, Plus, ChevronLeft
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -46,7 +46,7 @@ const applyMask = (value: string, type: string): string => {
 const getMaskType = (fieldKey: string, fieldType: string): string | null => {
   if (fieldKey === "cpf") return "cpf";
   if (fieldKey === "rg_number" || fieldKey === "number") return "rg";
-  if (fieldType === "date") return "date"; // Aplica a máscara para todos os campos que seriam datas nativas
+  if (fieldType === "date") return "date"; 
   return null;
 };
 
@@ -77,9 +77,21 @@ const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   outro: "Outro",
 };
 
-const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
+const slideVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 50 : -50,
+    opacity: 0
+  }),
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1
+  },
+  exit: (direction: number) => ({
+    zIndex: 0,
+    x: direction < 0 ? 50 : -50,
+    opacity: 0
+  })
 };
 
 export default function NewDocumentPage() {
@@ -101,6 +113,10 @@ export default function NewDocumentPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // CONTROLE DO WIZARD
+  const [currentStep, setCurrentStep] = useState(1);
+  const [slideDirection, setSlideDirection] = useState(0);
 
   const [formData, setFormData] = useState<FormData>({
     person_id: initialPersonId || "",
@@ -133,14 +149,12 @@ export default function NewDocumentPage() {
 
   const userVaults = useLiveQuery(() => db.vaults.where("user_id").equals(user?.id || "").toArray(), [user?.id], []);
 
-  // Garante que uma pessoa esteja selecionada
   useEffect(() => {
     if (persons.length > 0 && !formData.person_id && !initialPersonId) {
       setFormData(prev => ({ ...prev, person_id: persons[0].id! }));
     }
   }, [persons, formData.person_id, initialPersonId]);
 
-  // Limpa os campos dinâmicos quando o tipo de documento muda
   useEffect(() => {
     const fields = DOCUMENT_FIELDS[formData.type] || [];
     const newMetadata: Record<string, any> = {};
@@ -150,7 +164,6 @@ export default function NewDocumentPage() {
     setFormData((prev) => ({ ...prev, metadata: newMetadata }));
   }, [formData.type]);
 
-  // Filtra os tipos de documento baseado na categoria escolhida
   const availableTypes = useMemo(() => {
     return (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).filter(
       type => TYPE_CATEGORY_MAP[type].includes(formData.category_id)
@@ -159,19 +172,12 @@ export default function NewDocumentPage() {
 
   const handleChange = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const handleMetadataChange = (key: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      metadata: { ...prev.metadata, [key]: value },
-    }));
-    if (errors[key]) {
-      setErrors((prev) => ({ ...prev, [key]: "" }));
-    }
+    setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }));
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: "" }));
   };
 
   const handleCreateParent = async () => {
@@ -250,57 +256,66 @@ export default function NewDocumentPage() {
     trigger("vibrate");
   };
 
-  const validate = (): boolean => {
+  // VALIDAÇÃO POR PASSO DO WIZARD
+  const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!formData.person_id) newErrors.person_id = "Selecione uma pessoa";
-    if (!formData.title.trim()) newErrors.title = "Título é obrigatório";
+    
+    if (step === 1) {
+      if (!formData.person_id) newErrors.person_id = "Selecione uma pessoa";
+      if (!formData.title.trim()) newErrors.title = "Título é obrigatório";
+    }
 
-    const fields = DOCUMENT_FIELDS[formData.type] || [];
-    fields.forEach((field) => {
-      // Regra especial de validação para a C.I.N
-      if (formData.type === 'rg' && field.key === 'rg_number') {
-        const isOldRG = formData.metadata['modelo'] === 'RG (Antigo)';
-        if (isOldRG && !formData.metadata[field.key]?.trim()) {
-           newErrors[field.key] = "O número do RG é obrigatório no modelo antigo";
+    if (step === 2) {
+      const fields = DOCUMENT_FIELDS[formData.type] || [];
+      fields.forEach((field) => {
+        if (formData.type === 'rg' && field.key === 'rg_number') {
+          const isOldRG = formData.metadata['modelo'] === 'RG (Antigo)';
+          if (isOldRG && !formData.metadata[field.key]?.trim()) {
+             newErrors[field.key] = "O número do RG é obrigatório no modelo antigo";
+          }
+          return;
         }
-        return;
-      }
-      if (field.required && !formData.metadata[field.key]?.trim()) {
-        newErrors[field.key] = `${field.label} é obrigatório`;
-      }
-    });
+        if (field.required && !formData.metadata[field.key]?.trim()) {
+          newErrors[field.key] = `${field.label} é obrigatório`;
+        }
+      });
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const nextStep = () => {
+    trigger("vibrate");
+    if (validateStep(currentStep)) {
+      setSlideDirection(1);
+      setCurrentStep((prev) => Math.min(prev + 1, 3));
+    } else {
+      trigger("error");
+    }
+  };
+
+  const prevStep = () => {
+    trigger("vibrate");
+    setSlideDirection(-1);
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
   const handleSubmit = async () => {
     trigger("vibrate");
-
-    if (!validate()) {
-      trigger("error");
-      const firstErrorKey = Object.keys(errors)[0];
-      if (firstErrorKey) {
-        const element = document.querySelector(`[data-field="${firstErrorKey}"]`);
-        if (element) {
-          (element as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }
-      return;
-    }
+    if (!validateStep(3)) return;
 
     setLoading(true);
     setUploadProgress(0);
 
     try {
-      // 1. Converter datas mascaradas de volta para um formato padrão YYYY-MM-DD para salvar no banco limpo
       const cleanMetadata = { ...formData.metadata };
       const fields = DOCUMENT_FIELDS[formData.type] || [];
       fields.forEach(field => {
         if (field.type === 'date' && cleanMetadata[field.key]) {
           const parts = cleanMetadata[field.key].split('/');
           if (parts.length === 3) {
-            cleanMetadata[field.key] = `${parts[2]}-${parts[1]}-${parts[0]}`; // Convert DD/MM/YYYY to YYYY-MM-DD
+            cleanMetadata[field.key] = `${parts[2]}-${parts[1]}-${parts[0]}`; 
           }
         }
       });
@@ -378,255 +393,310 @@ export default function NewDocumentPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))] overflow-x-hidden">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
 
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-            <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Novo documento</h1>
-              <p className="mt-1 text-sm text-ink-muted">Preencha os dados e anexe arquivos.</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+               <button onClick={() => { trigger("vibrate"); currentStep > 1 ? prevStep() : router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
+                 <ArrowLeft size={18} className="text-ink-primary" />
+               </button>
+               <div className="min-w-0">
+                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Novo Documento</p>
+                 <h1 className="mt-1 font-display text-lg font-semibold text-ink-primary">
+                    {currentStep === 1 && "Identificação"}
+                    {currentStep === 2 && "Campos Específicos"}
+                    {currentStep === 3 && "Anexos e Extras"}
+                 </h1>
+               </div>
             </div>
+            <div className="text-xs font-mono font-medium text-ink-muted">
+               {currentStep} / 3
+            </div>
+          </div>
+          {/* Progress Bar */}
+          <div className="mt-4 h-1 w-full rounded-full bg-surface-border/40 overflow-hidden">
+             <motion.div 
+               className="h-full bg-ice"
+               initial={{ width: "33%" }}
+               animate={{ width: `${(currentStep / 3) * 100}%` }}
+               transition={{ duration: 0.3 }}
+             />
           </div>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
-          
-          {/* Pessoa com Botão Personalizado */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-             <label className="mb-2 block text-sm font-medium text-ink-primary">Pessoa <span className="text-coral">*</span></label>
-             <button
-                onClick={() => { trigger("vibrate"); setIsPersonModalOpen(true); }}
-                className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${
-                  errors.person_id ? "border-coral/50 bg-surface-raised" : "border-surface-border/50 bg-surface-raised"
-                }`}
-              >
-                {formData.person_id ? persons.find(p => p.id === formData.person_id)?.name : "Selecionar pessoa..."}
-             </button>
-             {errors.person_id && <p className="mt-1 text-xs text-coral">{errors.person_id}</p>}
-          </motion.div>
+        <section className="px-5 pt-6 relative h-full">
+           <AnimatePresence initial={false} custom={slideDirection} mode="wait">
+              
+              {/* PASSO 1: IDENTIFICAÇÃO E CLASSIFICAÇÃO */}
+              {currentStep === 1 && (
+                 <motion.div
+                   key="step1"
+                   custom={slideDirection}
+                   variants={slideVariants}
+                   initial="enter"
+                   animate="center"
+                   exit="exit"
+                   transition={{ duration: 0.3, ease: "easeInOut" }}
+                   className="space-y-4"
+                 >
+                   {/* Pessoa */}
+                   <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                      <label className="mb-2 block text-sm font-medium text-ink-primary">Pessoa <span className="text-coral">*</span></label>
+                      <button
+                         onClick={() => { trigger("vibrate"); setIsPersonModalOpen(true); }}
+                         className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${
+                           errors.person_id ? "border-coral/50 bg-surface-raised" : "border-surface-border/50 bg-surface-raised text-ink-primary"
+                         }`}
+                       >
+                         {formData.person_id ? persons.find(p => p.id === formData.person_id)?.name : "Selecionar pessoa..."}
+                      </button>
+                      {errors.person_id && <p className="mt-1 text-xs text-coral">{errors.person_id}</p>}
+                   </div>
 
-          {/* Categoria */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <p className="mb-3 text-sm font-medium text-ink-primary">Categoria <span className="text-coral">*</span></p>
-            <div className="flex flex-wrap gap-2">
-              {Object.values(CATEGORIES).map((cat: any) => {
-                const active = formData.category_id === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      trigger("vibrate");
-                      handleChange("category_id", cat.id);
-                      // Reseta o tipo de documento se a nova categoria não contiver o tipo atual
-                      if (!TYPE_CATEGORY_MAP[formData.type].includes(cat.id)) {
-                         const firstValidType = (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).find(t => TYPE_CATEGORY_MAP[t].includes(cat.id));
-                         if (firstValidType) handleChange("type", firstValidType);
-                      }
-                    }}
-                    className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
-                      active ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
+                   {/* Categoria */}
+                   <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                     <p className="mb-3 text-sm font-medium text-ink-primary">Categoria <span className="text-coral">*</span></p>
+                     <div className="flex flex-wrap gap-2">
+                       {Object.values(CATEGORIES).map((cat: any) => {
+                         const active = formData.category_id === cat.id;
+                         return (
+                           <button
+                             key={cat.id}
+                             onClick={() => {
+                               trigger("vibrate");
+                               handleChange("category_id", cat.id);
+                               if (!TYPE_CATEGORY_MAP[formData.type].includes(cat.id)) {
+                                  const firstValidType = (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).find(t => TYPE_CATEGORY_MAP[t].includes(cat.id));
+                                  if (firstValidType) handleChange("type", firstValidType);
+                               }
+                             }}
+                             className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
+                               active ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                             }`}
+                           >
+                             {cat.name}
+                           </button>
+                         );
+                       })}
+                     </div>
+                   </div>
 
-          {/* Tipo (Filtra baseado na Categoria) */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.08 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <label className="mb-2 block text-sm font-medium text-ink-primary">Tipo de documento <span className="text-coral">*</span></label>
-            <button
-              onClick={() => { trigger("vibrate"); setIsTypeModalOpen(true); }}
-              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
-            >
-              <span>{DOCUMENT_TYPE_LABELS[formData.type] || "Selecionar tipo..."}</span>
-              <ChevronRight size={16} className="text-ink-muted" />
-            </button>
-          </motion.div>
+                   {/* Tipo */}
+                   <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                     <label className="mb-2 block text-sm font-medium text-ink-primary">Tipo de documento <span className="text-coral">*</span></label>
+                     <button
+                       onClick={() => { trigger("vibrate"); setIsTypeModalOpen(true); }}
+                       className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
+                     >
+                       <span>{DOCUMENT_TYPE_LABELS[formData.type] || "Selecionar tipo..."}</span>
+                       <ChevronRight size={16} className="text-ink-muted" />
+                     </button>
+                   </div>
 
-          {/* Título */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.12 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input
-              label="Título do documento"
-              placeholder="Ex: Minha CNH, Nova Identidade..."
-              value={formData.title}
-              onChange={(e) => handleChange("title", e.target.value)}
-              error={errors.title}
-              required
-            />
-          </motion.div>
+                   {/* Título */}
+                   <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                     <Input
+                       label="Título do documento"
+                       placeholder="Ex: Minha CNH, Nova Identidade..."
+                       value={formData.title}
+                       onChange={(e) => handleChange("title", e.target.value)}
+                       error={errors.title}
+                       required
+                     />
+                   </div>
+                 </motion.div>
+              )}
 
-          {/* Campos dinâmicos */}
-          <AnimatePresence mode="wait">
-            {fields.length > 0 && (
-              <motion.div key={formData.type} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-ink-primary">Campos específicos</p>
-                  <p className="mt-1 text-xs text-ink-muted">Os campos abaixo mudam conforme o tipo selecionado.</p>
-                </div>
-
-                <div className="space-y-4">
-                  {fields.map((field) => {
-                    
-                    // Tratamento Especial para esconder RG no modelo C.I.N
-                    if (formData.type === 'rg' && field.key === 'rg_number' && formData.metadata['modelo'] === 'C.I.N (Nova Identidade)') {
-                       return null; 
-                    }
-
-                    const maskType = getMaskType(field.key, field.type);
-                    const rawValue = formData.metadata[field.key] || "";
-                    const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
-
-                    // Select Simples em linha
-                    if (field.type === 'select' && field.options) {
-                      return (
-                         <div key={field.key}>
-                            <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
-                            <div className="flex flex-wrap gap-2">
-                               {field.options.map(opt => (
-                                  <button
-                                     key={opt}
-                                     onClick={() => handleMetadataChange(field.key, opt)}
-                                     className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all ${
-                                        formData.metadata[field.key] === opt ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                                     }`}
-                                  >
-                                    {opt}
-                                  </button>
-                               ))}
-                            </div>
+              {/* PASSO 2: CAMPOS ESPECÍFICOS */}
+              {currentStep === 2 && (
+                 <motion.div
+                   key="step2"
+                   custom={slideDirection}
+                   variants={slideVariants}
+                   initial="enter"
+                   animate="center"
+                   exit="exit"
+                   transition={{ duration: 0.3, ease: "easeInOut" }}
+                   className="space-y-4"
+                 >
+                   <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+                      <div className="mb-5 flex items-center gap-3">
+                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10">
+                            <FileText size={18} className="text-ice" />
                          </div>
-                      );
-                    }
+                         <div>
+                            <p className="text-sm font-semibold text-ink-primary">Dados do Documento</p>
+                            <p className="text-xs text-ink-muted">Preencha de acordo com o papel original.</p>
+                         </div>
+                      </div>
 
-                    const isComplexSelect = field.type === "select" || field.key === "institution" || field.key === "medication";
-                    if (isComplexSelect && !field.options) {
-                      let items: any[] = [];
-                      let renderItem: any, getItemLabel: any, getItemId: any, isModalOpen = false, setIsModalOpen: any, onSelect: any, placeholder = "", title = "", onCreateNew: any, createNewLabel = "";
+                      <div className="space-y-4">
+                        {fields.map((field) => {
+                          if (formData.type === 'rg' && field.key === 'rg_number' && formData.metadata['modelo'] === 'C.I.N (Nova Identidade)') {
+                             return null; 
+                          }
 
-                      if (field.key === "doctor") {
-                        items = medicos;
-                        renderItem = (item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p></div>);
-                        getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
-                        isModalOpen = isDoctorModalOpen; setIsModalOpen = setIsDoctorModalOpen;
-                        onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
-                        title = "Médico"; createNewLabel = "Criar médico"; onCreateNew = () => { setIsModalOpen(false); router.push("/saude/medicos/novo"); };
-                      } else if (field.key === "pharmacy") {
-                         items = farmacias;
-                         renderItem = (item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p></div>);
-                         getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
-                         isModalOpen = isPharmacyModalOpen; setIsModalOpen = setIsPharmacyModalOpen;
-                         onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
-                         title = "Farmácia"; createNewLabel = "Criar farmácia"; onCreateNew = () => { setIsModalOpen(false); router.push("/saude/farmacias/novo"); };
-                      } else if (field.key === "hospital") {
-                         items = hospitais;
-                         renderItem = (item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p></div>);
-                         getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
-                         isModalOpen = isHospitalModalOpen; setIsModalOpen = setIsHospitalModalOpen;
-                         onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
-                         title = "Hospital"; createNewLabel = "Criar hospital"; onCreateNew = () => { setIsModalOpen(false); router.push("/saude/hospitais/novo"); };
-                      }
+                          const maskType = getMaskType(field.key, field.type);
+                          const rawValue = formData.metadata[field.key] || "";
+                          const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
 
-                      const selectedItem = items.find((item: any) => String(item.id) === formData.metadata[field.key]);
+                          if (field.type === 'select' && field.options) {
+                            return (
+                               <div key={field.key}>
+                                  <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
+                                  <div className="flex flex-wrap gap-2">
+                                     {field.options.map(opt => (
+                                        <button
+                                           key={opt}
+                                           onClick={() => handleMetadataChange(field.key, opt)}
+                                           className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all ${
+                                              formData.metadata[field.key] === opt ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                                           }`}
+                                        >
+                                          {opt}
+                                        </button>
+                                     ))}
+                                  </div>
+                               </div>
+                            );
+                          }
 
-                      return (
-                        <div key={field.key}>
-                          <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
-                          <button
-                            onClick={() => { trigger("vibrate"); setIsModalOpen(true); }}
-                            className={`w-full rounded-2xl border px-4 py-3 text-left text-ink-primary ${errors[field.key] ? "border-coral/50 bg-surface-raised" : "border-surface-border/50 bg-surface-raised"}`}
-                          >
-                            {selectedItem ? selectedItem.nome : `Selecionar ${field.label.toLowerCase()}`}
-                          </button>
-                          {isModalOpen && (
-                             <SelectionModal
-                               isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSelect={onSelect} items={items}
-                               title={title} placeholder="Buscar..." renderItem={renderItem} getItemId={getItemId} getItemLabel={getItemLabel} onCreateNew={onCreateNew} createNewLabel={createNewLabel}
-                             />
-                          )}
-                        </div>
-                      );
-                    }
+                          const isComplexSelect = field.type === "select" || field.key === "institution" || field.key === "medication";
+                          if (isComplexSelect && !field.options) {
+                            let items: any[] = [];
+                            let renderItem: any, getItemLabel: any, getItemId: any, isModalOpen = false, setIsModalOpen: any, onSelect: any, placeholder = "", title = "", onCreateNew: any, createNewLabel = "";
 
-                    return (
-                      <Input
-                        key={field.key}
-                        data-field={field.key}
-                        label={field.label}
-                        type="text"
-                        value={displayedValue}
-                        onChange={(e) => {
-                          const raw = maskType ? e.target.value.replace(/\D/g, "") : e.target.value;
-                          handleMetadataChange(field.key, raw);
-                        }}
-                        placeholder={field.type === 'date' ? "DD/MM/AAAA" : `Digite ${field.label.toLowerCase()}...`}
-                        required={field.required}
-                        error={errors[field.key]}
-                      />
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                            if (field.key === "doctor") {
+                              items = medicos;
+                              renderItem = (item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p></div>);
+                              getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
+                              isModalOpen = isDoctorModalOpen; setIsModalOpen = setIsDoctorModalOpen;
+                              onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
+                              title = "Médico"; createNewLabel = "Criar médico"; onCreateNew = () => { setIsModalOpen(false); router.push("/saude/medicos/novo"); };
+                            } else if (field.key === "pharmacy") {
+                               items = farmacias;
+                               renderItem = (item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p></div>);
+                               getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
+                               isModalOpen = isPharmacyModalOpen; setIsModalOpen = setIsPharmacyModalOpen;
+                               onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
+                               title = "Farmácia"; createNewLabel = "Criar farmácia"; onCreateNew = () => { setIsModalOpen(false); router.push("/saude/farmacias/novo"); };
+                            } else if (field.key === "hospital") {
+                               items = hospitais;
+                               renderItem = (item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p></div>);
+                               getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
+                               isModalOpen = isHospitalModalOpen; setIsModalOpen = setIsHospitalModalOpen;
+                               onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
+                               title = "Hospital"; createNewLabel = "Criar hospital"; onCreateNew = () => { setIsModalOpen(false); router.push("/saude/hospitais/novo"); };
+                            }
 
-          {/* Cofre */}
-          {userVaults && userVaults.length > 0 && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.16 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-              <label className="mb-3 block text-sm font-medium text-ink-primary">Compartilhar com cofre</label>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => { trigger("vibrate"); handleChange("vault_id", undefined); }} className={`rounded-full border px-3 py-2 text-xs font-medium transition-all active:scale-95 ${formData.vault_id === undefined ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>Nenhum</button>
-                {userVaults.map((vault: any) => (
-                  <button key={vault.id} onClick={() => { trigger("vibrate"); handleChange("vault_id", vault.id!); }} className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition-all active:scale-95 ${formData.vault_id === vault.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>
-                    <Shield size={12} /> {vault.name}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
+                            const selectedItem = items.find((item: any) => String(item.id) === formData.metadata[field.key]);
 
-          {/* Notas */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <TextArea label="Notas (opcional)" placeholder="Informações adicionais..." value={formData.description} onChange={(e) => handleChange("description", e.target.value)} />
-          </motion.div>
+                            return (
+                              <div key={field.key}>
+                                <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
+                                <button
+                                  onClick={() => { trigger("vibrate"); setIsModalOpen(true); }}
+                                  className={`w-full rounded-2xl border px-4 py-3 text-left text-ink-primary ${errors[field.key] ? "border-coral/50 bg-surface-raised" : "border-surface-border/50 bg-surface-raised"}`}
+                                >
+                                  {selectedItem ? selectedItem.nome : `Selecionar ${field.label.toLowerCase()}`}
+                                </button>
+                                {isModalOpen && (
+                                   <SelectionModal
+                                     isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSelect={onSelect} items={items}
+                                     title={title} placeholder="Buscar..." renderItem={renderItem} getItemId={getItemId} getItemLabel={getItemLabel} onCreateNew={onCreateNew} createNewLabel={createNewLabel}
+                                   />
+                                )}
+                              </div>
+                            );
+                          }
 
-          {/* Anexos */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.24 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-ink-primary">Anexos</label>
-              <p className="mt-1 text-xs text-ink-muted">PDF ou imagem direto pela câmera.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading || loading}>
-                <Upload size={16} /> Upload
-              </Button>
-              <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => cameraInputRef.current?.click()} disabled={uploading || loading}>
-                <Camera size={16} /> Câmera
-              </Button>
-            </div>
-            <AnimatePresence>
-              {formData.attachments.map((att) => (
-                <motion.div key={att.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface border border-surface-border/40">
-                    {att.type === "image" ? <ImageIcon size={16} className="text-ice" /> : <FileText size={16} className="text-ice" />}
-                  </div>
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink-primary">{att.name}</p></div>
-                  <button onClick={() => removeAttachment(att.id)} className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:text-ink-primary"><X size={14} /></button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+                          return (
+                            <Input
+                              key={field.key}
+                              data-field={field.key}
+                              label={field.label}
+                              type="text"
+                              value={displayedValue}
+                              onChange={(e) => {
+                                const raw = maskType ? e.target.value.replace(/\D/g, "") : e.target.value;
+                                handleMetadataChange(field.key, raw);
+                              }}
+                              placeholder={field.type === 'date' ? "DD/MM/AAAA" : `Digite ${field.label.toLowerCase()}...`}
+                              required={field.required}
+                              error={errors[field.key]}
+                            />
+                          );
+                        })}
+                      </div>
+                   </div>
+                 </motion.div>
+              )}
+
+              {/* PASSO 3: ANEXOS E EXTRAS */}
+              {currentStep === 3 && (
+                 <motion.div
+                   key="step3"
+                   custom={slideDirection}
+                   variants={slideVariants}
+                   initial="enter"
+                   animate="center"
+                   exit="exit"
+                   transition={{ duration: 0.3, ease: "easeInOut" }}
+                   className="space-y-4"
+                 >
+                   <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-ink-primary">Anexos Físicos</label>
+                        <p className="mt-1 text-xs text-ink-muted">Digitalize o documento pela câmera ou envie o PDF.</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading || loading}>
+                          <Upload size={16} /> Arquivo
+                        </Button>
+                        <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => cameraInputRef.current?.click()} disabled={uploading || loading}>
+                          <Camera size={16} /> Câmera
+                        </Button>
+                      </div>
+                      <AnimatePresence>
+                        {formData.attachments.map((att) => (
+                          <motion.div key={att.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface border border-surface-border/40">
+                              {att.type === "image" ? <ImageIcon size={16} className="text-ice" /> : <FileText size={16} className="text-ice" />}
+                            </div>
+                            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink-primary">{att.name}</p></div>
+                            <button onClick={() => removeAttachment(att.id)} className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:text-ink-primary"><X size={14} /></button>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                   </div>
+
+                   {userVaults && userVaults.length > 0 && (
+                     <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                       <label className="mb-3 block text-sm font-medium text-ink-primary">Compartilhar com cofre (Opcional)</label>
+                       <div className="flex flex-wrap gap-2">
+                         <button onClick={() => { trigger("vibrate"); handleChange("vault_id", undefined); }} className={`rounded-full border px-3 py-2 text-xs font-medium transition-all active:scale-95 ${formData.vault_id === undefined ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>Nenhum</button>
+                         {userVaults.map((vault: any) => (
+                           <button key={vault.id} onClick={() => { trigger("vibrate"); handleChange("vault_id", vault.id!); }} className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition-all active:scale-95 ${formData.vault_id === vault.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>
+                             <Shield size={12} /> {vault.name}
+                           </button>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+
+                   <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                     <TextArea label="Notas extras (Opcional)" placeholder="Ex: Cópia autenticada guardada na gaveta 2..." value={formData.description} onChange={(e) => handleChange("description", e.target.value)} />
+                   </div>
+                 </motion.div>
+              )}
+
+           </AnimatePresence>
         </section>
 
-        {/* Modal Dinâmico de Tipos */}
+        {/* MODAIS AUXILIARES (Type, Person, Parents) */}
         <BottomSheet isOpen={isTypeModalOpen} onClose={() => setIsTypeModalOpen(false)} title="Selecionar tipo">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
              {availableTypes.map((typeObj) => (
@@ -641,13 +711,12 @@ export default function NewDocumentPage() {
           </div>
         </BottomSheet>
 
-        {/* Modal de Seleção de Pessoas */}
         <SelectionModal
            isOpen={isPersonModalOpen} onClose={() => setIsPersonModalOpen(false)} onSelect={(item: any) => handleChange("person_id", item.id)} items={persons}
            title="Selecionar Pessoa" placeholder="Buscar perfil..."
            renderItem={(item: any) => (<p className="font-medium text-ink-primary">{item.name}</p>)}
            getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.name}
-           onCreateNew={() => { setIsPersonModalOpen(false); setIsCreatingParent({ type: "pessoa" }); }} createNewLabel="Cadastrar Pessoa"
+           onCreateNew={() => { setIsPersonModalOpen(false); setIsCreatingParent({ type: "pessoa" }); }} createNewLabel="Cadastrar Nova Pessoa"
         />
 
         <BottomSheet isOpen={isCreatingParent.type !== null} onClose={() => { setIsCreatingParent({ type: null }); setNewParentName(""); }} title={`Cadastrar ${isCreatingParent.type}`}>
@@ -659,10 +728,23 @@ export default function NewDocumentPage() {
           </div>
         </BottomSheet>
 
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading || uploading} className="flex items-center justify-center gap-2">
-            {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar documento</>}
-          </Button>
+        {/* BARRA DE NAVEGAÇÃO INFERIOR */}
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl flex gap-3">
+          {currentStep > 1 && (
+             <Button variant="secondary" size="lg" onClick={prevStep} disabled={loading || uploading} className="w-1/3 flex items-center justify-center">
+               <ChevronLeft size={20} />
+             </Button>
+          )}
+
+          {currentStep < 3 ? (
+             <Button variant="primary" size="lg" onClick={nextStep} className={`${currentStep === 1 ? 'w-full' : 'w-2/3'} flex items-center justify-center gap-2 shadow-lg shadow-ice/10`}>
+               Próximo <ChevronRight size={18} />
+             </Button>
+          ) : (
+             <Button variant="primary" size="lg" onClick={handleSubmit} disabled={loading || uploading} className="w-2/3 flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
+               {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Finalizar</>}
+             </Button>
+          )}
         </div>
       </main>
     </PageTransition>
