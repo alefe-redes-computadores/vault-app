@@ -289,7 +289,8 @@ export default function EditarDetalhePage() {
       });
 
       trigger("success");
-      router.push(`/detalhes?id=${id}`);
+      // CORREÇÃO: Usando replace para não criar histórico em cascata
+      router.replace(`/detalhes?id=${id}`);
     } catch (error) {
       console.error("Erro ao atualizar:", error);
       trigger("error");
@@ -312,7 +313,8 @@ export default function EditarDetalhePage() {
         created_at: new Date().toISOString()
       });
       trigger("success");
-      router.push("/"); 
+      // CORREÇÃO: Usando replace para não criar histórico em cascata
+      router.replace("/"); 
     } catch (error) {
       console.error("Erro ao excluir:", error);
       trigger("error");
@@ -328,7 +330,8 @@ export default function EditarDetalhePage() {
         <main className="flex min-h-screen items-center justify-center bg-void px-5">
           <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
             <p className="text-sm text-ink-muted">Documento não encontrado</p>
-            <Button variant="primary" onClick={() => router.push("/")} className="mt-5">Voltar</Button>
+            {/* CORREÇÃO: Usando replace para não criar histórico em cascata */}
+            <Button variant="primary" onClick={() => router.replace("/")} className="mt-5">Voltar</Button>
           </div>
         </main>
       </PageTransition>
