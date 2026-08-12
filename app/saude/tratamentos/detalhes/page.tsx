@@ -16,14 +16,15 @@ import {
   Calendar,
   ChevronRight,
   MoreVertical,
-  Stethoscope
+  Stethoscope,
+  Clock
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { DocumentCard } from "@/components/DocumentCard"; // Assumindo que você tem esse componente
+import { DocumentCard } from "@/components/DocumentCard";
 
 const fadeUp = {
   initial: { opacity: 0, y: 15 },
@@ -45,17 +46,13 @@ export default function TratamentoDetalhesPage() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
-  // 1. Busca os dados do Tratamento
   const tratamento = useLiveQuery(() => (id ? db.tratamentos.get(id) : undefined), [id]);
 
-  // 2. Busca TODOS os medicamentos vinculados a este tratamento
   const medicamentosVinculados = useLiveQuery(
     () => (id ? db.medicamentos.where({ tratamento_id: id }).toArray() : []),
     [id]
   ) || [];
 
-  // 3. Busca TODOS os documentos (receitas, laudos) vinculados a este tratamento
-  // Como o tratamento_id fica dentro do metadata no Dexie, precisamos buscar todos e filtrar
   const documentosVinculados = useLiveQuery(async () => {
     if (!id) return [];
     const todosDocs = await db.documents.where({ category_id: "saude" }).toArray();
@@ -76,7 +73,6 @@ export default function TratamentoDetalhesPage() {
 
   const IconComp = getTratamentoIcon(tratamento.nome);
 
-  // Separar Medicamentos Ativos e Descontinuados
   const medicamentosAtivos = medicamentosVinculados.filter(m => m.status !== "descontinuado");
   const medicamentosDescontinuados = medicamentosVinculados.filter(m => m.status === "descontinuado");
 
@@ -97,7 +93,6 @@ export default function TratamentoDetalhesPage() {
                 <h1 className="truncate font-display text-xl font-semibold text-ink-primary">Visão Geral</h1>
               </div>
             </div>
-            {/* Opção para Editar o nome do Tratamento no futuro */}
             <button className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted">
               <MoreVertical size={18} />
             </button>
@@ -106,7 +101,6 @@ export default function TratamentoDetalhesPage() {
 
         <section className="px-5 pt-6 space-y-6">
           
-          {/* HERO SECTION DO TRATAMENTO */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="relative overflow-hidden rounded-[32px] border border-violet-500/30 bg-surface p-6 shadow-sm">
             <div className="absolute -right-4 -top-4 opacity-5 pointer-events-none">
               <IconComp size={140} />
@@ -139,7 +133,6 @@ export default function TratamentoDetalhesPage() {
             </div>
           </motion.div>
 
-          {/* MEDICAMENTOS ATIVOS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
@@ -176,11 +169,10 @@ export default function TratamentoDetalhesPage() {
             )}
           </motion.div>
 
-          {/* HISTÓRICO DE DESCONTINUADOS (A Inteligência em Ação) */}
           {medicamentosDescontinuados.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
-                <History size={16} className="text-coral" />
+                <Clock size={16} className="text-coral" />
                 <h3 className="font-display text-base font-semibold text-ink-primary">Histórico (Descontinuados)</h3>
               </div>
               <div className="space-y-3 border-l-2 border-surface-border/50 ml-3 pl-4">
@@ -206,7 +198,6 @@ export default function TratamentoDetalhesPage() {
             </motion.div>
           )}
 
-          {/* DOCUMENTOS, EXAMES E LAUDOS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
             <div className="flex items-center justify-between pl-1 pr-1">
               <div className="flex items-center gap-2">
