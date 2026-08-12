@@ -76,6 +76,9 @@ export type DocumentType =
   | 'encaminhamento'
   | 'consulta'
   | 'cirurgia'
+  | 'exame_sangue'
+  | 'exame_imagem'
+  | 'credencial'
   | 'outro';
 
 export interface Attachment {
@@ -116,6 +119,9 @@ export const TYPE_CATEGORY_MAP: Record<DocumentType, CategoryId[]> = {
   encaminhamento: ['saude'],
   consulta: ['saude'],
   cirurgia: ['saude'],
+  exame_sangue: ['saude'],
+  exame_imagem: ['saude'],
+  credencial: ['saude'],
   certificado: ['pessoal', 'empresa', 'outros'],
   outro: ['pessoal', 'saude', 'empresa', 'outros']
 };
@@ -201,6 +207,19 @@ export const DOCUMENT_FIELDS: Record<
     { key: 'hospital', label: 'Hospital', type: 'select', required: true },
     { key: 'date', label: 'Data da Cirurgia', type: 'date', required: true },
   ],
+  exame_sangue: [
+    { key: 'laboratorio', label: 'Laboratório', type: 'select', required: true },
+    { key: 'data_exame', label: 'Data do Exame', type: 'date', required: true },
+  ],
+  exame_imagem: [
+    { key: 'hospital', label: 'Local / Hospital', type: 'select', required: true },
+    { key: 'tipo', label: 'Tipo de Exame (Ex: Raio-X, RM)', type: 'text', required: true },
+    { key: 'data_exame', label: 'Data do Exame', type: 'date', required: true },
+  ],
+  credencial: [
+    { key: 'orgao', label: 'Órgão Emissor / Instituição', type: 'text', required: true },
+    { key: 'validade', label: 'Validade', type: 'date', required: true },
+  ],
   outro: [
     { key: 'custom_field_1', label: 'Campo personalizado 1', type: 'text' },
     { key: 'custom_field_2', label: 'Campo personalizado 2', type: 'text' },
@@ -222,6 +241,9 @@ export type LaudoMetadata = { doctor: string; specialty: string; hospital: strin
 export type EncaminhamentoMetadata = { from: string; to?: string; reason: string; date: string; };
 export type ConsultaMetadata = { doctor: string; specialty: string; hospital?: string; date: string; reason?: string; };
 export type CirurgiaMetadata = { procedure: string; doctor: string; hospital: string; date: string; };
+export type ExameSangueMetadata = { laboratorio: string; data_exame: string; };
+export type ExameImagemMetadata = { hospital: string; tipo: string; data_exame: string; };
+export type CredencialMetadata = { orgao: string; validade: string; };
 
 // ============================================================
 // 5. FILA DE SINCRONIZAÇÃO
@@ -238,6 +260,7 @@ export interface SyncQueueItem {
     | 'medicos'
     | 'farmacias'
     | 'hospitais'
+    | 'laboratorios'
     | 'doseLogs'
     | 'credentials' 
     | 'cards'
@@ -268,6 +291,10 @@ export interface Medicamento {
   observacoes?: string;
   tipo_receita?: TipoReceita;
   tratamento_id?: string;
+  forma_farmaceutica?: 'capsula' | 'comprimido' | 'gota' | 'injecao' | 'adesivo';
+  cor_principal?: string;
+  cor_secundaria?: string;
+  status?: 'ativo' | 'descontinuado';
   estoque_quantidade?: number;
   estoque_data_referencia?: string;
   estoque_horarios?: string[];
@@ -368,6 +395,17 @@ export interface Farmacia {
 }
 
 export interface Hospital {
+  id?: string;
+  user_id: string;
+  nome: string;
+  endereco?: string;
+  telefone?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface Laboratorio {
   id?: string;
   user_id: string;
   nome: string;
