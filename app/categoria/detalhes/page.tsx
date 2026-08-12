@@ -15,22 +15,36 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 
 const getFieldsForType = (type: DocumentType) => {
-  const commonFields = [
-    { key: "number", label: "Número", type: "text" },
-    { key: "issue_date", label: "Data de emissão", type: "date" },
-    { key: "expiry_date", label: "Data de validade", type: "date" },
-    { key: "issuer", label: "Órgão emissor", type: "text" },
-  ];
-
-  // AQUI ESTÁ A CORREÇÃO QUE A VERCEL ESTÁ PEDINDO:
+  // AQUI ESTÁ A CORREÇÃO: Adicionamos os novos tipos para satisfazer o Record do TypeScript
   const fieldMap: Record<DocumentType, Array<{ key: string; label: string; type: string }>> = {
-    rg: commonFields,
+    rg: [
+      { key: "modelo", label: "Modelo (C.I.N ou RG Antigo)", type: "text" },
+      { key: "cpf", label: "Número do CPF", type: "text" },
+      { key: "rg_number", label: "Número do RG (Se antigo)", type: "text" },
+      { key: "issue_date", label: "Data de emissão", type: "date" },
+      { key: "expiry_date", label: "Data de validade", type: "date" },
+      { key: "issuer", label: "Órgão emissor", type: "text" },
+    ],
     cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
     cnh: [
       { key: "number", label: "Número da CNH", type: "text" },
       { key: "category", label: "Categoria", type: "text" },
       { key: "issue_date", label: "Data de emissão", type: "date" },
       { key: "expiry_date", label: "Data de validade", type: "date" },
+    ],
+    certidao_nascimento: [
+      { key: 'nome_registrado', label: 'Nome Registrado', type: 'text' },
+      { key: 'matricula', label: 'Matrícula', type: 'text' },
+      { key: 'livro', label: 'Livro', type: 'text' },
+      { key: 'folha', label: 'Folha', type: 'text' },
+      { key: 'termo', label: 'Termo', type: 'text' },
+      { key: 'cartorio', label: 'Cartório de Registro', type: 'text' },
+      { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date' },
+    ],
+    titulo_eleitor: [
+      { key: 'number', label: 'Número do Título', type: 'text' },
+      { key: 'zona', label: 'Zona Eleitoral', type: 'text' },
+      { key: 'secao', label: 'Seção', type: 'text' },
     ],
     certificado: [
       { key: "institution", label: "Instituição", type: "text" },
@@ -304,9 +318,11 @@ export default function EditarDetalhePage() {
                 onChange={(e) => handleChange("type", e.target.value as DocumentType)}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised py-3 pl-10 pr-4 text-ink-primary outline-none transition-colors focus:border-ice/50"
               >
-                <option value="rg">RG</option>
+                <option value="rg">C.I.N / RG</option>
                 <option value="cpf">CPF</option>
                 <option value="cnh">CNH</option>
+                <option value="certidao_nascimento">Certidão de Nascimento</option>
+                <option value="titulo_eleitor">Título de Eleitor</option>
                 <option value="certificado">Certificado</option>
                 <option value="receita">Receita</option>
                 <option value="prontuario">Prontuário</option>
