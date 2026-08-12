@@ -1,17 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  ArrowLeft,
-  Save,
-  Loader2,
-  User,
-  Layers3,
-  FileText,
-  Activity,
-} from "lucide-react";
+import { ArrowLeft, Save, Loader2, FileText, Layers3, Trash2 } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -21,10 +13,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
-import { useToast } from "@/components/ToastProvider";
-import { SelectionModal } from "@/components/SelectionModal";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
 
 const getFieldsForType = (type: DocumentType) => {
   const commonFields = [
@@ -34,11 +24,15 @@ const getFieldsForType = (type: DocumentType) => {
     { key: "issuer", label: "Órgão emissor", type: "text" },
   ];
 
-  const fieldMap: Record<
-    DocumentType,
-    Array<{ key: string; label: string; type: string }>
-  > = {
-    rg: commonFields,
+  const fieldMap: Record<DocumentType, Array<{ key: string; label: string; type: string }>> = {
+    rg: [
+      { key: "modelo", label: "Modelo (C.I.N ou RG Antigo)", type: "text" },
+      { key: "cpf", label: "Número do CPF", type: "text" },
+      { key: "rg_number", label: "Número do RG (Se antigo)", type: "text" },
+      { key: "issue_date", label: "Data de emissão", type: "date" },
+      { key: "expiry_date", label: "Data de validade", type: "date" },
+      { key: "issuer", label: "Órgão emissor", type: "text" },
+    ],
     cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
     cnh: [
       { key: "number", label: "Número da CNH", type: "text" },
@@ -47,18 +41,18 @@ const getFieldsForType = (type: DocumentType) => {
       { key: "expiry_date", label: "Data de validade", type: "date" },
     ],
     certidao_nascimento: [
-      { key: "nome_registrado", label: "Nome Registrado", type: "text" },
-      { key: "matricula", label: "Matrícula", type: "text" },
-      { key: "livro", label: "Livro", type: "text" },
-      { key: "folha", label: "Folha", type: "text" },
-      { key: "termo", label: "Termo", type: "text" },
-      { key: "cartorio", label: "Cartório de Registro", type: "text" },
-      { key: "data_nascimento", label: "Data de Nascimento", type: "date" },
+      { key: 'nome_registrado', label: 'Nome Registrado', type: 'text' },
+      { key: 'matricula', label: 'Matrícula', type: 'text' },
+      { key: 'livro', label: 'Livro', type: 'text' },
+      { key: 'folha', label: 'Folha', type: 'text' },
+      { key: 'termo', label: 'Termo', type: 'text' },
+      { key: 'cartorio', label: 'Cartório de Registro', type: 'text' },
+      { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date' },
     ],
     titulo_eleitor: [
-      { key: "number", label: "Número do Título", type: "text" },
-      { key: "zona", label: "Zona Eleitoral", type: "text" },
-      { key: "secao", label: "Seção", type: "text" },
+      { key: 'number', label: 'Número do Título', type: 'text' },
+      { key: 'zona', label: 'Zona Eleitoral', type: 'text' },
+      { key: 'secao', label: 'Seção', type: 'text' },
     ],
     certificado: [
       { key: "institution", label: "Instituição", type: "text" },
@@ -105,6 +99,19 @@ const getFieldsForType = (type: DocumentType) => {
       { key: "hospital", label: "Hospital", type: "text" },
       { key: "date", label: "Data da Cirurgia", type: "date" },
     ],
+    exame_sangue: [
+      { key: 'laboratorio', label: 'Laboratório', type: 'text' },
+      { key: 'data_exame', label: 'Data do Exame', type: 'date' },
+    ],
+    exame_imagem: [
+      { key: 'hospital', label: 'Local / Hospital', type: 'text' },
+      { key: 'tipo', label: 'Tipo de Exame', type: 'text' },
+      { key: 'data_exame', label: 'Data do Exame', type: 'date' },
+    ],
+    credencial: [
+      { key: 'orgao', label: 'Órgão Emissor', type: 'text' },
+      { key: 'validade', label: 'Validade', type: 'date' },
+    ],
     outro: [
       { key: "custom_field_1", label: "Campo 1", type: "text" },
       { key: "custom_field_2", label: "Campo 2", type: "text" },
@@ -115,18 +122,21 @@ const getFieldsForType = (type: DocumentType) => {
 };
 
 const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
-  { id: "rg", label: "RG" },
+  { id: "rg", label: "C.I.N / RG" },
   { id: "cpf", label: "CPF" },
   { id: "cnh", label: "CNH" },
-  { id: "certidao_nascimento", label: "Certidão de Nascimento" },
-  { id: "titulo_eleitor", label: "Título de Eleitor" },
+  { id: "certidao_nascimento", label: "Cert. Nascimento" },
+  { id: "titulo_eleitor", label: "Título Eleitor" },
   { id: "certificado", label: "Certificado" },
   { id: "receita", label: "Receita" },
   { id: "prontuario", label: "Prontuário" },
   { id: "laudo", label: "Laudo" },
-  { id: "encaminhamento", label: "Encaminhamento" },
+  { id: "encaminhamento", label: "Encaminhar" },
   { id: "consulta", label: "Consulta" },
   { id: "cirurgia", label: "Cirurgia" },
+  { id: "exame_sangue", label: "Sangue" },
+  { id: "exame_imagem", label: "Raio-X/RM" },
+  { id: "credencial", label: "Credencial" },
   { id: "outro", label: "Outro" },
 ];
 
@@ -134,17 +144,16 @@ export default function EditarDetalhePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = searchParams.get("id");
-  const { showToast } = useToast();
+  const id = searchParams.get("id") || "";
 
-  const doc = useDocument(id || "");
+  const doc = useDocument(id);
   const persons = usePersons();
   const { updateDocument } = useSafeDb();
 
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
-
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     person_id: "",
@@ -170,11 +179,7 @@ export default function EditarDetalhePage() {
     }
   }, [doc]);
 
-  const selectedTratamento = tratamentos.find(
-    (t: any) => String(t.id) === formData.metadata?.tratamento_id
-  );
-
-  const fields = getFieldsForType(formData.type);
+  const fields = useMemo(() => getFieldsForType(formData.type), [formData.type]);
 
   const handleChange = (field: keyof typeof formData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -201,7 +206,6 @@ export default function EditarDetalhePage() {
     }
 
     setLoading(true);
-
     try {
       await updateDocument(id, {
         person_id: formData.person_id,
@@ -212,16 +216,38 @@ export default function EditarDetalhePage() {
         metadata: formData.metadata,
         attachments: formData.attachments,
       });
-
       trigger("success");
-      showToast("Documento atualizado com sucesso!", "success");
       router.push(`/detalhes?id=${id}`);
     } catch (error) {
       console.error("Erro ao atualizar:", error);
       trigger("error");
-      showToast("Erro ao atualizar documento", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await db.documents.delete(id);
+      
+      await db.syncQueue.add({
+        id: crypto.randomUUID(),
+        table: 'documents',
+        operation: 'delete',
+        payload: { id },
+        created_at: new Date().toISOString()
+      });
+
+      trigger("success");
+      router.push("/"); 
+    } catch (error) {
+      console.error("Erro ao excluir:", error);
+      trigger("error");
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -229,13 +255,9 @@ export default function EditarDetalhePage() {
     return (
       <PageTransition>
         <main className="flex min-h-screen items-center justify-center bg-void px-5">
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
+          <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
             <p className="text-sm text-ink-muted">Documento não encontrado</p>
-            <Button
-              variant="primary"
-              onClick={() => router.push("/")}
-              className="mt-4"
-            >
+            <Button variant="primary" onClick={() => router.push("/")} className="mt-5">
               Voltar
             </Button>
           </div>
@@ -246,7 +268,7 @@ export default function EditarDetalhePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
+      <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -254,63 +276,64 @@ export default function EditarDetalhePage() {
                 trigger("vibrate");
                 router.back();
               }}
-              aria-label="Voltar"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
                 Vault
               </p>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
                 Editar documento
               </h1>
-              <p className="mt-1 truncate text-sm text-ink-muted">
-                Atualize as informações de “{doc.title}”
-              </p>
             </div>
+
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                setShowDeleteModal(true);
+              }}
+              aria-label="Excluir documento"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+            >
+              <Trash2 size={16} />
+            </button>
           </div>
         </header>
 
         <section className="space-y-4 px-5 pt-6">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28 }}
+            transition={{ duration: 0.22 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm"
           >
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-surface-border/50 bg-surface-raised shadow-sm">
-                <FileText size={28} className="text-ice" />
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised">
+                <FileText size={22} className="text-ice" />
               </div>
-
               <div className="min-w-0">
-                <p className="text-sm text-ink-muted">Edição</p>
-                <p className="truncate font-display text-lg font-semibold text-ink-primary">
+                <p className="text-sm text-ink-muted">Documento atual</p>
+                <h2 className="truncate font-display text-lg font-semibold text-ink-primary">
                   {formData.title || "Sem título"}
-                </p>
+                </h2>
                 <p className="mt-1 text-xs leading-5 text-ink-faint">
-                  Revise os dados do documento e salve as alterações com segurança.
+                  Atualize os dados visíveis do documento sem alterar o fluxo já existente.
                 </p>
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, delay: 0.03 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm"
+            transition={{ duration: 0.22, delay: 0.03 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
           >
-            <div className="mb-5 flex items-center gap-2">
-              <User size={16} className="text-ice" />
-              <h2 className="font-display text-lg font-semibold text-ink-primary">
-                Pessoa vinculada
-              </h2>
-            </div>
-
+            <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa</p>
             <div className="flex flex-wrap gap-2">
               {persons.map((person: any) => (
                 <button
@@ -318,7 +341,7 @@ export default function EditarDetalhePage() {
                   onClick={() => handleChange("person_id", person.id!)}
                   className={`rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
                     formData.person_id === person.id
-                      ? "border-ice bg-ice/10 text-ice"
+                      ? "border-ice bg-ice/12 text-ice"
                       : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                   }`}
                 >
@@ -328,159 +351,107 @@ export default function EditarDetalhePage() {
             </div>
           </motion.div>
 
-          {formData.category_id === "saude" && (
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.28, delay: 0.05 }}
-              className="rounded-[28px] border border-violet-500/30 bg-surface px-5 py-6 shadow-sm"
-            >
-              <div className="mb-3 flex items-center gap-2">
-                <Activity size={16} className="text-violet-400" />
-                <h2 className="font-display text-lg font-semibold text-ink-primary">
-                  Tratamento Vinculado
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  setIsTratamentoModalOpen(true);
-                }}
-                className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-violet-400/40"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Activity size={18} className="text-violet-400 shrink-0" />
-                  <span className="truncate font-medium">
-                    {selectedTratamento ? selectedTratamento.nome : "Nenhum tratamento vinculado (Opcional)"}
-                  </span>
-                </div>
-                <span className="text-xs text-violet-400 shrink-0 font-medium">Alterar</span>
-              </button>
-            </motion.div>
-          )}
-
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, delay: 0.06 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm"
+            transition={{ duration: 0.22, delay: 0.06 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
           >
-            <div className="mb-5 flex items-center gap-2">
-              <Layers3 size={16} className="text-ice" />
-              <h2 className="font-display text-lg font-semibold text-ink-primary">
-                Classificação
-              </h2>
-            </div>
-
-            <div className="mb-5">
-              <label className="mb-2 block text-sm font-medium text-ink-primary">
-                Categoria
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {Object.values(CATEGORIES).map((cat: any) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => handleChange("category_id", cat.id)}
-                    className={`rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
-                      formData.category_id === cat.id
-                        ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-ink-primary">
-                Tipo de documento
-              </label>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {DOCUMENT_TYPES.map((typeObj) => {
-                  const active = formData.type === typeObj.id;
-                  return (
-                    <button
-                      key={typeObj.id}
-                      type="button"
-                      onClick={() => {
-                        trigger("vibrate");
-                        handleChange("type", typeObj.id);
-                      }}
-                      className={`rounded-2xl border px-3 py-3 text-left text-xs font-medium transition-all active:scale-95 ${
-                        active
-                          ? "border-ice bg-ice/12 text-ice"
-                          : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                      }`}
-                    >
-                      {typeObj.label}
-                    </button>
-                  );
-                })}
-              </div>
+            <p className="mb-3 text-sm font-medium text-ink-primary">Categoria</p>
+            <div className="flex flex-wrap gap-2">
+              {Object.values(CATEGORIES).map((cat: any) => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleChange("category_id", cat.id)}
+                  className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
+                    formData.category_id === cat.id
+                      ? "border-ice bg-ice/12 text-ice"
+                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                  }`}
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: cat.color }}
+                  />
+                  {cat.name}
+                </button>
+              ))}
             </div>
           </motion.div>
 
+          {/* GRID BONITO DO TIPO DE DOCUMENTO AO INVÉS DE SELECT FEIO */}
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, delay: 0.09 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm"
+            transition={{ duration: 0.22, delay: 0.09 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
           >
-            <div className="mb-5 flex items-center gap-2">
-              <FileText size={16} className="text-ice" />
-              <h2 className="font-display text-lg font-semibold text-ink-primary">
-                Informações principais
-              </h2>
-            </div>
-
-            <div className="space-y-4">
-              <Input
-                label="Título"
-                value={formData.title}
-                onChange={(e) => handleChange("title", e.target.value)}
-                error={errors.title}
-              />
-
-              {fields.map((field: any, index: number) => (
-                <motion.div
-                  key={field.key}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, delay: 0.02 * index }}
-                >
-                  <Input
-                    label={field.label}
-                    type={field.type === "date" ? "date" : "text"}
-                    value={formData.metadata[field.key] || ""}
-                    onChange={(e) =>
-                      handleMetadataChange(field.key, e.target.value)
-                    }
-                  />
-                </motion.div>
-              ))}
-
-              <TextArea
-                label="Notas"
-                value={formData.description}
-                onChange={(e) => handleChange("description", e.target.value)}
-              />
+            <label className="mb-3 block text-sm font-medium text-ink-primary">Tipo</label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {DOCUMENT_TYPES.map((typeObj) => {
+                const active = formData.type === typeObj.id;
+                return (
+                  <button
+                    key={typeObj.id}
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      handleChange("type", typeObj.id);
+                    }}
+                    className={`rounded-2xl border px-3 py-3 text-left text-xs font-medium transition-all active:scale-95 ${
+                      active
+                        ? "border-ice bg-ice/12 text-ice"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                    }`}
+                  >
+                    {typeObj.label}
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.16 }}
+            transition={{ duration: 0.22, delay: 0.12 }}
+            className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
+          >
+            <Input
+              label="Título"
+              value={formData.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+              error={errors.title}
+            />
+
+            {fields.map((field: any) => (
+              <Input
+                key={field.key}
+                label={field.label}
+                type={field.type === "date" ? "date" : "text"}
+                value={formData.metadata[field.key] || ""}
+                onChange={(e) => handleMetadataChange(field.key, e.target.value)}
+              />
+            ))}
+
+            <TextArea
+              label="Notas"
+              value={formData.description}
+              onChange={(e) => handleChange("description", e.target.value)}
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.15 }}
           >
             <Button
               variant="primary"
               size="lg"
               fullWidth
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading || deleting}
               className="flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -498,32 +469,16 @@ export default function EditarDetalhePage() {
           </motion.div>
         </section>
 
-        <SelectionModal
-          isOpen={isTratamentoModalOpen}
-          onClose={() => setIsTratamentoModalOpen(false)}
-          onSelect={(item: any) => {
-            trigger("vibrate");
-            handleMetadataChange("tratamento_id", item.id!);
-          }}
-          items={tratamentos}
-          title="Vincular a Tratamento"
-          placeholder="Buscar tratamento..."
-          renderItem={(item: any) => (
-            <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
-              {item.condicao && (
-                <p className="text-xs text-ink-muted capitalize">{item.condicao}</p>
-              )}
-            </div>
-          )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
-          onCreateNew={() => {
-            setIsTratamentoModalOpen(false);
-            trigger("vibrate");
-            router.push("/saude/tratamentos/novo");
-          }}
-          createNewLabel="Novo Tratamento"
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir documento"
+          message={`Tem certeza que deseja excluir "${formData.title}"? Esta ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          cancelLabel="Cancelar"
+          isLoading={deleting}
+          type="danger"
         />
       </main>
     </PageTransition>
