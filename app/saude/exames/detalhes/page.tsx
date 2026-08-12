@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
@@ -13,7 +13,6 @@ import {
   ExternalLink, 
   Trash2, 
   Edit3,
-  Loader2,
   AlertCircle
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -22,7 +21,6 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { Button } from "@/components/ui/Button";
 
 export default function DetalhesExamePage() {
   const { trigger } = useHapticFeedback();
@@ -92,12 +90,22 @@ export default function DetalhesExamePage() {
               </div>
             </div>
 
-            <button
-              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral active:scale-95"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { trigger("vibrate"); router.push(`/saude/exames/editar?id=${exame.id}`); }}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice active:scale-95"
+                title="Editar Exame"
+              >
+                <Edit3 size={16} />
+              </button>
+              <button
+                onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral active:scale-95"
+                title="Excluir Exame"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
         </header>
 
