@@ -2,8 +2,22 @@
 
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Activity, Plus, FolderHeart, Calendar, Pill, Edit3 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  ArrowLeft, 
+  Activity, 
+  Plus, 
+  Calendar, 
+  Pill, 
+  Edit3,
+  Brain,
+  Flame,
+  HeartPulse,
+  ShieldAlert,
+  ChevronRight,
+  History,
+  FileText
+} from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -30,6 +44,20 @@ const cardVariants = {
     transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
   },
 };
+
+const fadeUp = {
+  initial: { opacity: 0, y: 15 },
+  animate: { opacity: 1, y: 0 },
+};
+
+function getTratamentoIcon(nome: string) {
+  const n = nome.toLowerCase();
+  if (n.includes("tdah")) return Brain;
+  if (n.includes("dor") || n.includes("neuropática")) return Flame;
+  if (n.includes("depress")) return HeartPulse;
+  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
+  return Activity;
+}
 
 function TratamentoContent() {
   const { trigger } = useHapticFeedback();
@@ -92,22 +120,28 @@ function TratamentoContent() {
   if (isLoading) return <LoadingSkeleton />;
   if (!tratamento) return null;
 
+  const IconComp = getTratamentoIcon(tratamento.nome);
+  
+  // Inteligência de Separação de Status
+  const medicamentosAtivos = linkedMedicamentos.filter(m => m.status !== "descontinuado");
+  const medicamentosDescontinuados = linkedMedicamentos.filter(m => m.status === "descontinuado");
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => { trigger("vibrate"); router.back(); }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
                 <ArrowLeft size={18} className="text-ink-primary" />
               </button>
               
               <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-violet-300">Tratamento</p>
-                <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">{tratamento.nome}</h1>
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-violet-400/90">Painel Clínico</p>
+                <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">Visão Geral</h1>
               </div>
             </div>
 
@@ -115,81 +149,145 @@ function TratamentoContent() {
               <button
                 onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/editar?id=${tratamento.id}`); }}
                 aria-label="Editar tratamento"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
               >
-                <Edit3 size={18} />
+                <Edit3 size={16} />
               </button>
               <button
                 onClick={() => { trigger("vibrate"); router.push("/novo"); }}
                 aria-label="Adicionar documento"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ice text-void transition-all active:scale-95 shadow-md shadow-ice/20"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ice text-void transition-all active:scale-95 shadow-md shadow-ice/20"
               >
-                <Plus size={20} />
+                <Plus size={18} />
               </button>
             </div>
           </div>
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-violet-400/10 text-violet-400">
-                <Activity size={24} />
+          
+          {/* HERO SECTION DO TRATAMENTO */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="relative overflow-hidden rounded-[32px] border border-violet-500/30 bg-surface p-6 shadow-sm">
+            <div className="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+              <IconComp size={140} />
+            </div>
+            
+            <div className="relative z-10 flex items-start gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 border border-violet-400/20 text-violet-400 shadow-sm">
+                <IconComp size={28} />
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="font-display text-base font-semibold text-ink-primary">Detalhes do quadro</h2>
-                <div className="mt-2 space-y-1 text-sm text-ink-muted">
-                  <p><span className="font-medium text-ink-primary">Status:</span> {tratamento.status === "ativo" ? "Em andamento" : tratamento.status === "concluido" ? "Concluído" : "Suspenso"}</p>
-                  {tratamento.condicao && <p><span className="font-medium text-ink-primary">CID / Condição:</span> {tratamento.condicao}</p>}
-                  <p className="flex items-center gap-1.5 mt-1">
-                    <Calendar size={14} className="text-ink-faint" />
-                    <span>Iniciado em {new Date(tratamento.created_at).toLocaleDateString("pt-BR")}</span>
-                  </p>
+              <div className="min-w-0 pt-1">
+                <h2 className="font-display text-2xl font-bold text-ink-primary leading-tight">{tratamento.nome}</h2>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                    tratamento.status === "ativo" ? "bg-emerald-400/10 border border-emerald-400/20 text-emerald-400" : 
+                    tratamento.status === "concluido" ? "bg-ice/10 border border-ice/20 text-ice" : 
+                    "bg-coral/10 border border-coral/20 text-coral"
+                  }`}>
+                    {tratamento.status === "ativo" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>}
+                    {tratamento.status === "ativo" ? "Em andamento" : tratamento.status === "concluido" ? "Concluído" : "Suspenso"}
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div>
-            <h3 className="font-display text-sm font-semibold text-ink-primary mb-3">
-              Medicamentos em uso ({linkedMedicamentos.length})
-            </h3>
-            {linkedMedicamentos.length === 0 ? (
-              <div className="rounded-[20px] border border-dashed border-surface-border/60 bg-surface/30 p-4 text-center text-xs text-ink-muted">
-                Nenhum medicamento vinculado. Edite o medicamento no estoque e selecione este tratamento.
+            {tratamento.condicao && (
+              <div className="relative z-10 mt-4 rounded-xl bg-surface-raised/50 border border-surface-border/40 p-3">
+                <p className="text-xs text-ink-muted"><span className="font-medium text-ink-primary">CID / Condição:</span> {tratamento.condicao}</p>
+              </div>
+            )}
+
+            <div className="relative z-10 mt-5 grid grid-cols-2 gap-3 border-t border-surface-border/50 pt-5">
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-ink-muted">Medicamentos</span>
+                <span className="font-mono text-xl font-semibold text-ink-primary mt-0.5">{medicamentosAtivos.length} <span className="text-xs font-normal text-ink-faint">ativos</span></span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-ink-muted">Laudos / Receitas</span>
+                <span className="font-mono text-xl font-semibold text-ink-primary mt-0.5">{linkedDocuments.length}</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* MEDICAMENTOS ATIVOS */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
+            <div className="flex items-center gap-2 pl-1">
+              <Pill size={16} className="text-ice" />
+              <h3 className="font-display text-base font-semibold text-ink-primary">Medicamentos em Uso</h3>
+            </div>
+
+            {medicamentosAtivos.length === 0 ? (
+              <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">
+                <p className="text-sm text-ink-muted">Nenhum medicamento ativo vinculado a este tratamento.</p>
               </div>
             ) : (
-              <div className="space-y-2.5">
-                {linkedMedicamentos.map((med: any) => (
+              <div className="space-y-3">
+                {medicamentosAtivos.map((med: any) => (
                   <div
                     key={med.id}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${med.id}`); }}
-                    className="flex items-center justify-between rounded-[20px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 cursor-pointer"
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
+                    className="group cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.98] hover:border-ice/30"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                        <Pill size={18} />
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice border border-ice/10">
+                          <Pill size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-ink-primary text-[15px]">{med.nome}</p>
+                          <p className="truncate text-xs text-ink-muted mt-0.5">{med.dosagem} • Dr(a). {med.medico}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-ink-primary">
-                          {med.nome} <span className="text-xs font-normal text-ink-muted">({med.dosagem})</span>
-                        </p>
-                        <p className="text-xs text-ink-muted">Dr(a). {med.medico}</p>
-                      </div>
+                      <ChevronRight size={18} className="text-ink-faint group-hover:text-ice transition-colors" />
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
 
-          <div>
-            <h3 className="font-display text-sm font-semibold text-ink-primary mb-3">
-              Documentos e Receitas ({linkedDocuments.length})
-            </h3>
+          {/* HISTÓRICO DE DESCONTINUADOS */}
+          {medicamentosDescontinuados.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
+              <div className="flex items-center gap-2 pl-1">
+                <History size={16} className="text-coral" />
+                <h3 className="font-display text-base font-semibold text-ink-primary">Histórico (Descontinuados)</h3>
+              </div>
+              <div className="space-y-3 border-l-2 border-surface-border/50 ml-3 pl-4">
+                {medicamentosDescontinuados.map((med: any) => (
+                  <div key={med.id} onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }} className="relative rounded-2xl border border-coral/10 bg-surface-raised/60 p-3.5 cursor-pointer">
+                    <div className="absolute -left-[23px] top-4 h-2.5 w-2.5 rounded-full bg-coral border-2 border-void ring-1 ring-surface-border/50"></div>
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="font-semibold text-ink-primary text-sm line-through opacity-70">{med.nome} {med.dosagem}</p>
+                      <span className="text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md">SUSPENSO</span>
+                    </div>
+                    {med.motivo_descontinuacao && (
+                      <p className="text-xs text-ink-muted italic mb-2">"{med.motivo_descontinuacao}"</p>
+                    )}
+                    {med.medicamento_substituto_nome && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-ice mt-2 bg-ice/10 w-fit px-2 py-1 rounded-md border border-ice/10">
+                        <ArrowLeft size={10} className="rotate-180" />
+                        Substituído por: {med.medicamento_substituto_nome}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* DOCUMENTOS, EXAMES E LAUDOS */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
+            <div className="flex items-center justify-between pl-1 pr-1">
+              <div className="flex items-center gap-2">
+                <FileText size={16} className="text-emerald-400" />
+                <h3 className="font-display text-base font-semibold text-ink-primary">Receitas e Laudos</h3>
+              </div>
+            </div>
+
             {linkedDocuments.length === 0 ? (
-              <div className="text-center py-6 border border-dashed border-surface-border rounded-2xl text-ink-muted text-xs">
-                Nenhum documento ou receita vinculada.
+              <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">
+                <p className="text-sm text-ink-muted">Nenhum documento ou laudo vinculado a este tratamento.</p>
               </div>
             ) : (
               <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-4">
@@ -200,7 +298,8 @@ function TratamentoContent() {
                 ))}
               </motion.div>
             )}
-          </div>
+          </motion.div>
+
         </section>
       </main>
     </PageTransition>
