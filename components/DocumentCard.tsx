@@ -72,6 +72,20 @@ const TYPE_LABELS: Record<string, string> = {
   outro: "Outro",
 };
 
+// Funções utilitárias de formatação de documentos
+const formatCPF = (val: string) => {
+  const digits = val.replace(/\D/g, "");
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+
+const formatRG = (val: string) => {
+  const digits = val.replace(/\D/g, "");
+  if (digits.length === 9) {
+    return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4");
+  }
+  return val;
+};
+
 // Formatação blindada para datas
 const formatDate = (dateString?: string) => {
   if (!dateString || dateString.trim() === "") return null;
@@ -154,7 +168,19 @@ function DocumentCardComponent({
       ].includes(key)
   );
   
-  const firstMetadata = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
+  const rawFirstMeta = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
+  
+  const firstMetadata = (() => {
+    if (!rawFirstMeta) return null;
+    const strVal = String(rawFirstMeta);
+    if (metadataKeys[0].includes("cpf") || (metadataKeys[0] === "number" && strVal.length === 11)) {
+      return formatCPF(strVal);
+    }
+    if (metadataKeys[0].includes("rg") && strVal.length >= 7) {
+      return formatRG(strVal);
+    }
+    return strVal;
+  })();
 
   const rawIssueDate = document.metadata?.issue_date || document.metadata?.data_nascimento || document.metadata?.data_exame || document.metadata?.date;
   const rawExpiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date || document.metadata?.validade;
@@ -195,11 +221,12 @@ function DocumentCardComponent({
             <TypeIcon size={18} style={{ color }} />
           </div>
 
+          {/* Container flexível com min-w-0 para conter o texto e evitar estouro */}
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                {/* Força o bloco a ocupar 100% e impede o corte de letras */}
-                <h3 className="w-full whitespace-normal break-words font-display text-[15px] font-semibold leading-snug text-ink-primary">
+                {/* Título blindado contra cortes com quebra de palavras */}
+                <h3 className="w-full break-words font-display text-[15px] font-semibold leading-snug text-ink-primary">
                   {document.title}
                 </h3>
 
