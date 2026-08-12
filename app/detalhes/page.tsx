@@ -1,265 +1,238 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2, FileText, Layers3, Trash2, ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft,
+  Star,
+  Trash2,
+  Edit,
+  FileText,
+  Share2,
+  Download,
+  X,
+  Image as ImageIcon,
+  File,
+  User,
+  Building2,
+  Heart,
+  FolderOpen,
+  Pencil,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+  Paperclip,
+  ChevronRight,
+} from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
-import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
+import { CATEGORIES, type Attachment, type CategoryId } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { TextArea } from "@/components/ui/TextArea";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { PageTransition } from "@/components/PageTransition";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { SelectionModal } from "@/components/SelectionModal";
+import { useToast } from "@/components/ToastProvider";
+import { ExportCardButton } from "@/components/ExportCardButton";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import { db } from "@/lib/db";
 
-const getFieldsForType = (type: DocumentType) => {
-  const commonFields = [
-    { key: "number", label: "Número", type: "text" },
-    { key: "issue_date", label: "Data de emissão", type: "date" },
-    { key: "expiry_date", label: "Data de validade", type: "date" },
-    { key: "issuer", label: "Órgão emissor", type: "text" },
-  ];
-
-  const fieldMap: Record<DocumentType, Array<{ key: string; label: string; type: string }>> = {
-    rg: commonFields,
-    cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
-    cnh: [
-      { key: "number", label: "Número da CNH", type: "text" },
-      { key: "category", label: "Categoria", type: "text" },
-      { key: "issue_date", label: "Data de emissão", type: "date" },
-      { key: "expiry_date", label: "Data de validade", type: "date" },
-    ],
-    certidao_nascimento: [
-      { key: 'nome_registrado', label: 'Nome Registrado', type: 'text' },
-      { key: 'matricula', label: 'Matrícula', type: 'text' },
-      { key: 'livro', label: 'Livro', type: 'text' },
-      { key: 'folha', label: 'Folha', type: 'text' },
-      { key: 'termo', label: 'Termo', type: 'text' },
-      { key: 'cartorio', label: 'Cartório de Registro', type: 'text' },
-      { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date' },
-    ],
-    titulo_eleitor: [
-      { key: 'number', label: 'Número do Título', type: 'text' },
-      { key: 'zona', label: 'Zona Eleitoral', type: 'text' },
-      { key: 'secao', label: 'Seção', type: 'text' },
-    ],
-    certificado: [
-      { key: "institution", label: "Instituição", type: "text" },
-      { key: "course", label: "Curso", type: "text" },
-      { key: "duration", label: "Duração", type: "text" },
-      { key: "completion_date", label: "Data de conclusão", type: "date" },
-    ],
-    receita: [
-      { key: "medication", label: "Medicamento", type: "text" },
-      { key: "dosage", label: "Dosagem", type: "text" },
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "pharmacy", label: "Farmácia", type: "text" },
-      { key: "prescription_date", label: "Data da receita", type: "date" },
-      { key: "renewal_date", label: "Próxima renovação", type: "date" },
-    ],
-    prontuario: [
-      { key: "hospital", label: "Hospital", type: "text" },
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "specialty", label: "Especialidade", type: "text" },
-      { key: "date", label: "Data", type: "date" },
-    ],
-    laudo: [
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "specialty", label: "Especialidade", type: "text" },
-      { key: "hospital", label: "Hospital", type: "text" },
-      { key: "date", label: "Data", type: "date" },
-    ],
-    encaminhamento: [
-      { key: "from", label: "Quem encaminhou", type: "text" },
-      { key: "to", label: "Para quem", type: "text" },
-      { key: "reason", label: "Motivo", type: "text" },
-      { key: "date", label: "Data", type: "date" },
-    ],
-    consulta: [
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "specialty", label: "Especialidade", type: "text" },
-      { key: "hospital", label: "Clínica / Hospital", type: "text" },
-      { key: "date", label: "Data da Consulta", type: "date" },
-      { key: "reason", label: "Motivo da Consulta", type: "text" },
-    ],
-    cirurgia: [
-      { key: "procedure", label: "Procedimento", type: "text" },
-      { key: "doctor", label: "Médico Cirurgião", type: "text" },
-      { key: "hospital", label: "Hospital", type: "text" },
-      { key: "date", label: "Data da Cirurgia", type: "date" },
-    ],
-    exame_sangue: [
-      { key: 'laboratorio', label: 'Laboratório', type: 'text' },
-      { key: 'data_exame', label: 'Data do Exame', type: 'date' },
-    ],
-    exame_imagem: [
-      { key: 'hospital', label: 'Local / Hospital', type: 'text' },
-      { key: 'tipo', label: 'Tipo de Exame', type: 'text' },
-      { key: 'data_exame', label: 'Data do Exame', type: 'date' },
-    ],
-    credencial: [
-      { key: 'orgao', label: 'Órgão Emissor', type: 'text' },
-      { key: 'validade', label: 'Validade', type: 'date' },
-    ],
-    outro: [
-      { key: "custom_field_1", label: "Campo 1", type: "text" },
-      { key: "custom_field_2", label: "Campo 2", type: "text" },
-    ],
-  };
-
-  return fieldMap[type] || [];
+const CATEGORY_ICONS: Record<string, typeof Heart> = {
+  saude: Heart,
+  pessoal: User,
+  empresa: Building2,
+  outros: FolderOpen,
 };
 
-const DOCUMENT_TYPES = [
-  { id: "rg", label: "C.I.N / RG" },
-  { id: "cpf", label: "CPF" },
-  { id: "cnh", label: "CNH" },
-  { id: "certidao_nascimento", label: "Certidão de Nascimento" },
-  { id: "titulo_eleitor", label: "Título de Eleitor" },
-  { id: "certificado", label: "Certificado" },
-  { id: "receita", label: "Receita" },
-  { id: "prontuario", label: "Prontuário" },
-  { id: "laudo", label: "Laudo" },
-  { id: "encaminhamento", label: "Encaminhamento" },
-  { id: "consulta", label: "Consulta" },
-  { id: "cirurgia", label: "Cirurgia" },
-  { id: "exame_sangue", label: "Exame de Sangue" },
-  { id: "exame_imagem", label: "Exame de Imagem (Raio-X, RM)" },
-  { id: "credencial", label: "Credencial / Carteirinha" },
-  { id: "outro", label: "Outro" },
-];
-
-const sectionMotion = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
+const formatDate = (date?: string): string => {
+  if (!date) return "Data inválida";
+  try {
+    return format(new Date(date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+  } catch {
+    return date;
+  }
 };
 
-export default function EditarDetalhePage() {
+const getFileIcon = (type: string) => {
+  if (type === "image") return ImageIcon;
+  if (type === "pdf") return FileText;
+  return File;
+};
+
+const getBaseName = (filename: string): string => {
+  const lastDot = filename.lastIndexOf(".");
+  if (lastDot === -1) return filename;
+  return filename.substring(0, lastDot);
+};
+
+const getExtension = (filename: string): string => {
+  const lastDot = filename.lastIndexOf(".");
+  if (lastDot === -1) return "";
+  return filename.substring(lastDot);
+};
+
+const buildFullName = (baseName: string, extension: string): string => {
+  return baseName + extension;
+};
+
+export default function DocumentDetailPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
+  const { showToast, showSuccess } = useToast();
 
-  const doc = useDocument(id);
-  const persons = usePersons();
-  const { updateDocument } = useSafeDb();
+  const doc = useDocument(id || "");
+  const { deleteDocument, favorite } = useSafeDb();
 
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
-  
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState({
-    person_id: "",
-    category_id: "pessoal" as CategoryId,
-    type: "rg" as DocumentType,
-    title: "",
-    description: "",
-    metadata: {} as Record<string, any>,
-    attachments: [] as any[],
-  });
+  const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
-  useEffect(() => {
-    if (doc) {
-      setFormData({
-        person_id: doc.person_id || "",
-        category_id: doc.category_id,
-        type: doc.type as DocumentType,
-        title: doc.title,
-        description: doc.description || "",
-        metadata: doc.metadata || {},
-        attachments: doc.attachments || [],
-      });
-    }
-  }, [doc]);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  const fields = useMemo(() => getFieldsForType(formData.type), [formData.type]);
-
-  const handleChange = (field: keyof typeof formData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleMetadataChange = (key: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      metadata: { ...prev.metadata, [key]: value },
-    }));
-  };
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.title.trim()) newErrors.title = "Título é obrigatório";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validate() || !doc || !id) {
-      trigger("error");
+  const handleDelete = useCallback(async () => {
+    if (!doc || !doc.id) {
+      showToast("Documento não encontrado", "error");
       return;
     }
 
-    setLoading(true);
+    showSuccess(`"${doc.title}" foi excluído`, 5000, {
+      label: "Desfazer",
+      onClick: () => {
+        showToast("Restauração em breve...", "info");
+      },
+    });
+
+    setIsDeleting(true);
+
     try {
-      await updateDocument(id, {
-        person_id: formData.person_id,
-        category_id: formData.category_id,
-        type: formData.type,
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        metadata: formData.metadata,
-        attachments: formData.attachments,
-      });
+      await deleteDocument(doc.id);
       trigger("success");
-      router.push(`/detalhes?id=${id}`);
+      setTimeout(() => {
+        router.push("/");
+      }, 1000);
     } catch (error) {
-      console.error("Erro ao atualizar:", error);
+      showToast("Erro ao excluir documento", "error");
       trigger("error");
     } finally {
-      setLoading(false);
+      setIsDeleting(false);
     }
-  };
+  }, [doc, deleteDocument, trigger, showToast, showSuccess, router]);
 
-  const handleDelete = async () => {
-    if (!id) return;
-    setDeleting(true);
-    try {
-      await db.documents.delete(id);
-      
-      await db.syncQueue.add({
-        id: crypto.randomUUID(),
-        table: 'documents',
-        operation: 'delete',
-        payload: { id },
-        created_at: new Date().toISOString()
+  const handleFavoriteToggle = useCallback(async () => {
+    if (!doc || !doc.id) return;
+    await favorite(doc.id);
+    trigger("vibrate");
+    showToast(
+      doc.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
+      "info"
+    );
+  }, [doc, favorite, trigger, showToast]);
+
+  const handleShare = useCallback(() => {
+    if (!doc) return;
+
+    if (navigator.share) {
+      navigator
+        .share({
+          title: doc.title,
+          text: doc.description || "",
+        })
+        .catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(doc.title).then(() => {
+        showToast("Link copiado para a área de transferência!", "success");
       });
-
-      trigger("success");
-      router.push("/");
-    } catch (error) {
-      console.error("Erro ao excluir:", error);
-      trigger("error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
     }
-  };
+  }, [doc, showToast]);
 
-  const selectedTypeLabel = DOCUMENT_TYPES.find(t => t.id === formData.type)?.label || "Selecione o tipo";
+  const openAttachment = useCallback(
+    (attachment: Attachment) => {
+      setSelectedAttachment(attachment);
+      setIsRenaming(false);
+      setZoomLevel(1);
+      setImageError(false);
+      setIsModalOpen(true);
+      trigger("vibrate");
+    },
+    [trigger]
+  );
+
+  const downloadAttachment = useCallback(
+    async (attachment: Attachment) => {
+      setIsDownloading(true);
+      try {
+        const response = await fetch(attachment.url);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = attachment.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        trigger("success");
+        showToast("Download concluído!", "success");
+      } catch (error) {
+        console.error("Erro ao baixar:", error);
+        trigger("error");
+        showToast("Erro ao baixar o arquivo", "error");
+      } finally {
+        setIsDownloading(false);
+      }
+    },
+    [trigger, showToast]
+  );
+
+  const updateAttachmentName = useCallback(
+    async (newBaseName: string) => {
+      if (!selectedAttachment || !doc || !doc.id) return;
+
+      const extension = getExtension(selectedAttachment.name);
+      const newFullName = buildFullName(newBaseName, extension);
+
+      const updatedAttachments = doc.attachments.map((att) =>
+        att.id === selectedAttachment.id ? { ...att, name: newFullName } : att
+      );
+
+      try {
+        await db.documents.update(doc.id, {
+          attachments: updatedAttachments,
+          updated_at: new Date().toISOString(),
+          synced: false,
+        });
+
+        setSelectedAttachment({ ...selectedAttachment, name: newFullName });
+        setIsRenaming(false);
+        trigger("success");
+        showToast("Nome atualizado com sucesso!", "success");
+      } catch (error) {
+        console.error("Erro ao renomear anexo:", error);
+        trigger("error");
+        showToast("Erro ao renomear anexo", "error");
+      }
+    },
+    [selectedAttachment, doc, trigger, showToast]
+  );
 
   if (!doc) {
     return (
       <PageTransition>
         <main className="flex min-h-screen items-center justify-center bg-void px-5">
-          <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
             <p className="text-sm text-ink-muted">Documento não encontrado</p>
-            <Button variant="primary" onClick={() => router.push("/")} className="mt-5">
+            <Button
+              variant="primary"
+              onClick={() => router.push("/")}
+              className="mt-4"
+            >
               Voltar
             </Button>
           </div>
@@ -268,222 +241,528 @@ export default function EditarDetalhePage() {
     );
   }
 
+  const categoryId = doc.category_id as CategoryId;
+  const category = CATEGORIES[categoryId];
+  const color = category?.color || "#6B7280";
+  const CategoryIcon = CATEGORY_ICONS[doc.category_id] || FolderOpen;
+  const hasMetadata = Object.keys(doc.metadata || {}).length > 0;
+  const hasAttachments = doc.attachments && doc.attachments.length > 0;
+  const FileIcon = selectedAttachment ? getFileIcon(selectedAttachment.type) : File;
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-              aria-label="Voltar"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
+        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              >
+                <ArrowLeft size={18} className="text-ink-primary" />
+              </button>
 
-            <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                Vault
-              </p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">
-                Editar documento
-              </h1>
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                  Vault
+                </p>
+                <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary sm:text-xl">
+                  {doc.title}
+                </h1>
+                <p className="mt-1 text-sm text-ink-muted">
+                  Detalhes do documento
+                </p>
+              </div>
             </div>
 
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                setShowDeleteModal(true);
-              }}
-              aria-label="Excluir documento"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleFavoriteToggle}
+                aria-label="Favoritar documento"
+                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all active:scale-95 ${
+                  doc.is_favorite
+                    ? "border-transparent bg-ice/12"
+                    : "border-surface-border/50 bg-surface-raised"
+                }`}
+              >
+                <Star
+                  size={18}
+                  className={
+                    doc.is_favorite ? "fill-ice text-ice" : "text-ink-muted"
+                  }
+                />
+              </button>
+
+              <button
+                onClick={handleShare}
+                aria-label="Compartilhar documento"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              >
+                <Share2 size={18} className="text-ink-muted" />
+              </button>
+            </div>
           </div>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
+        <section className="space-y-5 px-5 pt-6">
           <motion.div
-            {...sectionMotion}
-            transition={{ duration: 0.22 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm"
+            ref={cardRef}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28 }}
+            className="relative overflow-hidden rounded-[28px] border bg-surface p-5 shadow-sm"
+            style={{ borderColor: `${color}25` }}
           >
+            <div
+              className="absolute inset-x-0 top-0 h-[3px]"
+              style={{ backgroundColor: color }}
+            />
+
             <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised">
-                <FileText size={22} className="text-ice" />
+              <div
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
+                style={{
+                  background: `linear-gradient(135deg, ${color}30, ${color}0d)`,
+                }}
+              >
+                <CategoryIcon size={24} style={{ color }} />
               </div>
-              <div className="min-w-0">
-                <p className="text-sm text-ink-muted">Documento atual</p>
+
+              <div className="min-w-0 flex-1">
                 <h2 className="truncate font-display text-lg font-semibold text-ink-primary">
-                  {formData.title || "Sem título"}
+                  {doc.title}
                 </h2>
-                <p className="mt-1 text-xs leading-5 text-ink-faint">
-                  Atualize os dados visíveis do documento sem alterar o fluxo já existente.
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+                  <span
+                    className="rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                    style={{
+                      backgroundColor: `${color}12`,
+                      borderColor: `${color}28`,
+                      color,
+                    }}
+                  >
+                    {category?.name || "Outros"}
+                  </span>
+                  <span className="h-1 w-1 rounded-full bg-ink-faint" />
+                  <span className="capitalize">{doc.type}</span>
+                  {doc.vault_id && (
+                    <>
+                      <span className="h-1 w-1 rounded-full bg-ink-faint" />
+                      <span className="inline-flex items-center gap-1 text-ice">
+                        <User size={10} />
+                        Compartilhado
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {hasMetadata && (
+              <div className="mt-5 border-t border-surface-border/50 pt-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <FileText size={14} className="text-ice" />
+                  <p className="text-sm font-medium text-ink-primary">
+                    Informações
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  {Object.entries(doc.metadata || {}).map(([key, value]) => {
+                    if (!value) return null;
+
+                    let displayValue: string = String(value);
+                    if (
+                      typeof value === "string" &&
+                      value.match(/^d{4}-d{2}-d{2}/)
+                    ) {
+                      displayValue = formatDate(value);
+                    }
+
+                    const labels: Record<string, string> = {
+                      number: "Número",
+                      issue_date: "Data de emissão",
+                      expiry_date: "Data de validade",
+                      issuer: "Órgão emissor",
+                      category: "Categoria",
+                      institution: "Instituição",
+                      course: "Curso",
+                      duration: "Duração",
+                      completion_date: "Data de conclusão",
+                      medication: "Medicamento",
+                      dosage: "Dosagem",
+                      doctor: "Médico",
+                      pharmacy: "Farmácia",
+                      prescription_date: "Data da receita",
+                      renewal_date: "Próxima renovação",
+                      hospital: "Hospital",
+                      specialty: "Especialidade",
+                      date: "Data",
+                      from: "Quem encaminhou",
+                      to: "Para quem",
+                      reason: "Motivo",
+                      custom_field_1: "Campo 1",
+                      custom_field_2: "Campo 2",
+                    };
+
+                    const label =
+                      labels[key] || key.replace(/_/g, " ").toUpperCase();
+
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-start justify-between gap-4 rounded-2xl bg-surface-raised/55 px-3.5 py-3"
+                      >
+                        <span className="text-sm text-ink-muted">{label}</span>
+                        <span className="text-right text-sm font-medium text-ink-primary">
+                          {displayValue}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {doc.description && (
+              <div className="mt-5 border-t border-surface-border/50 pt-5">
+                <p className="mb-2 text-sm font-medium text-ink-primary">Notas</p>
+                <p className="text-sm leading-6 text-ink-muted">
+                  {doc.description}
+                </p>
+              </div>
+            )}
+
+            <div className="mt-5 border-t border-surface-border/50 pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <p className="text-ink-muted">
+                  {doc.synced ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-400">
+                      ✓ Sincronizado
+                    </span>
+                  ) : (
+                    <span className="inline-flex animate-pulse items-center gap-1 text-coral">
+                      ↻ Pendente
+                    </span>
+                  )}
+                </p>
+                <p className="text-ink-muted">
+                  Criado em {formatDate(doc.created_at)}
                 </p>
               </div>
             </div>
           </motion.div>
 
-          <motion.div
-            {...sectionMotion}
-            transition={{ duration: 0.22, delay: 0.03 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
-          >
-            <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa</p>
-            <div className="flex flex-wrap gap-2">
-              {persons.map((person: any) => (
-                <button
-                  key={person.id}
-                  onClick={() => handleChange("person_id", person.id!)}
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
-                    formData.person_id === person.id
-                      ? "border-ice bg-ice/12 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                  }`}
-                >
-                  {person.name}
-                </button>
-              ))}
-            </div>
-          </motion.div>
+          {hasAttachments && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: 0.06 }}
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <p className="flex items-center gap-2 text-sm font-medium text-ink-primary">
+                  <Paperclip size={14} className="text-ice" />
+                  Anexos ({doc.attachments.length})
+                </p>
+                <ChevronRight size={16} className="text-ink-faint" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {doc.attachments.map((attachment: any) => {
+                  const Icon = getFileIcon(attachment.type);
+                  const isImage = attachment.type === "image";
+
+                  return (
+                    <button
+                      key={attachment.id}
+                      onClick={() => openAttachment(attachment)}
+                      className="group relative overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface-raised p-3 text-left transition-all active:scale-[0.985] hover:border-ice/25"
+                    >
+                      {isImage ? (
+                        <img
+                          src={attachment.url}
+                          alt={attachment.name}
+                          className="h-24 w-full rounded-xl object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            if (parent) {
+                              const icon = document.createElement("div");
+                              icon.className =
+                                "flex items-center justify-center w-full h-24 rounded-xl bg-surface";
+                              icon.innerHTML = `<svg class="w-8 h-8 text-gray-500/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`;
+                              parent.prepend(icon);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-24 items-center justify-center rounded-xl bg-surface">
+                          <Icon size={26} className="text-ice/50" />
+                        </div>
+                      )}
+
+                      <span className="mt-2 block truncate text-xs text-ink-muted group-hover:text-ink-primary">
+                        {attachment.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
 
           <motion.div
-            {...sectionMotion}
-            transition={{ duration: 0.22, delay: 0.06 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: 0.12 }}
+            className="flex flex-wrap gap-3"
           >
-            <p className="mb-3 text-sm font-medium text-ink-primary">Categoria</p>
-            <div className="flex flex-wrap gap-2">
-              {Object.values(CATEGORIES).map((cat: any) => (
-                <button
-                  key={cat.id}
-                  onClick={() => handleChange("category_id", cat.id)}
-                  className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
-                    formData.category_id === cat.id
-                      ? "border-ice bg-ice/12 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                  }`}
-                >
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: cat.color }}
-                  />
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-          </motion.div>
+            <ExportCardButton
+              cardRef={cardRef}
+              title={doc.title}
+              variant="secondary"
+              size="sm"
+              label="Exportar PDF"
+            />
 
-          <motion.div
-            {...sectionMotion}
-            transition={{ duration: 0.22, delay: 0.09 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
-          >
-            <label className="mb-2 block text-sm font-medium text-ink-primary">Tipo</label>
-            <button
+            <Button
+              variant="secondary"
+              className="flex items-center justify-center gap-2"
               onClick={() => {
                 trigger("vibrate");
-                setIsTypeModalOpen(true);
+                router.push(`/detalhes/editar?id=${doc.id}`);
               }}
-              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/30"
             >
-              <div className="flex items-center gap-2">
-                <Layers3 size={16} className="text-ink-muted" />
-                <span>{selectedTypeLabel}</span>
-              </div>
-              <ChevronDown size={16} className="text-ink-muted" />
-            </button>
-          </motion.div>
+              <Edit size={16} />
+              Editar
+            </Button>
 
-          <motion.div
-            {...sectionMotion}
-            transition={{ duration: 0.22, delay: 0.12 }}
-            className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
-          >
-            <Input
-              label="Título"
-              value={formData.title}
-              onChange={(e) => handleChange("title", e.target.value)}
-              error={errors.title}
-            />
-
-            {fields.map((field: any) => (
-              <Input
-                key={field.key}
-                label={field.label}
-                type={field.type === "date" ? "date" : "text"}
-                value={formData.metadata[field.key] || ""}
-                onChange={(e) => handleMetadataChange(field.key, e.target.value)}
-              />
-            ))}
-
-            <TextArea
-              label="Notas"
-              value={formData.description}
-              onChange={(e) => handleChange("description", e.target.value)}
-            />
-          </motion.div>
-
-          <motion.div
-            {...sectionMotion}
-            transition={{ duration: 0.22, delay: 0.15 }}
-          >
             <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={handleSubmit}
-              disabled={loading || deleting}
+              variant="danger"
               className="flex items-center justify-center gap-2"
+              onClick={handleDelete}
+              disabled={isDeleting}
             >
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Salvando...
-                </>
+              {isDeleting ? (
+                <Loader2 size={16} className="animate-spin" />
               ) : (
-                <>
-                  <Save size={16} />
-                  Salvar alterações
-                </>
+                <Trash2 size={16} />
               )}
+              {isDeleting ? "Excluindo..." : "Excluir"}
             </Button>
           </motion.div>
         </section>
 
-        <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDelete}
-          title="Excluir documento"
-          message={`Tem certeza que deseja excluir "${formData.title}"? Esta ação não pode ser desfeita.`}
-          confirmLabel="Excluir"
-          cancelLabel="Cancelar"
-          isLoading={deleting}
-          type="danger"
-        />
+        <AnimatePresence>
+          {isModalOpen && selectedAttachment && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
+              onClick={() => setIsModalOpen(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.94, opacity: 0, y: 10 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.96, opacity: 0, y: 8 }}
+                transition={{ duration: 0.22 }}
+                className="shadow-vault relative w-full max-w-4xl rounded-[28px] border border-surface-border bg-surface-raised p-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    {isRenaming ? (
+                      <input
+                        type="text"
+                        value={getBaseName(selectedAttachment.name)}
+                        onChange={(e) =>
+                          setSelectedAttachment({
+                            ...selectedAttachment,
+                            name: buildFullName(
+                              e.target.value,
+                              getExtension(selectedAttachment.name)
+                            ),
+                          })
+                        }
+                        className="flex-1 border-b border-ice/30 bg-transparent font-medium text-ink-primary outline-none transition-colors focus:border-ice"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            updateAttachmentName(
+                              getBaseName(selectedAttachment.name)
+                            );
+                          }
+                          if (e.key === "Escape") {
+                            setIsRenaming(false);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <p className="truncate font-medium text-ink-primary">
+                        {getBaseName(selectedAttachment.name)}
+                      </p>
+                    )}
 
-        <SelectionModal
-          isOpen={isTypeModalOpen}
-          onClose={() => setIsTypeModalOpen(false)}
-          onSelect={(item: any) => {
-            trigger("vibrate");
-            handleChange("type", item.id);
-            setIsTypeModalOpen(false);
-          }}
-          items={DOCUMENT_TYPES}
-          title="Tipo de Documento"
-          placeholder="Buscar tipo..."
-          renderItem={(item: any) => (
-            <p className="font-medium text-ink-primary">{item.label}</p>
+                    <span className="shrink-0 text-xs text-ink-muted/50">
+                      {getExtension(selectedAttachment.name)}
+                    </span>
+
+                    <button
+                      onClick={() => {
+                        if (isRenaming) {
+                          updateAttachmentName(getBaseName(selectedAttachment.name));
+                        } else {
+                          setIsRenaming(true);
+                          setTimeout(() => {
+                            const input = document.querySelector(
+                              'input[type="text"]'
+                            ) as HTMLInputElement;
+                            if (input) input.focus();
+                          }, 100);
+                        }
+                      }}
+                      className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                      title={isRenaming ? "Salvar nome" : "Renomear"}
+                    >
+                      <Pencil size={16} className="text-ink-muted" />
+                    </button>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {selectedAttachment.type === "image" && (
+                      <>
+                        <button
+                          onClick={() =>
+                            setZoomLevel(Math.max(0.5, zoomLevel - 0.25))
+                          }
+                          className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                        >
+                          <ZoomOut size={16} className="text-ink-muted" />
+                        </button>
+
+                        <span className="text-xs text-ink-muted">
+                          {Math.round(zoomLevel * 100)}%
+                        </span>
+
+                        <button
+                          onClick={() =>
+                            setZoomLevel(Math.min(3, zoomLevel + 0.25))
+                          }
+                          className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                        >
+                          <ZoomIn size={16} className="text-ink-muted" />
+                        </button>
+                      </>
+                    )}
+
+                    <button
+                      onClick={() => setIsModalOpen(false)}
+                      className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                    >
+                      <X size={20} className="text-ink-muted" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex min-h-[320px] items-center justify-center overflow-auto rounded-[22px] border border-surface-border/50 bg-surface p-4">
+                  {selectedAttachment.type === "image" ? (
+                    !imageError ? (
+                      <img
+                        src={selectedAttachment.url}
+                        alt={selectedAttachment.name}
+                        className="max-h-[70vh] max-w-full rounded-xl object-contain transition-transform duration-200"
+                        style={{ transform: `scale(${zoomLevel})` }}
+                        loading="lazy"
+                        onError={() => setImageError(true)}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-4 text-ink-muted">
+                        <ImageIcon size={64} className="text-ink-muted/30" />
+                        <p className="text-sm text-ink-primary">
+                          Imagem não disponível
+                        </p>
+                        <button
+                          onClick={() => downloadAttachment(selectedAttachment)}
+                          className="text-sm text-ice transition-colors hover:text-ice/80"
+                        >
+                          Baixar imagem
+                        </button>
+                      </div>
+                    )
+                  ) : selectedAttachment.type === "pdf" ? (
+                    <div className="flex w-full flex-col items-center gap-4 text-ink-muted">
+                      <FileText size={64} className="text-ice/30" />
+                      <p className="text-sm text-ink-primary">
+                        📄 {selectedAttachment.name}
+                      </p>
+                      <div className="flex gap-4 text-xs text-ink-muted/60">
+                        <span>Clique em "Baixar" para visualizar</span>
+                        <span>•</span>
+                        <span>PDF</span>
+                      </div>
+                      <button
+                        onClick={() => downloadAttachment(selectedAttachment)}
+                        className="text-sm text-ice transition-colors hover:text-ice/80"
+                      >
+                        Baixar PDF
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-4 text-ink-muted">
+                      <FileIcon size={64} className="text-ink-muted/30" />
+                      <p className="text-sm text-ink-primary">
+                        {selectedAttachment.name}
+                      </p>
+                      <p className="text-xs text-ink-muted/60">
+                        Pré-visualização não disponível
+                      </p>
+                      <button
+                        onClick={() => downloadAttachment(selectedAttachment)}
+                        className="text-sm text-ice transition-colors hover:text-ice/80"
+                      >
+                        Baixar arquivo
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => downloadAttachment(selectedAttachment)}
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? (
+                      <Loader2 size={14} className="mr-1 animate-spin" />
+                    ) : (
+                      <Download size={14} className="mr-1" />
+                    )}
+                    {isDownloading ? "Baixando..." : "Baixar"}
+                  </Button>
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsModalOpen(false)}
+                  >
+                    Fechar
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
           )}
-          getItemId={(item: any) => item.id}
-          getItemLabel={(item: any) => item.label}
-        />
+        </AnimatePresence>
+
+        <ScrollToTop threshold={300} />
       </main>
     </PageTransition>
   );
