@@ -52,13 +52,17 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   outro: FolderOpen,
 };
 
-const formatDate = (date?: string) => {
-  if (!date) return null;
+// Formatação blindada para não falhar nem sumir com a data
+const formatDate = (dateString?: string) => {
+  if (!dateString || dateString.trim() === "") return null;
   try {
-    const [year, month, day] = date.split("-").map(Number);
-    return format(new Date(year, month - 1, day), "dd/MM/yy", { locale: ptBR });
+    if (dateString.includes("-")) {
+      const [year, month, day] = dateString.split("-").map(Number);
+      return format(new Date(year, month - 1, day), "dd/MM/yyyy", { locale: ptBR });
+    }
+    return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
   } catch {
-    return null;
+    return dateString; 
   }
 };
 
@@ -104,7 +108,7 @@ function DocumentCardComponent({
   const hasAttachments = document.attachments && document.attachments.length > 0;
   const hasImageAttachment = document.attachments?.some((a) => a.type === "image");
 
-  // Oculta campos internos de data/IDs do resumo principal
+  // Filtra dados desnecessários ou repetitivos para o subtítulo
   const metadataKeys = Object.keys(document.metadata || {}).filter(
     (key) =>
       ![
@@ -120,17 +124,21 @@ function DocumentCardComponent({
         "hospital",
         "institution",
         "medication",
+        "modelo", // Omitimos o "modelo" para evitar a sensação de título duplicado
       ].includes(key)
   );
   
   const firstMetadata = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
 
-  // Lógica para puxar a data correta baseada no tipo de documento
-  const issueDate = document.metadata?.issue_date || document.metadata?.data_nascimento || document.metadata?.data_exame || document.metadata?.date;
-  const expiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date || document.metadata?.validade;
+  // Lógica inteligente para buscar as datas conforme o tipo de documento
+  const rawIssueDate = document.metadata?.issue_date || document.metadata?.data_nascimento || document.metadata?.data_exame || document.metadata?.date;
+  const rawExpiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date || document.metadata?.validade;
   
-  const isExpiring = expiryDate && new Date(expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const isExpired = expiryDate && new Date(expiryDate) < new Date();
+  const formattedIssue = formatDate(rawIssueDate);
+  const formattedExpiry = formatDate(rawExpiryDate);
+
+  const isExpiring = rawExpiryDate && new Date(rawExpiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const isExpired = rawExpiryDate && new Date(rawExpiryDate) < new Date();
 
   const handleSyncIconClick = useCallback(
     (e: React.MouseEvent) => {
@@ -165,7 +173,8 @@ function DocumentCardComponent({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
+                {/* line-clamp-2 e break-words resolve o corte abrupto de letras no mobile */}
+                <h3 className="line-clamp-2 break-words font-display text-[15px] font-semibold leading-tight text-ink-primary">
                   {document.title}
                 </h3>
 
@@ -224,16 +233,16 @@ function DocumentCardComponent({
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              {issueDate && (
+              {formattedIssue && (
                 <div className="flex items-center gap-1 text-xs text-ink-muted">
                   <Calendar size={12} />
                   <span>
-                    {document.type === "certidao_nascimento" ? "Nascimento:" : "Data:"} {formatDate(issueDate)}
+                    {document.type === "certidao_nascimento" ? "Nascimento:" : "Emissão:"} {formattedIssue}
                   </span>
                 </div>
               )}
 
-              {expiryDate && (
+              {formattedExpiry && (
                 <div
                   className={`flex items-center gap-1 text-xs font-medium transition-colors duration-150 ${
                     isExpired
@@ -245,7 +254,7 @@ function DocumentCardComponent({
                 >
                   <Calendar size={12} />
                   <span>
-                    {isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"} {formatDate(expiryDate)}
+                    {isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"} {formattedExpiry}
                   </span>
                 </div>
               )}
