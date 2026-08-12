@@ -1,290 +1,498 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
-  FileText,
+  Search,
+  X,
+  Calendar,
+  SlidersHorizontal,
+  Sparkles,
   Pill,
   Building2,
   Stethoscope,
-  FolderOpen,
-  Calendar,
+  FolderHeart,
   ChevronRight,
-  Search,
-  Sparkles,
-  Paperclip,
-  CheckCircle2,
-  Loader2,
+  Filter,
 } from "lucide-react";
-import { useDocuments } from "@/hooks/useDocuments";
-import { useMedicamentos } from "@/hooks/useMedicamentos";
-import { useMedicos } from "@/hooks/useMedicos";
-import { useHospitais } from "@/hooks/useHospitais";
+import { motion, AnimatePresence } from "framer-motion";
+import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
+import { usePersons } from "@/hooks/usePersons";
+import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { PageTransition } from "@/components/PageTransition";
+import { DocumentCard } from "@/components/DocumentCard";
+import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
+import { Input } from "@/components/ui/Input";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { CATEGORIES } from "@/lib/types";
+import { PageTransition } from "@/components/PageTransition";
+import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
+import { ExportCardButton } from "@/components/ExportCardButton";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
-const cardMotion = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.22 },
-};
+function useDebounce(value: string, delay: number = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-export default function SaudeDocumentosPage() {
-  const router = useRouter();
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
+  { id: "receita", label: "Receita" },
+  { id: "prontuario", label: "Prontuário" },
+  { id: "laudo", label: "Laudo" },
+  { id: "encaminhamento", label: "Encaminhamento" },
+  { id: "cirurgia", label: "Cirurgia" },
+  { id: "exame_sangue", label: "Exame Sangue" },
+  { id: "exame_imagem", label: "Exame Imagem" },
+];
+
+interface GroupedDocument {
+  groupKey: string;
+  groupType: 'medication' | 'hospital' | 'doctor' | 'other';
+  groupIcon: any;
+  groupName: string;
+  documents: any[];
+  count: number;
+}
+
+export default function DocumentsPage() {
   const { trigger } = useHapticFeedback();
+  const router = useRouter();
+  const { favorite } = useSafeDb();
+  const persons = usePersons();
 
-  const documents = useDocuments();
-  const { medicamentos } = useMedicamentos();
-  const { medicos } = useMedicos();
-  const { hospitais } = useHospitais();
+  const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const [filtroTab, setFiltroTab] = useState<"todos" | "receitas" | "prontuarios" | "laudos">("todos");
-  const [busca, setBusca] = useState("");
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<CategoryId | "all">("all");
+  const [selectedType, setSelectedType] = useState<DocumentType | "all">("all");
+  const [dateFilter, setDateFilter] = useState<"all" | "expiring" | "expired">("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // Filtra apenas documentos da categoria 'saude'
-  const documentosSaude = useMemo(() => {
-    if (!documents) return [];
-    return documents.filter((d: any) => {
-      const matchCategory = d.category_id === "saude";
-      const matchTab =
-        filtroTab === "todos"
-          ? true
-          : filtroTab === "receitas"
-          ? d.type === "receita"
-          : filtroTab === "prontuarios"
-          ? d.type === "prontuario" || d.type === "cirurgia"
-          : filtroTab === "laudos"
-          ? d.type === "laudo" || d.type === "exame_sangue" || d.type === "exame_imagem"
-          : true;
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
-      const matchBusca =
-        !busca ||
-        d.title.toLowerCase().includes(busca.toLowerCase()) ||
-        d.type.toLowerCase().includes(busca.toLowerCase());
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 420);
+    return () => clearTimeout(timer);
+  }, []);
 
-      return matchCategory && matchTab && matchBusca;
-    });
-  }, [documents, filtroTab, busca]);
+  const {
+    documents: paginatedDocs,
+    totalCount,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+  } = usePaginatedDocuments({
+    personId: selectedPersonId || undefined,
+    categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
+    searchQuery: debouncedSearch,
+  });
 
-  // Agrupamento Inteligente (Pai e Filho)
-  // 1. Receitas agrupadas por nome do Medicamento
-  // 2. Prontuários agrupados por Hospital
-  // 3. Laudos agrupados por Médico
-  const documentosAgrupados = useMemo(() => {
-    const grupos: Record<string, { nomePai: string; tipo: string; icone: any; documentos: any[] }> = {};
+  const filteredDocs = useMemo(() => {
+    let result = paginatedDocs;
 
-    documentosSaude.forEach((doc: any) => {
-      let chavePai = "Outros Documentos de Saúde";
-      let tipoPai = "geral";
-      let iconePai = FolderOpen;
+    if (selectedType !== "all") {
+      result = result.filter((doc: any) => doc.type === selectedType);
+    }
 
-      if (doc.type === "receita") {
-        const medNome = doc.metadata?.medication || "Medicamento Geral";
-        chavePai = `Remédio: ${medNome}`;
-        tipoPai = "medicamento";
-        iconePai = Pill;
-      } else if (doc.type === "prontuario" || doc.type === "cirurgia") {
-        const hospId = doc.metadata?.hospital;
-        const hospObj = hospitais?.find((h: any) => h.id === hospId || h.nome === hospId);
-        chavePai = `Hospital: ${hospObj?.nome || hospId || "Hospital / Clínica"}`;
-        tipoPai = "hospital";
-        iconePai = Building2;
-      } else if (doc.type === "laudo" || doc.type === "consulta" || doc.type === "encaminhamento") {
-        const docId = doc.metadata?.doctor;
-        const docObj = medicos?.find((m: any) => m.id === docId || m.nome === docId);
-        chavePai = `Médico: ${docObj?.nome || docId || "Profissional de Saúde"}`;
-        tipoPai = "medico";
-        iconePai = Stethoscope;
+    if (dateFilter === "expiring") {
+      const now = new Date();
+      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      result = result.filter((doc: any) => {
+        const expiry = doc.metadata?.expiry_date || doc.metadata?.renewal_date;
+        if (!expiry) return false;
+        const expiryDate = new Date(expiry);
+        return expiryDate > now && expiryDate <= sevenDaysFromNow;
+      });
+    } else if (dateFilter === "expired") {
+      const now = new Date();
+      result = result.filter((doc: any) => {
+        const expiry = doc.metadata?.expiry_date || doc.metadata?.renewal_date;
+        if (!expiry) return false;
+        return new Date(expiry) < now;
+      });
+    }
+
+    return result;
+  }, [paginatedDocs, selectedType, dateFilter]);
+
+  // Lógica de Agrupamento Automático (Pai/Filho) refinada
+  const groupedDocuments = useMemo(() => {
+    const groups: Map<string, GroupedDocument> = new Map();
+    const saudeDocs = filteredDocs.filter((doc: any) => doc.category_id === 'saude');
+
+    for (const doc of saudeDocs) {
+      let groupKey = '';
+      let groupType: 'medication' | 'hospital' | 'doctor' | 'other' = 'other';
+      let groupIcon = FolderHeart;
+      let groupName = 'Outros documentos';
+
+      const medication = doc.metadata?.medication;
+      if (medication) {
+        groupKey = `med-${medication}`;
+        groupType = 'medication';
+        groupIcon = Pill;
+        groupName = medication;
+      } else if (doc.metadata?.hospital || doc.metadata?.institution) {
+        const hospitalName = doc.metadata?.hospital || doc.metadata?.institution;
+        groupKey = `hospital-${hospitalName}`;
+        groupType = 'hospital';
+        groupIcon = Building2;
+        groupName = hospitalName;
+      } else if (doc.metadata?.doctor) {
+        groupKey = `doctor-${doc.metadata.doctor}`;
+        groupType = 'doctor';
+        groupIcon = Stethoscope;
+        groupName = doc.metadata.doctor;
+      } else {
+        groupKey = 'other';
+        groupType = 'other';
+        groupIcon = FolderHeart;
+        groupName = 'Geral / Outros';
       }
 
-      if (!grupos[chavePai]) {
-        grupos[chavePai] = {
-          nomePai: chavePai,
-          tipo: tipoPai,
-          icone: iconePai,
-          documentos: [],
-        };
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          groupKey,
+          groupType,
+          groupIcon,
+          groupName,
+          documents: [],
+          count: 0,
+        });
       }
-      grupos[chavePai].documentos.push(doc);
+
+      groups.get(groupKey)!.documents.push(doc);
+      groups.get(groupKey)!.count += 1;
+    }
+
+    // Ordenação inteligente interna dos documentos filhos por data mais recente
+    for (const group of groups.values()) {
+      group.documents.sort((a: any, b: any) => {
+        const dateA = new Date(a.metadata?.prescription_date || a.metadata?.date || a.created_at || 0).getTime();
+        const dateB = new Date(b.metadata?.prescription_date || b.metadata?.date || b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+    }
+
+    const order = { medication: 0, hospital: 1, doctor: 2, other: 3 };
+    return Array.from(groups.values()).sort(
+      (a, b) => order[a.groupType] - order[b.groupType]
+    );
+  }, [filteredDocs]);
+
+  const handleFavoriteToggle = useCallback(
+    async (id: string) => {
+      await favorite(id);
+      trigger("vibrate");
+    },
+    [favorite, trigger]
+  );
+
+  const clearFilters = useCallback(() => {
+    setSearchQuery("");
+    setSelectedCategory("all");
+    setSelectedType("all");
+    setDateFilter("all");
+    setSelectedPersonId(null);
+    trigger("vibrate");
+  }, [trigger]);
+
+  const toggleGroup = useCallback((groupKey: string) => {
+    setExpandedGroups((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupKey)) {
+        newSet.delete(groupKey);
+      } else {
+        newSet.add(groupKey);
+      }
+      return newSet;
     });
+    trigger("vibrate");
+  }, [trigger]);
 
-    return Object.values(grupos);
-  }, [documentosSaude, medicos, hospitais]);
+  useEffect(() => {
+    if (groupedDocuments.length > 0 && expandedGroups.size === 0) {
+      const allKeys = groupedDocuments.map(g => g.groupKey);
+      setExpandedGroups(new Set(allKeys));
+    }
+  }, [groupedDocuments]);
 
-  const isLoading = documents === undefined || medicamentos === undefined;
+  const hasActiveFilters =
+    selectedPersonId !== null ||
+    selectedCategory !== "all" ||
+    selectedType !== "all" ||
+    dateFilter !== "all";
+
+  const getExportCards = () => {
+    return filteredDocs.map((doc: any) => ({
+      ref: { current: cardRefs.current[doc.id!] },
+      id: doc.id!,
+    }));
+  };
 
   if (isLoading) {
     return <LoadingSkeleton />;
   }
 
+  const saudeCount = filteredDocs.filter((d: any) => d.category_id === 'saude').length;
+
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
-        {/* HEADER DA PÁGINA */}
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
-              aria-label="Voltar"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-
-            <div className="min-w-0 flex-1">
+      <main className="min-h-screen bg-void pb-6">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                Acervo Clínico
+                Vault
               </p>
-              <h1 className="mt-0.5 font-display text-xl font-semibold text-ink-primary">
-                Documentos de Saúde
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+                Acervo de Documentos
               </h1>
+              <p className="mt-1 text-sm text-ink-muted">
+                {saudeCount} documento{saudeCount !== 1 ? "s" : ""} na saúde
+                {hasActiveFilters ? " filtrados" : ""}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {filteredDocs.length > 0 && (
+                <ExportCardButton
+                  cards={getExportCards()}
+                  title="Meus Documentos"
+                  variant="secondary"
+                  size="sm"
+                  label="Exportar"
+                />
+              )}
+
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  setShowFilters((prev) => !prev);
+                }}
+                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all active:scale-95 ${
+                  hasActiveFilters || showFilters
+                    ? "border-ice bg-ice/12 text-ice"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                }`}
+                aria-label="Abrir filtros"
+              >
+                <SlidersHorizontal size={18} />
+              </button>
             </div>
           </div>
 
-          {/* BARRA DE PESQUISA */}
-          <div className="mt-4 relative">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted" />
-            <input
-              type="text"
-              placeholder="Buscar receitas, laudos, exames..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised py-3 pl-10 pr-4 text-sm text-ink-primary outline-none transition-colors focus:border-ice/50"
+          <div className="relative mt-4">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+            />
+            <Input
+              placeholder="Buscar por nome, medicamento ou médico..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="border-surface-border/50 bg-surface-raised pl-9 transition-all"
             />
           </div>
 
-          {/* ABAS DE FILTRO RÁPIDO */}
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {[
-              { id: "todos", label: "Todos" },
-              { id: "receitas", label: "Receitas" },
-              { id: "prontuarios", label: "Prontuários" },
-              { id: "laudos", label: "Laudos & Exames" },
-            ].map((tab) => (
+          {/* Chips de Acesso Rápido (Filtros de Tipo) */}
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => { trigger("vibrate"); setSelectedType("all"); }}
+              className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
+                selectedType === "all"
+                  ? "border-ice bg-ice/12 text-ice"
+                  : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+              }`}
+            >
+              Todos os Tipos
+            </button>
+            {DOCUMENT_TYPES.map((t) => (
               <button
-                key={tab.id}
-                onClick={() => {
-                  trigger("vibrate");
-                  setFiltroTab(tab.id as any);
-                }}
-                className={`shrink-0 rounded-full border px-4 py-1.5 text-xs font-medium transition-all active:scale-95 ${
-                  filtroTab === tab.id
+                key={t.id}
+                onClick={() => { trigger("vibrate"); setSelectedType(selectedType === t.id ? "all" : t.id); }}
+                className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
+                  selectedType === t.id
                     ? "border-ice bg-ice/12 text-ice"
                     : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                 }`}
               >
-                {tab.label}
+                {t.label}
               </button>
             ))}
           </div>
+
+          <AnimatePresence initial={false}>
+            {showFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -4 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -4 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="mt-4 space-y-4 rounded-[26px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
+                  <div>
+                    <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
+                      Validade
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setDateFilter("all")}
+                        className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
+                          dateFilter === "all"
+                            ? "border-ice bg-ice/12 text-ice"
+                            : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                        }`}
+                      >
+                        Todas
+                      </button>
+                      <button
+                        onClick={() => setDateFilter("expiring")}
+                        className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
+                          dateFilter === "expiring"
+                            ? "border-ice bg-ice/12 text-ice"
+                            : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                        }`}
+                      >
+                        <Calendar size={12} />
+                        Vencendo (7d)
+                      </button>
+                      <button
+                        onClick={() => setDateFilter("expired")}
+                        className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
+                          dateFilter === "expired"
+                            ? "border-coral bg-coral/10 text-coral"
+                            : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                        }`}
+                      >
+                        <Calendar size={12} />
+                        Vencidos
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </header>
 
-        {/* LISTAGEM AGRUPADA POR PAIS E FILHOS */}
-        <section className="space-y-5 px-5 pt-5">
-          {documentosAgrupados.length === 0 ? (
+        <section className="px-5 pt-5">
+          {groupedDocuments.length === 0 ? (
             <motion.div
-              {...cardMotion}
-              className="rounded-[28px] border border-dashed border-surface-border/60 bg-surface/40 px-6 py-12 text-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24 }}
+              className="flex flex-col items-center justify-center rounded-[30px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
             >
-              <FolderOpen size={36} className="mx-auto text-ink-faint mb-2" />
-              <p className="text-sm font-medium text-ink-primary">Nenhum documento encontrado</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                Tente mudar o filtro ou adicione um novo documento de saúde.
+              <div className="glow-ice mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-ice/15 bg-surface-raised">
+                <Search size={28} className="text-ice/60" />
+              </div>
+              <h3 className="font-display text-lg font-semibold text-ink-primary">
+                Nenhum documento encontrado
+              </h3>
+              <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
+                Tente ajustar os termos de busca ou limpar os filtros para visualizar o acervo completo.
               </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-5 rounded-full border border-ice/20 bg-ice/10 px-4 py-2 text-sm font-medium text-ice transition-all active:scale-95"
+                >
+                  Limpar filtros
+                </button>
+              )}
             </motion.div>
           ) : (
-            documentosAgrupados.map((grupo, idx) => {
-              const IconPai = grupo.icone;
-              return (
-                <motion.div
-                  key={grupo.nomePai}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.24, delay: idx * 0.04 }}
-                  className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-                >
-                  {/* CABEÇALHO DO GRUPO (ENTIDADE PAI) */}
-                  <div className="mb-3 flex items-center gap-3 border-b border-surface-border/40 pb-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                      <IconPai size={17} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="truncate font-display text-sm font-semibold text-ink-primary">
-                        {grupo.nomePai}
-                      </h3>
-                      <p className="text-[11px] text-ink-muted">
-                        {grupo.documentos.length} arquivo{grupo.documentos.length !== 1 ? "s" : ""} vinculado{grupo.documentos.length !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-                  </div>
+            <div className="space-y-4">
+              {groupedDocuments.map((group, index) => {
+                const Icon = group.groupIcon;
+                const isExpanded = expandedGroups.has(group.groupKey);
 
-                  {/* LISTA DOS FILHOS (DOCUMENTOS) */}
-                  <div className="space-y-2">
-                    {grupo.documentos.map((doc: any) => {
-                      // Extrai o mês/ano se houver nas datas para criar a tag elegante (ex: FEV/26)
-                      const dataDoc = doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
-                      let tagMesAno = "";
-                      try {
-                        const d = new Date(dataDoc);
-                        if (!isNaN(d.getTime())) {
-                          const mes = d.toLocaleString("pt-BR", { month: "short" }).toUpperCase().replace(".", "");
-                          const ano = String(d.getFullYear()).slice(-2);
-                          tagMesAno = `${mes}/${ano}`;
-                        }
-                      } catch {
-                        tagMesAno = "";
-                      }
-
-                      return (
-                        <div
-                          key={doc.id}
-                          onClick={() => {
-                            trigger("vibrate");
-                            router.push(`/detalhes?id=${doc.id}`);
-                          }}
-                          className="group flex cursor-pointer items-center justify-between rounded-2xl border border-surface-border/40 bg-surface-raised p-3 transition-all active:scale-[0.985] hover:border-ice/30"
-                        >
-                          <div className="min-w-0 flex-1 pr-3">
-                            <div className="flex items-center gap-2">
-                              <p className="truncate text-sm font-medium text-ink-primary group-hover:text-ice transition-colors">
-                                {doc.title}
-                              </p>
-                              {tagMesAno && (
-                                <span className="shrink-0 rounded-md border border-surface-border/60 bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium text-ink-muted">
-                                  {tagMesAno}
-                                </span>
-                              )}
-                            </div>
-                            <p className="mt-0.5 text-xs text-ink-muted capitalize">
-                              Tipo: {doc.type.replace("_", " ")}
-                            </p>
-                          </div>
-
-                          <div className="flex shrink-0 items-center gap-2">
-                            {doc.attachments && doc.attachments.length > 0 && (
-                              <span className="flex items-center gap-1 text-[11px] text-ink-faint">
-                                <Paperclip size={12} />
-                                {doc.attachments.length}
-                              </span>
-                            )}
-                            <ChevronRight size={16} className="text-ink-faint transition-transform group-hover:translate-x-0.5" />
-                          </div>
+                return (
+                  <motion.div
+                    key={group.groupKey}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.3) }}
+                    className="rounded-[22px] border border-surface-border/50 bg-surface overflow-hidden shadow-sm"
+                  >
+                    {/* Cabeçalho do Grupo (Pai) */}
+                    <button
+                      onClick={() => toggleGroup(group.groupKey)}
+                      className="flex w-full items-center justify-between p-4 text-left transition-all hover:bg-surface-raised/40"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                          <Icon size={18} />
                         </div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              );
-            })
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink-primary">
+                            {group.groupName}
+                          </p>
+                          <p className="text-xs text-ink-muted">
+                            {group.count} documento{group.count !== 1 ? "s" : ""} vinculados
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-ice">
+                          {isExpanded ? "Recolher" : "Expandir"}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Conteúdo do Grupo (Filhos usando o próprio DocumentCard compacto) */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 pb-4 space-y-2.5">
+                            {group.documents.map((doc: any) => (
+                              <div
+                                key={doc.id}
+                                ref={(el) => {
+                                  cardRefs.current[doc.id!] = el;
+                                }}
+                              >
+                                <DocumentCard
+                                  document={doc}
+                                  compact
+                                  onFavoriteToggle={handleFavoriteToggle}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+
+              <InfiniteScrollTrigger
+                onLoadMore={loadMore}
+                hasMore={hasMore}
+                isLoading={isLoadingMore}
+              />
+            </div>
           )}
         </section>
+
+        <ScrollToTop threshold={400} />
       </main>
     </PageTransition>
   );
