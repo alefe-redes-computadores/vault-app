@@ -117,9 +117,17 @@ export default function HomePage() {
     trigger("vibrate");
   }, [favorite, trigger]);
 
+  // AGRUPAMENTO E FILTRO DA HOME
   const docsByCategory = useMemo(() => {
     return allDocs.reduce<Record<CategoryId, Document[]>>((acc, doc: any) => {
       const categoryId = doc.category_id as CategoryId;
+      
+      // LÓGICA MESTRA: Se for documento de Saúde, SÓ aparece na Home se você marcou como Favorito!
+      // Isso permite que você escolha manualmente o que fica na Home (ex: Credencial do Sarah).
+      if (categoryId === 'saude' && !doc.is_favorite) {
+        return acc;
+      }
+
       if (!acc[categoryId]) acc[categoryId] = [];
       acc[categoryId].push(doc);
       return acc;
@@ -127,16 +135,7 @@ export default function HomePage() {
   }, [allDocs]);
 
   const getCategoryPreview = useCallback((categoryId: CategoryId) => {
-    let docs = docsByCategory[categoryId] || [];
-    if (categoryId === 'saude') {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      docs = docs.filter(d => {
-        if (d.is_favorite) return true;
-        const docDate = new Date(d.created_at);
-        return docDate >= thirtyDaysAgo;
-      });
-    }
+    const docs = docsByCategory[categoryId] || [];
     return docs.slice(0, 3).map(doc => ({ ...doc, title: cleanTitle(doc.title) }));
   }, [docsByCategory]);
 
@@ -259,8 +258,8 @@ export default function HomePage() {
                 <div className="flex items-start gap-3">
                   <div className="ring-gradient mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-void"><Sparkles size={16} /></div>
                   <div>
-                    <p className="text-sm font-semibold text-ink-primary">Acesso rápido</p>
-                    <p className="mt-1 text-xs leading-5 text-ink-muted">Toque no título de uma categoria para minimizá-la. Seus favoritos ficam a um toque no menu inferior.</p>
+                    <p className="text-sm font-semibold text-ink-primary">Controle Manual</p>
+                    <p className="mt-1 text-xs leading-5 text-ink-muted">Documentos de Saúde não poluem a Home. Se quiser algum aqui, basta marcá-lo como Favorito!</p>
                   </div>
                 </div>
               </motion.div>
