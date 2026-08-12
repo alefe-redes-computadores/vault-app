@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   HeartPulse,
   Flame,
+  FlaskConical,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -358,7 +359,7 @@ export default function SaudePage() {
           </motion.div>
 
           {/* ============================================================ */}
-          {/* ACERVO DE DOCUMENTOS (Padrão Nativo idêntico aos Tratamentos) */}
+          {/* ACERVO DE DOCUMENTOS (Destaque Âmbar/Laranja) */}
           {/* ============================================================ */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -373,7 +374,7 @@ export default function SaudePage() {
               className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
                   <FolderHeart size={20} />
                 </div>
                 <div className="min-w-0">
@@ -413,43 +414,49 @@ export default function SaudePage() {
             </motion.div>
           )}
 
+          {/* CARDS DE ATALHOS: Medicamentos, Doses e Exames */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24, delay: 0.12 }}
-            className="grid grid-cols-2 gap-2.5"
+            className="grid grid-cols-3 gap-2.5"
           >
             <button
-              onClick={() => {
-                trigger("vibrate");
-                router.push("/saude/medicamentos");
-              }}
+              onClick={() => { trigger("vibrate"); router.push("/saude/medicamentos"); }}
               className="flex flex-col gap-2 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/12 text-ice">
                 <Pill size={16} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-primary">Medicamentos</p>
-                <p className="text-xs text-ink-muted">
-                  {(medicamentos || []).length} na gaveta
-                </p>
+                <p className="text-xs font-semibold text-ink-primary">Medicamentos</p>
+                <p className="text-[10px] text-ink-muted">{(medicamentos || []).length} na gaveta</p>
               </div>
             </button>
 
             <button
-              onClick={() => {
-                trigger("vibrate");
-                router.push("/saude/hoje");
-              }}
+              onClick={() => { trigger("vibrate"); router.push("/saude/hoje"); }}
               className="flex flex-col gap-2 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/12 text-emerald-400">
                 <Clock size={16} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-primary">Doses de Hoje</p>
-                <p className="text-xs text-ink-muted">Controle diário</p>
+                <p className="text-xs font-semibold text-ink-primary">Doses</p>
+                <p className="text-[10px] text-ink-muted">Controle diário</p>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => { trigger("vibrate"); router.push("/saude/exames"); }}
+              className="flex flex-col gap-2 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/12 text-violet-400">
+                <FlaskConical size={16} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-ink-primary">Exames</p>
+                <p className="text-[10px] text-ink-muted">Laboratoriais</p>
               </div>
             </button>
           </motion.div>
