@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2, FileText, Layers3, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, FileText, Layers3, Trash2, ChevronDown } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { SelectionModal } from "@/components/SelectionModal";
 import { db } from "@/lib/db";
 
 const getFieldsForType = (type: DocumentType) => {
@@ -92,6 +93,19 @@ const getFieldsForType = (type: DocumentType) => {
       { key: "hospital", label: "Hospital", type: "text" },
       { key: "date", label: "Data da Cirurgia", type: "date" },
     ],
+    exame_sangue: [
+      { key: 'laboratorio', label: 'Laboratório', type: 'text' },
+      { key: 'data_exame', label: 'Data do Exame', type: 'date' },
+    ],
+    exame_imagem: [
+      { key: 'hospital', label: 'Local / Hospital', type: 'text' },
+      { key: 'tipo', label: 'Tipo de Exame', type: 'text' },
+      { key: 'data_exame', label: 'Data do Exame', type: 'date' },
+    ],
+    credencial: [
+      { key: 'orgao', label: 'Órgão Emissor', type: 'text' },
+      { key: 'validade', label: 'Validade', type: 'date' },
+    ],
     outro: [
       { key: "custom_field_1", label: "Campo 1", type: "text" },
       { key: "custom_field_2", label: "Campo 2", type: "text" },
@@ -100,6 +114,25 @@ const getFieldsForType = (type: DocumentType) => {
 
   return fieldMap[type] || [];
 };
+
+const DOCUMENT_TYPES = [
+  { id: "rg", label: "C.I.N / RG" },
+  { id: "cpf", label: "CPF" },
+  { id: "cnh", label: "CNH" },
+  { id: "certidao_nascimento", label: "Certidão de Nascimento" },
+  { id: "titulo_eleitor", label: "Título de Eleitor" },
+  { id: "certificado", label: "Certificado" },
+  { id: "receita", label: "Receita" },
+  { id: "prontuario", label: "Prontuário" },
+  { id: "laudo", label: "Laudo" },
+  { id: "encaminhamento", label: "Encaminhamento" },
+  { id: "consulta", label: "Consulta" },
+  { id: "cirurgia", label: "Cirurgia" },
+  { id: "exame_sangue", label: "Exame de Sangue" },
+  { id: "exame_imagem", label: "Exame de Imagem (Raio-X, RM)" },
+  { id: "credencial", label: "Credencial / Carteirinha" },
+  { id: "outro", label: "Outro" },
+];
 
 const sectionMotion = {
   initial: { opacity: 0, y: 10 },
@@ -119,6 +152,7 @@ export default function EditarDetalhePage() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
@@ -216,6 +250,8 @@ export default function EditarDetalhePage() {
       setShowDeleteModal(false);
     }
   };
+
+  const selectedTypeLabel = DOCUMENT_TYPES.find(t => t.id === formData.type)?.label || "Selecione o tipo";
 
   if (!doc) {
     return (
@@ -348,31 +384,19 @@ export default function EditarDetalhePage() {
             className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
           >
             <label className="mb-2 block text-sm font-medium text-ink-primary">Tipo</label>
-            <div className="relative">
-              <Layers3
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-              />
-              <select
-                value={formData.type}
-                onChange={(e) => handleChange("type", e.target.value as DocumentType)}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised py-3 pl-10 pr-4 text-ink-primary outline-none transition-colors focus:border-ice/50"
-              >
-                <option value="rg">RG</option>
-                <option value="cpf">CPF</option>
-                <option value="cnh">CNH</option>
-                <option value="certidao_nascimento">Certidão de Nascimento</option>
-                <option value="titulo_eleitor">Título de Eleitor</option>
-                <option value="certificado">Certificado</option>
-                <option value="receita">Receita</option>
-                <option value="prontuario">Prontuário</option>
-                <option value="laudo">Laudo</option>
-                <option value="encaminhamento">Encaminhamento</option>
-                <option value="consulta">Consulta</option>
-                <option value="cirurgia">Cirurgia</option>
-                <option value="outro">Outro</option>
-              </select>
-            </div>
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                setIsTypeModalOpen(true);
+              }}
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/30"
+            >
+              <div className="flex items-center gap-2">
+                <Layers3 size={16} className="text-ink-muted" />
+                <span>{selectedTypeLabel}</span>
+              </div>
+              <ChevronDown size={16} className="text-ink-muted" />
+            </button>
           </motion.div>
 
           <motion.div
@@ -441,6 +465,24 @@ export default function EditarDetalhePage() {
           cancelLabel="Cancelar"
           isLoading={deleting}
           type="danger"
+        />
+
+        <SelectionModal
+          isOpen={isTypeModalOpen}
+          onClose={() => setIsTypeModalOpen(false)}
+          onSelect={(item: any) => {
+            trigger("vibrate");
+            handleChange("type", item.id);
+            setIsTypeModalOpen(false);
+          }}
+          items={DOCUMENT_TYPES}
+          title="Tipo de Documento"
+          placeholder="Buscar tipo..."
+          renderItem={(item: any) => (
+            <p className="font-medium text-ink-primary">{item.label}</p>
+          )}
+          getItemId={(item: any) => item.id}
+          getItemLabel={(item: any) => item.label}
         />
       </main>
     </PageTransition>
