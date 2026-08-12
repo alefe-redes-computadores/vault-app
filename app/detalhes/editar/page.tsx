@@ -28,7 +28,6 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
 
-// FUNÇÕES DE MÁSCARA IGUAIS À TELA DE CRIAÇÃO
 const applyMask = (value: string, type: string): string => {
   const digits = value.replace(/\D/g, "");
   if (type === "cpf") {
@@ -86,8 +85,6 @@ export default function EditarDetalhePage() {
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
-  const instituicoes = useLiveQuery(() => db.instituicoes.toArray(), []) || [];
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +97,6 @@ export default function EditarDetalhePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
 
-  // Modais dinâmicos
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
@@ -121,14 +117,13 @@ export default function EditarDetalhePage() {
     if (doc) {
       const loadedMetadata = { ...doc.metadata };
       
-      // Converte datas YYYY-MM-DD ou números brutos do banco para DD/MM/YYYY visualmente
       Object.keys(loadedMetadata).forEach((key) => {
         const val = loadedMetadata[key];
         if (typeof val === 'string') {
           if (val.match(/^\d{4}-\d{2}-\d{2}$/)) {
             const [y, m, d] = val.split('-');
             loadedMetadata[key] = `${d}/${m}/${y}`;
-          } else if (val.match(/^\d{8}$/)) { // Salva o dia que o usuário digitou sem barra ex: 23052025
+          } else if (val.match(/^\d{8}$/)) {
             const d = val.substring(0, 2);
             const m = val.substring(2, 4);
             const y = val.substring(4, 8);
@@ -157,6 +152,20 @@ export default function EditarDetalhePage() {
   }, [formData.category_id]);
 
   const handleChange = (field: keyof typeof formData, value: any) => {
+    if (field === "category_id") {
+      const allowedTypes = (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).filter(
+        t => TYPE_CATEGORY_MAP[t].includes(value)
+      );
+      const defaultType = allowedTypes.includes(formData.type) ? formData.type : (allowedTypes[0] || "outro");
+      setFormData((prev) => ({ ...prev, category_id: value, type: defaultType }));
+      return;
+    }
+
+    if (field === "type") {
+      setFormData((prev) => ({ ...prev, type: value, metadata: {} }));
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -233,7 +242,6 @@ export default function EditarDetalhePage() {
     try {
       const cleanMetadata = { ...formData.metadata };
       
-      // Converte DD/MM/YYYY de volta para YYYY-MM-DD para salvar certo no banco
       fields.forEach(field => {
         if (field.type === 'date' && cleanMetadata[field.key]) {
           const parts = cleanMetadata[field.key].split('/');
@@ -243,7 +251,6 @@ export default function EditarDetalhePage() {
         }
       });
 
-      // Lógica de upload de novos arquivos
       let finalAttachments = [...formData.attachments];
       if (localFiles.length > 0 && user) {
         setUploading(true);
@@ -415,7 +422,6 @@ export default function EditarDetalhePage() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
             <Input label="Título" value={formData.title} onChange={(e) => handleChange("title", e.target.value)} error={errors.title} />
 
-            {/* RENDERIZAÇÃO INTELIGENTE DOS CAMPOS (IGUAL À CRIAÇÃO) */}
             {fields.map((field: any) => {
                if (formData.type === 'rg' && field.key === 'rg_number' && formData.metadata['modelo'] === 'C.I.N (Nova Identidade)') {
                   return null; 
@@ -515,6 +521,8 @@ export default function EditarDetalhePage() {
                <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => cameraInputRef.current?.click()} disabled={uploading || loading}>
                  <Camera size={16} /> Câmera
                </Button>
+               <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+               <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleCameraCapture} className="hidden" />
              </div>
              <AnimatePresence>
                {formData.attachments.map((att) => (
@@ -536,7 +544,6 @@ export default function EditarDetalhePage() {
           </motion.div>
         </section>
 
-        {/* Modal de Tipo */}
         <BottomSheet isOpen={isTypeModalOpen} onClose={() => setIsTypeModalOpen(false)} title="Selecionar tipo">
           <div className="grid grid-cols-2 gap-3 px-1 pb-4">
              {availableTypes.map((typeObj) => {
