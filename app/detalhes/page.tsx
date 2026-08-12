@@ -45,12 +45,23 @@ const CATEGORY_ICONS: Record<string, typeof Heart> = {
   outros: FolderOpen,
 };
 
-const formatDate = (date?: string): string => {
-  if (!date) return "Data inválida";
+// Formatação inteligente para datas bugadas (DDMMYYYY) ou padrão (YYYY-MM-DD)
+const formatDate = (dateString?: string): string => {
+  if (!dateString || dateString.trim() === "") return "Data inválida";
   try {
-    return format(new Date(date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+    if (/^\d{8}$/.test(dateString)) {
+      const d = dateString.substring(0, 2);
+      const m = dateString.substring(2, 4);
+      const y = dateString.substring(4, 8);
+      return `${d}/${m}/${y}`;
+    }
+    if (dateString.includes("-")) {
+      const [year, month, day] = dateString.split("-").map(Number);
+      return format(new Date(year, month - 1, day), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+    }
+    return format(new Date(dateString), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   } catch {
-    return date;
+    return dateString;
   }
 };
 
@@ -249,6 +260,8 @@ export default function DocumentDetailPage() {
   const hasAttachments = doc.attachments && doc.attachments.length > 0;
   const FileIcon = selectedAttachment ? getFileIcon(selectedAttachment.type) : File;
 
+  const dateFields = ["issue_date", "expiry_date", "prescription_date", "renewal_date", "date", "data_nascimento", "data_exame", "validade"];
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
@@ -349,7 +362,7 @@ export default function DocumentDetailPage() {
                     {category?.name || "Outros"}
                   </span>
                   <span className="h-1 w-1 rounded-full bg-ink-faint" />
-                  <span className="capitalize">{doc.type}</span>
+                  <span className="capitalize">{doc.type.replace('_', ' ')}</span>
                   {doc.vault_id && (
                     <>
                       <span className="h-1 w-1 rounded-full bg-ink-faint" />
@@ -377,10 +390,11 @@ export default function DocumentDetailPage() {
                     if (!value) return null;
 
                     let displayValue: string = String(value);
-                    if (
-                      typeof value === "string" &&
-                      value.match(/^d{4}-d{2}-d{2}/)
-                    ) {
+
+                    // Verifica se a chave corresponde a um campo de data
+                    if (dateFields.includes(key) && typeof value === "string") {
+                      displayValue = formatDate(value);
+                    } else if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/)) {
                       displayValue = formatDate(value);
                     }
 
@@ -406,6 +420,9 @@ export default function DocumentDetailPage() {
                       from: "Quem encaminhou",
                       to: "Para quem",
                       reason: "Motivo",
+                      data_nascimento: "Data de Nascimento",
+                      data_exame: "Data do Exame",
+                      validade: "Validade",
                       custom_field_1: "Campo 1",
                       custom_field_2: "Campo 2",
                     };
@@ -496,8 +513,8 @@ export default function DocumentDetailPage() {
                             if (parent) {
                               const icon = document.createElement("div");
                               icon.className =
-                                "flex items-center justify-center w-full h-24 rounded-xl bg-surface";
-                              icon.innerHTML = `<svg class="w-8 h-8 text-gray-500/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`;
+                                "flex flex-col items-center justify-center w-full h-24 rounded-xl bg-surface";
+                              icon.innerHTML = `<svg class="w-8 h-8 text-coral/60 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg><span class="text-[9px] text-ink-muted px-1 text-center">Arquivo indisponível. Edite para reenviar.</span>`;
                               parent.prepend(icon);
                             }
                           }}
@@ -686,15 +703,9 @@ export default function DocumentDetailPage() {
                     ) : (
                       <div className="flex flex-col items-center gap-4 text-ink-muted">
                         <ImageIcon size={64} className="text-ink-muted/30" />
-                        <p className="text-sm text-ink-primary">
-                          Imagem não disponível
+                        <p className="text-sm text-ink-primary text-center">
+                          Imagem não disponível.<br/><span className="text-xs">Edite o documento para enviá-la novamente.</span>
                         </p>
-                        <button
-                          onClick={() => downloadAttachment(selectedAttachment)}
-                          className="text-sm text-ice transition-colors hover:text-ice/80"
-                        >
-                          Baixar imagem
-                        </button>
                       </div>
                     )
                   ) : selectedAttachment.type === "pdf" ? (
@@ -739,7 +750,7 @@ export default function DocumentDetailPage() {
                     variant="secondary"
                     size="sm"
                     onClick={() => downloadAttachment(selectedAttachment)}
-                    disabled={isDownloading}
+                    disabled={isDownloading || imageError}
                   >
                     {isDownloading ? (
                       <Loader2 size={14} className="mr-1 animate-spin" />
