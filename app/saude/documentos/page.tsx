@@ -4,16 +4,12 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
-  X,
   Calendar,
   SlidersHorizontal,
   ArrowLeft,
   Pill,
   FileText,
   FlaskConical,
-  Building2,
-  Stethoscope,
-  FolderHeart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
@@ -33,12 +29,10 @@ import { ptBR } from "date-fns/locale";
 
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
-
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedValue(value), delay);
     return () => clearTimeout(handler);
   }, [value, delay]);
-
   return debouncedValue;
 }
 
@@ -56,7 +50,11 @@ export default function DocumentsPage() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | "all">("all");
-  const [dateFilter, setDateFilter] = useState<"all" | "expiring" | "expired">("all");
+  
+  // Filtro de Mês Padrão: Mês atual no formato "yyyy-MM" ou "all"
+  const currentMonthDefault = format(new Date(), "yyyy-MM");
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthDefault);
+
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -64,13 +62,12 @@ export default function DocumentsPage() {
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 420);
+    const timer = setTimeout(() => setIsLoading(false), 350);
     return () => clearTimeout(timer);
   }, []);
 
   const {
     documents: paginatedDocs,
-    totalCount,
     hasMore,
     isLoadingMore,
     loadMore,
@@ -80,7 +77,7 @@ export default function DocumentsPage() {
     searchQuery: debouncedSearch,
   });
 
-  // Filtra e separa os documentos conforme a aba ativa
+  // Filtros dinâmicos por aba e por mês
   const filteredDocs = useMemo(() => {
     let result = paginatedDocs.filter((doc: any) => doc.category_id === 'saude');
 
@@ -92,14 +89,12 @@ export default function DocumentsPage() {
       result = result.filter((doc: any) => doc.type?.includes('exame'));
     }
 
-    if (dateFilter === "expiring") {
-      const now = new Date();
-      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    // Filtro por Mês (se não for "all")
+    if (selectedMonth !== "all") {
       result = result.filter((doc: any) => {
-        const expiry = doc.metadata?.expiry_date || doc.metadata?.renewal_date;
-        if (!expiry) return false;
-        const expiryDate = new Date(expiry);
-        return expiryDate > now && expiryDate <= sevenDaysFromNow;
+        const dateStr = doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
+        if (!dateStr) return false;
+        return dateStr.startsWith(selectedMonth);
       });
     }
 
@@ -108,9 +103,9 @@ export default function DocumentsPage() {
       const dateB = new Date(b.metadata?.prescription_date || b.metadata?.date || b.created_at || 0).getTime();
       return dateB - dateA;
     });
-  }, [paginatedDocs, activeTab, dateFilter]);
+  }, [paginatedDocs, activeTab, selectedMonth]);
 
-  // Estrutura de Árvore (Pai/Filho) exclusiva para a Aba de Receitas
+  // Agrupamento por Medicamento (Pai/Filho) para a Aba de Receitas
   const groupedReceitas = useMemo(() => {
     if (activeTab !== "receitas") return [];
     const groups: Map<string, { groupKey: string; groupName: string; documents: any[]; count: number }> = new Map();
@@ -130,7 +125,6 @@ export default function DocumentsPage() {
     return Array.from(groups.values());
   }, [filteredDocs, activeTab]);
 
-  // Estrutura de Linha do Tempo por Mês para Prontuários/Laudos e Exames
   const timelineGroups = useMemo(() => {
     if (activeTab === "receitas") return [];
     const groups: { [key: string]: any[] } = {};
@@ -138,7 +132,6 @@ export default function DocumentsPage() {
     for (const doc of filteredDocs) {
       const dateStr = doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
       let monthYearKey = "Geral";
-      
       if (dateStr) {
         try {
           const parsed = parseISO(dateStr);
@@ -148,11 +141,9 @@ export default function DocumentsPage() {
           monthYearKey = "Geral";
         }
       }
-
       if (!groups[monthYearKey]) groups[monthYearKey] = [];
       groups[monthYearKey].push(doc);
     }
-
     return Object.entries(groups);
   }, [filteredDocs, activeTab]);
 
@@ -167,7 +158,7 @@ export default function DocumentsPage() {
   const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSelectedCategory("all");
-    setDateFilter("all");
+    setSelectedMonth("all");
     setSelectedPersonId(null);
     trigger("vibrate");
   }, [trigger]);
@@ -188,7 +179,7 @@ export default function DocumentsPage() {
     }
   }, [groupedReceitas]);
 
-  const hasActiveFilters = selectedPersonId !== null || selectedCategory !== "all" || dateFilter !== "all";
+  const hasActiveFilters = selectedPersonId !== null || selectedCategory !== "all" || selectedMonth !== "all";
 
   const getExportCards = () => {
     return filteredDocs.map((doc: any) => ({
@@ -201,25 +192,39 @@ export default function DocumentsPage() {
     return <LoadingSkeleton />;
   }
 
+  // Nome formatado do mês selecionado para exibir no aviso visual
+  const formattedSelectedMonthLabel = useMemo(() => {
+    if (selectedMonth === "all") return "Todos os meses";
+    try {
+      const [year, month] = selectedMonth.split("-");
+      const parsed = new Date(Number(year), Number(month) - 1, 1);
+      const str = format(parsed, "MMMM 'de' yyyy", { locale: ptBR });
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    } catch {
+      return selectedMonth;
+    }
+  }, [selectedMonth]);
+
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-6">
-        <header className="sticky top-0 z-25 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+      <main className="min-h-screen bg-void pb-12">
+        {/* HEADER FIXO COM Z-INDEX CORRETO PARA EVITAR BUG DE ROLAGEM */}
+        <header className="sticky top-0 z-30 border-b border-surface-border/40 bg-void/90 px-5 pt-4 pb-3 backdrop-blur-md">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => { trigger("vibrate"); router.back(); }}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
                 aria-label="Voltar"
               >
                 <ArrowLeft size={18} className="text-ink-primary" />
               </button>
 
               <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ice/90">
                   Vault
                 </p>
-                <h1 className="mt-0.5 font-display text-lg font-semibold text-ink-primary truncate">
+                <h1 className="font-display text-base font-semibold text-ink-primary truncate">
                   Acervo de Documentos
                 </h1>
               </div>
@@ -238,26 +243,26 @@ export default function DocumentsPage() {
 
               <button
                 onClick={() => { trigger("vibrate"); setShowFilters((prev) => !prev); }}
-                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all active:scale-95 ${
+                className={`flex h-10 w-10 items-center justify-center rounded-full border transition-all active:scale-95 ${
                   hasActiveFilters || showFilters
                     ? "border-ice bg-ice/12 text-ice"
                     : "border-surface-border/50 bg-surface-raised text-ink-muted"
                 }`}
               >
-                <SlidersHorizontal size={18} />
+                <SlidersHorizontal size={16} />
               </button>
             </div>
           </div>
 
-          {/* Abas Principais de Navegação (Tabs) */}
-          <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl bg-surface-raised/80 p-1">
+          {/* Abas Principais de Navegação */}
+          <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-2xl bg-surface-raised/80 p-1">
             <button
               onClick={() => { trigger("vibrate"); setActiveTab("receitas"); }}
               className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
                 activeTab === "receitas" ? "bg-surface text-ink-primary shadow-sm" : "text-ink-muted hover:text-ink-primary"
               }`}
             >
-              <Pill size={14} className="text-amber-400" />
+              <Pill size={13} className="text-amber-400" />
               Receitas
             </button>
             <button
@@ -266,8 +271,8 @@ export default function DocumentsPage() {
                 activeTab === "prontuarios" ? "bg-surface text-ink-primary shadow-sm" : "text-ink-muted hover:text-ink-primary"
               }`}
             >
-              <FileText size={14} className="text-violet-400" />
-              Prontuários & Laudos
+              <FileText size={13} className="text-violet-400" />
+              Prontuários
             </button>
             <button
               onClick={() => { trigger("vibrate"); setActiveTab("exames"); }}
@@ -275,55 +280,126 @@ export default function DocumentsPage() {
                 activeTab === "exames" ? "bg-surface text-ink-primary shadow-sm" : "text-ink-muted hover:text-ink-primary"
               }`}
             >
-              <FlaskConical size={14} className="text-emerald-400" />
+              <FlaskConical size={13} className="text-emerald-400" />
               Exames
             </button>
           </div>
 
+          {/* Barra de Pesquisa */}
           <div className="relative mt-3">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
             <Input
               placeholder={`Pesquisar em ${activeTab}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-surface-border/50 bg-surface-raised pl-9 transition-all"
+              className="border-surface-border/50 bg-surface-raised pl-9 text-sm"
             />
           </div>
+
+          {/* MODAL DE FILTROS AVANÇADOS (COM SELETOR DE MÊS) */}
+          <AnimatePresence initial={false}>
+            {showFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -4 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -4 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 space-y-3 rounded-2xl border border-surface-border/50 bg-surface p-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs uppercase tracking-wider text-ink-faint font-medium">Filtrar por Período (Mês)</span>
+                    {selectedMonth !== "all" && (
+                      <button 
+                        onClick={() => setSelectedMonth("all")} 
+                        className="text-[11px] text-ice hover:underline"
+                      >
+                        Ver todos os meses
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="month"
+                      value={selectedMonth === "all" ? "" : selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value || "all")}
+                      className="w-full rounded-xl border border-surface-border/50 bg-surface-raised px-3 py-2 text-xs text-ink-primary outline-none"
+                    />
+                    <button
+                      onClick={() => setSelectedMonth(currentMonthDefault)}
+                      className="whitespace-nowrap rounded-xl border border-surface-border/50 bg-surface-raised px-3 py-2 text-xs text-ink-muted hover:text-ink-primary"
+                    >
+                      Mês Atual
+                    </button>
+                  </div>
+
+                  {hasActiveFilters && (
+                    <button
+                      onClick={clearFilters}
+                      className="w-full rounded-xl border border-ice/20 bg-ice/10 py-2 text-xs font-medium text-ice transition-all active:scale-95"
+                    >
+                      Limpar todos os filtros
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </header>
 
-        <section className="px-5 pt-5">
+        {/* CONTEÚDO PRINCIPAL */}
+        <section className="px-5 pt-4">
+          {/* Indicador visual discreto do filtro de mês ativo */}
+          {selectedMonth !== "all" && (
+            <div className="mb-3 flex items-center justify-between rounded-xl bg-surface px-3.5 py-2 border border-surface-border/40 text-xs">
+              <span className="text-ink-muted">Exibindo período: <strong className="text-ink-primary">{formattedSelectedMonthLabel}</strong></span>
+              <button onClick={() => setSelectedMonth("all")} className="text-ice font-medium">Mostrar todos</button>
+            </div>
+          )}
+
           {filteredDocs.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center rounded-[30px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
+              className="flex flex-col items-center justify-center rounded-[24px] border border-surface-border/50 bg-surface px-6 py-12 text-center shadow-sm mt-2"
             >
-              <div className="glow-ice mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-ice/15 bg-surface-raised">
-                <Search size={28} className="text-ice/60" />
+              <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-ice/15 bg-surface-raised text-ice/70">
+                <Search size={24} />
               </div>
-              <h3 className="font-display text-lg font-semibold text-ink-primary">Nenhum registro encontrado</h3>
-              <p className="mt-2 text-sm text-ink-muted">Não há documentos cadastrados nesta categoria com os filtros atuais.</p>
+              <h3 className="font-display text-base font-semibold text-ink-primary">Nenhum registro para este período</h3>
+              <p className="mt-1 text-xs text-ink-muted max-w-xs">
+                Não há documentos em {formattedSelectedMonthLabel}. Tente alterar o mês no botão de filtros acima.
+              </p>
+              {selectedMonth !== "all" && (
+                <button
+                  onClick={() => setSelectedMonth("all")}
+                  className="mt-4 rounded-full border border-ice/20 bg-ice/10 px-4 py-2 text-xs font-medium text-ice active:scale-95"
+                >
+                  Ver todos os meses
+                </button>
+              )}
             </motion.div>
           ) : (
             <div>
-              {/* VISÃO 1: ÁRVORE PAI/FILHO PARA RECEITAS */}
+              {/* ABA RECEITAS (COM AGRUPAMENTO POR MEDICAMENTO) */}
               {activeTab === "receitas" && (
-                <div className="space-y-4">
+                <div className="space-y-3.5">
                   {groupedReceitas.map((group) => {
                     const isExpanded = expandedGroups.has(group.groupKey);
                     return (
-                      <div key={group.groupKey} className="rounded-[22px] border border-surface-border/50 bg-surface overflow-hidden shadow-sm">
+                      <div key={group.groupKey} className="rounded-[20px] border border-surface-border/50 bg-surface overflow-hidden shadow-sm">
                         <button
                           onClick={() => toggleGroup(group.groupKey)}
-                          className="flex w-full items-center justify-between p-4 text-left transition-all hover:bg-surface-raised/40"
+                          className="flex w-full items-center justify-between p-3.5 text-left transition-all hover:bg-surface-raised/40"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
-                              <Pill size={18} />
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                              <Pill size={16} />
                             </div>
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-ink-primary">{group.groupName}</p>
-                              <p className="text-xs text-ink-muted">{group.count} receita(s) no histórico</p>
+                              <p className="text-[11px] text-ink-muted">{group.count} receita(s) no período</p>
                             </div>
                           </div>
                           <span className="text-xs font-medium text-amber-400">
@@ -337,7 +413,7 @@ export default function DocumentsPage() {
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
-                              className="px-4 pb-4 space-y-2.5 overflow-hidden"
+                              className="px-3.5 pb-3.5 space-y-2 overflow-hidden"
                             >
                               {group.documents.map((doc: any) => (
                                 <div key={doc.id} ref={(el) => { cardRefs.current[doc.id!] = el; }}>
@@ -353,20 +429,20 @@ export default function DocumentsPage() {
                 </div>
               )}
 
-              {/* VISÃO 2 & 3: LINHA DO TEMPO PARA PRONTUÁRIOS E EXAMES */}
+              {/* OUTRAS ABAS (LINHA DO TEMPO) */}
               {activeTab !== "receitas" && (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   {timelineGroups.map(([monthYear, docs]) => (
-                    <div key={monthYear} className="space-y-3">
-                      <div className="flex items-center gap-2 pt-2">
-                        <Calendar size={14} className="text-violet-400" />
+                    <div key={monthYear} className="space-y-2.5">
+                      <div className="flex items-center gap-2 pt-1">
+                        <Calendar size={13} className="text-violet-400" />
                         <h2 className="font-display text-xs font-semibold uppercase tracking-wider text-violet-400/90">
                           {monthYear}
                         </h2>
                         <div className="h-[1px] flex-1 bg-surface-border/40 ml-2"></div>
                       </div>
 
-                      <div className="space-y-2.5">
+                      <div className="space-y-2">
                         {docs.map((doc: any) => (
                           <div key={doc.id} ref={(el) => { cardRefs.current[doc.id!] = el; }}>
                             <DocumentCard document={doc} onFavoriteToggle={handleFavoriteToggle} />
