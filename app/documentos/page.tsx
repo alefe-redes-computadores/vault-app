@@ -8,6 +8,12 @@ import {
   Calendar,
   SlidersHorizontal,
   Sparkles,
+  Pill,
+  Building2,
+  Stethoscope,
+  FolderHeart,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
@@ -22,6 +28,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -66,6 +74,25 @@ const cardVariants = {
   },
 };
 
+interface GroupedDocument {
+  groupKey: string;
+  groupType: 'medication' | 'hospital' | 'doctor' | 'other';
+  groupIcon: any;
+  groupName: string;
+  documents: any[];
+  count: number;
+}
+
+function getMonthYearTag(dateStr: string): string {
+  if (!dateStr) return "";
+  try {
+    const date = new Date(dateStr);
+    return format(date, "MMM/yy", { locale: ptBR }).toUpperCase();
+  } catch {
+    return "";
+  }
+}
+
 export default function DocumentsPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -81,6 +108,7 @@ export default function DocumentsPage() {
   const [dateFilter, setDateFilter] = useState<"all" | "expiring" | "expired">("all");
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -129,6 +157,74 @@ export default function DocumentsPage() {
     return result;
   }, [paginatedDocs, selectedType, dateFilter]);
 
+  // ============================================================
+  // LÓGICA DE AGRUPAMENTO AUTOMÁTICO (Pai/Filho)
+  // ============================================================
+  const groupedDocuments = useMemo(() => {
+    const groups: Map<string, GroupedDocument> = new Map();
+
+    // Filtra apenas documentos da categoria Saúde
+    const saudeDocs = filteredDocs.filter((doc: any) => doc.category_id === 'saude');
+
+    for (const doc of saudeDocs) {
+      let groupKey = '';
+      let groupType: 'medication' | 'hospital' | 'doctor' | 'other' = 'other';
+      let groupIcon = FolderHeart;
+      let groupName = 'Outros';
+
+      // 1. Tenta agrupar por Medicamento (receitas)
+      const medication = doc.metadata?.medication;
+      if (medication && (doc.type === 'receita' || doc.type === 'receita')) {
+        groupKey = `med-${medication}`;
+        groupType = 'medication';
+        groupIcon = Pill;
+        groupName = medication;
+      }
+      // 2. Tenta agrupar por Hospital / Local
+      else if (doc.metadata?.hospital || doc.metadata?.institution) {
+        const hospitalName = doc.metadata?.hospital || doc.metadata?.institution;
+        groupKey = `hospital-${hospitalName}`;
+        groupType = 'hospital';
+        groupIcon = Building2;
+        groupName = hospitalName;
+      }
+      // 3. Tenta agrupar por Médico
+      else if (doc.metadata?.doctor) {
+        groupKey = `doctor-${doc.metadata.doctor}`;
+        groupType = 'doctor';
+        groupIcon = Stethoscope;
+        groupName = doc.metadata.doctor;
+      }
+      // 4. Outros documentos de saúde
+      else {
+        groupKey = 'other';
+        groupType = 'other';
+        groupIcon = FolderHeart;
+        groupName = 'Outros documentos';
+      }
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          groupKey,
+          groupType,
+          groupIcon,
+          groupName,
+          documents: [],
+          count: 0,
+        });
+      }
+
+      groups.get(groupKey)!.documents.push(doc);
+      groups.get(groupKey)!.count += 1;
+    }
+
+    // Ordena grupos: Medicamentos > Hospitais > Médicos > Outros
+    const order = { medication: 0, hospital: 1, doctor: 2, other: 3 };
+    return Array.from(groups.values()).sort(
+      (a, b) => order[a.groupType] - order[b.groupType]
+    );
+  }, [filteredDocs]);
+
   const handleFavoriteToggle = useCallback(
     async (id: string) => {
       await favorite(id);
@@ -145,6 +241,27 @@ export default function DocumentsPage() {
     setSelectedPersonId(null);
     trigger("vibrate");
   }, [trigger]);
+
+  const toggleGroup = useCallback((groupKey: string) => {
+    setExpandedGroups((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupKey)) {
+        newSet.delete(groupKey);
+      } else {
+        newSet.add(groupKey);
+      }
+      return newSet;
+    });
+    trigger("vibrate");
+  }, [trigger]);
+
+  // Expande todos os grupos automaticamente na primeira renderização
+  useEffect(() => {
+    if (groupedDocuments.length > 0 && expandedGroups.size === 0) {
+      const allKeys = groupedDocuments.map(g => g.groupKey);
+      setExpandedGroups(new Set(allKeys));
+    }
+  }, [groupedDocuments]);
 
   const hasActiveFilters =
     selectedPersonId !== null ||
@@ -163,6 +280,9 @@ export default function DocumentsPage() {
     return <LoadingSkeleton />;
   }
 
+  // Filtra apenas documentos de saúde para o contador
+  const saudeCount = filteredDocs.filter((d: any) => d.category_id === 'saude').length;
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-6">
@@ -173,10 +293,10 @@ export default function DocumentsPage() {
                 Vault
               </p>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
-                Documentos
+                Acervo de Documentos
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
-                {totalCount} documento{totalCount !== 1 ? "s" : ""}
+                {saudeCount} documento{saudeCount !== 1 ? "s" : ""} na saúde
                 {hasActiveFilters ? " filtrados" : ""}
               </p>
             </div>
@@ -215,7 +335,7 @@ export default function DocumentsPage() {
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
             />
             <Input
-              placeholder="Buscar documentos, números ou notas..."
+              placeholder="Buscar documentos, medicamentos, médicos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="border-surface-border/50 bg-surface-raised pl-9 transition-all"
@@ -395,7 +515,7 @@ export default function DocumentsPage() {
         </header>
 
         <section className="px-5 pt-5">
-          {filteredDocs.length === 0 ? (
+          {groupedDocuments.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -411,7 +531,7 @@ export default function DocumentsPage() {
                   ? "Nenhum documento encontrado"
                   : hasActiveFilters
                   ? "Nenhum resultado com esses filtros"
-                  : "Nenhum documento ainda"}
+                  : "Nenhum documento de saúde"}
               </h3>
 
               <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
@@ -419,7 +539,7 @@ export default function DocumentsPage() {
                   ? "Tente buscar com outro termo ou remova parte dos filtros para ampliar os resultados."
                   : hasActiveFilters
                   ? "Os filtros atuais estão limitando sua busca. Ajuste os critérios para visualizar mais documentos."
-                  : "Seus documentos vão aparecer aqui assim que forem cadastrados."}
+                  : "Documentos de saúde como receitas, laudos e prontuários aparecerão aqui."}
               </p>
 
               {hasActiveFilters && (
@@ -432,33 +552,105 @@ export default function DocumentsPage() {
               )}
             </motion.div>
           ) : (
-            <InfiniteScrollTrigger
-              onLoadMore={loadMore}
-              hasMore={hasMore}
-              isLoading={isLoadingMore}
-            >
-              <motion.div
-                variants={listVariants}
-                initial="hidden"
-                animate="show"
-                className="space-y-4"
-              >
-                {filteredDocs.map((doc: any) => (
+            <div className="space-y-4">
+              {groupedDocuments.map((group, index) => {
+                const Icon = group.groupIcon;
+                const isExpanded = expandedGroups.has(group.groupKey);
+
+                return (
                   <motion.div
-                    key={doc.id}
-                    variants={cardVariants}
-                    ref={(el) => {
-                      cardRefs.current[doc.id!] = el;
-                    }}
+                    key={group.groupKey}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.3) }}
+                    className="rounded-[22px] border border-surface-border/50 bg-surface overflow-hidden shadow-sm"
                   >
-                    <DocumentCard
-                      document={doc}
-                      onFavoriteToggle={handleFavoriteToggle}
-                    />
+                    {/* Cabeçalho do Grupo (Pai) */}
+                    <button
+                      onClick={() => toggleGroup(group.groupKey)}
+                      className="flex w-full items-center justify-between p-4 text-left transition-all hover:bg-surface-raised/40"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                          <Icon size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink-primary">
+                            {group.groupName}
+                          </p>
+                          <p className="text-xs text-ink-muted">
+                            {group.count} documento{group.count !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-ink-muted">
+                          {isExpanded ? "▲" : "▼"}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Conteúdo do Grupo (Filhos) */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 pb-4 space-y-3">
+                            {group.documents.map((doc: any) => {
+                              const dateStr = doc.metadata?.prescription_date || 
+                                              doc.metadata?.date || 
+                                              doc.created_at;
+                              const monthYearTag = getMonthYearTag(dateStr);
+
+                              return (
+                                <div key={doc.id} className="relative">
+                                  <button
+                                    onClick={() => {
+                                      trigger("vibrate");
+                                      router.push(`/detalhes?id=${doc.id}`);
+                                    }}
+                                    className="flex w-full items-center justify-between rounded-[18px] border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all hover:bg-surface-raised active:scale-[0.99]"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm font-medium text-ink-primary">
+                                        {doc.title}
+                                      </p>
+                                      <p className="mt-0.5 text-xs text-ink-muted capitalize">
+                                        {doc.type}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {monthYearTag && (
+                                        <span className="shrink-0 rounded-full bg-ice/10 px-2 py-0.5 text-[10px] font-semibold text-ice">
+                                          {monthYearTag}
+                                        </span>
+                                      )}
+                                      <ChevronRight size={14} className="shrink-0 text-ink-faint" />
+                                    </div>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
-                ))}
-              </motion.div>
-            </InfiniteScrollTrigger>
+                );
+              })}
+
+              {/* Trigger de paginação mantido */}
+              <InfiniteScrollTrigger
+                onLoadMore={loadMore}
+                hasMore={hasMore}
+                isLoading={isLoadingMore}
+              />
+            </div>
           )}
         </section>
 
