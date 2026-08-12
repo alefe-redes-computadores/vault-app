@@ -46,6 +46,20 @@ const getFieldsForType = (type: DocumentType) => {
       { key: "issue_date", label: "Data de emissão", type: "date" },
       { key: "expiry_date", label: "Data de validade", type: "date" },
     ],
+    certidao_nascimento: [
+      { key: "nome_registrado", label: "Nome Registrado", type: "text" },
+      { key: "matricula", label: "Matrícula", type: "text" },
+      { key: "livro", label: "Livro", type: "text" },
+      { key: "folha", label: "Folha", type: "text" },
+      { key: "termo", label: "Termo", type: "text" },
+      { key: "cartorio", label: "Cartório de Registro", type: "text" },
+      { key: "data_nascimento", label: "Data de Nascimento", type: "date" },
+    ],
+    titulo_eleitor: [
+      { key: "number", label: "Número do Título", type: "text" },
+      { key: "zona", label: "Zona Eleitoral", type: "text" },
+      { key: "secao", label: "Seção", type: "text" },
+    ],
     certificado: [
       { key: "institution", label: "Instituição", type: "text" },
       { key: "course", label: "Curso", type: "text" },
@@ -104,6 +118,8 @@ const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
   { id: "rg", label: "RG" },
   { id: "cpf", label: "CPF" },
   { id: "cnh", label: "CNH" },
+  { id: "certidao_nascimento", label: "Certidão de Nascimento" },
+  { id: "titulo_eleitor", label: "Título de Eleitor" },
   { id: "certificado", label: "Certificado" },
   { id: "receita", label: "Receita" },
   { id: "prontuario", label: "Prontuário" },
@@ -312,7 +328,6 @@ export default function EditarDetalhePage() {
             </div>
           </motion.div>
 
-          {/* VÍNCULO DE TRATAMENTO FICA AQUI CASO SEJA UM DOCUMENTO DE SAÚDE */}
           {formData.category_id === "saude" && (
             <motion.div
               initial={{ opacity: 0, y: 14 }}
@@ -379,7 +394,6 @@ export default function EditarDetalhePage() {
               </div>
             </div>
 
-            {/* SELETOR EM GRID: Tchau `<select>` branco e feio! */}
             <div>
               <label className="mb-2 block text-sm font-medium text-ink-primary">
                 Tipo de documento
@@ -484,7 +498,6 @@ export default function EditarDetalhePage() {
           </motion.div>
         </section>
 
-        {/* MODAL PARA SELECIONAR O TRATAMENTO */}
         <SelectionModal
           isOpen={isTratamentoModalOpen}
           onClose={() => setIsTratamentoModalOpen(false)}
