@@ -25,8 +25,7 @@ import {
   Droplet,
   Syringe,
   StickyNote,
-  Palette,
-  MessageSquare
+  Palette
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
@@ -238,7 +237,7 @@ export default function EditarMedicamentoPage() {
     trigger("vibrate");
     setCores(prev => {
       if (prev.includes(hex)) return prev.filter(c => c !== hex);
-      if (prev.length >= 2) return [prev[1], hex]; // Mantém no máximo 2 cores, removendo a mais antiga
+      if (prev.length >= 2) return [prev[1], hex];
       return [...prev, hex];
     });
   };
@@ -372,7 +371,7 @@ export default function EditarMedicamentoPage() {
         estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
         estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) || 1 : undefined,
         estoque_unidade_medida: estoqueAtivo ? estoqueUnidade.trim() || "comprimido(s)" : undefined,
-      });
+      } as any);
 
       if (estoqueAtivo && horariosFiltrados.length > 0 && statusAtivo) {
         const granted = await requestNotificationPermission();
@@ -436,7 +435,6 @@ export default function EditarMedicamentoPage() {
     );
   }
 
-  // Define o ícone atual baseado no formato escolhido
   const SelectedFormatIcon = FORMATOS.find(f => f.id === formato)?.icon || Pill;
 
   return (
@@ -474,7 +472,6 @@ export default function EditarMedicamentoPage() {
 
         <section className="space-y-4 px-5 pt-6">
           
-          {/* IDENTIDADE VISUAL DO MEDICAMENTO */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
              <div className="flex items-center gap-2 mb-3">
                <Palette size={16} className="text-ice" />
