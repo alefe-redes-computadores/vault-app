@@ -88,7 +88,8 @@ export default function EditarExamePage() {
       });
 
       trigger("success");
-      router.push(`/saude/exames/detalhes?id=${id}`);
+      // CORREÇÃO: Usando replace para não criar histórico em cascata
+      router.replace(`/saude/exames/detalhes?id=${id}`);
     } catch (error) {
       console.error("Erro ao atualizar exame:", error);
       trigger("error");
