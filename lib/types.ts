@@ -261,6 +261,7 @@ export interface SyncQueueItem {
     | 'farmacias'
     | 'hospitais'
     | 'laboratorios'
+    | 'exames' // <- ADICIONADO AQUI PARA SUPORTAR SINCRONIZAÇÃO EM NUVEM
     | 'doseLogs'
     | 'credentials' 
     | 'cards'
@@ -327,6 +328,22 @@ export interface DoseLog {
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
+}
+
+export interface Exame {
+  id?: string;
+  user_id?: string;
+  nome: string;
+  laboratorio?: string;
+  medico?: string;
+  data: string;
+  data_retorno?: string;
+  motivo?: string;
+  observacoes?: string;
+  anexo_url?: string;
+  synced?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // ============================================================
