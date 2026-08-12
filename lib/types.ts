@@ -261,7 +261,7 @@ export interface SyncQueueItem {
     | 'farmacias'
     | 'hospitais'
     | 'laboratorios'
-    | 'exames' // <- ADICIONADO AQUI PARA SUPORTAR SINCRONIZAÇÃO EM NUVEM
+    | 'exames'
     | 'doseLogs'
     | 'credentials' 
     | 'cards'
@@ -301,6 +301,16 @@ export interface Medicamento {
   estoque_horarios?: string[];
   estoque_unidade_por_dose?: number;
   estoque_unidade_medida?: string;
+  
+  // ✅ NOVOS CAMPOS PARA COMPATIBILIDADE COM O FORMULÁRIO
+  formato?: string;                    // "comprimido" | "gota" | "injecao" | "adesivo"
+  cores?: string[];                    // array de cores hex, ex: ["#FFFFFF", "#F472B6"]
+  medico_id?: string;                  // ID do médico prescritor
+  motivo_descontinuacao?: string;      // motivo da suspensão
+  medico_descontinuacao_id?: string;   // ID do médico que suspendeu
+  medico_descontinuacao_nome?: string; // nome do médico que suspendeu
+  substituido_por_id?: string;         // ID do medicamento substituto
+  
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
