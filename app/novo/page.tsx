@@ -62,6 +62,7 @@ type FormData = {
   vault_id?: string;
 };
 
+// CORREÇÃO: Adicionados exame_sangue, exame_imagem e credencial
 const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   rg: "C.I.N / Identidade",
   cpf: "CPF",
@@ -75,6 +76,9 @@ const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   encaminhamento: "Encaminhamento",
   consulta: "Consulta",
   cirurgia: "Cirurgia",
+  exame_sangue: "Exame de Sangue",
+  exame_imagem: "Exame de Imagem (Raio-X, RM)",
+  credencial: "Credencial / Carteirinha",
   outro: "Outro",
 };
 
@@ -703,18 +707,24 @@ export default function NewDocumentPage() {
           <div className="grid grid-cols-2 gap-3 px-1 pb-4">
              {availableTypes.map((typeObj) => {
                
+               // CORREÇÃO: Adicionados exames e credencial aos ícones
                const TYPE_ICONS: Record<string, any> = {
                  rg: Contact, cpf: FileText, cnh: CreditCard,
                  certidao_nascimento: Scroll, titulo_eleitor: Landmark, certificado: Award,
                  receita: Pill, prontuario: Heart, laudo: FileText,
-                 encaminhamento: FileOutput, consulta: Stethoscope, cirurgia: ActivityIcon, outro: Folder,
+                 encaminhamento: FileOutput, consulta: Stethoscope, cirurgia: ActivityIcon, 
+                 exame_sangue: ActivityIcon, exame_imagem: ActivityIcon, credencial: Contact,
+                 outro: Folder,
                };
 
+               // CORREÇÃO: Adicionados exames e credencial as descrições
                const TYPE_DESCRIPTIONS: Record<string, string> = {
                  rg: "Registro Geral ou C.I.N", cpf: "Cadastro de Pessoa Física", cnh: "Carteira de Habilitação",
                  certidao_nascimento: "Nascimento ou Casamento", titulo_eleitor: "Justiça Eleitoral", certificado: "Certificados e diplomas",
                  receita: "Receitas médicas", prontuario: "Prontuários médicos", laudo: "Laudos e exames",
-                 encaminhamento: "Encaminhamentos médicos", consulta: "Consultas médicas", cirurgia: "Cirurgias e procedimentos", outro: "Outros documentos",
+                 encaminhamento: "Encaminhamentos médicos", consulta: "Consultas médicas", cirurgia: "Cirurgias e procedimentos", 
+                 exame_sangue: "Exames laboratoriais", exame_imagem: "Ressonâncias, Raio-X, etc", credencial: "Carteirinhas e credenciais",
+                 outro: "Outros documentos",
                };
 
                const Icon = TYPE_ICONS[typeObj] || FileText;
