@@ -52,10 +52,36 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   outro: FolderOpen,
 };
 
-// Formatação blindada para não falhar nem sumir com a data
+// Dicionário amigável para traduzir o tipo técnico do documento no badge
+const TYPE_LABELS: Record<string, string> = {
+  rg: "C.I.N / RG",
+  cpf: "CPF",
+  cnh: "CNH",
+  certidao_nascimento: "Certidão",
+  titulo_eleitor: "Título Eleitor",
+  certificado: "Certificado",
+  receita: "Receita",
+  prontuario: "Prontuário",
+  laudo: "Laudo",
+  encaminhamento: "Encaminhamento",
+  consulta: "Consulta",
+  cirurgia: "Cirurgia",
+  exame_sangue: "Exame Sangue",
+  exame_imagem: "Exame Imagem",
+  credencial: "Credencial",
+  outro: "Outro",
+};
+
+// Formatação blindada para datas
 const formatDate = (dateString?: string) => {
   if (!dateString || dateString.trim() === "") return null;
   try {
+    if (/^\d{8}$/.test(dateString)) {
+      const d = dateString.substring(0, 2);
+      const m = dateString.substring(2, 4);
+      const y = dateString.substring(4, 8);
+      return `${d}/${m}/${y}`;
+    }
     if (dateString.includes("-")) {
       const [year, month, day] = dateString.split("-").map(Number);
       return format(new Date(year, month - 1, day), "dd/MM/yyyy", { locale: ptBR });
@@ -82,6 +108,7 @@ function DocumentCardComponent({
   const category = CATEGORIES[document.category_id];
   const color = category?.color || "#6B7280";
   const TypeIcon = TYPE_ICONS[document.type] || FileText;
+  const friendlyTypeLabel = TYPE_LABELS[document.type] || document.type.replace('_', ' ');
 
   const handlePress = useCallback(() => {
     trigger("vibrate");
@@ -108,7 +135,6 @@ function DocumentCardComponent({
   const hasAttachments = document.attachments && document.attachments.length > 0;
   const hasImageAttachment = document.attachments?.some((a) => a.type === "image");
 
-  // Filtra dados desnecessários ou repetitivos para o subtítulo
   const metadataKeys = Object.keys(document.metadata || {}).filter(
     (key) =>
       ![
@@ -124,13 +150,12 @@ function DocumentCardComponent({
         "hospital",
         "institution",
         "medication",
-        "modelo", // Omitimos o "modelo" para evitar a sensação de título duplicado
+        "modelo",
       ].includes(key)
   );
   
   const firstMetadata = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
 
-  // Lógica inteligente para buscar as datas conforme o tipo de documento
   const rawIssueDate = document.metadata?.issue_date || document.metadata?.data_nascimento || document.metadata?.data_exame || document.metadata?.date;
   const rawExpiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date || document.metadata?.validade;
   
@@ -172,9 +197,9 @@ function DocumentCardComponent({
 
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                {/* Correção para o Android não cortar o texto e quebrar a linha perfeitamente */}
-                <h3 className="w-full whitespace-normal break-words pr-2 font-display text-[15px] font-semibold leading-tight text-ink-primary">
+              <div className="min-w-0 flex-1">
+                {/* Força o bloco a ocupar 100% e impede o corte de letras */}
+                <h3 className="w-full whitespace-normal break-words font-display text-[15px] font-semibold leading-snug text-ink-primary">
                   {document.title}
                 </h3>
 
@@ -182,7 +207,7 @@ function DocumentCardComponent({
                   {personName ? (
                     <span>{personName}</span>
                   ) : (
-                    <span className="capitalize">{document.type.replace('_', ' ')}</span>
+                    <span>{friendlyTypeLabel}</span>
                   )}
 
                   {category && (
