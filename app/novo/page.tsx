@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Upload, Camera, X, Loader2, Save, Shield, FileText, Image as ImageIcon, ChevronRight, Plus, ChevronLeft
+  ArrowLeft, Upload, Camera, X, Loader2, Save, Shield, FileText, Image as ImageIcon, ChevronRight, Plus, ChevronLeft,
+  Contact, CreditCard, Scroll, Landmark, Award, Pill, Heart, FileOutput, Stethoscope, Activity as ActivityIcon, Folder
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -696,18 +697,59 @@ export default function NewDocumentPage() {
            </AnimatePresence>
         </section>
 
-        {/* MODAIS AUXILIARES (Type, Person, Parents) */}
+        {/* Modal Dinâmico de Tipos com Ícones e Animações */}
         <BottomSheet isOpen={isTypeModalOpen} onClose={() => setIsTypeModalOpen(false)} title="Selecionar tipo">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-             {availableTypes.map((typeObj) => (
-               <button
-                  key={typeObj}
-                  onClick={() => { trigger("vibrate"); handleChange("type", typeObj); setIsTypeModalOpen(false); }}
-                  className={`rounded-2xl border px-3 py-4 text-left transition-colors ${formData.type === typeObj ? "border-ice bg-ice/10 text-ice" : "border-surface-border/50 bg-surface text-ink-primary"}`}
-               >
-                 <span className="text-sm font-medium block">{DOCUMENT_TYPE_LABELS[typeObj]}</span>
-               </button>
-             ))}
+          <p className="text-sm text-ink-muted mb-4 px-1">Escolha o tipo para carregar os campos corretos do formulário</p>
+          <div className="grid grid-cols-2 gap-3 px-1 pb-4">
+             {availableTypes.map((typeObj) => {
+               
+               const TYPE_ICONS: Record<string, any> = {
+                 rg: Contact, cpf: FileText, cnh: CreditCard,
+                 certidao_nascimento: Scroll, titulo_eleitor: Landmark, certificado: Award,
+                 receita: Pill, prontuario: Heart, laudo: FileText,
+                 encaminhamento: FileOutput, consulta: Stethoscope, cirurgia: ActivityIcon, outro: Folder,
+               };
+
+               const TYPE_DESCRIPTIONS: Record<string, string> = {
+                 rg: "Registro Geral ou C.I.N", cpf: "Cadastro de Pessoa Física", cnh: "Carteira de Habilitação",
+                 certidao_nascimento: "Nascimento ou Casamento", titulo_eleitor: "Justiça Eleitoral", certificado: "Certificados e diplomas",
+                 receita: "Receitas médicas", prontuario: "Prontuários médicos", laudo: "Laudos e exames",
+                 encaminhamento: "Encaminhamentos médicos", consulta: "Consultas médicas", cirurgia: "Cirurgias e procedimentos", outro: "Outros documentos",
+               };
+
+               const Icon = TYPE_ICONS[typeObj] || FileText;
+               const isActive = formData.type === typeObj;
+
+               return (
+                 <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    key={typeObj}
+                    onClick={() => { trigger("vibrate"); handleChange("type", typeObj); setIsTypeModalOpen(false); }}
+                    className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
+                      isActive ? "border-ice bg-ice/10" : "border-surface-border/50 bg-surface hover:bg-surface-raised"
+                    }`}
+                 >
+                   <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${isActive ? 'bg-ice/20 text-ice' : 'bg-surface-raised text-ink-muted'}`}>
+                     <Icon size={20} />
+                   </div>
+                   <span className={`text-sm font-semibold mb-1 ${isActive ? 'text-ice' : 'text-ink-primary'}`}>
+                     {DOCUMENT_TYPE_LABELS[typeObj]}
+                   </span>
+                   <span className="text-xs text-ink-muted leading-tight">
+                     {TYPE_DESCRIPTIONS[typeObj]}
+                   </span>
+                   
+                   {isActive && (
+                     <motion.div 
+                       layoutId="activeTypeBorder"
+                       className="absolute inset-0 rounded-[22px] border-2 border-ice shadow-[0_0_15px_rgba(125,211,252,0.15)]"
+                       initial={false}
+                       transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                     />
+                   )}
+                 </motion.button>
+               );
+             })}
           </div>
         </BottomSheet>
 
@@ -750,4 +792,3 @@ export default function NewDocumentPage() {
     </PageTransition>
   );
 }
-
