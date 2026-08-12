@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { 
   Person, Document, SyncQueueItem, Medicamento, Renovacao, 
-  Vault, VaultMember, Medico, Farmacia, Hospital, DoseLog,
+  Vault, VaultMember, Medico, Farmacia, Hospital, Laboratorio, DoseLog,
   Credential, BankCard, InstituicaoEnsino, Tratamento
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
@@ -28,6 +28,7 @@ class VaultDB extends Dexie {
   medicos!: Table<Medico, string>;
   farmacias!: Table<Farmacia, string>;
   hospitais!: Table<Hospital, string>;
+  laboratorios!: Table<Laboratorio, string>;
   doseLogs!: Table<DoseLog, string>;
   credentials!: Table<Credential, string>; 
   cards!: Table<BankCard, string>;         
@@ -196,6 +197,27 @@ class VaultDB extends Dexie {
       tratamentos: 'id, user_id, nome, status, synced',
     }).upgrade(async () => {
       console.log('✅ v12: tabelas de Instituições e Tratamentos criadas.');
+    });
+
+    this.version(13).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status',
+      renovacoes: 'id, user_id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+      laboratorios: 'id, user_id, nome, synced',
+      doseLogs: 'id, user_id, medicamento_id, data, horario',
+      credentials: 'id, user_id, vault_id, title, category, synced',
+      cards: 'id, user_id, title, bank_name, type, brand, synced',
+      instituicoes: 'id, user_id, nome, synced',
+      tratamentos: 'id, user_id, nome, status, synced',
+    }).upgrade(async () => {
+      console.log('✅ v13: tabela de laboratorios e status do medicamento criados.');
     });
   }
 }
@@ -471,6 +493,37 @@ export async function safeDeleteHospital(id: string): Promise<void> {
   await db.transaction('rw', db.hospitais, db.syncQueue, async () => {
     await db.hospitais.delete(id);
     await db.syncQueue.add({ id: generateId(), table: 'hospitais', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeAddLaboratorio(data: Omit<Laboratorio, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Laboratorio = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.laboratorios, db.syncQueue, async () => {
+    await db.laboratorios.add(full);
+    await db.syncQueue.add({ id: generateId(), table: 'laboratorios', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateLaboratorio(id: string, changes: Partial<Laboratorio>): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.laboratorios, db.syncQueue, async () => {
+    await db.laboratorios.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.laboratorios.get(id);
+    await db.syncQueue.add({ id: generateId(), table: 'laboratorios', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteLaboratorio(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.laboratorios, db.syncQueue, async () => {
+    await db.laboratorios.delete(id);
+    await db.syncQueue.add({ id: generateId(), table: 'laboratorios', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
