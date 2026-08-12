@@ -77,7 +77,6 @@ export default function DocumentsPage() {
     searchQuery: debouncedSearch,
   });
 
-  // Filtros dinâmicos por aba e por mês
   const filteredDocs = useMemo(() => {
     let result = paginatedDocs.filter((doc: any) => doc.category_id === 'saude');
 
@@ -89,7 +88,6 @@ export default function DocumentsPage() {
       result = result.filter((doc: any) => doc.type?.includes('exame'));
     }
 
-    // Filtro por Mês (se não for "all")
     if (selectedMonth !== "all") {
       result = result.filter((doc: any) => {
         const dateStr = doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
@@ -105,7 +103,6 @@ export default function DocumentsPage() {
     });
   }, [paginatedDocs, activeTab, selectedMonth]);
 
-  // Agrupamento por Medicamento (Pai/Filho) para a Aba de Receitas
   const groupedReceitas = useMemo(() => {
     if (activeTab !== "receitas") return [];
     const groups: Map<string, { groupKey: string; groupName: string; documents: any[]; count: number }> = new Map();
@@ -188,11 +185,7 @@ export default function DocumentsPage() {
     }));
   };
 
-  if (isLoading) {
-    return <LoadingSkeleton />;
-  }
-
-  // Nome formatado do mês selecionado para exibir no aviso visual
+  // ✅ CORREÇÃO AQUI: Hook movido para cima ANTES do if (isLoading)
   const formattedSelectedMonthLabel = useMemo(() => {
     if (selectedMonth === "all") return "Todos os meses";
     try {
@@ -205,10 +198,14 @@ export default function DocumentsPage() {
     }
   }, [selectedMonth]);
 
+  // Renderização de carregamento deve ser sempre DEPOIS de todos os hooks
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-12">
-        {/* HEADER FIXO COM Z-INDEX CORRETO PARA EVITAR BUG DE ROLAGEM */}
         <header className="sticky top-0 z-30 border-b border-surface-border/40 bg-void/90 px-5 pt-4 pb-3 backdrop-blur-md">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -254,7 +251,6 @@ export default function DocumentsPage() {
             </div>
           </div>
 
-          {/* Abas Principais de Navegação */}
           <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-2xl bg-surface-raised/80 p-1">
             <button
               onClick={() => { trigger("vibrate"); setActiveTab("receitas"); }}
@@ -285,7 +281,6 @@ export default function DocumentsPage() {
             </button>
           </div>
 
-          {/* Barra de Pesquisa */}
           <div className="relative mt-3">
             <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
             <Input
@@ -296,7 +291,6 @@ export default function DocumentsPage() {
             />
           </div>
 
-          {/* MODAL DE FILTROS AVANÇADOS (COM SELETOR DE MÊS) */}
           <AnimatePresence initial={false}>
             {showFilters && (
               <motion.div
@@ -348,9 +342,7 @@ export default function DocumentsPage() {
           </AnimatePresence>
         </header>
 
-        {/* CONTEÚDO PRINCIPAL */}
         <section className="px-5 pt-4">
-          {/* Indicador visual discreto do filtro de mês ativo */}
           {selectedMonth !== "all" && (
             <div className="mb-3 flex items-center justify-between rounded-xl bg-surface px-3.5 py-2 border border-surface-border/40 text-xs">
               <span className="text-ink-muted">Exibindo período: <strong className="text-ink-primary">{formattedSelectedMonthLabel}</strong></span>
@@ -382,7 +374,6 @@ export default function DocumentsPage() {
             </motion.div>
           ) : (
             <div>
-              {/* ABA RECEITAS (COM AGRUPAMENTO POR MEDICAMENTO) */}
               {activeTab === "receitas" && (
                 <div className="space-y-3.5">
                   {groupedReceitas.map((group) => {
@@ -429,7 +420,6 @@ export default function DocumentsPage() {
                 </div>
               )}
 
-              {/* OUTRAS ABAS (LINHA DO TEMPO) */}
               {activeTab !== "receitas" && (
                 <div className="space-y-5">
                   {timelineGroups.map(([monthYear, docs]) => (
