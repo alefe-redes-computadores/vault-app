@@ -173,8 +173,8 @@ function DocumentCardComponent({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                {/* line-clamp-2 e break-words resolve o corte abrupto de letras no mobile */}
-                <h3 className="line-clamp-2 break-words font-display text-[15px] font-semibold leading-tight text-ink-primary">
+                {/* Correção para o Android não cortar o texto e quebrar a linha perfeitamente */}
+                <h3 className="w-full whitespace-normal break-words pr-2 font-display text-[15px] font-semibold leading-tight text-ink-primary">
                   {document.title}
                 </h3>
 
