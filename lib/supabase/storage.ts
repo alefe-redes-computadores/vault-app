@@ -1,6 +1,6 @@
 import { supabase } from "./client";
 
-const BUCKET_NAME = "documents";
+const DEFAULT_BUCKET = "documents";
 
 // Gerador de UUID compatível
 function generateId(): string {
@@ -15,7 +15,7 @@ function generateId(): string {
 }
 
 /**
- * Faz upload de um arquivo para o Supabase Storage
+ * Faz upload de um arquivo para o Supabase Storage (suporta avatars ou documents)
  */
 export async function uploadFile(
   userId: string,
@@ -23,21 +23,26 @@ export async function uploadFile(
   folder: string = "docs"
 ): Promise<{ url: string; error: Error | null }> {
   try {
+    // CORREÇÃO: Se a pasta for 'avatars', usamos o bucket 'avatars'. Caso contrário, 'documents'.
+    const bucketName = folder === "avatars" ? "avatars" : DEFAULT_BUCKET;
+
     const fileExt = file.name.split(".").pop();
     const fileName = `${generateId()}.${fileExt}`;
-    const filePath = `${userId}/${folder}/${fileName}`;
+    
+    // Se for avatar, salvamos direto na pasta do usuário para simplificar o caminho
+    const filePath = folder === "avatars" ? `${userId}/${fileName}` : `${userId}/${folder}/${fileName}`;
 
     const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
+      .from(bucketName)
       .upload(filePath, file, {
         cacheControl: "3600",
-        upsert: false,
+        upsert: true, // Substitui se já existir
       });
 
     if (error) throw error;
 
     const { data: urlData } = supabase.storage
-      .from(BUCKET_NAME)
+      .from(bucketName)
       .getPublicUrl(filePath);
 
     return { url: urlData.publicUrl, error: null };
@@ -49,58 +54,43 @@ export async function uploadFile(
 
 /**
  * Deleta um arquivo do Supabase Storage a partir da URL pública
- * CORRIGIDO: extrai corretamente o caminho relativo dentro do bucket
  */
-export async function deleteFile(url: string): Promise<{ error: Error | null }> {
+export async function deleteFile(url: string, bucket: string = DEFAULT_BUCKET): Promise<{ error: Error | null }> {
   try {
-    // A URL pública tem o formato:
-    // https://[project].supabase.co/storage/v1/object/public/documents/userId/folder/filename
-    // Ou: documents/userId/folder/filename (quando é relativo)
-    // Precisamos extrair o caminho relativo dentro do bucket (ex: userId/folder/filename)
-
     let path: string;
 
-    // Se a URL contém o padrão do Supabase
     if (url.includes('/storage/v1/object/public/')) {
-      // Extrai tudo após 'public/'
       const parts = url.split('/storage/v1/object/public/');
       if (parts.length === 2) {
-        // O resultado é 'documents/userId/folder/filename' ou 'documents/userId/folder/filename'
         path = parts[1];
-        // Remove o nome do bucket do início (ex: 'documents/userId/...' → 'userId/...')
         const pathParts = path.split('/');
-        if (pathParts.length > 1 && pathParts[0] === BUCKET_NAME) {
-          pathParts.shift(); // remove o bucket
+        if (pathParts.length > 1 && (pathParts[0] === DEFAULT_BUCKET || pathParts[0] === 'avatars')) {
+          bucket = pathParts[0]; // Descobre o bucket pela URL
+          pathParts.shift(); 
           path = pathParts.join('/');
         }
       } else {
-        // Fallback: pega os últimos 3 segmentos (userId/folder/filename)
         const segments = url.split('/').filter(s => s);
         const fileName = segments.pop();
-        const folder = segments.pop();
         const userId = segments.pop();
-        path = `${userId}/${folder}/${fileName}`;
+        path = `${userId}/${fileName}`;
       }
     } else {
-      // Se for uma URL relativa, tenta extrair o caminho
       const segments = url.split('/').filter(s => s);
-      // Se começa com o nome do bucket, remove
-      if (segments[0] === BUCKET_NAME) {
+      if (segments[0] === DEFAULT_BUCKET || segments[0] === 'avatars') {
+        bucket = segments[0];
         segments.shift();
       }
       path = segments.join('/');
     }
 
-    // Fallback seguro: se path estiver vazio ou inválido, retorna erro
     if (!path || path.length < 5) {
       console.warn('Caminho inválido para deletar arquivo:', url);
       return { error: new Error('Caminho inválido') };
     }
 
-    console.log(`🗑️ Deletando arquivo: ${path}`);
-
     const { error } = await supabase.storage
-      .from(BUCKET_NAME)
+      .from(bucket)
       .remove([path]);
 
     if (error) throw error;
@@ -111,9 +101,6 @@ export async function deleteFile(url: string): Promise<{ error: Error | null }> 
   }
 }
 
-/**
- * Deleta múltiplos arquivos a partir de suas URLs
- */
 export async function deleteFiles(urls: string[]): Promise<{ errors: Error[] }> {
   const errors: Error[] = [];
   for (const url of urls) {
@@ -123,20 +110,14 @@ export async function deleteFiles(urls: string[]): Promise<{ errors: Error[] }> 
   return { errors };
 }
 
-/**
- * Lista arquivos de uma pasta
- */
 export async function listFiles(userId: string, folder: string = "docs") {
   const { data, error } = await supabase.storage
-    .from(BUCKET_NAME)
+    .from(DEFAULT_BUCKET)
     .list(`${userId}/${folder}`);
 
   return { data, error };
 }
 
-/**
- * Deleta todos os arquivos de uma pasta (útil para limpar dados de um usuário)
- */
 export async function deleteFolder(userId: string, folder: string = "docs"): Promise<{ error: Error | null }> {
   try {
     const { data, error: listError } = await listFiles(userId, folder);
@@ -145,7 +126,7 @@ export async function deleteFolder(userId: string, folder: string = "docs"): Pro
 
     const filePaths = data.map(file => `${userId}/${folder}/${file.name}`);
     const { error } = await supabase.storage
-      .from(BUCKET_NAME)
+      .from(DEFAULT_BUCKET)
       .remove(filePaths);
 
     if (error) throw error;
