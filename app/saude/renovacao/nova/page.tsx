@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -19,6 +19,7 @@ import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
+import { VALIDADE_RECEITA_DIAS } from "@/lib/health-utils";
 import type { Attachment } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
@@ -31,6 +32,7 @@ const fadeUp = {
 };
 
 function addDays(dateStr: string, days: number): string {
+  if (!dateStr) return "";
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
@@ -39,6 +41,9 @@ function addDays(dateStr: string, days: number): string {
 export default function NovaRenovacaoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const autoSelectMedId = searchParams.get("medicamento_id");
+  
   const { user } = useAuth();
   const { medicamentos, updateMedicamento } = useMedicamentos();
   const { addRenovacao } = useRenovacoes();
@@ -60,12 +65,32 @@ export default function NovaRenovacaoPage() {
 
   const selectedMedicamento = medicamentos.find((m: any) => m.id === medicamentoId);
 
+  // Auto-seleciona o medicamento se vier da página de detalhes
+  useEffect(() => {
+    if (autoSelectMedId && medicamentos.length > 0 && !medicamentoId) {
+      const med = medicamentos.find((m: any) => m.id === autoSelectMedId);
+      if (med) {
+        handleSelectMedicamento(med);
+      }
+    }
+  }, [autoSelectMedId, medicamentos, medicamentoId]);
+
   const handleSelectMedicamento = (item: any) => {
     trigger("vibrate");
     setMedicamentoId(item.id!);
-    // Sugere a próxima renovação como +30 dias a partir de hoje — ajustável
-    setNovaProximaRenovacao((prev) => prev || addDays(data, 30));
+    
+    // Calcula a próxima data de renovação baseado na cor da receita (Padrão 30 dias se não achar)
+    const diasValidade = item.tipo_receita ? VALIDADE_RECEITA_DIAS[item.tipo_receita] : 30;
+    setNovaProximaRenovacao(addDays(data, diasValidade || 30));
   };
+
+  // Recalcula a sugestão se a data da receita mudar
+  useEffect(() => {
+    if (selectedMedicamento && data) {
+      const diasValidade = selectedMedicamento.tipo_receita ? VALIDADE_RECEITA_DIAS[selectedMedicamento.tipo_receita] : 30;
+      setNovaProximaRenovacao(addDays(data, diasValidade || 30));
+    }
+  }, [data, selectedMedicamento]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -133,6 +158,7 @@ export default function NovaRenovacaoPage() {
         }
       }
 
+      // 1. Salva o "Filho" (A Renovação/Receita)
       await addRenovacao({
         medicamento_id: medicamentoId,
         data,
@@ -140,16 +166,20 @@ export default function NovaRenovacaoPage() {
         observacoes: observacoes.trim() || undefined,
       });
 
-      // Empurra a próxima data de renovação do medicamento, se informada
-      if (novaProximaRenovacao) {
-        await updateMedicamento(medicamentoId, {
-          proxima_renovacao: novaProximaRenovacao,
-          data_receita: data,
-        });
-      }
+      // 2. Atualiza o "Pai" (Medicamento) - ISSO MATA O ALERTA FANTASMA!
+      await updateMedicamento(medicamentoId, {
+        data_receita: data, // Atualiza a data da última receita
+        proxima_renovacao: novaProximaRenovacao || addDays(data, 30), // Empurra a validade pra frente
+      });
 
       trigger("success");
-      router.push("/saude");
+      
+      // Se veio da tela do medicamento, volta pra ela, senão vai pra home de saúde
+      if (autoSelectMedId) {
+        router.back();
+      } else {
+        router.push("/saude");
+      }
     } catch (error) {
       console.error("Erro ao salvar renovação:", error);
       trigger("error");
@@ -198,10 +228,10 @@ export default function NovaRenovacaoPage() {
                 </p>
               </div>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
-                Nova renovação
+                Nova receita
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
-                Registre a renovação e anexe a nova receita.
+                Registre a renovação e anexe a foto da receita.
               </p>
             </div>
           </div>
@@ -216,7 +246,7 @@ export default function NovaRenovacaoPage() {
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-              Medicamento <span className="text-coral">*</span>
+              Medicamento Vinculado <span className="text-coral">*</span>
             </label>
             <button
               onClick={() => {
@@ -251,7 +281,7 @@ export default function NovaRenovacaoPage() {
           >
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">
-                Data da renovação <span className="text-coral">*</span>
+                Data da receita <span className="text-coral">*</span>
               </label>
               <input
                 type="date"
@@ -266,7 +296,7 @@ export default function NovaRenovacaoPage() {
 
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">
-                Próxima renovação
+                Válida até (Estimada)
               </label>
               <input
                 type="date"
@@ -286,7 +316,7 @@ export default function NovaRenovacaoPage() {
           >
             <TextArea
               label="Notas (opcional)"
-              placeholder="Ex: mudou de médico, trocou de farmácia..."
+              placeholder="Ex: Peguei a receita no posto, mudou de médico..."
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
             />
@@ -301,10 +331,10 @@ export default function NovaRenovacaoPage() {
           >
             <div className="mb-3">
               <label className="block text-sm font-medium text-ink-primary">
-                Nova receita (opcional)
+                Foto da Receita (opcional mas recomendado)
               </label>
               <p className="mt-1 text-xs text-ink-muted">
-                Anexe a receita que você acabou de pegar com o médico.
+                Anexe a receita para manter no histórico desse medicamento.
               </p>
             </div>
 
@@ -389,7 +419,7 @@ export default function NovaRenovacaoPage() {
             ) : (
               <>
                 <Save size={16} />
-                Salvar renovação
+                Salvar Histórico
               </>
             )}
           </Button>
