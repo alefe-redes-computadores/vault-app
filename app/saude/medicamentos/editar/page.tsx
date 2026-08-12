@@ -19,7 +19,9 @@ import {
   HeartPulse,
   Flame,
   History,
-  ExternalLink
+  ExternalLink,
+  Stethoscope,
+  ArrowRightLeft
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
@@ -68,7 +70,6 @@ function getTratamentoIcon(nome: string) {
   return Activity;
 }
 
-// Formata a data bonitinha pra timeline
 function formatDataMesAno(dataIso: string) {
   if (!dataIso) return "";
   const [year, month] = dataIso.split("-");
@@ -93,20 +94,30 @@ export default function EditarMedicamentoPage() {
   const [nome, setNome] = useState("");
   const [dosagem, setDosagem] = useState("");
   const [medicoNome, setMedicoNome] = useState("");
+  const [medicoId, setMedicoId] = useState("");
   const [farmaciaNome, setFarmaciaNome] = useState("");
   const [tipoReceita, setTipoReceita] = useState<TipoReceita>("comum");
   const [dataReceita, setDataReceita] = useState("");
   const [proximaRenovacao, setProximaRenovacao] = useState("");
   const [observacoes, setObservacoes] = useState("");
-  const [statusAtivo, setStatusAtivo] = useState(true); // NOVO CAMPO: STATUS DO MEDICAMENTO
+  const [statusAtivo, setStatusAtivo] = useState(true); 
 
-  // QUERY DA LINHA DO TEMPO (Busca todas as renovações que são "Filhas" desse Medicamento)
+  // Lógica de Substituição de Medicamento
+  const [substituidoPorId, setSubstituidoPorId] = useState<string>("");
+  const [isSubstitutoModalOpen, setIsSubstitutoModalOpen] = useState(false);
+  const medicamentosQuery = useLiveQuery(() => db.table("medicamentos").toArray(), []) || [];
+  const medicamentosAtivos = medicamentosQuery.filter((m: any) => m.id !== id);
+  const selectedSubstituto = medicamentosQuery.find((m: any) => m.id === substituidoPorId);
+
+  // Queries
   const renovacoes = useLiveQuery(
     () => db.renovacoes.where("medicamento_id").equals(id).reverse().sortBy("data"),
     [id]
   ) || [];
-
+  
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const selectedMedico = medicos.find((m: any) => m.id === medicoId) || medicos.find((m: any) => m.nome === medicoNome);
+  
   const [tratamentoId, setTratamentoId] = useState<string>("");
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
@@ -143,20 +154,21 @@ export default function EditarMedicamentoPage() {
       setIsLoading(false);
       return;
     }
-    getMedicamento(id).then(async (item) => {
+    getMedicamento(id).then(async (item: any) => {
       if (!item) {
         setNotFound(true);
       } else {
         setNome(item.nome || "");
         setDosagem(item.dosagem || "");
         setMedicoNome(item.medico || "");
+        setMedicoId(item.medico_id || "");
         setFarmaciaNome(item.farmacia || "");
         setDataReceita(item.data_receita || "");
         setProximaRenovacao(item.proxima_renovacao || "");
         setObservacoes(item.observacoes || "");
         setTipoReceita((item.tipo_receita as TipoReceita) || "comum");
+        setSubstituidoPorId(item.substituido_por_id || "");
 
-        // Verifica se a observação tem a tag de descontinuado (para não quebrar seu schema)
         if (item.observacoes && item.observacoes.includes("[DESCONTINUADO]")) {
            setStatusAtivo(false);
            setObservacoes(item.observacoes.replace("[DESCONTINUADO]", "").trim());
@@ -164,7 +176,6 @@ export default function EditarMedicamentoPage() {
            setStatusAtivo(true);
         }
         
-        // Carrega o tratamento_id salvo diretamente no medicamento
         if (item.tratamento_id) {
           setTratamentoId(item.tratamento_id);
         }
@@ -289,7 +300,6 @@ export default function EditarMedicamentoPage() {
     try {
       const horariosFiltrados = horarios.filter((h) => h);
 
-      // Controla a Flag de Descontinuado
       let notasFinais = observacoes.trim();
       if (!statusAtivo) {
          notasFinais = `[DESCONTINUADO] \n${notasFinais}`.trim();
@@ -313,12 +323,14 @@ export default function EditarMedicamentoPage() {
         nome: nome.trim(),
         dosagem: dosagem.trim(),
         medico: medicoNome.trim(),
+        medico_id: medicoId || undefined,
         farmacia: farmaciaNome.trim() || undefined,
         data_receita: dataReceita,
         proxima_renovacao: proximaRenovacao,
         observacoes: notasFinais || undefined,
         tipo_receita: tipoReceita,
-        tratamento_id: tratamentoId || undefined, // Salva o ID do tratamento no medicamento
+        tratamento_id: tratamentoId || undefined,
+        substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
         estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
         estoque_data_referencia: estoqueAtivo ? estoqueDataReferencia : undefined,
         estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
@@ -343,7 +355,7 @@ export default function EditarMedicamentoPage() {
       }
 
       trigger("success");
-      router.push("/saude");
+      router.replace("/saude");
     } catch (error) {
       console.error("Erro ao atualizar medicamento:", error);
       trigger("error");
@@ -360,7 +372,7 @@ export default function EditarMedicamentoPage() {
       }
       await deleteMedicamento(id);
       trigger("success");
-      router.push("/saude");
+      router.replace("/saude");
     } catch (error) {
       console.error("Erro ao excluir medicamento:", error);
       trigger("error");
@@ -382,7 +394,7 @@ export default function EditarMedicamentoPage() {
             Medicamento não encontrado
           </p>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.replace("/saude")}
             className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void"
           >
             Voltar
@@ -435,22 +447,55 @@ export default function EditarMedicamentoPage() {
 
         <section className="space-y-4 px-5 pt-6">
           
-          {/* CONTROLE DE STATUS DO MEDICAMENTO (NOVO) */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-ink-primary">Status do Tratamento</h3>
-              <p className="text-xs text-ink-muted mt-0.5">
-                {statusAtivo ? "Remédio em uso contínuo." : "Medicamento descontinuado."}
-              </p>
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-ink-primary">Status do Tratamento</h3>
+                <p className="text-xs text-ink-muted mt-0.5">
+                  {statusAtivo ? "Remédio em uso contínuo." : "Medicamento descontinuado."}
+                </p>
+              </div>
+              <button
+                 onClick={() => { trigger("vibrate"); setStatusAtivo(!statusAtivo); }}
+                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                   statusAtivo ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" : "bg-coral/10 text-coral border border-coral/20"
+                 }`}
+              >
+                {statusAtivo ? "ATIVO" : "DESCONTINUADO"}
+              </button>
             </div>
-            <button
-               onClick={() => { trigger("vibrate"); setStatusAtivo(!statusAtivo); }}
-               className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-                 statusAtivo ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" : "bg-coral/10 text-coral border border-coral/20"
-               }`}
-            >
-              {statusAtivo ? "ATIVO" : "DESCONTINUADO"}
-            </button>
+
+            <AnimatePresence>
+              {!statusAtivo && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-4 pt-4 border-t border-surface-border/40">
+                    <label className="text-sm font-semibold text-ink-primary flex items-center gap-2 mb-2">
+                      <ArrowRightLeft size={16} className="text-coral" />
+                      Foi substituído por outro? (Opcional)
+                    </label>
+                    <button
+                      onClick={() => { trigger("vibrate"); setIsSubstitutoModalOpen(true); }}
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left transition-colors hover:border-coral/30"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Pill size={16} className={selectedSubstituto ? "text-coral" : "text-ink-muted"} />
+                        <span className="truncate font-medium text-ink-primary">
+                          {selectedSubstituto ? `${selectedSubstituto.nome} ${selectedSubstituto.dosagem}` : "Selecionar medicamento substituto..."}
+                        </span>
+                      </div>
+                      <span className="text-xs text-coral font-medium shrink-0 ml-2">
+                        {selectedSubstituto ? "Alterar" : "Vincular"}
+                      </span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           <motion.div
@@ -463,7 +508,7 @@ export default function EditarMedicamentoPage() {
             <div className="flex items-center gap-2 mb-2">
               <Activity size={16} className="text-violet-400" />
               <label className="text-sm font-semibold text-ink-primary">
-                Tratamento Vinculado
+                Tratamento / Condição
               </label>
             </div>
             <button
@@ -479,7 +524,7 @@ export default function EditarMedicamentoPage() {
                   return <IconComp size={18} className="text-violet-400 shrink-0" />;
                 })() : <Activity size={18} className="text-ink-muted shrink-0" />}
                 <span className="truncate font-medium">
-                  {selectedTratamento ? selectedTratamento.nome : "Vincular a um tratamento (Opcional)"}
+                  {selectedTratamento ? selectedTratamento.nome : "Vincular a um CID/Tratamento"}
                 </span>
               </div>
               <span className="text-xs text-violet-400 shrink-0 font-medium">Alterar</span>
@@ -560,18 +605,31 @@ export default function EditarMedicamentoPage() {
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-                Médico <span className="text-coral">*</span>
+                Médico Prescritor <span className="text-coral">*</span>
               </label>
               <button
                 onClick={() => {
                   trigger("vibrate");
                   setIsDoctorModalOpen(true);
                 }}
-                className={`w-full rounded-2xl border px-4 py-3 text-left text-ink-primary transition-colors ${
-                  errors.medico ? "border-coral/50" : "border-surface-border/50"
+                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-colors ${
+                  errors.medico ? "border-coral/50" : "border-surface-border/50 hover:border-ice/50"
                 } bg-surface-raised`}
               >
-                {medicoNome || "Selecionar médico"}
+                {selectedMedico ? (
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0">
+                      <Stethoscope size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink-primary truncate">{selectedMedico.nome}</p>
+                      {selectedMedico.especialidade && <p className="text-[11px] text-ink-muted truncate">{selectedMedico.especialidade}</p>}
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-ink-muted">{medicoNome || "Selecionar médico"}</span>
+                )}
+                <span className="text-xs text-ice shrink-0 font-medium ml-2">Alterar</span>
               </button>
               {errors.medico && <p className="mt-1 text-xs text-coral">{errors.medico}</p>}
             </div>
@@ -585,7 +643,7 @@ export default function EditarMedicamentoPage() {
                   trigger("vibrate");
                   setIsPharmacyModalOpen(true);
                 }}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors"
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50"
               >
                 {farmaciaNome || "Selecionar farmácia"}
               </button>
@@ -635,14 +693,12 @@ export default function EditarMedicamentoPage() {
              </div>
              
              <div className="mb-4 flex items-center justify-between relative z-10">
-               <h3 className="text-sm font-semibold text-ink-primary">Histórico de Receitas</h3>
+               <h3 className="text-sm font-semibold text-ink-primary">Histórico Clínico</h3>
              </div>
 
              <div className="space-y-4 relative z-10 pl-2">
-                {/* Linha vertical que liga as bolinhas */}
                 <div className="absolute left-4 top-2 bottom-2 w-[1px] bg-surface-border/60 z-0"></div>
 
-                {/* Mostra a Receita Inicial/Atual como o item mais recente do histórico visualmente */}
                 <div className="relative z-10 flex items-start gap-4">
                    <div className="h-4 w-4 rounded-full bg-emerald-400/20 border-2 border-emerald-400 shrink-0 mt-1 shadow-sm"></div>
                    <div className="flex-1 bg-surface-raised/80 border border-emerald-400/20 rounded-[18px] p-3 shadow-sm">
@@ -654,7 +710,6 @@ export default function EditarMedicamentoPage() {
                    </div>
                 </div>
 
-                {/* Lista as renovações (Filhos) */}
                 {renovacoes.map((renovacao: any) => (
                    <div key={renovacao.id} className="relative z-10 flex items-start gap-4">
                       <div className="h-3 w-3 rounded-full bg-surface-border border border-ink-muted shrink-0 mt-2 shadow-sm ml-[2px]"></div>
@@ -821,7 +876,7 @@ export default function EditarMedicamentoPage() {
                           </div>
                         ))}
                       </div>
-                      {errors.horarios && (
+                        {errors.horarios && (
                         <p className="mt-1 text-xs text-coral">{errors.horarios}</p>
                       )}
                     </div>
@@ -849,8 +904,8 @@ export default function EditarMedicamentoPage() {
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <TextArea
-              label="Notas (opcional)"
-              placeholder="Ex: tomar em jejum, horário fixo..."
+              label="Notas Clínicas (opcional)"
+              placeholder="Ex: tomar em jejum, causou muito sono..."
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
             />
@@ -880,6 +935,32 @@ export default function EditarMedicamentoPage() {
           </Button>
         </div>
 
+        {/* Modal de Substituição de Medicamento */}
+        <SelectionModal
+          isOpen={isSubstitutoModalOpen}
+          onClose={() => setIsSubstitutoModalOpen(false)}
+          onSelect={(item: any) => {
+            trigger("vibrate");
+            setSubstituidoPorId(item.id);
+          }}
+          items={medicamentosAtivos}
+          title="Foi substituído por..."
+          placeholder="Buscar medicamento atual..."
+          renderItem={(item: any) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              <p className="text-xs text-ink-muted">{item.dosagem}</p>
+            </div>
+          )}
+          getItemId={(item: any) => item.id!}
+          getItemLabel={(item: any) => item.nome}
+          onCreateNew={() => {
+            setIsSubstitutoModalOpen(false);
+            router.push("/saude/medicamentos/novo");
+          }}
+          createNewLabel="Cadastrar Novo Medicamento"
+        />
+
         <SelectionModal
           isOpen={isTratamentoModalOpen}
           onClose={() => setIsTratamentoModalOpen(false)}
@@ -888,7 +969,7 @@ export default function EditarMedicamentoPage() {
             setTratamentoId(item.id!);
           }}
           items={tratamentos}
-          title="Vincular a Tratamento"
+          title="Vincular a Tratamento/CID"
           placeholder="Buscar tratamento..."
           renderItem={(item: any) => {
             const IconComp = getTratamentoIcon(item.nome);
@@ -927,8 +1008,8 @@ export default function EditarMedicamentoPage() {
         >
           <div className="space-y-4 px-1 pb-2">
             <Input
-              label="Nome do Tratamento"
-              placeholder="Ex: TDAH, Dor Crônica, Depressão, Ansiedade..."
+              label="Nome do Tratamento / CID"
+              placeholder="Ex: TDAH, Dor Crônica, Depressão..."
               value={newTratamentoName}
               onChange={(e) => setNewTratamentoName(e.target.value)}
               autoFocus
@@ -957,16 +1038,22 @@ export default function EditarMedicamentoPage() {
           onSelect={(item: any) => {
             trigger("vibrate");
             setMedicoNome(item.nome);
+            setMedicoId(item.id);
           }}
           items={medicos}
-          title="Selecionar médico"
+          title="Selecionar Médico Prescritor"
           placeholder="Buscar médico..."
           renderItem={(item: any) => (
-            <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
-              {item.especialidade && (
-                <p className="text-xs text-ink-muted">{item.especialidade}</p>
-              )}
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0">
+                <Stethoscope size={14} />
+              </div>
+              <div>
+                <p className="font-medium text-ink-primary">{item.nome}</p>
+                {item.especialidade && (
+                  <p className="text-xs text-ink-muted">{item.especialidade}</p>
+                )}
+              </div>
             </div>
           )}
           getItemId={(item: any) => item.id!}
@@ -976,7 +1063,7 @@ export default function EditarMedicamentoPage() {
             trigger("vibrate");
             router.push("/saude/medicos/novo");
           }}
-          createNewLabel="Criar médico"
+          createNewLabel="Cadastrar Novo Médico"
         />
 
         <SelectionModal
