@@ -341,7 +341,7 @@ export default function SaudePage() {
                       key={tratamento.id}
                       onClick={() => {
                         trigger("vibrate");
-                        router.push(`/saude/tratamentos?id=${tratamento.id}`);
+                        router.push(`/saude/tratamentos/detalhes?id=${tratamento.id}`);
                       }}
                       className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
                     >
