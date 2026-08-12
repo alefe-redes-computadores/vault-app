@@ -246,7 +246,6 @@ export default function SaudePage() {
                   : "Tudo em dia por aqui"}
               </p>
             </div>
-            {/* Botão + removido daqui para não duplicar */}
           </div>
         </header>
 
@@ -397,7 +396,8 @@ export default function SaudePage() {
                 <Pill size={16} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-primary">Estoque Físico</p>
+                {/* Alterado de "Estoque Físico" para "Medicamentos" */}
+                <p className="text-sm font-semibold text-ink-primary">Medicamentos</p>
                 <p className="text-xs text-ink-muted">
                   {(medicamentos || []).length} na gaveta
                 </p>
