@@ -13,7 +13,7 @@ import {
   Stethoscope,
   FolderHeart,
   ChevronRight,
-  ChevronDown,
+  Filter,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
@@ -28,8 +28,6 @@ import { PageTransition } from "@/components/PageTransition";
 import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -43,36 +41,14 @@ function useDebounce(value: string, delay: number = 300) {
 }
 
 const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
-  { id: "rg", label: "RG" },
-  { id: "cpf", label: "CPF" },
-  { id: "cnh", label: "CNH" },
-  { id: "certificado", label: "Certificado" },
   { id: "receita", label: "Receita" },
   { id: "prontuario", label: "Prontuário" },
   { id: "laudo", label: "Laudo" },
   { id: "encaminhamento", label: "Encaminhamento" },
-  { id: "outro", label: "Outro" },
+  { id: "cirurgia", label: "Cirurgia" },
+  { id: "exame_sangue", label: "Exame Sangue" },
+  { id: "exame_imagem", label: "Exame Imagem" },
 ];
-
-const listVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.03 },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 10 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.22,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-};
 
 interface GroupedDocument {
   groupKey: string;
@@ -81,16 +57,6 @@ interface GroupedDocument {
   groupName: string;
   documents: any[];
   count: number;
-}
-
-function getMonthYearTag(dateStr: string): string {
-  if (!dateStr) return "";
-  try {
-    const date = new Date(dateStr);
-    return format(date, "MMM/yy", { locale: ptBR }).toUpperCase();
-  } catch {
-    return "";
-  }
 }
 
 export default function DocumentsPage() {
@@ -157,50 +123,39 @@ export default function DocumentsPage() {
     return result;
   }, [paginatedDocs, selectedType, dateFilter]);
 
-  // ============================================================
-  // LÓGICA DE AGRUPAMENTO AUTOMÁTICO (Pai/Filho)
-  // ============================================================
+  // Lógica de Agrupamento Automático (Pai/Filho) refinada
   const groupedDocuments = useMemo(() => {
     const groups: Map<string, GroupedDocument> = new Map();
-
-    // Filtra apenas documentos da categoria Saúde
     const saudeDocs = filteredDocs.filter((doc: any) => doc.category_id === 'saude');
 
     for (const doc of saudeDocs) {
       let groupKey = '';
       let groupType: 'medication' | 'hospital' | 'doctor' | 'other' = 'other';
       let groupIcon = FolderHeart;
-      let groupName = 'Outros';
+      let groupName = 'Outros documentos';
 
-      // 1. Tenta agrupar por Medicamento (receitas)
       const medication = doc.metadata?.medication;
-      if (medication && (doc.type === 'receita' || doc.type === 'receita')) {
+      if (medication) {
         groupKey = `med-${medication}`;
         groupType = 'medication';
         groupIcon = Pill;
         groupName = medication;
-      }
-      // 2. Tenta agrupar por Hospital / Local
-      else if (doc.metadata?.hospital || doc.metadata?.institution) {
+      } else if (doc.metadata?.hospital || doc.metadata?.institution) {
         const hospitalName = doc.metadata?.hospital || doc.metadata?.institution;
         groupKey = `hospital-${hospitalName}`;
         groupType = 'hospital';
         groupIcon = Building2;
         groupName = hospitalName;
-      }
-      // 3. Tenta agrupar por Médico
-      else if (doc.metadata?.doctor) {
+      } else if (doc.metadata?.doctor) {
         groupKey = `doctor-${doc.metadata.doctor}`;
         groupType = 'doctor';
         groupIcon = Stethoscope;
         groupName = doc.metadata.doctor;
-      }
-      // 4. Outros documentos de saúde
-      else {
+      } else {
         groupKey = 'other';
         groupType = 'other';
         groupIcon = FolderHeart;
-        groupName = 'Outros documentos';
+        groupName = 'Geral / Outros';
       }
 
       if (!groups.has(groupKey)) {
@@ -218,7 +173,15 @@ export default function DocumentsPage() {
       groups.get(groupKey)!.count += 1;
     }
 
-    // Ordena grupos: Medicamentos > Hospitais > Médicos > Outros
+    // Ordenação inteligente interna dos documentos filhos por data mais recente
+    for (const group of groups.values()) {
+      group.documents.sort((a: any, b: any) => {
+        const dateA = new Date(a.metadata?.prescription_date || a.metadata?.date || a.created_at || 0).getTime();
+        const dateB = new Date(b.metadata?.prescription_date || b.metadata?.date || b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+    }
+
     const order = { medication: 0, hospital: 1, doctor: 2, other: 3 };
     return Array.from(groups.values()).sort(
       (a, b) => order[a.groupType] - order[b.groupType]
@@ -255,7 +218,6 @@ export default function DocumentsPage() {
     trigger("vibrate");
   }, [trigger]);
 
-  // Expande todos os grupos automaticamente na primeira renderização
   useEffect(() => {
     if (groupedDocuments.length > 0 && expandedGroups.size === 0) {
       const allKeys = groupedDocuments.map(g => g.groupKey);
@@ -280,13 +242,12 @@ export default function DocumentsPage() {
     return <LoadingSkeleton />;
   }
 
-  // Filtra apenas documentos de saúde para o contador
   const saudeCount = filteredDocs.filter((d: any) => d.category_id === 'saude').length;
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-6">
-        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
@@ -335,29 +296,38 @@ export default function DocumentsPage() {
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
             />
             <Input
-              placeholder="Buscar documentos, medicamentos, médicos..."
+              placeholder="Buscar por nome, medicamento ou médico..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="border-surface-border/50 bg-surface-raised pl-9 transition-all"
             />
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {hasActiveFilters && (
-              <>
-                <div className="inline-flex items-center gap-2 rounded-full border border-ice/20 bg-ice/10 px-3 py-1.5 text-xs font-medium text-ice">
-                  <Sparkles size={12} />
-                  Filtros ativos
-                </div>
-                <button
-                  onClick={clearFilters}
-                  className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-1.5 text-xs text-ink-muted transition-colors active:scale-95 hover:text-ink-primary"
-                >
-                  <X size={12} />
-                  Limpar
-                </button>
-              </>
-            )}
+          {/* Chips de Acesso Rápido (Filtros de Tipo) */}
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => { trigger("vibrate"); setSelectedType("all"); }}
+              className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
+                selectedType === "all"
+                  ? "border-ice bg-ice/12 text-ice"
+                  : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+              }`}
+            >
+              Todos os Tipos
+            </button>
+            {DOCUMENT_TYPES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => { trigger("vibrate"); setSelectedType(selectedType === t.id ? "all" : t.id); }}
+                className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
+                  selectedType === t.id
+                    ? "border-ice bg-ice/12 text-ice"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
 
           <AnimatePresence initial={false}>
@@ -370,103 +340,6 @@ export default function DocumentsPage() {
                 className="overflow-hidden"
               >
                 <div className="mt-4 space-y-4 rounded-[26px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
-                  <div>
-                    <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
-                      Pessoa
-                    </label>
-                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                      <button
-                        onClick={() => setSelectedPersonId(null)}
-                        className={`whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
-                          selectedPersonId === null
-                            ? "border-ice bg-ice/12 text-ice"
-                            : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                        }`}
-                      >
-                        Todos
-                      </button>
-                      {persons.map((person: any) => (
-                        <button
-                          key={person.id}
-                          onClick={() => setSelectedPersonId(person.id!)}
-                          className={`whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
-                            selectedPersonId === person.id
-                              ? "border-ice bg-ice/12 text-ice"
-                              : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                          }`}
-                        >
-                          {person.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
-                      Categoria
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setSelectedCategory("all")}
-                        className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
-                          selectedCategory === "all"
-                            ? "border-ice bg-ice/12 text-ice"
-                            : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                        }`}
-                      >
-                        Todas
-                      </button>
-                      {Object.values(CATEGORIES).map((cat: any) => (
-                        <button
-                          key={cat.id}
-                          onClick={() => setSelectedCategory(cat.id)}
-                          className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
-                            selectedCategory === cat.id
-                              ? "border-ice bg-ice/12 text-ice"
-                              : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                          }`}
-                        >
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                          {cat.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
-                      Tipo
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setSelectedType("all")}
-                        className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
-                          selectedType === "all"
-                            ? "border-ice bg-ice/12 text-ice"
-                            : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                        }`}
-                      >
-                        Todos
-                      </button>
-                      {DOCUMENT_TYPES.map((type: any) => (
-                        <button
-                          key={type.id}
-                          onClick={() => setSelectedType(type.id)}
-                          className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
-                            selectedType === type.id
-                              ? "border-ice bg-ice/12 text-ice"
-                              : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                          }`}
-                        >
-                          {type.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
                       Validade
@@ -482,7 +355,6 @@ export default function DocumentsPage() {
                       >
                         Todas
                       </button>
-
                       <button
                         onClick={() => setDateFilter("expiring")}
                         className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
@@ -494,7 +366,6 @@ export default function DocumentsPage() {
                         <Calendar size={12} />
                         Vencendo (7d)
                       </button>
-
                       <button
                         onClick={() => setDateFilter("expired")}
                         className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
@@ -525,23 +396,12 @@ export default function DocumentsPage() {
               <div className="glow-ice mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-ice/15 bg-surface-raised">
                 <Search size={28} className="text-ice/60" />
               </div>
-
               <h3 className="font-display text-lg font-semibold text-ink-primary">
-                {searchQuery
-                  ? "Nenhum documento encontrado"
-                  : hasActiveFilters
-                  ? "Nenhum resultado com esses filtros"
-                  : "Nenhum documento de saúde"}
+                Nenhum documento encontrado
               </h3>
-
               <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
-                {searchQuery
-                  ? "Tente buscar com outro termo ou remova parte dos filtros para ampliar os resultados."
-                  : hasActiveFilters
-                  ? "Os filtros atuais estão limitando sua busca. Ajuste os critérios para visualizar mais documentos."
-                  : "Documentos de saúde como receitas, laudos e prontuários aparecerão aqui."}
+                Tente ajustar os termos de busca ou limpar os filtros para visualizar o acervo completo.
               </p>
-
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
@@ -579,18 +439,18 @@ export default function DocumentsPage() {
                             {group.groupName}
                           </p>
                           <p className="text-xs text-ink-muted">
-                            {group.count} documento{group.count !== 1 ? "s" : ""}
+                            {group.count} documento{group.count !== 1 ? "s" : ""} vinculados
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-ink-muted">
-                          {isExpanded ? "▲" : "▼"}
+                        <span className="text-xs font-medium text-ice">
+                          {isExpanded ? "Recolher" : "Expandir"}
                         </span>
                       </div>
                     </button>
 
-                    {/* Conteúdo do Grupo (Filhos) */}
+                    {/* Conteúdo do Grupo (Filhos usando o próprio DocumentCard compacto) */}
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
@@ -600,42 +460,21 @@ export default function DocumentsPage() {
                           transition={{ duration: 0.25, ease: "easeInOut" }}
                           className="overflow-hidden"
                         >
-                          <div className="px-4 pb-4 space-y-3">
-                            {group.documents.map((doc: any) => {
-                              const dateStr = doc.metadata?.prescription_date || 
-                                              doc.metadata?.date || 
-                                              doc.created_at;
-                              const monthYearTag = getMonthYearTag(dateStr);
-
-                              return (
-                                <div key={doc.id} className="relative">
-                                  <button
-                                    onClick={() => {
-                                      trigger("vibrate");
-                                      router.push(`/detalhes?id=${doc.id}`);
-                                    }}
-                                    className="flex w-full items-center justify-between rounded-[18px] border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all hover:bg-surface-raised active:scale-[0.99]"
-                                  >
-                                    <div className="min-w-0 flex-1">
-                                      <p className="truncate text-sm font-medium text-ink-primary">
-                                        {doc.title}
-                                      </p>
-                                      <p className="mt-0.5 text-xs text-ink-muted capitalize">
-                                        {doc.type}
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {monthYearTag && (
-                                        <span className="shrink-0 rounded-full bg-ice/10 px-2 py-0.5 text-[10px] font-semibold text-ice">
-                                          {monthYearTag}
-                                        </span>
-                                      )}
-                                      <ChevronRight size={14} className="shrink-0 text-ink-faint" />
-                                    </div>
-                                  </button>
-                                </div>
-                              );
-                            })}
+                          <div className="px-4 pb-4 space-y-2.5">
+                            {group.documents.map((doc: any) => (
+                              <div
+                                key={doc.id}
+                                ref={(el) => {
+                                  cardRefs.current[doc.id!] = el;
+                                }}
+                              >
+                                <DocumentCard
+                                  document={doc}
+                                  compact
+                                  onFavoriteToggle={handleFavoriteToggle}
+                                />
+                              </div>
+                            ))}
                           </div>
                         </motion.div>
                       )}
@@ -644,7 +483,6 @@ export default function DocumentsPage() {
                 );
               })}
 
-              {/* Trigger de paginação mantido */}
               <InfiniteScrollTrigger
                 onLoadMore={loadMore}
                 hasMore={hasMore}
