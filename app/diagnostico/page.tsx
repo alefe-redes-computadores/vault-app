@@ -29,9 +29,11 @@ interface TableCheck {
   error?: string;
 }
 
+// 1. LISTA ATUALIZADA COM AS NOVAS TABELAS (EXAMES E LABORATÓRIOS INCLUÍDOS)
 const TABLES: { key: string; label: string }[] = [
   { key: "persons", label: "Pessoas" },
   { key: "documents", label: "Documentos" },
+  { key: "exames", label: "Exames" }, 
   { key: "medicamentos", label: "Medicamentos" },
   { key: "renovacoes", label: "Renovações" },
   { key: "tratamentos", label: "Tratamentos" },
@@ -41,6 +43,7 @@ const TABLES: { key: string; label: string }[] = [
   { key: "medicos", label: "Médicos" },
   { key: "farmacias", label: "Farmácias" },
   { key: "hospitais", label: "Hospitais" },
+  { key: "laboratorios", label: "Laboratórios" }, 
   { key: "doseLogs", label: "Registro de Doses" },
   { key: "vaults", label: "Cofres" },
 ];
@@ -100,7 +103,7 @@ export default function DiagnosticoPage() {
     trigger("success");
   }, [user, trigger]);
 
-  // Nova função de Push Direto (Ignora a Fila e fala direto com a nuvem)
+  // Função de Push Direto turbinada para varrer as tabelas novas também
   const forcePushAll = async () => {
     if (!user?.id) return;
     trigger("vibrate");
@@ -110,8 +113,19 @@ export default function DiagnosticoPage() {
     let errorMsg = "";
 
     try {
-      // Focando nas tabelas que estão travadas
-      const tablesToPush = ["tratamentos", "medicamentos", "doseLogs"];
+      // 2. LISTA EXPANDIDA PARA FORÇAR O UPLOAD DAS ENTIDADES NOVAS
+      const tablesToPush = [
+        "exames", 
+        "laboratorios", 
+        "medicos", 
+        "hospitais", 
+        "farmacias", 
+        "tratamentos", 
+        "medicamentos", 
+        "doseLogs",
+        "documents"
+      ];
+      
       let count = 0;
 
       for (const tableName of tablesToPush) {
