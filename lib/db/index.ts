@@ -37,217 +37,26 @@ class VaultDB extends Dexie {
   tratamentos!: Table<Tratamento, string>;
   medicamento_tratamentos!: Table<any, string>;
   anexos_clinicos!: Table<any, string>;
-  cids!: Table<Cid, string>; // <-- Nova tabela
+  cids!: Table<Cid, string>;
 
   constructor() {
     super('vault-db');
+    
+    this.version(2).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed' });
+    this.version(3).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, medicamento_id, data' });
+    this.version(4).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced' });
+    this.version(5).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced' });
+    this.version(6).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced' });
+    this.version(7).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: null, renovacoes: null, vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced' });
+    this.version(8).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced' });
+    this.version(9).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', doseLogs: 'id, user_id, medicamento_id, data, horario' });
+    this.version(10).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced' });
+    this.version(11).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced', cards: 'id, user_id, title, bank_name, type, brand, synced' });
+    this.version(12).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced', cards: 'id, user_id, title, bank_name, type, brand, synced', instituicoes: 'id, user_id, nome, synced', tratamentos: 'id, user_id, nome, status, synced' });
+    this.version(13).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', laboratorios: 'id, user_id, nome, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced', cards: 'id, user_id, title, bank_name, type, brand, synced', instituicoes: 'id, user_id, nome, synced', tratamentos: 'id, user_id, nome, status, synced' });
+    this.version(14).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', laboratorios: 'id, user_id, nome, synced', exames: 'id, user_id, nome, laboratorio, data, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced', cards: 'id, user_id, title, bank_name, type, brand, synced', instituicoes: 'id, user_id, nome, synced', tratamentos: 'id, user_id, nome, status, synced' });
+    this.version(15).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', laboratorios: 'id, user_id, nome, synced', exames: 'id, user_id, nome, laboratorio, data, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced', cards: 'id, user_id, title, bank_name, type, brand, synced', instituicoes: 'id, user_id, nome, synced', tratamentos: 'id, user_id, nome, status, synced', medicamento_tratamentos: 'id, medicamento_id, tratamento_id', anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at' });
 
-    this.version(2).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-    });
-
-    this.version(3).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, document_id, nome, medico, proxima_renovacao',
-      renovacoes: 'id, medicamento_id, data',
-    });
-
-    this.version(4).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, document_id, nome, medico, proxima_renovacao',
-      renovacoes: 'id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-    });
-
-    this.version(5).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, document_id, nome, medico, proxima_renovacao',
-      renovacoes: 'id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-    });
-
-    this.version(6).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, document_id, nome, medico, proxima_renovacao',
-      renovacoes: 'id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-    });
-
-    this.version(7).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: null,
-      renovacoes: null,
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-    });
-
-    this.version(8).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao',
-      renovacoes: 'id, user_id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-    });
-
-    this.version(9).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao',
-      renovacoes: 'id, user_id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-      doseLogs: 'id, user_id, medicamento_id, data, horario',
-    });
-
-    this.version(10).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao',
-      renovacoes: 'id, user_id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-      doseLogs: 'id, user_id, medicamento_id, data, horario',
-      credentials: 'id, user_id, vault_id, title, category, synced',
-    });
-
-    this.version(11).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao',
-      renovacoes: 'id, user_id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-      doseLogs: 'id, user_id, medicamento_id, data, horario',
-      credentials: 'id, user_id, vault_id, title, category, synced',
-      cards: 'id, user_id, title, bank_name, type, brand, synced',
-    });
-
-    this.version(12).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id',
-      renovacoes: 'id, user_id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-      doseLogs: 'id, user_id, medicamento_id, data, horario',
-      credentials: 'id, user_id, vault_id, title, category, synced',
-      cards: 'id, user_id, title, bank_name, type, brand, synced',
-      instituicoes: 'id, user_id, nome, synced',
-      tratamentos: 'id, user_id, nome, status, synced',
-    });
-
-    this.version(13).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status',
-      renovacoes: 'id, user_id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-      laboratorios: 'id, user_id, nome, synced',
-      doseLogs: 'id, user_id, medicamento_id, data, horario',
-      credentials: 'id, user_id, vault_id, title, category, synced',
-      cards: 'id, user_id, title, bank_name, type, brand, synced',
-      instituicoes: 'id, user_id, nome, synced',
-      tratamentos: 'id, user_id, nome, status, synced',
-    });
-
-    this.version(14).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status',
-      renovacoes: 'id, user_id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-      laboratorios: 'id, user_id, nome, synced',
-      exames: 'id, user_id, nome, laboratorio, data, synced',
-      doseLogs: 'id, user_id, medicamento_id, data, horario',
-      credentials: 'id, user_id, vault_id, title, category, synced',
-      cards: 'id, user_id, title, bank_name, type, brand, synced',
-      instituicoes: 'id, user_id, nome, synced',
-      tratamentos: 'id, user_id, nome, status, synced',
-    }).upgrade(async () => {
-      console.log('✅ v14: tabela de exames integrada ao banco local.');
-    });
-
-    // VERSÃO 15: Adiciona tabelas de relação N:N (medicamento_tratamentos) e Galeria de Anexos Clínicos
-    this.version(15).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status',
-      renovacoes: 'id, user_id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-      laboratorios: 'id, user_id, nome, synced',
-      exames: 'id, user_id, nome, laboratorio, data, synced',
-      doseLogs: 'id, user_id, medicamento_id, data, horario',
-      credentials: 'id, user_id, vault_id, title, category, synced',
-      cards: 'id, user_id, title, bank_name, type, brand, synced',
-      instituicoes: 'id, user_id, nome, synced',
-      tratamentos: 'id, user_id, nome, status, synced',
-      medicamento_tratamentos: 'id, medicamento_id, tratamento_id',
-      anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at',
-    }).upgrade(async () => {
-      console.log('✅ v15: tabelas de relação N:N e anexos clínicos integradas.');
-    });
-
-    // VERSÃO 16: Arquitetura relacional integrada (person_id em várias tabelas, relacionamentos com CIDs)
     this.version(16).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -268,9 +77,7 @@ class VaultDB extends Dexie {
       tratamentos: 'id, user_id, person_id, nome, cid_id, status, synced',
       medicamento_tratamentos: 'id, medicamento_id, tratamento_id',
       anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at',
-      cids: 'id, user_id, codigo, descricao, synced'
-    }).upgrade(async () => {
-      console.log('✅ v16: Arquitetura relacional integrada.');
+      cids: 'id, user_id, codigo, descricao, synced' 
     });
   }
 }
