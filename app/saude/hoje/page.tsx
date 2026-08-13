@@ -238,11 +238,11 @@ export default function HojePage() {
                               </span>
                             </div>
 
-                            {/* Tags Cruzadas: Tratamento e Médico */}
+                            {/* Tags Cruzadas: Tratamento e Médico (Corrigido para tratamentoNome) */}
                             <div className="mt-1 flex items-center gap-2 flex-wrap">
-                              {item.tratamentoName && (
+                              {item.tratamentoNome && (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-violet-400/10 text-violet-300 border border-violet-400/20">
-                                  {item.tratamentoName}
+                                  {item.tratamentoNome}
                                 </span>
                               )}
                               {item.medicoNome && (
