@@ -134,7 +134,8 @@ export default function MedicamentosListPage() {
                 const isEstoqueBaixo = qtd !== null && qtd >= 5 && qtd < 10;
                 const personName = med.person_id ? personMap.get(med.person_id) : null;
                 
-                let tIds = vinculosMap.get(med.id) || [];
+                // Correção aplicada aqui com verificação de segurança do ID
+                let tIds = med.id ? vinculosMap.get(med.id) || [] : [];
                 if (tIds.length === 0 && med.tratamento_id) tIds = [med.tratamento_id];
 
                 // Identidade Visual
@@ -153,14 +154,12 @@ export default function MedicamentosListPage() {
                     transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.3) }}
                     onClick={() => {
                       trigger("vibrate");
-                      // AGORA NAVEGA PARA A TELA DE DETALHES VIA QUERY PARAMS
                       router.push(`/saude/medicamentos/detalhes?id=${med.id}`);
                     }}
                     className="flex w-full items-start gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
                   >
                     <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${med.tipo_receita === 'amarela' ? 'bg-amber-400' : med.tipo_receita === 'azul' ? 'bg-blue-400' : 'bg-ice/40'}`} />
 
-                    {/* MÁGICA SVG PARA ESTE CARD ESPECÍFICO */}
                     <svg width="0" height="0" className="absolute">
                       <defs>
                         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -177,7 +176,7 @@ export default function MedicamentosListPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <p className="truncate font-display text-sm font-semibold text-ink-primary">{med.nome}</p>
-                        {personName && <span className="shrink-0 rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[9px] font-semibold text-ink-muted uppercase tracking-wide">👤 {personName}</span>}
+                        {personName && <span className="shrink-0 rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[9px] font-semibold text-ink-muted uppercase tracking-wide">Pessoa: {personName}</span>}
                         {med.tipo_receita && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getReceitaBadgeStyle(med.tipo_receita)}`}>{TIPO_RECEITA_LABELS[med.tipo_receita] || med.tipo_receita}</span>}
                         {tIds.map(tId => {
                           const tName = tratamentoMap.get(tId);
@@ -196,7 +195,7 @@ export default function MedicamentosListPage() {
                         <span className="text-ink-muted">Renova em {formatDate(med.proxima_renovacao) || "—"}</span>
                         {estoqueInfo && (
                           <span className={`font-medium ${isEstoqueCritico ? "text-coral font-semibold animate-pulse" : isEstoqueBaixo ? "text-amber-400" : "text-ice/80"}`}>
-                            {qtd} {estoqueInfo.unidade} restantes {isEstoqueCritico ? "⚠️" : ""}
+                            {qtd} {estoqueInfo.unidade} restantes {isEstoqueCritico ? "Atenção" : ""}
                           </span>
                         )}
                       </div>
