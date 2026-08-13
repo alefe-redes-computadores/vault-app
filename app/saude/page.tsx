@@ -489,18 +489,27 @@ export default function SaudePage() {
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-2xl bg-surface-raised/60 py-3">
+              {/* CARD DE MÉDICOS AGORA DIRECIONA PARA A NOVA PÁGINA INTELIGENTE DE MÉDICOS */}
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push("/saude/medicos");
+                }}
+                className="rounded-2xl bg-surface-raised/60 py-3 transition-all active:scale-95 hover:bg-surface-raised text-center border border-transparent hover:border-surface-border/50 cursor-pointer"
+              >
                 <p className="font-display text-lg font-semibold text-ink-primary">
                   {(medicos || []).length}
                 </p>
                 <p className="text-[10px] text-ink-muted">Médicos</p>
-              </div>
+              </button>
+
               <div className="rounded-2xl bg-surface-raised/60 py-3">
                 <p className="font-display text-lg font-semibold text-ink-primary">
                   {(farmacias || []).length}
                 </p>
                 <p className="text-[10px] text-ink-muted">Farmácias</p>
               </div>
+              
               <div className="rounded-2xl bg-surface-raised/60 py-3">
                 <p className="font-display text-lg font-semibold text-ink-primary">
                   {(hospitais || []).length}
