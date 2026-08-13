@@ -28,7 +28,7 @@ class VaultDB extends Dexie {
   medicos!: Table<Medico, string>;
   farmacias!: Table<Farmacia, string>;
   hospitais!: Table<Hospital, string>;
-  locais!: Table<LocalSaude, string>; // ✅ Adicionado Tabela de Locais
+  locais!: Table<LocalSaude, string>;
   laboratorios!: Table<Laboratorio, string>;
   exames!: Table<Exame, string>;
   doseLogs!: Table<DoseLog, string>;
@@ -83,7 +83,6 @@ class VaultDB extends Dexie {
       exame_tratamentos: 'id, exame_id, tratamento_id'
     });
 
-    // ✅ Versão 17 adicionada para incluir a tabela "locais" (Postos / Unidades de Saúde)
     this.version(17).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -95,7 +94,7 @@ class VaultDB extends Dexie {
       medicos: 'id, user_id, nome, especialidade, synced',
       farmacias: 'id, user_id, nome, synced',
       hospitais: 'id, user_id, nome, synced',
-      locais: 'id, user_id, nome, tipo, synced', // ✅ Nova store de Locais
+      locais: 'id, user_id, nome, tipo, synced',
       laboratorios: 'id, user_id, nome, synced',
       exames: 'id, user_id, person_id, nome, laboratorio_id, medico_id, data, synced',
       doseLogs: 'id, user_id, medicamento_id, data, horario',
@@ -132,7 +131,7 @@ export async function syncMedicamentoTratamentos(medicamentoId: string, tratamen
 }
 
 // ============================================================
-// FUNÇÕES CRUD PARA LOCAIS (Postos / Clínicas)
+// FUNÇÕES CRUD PARA LOCAIS (Postos / Clínicas) - EXPORTADAS
 // ============================================================
 export async function safeAddLocal(data: Omit<LocalSaude, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
