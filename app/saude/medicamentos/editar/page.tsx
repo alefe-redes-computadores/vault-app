@@ -25,7 +25,8 @@ import {
   Droplet,
   Syringe,
   StickyNote,
-  Palette
+  Palette,
+  X
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
@@ -133,7 +134,14 @@ export default function EditarMedicamentoPage() {
   const [isDoctorDescontinuacaoModalOpen, setIsDoctorDescontinuacaoModalOpen] = useState(false);
   const [isSubstitutoModalOpen, setIsSubstitutoModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
+  
+  // Tratamentos (Múltiplos N:N)
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
+  const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
+  const [newTratamentoName, setNewTratamentoName] = useState("");
+  const [isSavingTratamento, setIsSavingTratamento] = useState(false);
   
   // Queries Auxiliares
   const medicamentosQuery = useLiveQuery(() => db.table("medicamentos").toArray(), []) || [];
@@ -145,14 +153,8 @@ export default function EditarMedicamentoPage() {
     [id]
   ) || [];
   
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const selectedMedico = medicos.find((m: any) => m.id === medicoId) || medicos.find((m: any) => m.nome === medicoNome);
   const selectedMedicoDescontinuacao = medicos.find((m: any) => m.id === medicoDescontinuacaoId) || medicos.find((m: any) => m.nome === medicoDescontinuacaoNome);
-  
-  const [tratamentoId, setTratamentoId] = useState<string>("");
-  const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
-  const [newTratamentoName, setNewTratamentoName] = useState("");
-  const [isSavingTratamento, setIsSavingTratamento] = useState(false);
 
   // Estoque
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
@@ -168,7 +170,6 @@ export default function EditarMedicamentoPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const selectedTratamento = tratamentos.find((t: any) => String(t.id) === tratamentoId);
   const diasValidade = VALIDADE_RECEITA_DIAS[tipoReceita];
   const consumoDiario = horarios.filter((h) => h).length * (Number(estoqueUnidadePorDose) || 1);
   const diasEstimados = estoqueAtivo && consumoDiario > 0 && Number(estoqueQuantidade) > 0
@@ -203,15 +204,19 @@ export default function EditarMedicamentoPage() {
         setMedicoDescontinuacaoId(item.medico_descontinuacao_id || "");
         setMedicoDescontinuacaoNome(item.medico_descontinuacao_nome || "");
         setSubstituidoPorId(item.substituido_por_id || "");
+
+        // Busca vínculos de tratamentos na tabela N:N
+        const vinculos = await db.medicamento_tratamentos.where('medicamento_id').equals(id).toArray();
+        const tIds = vinculos.map((v: any) => v.tratamento_id);
         
-        if (item.tratamento_id) setTratamentoId(item.tratamento_id);
+        // Se não tiver na N:N mas tiver no legado (item.tratamento_id), usa ele
+        if (tIds.length === 0 && item.tratamento_id) {
+          tIds.push(item.tratamento_id);
+        }
+        setTratamentosSelecionados(tIds);
 
         if (item.document_id) {
           setDocumentId(item.document_id);
-          const doc = await db.documents.get(item.document_id);
-          if (doc && doc.metadata?.tratamento_id) {
-            setTratamentoId(doc.metadata.tratamento_id);
-          }
         }
 
         if (
@@ -287,7 +292,7 @@ export default function EditarMedicamentoPage() {
         nome: newTratamentoName.trim(),
         status: "ativo",
       });
-      setTratamentoId(newId);
+      setTratamentosSelecionados(prev => [...prev, newId]);
       trigger("success");
       setIsCreatingTratamento(false);
       setNewTratamentoName("");
@@ -340,7 +345,7 @@ export default function EditarMedicamentoPage() {
           await db.documents.update(doc.id, {
             metadata: {
               ...doc.metadata,
-              tratamento_id: tratamentoId || undefined,
+              tratamento_ids: tratamentosSelecionados,
             },
             updated_at: new Date().toISOString(),
             synced: false,
@@ -360,7 +365,7 @@ export default function EditarMedicamentoPage() {
         proxima_renovacao: proximaRenovacao,
         observacoes: observacoes.trim() || undefined,
         tipo_receita: tipoReceita,
-        tratamento_id: tratamentoId || undefined,
+        tratamento_ids: tratamentosSelecionados,
         status: statusAtivo ? "ativo" : "descontinuado",
         motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
         medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
@@ -606,26 +611,46 @@ export default function EditarMedicamentoPage() {
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ duration: 0.28 }} className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity size={16} className="text-violet-400" />
-              <label className="text-sm font-semibold text-ink-primary">
-                Tratamento / Condição
-              </label>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Activity size={16} className="text-violet-400" />
+                <label className="text-sm font-semibold text-ink-primary">Tratamentos Vinculados</label>
+              </div>
             </div>
+            
+            {/* Lista de Tratamentos Selecionados (Tags) */}
+            {tratamentosSelecionados.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {tratamentosSelecionados.map(tId => {
+                  const t = tratamentos.find((x: any) => x.id === tId);
+                  if (!t) return null;
+                  const IconComp = getTratamentoIcon(t.nome);
+                  return (
+                    <div key={tId} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
+                      <IconComp size={14} className="text-violet-400" />
+                      <span className="text-xs font-medium text-violet-300">{t.nome}</span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trigger("vibrate");
+                          setTratamentosSelecionados(prev => prev.filter(item => item !== tId));
+                        }}
+                        className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <button
               onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
-              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-violet-400/40"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {selectedTratamento ? (() => {
-                  const IconComp = getTratamentoIcon(selectedTratamento.nome);
-                  return <IconComp size={18} className="text-violet-400 shrink-0" />;
-                })() : <Activity size={18} className="text-ink-muted shrink-0" />}
-                <span className="truncate font-medium">
-                  {selectedTratamento ? selectedTratamento.nome : "Vincular a um CID/Tratamento"}
-                </span>
-              </div>
-              <span className="text-xs text-violet-400 shrink-0 font-medium">Alterar</span>
+              <Plus size={16} />
+              <span className="text-sm font-medium">Adicionar Tratamento / CID</span>
             </button>
           </motion.div>
 
@@ -880,7 +905,12 @@ export default function EditarMedicamentoPage() {
         <SelectionModal
           isOpen={isTratamentoModalOpen}
           onClose={() => setIsTratamentoModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setTratamentoId(item.id!); }}
+          onSelect={(item: any) => { 
+            trigger("vibrate"); 
+            if (!tratamentosSelecionados.includes(item.id!)) {
+              setTratamentosSelecionados(prev => [...prev, item.id!]);
+            }
+          }}
           items={tratamentos}
           title="Vincular a Tratamento/CID"
           placeholder="Buscar tratamento..."
