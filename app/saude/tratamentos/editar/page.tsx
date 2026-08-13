@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Trash2, ChevronRight, X, Plus, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, ChevronRight, X, Plus, Search, Palette } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
@@ -12,38 +12,32 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import type { Tratamento } from "@/lib/types";
-import { useCids } from "@/hooks/useCids"; // <-- Hook que acabamos de criar!
+import { useCids } from "@/hooks/useCids";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-};
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
-function EditarTratamentoContent() {
+export default function EditarTratamentoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
-  const { cids, addCid } = useCids(); // Puxando os CIDs do banco
+  const { cids, addCid } = useCids();
 
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Campos do formulário
   const [nome, setNome] = useState("");
-  const [condicao, setCondicao] = useState(""); // Legado / Fallback
-  const [cidId, setCidId] = useState(""); // <-- Novo campo relacional
+  const [condicao, setCondicao] = useState("");
+  const [cidId, setCidId] = useState("");
+  const [cor, setCor] = useState("#8B5CF6"); // <-- NOVO: Estado da cor
   const [status, setStatus] = useState<"ativo" | "concluido" | "suspenso">("ativo");
   const [dataInicio, setDataInicio] = useState("");
   
-  // Estados da interface
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [error, setError] = useState("");
 
-  // Estados da Modal de CID
   const [showCidModal, setShowCidModal] = useState(false);
   const [buscaCid, setBuscaCid] = useState("");
   const [novoCidCodigo, setNovoCidCodigo] = useState("");
@@ -51,48 +45,27 @@ function EditarTratamentoContent() {
   const [isAddingCid, setIsAddingCid] = useState(false);
 
   useEffect(() => {
-    if (!id) {
-      router.push("/saude");
-      return;
-    }
-
-    const fetchTratamento = async () => {
-      try {
-        const data = await db.tratamentos.get(id);
-        if (data) {
-          setTratamento(data);
-          setNome(data.nome || "");
-          setCondicao(data.condicao || "");
-          setCidId(data.cid_id || ""); // Carrega o ID relacional se existir
-          setStatus(data.status || "ativo");
-          setDataInicio(data.created_at ? data.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
-        } else {
-          router.push("/saude");
-        }
-      } catch (err) {
-        console.error("Erro ao carregar tratamento:", err);
-        router.push("/saude");
-      } finally {
-        setIsLoading(false);
+    if (!id) { router.push("/saude"); return; }
+    db.tratamentos.get(id).then(data => {
+      if (data) {
+        setTratamento(data);
+        setNome(data.nome || "");
+        setCondicao(data.condicao || "");
+        setCidId(data.cid_id || "");
+        setCor(data.cor || "#8B5CF6"); // <-- Carrega a cor salva
+        setStatus(data.status || "ativo");
+        setDataInicio(data.created_at ? data.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
       }
-    };
-
-    fetchTratamento();
+      setIsLoading(false);
+    });
   }, [id, router]);
 
   const handleSubmit = async () => {
     trigger("vibrate");
-    if (!nome.trim()) {
-      setError("O nome do tratamento é obrigatório");
-      trigger("error");
-      return;
-    }
-
+    if (!nome.trim()) { setError("O nome é obrigatório"); trigger("error"); return; }
     if (!id) return;
-
     setSaving(true);
     try {
-      // Fallback inteligente: Salva a descrição do CID no campo de texto para manter compatibilidade
       const cidSelecionado = cids?.find(c => c.id === cidId);
       const condicaoTexto = cidSelecionado ? cidSelecionado.descricao : condicao.trim();
 
@@ -100,280 +73,62 @@ function EditarTratamentoContent() {
         nome: nome.trim(),
         condicao: condicaoTexto || undefined,
         cid_id: cidId || undefined,
+        cor: cor, // <-- Salva a cor no banco
         status,
         created_at: dataInicio ? new Date(dataInicio).toISOString() : tratamento?.created_at,
         updated_at: new Date().toISOString(),
       });
 
       trigger("success");
-      router.push(`/saude/tratamentos?id=${id}`);
-    } catch (err) {
-      console.error("Erro ao atualizar tratamento:", err);
-      trigger("error");
-      setError("Erro ao salvar alterações.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!id) return;
-    setDeleting(true);
-    trigger("vibrate");
-    try {
-      await db.tratamentos.delete(id);
-      trigger("success");
-      router.push("/saude");
-    } catch (err) {
-      console.error("Erro ao excluir tratamento:", err);
-      trigger("error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
-  };
-
-  const handleCriarCid = async () => {
-    if (!novoCidDescricao.trim()) return;
-    setIsAddingCid(true);
-    try {
-      const novoId = await addCid({
-        codigo: novoCidCodigo.trim() || "N/A",
-        descricao: novoCidDescricao.trim(),
-      });
-      setCidId(novoId);
-      setShowCidModal(false);
-      setNovoCidCodigo("");
-      setNovoCidDescricao("");
-      trigger("success");
-    } catch (err) {
-      console.error("Erro ao criar CID:", err);
-      trigger("error");
-    } finally {
-      setIsAddingCid(false);
-    }
+      router.replace(`/saude/tratamentos/detalhes?id=${id}`);
+    } catch { trigger("error"); } finally { setSaving(false); }
   };
 
   const cidSelecionadoInfo = cids?.find(c => c.id === cidId);
   const displayCondicao = cidSelecionadoInfo ? `${cidSelecionadoInfo.codigo !== "N/A" ? cidSelecionadoInfo.codigo + " - " : ""}${cidSelecionadoInfo.descricao}` : condicao;
-  
-  const cidsFiltrados = cids?.filter(c => 
-    c.descricao.toLowerCase().includes(buscaCid.toLowerCase()) || 
-    c.codigo.toLowerCase().includes(buscaCid.toLowerCase())
-  ) || [];
+  const cidsFiltrados = cids?.filter(c => c.descricao.toLowerCase().includes(buscaCid.toLowerCase()) || c.codigo.toLowerCase().includes(buscaCid.toLowerCase())) || [];
 
   if (isLoading) return <LoadingSkeleton />;
-  if (!tratamento) return null;
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => { trigger("vibrate"); router.back(); }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-              >
-                <ArrowLeft size={18} className="text-ink-primary" />
-              </button>
-              <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-violet-300">Tratamento</p>
-                <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Editar tratamento</h1>
-              </div>
-            </div>
-
-            <button
-              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
+      <main className="min-h-screen bg-void pb-32">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl flex items-center justify-between">
+          <button onClick={() => router.back()} className="h-11 w-11 flex items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised"><ArrowLeft size={18} /></button>
+          <h1 className="font-display text-xl font-semibold text-ink-primary">Editar tratamento</h1>
+          <button onClick={() => setShowDeleteModal(true)} className="h-11 w-11 flex items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral"><Trash2 size={16} /></button>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
-          <motion.div
-            variants={fadeUp}
-            initial="initial"
-            animate="animate"
-            transition={{ duration: 0.28 }}
-            className="space-y-5 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-          >
-            <Input
-              label="Nome do Tratamento"
-              placeholder="Ex: TDAH, Depressão..."
-              value={nome}
-              onChange={(e) => { setNome(e.target.value); if (error) setError(""); }}
-              error={error}
-              required
-            />
-
-            {/* BOTAO PARA ABRIR MODAL DE CID (Substituindo o antigo Input) */}
+        <section className="px-5 pt-6 space-y-4">
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-5 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <Input label="Nome do Tratamento" value={nome} onChange={(e) => setNome(e.target.value)} error={error} />
+            
+            {/* NOVO: SELETOR DE COR */}
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Condição / CID (opcional)</label>
-              <button
-                type="button"
-                onClick={() => { trigger("vibrate"); setShowCidModal(true); }}
-                className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left transition-all active:scale-95"
-              >
-                <span className={displayCondicao ? "text-ink-primary truncate" : "text-ink-muted truncate"}>
-                  {displayCondicao || "Toque para selecionar a condição"}
-                </span>
-                <ChevronRight size={18} className="text-ink-muted shrink-0 ml-2" />
-              </button>
+               <label className="block text-sm font-medium text-ink-primary">Cor de Identificação</label>
+               <div className="flex items-center gap-4 p-3 bg-surface-raised rounded-2xl border border-surface-border/50">
+                 <Palette size={20} className="text-ink-muted" />
+                 <input type="color" value={cor} onChange={(e) => setCor(e.target.value)} className="h-10 w-full cursor-pointer bg-transparent" />
+               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Data de início</label>
-              <input
-                type="date"
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice/50"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-ink-primary">Status</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["ativo", "concluido", "suspenso"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => { trigger("vibrate"); setStatus(s); }}
-                    className={`rounded-2xl border px-1 py-2.5 text-xs font-medium capitalize transition-all active:scale-95 text-center ${
-                      status === s ? "border-violet-400 bg-violet-400/12 text-violet-300" : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                    }`}
-                  >
-                    {s === "ativo" ? "Em andamento" : s === "concluido" ? "Concluído" : "Suspenso"}
-                  </button>
-                ))}
-              </div>
+            <button type="button" onClick={() => setShowCidModal(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left">
+              <span className={displayCondicao ? "text-ink-primary" : "text-ink-muted"}>{displayCondicao || "Toque para selecionar a condição (CID)"}</span>
+              <ChevronRight size={18} className="text-ink-muted" />
+            </button>
+            
+            <div className="grid grid-cols-3 gap-2">
+              {(["ativo", "concluido", "suspenso"] as const).map((s) => (
+                <button key={s} onClick={() => setStatus(s)} className={`rounded-2xl border py-2.5 text-xs font-medium capitalize ${status === s ? "border-violet-400 bg-violet-400/12 text-violet-300" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{s}</button>
+              ))}
             </div>
           </motion.div>
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={handleSubmit}
-            disabled={saving}
-            className="flex items-center justify-center gap-2 shadow-lg shadow-violet-400/10"
-          >
-            {saving ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar alterações</>}
-          </Button>
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving}>Salvar alterações</Button>
         </div>
-
-        <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDelete}
-          title="Excluir tratamento"
-          message={`Tem certeza que deseja excluir o tratamento "${tratamento.nome}"? Os documentos vinculados não serão apagados.`}
-          confirmLabel="Excluir"
-          cancelLabel="Cancelar"
-          isLoading={deleting}
-          type="danger"
-        />
-
-        {/* ========================================================
-            MODAL DE SELEÇÃO E CRIAÇÃO DE CID 
-        ======================================================== */}
-        <AnimatePresence>
-          {showCidModal && (
-            <motion.div
-              initial={{ opacity: 0, y: "100%" }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-0 z-[100] flex flex-col bg-void"
-            >
-              <header className="flex items-center justify-between border-b border-surface-border/30 bg-surface/50 px-5 pb-4 header-safe-top backdrop-blur-md">
-                <h2 className="font-display text-lg font-semibold text-ink-primary">Selecionar Condição</h2>
-                <button 
-                  onClick={() => { trigger("vibrate"); setShowCidModal(false); setBuscaCid(""); }} 
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised text-ink-muted active:scale-95"
-                >
-                  <X size={20} />
-                </button>
-              </header>
-
-              <div className="p-4 border-b border-surface-border/30">
-                <div className="relative">
-                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-                  <input
-                    type="text"
-                    placeholder="Buscar doença ou CID..."
-                    value={buscaCid}
-                    onChange={(e) => setBuscaCid(e.target.value)}
-                    className="w-full rounded-xl border border-surface-border/50 bg-surface px-10 py-3 text-sm text-ink-primary outline-none focus:border-violet-500/50"
-                  />
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {cidsFiltrados.length > 0 ? (
-                  cidsFiltrados.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        trigger("vibrate");
-                        setCidId(c.id!);
-                        setShowCidModal(false);
-                      }}
-                      className={`w-full flex items-center justify-between rounded-2xl border p-4 text-left transition-all active:scale-95 ${
-                        cidId === c.id ? "border-violet-400 bg-violet-400/10" : "border-surface-border/50 bg-surface"
-                      }`}
-                    >
-                      <div>
-                        <p className={`font-medium ${cidId === c.id ? "text-violet-300" : "text-ink-primary"}`}>{c.descricao}</p>
-                        {c.codigo && c.codigo !== "N/A" && (
-                          <p className="text-xs text-ink-muted mt-1">CID: {c.codigo}</p>
-                        )}
-                      </div>
-                      {cidId === c.id && <div className="h-2 w-2 rounded-full bg-violet-400" />}
-                    </button>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-surface-border p-6 text-center">
-                    <p className="text-sm text-ink-muted mb-4">Nenhuma condição encontrada. Deseja cadastrar?</p>
-                    <div className="space-y-3">
-                      <Input
-                        label="Descrição (Ex: Depressão)"
-                        placeholder="Nome da doença/condição"
-                        value={novoCidDescricao}
-                        onChange={(e) => setNovoCidDescricao(e.target.value)}
-                      />
-                      <Input
-                        label="Código CID (Opcional)"
-                        placeholder="Ex: F32"
-                        value={novoCidCodigo}
-                        onChange={(e) => setNovoCidCodigo(e.target.value)}
-                      />
-                      <Button
-                        variant="primary"
-                        fullWidth
-                        onClick={handleCriarCid}
-                        disabled={!novoCidDescricao.trim() || isAddingCid}
-                        className="mt-2 flex items-center justify-center gap-2"
-                      >
-                        {isAddingCid ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                        Cadastrar e Selecionar
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </main>
     </PageTransition>
   );
-}
-
-export default function EditarTratamentoPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><EditarTratamentoContent /></Suspense>;
 }
