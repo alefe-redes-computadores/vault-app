@@ -11,7 +11,6 @@ import {
   Stethoscope,
   Building2,
   ChevronRight,
-  PackageX,
   Clock,
   Activity,
   FolderHeart,
@@ -36,17 +35,13 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
-import { HealthNotifications } from "@/components/HealthNotifications"; // <-- NOVO COMPONENTE AQUI
+import { HealthNotifications } from "@/components/HealthNotifications";
+import { MedicamentosNotifications } from "@/components/MedicamentosNotifications";
 import {
-  getMedicamentoAlerts,
   getDocumentAlerts,
-  getEstoqueAlerts,
   getExameAlerts,
   alertLevelColor,
   alertLevelLabel,
-  estoqueLevelLabel,
-  isControlada,
-  TIPO_RECEITA_LABELS,
   type HealthAlert,
 } from "@/lib/health-utils";
 
@@ -67,7 +62,6 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const color = alertLevelColor(alert.level);
-  const controlada = isControlada(alert.tipoReceita);
 
   return (
     <button
@@ -82,9 +76,7 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
         style={{ backgroundColor: `${color}18` }}
       >
-        {alert.kind === "medicamento" ? (
-          <Pill size={18} style={{ color }} />
-        ) : alert.kind === "exame" ? (
+        {alert.kind === "exame" ? (
           <FlaskConical size={18} style={{ color }} />
         ) : (
           <FileWarning size={18} style={{ color }} />
@@ -95,11 +87,6 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
           <p className="truncate text-sm font-semibold text-ink-primary">
             {alert.title}
           </p>
-          {controlada && alert.tipoReceita && (
-            <span className="shrink-0 rounded-full bg-violet-400/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-300">
-              {TIPO_RECEITA_LABELS[alert.tipoReceita]}
-            </span>
-          )}
         </div>
         <p className="truncate text-xs text-ink-muted">{alert.subtitle}</p>
       </div>
@@ -108,42 +95,6 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
         style={{ backgroundColor: `${color}18`, color }}
       >
         {alertLevelLabel(alert.level, alert.daysUntil)}
-      </span>
-    </button>
-  );
-}
-
-function EstoqueRow({ alert }: { alert: HealthAlert }) {
-  const router = useRouter();
-  const { trigger } = useHapticFeedback();
-  const color = alertLevelColor(alert.level);
-
-  return (
-    <button
-      onClick={() => {
-        trigger("vibrate");
-        router.push(alert.href);
-      }}
-      className="flex w-full items-center gap-3 rounded-[22px] border bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
-      style={{ borderColor: `${color}30` }}
-    >
-      <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: `${color}18` }}
-      >
-        <PackageX size={18} style={{ color }} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-ink-primary">
-          {alert.title}
-        </p>
-        <p className="truncate text-xs text-ink-muted">{alert.subtitle}</p>
-      </div>
-      <span
-        className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold"
-        style={{ backgroundColor: `${color}18`, color }}
-      >
-        {estoqueLevelLabel(alert.level, alert.daysUntil)}
       </span>
     </button>
   );
@@ -191,21 +142,17 @@ export default function SaudePage() {
     }
   };
 
-  const medAlerts = useMemo(() => getMedicamentoAlerts(medicamentos || []), [medicamentos]);
   const docAlerts = useMemo(() => getDocumentAlerts(documents || []), [documents]);
-  const estoqueAlerts = useMemo(() => getEstoqueAlerts(medicamentos || []), [medicamentos]);
   const exameAlerts = useMemo(() => getExameAlerts(exames || []), [exames]);
 
-  const allAlerts = useMemo(
-    () => [...medAlerts, ...docAlerts, ...exameAlerts].sort((a, b) => a.daysUntil - b.daysUntil),
-    [medAlerts, docAlerts, exameAlerts]
+  const otherAlerts = useMemo(
+    () => [...docAlerts, ...exameAlerts].sort((a, b) => a.daysUntil - b.daysUntil),
+    [docAlerts, exameAlerts]
   );
 
   const isLoading = documents === undefined || medicamentos === undefined || exames === undefined;
 
   if (isLoading) return <LoadingSkeleton />;
-
-  const totalAlertas = allAlerts.length + estoqueAlerts.length + dosesPendentesAtrasadas.length;
 
   const quickActions = [
     { id: "nova-consulta", label: "Consulta", icon: Stethoscope, path: "/saude/consultas/nova" },
@@ -213,8 +160,6 @@ export default function SaudePage() {
     { id: "novo-medicamento", label: "Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
     { id: "novo-local", label: "Posto / Local", icon: MapPin, path: "/saude/locais/novo" },
   ];
-
-  const saudeDocuments = documents?.filter(d => d.category_id === 'saude') || [];
 
   return (
     <PageTransition>
@@ -239,8 +184,8 @@ export default function SaudePage() {
                 Saúde
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
-                {totalAlertas > 0
-                  ? `${totalAlertas} alerta${totalAlertas !== 1 ? "s" : ""} para revisar`
+                {dosesPendentesAtrasadas.length > 0 
+                  ? `${dosesPendentesAtrasadas.length} dose(s) pendente(s)` 
                   : "Painel Clínico atualizado"}
               </p>
             </div>
@@ -248,7 +193,7 @@ export default function SaudePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-5">
-          {/* BOTÕES DE AÇÃO RÁPIDA (Atualizados para a nova arquitetura) */}
+          {/* BOTÕES DE AÇÃO RÁPIDA */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -315,15 +260,18 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* NOVO BANNER DE NOTIFICAÇÕES (Consultas e Cirurgias) */}
+          {/* BANNERS INTELIGENTES */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24, delay: 0.03 }}
+            className="space-y-4"
           >
             <HealthNotifications />
+            <MedicamentosNotifications />
           </motion.div>
 
+          {/* TRATAMENTOS ATIVOS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -371,8 +319,8 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* ALERTAS DO SISTEMA (Remédios vencendo, estoque acabando, exames pendentes) */}
-          {(estoqueAlerts.length > 0 || allAlerts.length > 0) && (
+          {/* ALERTAS RESTANTES (Documentos e Exames) */}
+          {otherAlerts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -381,15 +329,12 @@ export default function SaudePage() {
               <div className="mb-3 flex items-center gap-2">
                 <FileWarning size={15} className="text-coral" />
                 <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Requer Atenção (Medicamentos e Exames)
+                  Atenção: Exames e Documentos
                 </h2>
               </div>
               
               <div className="space-y-2.5">
-                {estoqueAlerts.map((alert) => (
-                  <EstoqueRow key={`estoque-${alert.id}`} alert={alert} />
-                ))}
-                {allAlerts.map((alert) => (
+                {otherAlerts.map((alert) => (
                   <AlertRow key={`${alert.kind}-${alert.id}`} alert={alert} />
                 ))}
               </div>
