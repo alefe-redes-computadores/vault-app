@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Pill, Plus, ChevronRight, Activity } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { usePersons } from "@/hooks/usePersons"; // <-- Importamos os perfis
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import {
   computeEstoqueInfo,
   getDaysUntil,
-  isControlada,
   TIPO_RECEITA_LABELS,
 } from "@/lib/health-utils";
 import { format } from "date-fns";
@@ -46,14 +46,37 @@ export default function MedicamentosListPage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const { medicamentos } = useMedicamentos();
+  const persons = usePersons(); // <-- Busca as pessoas cadastradas
 
-  // Busca os tratamentos para cruzar o nome e exibir a etiqueta no card
+  // Busca os tratamentos
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  
+  // Busca a tabela N:N (vínculos entre medicamentos e tratamentos)
+  const vinculos = useLiveQuery(() => db.medicamento_tratamentos.toArray(), []) || [];
+
+  // Mapa rápido de ID do Tratamento -> Nome do Tratamento
   const tratamentoMap = useMemo(() => {
     const map = new Map();
     tratamentos.forEach((t: any) => map.set(t.id, t.nome));
     return map;
   }, [tratamentos]);
+
+  // Mapa rápido de ID da Pessoa -> Nome da Pessoa
+  const personMap = useMemo(() => {
+    const map = new Map();
+    persons.forEach((p: any) => map.set(p.id, p.name));
+    return map;
+  }, [persons]);
+
+  // Mapa rápido de Medicamento -> [Array de IDs de Tratamentos]
+  const vinculosMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    vinculos.forEach((v: any) => {
+      if (!map.has(v.medicamento_id)) map.set(v.medicamento_id, []);
+      map.get(v.medicamento_id)!.push(v.tratamento_id);
+    });
+    return map;
+  }, [vinculos]);
 
   const sorted = useMemo(() => {
     return [...(medicamentos || [])].sort((a, b) => {
@@ -140,7 +163,14 @@ export default function MedicamentosListPage() {
                 const isEstoqueCritico = qtd !== null && qtd < 5;
                 const isEstoqueBaixo = qtd !== null && qtd >= 5 && qtd < 10;
                 
-                const tratamentoNome = med.tratamento_id ? tratamentoMap.get(med.tratamento_id) : null;
+                // Quem é o dono do remédio?
+                const personName = med.person_id ? personMap.get(med.person_id) : null;
+                
+                // Tratamentos vinculados
+                let tIds = vinculosMap.get(med.id) || [];
+                if (tIds.length === 0 && med.tratamento_id) {
+                  tIds = [med.tratamento_id]; // Fallback pro antigo
+                }
 
                 return (
                   <motion.button
@@ -154,7 +184,7 @@ export default function MedicamentosListPage() {
                     }}
                     className="flex w-full items-start gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
                   >
-                    {/* Detalhe lateral sutil baseado no tipo de receita para diferenciar os cards */}
+                    {/* Detalhe lateral sutil baseado no tipo de receita */}
                     <div 
                       className={`absolute left-0 top-0 bottom-0 w-1.5 ${
                         med.tipo_receita === 'amarela' ? 'bg-amber-400' :
@@ -172,20 +202,31 @@ export default function MedicamentosListPage() {
                           {med.nome}
                         </p>
                         
-                        {/* Etiqueta de Tipo de Receita com cor real */}
+                        {/* Etiqueta de Pessoa */}
+                        {personName && (
+                          <span className="shrink-0 rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[9px] font-semibold text-ink-muted uppercase tracking-wide">
+                            👤 {personName}
+                          </span>
+                        )}
+
+                        {/* Etiqueta de Tipo de Receita */}
                         {med.tipo_receita && (
                           <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getReceitaBadgeStyle(med.tipo_receita)}`}>
                             {TIPO_RECEITA_LABELS[med.tipo_receita] || med.tipo_receita}
                           </span>
                         )}
 
-                        {/* Etiqueta de Tratamento Vinculado */}
-                        {tratamentoNome && (
-                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-violet-400/10 border border-violet-400/20 px-2 py-0.5 text-[9px] font-semibold text-violet-300">
-                            <Activity size={10} />
-                            {tratamentoNome}
-                          </span>
-                        )}
+                        {/* Etiquetas de Tratamentos Vinculados (Múltiplos N:N) */}
+                        {tIds.map(tId => {
+                          const tName = tratamentoMap.get(tId);
+                          if (!tName) return null;
+                          return (
+                            <span key={tId} className="shrink-0 inline-flex items-center gap-1 rounded-full bg-violet-400/10 border border-violet-400/20 px-2 py-0.5 text-[9px] font-semibold text-violet-300">
+                              <Activity size={10} />
+                              {tName}
+                            </span>
+                          );
+                        })}
                       </div>
 
                       <p className="mt-0.5 text-xs text-ink-muted">
