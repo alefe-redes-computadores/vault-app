@@ -22,38 +22,42 @@ export function useTratamentos() {
 
   const addTratamento = useCallback(
     async (data: Omit<Tratamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return safeAddTratamento({ ...data, user_id: user?.id || "" });
+      // Garantimos que o cid_id seja passado, mesmo que undefined (para casos de tratamento sem CID)
+      return safeAddTratamento({ 
+        ...data, 
+        user_id: user?.id || "",
+        cid_id: data.cid_id || undefined
+      });
     },
     [user]
   );
 
   const updateTratamento = useCallback(
     async (id: string, data: Partial<Tratamento>) => {
-      // 1. Atualiza os dados do Tratamento em si
+      // 1. Atualiza os dados do Tratamento
       await safeUpdateTratamento(id, data);
 
-      // 2. O "Efeito Dominó" (A inteligência relacional)
-      // Se o usuário marcou o tratamento como concluído ou suspenso:
+      // 2. O "Efeito Dominó"
       if (data.status === 'concluido' || data.status === 'suspenso') {
         
-        // Pega todos os vínculos desse tratamento na nova tabela N:N
+        // Pega todos os vínculos desse tratamento na tabela N:N
         const vinculos = await db.medicamento_tratamentos
           .where('tratamento_id')
           .equals(id)
           .toArray();
         
-        // Para cada remédio vinculado a esse tratamento...
+        // Para cada remédio vinculado...
         for (const vinculo of vinculos) {
           const med = await db.medicamentos.get(vinculo.medicamento_id);
           
           if (med && med.status !== 'descontinuado') {
-            // A) Marca o remédio como descontinuado e registra o motivo automaticamente
+            // A) Marca o remédio como descontinuado e registra o motivo
             await db.medicamentos.update(med.id!, { 
               status: 'descontinuado',
               motivo_descontinuacao: `Tratamento original marcado como ${data.status}` 
             });
             
-            // B) Cancela todos os alarmes e notificações desse remédio no celular
+            // B) Cancela todos os alarmes e notificações desse remédio
             if (med.estoque_horarios && med.estoque_horarios.length > 0) {
               await cancelDoseNotifications({ 
                 id: med.id!, 
