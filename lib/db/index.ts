@@ -61,7 +61,7 @@ class VaultDB extends Dexie {
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
       syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, person_id, document_id, nome, medico_id, farmacia_id, proxima_renovacao, status',
+      medicamentos: 'id, user_id, person_id, document_id, nome, medico_id, farmacia_id, proxima_renovacao, status, tratamento_id',
       renovacoes: 'id, user_id, medicamento_id, data',
       vaults: 'id, user_id, name, synced, created_at',
       vaultMembers: 'id, vault_id, user_id, email, status, synced',
