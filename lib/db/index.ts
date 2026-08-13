@@ -29,12 +29,14 @@ class VaultDB extends Dexie {
   farmacias!: Table<Farmacia, string>;
   hospitais!: Table<Hospital, string>;
   laboratorios!: Table<Laboratorio, string>;
-  exames!: Table<Exame, string>; // <- NOVA TABELA REGISTRADA
+  exames!: Table<Exame, string>; 
   doseLogs!: Table<DoseLog, string>;
   credentials!: Table<Credential, string>; 
   cards!: Table<BankCard, string>;         
   instituicoes!: Table<InstituicaoEnsino, string>; 
-  tratamentos!: Table<Tratamento, string>;         
+  tratamentos!: Table<Tratamento, string>;
+  medicamento_tratamentos!: Table<any, string>; // Tabela de Junção N:N
+  anexos_clinicos!: Table<any, string>;         // Galeria de Anexos Clínicos
 
   constructor() {
     super('vault-db');
@@ -197,7 +199,6 @@ class VaultDB extends Dexie {
       tratamentos: 'id, user_id, nome, status, synced',
     });
 
-    // VERSÃO 14: Adiciona tabela de exames para armazenamento local e sincronização
     this.version(14).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -210,7 +211,7 @@ class VaultDB extends Dexie {
       farmacias: 'id, user_id, nome, synced',
       hospitais: 'id, user_id, nome, synced',
       laboratorios: 'id, user_id, nome, synced',
-      exames: 'id, user_id, nome, laboratorio, data, synced', // <- ÍNDICE DA TABELA EXAMES
+      exames: 'id, user_id, nome, laboratorio, data, synced',
       doseLogs: 'id, user_id, medicamento_id, data, horario',
       credentials: 'id, user_id, vault_id, title, category, synced',
       cards: 'id, user_id, title, bank_name, type, brand, synced',
@@ -218,6 +219,31 @@ class VaultDB extends Dexie {
       tratamentos: 'id, user_id, nome, status, synced',
     }).upgrade(async () => {
       console.log('✅ v14: tabela de exames integrada ao banco local.');
+    });
+
+    // VERSÃO 15: Adiciona tabelas de relação N:N (medicamento_tratamentos) e Galeria de Anexos Clínicos
+    this.version(15).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status',
+      renovacoes: 'id, user_id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+      laboratorios: 'id, user_id, nome, synced',
+      exames: 'id, user_id, nome, laboratorio, data, synced',
+      doseLogs: 'id, user_id, medicamento_id, data, horario',
+      credentials: 'id, user_id, vault_id, title, category, synced',
+      cards: 'id, user_id, title, bank_name, type, brand, synced',
+      instituicoes: 'id, user_id, nome, synced',
+      tratamentos: 'id, user_id, nome, status, synced',
+      medicamento_tratamentos: 'id, medicamento_id, tratamento_id',
+      anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at',
+    }).upgrade(async () => {
+      console.log('✅ v15: tabelas de relação N:N e anexos clínicos integradas.');
     });
   }
 }
@@ -227,7 +253,26 @@ export const db = new VaultDB();
 function nowIso() { return new Date().toISOString(); }
 function triggerSyncProcess() { if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync:process')); }
 
-// FUNÇÕES CRUD PARA EXAMES (Com suporte automático à Fila de Sincronização)
+// FUNÇÕES DE SINCRONIZAÇÃO N:N (Medicamentos <-> Tratamentos)
+export async function syncMedicamentoTratamentos(medicamentoId: string, tratamentoIds: string[]): Promise<void> {
+  await db.transaction('rw', db.medicamento_tratamentos, async () => {
+    // Remove vínculos antigos localmente
+    await db.medicamento_tratamentos.where('medicamento_id').equals(medicamentoId).delete();
+
+    // Insere os novos vínculos
+    const novosVinculos = tratamentoIds.map(tId => ({
+      id: generateId(),
+      medicamento_id: medicamentoId,
+      tratamento_id: tId
+    }));
+
+    if (novosVinculos.length > 0) {
+      await db.medicamento_tratamentos.bulkAdd(novosVinculos);
+    }
+  });
+}
+
+// FUNÇÕES CRUD PARA EXAMES
 export async function safeAddExame(data: Omit<Exame, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -259,7 +304,7 @@ export async function safeDeleteExame(id: string): Promise<void> {
   });
 }
 
-// (Demais funções CRUD existentes do app continuam inalteradas abaixo)
+// FUNÇÕES CRUD EXISTENTES
 export async function safeAddPerson(person: Omit<Person, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
