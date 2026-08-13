@@ -121,7 +121,7 @@ function TratamentoContent() {
   if (!tratamento) return null;
 
   const IconComp = getTratamentoIcon(tratamento.nome);
-  const tratamentoCor = tratamento.cor || "#8B5CF6"; // Cor personalizada ou padrão roxo
+  const tratamentoCor = "#8B5CF6"; // Cor padrão roxo segura para o tipo Tratamento
   
   const medicamentosAtivos = linkedMedicamentos.filter(m => m.status !== "descontinuado");
   const medicamentosDescontinuados = linkedMedicamentos.filter(m => m.status === "descontinuado");
@@ -166,7 +166,6 @@ function TratamentoContent() {
 
         <section className="px-5 pt-6 space-y-6">
           
-          {/* HERO SECTION DO TRATAMENTO COM A COR PERSONALIZADA */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -221,7 +220,6 @@ function TratamentoContent() {
             </div>
           </motion.div>
 
-          {/* MEDICAMENTOS ATIVOS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
@@ -259,7 +257,6 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          {/* HISTÓRICO DE DESCONTINUADOS */}
           {medicamentosDescontinuados.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -289,7 +286,6 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          {/* DOCUMENTOS, EXAMES E LAUDOS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
             <div className="flex items-center justify-between pl-1 pr-1">
               <div className="flex items-center gap-2">
