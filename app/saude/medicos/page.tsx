@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, Stethoscope, Search, Plus, ChevronRight, 
-  Building2, Pill, Activity, CalendarClock, FileText 
+  Building2, Pill, Activity, CalendarClock, FileText, Calendar 
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -25,6 +25,8 @@ export default function MedicosPage() {
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const documentos = useLiveQuery(() => db.table("documents").toArray(), []) || [];
+  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+  const cirurgias = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
 
   // 2. Mapeamentos relacionais cruzados
   const tratamentoMap = useMemo(() => new Map(tratamentos.map(t => [t.id, t])), [tratamentos]);
@@ -40,7 +42,9 @@ export default function MedicosPage() {
         if (m.tratamento_id) tratamentoIdsSet.add(m.tratamento_id);
       });
 
-      // Documentos/Consultas associadas a este médico
+      // Consultas, Cirurgias e Documentos associados a este médico
+      const consultasDoMedico = consultas.filter((c) => c.medico_id === medico.id);
+      const cirurgiasDoMedico = cirurgias.filter((c) => c.medico_id === medico.id);
       const docsDoMedico = documentos.filter((d: any) => 
         d.metadata?.doctor_id === medico.id || 
         d.metadata?.doctor?.toLowerCase() === medico.nome.toLowerCase()
@@ -53,11 +57,13 @@ export default function MedicosPage() {
       return {
         ...medico,
         medicamentosCount: medsDoMedico.length,
+        consultasCount: consultasDoMedico.length,
+        cirurgiasCount: cirurgiasDoMedico.length,
         documentosCount: docsDoMedico.length,
         tratamentos: tratamentosRelacionados,
       };
     });
-  }, [medicos, medicamentos, documentos, tratamentoMap]);
+  }, [medicos, medicamentos, documentos, consultas, cirurgias, tratamentoMap]);
 
   const filteredMedicos = medicosComMetadados.filter((med) =>
     med.nome.toLowerCase().includes(search.toLowerCase()) ||
@@ -101,11 +107,10 @@ export default function MedicosPage() {
                 <Stethoscope size={24} />
               </div>
               <p className="text-sm font-medium text-ink-primary">Nenhum médico encontrado</p>
-              <p className="mt-1 text-xs text-ink-muted">Cadastre profissionais para gerenciar suas prescrições.</p>
+              <p className="mt-1 text-xs text-ink-muted">Cadastre profissionais para gerenciar suas prescrições e atendimentos.</p>
             </div>
           ) : (
             filteredMedicos.map((medico) => {
-              // Cor segura padrão sem depender da propriedade inexistente 'cor'
               const primeiraCorTratamento = "#38BDF8";
 
               return (
@@ -113,7 +118,7 @@ export default function MedicosPage() {
                   key={medico.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/editar?id=${medico.id}`); }}
+                  onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${medico.id}`); }}
                   className="flex w-full items-start gap-3.5 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
                   style={{ borderLeft: `6px solid ${primeiraCorTratamento}` }}
                 >
@@ -131,12 +136,10 @@ export default function MedicosPage() {
                       )}
                     </div>
 
-                    {/* Contatos Básicos */}
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
                       {medico.telefone && <span>Telefone: {medico.telefone}</span>}
                     </div>
 
-                    {/* Tags de Cruzamento Relacional (Tratamentos e Prescrições) */}
                     <div className="mt-3 flex flex-wrap items-center gap-1.5">
                       {medico.tratamentos.map((t: any) => (
                         <span 
@@ -147,9 +150,21 @@ export default function MedicosPage() {
                         </span>
                       ))}
 
+                      {medico.consultasCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted">
+                          <Calendar size={11} className="text-ice" /> {medico.consultasCount} cons.
+                        </span>
+                      )}
+
+                      {medico.cirurgiasCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted">
+                          <Activity size={11} className="text-coral" /> {medico.cirurgiasCount} cirurg.
+                        </span>
+                      )}
+
                       {medico.medicamentosCount > 0 && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted">
-                          <Pill size={11} className="text-ice" /> {medico.medicamentosCount} med(s)
+                          <Pill size={11} className="text-emerald-400" /> {medico.medicamentosCount} med(s)
                         </span>
                       )}
 
