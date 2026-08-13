@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Building2, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Building2, Trash2, Activity, FlaskConical, ExternalLink } from "lucide-react";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
@@ -23,6 +25,9 @@ export default function EditarHospitalPage() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
   const { getHospital, updateHospital, deleteHospital } = useHospitais();
+
+  const documentos = useLiveQuery(() => db.table("documents").toArray(), []) || [];
+  const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -52,6 +57,21 @@ export default function EditarHospitalPage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Cruzamento relacional em tempo real para este hospital específico
+  const procedimentosVinculados = useMemo(() => {
+    if (!id) return { cirurgias: [], exames: [] };
+    
+    const cirurgias = documentos.filter((d: any) => 
+      d.metadata?.hospital_id === id && (d.type === 'cirurgia' || d.type === 'prontuario')
+    );
+
+    const examesUnidade = exames.filter((e: any) => 
+      e.hospital_id === id || e.laboratorio_id === id
+    );
+
+    return { cirurgias, exames: examesUnidade };
+  }, [id, documentos, exames]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -123,7 +143,7 @@ export default function EditarHospitalPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-screen bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -141,11 +161,11 @@ export default function EditarHospitalPage() {
               <div className="flex items-center gap-2">
                 <Building2 size={16} className="text-ice" />
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                  Vault
+                  Hub Clínico
                 </p>
               </div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
-                Editar hospital
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary truncate">
+                {nome || "Editar hospital"}
               </h1>
             </div>
 
@@ -162,7 +182,7 @@ export default function EditarHospitalPage() {
           </div>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
+        <section className="space-y-5 px-5 pt-6">
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -170,6 +190,7 @@ export default function EditarHospitalPage() {
             transition={{ duration: 0.28 }}
             className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
+            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Dados da Unidade</h2>
             <Input
               label="Nome"
               placeholder="Ex: Hospital Regional, Santa Casa..."
@@ -190,6 +211,96 @@ export default function EditarHospitalPage() {
               value={telefone}
               onChange={(e) => setTelefone(e.target.value)}
             />
+          </motion.div>
+
+          {/* Seção Relacional: Cirurgias e Procedimentos Realizados Aqui */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.08 }}
+            className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
+                <Activity size={14} className="text-ice" /> Cirurgias e Prontuários ({procedimentosVinculados.cirurgias.length})
+              </h2>
+            </div>
+
+            {procedimentosVinculados.cirurgias.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-4 text-center">
+                <p className="text-xs text-ink-muted">Nenhuma cirurgia ou procedimento registrado nesta unidade.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {procedimentosVinculados.cirurgias.map((doc: any) => (
+                  <div
+                    key={doc.id}
+                    onClick={() => {
+                      trigger("vibrate");
+                      router.push(`/saude/documentos`);
+                    }}
+                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 transition-all active:scale-[0.98] hover:bg-surface-raised cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                        <Activity size={14} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-ink-primary truncate">{doc.title}</p>
+                        <p className="text-[10px] text-ink-muted">{doc.metadata?.date || "Data não informada"}</p>
+                      </div>
+                    </div>
+                    <ExternalLink size={14} className="text-ink-faint shrink-0" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Seção Relacional: Exames Realizados Aqui */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ duration: 0.28, delay: 0.12 }}
+            className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
+                <FlaskConical size={14} className="text-violet-400" /> Exames Realizados ({procedimentosVinculados.exames.length})
+              </h2>
+            </div>
+
+            {procedimentosVinculados.exames.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-4 text-center">
+                <p className="text-xs text-ink-muted">Nenhum exame vinculado a esta unidade.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {procedimentosVinculados.exames.map((exame: any) => (
+                  <div
+                    key={exame.id}
+                    onClick={() => {
+                      trigger("vibrate");
+                      router.push(`/saude/exames/detalhes?id=${exame.id}`);
+                    }}
+                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 transition-all active:scale-[0.98] hover:bg-surface-raised cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                        <FlaskConical size={14} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-ink-primary truncate">{exame.nome}</p>
+                        <p className="text-[10px] text-ink-muted">{exame.data || "Data não informada"}</p>
+                      </div>
+                    </div>
+                    <ExternalLink size={14} className="text-ink-faint shrink-0" />
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </section>
 
