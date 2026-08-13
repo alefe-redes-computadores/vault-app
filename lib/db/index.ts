@@ -38,6 +38,7 @@ class VaultDB extends Dexie {
   medicamento_tratamentos!: Table<any, string>;
   anexos_clinicos!: Table<any, string>;
   cids!: Table<Cid, string>;
+  exame_tratamentos!: Table<any, string>; // ADICIONADO
 
   constructor() {
     super('vault-db');
@@ -77,7 +78,8 @@ class VaultDB extends Dexie {
       tratamentos: 'id, user_id, person_id, nome, cid_id, status, synced',
       medicamento_tratamentos: 'id, medicamento_id, tratamento_id',
       anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at',
-      cids: 'id, user_id, codigo, descricao, synced' 
+      cids: 'id, user_id, codigo, descricao, synced',
+      exame_tratamentos: 'id, exame_id, tratamento_id' // ADICIONADO
     });
   }
 }
