@@ -83,7 +83,8 @@ export default function ExamesPage() {
               const personName = personMap.get(exame.person_id);
               const tIds = vinculosMap.get(exame.id) || [];
               const primeiroTratamento = tIds.length > 0 ? tratamentoMap.get(tIds[0]) : null;
-              const corTratamento = primeiroTratamento?.cor || "#10B981"; // Verde padrão se não tiver cor
+              // CORREÇÃO: Cast para (any) para evitar erro de tipo na propriedade .cor
+              const corTratamento = (primeiroTratamento as any)?.cor || "#10B981";
 
               return (
                 <motion.button
