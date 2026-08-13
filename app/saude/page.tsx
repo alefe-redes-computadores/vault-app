@@ -21,12 +21,16 @@ import {
   HeartPulse,
   Flame,
   FlaskConical,
+  CheckCircle2,
+  MapPin,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
+import { useLocais } from "@/hooks/useLocais";
+import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -46,8 +50,12 @@ import {
   type HealthAlert,
 } from "@/lib/health-utils";
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function getTratamentoIcon(nome: string) {
-  const n = nome.toLowerCase();
+  const n = (nome || "").toLowerCase();
   if (n.includes("tdah")) return Brain;
   if (n.includes("dor") || n.includes("neuropática")) return Flame;
   if (n.includes("depress")) return HeartPulse;
@@ -172,15 +180,45 @@ function AppointmentRow({ alert }: { alert: HealthAlert }) {
 export default function SaudePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
+  const hoje = todayISO();
 
   const documents = useDocuments();
   const { medicamentos } = useMedicamentos();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
+  const { locais } = useLocais();
+  const { doseLogs, marcarDose } = useDoseLogs(hoje);
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
+
+  // Lógica para detectar doses pendentes/atrasadas no dia de hoje
+  const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  const dosesPendentesAtrasadas = useMemo(() => {
+    if (!medicamentos || !doseLogs) return [];
+    const lista: Array<{ medicamentoId: string; nome: string; horario: string }> = [];
+
+    for (const med of medicamentos) {
+      if (!med.id || med.status === "descontinuado" || !med.estoque_horarios) continue;
+      for (const horario of med.estoque_horarios) {
+        if (!horario || horario > horaAtual) continue; // Apenas horários que já passaram ou são agora
+        const log = doseLogs.find((l) => l.medicamento_id === med.id && l.horario === horario);
+        if (!log?.tomado_em) {
+          lista.push({ medicamentoId: med.id, nome: med.nome, horario });
+        }
+      }
+    }
+    return lista;
+  }, [medicamentos, doseLogs, horaAtual]);
+
+  const handleTomarTodasAtrasadas = async () => {
+    trigger("success");
+    for (const d of dosesPendentesAtrasadas) {
+      await marcarDose(d.medicamentoId, hoje, d.horario, true);
+    }
+  };
 
   const medAlerts = useMemo(
     () => getMedicamentoAlerts(medicamentos || []),
@@ -214,13 +252,13 @@ export default function SaudePage() {
     return <LoadingSkeleton />;
   }
 
-  const totalAlertas = allAlerts.length + estoqueAlerts.length;
+  const totalAlertas = allAlerts.length + estoqueAlerts.length + dosesPendentesAtrasadas.length;
 
   const quickActions = [
     { id: "novo-medicamento", label: "Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
     { id: "nova-renovacao", label: "Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
     { id: "novo-medico", label: "Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
-    { id: "nova-farmacia", label: "Farmácia/Hospital", icon: Building2, path: "/saude/locais/novo" },
+    { id: "novo-local", label: "Local / Posto", icon: Building2, path: "/saude/locais/novo" },
   ];
 
   const saudeDocuments = documents?.filter(d => d.category_id === 'saude') || [];
@@ -261,6 +299,7 @@ export default function SaudePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-5">
+          {/* BOTÕES DE AÇÃO RÁPIDA */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -288,6 +327,55 @@ export default function SaudePage() {
               );
             })}
           </motion.div>
+
+          {/* ALERTA DE DOSES PENDENTES / ATRASADAS (DESTAQUE VISUAL INTERATIVO) */}
+          {dosesPendentesAtrasadas.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.25 }}
+              className="relative overflow-hidden rounded-[26px] border border-coral/30 bg-gradient-to-br from-coral/15 via-surface to-surface p-5 shadow-lg shadow-coral/5"
+            >
+              <div className="flex items-start gap-3.5">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-coral/20 text-coral">
+                  <Clock size={22} className="animate-pulse" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-display text-base font-bold text-ink-primary">
+                    Doses pendentes hoje!
+                  </h3>
+                  <p className="mt-0.5 text-xs text-ink-muted leading-relaxed">
+                    Você esqueceu de tomar <strong className="text-ink-primary">{dosesPendentesAtrasadas.length} medicamento(s)</strong> nos horários programados.
+                  </p>
+                  
+                  {/* Lista resumida dos remédios pendentes */}
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {dosesPendentesAtrasadas.map((d, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 rounded-full bg-surface-raised px-2.5 py-1 text-[10px] font-mono font-medium text-ink-primary border border-surface-border/50">
+                        <span className="text-coral font-bold">{d.horario}</span> {d.nome}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Ações Rápidas do Alerta */}
+                  <div className="mt-4 flex items-center gap-2.5">
+                    <button
+                      onClick={handleTomarTodasAtrasadas}
+                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-coral px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-coral/20 transition-all active:scale-95"
+                    >
+                      <CheckCircle2 size={15} /> Tomar Todos Agora
+                    </button>
+                    <button
+                      onClick={() => { trigger("vibrate"); router.push("/saude/hoje"); }}
+                      className="rounded-xl border border-surface-border bg-surface-raised px-4 py-2.5 text-xs font-semibold text-ink-primary transition-all active:scale-95 hover:bg-surface"
+                    >
+                      Ver Cronograma
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {appointments.length > 0 && (
             <motion.div
@@ -366,7 +454,7 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* ACERVO DE DOCUMENTOS (Destaque Âmbar/Laranja) */}
+          {/* ACERVO DE DOCUMENTOS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -467,6 +555,7 @@ export default function SaudePage() {
             </button>
           </motion.div>
 
+          {/* SUA REDE ATUALIZADA: 4 COLUNAS DIFERENCIANDO MÉDICOS, FARMÁCIAS, HOSPITAIS E POSTOS/LOCAIS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -475,7 +564,7 @@ export default function SaudePage() {
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-display text-sm font-semibold text-ink-primary">
-                Sua rede
+                Sua rede e locais
               </h2>
               <button
                 onClick={() => {
@@ -488,34 +577,57 @@ export default function SaudePage() {
                 <ChevronRight size={14} />
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {/* CARD DE MÉDICOS AGORA DIRECIONA PARA A NOVA PÁGINA INTELIGENTE DE MÉDICOS */}
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+              
+              {/* 1. MÉDICOS */}
               <button
-                onClick={() => {
-                  trigger("vibrate");
-                  router.push("/saude/medicos");
-                }}
-                className="rounded-2xl bg-surface-raised/60 py-3 transition-all active:scale-95 hover:bg-surface-raised text-center border border-transparent hover:border-surface-border/50 cursor-pointer"
+                onClick={() => { trigger("vibrate"); router.push("/saude/medicos"); }}
+                className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
               >
-                <p className="font-display text-lg font-semibold text-ink-primary">
+                <Stethoscope size={16} className="text-ice mb-1" />
+                <p className="font-display text-base font-semibold text-ink-primary">
                   {(medicos || []).length}
                 </p>
                 <p className="text-[10px] text-ink-muted">Médicos</p>
               </button>
 
-              <div className="rounded-2xl bg-surface-raised/60 py-3">
-                <p className="font-display text-lg font-semibold text-ink-primary">
+              {/* 2. FARMÁCIAS */}
+              <button
+                onClick={() => { trigger("vibrate"); router.push("/saude/farmacias"); }}
+                className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
+              >
+                <Pill size={16} className="text-amber-400 mb-1" />
+                <p className="font-display text-base font-semibold text-ink-primary">
                   {(farmacias || []).length}
                 </p>
                 <p className="text-[10px] text-ink-muted">Farmácias</p>
-              </div>
-              
-              <div className="rounded-2xl bg-surface-raised/60 py-3">
-                <p className="font-display text-lg font-semibold text-ink-primary">
+              </button>
+
+              {/* 3. HOSPITAIS */}
+              <button
+                onClick={() => { trigger("vibrate"); router.push("/saude/hospitais"); }}
+                className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
+              >
+                <Building2 size={16} className="text-ice mb-1" />
+                <p className="font-display text-base font-semibold text-ink-primary">
                   {(hospitais || []).length}
                 </p>
                 <p className="text-[10px] text-ink-muted">Hospitais</p>
-              </div>
+              </button>
+
+              {/* 4. POSTOS / UNIDADES (LOCAIS) */}
+              <button
+                onClick={() => { trigger("vibrate"); router.push("/saude/locais"); }}
+                className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
+              >
+                <MapPin size={16} className="text-emerald-400 mb-1" />
+                <p className="font-display text-base font-semibold text-ink-primary">
+                  {(locais || []).length}
+                </p>
+                <p className="text-[10px] text-ink-muted">Postos / Locais</p>
+              </button>
+
             </div>
           </motion.div>
         </section>
