@@ -7,13 +7,9 @@ import {
   ArrowLeft, 
   Plus, 
   Calendar as CalendarIcon, 
-  Clock, 
   Building2, 
-  UserCheck, 
   ChevronRight,
-  Stethoscope,
-  CheckCircle2,
-  AlertCircle
+  Stethoscope
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
