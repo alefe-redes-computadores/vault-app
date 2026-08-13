@@ -21,17 +21,23 @@ export function useMedicamentos() {
     []
   );
 
-  const getMedicamento = useCallback((id: string) => {
+  const getMedicamento = useCallback(async (id: string) => {
     return db.medicamentos.get(id);
   }, []);
 
   const addMedicamento = useCallback(
     async (data: Omit<Medicamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { tratamento_ids?: string[] }) => {
       // Extrai os IDs múltiplos (se houver) e separa do resto dos dados
-      const { tratamento_ids, ...medData } = data as any;
+      const { tratamento_ids, ...medData } = data;
       
-      // Salva o medicamento na tabela principal
-      const medId = await safeAddMedicamento({ ...medData, user_id: user?.id || "" });
+      // Salva o medicamento na tabela principal blindando os novos relacionamentos
+      const medId = await safeAddMedicamento({ 
+        ...medData, 
+        user_id: user?.id || "",
+        person_id: medData.person_id || "", 
+        medico_id: medData.medico_id || undefined,
+        farmacia_id: medData.farmacia_id || undefined
+      });
       
       // Compatibilidade: Se vier o array novo usa ele, senão pega o tratamento_id antigo (se existir)
       const idsToSync = tratamento_ids || (medData.tratamento_id ? [medData.tratamento_id] : []);
@@ -47,7 +53,7 @@ export function useMedicamentos() {
   );
 
   const updateMedicamento = useCallback(async (id: string, data: Partial<Medicamento> & { tratamento_ids?: string[] }) => {
-    const { tratamento_ids, ...medData } = data as any;
+    const { tratamento_ids, ...medData } = data;
     
     // Atualiza os dados base do medicamento
     await safeUpdateMedicamento(id, medData);
