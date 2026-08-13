@@ -91,22 +91,6 @@ function EditarTratamentoContent() {
     } catch { trigger("error"); }
   };
 
-  const handleCreateCid = async () => {
-    if (!novoCidDescricao.trim()) return;
-    setIsAddingCid(true);
-    try {
-      const newId = await addCid({
-        codigo: novoCidCodigo.trim() || "N/A",
-        descricao: novoCidDescricao.trim(),
-      });
-      setCidId(newId);
-      setShowCidModal(false);
-      setNovoCidCodigo("");
-      setNovoCidDescricao("");
-      trigger("success");
-    } catch { trigger("error"); } finally { setIsAddingCid(false); }
-  };
-
   const cidSelecionadoInfo = cids?.find(c => c.id === cidId);
   const displayCondicao = cidSelecionadoInfo ? `${cidSelecionadoInfo.codigo !== "N/A" ? cidSelecionadoInfo.codigo + " - " : ""}${cidSelecionadoInfo.descricao}` : condicao;
   const cidsFiltrados = cids?.filter(c => c.descricao.toLowerCase().includes(buscaCid.toLowerCase()) || c.codigo.toLowerCase().includes(buscaCid.toLowerCase())) || [];
@@ -143,7 +127,13 @@ function EditarTratamentoContent() {
           <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving}>Salvar alterações</Button>
         </div>
 
-        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir Tratamento" description="Tem certeza que deseja excluir este tratamento? Essa ação não pode ser desfeita." confirmText="Sim, excluir" danger />
+        <ConfirmationModal 
+          isOpen={showDeleteModal} 
+          onClose={() => setShowDeleteModal(false)} 
+          onConfirm={handleDelete} 
+          title="Excluir Tratamento" 
+          message="Tem certeza que deseja excluir este tratamento? Essa ação não pode ser desfeita." 
+        />
 
         <AnimatePresence>
           {showCidModal && (
