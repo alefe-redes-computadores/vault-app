@@ -1,7 +1,13 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, safeAddMedicamento, safeUpdateMedicamento, safeDeleteMedicamento } from "@/lib/db";
+import { 
+  db, 
+  safeAddMedicamento, 
+  safeUpdateMedicamento, 
+  safeDeleteMedicamento,
+  syncMedicamentoTratamentos 
+} from "@/lib/db";
 import { useAuth } from "./useAuth";
 import { useCallback } from "react";
 import type { Medicamento } from "@/lib/types";
@@ -20,17 +26,45 @@ export function useMedicamentos() {
   }, []);
 
   const addMedicamento = useCallback(
-    async (data: Omit<Medicamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return safeAddMedicamento({ ...data, user_id: user?.id || "" });
+    async (data: Omit<Medicamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { tratamento_ids?: string[] }) => {
+      // Extrai os IDs múltiplos (se houver) e separa do resto dos dados
+      const { tratamento_ids, ...medData } = data as any;
+      
+      // Salva o medicamento na tabela principal
+      const medId = await safeAddMedicamento({ ...medData, user_id: user?.id || "" });
+      
+      // Compatibilidade: Se vier o array novo usa ele, senão pega o tratamento_id antigo (se existir)
+      const idsToSync = tratamento_ids || (medData.tratamento_id ? [medData.tratamento_id] : []);
+
+      // Sincroniza a tabela N:N
+      if (idsToSync.length > 0) {
+        await syncMedicamentoTratamentos(medId, idsToSync);
+      }
+      
+      return medId;
     },
     [user]
   );
 
-  const updateMedicamento = useCallback(async (id: string, data: Partial<Medicamento>) => {
-    return safeUpdateMedicamento(id, data);
+  const updateMedicamento = useCallback(async (id: string, data: Partial<Medicamento> & { tratamento_ids?: string[] }) => {
+    const { tratamento_ids, ...medData } = data as any;
+    
+    // Atualiza os dados base do medicamento
+    await safeUpdateMedicamento(id, medData);
+
+    // Se um array de tratamentos foi explicitamente passado, sincroniza a relação N:N
+    if (tratamento_ids !== undefined) {
+      await syncMedicamentoTratamentos(id, tratamento_ids);
+    } else if (medData.tratamento_id !== undefined) {
+      // Fallback para o comportamento antigo: se mandou atualizar um único ID, transforma em array e sincroniza
+      const idsToSync = medData.tratamento_id ? [medData.tratamento_id] : [];
+      await syncMedicamentoTratamentos(id, idsToSync);
+    }
   }, []);
 
   const deleteMedicamento = useCallback(async (id: string) => {
+    // A deleção em cascata (ON DELETE CASCADE no Supabase e limpeza local) 
+    // garante que as relações N:N sejam limpas quando o remédio é apagado.
     return safeDeleteMedicamento(id);
   }, []);
 
