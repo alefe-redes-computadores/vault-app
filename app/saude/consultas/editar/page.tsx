@@ -142,7 +142,7 @@ function EditarConsultaContent() {
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => { trigger("vibrate"); router.back(); }} 
+              onClick={() => { trigger("vibrate"); router.replace(`/saude/consultas/detalhes?id=${id}`); }} 
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
