@@ -127,7 +127,7 @@ export const TYPE_CATEGORY_MAP: Record<DocumentType, CategoryId[]> = {
 };
 
 // ============================================================
-// 3.1 CAMPOS POR TIPO DE DOCUMENTO
+// 3.1 CAMPOS POR TIPO DE DOCUMENTO (Atualizado para IDs)
 // ============================================================
 export const DOCUMENT_FIELDS: Record<
   DocumentType,
@@ -169,50 +169,50 @@ export const DOCUMENT_FIELDS: Record<
     { key: 'completion_date', label: 'Data de conclusão', type: 'date' },
   ],
   receita: [
-    { key: 'medication', label: 'Medicamento', type: 'text', required: true },
+    { key: 'medicamento_id', label: 'Medicamento', type: 'select', required: true },
     { key: 'dosage', label: 'Dosagem', type: 'text', required: true },
-    { key: 'doctor', label: 'Médico', type: 'select', required: true },
-    { key: 'pharmacy', label: 'Farmácia', type: 'select' },
+    { key: 'medico_id', label: 'Médico', type: 'select', required: true },
+    { key: 'farmacia_id', label: 'Farmácia', type: 'select' },
     { key: 'prescription_date', label: 'Data da receita', type: 'date', required: true },
     { key: 'renewal_date', label: 'Próxima renovação', type: 'date', required: true },
   ],
   prontuario: [
-    { key: 'hospital', label: 'Hospital', type: 'select', required: true },
-    { key: 'doctor', label: 'Médico', type: 'select', required: true },
+    { key: 'hospital_id', label: 'Hospital', type: 'select', required: true },
+    { key: 'medico_id', label: 'Médico', type: 'select', required: true },
     { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
     { key: 'date', label: 'Data', type: 'date', required: true },
   ],
   laudo: [
-    { key: 'doctor', label: 'Médico', type: 'select', required: true },
+    { key: 'medico_id', label: 'Médico', type: 'select', required: true },
     { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
-    { key: 'hospital', label: 'Hospital', type: 'select', required: true },
+    { key: 'hospital_id', label: 'Hospital', type: 'select', required: true },
     { key: 'date', label: 'Data', type: 'date', required: true },
   ],
   encaminhamento: [
-    { key: 'from', label: 'Quem encaminhou', type: 'text', required: true },
-    { key: 'to', label: 'Para quem (opcional)', type: 'text' },
+    { key: 'from_medico_id', label: 'Quem encaminhou (Médico)', type: 'select', required: true },
+    { key: 'to_medico_id', label: 'Para quem (Médico - opcional)', type: 'select' },
     { key: 'reason', label: 'Motivo', type: 'text', required: true },
     { key: 'date', label: 'Data', type: 'date', required: true },
   ],
   consulta: [
-    { key: 'doctor', label: 'Médico', type: 'select', required: true },
+    { key: 'medico_id', label: 'Médico', type: 'select', required: true },
     { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
-    { key: 'hospital', label: 'Clínica / Hospital', type: 'select' },
+    { key: 'hospital_id', label: 'Clínica / Hospital', type: 'select' },
     { key: 'date', label: 'Data da Consulta', type: 'date', required: true },
     { key: 'reason', label: 'Motivo da Consulta', type: 'text' },
   ],
   cirurgia: [
     { key: 'procedure', label: 'Procedimento', type: 'text', required: true },
-    { key: 'doctor', label: 'Médico Cirurgião', type: 'select', required: true },
-    { key: 'hospital', label: 'Hospital', type: 'select', required: true },
+    { key: 'medico_id', label: 'Médico Cirurgião', type: 'select', required: true },
+    { key: 'hospital_id', label: 'Hospital', type: 'select', required: true },
     { key: 'date', label: 'Data da Cirurgia', type: 'date', required: true },
   ],
   exame_sangue: [
-    { key: 'laboratorio', label: 'Laboratório', type: 'select', required: true },
+    { key: 'laboratorio_id', label: 'Laboratório', type: 'select', required: true },
     { key: 'data_exame', label: 'Data do Exame', type: 'date', required: true },
   ],
   exame_imagem: [
-    { key: 'hospital', label: 'Local / Hospital', type: 'select', required: true },
+    { key: 'hospital_id', label: 'Local / Hospital', type: 'select', required: true },
     { key: 'tipo', label: 'Tipo de Exame (Ex: Raio-X, RM)', type: 'text', required: true },
     { key: 'data_exame', label: 'Data do Exame', type: 'date', required: true },
   ],
@@ -227,7 +227,7 @@ export const DOCUMENT_FIELDS: Record<
 };
 
 // ============================================================
-// 4. METADADOS
+// 4. METADADOS (Atualizado para IDs)
 // ============================================================
 export type RGMetadata = { modelo: string; cpf: string; rg_number?: string; issue_date: string; expiry_date: string; issuer: string; };
 export type CPFMetadata = { number: string; };
@@ -235,18 +235,18 @@ export type CNHMetadata = { number: string; category: 'A' | 'B' | 'AB' | 'C' | '
 export type CertidaoMetadata = { nome_registrado: string; matricula: string; livro?: string; folha?: string; termo?: string; cartorio?: string; data_nascimento: string; };
 export type TituloEleitorMetadata = { number: string; zona: string; secao: string; };
 export type CertificadoMetadata = { institution: string; course: string; duration: string; completion_date?: string; };
-export type ReceitaMetadata = { medication: string; dosage: string; doctor: string; pharmacy?: string; prescription_date: string; renewal_date: string; };
-export type ProntuarioMetadata = { hospital: string; doctor: string; specialty: string; date: string; };
-export type LaudoMetadata = { doctor: string; specialty: string; hospital: string; date: string; };
-export type EncaminhamentoMetadata = { from: string; to?: string; reason: string; date: string; };
-export type ConsultaMetadata = { doctor: string; specialty: string; hospital?: string; date: string; reason?: string; };
-export type CirurgiaMetadata = { procedure: string; doctor: string; hospital: string; date: string; };
-export type ExameSangueMetadata = { laboratorio: string; data_exame: string; };
-export type ExameImagemMetadata = { hospital: string; tipo: string; data_exame: string; };
+export type ReceitaMetadata = { medicamento_id?: string; medication: string; dosage: string; medico_id: string; farmacia_id?: string; prescription_date: string; renewal_date: string; };
+export type ProntuarioMetadata = { hospital_id: string; medico_id: string; specialty: string; date: string; };
+export type LaudoMetadata = { medico_id: string; specialty: string; hospital_id: string; date: string; };
+export type EncaminhamentoMetadata = { from_medico_id: string; to_medico_id?: string; reason: string; date: string; };
+export type ConsultaMetadata = { medico_id: string; specialty: string; hospital_id?: string; date: string; reason?: string; };
+export type CirurgiaMetadata = { procedure: string; medico_id: string; hospital_id: string; date: string; };
+export type ExameSangueMetadata = { laboratorio_id: string; data_exame: string; };
+export type ExameImagemMetadata = { hospital_id: string; tipo: string; data_exame: string; };
 export type CredencialMetadata = { orgao: string; validade: string; };
 
 // ============================================================
-// 5. FILA DE SINCRONIZAÇÃO
+// 5. FILA DE SINCRONIZAÇÃO (Adicionado CIDs)
 // ============================================================
 export interface SyncQueueItem {
   id?: string;
@@ -266,7 +266,8 @@ export interface SyncQueueItem {
     | 'credentials' 
     | 'cards'
     | 'instituicoes'
-    | 'tratamentos';      
+    | 'tratamentos'
+    | 'cids'; // ✅ Nova tabela registrada na fila de sync
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -282,18 +283,26 @@ export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
 export interface Medicamento {
   id?: string;
   user_id: string;
-  person_id?: string; // ✅ Resolvido: Vincula o medicamento à pessoa
+  person_id?: string; 
   document_id: string;
   nome: string;
   dosagem: string;
+  
+  // Relações ID
+  medico_id?: string;
+  farmacia_id?: string;
+  tratamento_ids?: string[]; 
+  
+  // Fallbacks de Texto (Para manter a compatibilidade e leitura offline)
   medico: string;
   farmacia?: string;
+  
   data_receita: string;
   proxima_renovacao: string;
   observacoes?: string;
   tipo_receita?: TipoReceita;
-  tratamento_id?: string; // Legado (Mantido para compatibilidade)
-  tratamento_ids?: string[]; // N:N suporte array
+  tratamento_id?: string; // Legado
+  
   forma_farmaceutica?: 'capsula' | 'comprimido' | 'gota' | 'injecao' | 'adesivo';
   cor_principal?: string;
   cor_secundaria?: string;
@@ -306,7 +315,6 @@ export interface Medicamento {
   
   formato?: string;                    
   cores?: string[];                    
-  medico_id?: string;                  
   motivo_descontinuacao?: string;      
   medico_descontinuacao_id?: string;   
   medico_descontinuacao_nome?: string; 
@@ -320,7 +328,7 @@ export interface Medicamento {
 export interface Renovacao {
   id?: string;
   user_id: string;
-  person_id?: string; // ✅ Resolvido: Vincula a renovação à pessoa
+  person_id?: string; 
   medicamento_id: string;
   data: string;
   anexo_url?: string;
@@ -333,7 +341,7 @@ export interface Renovacao {
 export interface DoseLog {
   id?: string;
   user_id: string;
-  person_id?: string; // ✅ Resolvido: Evita que os logs de todos se misturem
+  person_id?: string;
   medicamento_id: string;
   data: string; 
   horario: string; 
@@ -346,10 +354,17 @@ export interface DoseLog {
 export interface Exame {
   id?: string;
   user_id?: string;
-  person_id?: string; // ✅ Resolvido: Vincula exame à pessoa
+  person_id?: string; 
   nome: string;
+  
+  // Relações ID
+  laboratorio_id?: string;
+  medico_id?: string;
+  
+  // Fallbacks de Texto
   laboratorio?: string;
   medico?: string;
+  
   data: string;
   data_retorno?: string;
   motivo?: string;
@@ -457,12 +472,28 @@ export interface InstituicaoEnsino {
   synced: boolean;
 }
 
+export interface Cid {
+  id?: string;
+  user_id: string;
+  codigo: string; // Ex: F90.0
+  descricao: string; // Ex: TDAH
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
 export interface Tratamento {
   id?: string;
   user_id: string;
-  person_id?: string; // ✅ Resolvido: Vincula o tratamento à pessoa
+  person_id?: string; 
   nome: string;
-  condicao?: string;
+  
+  // Relacional
+  cid_id?: string; 
+  
+  // Fallback Legado
+  condicao?: string; 
+  
   data_inicio?: string;
   status: 'ativo' | 'concluido' | 'suspenso';
   created_at: string;
