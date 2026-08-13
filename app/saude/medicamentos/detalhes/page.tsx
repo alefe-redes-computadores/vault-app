@@ -72,7 +72,7 @@ function MedicamentoDetalhesContent() {
               <FormatIcon size={40} className="text-ice" />
             </div>
             <h1 className="font-display text-3xl font-bold text-ink-primary">{med.nome}</h1>
-            <p className="text-sm text-ink-muted mb-6">Finalidade: {tratamentos[0]?.nome || "Não especificada"}</p>
+            <p className="text-sm text-ink-muted mb-6">Finalidade: {(tratamentos || [])[0]?.nome || "Não especificada"}</p>
           </motion.section>
 
           {/* BLOCO 1: HORÁRIO */}
