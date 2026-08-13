@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type {
   Person, Document, SyncQueueItem, Medicamento, Renovacao,
   Vault, VaultMember, Medico, Farmacia, Hospital, Laboratorio, DoseLog,
-  Credential, BankCard, InstituicaoEnsino, Tratamento, Exame, Cid
+  Credential, BankCard, InstituicaoEnsino, Tratamento, Exame, Cid, LocalSaude
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
 
@@ -28,6 +28,7 @@ class VaultDB extends Dexie {
   medicos!: Table<Medico, string>;
   farmacias!: Table<Farmacia, string>;
   hospitais!: Table<Hospital, string>;
+  locais!: Table<LocalSaude, string>; // ✅ Adicionado Tabela de Locais
   laboratorios!: Table<Laboratorio, string>;
   exames!: Table<Exame, string>;
   doseLogs!: Table<DoseLog, string>;
@@ -38,7 +39,7 @@ class VaultDB extends Dexie {
   medicamento_tratamentos!: Table<any, string>;
   anexos_clinicos!: Table<any, string>;
   cids!: Table<Cid, string>;
-  exame_tratamentos!: Table<any, string>; // ADICIONADO
+  exame_tratamentos!: Table<any, string>;
 
   constructor() {
     super('vault-db');
@@ -79,7 +80,33 @@ class VaultDB extends Dexie {
       medicamento_tratamentos: 'id, medicamento_id, tratamento_id',
       anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at',
       cids: 'id, user_id, codigo, descricao, synced',
-      exame_tratamentos: 'id, exame_id, tratamento_id' // ADICIONADO
+      exame_tratamentos: 'id, exame_id, tratamento_id'
+    });
+
+    // ✅ Versão 17 adicionada para incluir a tabela "locais" (Postos / Unidades de Saúde)
+    this.version(17).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, user_id, person_id, document_id, nome, medico_id, farmacia_id, proxima_renovacao, status, tratamento_id',
+      renovacoes: 'id, user_id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+      locais: 'id, user_id, nome, tipo, synced', // ✅ Nova store de Locais
+      laboratorios: 'id, user_id, nome, synced',
+      exames: 'id, user_id, person_id, nome, laboratorio_id, medico_id, data, synced',
+      doseLogs: 'id, user_id, medicamento_id, data, horario',
+      credentials: 'id, user_id, vault_id, title, category, synced',
+      cards: 'id, user_id, title, bank_name, type, brand, synced',
+      instituicoes: 'id, user_id, nome, synced',
+      tratamentos: 'id, user_id, person_id, nome, cid_id, status, synced',
+      medicamento_tratamentos: 'id, medicamento_id, tratamento_id',
+      anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at',
+      cids: 'id, user_id, codigo, descricao, synced',
+      exame_tratamentos: 'id, exame_id, tratamento_id'
     });
   }
 }
@@ -101,6 +128,40 @@ export async function syncMedicamentoTratamentos(medicamentoId: string, tratamen
     if (novosVinculos.length > 0) {
       await db.medicamento_tratamentos.bulkAdd(novosVinculos);
     }
+  });
+}
+
+// ============================================================
+// FUNÇÕES CRUD PARA LOCAIS (Postos / Clínicas)
+// ============================================================
+export async function safeAddLocal(data: Omit<LocalSaude, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: LocalSaude = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.locais, db.syncQueue, async () => {
+    await db.locais.add(full);
+    await db.syncQueue.add({ id: generateId(), table: 'locais' as any, operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateLocal(id: string, changes: Partial<LocalSaude>): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.locais, db.syncQueue, async () => {
+    await db.locais.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.locais.get(id);
+    await db.syncQueue.add({ id: generateId(), table: 'locais' as any, operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteLocal(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.locais, db.syncQueue, async () => {
+    await db.locais.delete(id);
+    await db.syncQueue.add({ id: generateId(), table: 'locais' as any, operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
   });
 }
 
