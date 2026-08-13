@@ -282,6 +282,7 @@ export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
 export interface Medicamento {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅ Resolvido: Vincula o medicamento à pessoa
   document_id: string;
   nome: string;
   dosagem: string;
@@ -291,7 +292,8 @@ export interface Medicamento {
   proxima_renovacao: string;
   observacoes?: string;
   tipo_receita?: TipoReceita;
-  tratamento_id?: string;
+  tratamento_id?: string; // Legado (Mantido para compatibilidade)
+  tratamento_ids?: string[]; // N:N suporte array
   forma_farmaceutica?: 'capsula' | 'comprimido' | 'gota' | 'injecao' | 'adesivo';
   cor_principal?: string;
   cor_secundaria?: string;
@@ -302,14 +304,13 @@ export interface Medicamento {
   estoque_unidade_por_dose?: number;
   estoque_unidade_medida?: string;
   
-  // ✅ NOVOS CAMPOS PARA COMPATIBILIDADE COM O FORMULÁRIO
-  formato?: string;                    // "comprimido" | "gota" | "injecao" | "adesivo"
-  cores?: string[];                    // array de cores hex, ex: ["#FFFFFF", "#F472B6"]
-  medico_id?: string;                  // ID do médico prescritor
-  motivo_descontinuacao?: string;      // motivo da suspensão
-  medico_descontinuacao_id?: string;   // ID do médico que suspendeu
-  medico_descontinuacao_nome?: string; // nome do médico que suspendeu
-  substituido_por_id?: string;         // ID do medicamento substituto
+  formato?: string;                    
+  cores?: string[];                    
+  medico_id?: string;                  
+  motivo_descontinuacao?: string;      
+  medico_descontinuacao_id?: string;   
+  medico_descontinuacao_nome?: string; 
+  substituido_por_id?: string;         
   
   created_at?: string;
   updated_at?: string;
@@ -319,6 +320,7 @@ export interface Medicamento {
 export interface Renovacao {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅ Resolvido: Vincula a renovação à pessoa
   medicamento_id: string;
   data: string;
   anexo_url?: string;
@@ -331,6 +333,7 @@ export interface Renovacao {
 export interface DoseLog {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅ Resolvido: Evita que os logs de todos se misturem
   medicamento_id: string;
   data: string; 
   horario: string; 
@@ -343,6 +346,7 @@ export interface DoseLog {
 export interface Exame {
   id?: string;
   user_id?: string;
+  person_id?: string; // ✅ Resolvido: Vincula exame à pessoa
   nome: string;
   laboratorio?: string;
   medico?: string;
@@ -456,6 +460,7 @@ export interface InstituicaoEnsino {
 export interface Tratamento {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅ Resolvido: Vincula o tratamento à pessoa
   nome: string;
   condicao?: string;
   data_inicio?: string;
