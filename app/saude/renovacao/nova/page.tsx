@@ -34,7 +34,6 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-// Funções utilitárias para formatar data (DD/MM/YYYY <-> YYYY-MM-DD)
 function formatDateToDisplay(isoStr: string): string {
   if (!isoStr) return "";
   const parts = isoStr.split("-");
@@ -203,7 +202,7 @@ export default function NovaRenovacaoPage() {
       await addRenovacao({
         medicamento_id: medicamentoId,
         data: dataISO,
-        preco: precoNumerico, // Salva o custo relacional desta renovação
+        preco: precoNumerico,
         anexo_url: anexoUrl,
         observacoes: observacoes.trim() || undefined,
       });
@@ -256,7 +255,6 @@ export default function NovaRenovacaoPage() {
             </button>
           </motion.div>
 
-          {/* DATAS COM MÁSCARA AUTOMÁTICA (DD/MM/AAAA) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="grid grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">Data da receita <span className="text-coral">*</span></label>
@@ -288,15 +286,20 @@ export default function NovaRenovacaoPage() {
             </div>
           </motion.div>
 
-          {/* CAMPO DE PREÇO PAGO (Custo Relacional Histórico) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input
-              label="Preço pago (R$) — Opcional"
-              placeholder="0,00"
-              value={preco}
-              onChange={(e) => setPreco(e.target.value)}
-              leftIcon={<DollarSign size={16} className="text-emerald-400" />}
-            />
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Preço pago (R$) — Opcional</label>
+              <div className="relative">
+                <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="0,00"
+                  value={preco}
+                  onChange={(e) => setPreco(e.target.value)}
+                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm"
+                />
+              </div>
+            </div>
             <p className="mt-1 text-[11px] text-ink-muted px-1">Este valor será salvo para histórico de custos e comparação mensal.</p>
           </motion.div>
 
