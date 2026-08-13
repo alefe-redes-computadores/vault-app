@@ -207,16 +207,54 @@ export default function NovoMedicamentoPage() {
     setHorarios((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const registrarContagemHoje = () => {
+  const handleCreateTratamento = async () => {
+    if (!newTratamentoName.trim()) return;
+    setIsSavingTratamento(true);
     trigger("vibrate");
-    setEstoqueDataReferencia(todayISO());
+    try {
+      const id = await safeAddTratamento({
+        user_id: user?.id || "",
+        person_id: personId, // Passando o person_id para a nova arquitetura
+        nome: newTratamentoName.trim(),
+        status: "ativo",
+      });
+      setTratamentosSelecionados(prev => [...prev, id]);
+      trigger("success");
+      setIsCreatingTratamento(false);
+      setNewTratamentoName("");
+    } catch (error) {
+      console.error(error);
+      trigger("error");
+    } finally {
+      setIsSavingTratamento(false);
+    }
   };
 
-  const consumoDiario = horarios.filter((h) => h).length * (Number(estoqueUnidadePorDose) || 1);
-  const diasEstimados =
-    estoqueAtivo && consumoDiario > 0 && Number(estoqueQuantidade) > 0
-      ? Math.floor(Number(estoqueQuantidade) / consumoDiario)
-      : null;
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!personId) newErrors.personId = "Selecione uma pessoa";
+    if (!nome.trim()) newErrors.nome = "Nome do medicamento é obrigatório";
+    if (!dosagem.trim()) newErrors.dosagem = "Dosagem é obrigatória";
+    if (!medicoId) newErrors.medicoId = "Selecione o médico";
+    if (!dataReceita) newErrors.dataReceita = "Data da receita é obrigatória";
+    if (!proximaRenovacao) newErrors.proximaRenovacao = "Data da próxima renovação é obrigatória";
+
+    if (estoqueAtivo) {
+      if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) {
+        newErrors.estoqueQuantidade = "Informe a quantidade atual";
+      }
+      if (!estoqueDataReferencia) {
+        newErrors.estoqueDataReferencia = "Informe a data dessa contagem";
+      }
+      const horariosPreenchidos = horarios.filter((h) => h);
+      if (horariosPreenchidos.length === 0) {
+        newErrors.horarios = "Adicione pelo menos um horário";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -259,53 +297,11 @@ export default function NovoMedicamentoPage() {
     trigger("vibrate");
   };
 
-  const handleCreateTratamento = async () => {
-    if (!newTratamentoName.trim()) return;
-    setIsSavingTratamento(true);
-    trigger("vibrate");
-    try {
-      const id = await safeAddTratamento({
-        user_id: user?.id || "",
-        nome: newTratamentoName.trim(),
-        status: "ativo",
-      });
-      setTratamentosSelecionados(prev => [...prev, id]);
-      trigger("success");
-      setIsCreatingTratamento(false);
-      setNewTratamentoName("");
-    } catch (error) {
-      console.error(error);
-      trigger("error");
-    } finally {
-      setIsSavingTratamento(false);
-    }
-  };
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!personId) newErrors.personId = "Selecione uma pessoa";
-    if (!nome.trim()) newErrors.nome = "Nome do medicamento é obrigatório";
-    if (!dosagem.trim()) newErrors.dosagem = "Dosagem é obrigatória";
-    if (!medicoId) newErrors.medicoId = "Selecione o médico";
-    if (!dataReceita) newErrors.dataReceita = "Data da receita é obrigatória";
-    if (!proximaRenovacao) newErrors.proximaRenovacao = "Data da próxima renovação é obrigatória";
-
-    if (estoqueAtivo) {
-      if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) {
-        newErrors.estoqueQuantidade = "Informe a quantidade atual";
-      }
-      if (!estoqueDataReferencia) {
-        newErrors.estoqueDataReferencia = "Informe a data dessa contagem";
-      }
-      const horariosPreenchidos = horarios.filter((h) => h);
-      if (horariosPreenchidos.length === 0) {
-        newErrors.horarios = "Adicione pelo menos um horário";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const consumoDiario = horarios.filter((h) => h).length * (Number(estoqueUnidadePorDose) || 1);
+  const diasEstimados =
+    estoqueAtivo && consumoDiario > 0 && Number(estoqueQuantidade) > 0
+      ? Math.floor(Number(estoqueQuantidade) / consumoDiario)
+      : null;
 
   const handleSubmit = async () => {
     trigger("vibrate");
@@ -362,6 +358,7 @@ export default function NovoMedicamentoPage() {
 
       const medicamentoId = await addMedicamento({
         document_id: docId,
+        person_id: personId, // ID Relacional adicionado!
         nome: nome.trim(),
         dosagem: dosagem.trim(),
         
@@ -371,6 +368,8 @@ export default function NovoMedicamentoPage() {
         medico: selectedMedico?.nome || medicoNome.trim(),
         medico_id: medicoId || undefined,
         farmacia: selectedFarmacia?.nome || farmaciaNome.trim() || undefined,
+        farmacia_id: farmaciaId || undefined, // ID Relacional adicionado!
+        
         data_receita: dataReceita,
         proxima_renovacao: proximaRenovacao,
         observacoes: notasFinais || undefined,
