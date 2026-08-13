@@ -134,9 +134,9 @@ export default function NovoMedicamentoPage() {
   const [isSubstitutoModalOpen, setIsSubstitutoModalOpen] = useState(false);
   const [isDoctorDescontinuacaoModalOpen, setIsDoctorDescontinuacaoModalOpen] = useState(false);
 
-  // Tratamentos
+  // Tratamentos (Agora suporta múltiplos)
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const [tratamentoId, setTratamentoId] = useState<string>("");
+  const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
   const [newTratamentoName, setNewTratamentoName] = useState("");
@@ -161,7 +161,6 @@ export default function NovoMedicamentoPage() {
   const selectedMedico = medicos.find((m: any) => m.id === medicoId);
   const selectedMedicoDescontinuacao = medicos.find((m: any) => m.id === medicoDescontinuacaoId);
   const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId);
-  const selectedTratamento = tratamentos.find((t: any) => String(t.id) === tratamentoId);
   const diasValidade = VALIDADE_RECEITA_DIAS[tipoReceita];
 
   const handleDataReceitaChange = (value: string) => {
@@ -270,7 +269,7 @@ export default function NovoMedicamentoPage() {
         nome: newTratamentoName.trim(),
         status: "ativo",
       });
-      setTratamentoId(id);
+      setTratamentosSelecionados(prev => [...prev, id]);
       trigger("success");
       setIsCreatingTratamento(false);
       setNewTratamentoName("");
@@ -338,7 +337,7 @@ export default function NovoMedicamentoPage() {
           pharmacy: selectedFarmacia?.nome || farmaciaNome.trim(),
           prescription_date: dataReceita,
           renewal_date: proximaRenovacao,
-          tratamento_id: tratamentoId || undefined, 
+          tratamento_ids: tratamentosSelecionados, 
         },
         attachments: attachment ? [attachment] : [],
         is_favorite: false,
@@ -376,7 +375,7 @@ export default function NovoMedicamentoPage() {
         proxima_renovacao: proximaRenovacao,
         observacoes: notasFinais || undefined,
         tipo_receita: tipoReceita,
-        tratamento_id: tratamentoId || undefined,
+        tratamento_ids: tratamentosSelecionados,
         
         status: statusAtivo ? "ativo" : "descontinuado",
         motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
@@ -389,7 +388,7 @@ export default function NovoMedicamentoPage() {
         estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
         estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) || 1 : undefined,
         estoque_unidade_medida: estoqueAtivo ? estoqueUnidade.trim() || "comprimido(s)" : undefined,
-      });
+      } as any);
 
       if (estoqueAtivo && horariosFiltrados.length > 0 && statusAtivo) {
         const granted = await requestNotificationPermission();
@@ -591,24 +590,46 @@ export default function NovoMedicamentoPage() {
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ duration: 0.28 }} className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity size={16} className="text-violet-400" />
-              <label className="text-sm font-semibold text-ink-primary">Tratamento / Condição</label>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Activity size={16} className="text-violet-400" />
+                <label className="text-sm font-semibold text-ink-primary">Tratamentos Vinculados</label>
+              </div>
             </div>
+            
+            {/* Lista de Tratamentos Selecionados (Tags) */}
+            {tratamentosSelecionados.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {tratamentosSelecionados.map(id => {
+                  const t = tratamentos.find((x: any) => x.id === id);
+                  if (!t) return null;
+                  const IconComp = getTratamentoIcon(t.nome);
+                  return (
+                    <div key={id} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
+                      <IconComp size={14} className="text-violet-400" />
+                      <span className="text-xs font-medium text-violet-300">{t.nome}</span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trigger("vibrate");
+                          setTratamentosSelecionados(prev => prev.filter(item => item !== id));
+                        }}
+                        className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <button
               onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
-              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-violet-400/40"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {selectedTratamento ? (() => {
-                  const IconComp = getTratamentoIcon(selectedTratamento.nome);
-                  return <IconComp size={18} className="text-violet-400 shrink-0" />;
-                })() : <Activity size={18} className="text-ink-muted shrink-0" />}
-                <span className="truncate font-medium">
-                  {selectedTratamento ? selectedTratamento.nome : "Vincular a um CID/Tratamento"}
-                </span>
-              </div>
-              <span className="text-xs text-violet-400 shrink-0 font-medium">Alterar</span>
+              <Plus size={16} />
+              <span className="text-sm font-medium">Adicionar Tratamento / CID</span>
             </button>
           </motion.div>
 
@@ -858,7 +879,37 @@ export default function NovoMedicamentoPage() {
           createNewLabel="Cadastrar Novo Médico"
         />
 
-        <SelectionModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} onSelect={(item: any) => { trigger("vibrate"); setTratamentoId(item.id!); }} items={tratamentos} title="Vincular a Tratamento" placeholder="Buscar tratamento..." renderItem={(item: any) => { const IconComp = getTratamentoIcon(item.nome); return (<div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400"><IconComp size={18} /></div><div><p className="font-medium text-ink-primary">{item.nome}</p>{item.condicao && <p className="text-xs text-ink-muted capitalize">{item.condicao}</p>}</div></div>); }} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }} createNewLabel="Novo Tratamento" />
+        <SelectionModal 
+          isOpen={isTratamentoModalOpen} 
+          onClose={() => setIsTratamentoModalOpen(false)} 
+          onSelect={(item: any) => { 
+            trigger("vibrate"); 
+            if (!tratamentosSelecionados.includes(item.id!)) {
+              setTratamentosSelecionados(prev => [...prev, item.id!]);
+            }
+          }} 
+          items={tratamentos} 
+          title="Vincular a Tratamento" 
+          placeholder="Buscar tratamento..." 
+          renderItem={(item: any) => { 
+            const IconComp = getTratamentoIcon(item.nome); 
+            return (
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                  <IconComp size={18} />
+                </div>
+                <div>
+                  <p className="font-medium text-ink-primary">{item.nome}</p>
+                  {item.condicao && <p className="text-xs text-ink-muted capitalize">{item.condicao}</p>}
+                </div>
+              </div>
+            ); 
+          }} 
+          getItemId={(item: any) => item.id!} 
+          getItemLabel={(item: any) => item.nome} 
+          onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }} 
+          createNewLabel="Novo Tratamento" 
+        />
         
         <BottomSheet isOpen={isCreatingTratamento} onClose={() => { trigger("vibrate"); setIsCreatingTratamento(false); setNewTratamentoName(""); }} title="Cadastrar Tratamento">
           <div className="space-y-4 px-1 pb-2">
