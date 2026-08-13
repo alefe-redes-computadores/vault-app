@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
@@ -13,7 +13,16 @@ import {
   ExternalLink, 
   Trash2, 
   Edit3,
-  AlertCircle
+  AlertCircle,
+  User,
+  Activity,
+  Brain,
+  Flame,
+  HeartPulse,
+  ShieldAlert,
+  Copy,
+  CalendarClock,
+  AlertTriangle
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, safeDeleteExame } from "@/lib/db";
@@ -21,8 +30,19 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { format, parseISO, differenceInDays, isAfter } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-export default function DetalhesExamePage() {
+function getTratamentoIcon(nome: string) {
+  const n = nome.toLowerCase();
+  if (n.includes("tdah")) return Brain;
+  if (n.includes("dor") || n.includes("neuropática")) return Flame;
+  if (n.includes("depress")) return HeartPulse;
+  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
+  return Activity;
+}
+
+function DetalhesExameContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -31,10 +51,24 @@ export default function DetalhesExamePage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Busca o exame atual no Dexie
+  // 1. Busca o exame atual no Dexie
   const exame = useLiveQuery(() => (id ? db.table("exames").get(id) : undefined), [id]);
 
-  // CRUZAMENTO INTELIGENTE DE DADOS: Busca outros exames do mesmo tipo ou do mesmo laboratório para histórico
+  // 2. Busca Dados Relacionais Cruzados
+  const person = useLiveQuery(() => exame?.person_id ? db.persons.get(exame.person_id) : undefined, [exame?.person_id]);
+  const medico = useLiveQuery(() => exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined, [exame?.medico_id]);
+  const laboratorio = useLiveQuery(() => exame?.laboratorio_id ? db.hospitais.get(exame.laboratorio_id) : undefined, [exame?.laboratorio_id]);
+
+  // 3. Busca Tratamentos Vinculados N:N
+  const tratamentos = useLiveQuery(async () => {
+    if (!id) return [];
+    const vinculos = await db.exame_tratamentos.where('exame_id').equals(id).toArray();
+    const tIds = vinculos.map(v => v.tratamento_id);
+    if (tIds.length === 0) return [];
+    return await db.tratamentos.where('id').anyOf(tIds).toArray();
+  }, [id]);
+
+  // 4. Histórico Evolutivo
   const historicoRelacionado = useLiveQuery(
     async () => {
       if (!exame) return [];
@@ -49,6 +83,17 @@ export default function DetalhesExamePage() {
 
   if (!exame) {
     return <LoadingSkeleton />;
+  }
+
+  // Cálculos de Alertas Inteligentes de Prazo
+  let diasParaApresentacao = null;
+  let isVencido = false;
+  if (exame.data_retorno) {
+    try {
+      const dataRetornoObj = parseISO(exame.data_retorno);
+      diasParaApresentacao = differenceInDays(dataRetornoObj, new Date());
+      isVencido = isAfter(new Date(), dataRetornoObj);
+    } catch {}
   }
 
   const handleDelete = async () => {
@@ -66,6 +111,12 @@ export default function DetalhesExamePage() {
       setDeleting(false);
       setShowDeleteModal(false);
     }
+  };
+
+  const handleDuplicarExame = () => {
+    trigger("vibrate");
+    // Redireciona para o novo exame passando parâmetros pré-preenchidos se necessário, ou apenas avisa
+    router.push(`/saude/exames/novo`);
   };
 
   return (
@@ -92,6 +143,13 @@ export default function DetalhesExamePage() {
 
             <div className="flex items-center gap-2">
               <button
+                onClick={handleDuplicarExame}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-violet-400/20 bg-violet-400/10 text-violet-300 active:scale-95"
+                title="Solicitar Novo / Duplicar"
+              >
+                <Copy size={16} />
+              </button>
+              <button
                 onClick={() => { trigger("vibrate"); router.push(`/saude/exames/editar?id=${exame.id}`); }}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice active:scale-95"
                 title="Editar Exame"
@@ -110,6 +168,44 @@ export default function DetalhesExamePage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
+          
+          {/* PERFIL (PESSOA) VINCULADA */}
+          {person && (
+            <div className="flex items-center gap-2 px-1">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-border/60 bg-surface px-3 py-1 text-xs font-medium text-ink-primary shadow-sm">
+                <User size={12} className="text-ink-muted" />
+                <span>Perfil: {person.name}</span>
+              </span>
+            </div>
+          )}
+
+          {/* BANNER INTELIGENTE DE ALERTA DE PRAZO / APRESENTAÇÃO */}
+          {exame.data_retorno && (
+            <motion.div 
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-sm ${
+                isVencido 
+                  ? 'border-coral/40 bg-coral/10 text-coral' 
+                  : diasParaApresentacao !== null && diasParaApresentacao <= 3
+                  ? 'border-amber-400/40 bg-amber-400/10 text-amber-300'
+                  : 'border-surface-border/50 bg-surface text-ink-primary'
+              }`}
+            >
+              {isVencido ? <AlertTriangle size={18} className="shrink-0 mt-0.5" /> : <CalendarClock size={18} className="shrink-0 mt-0.5" />}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider">
+                  {isVencido ? "Prazo de Apresentação Vencido" : "Apresentação com Médico"}
+                </p>
+                <p className="text-xs mt-0.5 opacity-90">
+                  {isVencido 
+                    ? `A data limite era ${exame.data_retorno}. Verifique se precisa de uma nova solicitação.` 
+                    : `Data limite agendada para ${exame.data_retorno}.`}
+                </p>
+              </div>
+            </motion.div>
+          )}
+
           {/* CARD PRINCIPAL DE INFORMAÇÕES */}
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
@@ -126,32 +222,43 @@ export default function DetalhesExamePage() {
               </div>
             </div>
 
+            {/* TRATAMENTOS / MOTIVOS VINCULADOS */}
+            {tratamentos && tratamentos.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-ink-muted mb-2">Tratamentos / Motivos Vinculados</p>
+                <div className="flex flex-wrap gap-2">
+                  {tratamentos.map(t => {
+                    const Icon = getTratamentoIcon(t.nome);
+                    return (
+                      <div key={t.id} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5 shadow-sm">
+                        <Icon size={14} className="text-violet-400" />
+                        <span className="text-xs font-semibold text-violet-300">{t.nome}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3 pt-1">
-              {exame.laboratorio && (
+              {(laboratorio || exame.laboratorio) && (
                 <div className="rounded-2xl bg-surface-raised/60 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-ink-faint">Local / Lab</p>
                   <p className="mt-0.5 text-xs font-semibold text-ink-primary flex items-center gap-1.5 truncate">
-                    <Building2 size={13} className="text-emerald-400 shrink-0" /> {exame.laboratorio}
+                    <Building2 size={13} className="text-emerald-400 shrink-0" /> {laboratorio ? laboratorio.nome : exame.laboratorio}
                   </p>
                 </div>
               )}
 
-              {exame.medico && (
+              {(medico || exame.medico) && (
                 <div className="rounded-2xl bg-surface-raised/60 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-ink-faint">Solicitante</p>
                   <p className="mt-0.5 text-xs font-semibold text-ink-primary flex items-center gap-1.5 truncate">
-                    <Stethoscope size={13} className="text-emerald-400 shrink-0" /> {exame.medico}
+                    <Stethoscope size={13} className="text-emerald-400 shrink-0" /> {medico ? medico.nome : exame.medico}
                   </p>
                 </div>
               )}
             </div>
-
-            {exame.data_retorno && (
-              <div className="flex items-center gap-2 rounded-2xl bg-amber-400/10 border border-amber-400/20 px-3.5 py-2.5 text-xs text-amber-300">
-                <Calendar size={15} className="shrink-0" />
-                <span>Retorno / Apresentação agendada para: <strong className="font-semibold">{exame.data_retorno}</strong></span>
-              </div>
-            )}
 
             {exame.motivo && (
               <div>
@@ -182,7 +289,7 @@ export default function DetalhesExamePage() {
             )}
           </motion.div>
 
-          {/* CRUZAMENTO DE DADOS: HISTÓRICO EVOLUTIVO DO MESMO EXAME */}
+          {/* EVOLUÇÃO HISTÓRICA */}
           {historicoRelacionado.length > 0 && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
@@ -229,4 +336,8 @@ export default function DetalhesExamePage() {
       </main>
     </PageTransition>
   );
+}
+
+export default function DetalhesExamePage() {
+  return <Suspense fallback={<LoadingSkeleton />}><DetalhesExameContent /></Suspense>;
 }
