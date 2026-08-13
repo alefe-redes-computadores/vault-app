@@ -28,6 +28,7 @@ import {
   Palette,
   X
 } from "lucide-react";
+import { usePersons } from "@/hooks/usePersons"; // <-- Importado o hook de pessoas
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
@@ -100,6 +101,8 @@ export default function EditarMedicamentoPage() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
   const { user } = useAuth();
+  
+  const persons = usePersons(); // Hook para os perfis
   const { getMedicamento, updateMedicamento, deleteMedicamento } = useMedicamentos();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
@@ -109,6 +112,7 @@ export default function EditarMedicamentoPage() {
   const [documentId, setDocumentId] = useState<string>("");
 
   // Dados Básicos e Visuais
+  const [personId, setPersonId] = useState<string>(""); // Novo estado relacional
   const [nome, setNome] = useState("");
   const [dosagem, setDosagem] = useState("");
   const [formato, setFormato] = useState("comprimido");
@@ -117,6 +121,7 @@ export default function EditarMedicamentoPage() {
   const [medicoNome, setMedicoNome] = useState("");
   const [medicoId, setMedicoId] = useState("");
   const [farmaciaNome, setFarmaciaNome] = useState("");
+  const [farmaciaId, setFarmaciaId] = useState(""); // Novo estado relacional para a Farmácia
   const [tipoReceita, setTipoReceita] = useState<TipoReceita>("comum");
   const [dataReceita, setDataReceita] = useState("");
   const [proximaRenovacao, setProximaRenovacao] = useState("");
@@ -155,6 +160,7 @@ export default function EditarMedicamentoPage() {
   
   const selectedMedico = medicos.find((m: any) => m.id === medicoId) || medicos.find((m: any) => m.nome === medicoNome);
   const selectedMedicoDescontinuacao = medicos.find((m: any) => m.id === medicoDescontinuacaoId) || medicos.find((m: any) => m.nome === medicoDescontinuacaoNome);
+  const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId); // Buscando objeto da farmácia
 
   // Estoque
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
@@ -186,6 +192,7 @@ export default function EditarMedicamentoPage() {
       if (!item) {
         setNotFound(true);
       } else {
+        setPersonId(item.person_id || ""); // Carrega o ID da pessoa
         setNome(item.nome || "");
         setDosagem(item.dosagem || "");
         setFormato(item.formato || "comprimido");
@@ -194,6 +201,7 @@ export default function EditarMedicamentoPage() {
         setMedicoNome(item.medico || "");
         setMedicoId(item.medico_id || "");
         setFarmaciaNome(item.farmacia || "");
+        setFarmaciaId(item.farmacia_id || ""); // Carrega a Farmácia Relacional
         setDataReceita(item.data_receita || "");
         setProximaRenovacao(item.proxima_renovacao || "");
         setObservacoes(item.observacoes || "");
@@ -289,6 +297,7 @@ export default function EditarMedicamentoPage() {
     try {
       const newId = await safeAddTratamento({
         user_id: user?.id || "",
+        person_id: personId || "", // Usa o person_id da tela!
         nome: newTratamentoName.trim(),
         status: "ativo",
       });
@@ -306,6 +315,7 @@ export default function EditarMedicamentoPage() {
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
+    if (!personId) newErrors.personId = "Selecione uma pessoa";
     if (!nome.trim()) newErrors.nome = "Nome do medicamento é obrigatório";
     if (!dosagem.trim()) newErrors.dosagem = "Dosagem é obrigatória";
     if (!medicoNome.trim()) newErrors.medico = "Selecione o médico";
@@ -354,6 +364,7 @@ export default function EditarMedicamentoPage() {
       }
 
       await updateMedicamento(id, {
+        person_id: personId, // ID Relacional atualizado
         nome: nome.trim(),
         dosagem: dosagem.trim(),
         formato,
@@ -361,6 +372,7 @@ export default function EditarMedicamentoPage() {
         medico: medicoNome.trim(),
         medico_id: medicoId || undefined,
         farmacia: farmaciaNome.trim() || undefined,
+        farmacia_id: farmaciaId || undefined, // ID Relacional adicionado
         data_receita: dataReceita,
         proxima_renovacao: proximaRenovacao,
         observacoes: observacoes.trim() || undefined,
@@ -476,6 +488,28 @@ export default function EditarMedicamentoPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
+
+          {/* NOVO BLOCO: SELETOR DE PESSOA */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ duration: 0.28 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa <span className="text-coral">*</span></p>
+            <div className="flex flex-wrap gap-2">
+              {persons.map((person: any) => {
+                const active = personId === person.id;
+                return (
+                  <button
+                    key={person.id}
+                    onClick={() => { trigger("vibrate"); setPersonId(person.id!); }}
+                    className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
+                      active ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                    }`}
+                  >
+                    {person.name}
+                  </button>
+                );
+              })}
+            </div>
+            {errors.personId && <p className="mt-2 text-xs text-coral">{errors.personId}</p>}
+          </motion.div>
           
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
              <div className="flex items-center gap-2 mb-3">
@@ -723,7 +757,7 @@ export default function EditarMedicamentoPage() {
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia (opcional)</label>
               <button onClick={() => { trigger("vibrate"); setIsPharmacyModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50">
-                {farmaciaNome || "Selecionar farmácia"}
+                {selectedFarmacia ? selectedFarmacia.nome : (farmaciaNome || "Selecionar farmácia")}
               </button>
             </div>
 
@@ -963,7 +997,7 @@ export default function EditarMedicamentoPage() {
         <SelectionModal
           isOpen={isPharmacyModalOpen}
           onClose={() => setIsPharmacyModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setFarmaciaNome(item.nome); }}
+          onSelect={(item: any) => { trigger("vibrate"); setFarmaciaNome(item.nome); setFarmaciaId(item.id); }}
           items={farmacias}
           title="Selecionar farmácia"
           placeholder="Buscar farmácia..."
