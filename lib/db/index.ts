@@ -1,8 +1,8 @@
 import Dexie, { type Table } from 'dexie';
-import type { 
-  Person, Document, SyncQueueItem, Medicamento, Renovacao, 
+import type {
+  Person, Document, SyncQueueItem, Medicamento, Renovacao,
   Vault, VaultMember, Medico, Farmacia, Hospital, Laboratorio, DoseLog,
-  Credential, BankCard, InstituicaoEnsino, Tratamento, Exame
+  Credential, BankCard, InstituicaoEnsino, Tratamento, Exame, Cid
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
 
@@ -29,24 +29,25 @@ class VaultDB extends Dexie {
   farmacias!: Table<Farmacia, string>;
   hospitais!: Table<Hospital, string>;
   laboratorios!: Table<Laboratorio, string>;
-  exames!: Table<Exame, string>; 
+  exames!: Table<Exame, string>;
   doseLogs!: Table<DoseLog, string>;
-  credentials!: Table<Credential, string>; 
-  cards!: Table<BankCard, string>;         
-  instituicoes!: Table<InstituicaoEnsino, string>; 
+  credentials!: Table<Credential, string>;
+  cards!: Table<BankCard, string>;
+  instituicoes!: Table<InstituicaoEnsino, string>;
   tratamentos!: Table<Tratamento, string>;
-  medicamento_tratamentos!: Table<any, string>; // Tabela de Junção N:N
-  anexos_clinicos!: Table<any, string>;         // Galeria de Anexos Clínicos
+  medicamento_tratamentos!: Table<any, string>;
+  anexos_clinicos!: Table<any, string>;
+  cids!: Table<Cid, string>; // <-- Nova tabela
 
   constructor() {
     super('vault-db');
-    
+
     this.version(2).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at',
       syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
     });
-    
+
     this.version(3).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at',
@@ -54,7 +55,7 @@ class VaultDB extends Dexie {
       medicamentos: 'id, document_id, nome, medico, proxima_renovacao',
       renovacoes: 'id, medicamento_id, data',
     });
-    
+
     this.version(4).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -64,7 +65,7 @@ class VaultDB extends Dexie {
       vaults: 'id, user_id, name, synced, created_at',
       vaultMembers: 'id, vault_id, user_id, email, status, synced',
     });
-    
+
     this.version(5).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -245,6 +246,32 @@ class VaultDB extends Dexie {
     }).upgrade(async () => {
       console.log('✅ v15: tabelas de relação N:N e anexos clínicos integradas.');
     });
+
+    // VERSÃO 16: Arquitetura relacional integrada (person_id em várias tabelas, relacionamentos com CIDs)
+    this.version(16).stores({
+      persons: 'id, user_id, name, synced, created_at',
+      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
+      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
+      medicamentos: 'id, user_id, person_id, document_id, nome, medico_id, farmacia_id, proxima_renovacao, status',
+      renovacoes: 'id, user_id, medicamento_id, data',
+      vaults: 'id, user_id, name, synced, created_at',
+      vaultMembers: 'id, vault_id, user_id, email, status, synced',
+      medicos: 'id, user_id, nome, especialidade, synced',
+      farmacias: 'id, user_id, nome, synced',
+      hospitais: 'id, user_id, nome, synced',
+      laboratorios: 'id, user_id, nome, synced',
+      exames: 'id, user_id, person_id, nome, laboratorio_id, medico_id, data, synced',
+      doseLogs: 'id, user_id, medicamento_id, data, horario',
+      credentials: 'id, user_id, vault_id, title, category, synced',
+      cards: 'id, user_id, title, bank_name, type, brand, synced',
+      instituicoes: 'id, user_id, nome, synced',
+      tratamentos: 'id, user_id, person_id, nome, cid_id, status, synced',
+      medicamento_tratamentos: 'id, medicamento_id, tratamento_id',
+      anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at',
+      cids: 'id, user_id, codigo, descricao, synced'
+    }).upgrade(async () => {
+      console.log('✅ v16: Arquitetura relacional integrada.');
+    });
   }
 }
 
@@ -256,16 +283,12 @@ function triggerSyncProcess() { if (typeof window !== 'undefined') window.dispat
 // FUNÇÕES DE SINCRONIZAÇÃO N:N (Medicamentos <-> Tratamentos)
 export async function syncMedicamentoTratamentos(medicamentoId: string, tratamentoIds: string[]): Promise<void> {
   await db.transaction('rw', db.medicamento_tratamentos, async () => {
-    // Remove vínculos antigos localmente
     await db.medicamento_tratamentos.where('medicamento_id').equals(medicamentoId).delete();
-
-    // Insere os novos vínculos
     const novosVinculos = tratamentoIds.map(tId => ({
       id: generateId(),
       medicamento_id: medicamentoId,
       tratamento_id: tId
     }));
-
     if (novosVinculos.length > 0) {
       await db.medicamento_tratamentos.bulkAdd(novosVinculos);
     }
@@ -725,6 +748,40 @@ export async function safeDeleteTratamento(id: string): Promise<void> {
   await db.transaction('rw', db.tratamentos, db.syncQueue, async () => {
     await db.tratamentos.delete(id);
     await db.syncQueue.add({ id: generateId(), table: 'tratamentos', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+// ============================================================
+// FUNÇÕES CRUD PARA CIDs
+// ============================================================
+export async function safeAddCid(data: Omit<Cid, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Cid = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.cids, db.syncQueue, async () => {
+    await db.cids.add(full);
+    await db.syncQueue.add({ id: generateId(), table: 'cids', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateCid(id: string, changes: Partial<Cid>): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.cids, db.syncQueue, async () => {
+    await db.cids.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.cids.get(id);
+    await db.syncQueue.add({ id: generateId(), table: 'cids', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteCid(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.cids, db.syncQueue, async () => {
+    await db.cids.delete(id);
+    await db.syncQueue.add({ id: generateId(), table: 'cids', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
