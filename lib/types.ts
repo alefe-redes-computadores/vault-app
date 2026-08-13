@@ -227,7 +227,7 @@ export const DOCUMENT_FIELDS: Record<
 };
 
 // ============================================================
-// 4. METADADOS (Atualizado para IDs)
+// 4. METADADOS
 // ============================================================
 export type RGMetadata = { modelo: string; cpf: string; rg_number?: string; issue_date: string; expiry_date: string; issuer: string; };
 export type CPFMetadata = { number: string; };
@@ -246,7 +246,7 @@ export type ExameImagemMetadata = { hospital_id: string; tipo: string; data_exam
 export type CredencialMetadata = { orgao: string; validade: string; };
 
 // ============================================================
-// 5. FILA DE SINCRONIZAÇÃO (Adicionado CIDs)
+// 5. FILA DE SINCRONIZAÇÃO
 // ============================================================
 export interface SyncQueueItem {
   id?: string;
@@ -267,7 +267,7 @@ export interface SyncQueueItem {
     | 'cards'
     | 'instituicoes'
     | 'tratamentos'
-    | 'cids'; // ✅ Nova tabela registrada na fila de sync
+    | 'cids';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -287,22 +287,16 @@ export interface Medicamento {
   document_id: string;
   nome: string;
   dosagem: string;
-  
-  // Relações ID
   medico_id?: string;
   farmacia_id?: string;
   tratamento_ids?: string[]; 
-  
-  // Fallbacks de Texto (Para manter a compatibilidade e leitura offline)
   medico: string;
   farmacia?: string;
-  
   data_receita: string;
   proxima_renovacao: string;
   observacoes?: string;
   tipo_receita?: TipoReceita;
-  tratamento_id?: string; // Legado
-  
+  tratamento_id?: string;
   forma_farmaceutica?: 'capsula' | 'comprimido' | 'gota' | 'injecao' | 'adesivo';
   cor_principal?: string;
   cor_secundaria?: string;
@@ -312,14 +306,12 @@ export interface Medicamento {
   estoque_horarios?: string[];
   estoque_unidade_por_dose?: number;
   estoque_unidade_medida?: string;
-  
   formato?: string;                    
   cores?: string[];                    
   motivo_descontinuacao?: string;      
   medico_descontinuacao_id?: string;   
   medico_descontinuacao_nome?: string; 
   substituido_por_id?: string;         
-  
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -331,6 +323,7 @@ export interface Renovacao {
   person_id?: string; 
   medicamento_id: string;
   data: string;
+  preco?: number; // ✅ Campo de custo relacional adicionado com sucesso
   anexo_url?: string;
   observacoes?: string;
   created_at?: string;
@@ -356,15 +349,10 @@ export interface Exame {
   user_id?: string;
   person_id?: string; 
   nome: string;
-  
-  // Relações ID
   laboratorio_id?: string;
   medico_id?: string;
-  
-  // Fallbacks de Texto
   laboratorio?: string;
   medico?: string;
-  
   data: string;
   data_retorno?: string;
   motivo?: string;
@@ -475,8 +463,8 @@ export interface InstituicaoEnsino {
 export interface Cid {
   id?: string;
   user_id: string;
-  codigo: string; // Ex: F90.0
-  descricao: string; // Ex: TDAH
+  codigo: string;
+  descricao: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -487,13 +475,8 @@ export interface Tratamento {
   user_id: string;
   person_id?: string; 
   nome: string;
-  
-  // Relacional
   cid_id?: string; 
-  
-  // Fallback Legado
   condicao?: string; 
-  
   data_inicio?: string;
   status: 'ativo' | 'concluido' | 'suspenso';
   created_at: string;
