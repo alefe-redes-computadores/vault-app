@@ -260,6 +260,7 @@ export interface SyncQueueItem {
     | 'medicos'
     | 'farmacias'
     | 'hospitais'
+    | 'locais' // ✅ Adicionado à fila de sync
     | 'laboratorios'
     | 'exames'
     | 'doseLogs'
@@ -322,8 +323,9 @@ export interface Renovacao {
   user_id: string;
   person_id?: string; 
   medicamento_id: string;
+  local_id?: string;     // ✅ Vínculo relacional com locais/postos
   data: string;
-  preco?: number; // ✅ Campo de custo relacional adicionado com sucesso
+  preco?: number;        // ✅ Campo de custo relacional
   anexo_url?: string;
   observacoes?: string;
   created_at?: string;
@@ -437,6 +439,19 @@ export interface Hospital {
   created_at: string;
   updated_at: string;
   synced: boolean;
+}
+
+// ✅ Nova interface para Postos de Saúde e Clínicas
+export interface LocalSaude {
+  id?: string;
+  user_id: string;
+  nome: string;
+  endereco?: string;
+  telefone?: string;
+  tipo?: string;
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
 }
 
 export interface Laboratorio {
