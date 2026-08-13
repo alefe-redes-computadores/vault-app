@@ -38,7 +38,6 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { TIPO_RECEITA_LABELS, getDaysUntil, computeEstoqueInfo } from "@/lib/health-utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { TipoReceita } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 15 },
@@ -297,7 +296,8 @@ function MedicamentoDetalhesContent() {
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
               <p className="text-xs text-ink-muted mb-1">Tipo de Receita</p>
               <span className={`inline-block rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${med.tipo_receita === 'amarela' ? 'bg-amber-400/20 text-amber-300' : med.tipo_receita === 'azul' ? 'bg-blue-400/20 text-blue-300' : med.tipo_receita === 'branca' ? 'bg-zinc-400/20 text-zinc-300' : 'bg-ice/20 text-ice'}`}>
-                {TIPO_RECEITA_LABELS[med.tipo_receita as TipoReceita] || "Comum"}
+                {/* TIPAGEM BLINDADA AQUI: */}
+                {(TIPO_RECEITA_LABELS as any)[med.tipo_receita] || "Comum"}
               </span>
             </div>
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
@@ -312,7 +312,7 @@ function MedicamentoDetalhesContent() {
             )}
           </motion.section>
 
-          {/* CONTROLE DE ESTOQUE E POSOLOGIA (Oculto se inativo para limpar a tela) */}
+          {/* CONTROLE DE ESTOQUE E POSOLOGIA */}
           {isActive && med.estoque_horarios && med.estoque_horarios.length > 0 && (
             <motion.section variants={fadeUp} className="rounded-[28px] border border-ice/20 bg-ice/5 p-5 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Clock size={100} /></div>
