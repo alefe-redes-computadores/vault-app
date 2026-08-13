@@ -83,7 +83,7 @@ export default function HojePage() {
           dosagem: med.dosagem,
           horario,
           tomada: !!log?.tomado_em,
-          cor: med.cor || "#8B5CF6",
+          cor: (med as any).cor || "#8B5CF6",
           estoqueRestante: estoqueInfo?.quantidadeRestante ?? 0,
           medicoNome: medicoObj?.nome || med.medico,
           tratamentoNome: tratamentoObj?.nome,
