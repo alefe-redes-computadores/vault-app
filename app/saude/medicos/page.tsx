@@ -105,8 +105,8 @@ export default function MedicosPage() {
             </div>
           ) : (
             filteredMedicos.map((medico) => {
-              // Pega a cor do primeiro tratamento associado para estilizar a borda lateral do card
-              const primeiraCorTratamento = medico.tratamentos[0]?.cor || "#38BDF8";
+              // Cor segura padrão sem depender da propriedade inexistente 'cor'
+              const primeiraCorTratamento = "#38BDF8";
 
               return (
                 <motion.button
@@ -133,7 +133,7 @@ export default function MedicosPage() {
 
                     {/* Contatos Básicos */}
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-                      {medico.telefone && <span>📞 {medico.telefone}</span>}
+                      {medico.telefone && <span>Telefone: {medico.telefone}</span>}
                     </div>
 
                     {/* Tags de Cruzamento Relacional (Tratamentos e Prescrições) */}
@@ -141,8 +141,7 @@ export default function MedicosPage() {
                       {medico.tratamentos.map((t: any) => (
                         <span 
                           key={t.id} 
-                          className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md border"
-                          style={{ backgroundColor: `${t.cor || '#8B5CF6'}15`, borderColor: `${t.cor || '#8B5CF6'}30`, color: t.cor || '#8B5CF6' }}
+                          className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md border bg-violet-400/15 border-violet-400/30 text-violet-300"
                         >
                           <Activity size={10} /> {t.nome}
                         </span>
