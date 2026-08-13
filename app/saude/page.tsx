@@ -8,7 +8,6 @@ import {
   Heart,
   Pill,
   FileWarning,
-  CalendarClock,
   Stethoscope,
   Building2,
   ChevronRight,
@@ -23,6 +22,7 @@ import {
   FlaskConical,
   CheckCircle2,
   MapPin,
+  Calendar,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -36,10 +36,10 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
+import { HealthNotifications } from "@/components/HealthNotifications"; // <-- NOVO COMPONENTE AQUI
 import {
   getMedicamentoAlerts,
   getDocumentAlerts,
-  getUpcomingAppointments,
   getEstoqueAlerts,
   getExameAlerts,
   alertLevelColor,
@@ -149,34 +149,6 @@ function EstoqueRow({ alert }: { alert: HealthAlert }) {
   );
 }
 
-function AppointmentRow({ alert }: { alert: HealthAlert }) {
-  const router = useRouter();
-  const { trigger } = useHapticFeedback();
-
-  return (
-    <button
-      onClick={() => {
-        trigger("vibrate");
-        router.push(alert.href);
-      }}
-      className="flex w-full items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
-    >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/12">
-        <CalendarClock size={18} className="text-ice" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-ink-primary">
-          {alert.title}
-        </p>
-        <p className="truncate text-xs text-ink-muted">{alert.subtitle}</p>
-      </div>
-      <span className="shrink-0 text-xs font-medium text-ink-muted">
-        {alert.daysUntil === 0 ? "Hoje" : `Em ${alert.daysUntil}d`}
-      </span>
-    </button>
-  );
-}
-
 export default function SaudePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
@@ -193,7 +165,6 @@ export default function SaudePage() {
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
 
-  // Lógica para detectar doses pendentes/atrasadas no dia de hoje
   const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   const dosesPendentesAtrasadas = useMemo(() => {
@@ -203,7 +174,7 @@ export default function SaudePage() {
     for (const med of medicamentos) {
       if (!med.id || med.status === "descontinuado" || !med.estoque_horarios) continue;
       for (const horario of med.estoque_horarios) {
-        if (!horario || horario > horaAtual) continue; // Apenas horários que já passaram ou são agora
+        if (!horario || horario > horaAtual) continue; 
         const log = doseLogs.find((l) => l.medicamento_id === med.id && l.horario === horario);
         if (!log?.tomado_em) {
           lista.push({ medicamentoId: med.id, nome: med.nome, horario });
@@ -220,26 +191,10 @@ export default function SaudePage() {
     }
   };
 
-  const medAlerts = useMemo(
-    () => getMedicamentoAlerts(medicamentos || []),
-    [medicamentos]
-  );
-  const docAlerts = useMemo(
-    () => getDocumentAlerts(documents || []),
-    [documents]
-  );
-  const estoqueAlerts = useMemo(
-    () => getEstoqueAlerts(medicamentos || []),
-    [medicamentos]
-  );
-  const appointments = useMemo(
-    () => getUpcomingAppointments(documents || []),
-    [documents]
-  );
-  const exameAlerts = useMemo(
-    () => getExameAlerts(exames || []),
-    [exames]
-  );
+  const medAlerts = useMemo(() => getMedicamentoAlerts(medicamentos || []), [medicamentos]);
+  const docAlerts = useMemo(() => getDocumentAlerts(documents || []), [documents]);
+  const estoqueAlerts = useMemo(() => getEstoqueAlerts(medicamentos || []), [medicamentos]);
+  const exameAlerts = useMemo(() => getExameAlerts(exames || []), [exames]);
 
   const allAlerts = useMemo(
     () => [...medAlerts, ...docAlerts, ...exameAlerts].sort((a, b) => a.daysUntil - b.daysUntil),
@@ -248,17 +203,15 @@ export default function SaudePage() {
 
   const isLoading = documents === undefined || medicamentos === undefined || exames === undefined;
 
-  if (isLoading) {
-    return <LoadingSkeleton />;
-  }
+  if (isLoading) return <LoadingSkeleton />;
 
   const totalAlertas = allAlerts.length + estoqueAlerts.length + dosesPendentesAtrasadas.length;
 
   const quickActions = [
+    { id: "nova-consulta", label: "Consulta", icon: Stethoscope, path: "/saude/consultas/nova" },
+    { id: "nova-cirurgia", label: "Cirurgia", icon: Activity, path: "/saude/cirurgias/nova" },
     { id: "novo-medicamento", label: "Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
-    { id: "nova-renovacao", label: "Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
-    { id: "novo-medico", label: "Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
-    { id: "novo-local", label: "Local / Posto", icon: Building2, path: "/saude/locais/novo" },
+    { id: "novo-local", label: "Posto / Local", icon: MapPin, path: "/saude/locais/novo" },
   ];
 
   const saudeDocuments = documents?.filter(d => d.category_id === 'saude') || [];
@@ -269,11 +222,7 @@ export default function SaudePage() {
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
-              aria-label="Voltar"
+              onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
@@ -292,14 +241,14 @@ export default function SaudePage() {
               <p className="mt-1 text-sm text-ink-muted">
                 {totalAlertas > 0
                   ? `${totalAlertas} alerta${totalAlertas !== 1 ? "s" : ""} para revisar`
-                  : "Tudo em dia por aqui"}
+                  : "Painel Clínico atualizado"}
               </p>
             </div>
           </div>
         </header>
 
         <section className="space-y-6 px-5 pt-5">
-          {/* BOTÕES DE AÇÃO RÁPIDA */}
+          {/* BOTÕES DE AÇÃO RÁPIDA (Atualizados para a nova arquitetura) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -311,10 +260,7 @@ export default function SaudePage() {
               return (
                 <button
                   key={action.id}
-                  onClick={() => {
-                    trigger("vibrate");
-                    router.push(action.path);
-                  }}
+                  onClick={() => { trigger("vibrate"); router.push(action.path); }}
                   className="flex flex-col items-center gap-2 rounded-[20px] border border-surface-border/50 bg-surface p-3 text-center transition-all active:scale-[0.95] hover:bg-surface-raised/80"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice">
@@ -328,7 +274,7 @@ export default function SaudePage() {
             })}
           </motion.div>
 
-          {/* ALERTA DE DOSES PENDENTES / ATRASADAS (DESTAQUE VISUAL INTERATIVO) */}
+          {/* ALERTA DE DOSES PENDENTES */}
           {dosesPendentesAtrasadas.length > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -348,7 +294,6 @@ export default function SaudePage() {
                     Você esqueceu de tomar <strong className="text-ink-primary">{dosesPendentesAtrasadas.length} medicamento(s)</strong> nos horários programados.
                   </p>
                   
-                  {/* Lista resumida dos remédios pendentes */}
                   <div className="mt-2.5 flex flex-wrap gap-1.5">
                     {dosesPendentesAtrasadas.map((d, i) => (
                       <span key={i} className="inline-flex items-center gap-1 rounded-full bg-surface-raised px-2.5 py-1 text-[10px] font-mono font-medium text-ink-primary border border-surface-border/50">
@@ -357,7 +302,6 @@ export default function SaudePage() {
                     ))}
                   </div>
 
-                  {/* Ações Rápidas do Alerta */}
                   <div className="mt-4 flex items-center gap-2.5">
                     <button
                       onClick={handleTomarTodasAtrasadas}
@@ -365,37 +309,20 @@ export default function SaudePage() {
                     >
                       <CheckCircle2 size={15} /> Tomar Todos Agora
                     </button>
-                    <button
-                      onClick={() => { trigger("vibrate"); router.push("/saude/hoje"); }}
-                      className="rounded-xl border border-surface-border bg-surface-raised px-4 py-2.5 text-xs font-semibold text-ink-primary transition-all active:scale-95 hover:bg-surface"
-                    >
-                      Ver Cronograma
-                    </button>
                   </div>
                 </div>
               </div>
             </motion.div>
           )}
 
-          {appointments.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.03 }}
-            >
-              <div className="mb-3 flex items-center gap-2">
-                <CalendarClock size={15} className="text-ice" />
-                <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Consultas e Procedimentos
-                </h2>
-              </div>
-              <div className="space-y-2.5">
-                {appointments.map((appt) => (
-                  <AppointmentRow key={appt.id} alert={appt} />
-                ))}
-              </div>
-            </motion.div>
-          )}
+          {/* NOVO BANNER DE NOTIFICAÇÕES (Consultas e Cirurgias) */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.03 }}
+          >
+            <HealthNotifications />
+          </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -406,19 +333,14 @@ export default function SaudePage() {
               <div className="flex items-center gap-2">
                 <FolderHeart size={15} className="text-violet-400" />
                 <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Tratamentos
+                  Tratamentos Ativos
                 </h2>
               </div>
             </div>
 
             {tratamentos.length === 0 ? (
               <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-6 text-center">
-                <p className="text-sm text-ink-muted">
-                  Nenhum tratamento cadastrado.
-                </p>
-                <p className="mt-1 text-xs text-ink-faint">
-                  Eles aparecerão aqui quando você criar um documento ou medicamento vinculado.
-                </p>
+                <p className="text-sm text-ink-muted">Nenhum tratamento cadastrado.</p>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -427,10 +349,7 @@ export default function SaudePage() {
                   return (
                     <button
                       key={tratamento.id}
-                      onClick={() => {
-                        trigger("vibrate");
-                        router.push(`/saude/tratamentos/detalhes?id=${tratamento.id}`);
-                      }}
+                      onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${tratamento.id}`); }}
                       className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -438,9 +357,7 @@ export default function SaudePage() {
                           <IconComponent size={20} />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-ink-primary">
-                            {tratamento.nome}
-                          </p>
+                          <p className="truncate text-sm font-semibold text-ink-primary">{tratamento.nome}</p>
                           <p className="truncate text-xs text-ink-muted capitalize">
                             {tratamento.status === 'ativo' ? 'Em andamento' : tratamento.status === 'concluido' ? 'Concluído' : 'Suspenso'}
                           </p>
@@ -454,36 +371,7 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* ACERVO DE DOCUMENTOS */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.04 }}
-          >
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.push("/saude/documentos");
-              }}
-              className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
-                  <FolderHeart size={20} />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink-primary">
-                    Acervo de Documentos
-                  </p>
-                  <p className="truncate text-xs text-ink-muted">
-                    {saudeDocuments.length} documento{saudeDocuments.length !== 1 ? "s" : ""} na saúde
-                  </p>
-                </div>
-              </div>
-              <ChevronRight size={16} className="shrink-0 text-ink-faint" />
-            </button>
-          </motion.div>
-
+          {/* ALERTAS DO SISTEMA (Remédios vencendo, estoque acabando, exames pendentes) */}
           {(estoqueAlerts.length > 0 || allAlerts.length > 0) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -493,7 +381,7 @@ export default function SaudePage() {
               <div className="mb-3 flex items-center gap-2">
                 <FileWarning size={15} className="text-coral" />
                 <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Requer Atenção
+                  Requer Atenção (Medicamentos e Exames)
                 </h2>
               </div>
               
@@ -508,54 +396,67 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* CARDS DE ATALHOS: Medicamentos, Doses e Exames */}
+          {/* CARDS DE ATALHOS CLÍNICOS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24, delay: 0.12 }}
-            className="grid grid-cols-3 gap-2.5"
+            className="grid grid-cols-2 gap-2.5"
           >
             <button
-              onClick={() => { trigger("vibrate"); router.push("/saude/medicamentos"); }}
-              className="flex flex-col gap-2 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+              onClick={() => { trigger("vibrate"); router.push("/saude/consultas"); }}
+              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/12 text-ice">
-                <Pill size={16} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/12 text-ice">
+                <Calendar size={18} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-ink-primary">Medicamentos</p>
-                <p className="text-[10px] text-ink-muted">{(medicamentos || []).length} na gaveta</p>
+                <p className="text-sm font-semibold text-ink-primary">Consultas</p>
+                <p className="text-[10px] text-ink-muted">Agenda clínica</p>
               </div>
             </button>
 
             <button
-              onClick={() => { trigger("vibrate"); router.push("/saude/hoje"); }}
-              className="flex flex-col gap-2 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+              onClick={() => { trigger("vibrate"); router.push("/saude/cirurgias"); }}
+              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/12 text-emerald-400">
-                <Clock size={16} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-coral/12 text-coral">
+                <Activity size={18} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-ink-primary">Doses</p>
-                <p className="text-[10px] text-ink-muted">Controle diário</p>
+                <p className="text-sm font-semibold text-ink-primary">Cirurgias</p>
+                <p className="text-[10px] text-ink-muted">Procedimentos</p>
               </div>
             </button>
             
             <button
               onClick={() => { trigger("vibrate"); router.push("/saude/exames"); }}
-              className="flex flex-col gap-2 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/12 text-violet-400">
-                <FlaskConical size={16} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-400/12 text-violet-400">
+                <FlaskConical size={18} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-ink-primary">Exames</p>
-                <p className="text-[10px] text-ink-muted">{exames.length} registrados</p>
+                <p className="text-sm font-semibold text-ink-primary">Exames</p>
+                <p className="text-[10px] text-ink-muted">Resultados e pedidos</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { trigger("vibrate"); router.push("/saude/medicamentos"); }}
+              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/12 text-emerald-400">
+                <Pill size={18} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink-primary">Remédios</p>
+                <p className="text-[10px] text-ink-muted">Estoque e gaveta</p>
               </div>
             </button>
           </motion.div>
 
-          {/* SUA REDE ATUALIZADA: 4 COLUNAS DIFERENCIANDO MÉDICOS, FARMÁCIAS, HOSPITAIS E POSTOS/LOCAIS */}
+          {/* SUA REDE ATUALIZADA */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -566,68 +467,44 @@ export default function SaudePage() {
               <h2 className="font-display text-sm font-semibold text-ink-primary">
                 Sua rede e locais
               </h2>
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-                  router.push("/saude/rede");
-                }}
-                className="flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink-primary"
-              >
-                Ver tudo
-                <ChevronRight size={14} />
-              </button>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-              
-              {/* 1. MÉDICOS */}
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/medicos"); }}
                 className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
               >
                 <Stethoscope size={16} className="text-ice mb-1" />
-                <p className="font-display text-base font-semibold text-ink-primary">
-                  {(medicos || []).length}
-                </p>
+                <p className="font-display text-base font-semibold text-ink-primary">{(medicos || []).length}</p>
                 <p className="text-[10px] text-ink-muted">Médicos</p>
               </button>
 
-              {/* 2. FARMÁCIAS */}
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/farmacias"); }}
                 className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
               >
                 <Pill size={16} className="text-amber-400 mb-1" />
-                <p className="font-display text-base font-semibold text-ink-primary">
-                  {(farmacias || []).length}
-                </p>
+                <p className="font-display text-base font-semibold text-ink-primary">{(farmacias || []).length}</p>
                 <p className="text-[10px] text-ink-muted">Farmácias</p>
               </button>
 
-              {/* 3. HOSPITAIS */}
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/hospitais"); }}
                 className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
               >
                 <Building2 size={16} className="text-ice mb-1" />
-                <p className="font-display text-base font-semibold text-ink-primary">
-                  {(hospitais || []).length}
-                </p>
+                <p className="font-display text-base font-semibold text-ink-primary">{(hospitais || []).length}</p>
                 <p className="text-[10px] text-ink-muted">Hospitais</p>
               </button>
 
-              {/* 4. POSTOS / UNIDADES (LOCAIS) */}
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/locais"); }}
                 className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
               >
                 <MapPin size={16} className="text-emerald-400 mb-1" />
-                <p className="font-display text-base font-semibold text-ink-primary">
-                  {(locais || []).length}
-                </p>
-                <p className="text-[10px] text-ink-muted">Postos / Locais</p>
+                <p className="font-display text-base font-semibold text-ink-primary">{(locais || []).length}</p>
+                <p className="text-[10px] text-ink-muted">Postos</p>
               </button>
-
             </div>
           </motion.div>
         </section>
