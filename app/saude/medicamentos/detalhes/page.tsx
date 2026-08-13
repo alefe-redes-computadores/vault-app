@@ -28,7 +28,7 @@ import {
   ExternalLink,
   Plus,
   ArrowRightLeft,
-  CalendarWarning
+  CalendarClock
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -191,7 +191,7 @@ function MedicamentoDetalhesContent() {
               {isReceitaVencendo && isActive && (
                 <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <CalendarWarning size={18} className="text-amber-400 shrink-0" />
+                    <CalendarClock size={18} className="text-amber-400 shrink-0" />
                     <div>
                       <p className="text-sm font-bold text-amber-400">Receita {diasRenovacao < 0 ? "vencida!" : "vence em breve"}</p>
                       <p className="text-xs text-amber-400/80">{diasRenovacao < 0 ? `Venceu há ${Math.abs(diasRenovacao)} dias.` : `Faltam ${diasRenovacao} dias.`}</p>
