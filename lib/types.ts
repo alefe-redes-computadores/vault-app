@@ -266,7 +266,8 @@ export interface DoseLog {
   medicamento_id: string;
   data: string; 
   horario: string; 
-  tomado_em?: string; 
+  tomado_em?: string;
+  ignorado_em?: string; // ✅ ADICIONADO AQUI PARA SUPORTAR O BOTÃO "IGNORAR"
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
