@@ -77,8 +77,9 @@ export function suggestRenewalDate(dataReceita: string, tipo: TipoReceita): stri
 }
 
 // ============================================================
-// ESTOQUE — cálculo de "quantos dias faltam" a partir de uma
-// contagem feita numa data de referência + horários de dose.
+// ESTOQUE — Atualizado para usar abatimento em tempo real
+// (A lógica de projeção no tempo foi removida para evitar
+// duplo abatimento, já que o banco agora debita na hora)
 // ============================================================
 export interface EstoqueInfo {
   consumoDiario: number;
@@ -103,20 +104,17 @@ export function computeEstoqueInfo(med: Medicamento): EstoqueInfo | null {
   const horarios = med.estoque_horarios!;
   const unidadePorDose = med.estoque_unidade_por_dose || 1;
   const consumoDiario = horarios.length * unidadePorDose;
+  
   if (consumoDiario <= 0) return null;
 
-  const diasDesdeReferencia = getDaysUntil(med.estoque_data_referencia);
-  if (diasDesdeReferencia === null) return null;
-  const diasPassados = Math.max(0, -diasDesdeReferencia);
-
-  const quantidadeInicial = med.estoque_quantidade!;
-  const consumido = diasPassados * consumoDiario;
-  const quantidadeRestante = Math.max(0, quantidadeInicial - consumido);
+  // Como o app agora usa abatimento em tempo real pelo botão "Tomei",
+  // o valor armazenado em 'estoque_quantidade' JÁ É o restante real atualizado.
+  const quantidadeRestante = med.estoque_quantidade!;
   const diasRestantes = Math.floor(quantidadeRestante / consumoDiario);
 
   return {
     consumoDiario,
-    quantidadeInicial,
+    quantidadeInicial: quantidadeRestante, // Alinhado ao valor atual para não quebrar a tipagem
     quantidadeRestante,
     diasRestantes,
     unidade: med.estoque_unidade_medida || "unidade(s)",
@@ -130,6 +128,7 @@ export function getEstoqueAlerts(medicamentos: Medicamento[]): HealthAlert[] {
       const info = computeEstoqueInfo(med)!;
       const daysUntil = info.diasRestantes;
       let level: AlertLevel = "ok";
+      
       if (daysUntil <= 0) level = "vencido";
       else if (daysUntil <= URGENTE_DIAS_ESTOQUE) level = "urgente";
       else if (daysUntil <= ATENCAO_DIAS_ESTOQUE) level = "atencao";
@@ -163,8 +162,8 @@ export function getMedicamentoAlerts(medicamentos: Medicamento[]): HealthAlert[]
         id: med.id!,
         kind: "medicamento" as const,
         title: med.nome,
-        subtitle: `${med.dosagem} · Dr(a). ${med.medico}`,
-        date: med.proxima_renovacao,
+        subtitle: `${med.dosagem} · Dr(a). ${med.medico || "Não informado"}`,
+        date: med.proxima_renovacao || "",
         daysUntil: daysUntil ?? 999,
         level: getAlertLevel(daysUntil, controlada),
         href: `/saude/medicamentos/editar?id=${med.id}`,
