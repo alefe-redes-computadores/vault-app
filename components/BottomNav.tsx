@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   Heart,
-  Star,
+  Images, // ✅ Ícone da Galeria importado
   LayoutGrid,
   Plus,
   Pill,
@@ -31,7 +31,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
   { id: "saude", icon: Heart, label: "Saúde", path: "/saude" },
-  { id: "favoritos", icon: Star, label: "Favoritos", path: "/favoritos" },
+  { id: "galeria", icon: Images, label: "Galeria", path: "/galeria" }, // ✅ Substituído Favoritos por Galeria
   { id: "mais", icon: LayoutGrid, label: "Mais", path: "/mais" },
 ];
 
@@ -217,7 +217,7 @@ export function BottomNav() {
               const colMap: Record<string, string> = {
                 home: "col-start-1",
                 saude: "col-start-2",
-                favoritos: "col-start-4",
+                galeria: "col-start-4", // ✅ Mapeado para a 4ª coluna
                 mais: "col-start-5",
               };
 
