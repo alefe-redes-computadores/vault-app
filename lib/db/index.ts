@@ -2,7 +2,8 @@ import Dexie, { type Table } from 'dexie';
 import type {
   Person, Document, SyncQueueItem, Medicamento, Renovacao,
   Vault, VaultMember, Medico, Farmacia, Hospital, Laboratorio, DoseLog,
-  Credential, BankCard, InstituicaoEnsino, Tratamento, Exame, Cid, LocalSaude
+  Credential, BankCard, InstituicaoEnsino, Tratamento, Exame, Cid, LocalSaude,
+  Consulta, Cirurgia
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
 
@@ -40,6 +41,8 @@ class VaultDB extends Dexie {
   anexos_clinicos!: Table<any, string>;
   cids!: Table<Cid, string>;
   exame_tratamentos!: Table<any, string>;
+  consultas!: Table<Consulta, string>;
+  cirurgias!: Table<Cirurgia, string>;
 
   constructor() {
     super('vault-db');
@@ -97,6 +100,8 @@ class VaultDB extends Dexie {
       locais: 'id, user_id, nome, tipo, synced',
       laboratorios: 'id, user_id, nome, synced',
       exames: 'id, user_id, person_id, nome, laboratorio_id, medico_id, data, synced',
+      consultas: 'id, user_id, person_id, data, medico_id, hospital_id, status, synced',
+      cirurgias: 'id, user_id, person_id, data, medico_id, hospital_id, status, synced',
       doseLogs: 'id, user_id, medicamento_id, data, horario',
       credentials: 'id, user_id, vault_id, title, category, synced',
       cards: 'id, user_id, title, bank_name, type, brand, synced',
