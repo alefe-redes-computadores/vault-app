@@ -64,7 +64,7 @@ export default function HojePage() {
   const [observacoesRenovacao, setObservacoesRenovacao] = useState("");
   const [adicionarMaisEstoque, setAdicionarMaisEstoque] = useState(30);
   
-  // Trava anti-race condition para cliques duplos
+  // Trava anti-race condition rigorosa para cliques duplos
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
 
   const doses = useMemo<DoseItemExt[]>(() => {
