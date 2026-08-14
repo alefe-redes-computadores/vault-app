@@ -22,6 +22,8 @@ import {
   CheckCircle2,
   MapPin,
   Calendar,
+  DollarSign,
+  FileText,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -115,6 +117,18 @@ export default function SaudePage() {
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
+  const renovacoes = useLiveQuery(() => db.table("renovacoes").toArray(), []) || [];
+
+  // Cálculo do total gasto histórico com renovações e farmácias
+  const totalGastoGeral = useMemo(() => {
+    let soma = 0;
+    renovacoes.forEach((r: any) => {
+      if (typeof r.preco === "number" && r.preco > 0) {
+        soma += r.preco;
+      }
+    });
+    return soma;
+  }, [renovacoes]);
 
   const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
@@ -217,6 +231,32 @@ export default function SaudePage() {
                 </button>
               );
             })}
+          </motion.div>
+
+          {/* CARD ANALÍTICO DE CUSTOS E RENOVAÇÕES */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.02 }}
+            onClick={() => { trigger("vibrate"); router.push("/saude/renovacao"); }}
+            className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm cursor-pointer hover:border-ice/30 transition-all active:scale-[0.985]"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                <DollarSign size={22} />
+              </div>
+              <div>
+                <p className="text-xs uppercase font-mono text-ink-muted">Investimento em Saúde</p>
+                <p className="font-mono text-lg font-bold text-ink-primary mt-0.5">
+                  R$ {totalGastoGeral.toFixed(2).replace(".", ",")}
+                </p>
+                <p className="text-[10px] text-ink-faint">Total em {renovacoes.length} renovação(ões) registradas</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-semibold text-ice">
+              <span>Histórico</span>
+              <ChevronRight size={16} />
+            </div>
           </motion.div>
 
           {/* ALERTA DE DOSES PENDENTES */}
