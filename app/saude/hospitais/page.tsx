@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, Building2, Search, Plus, ChevronRight, 
-  MapPin, Phone, Activity, FlaskConical, CalendarClock 
+  MapPin, Phone, Edit3 
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -24,18 +24,14 @@ export default function HospitaisPage() {
   const documentos = useLiveQuery(() => db.table("documents").toArray(), []) || [];
   const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
 
-  // Cruzamento relacional com documentos (cirurgias, prontuários, consultas) e exames
   const hospitaisComCruzamento = useMemo(() => {
     return hospitais.map((hospital) => {
-      // Documentos vinculados a este hospital (via metadata hospital_id)
       const docsDoHospital = documentos.filter((d: any) => 
         d.metadata?.hospital_id === hospital.id
       );
 
       const cirurgias = docsDoHospital.filter((d: any) => d.type === 'cirurgia');
       const consultas = docsDoHospital.filter((d: any) => d.type === 'consulta' || d.type === 'prontuario');
-
-      // Exames vinculados a este hospital
       const examesDoHospital = exames.filter((e: any) => e.hospital_id === hospital.id || e.laboratorio_id === hospital.id);
 
       return {
@@ -62,6 +58,7 @@ export default function HospitaisPage() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -97,7 +94,7 @@ export default function HospitaisPage() {
                 key={hospital.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                onClick={() => { trigger("vibrate"); router.push(`/saude/hospitais/editar?id=${hospital.id}`); }}
+                onClick={() => { trigger("vibrate"); router.push(`/saude/hospitais/detalhes?id=${hospital.id}`); }}
                 className="flex w-full flex-col gap-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden cursor-pointer"
                 style={{ borderLeft: "6px solid #38BDF8" }}
               >
@@ -122,7 +119,20 @@ export default function HospitaisPage() {
                       </div>
                     </div>
                   </div>
-                  <ChevronRight size={16} className="shrink-0 text-ink-faint self-center" />
+                  <div className="flex items-center gap-2 self-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        trigger("vibrate");
+                        router.push(`/saude/hospitais/editar?id=${hospital.id}`);
+                      }}
+                      className="h-8 w-8 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted hover:text-ice transition-colors"
+                      aria-label="Editar hospital"
+                    >
+                      <Edit3 size={14} />
+                    </button>
+                    <ChevronRight size={16} className="text-ink-faint" />
+                  </div>
                 </div>
 
                 {/* Tags de Resumo Relacional */}
