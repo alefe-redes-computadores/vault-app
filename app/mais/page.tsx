@@ -23,6 +23,7 @@ import {
   KeyRound,
   CreditCard,
   ShieldAlert,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -31,7 +32,9 @@ import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
-import { useState, useEffect, ReactNode, useCallback } from "react";
+import { useNotificationPreference } from "@/hooks/useNotificationPreference";
+import { requestNotificationPermission, cancelAllDoseNotifications } from "@/lib/dose-notifications";
+import { useState, useCallback, ReactNode } from "react";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { pullAllData } from "@/lib/sync/pull";
@@ -61,6 +64,7 @@ export default function MaisPage() {
   const { showToast, showSuccess, showError, showInfo } = useToast();
   const { processQueue, isOnline, syncLogs, clearLogs } = useSyncQueue();
   const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
+  const { isEnabled: isNotificationsEnabled, enable: enableNotifications, disable: disableNotifications } = useNotificationPreference();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
@@ -68,8 +72,8 @@ export default function MaisPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Consulta reativa em tempo real da quantidade de itens pendentes na fila
   const pendingQueueCount = useLiveQuery(() => db.syncQueue.count(), []) ?? 0;
+  const allMedicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
 
   const handleLogout = async () => {
     setIsLoading(true);
@@ -184,6 +188,25 @@ export default function MaisPage() {
       isBiometricEnabled ? "Biometria desativada" : "Biometria ativada",
       "info"
     );
+  };
+
+  const handleNotificationsToggle = async () => {
+    trigger("vibrate");
+    if (isNotificationsEnabled) {
+      // Desativar: Cancela as notificações agendadas e atualiza preferência
+      await cancelAllDoseNotifications(allMedicamentos as any);
+      disableNotifications();
+      showToast("Lembretes desativados", "info");
+    } else {
+      // Ativar: Pede permissão e atualiza preferência se concedida
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        enableNotifications();
+        showToast("Lembretes ativados", "success");
+      } else {
+        showError("Permissão de notificação negada pelo sistema.");
+      }
+    }
   };
 
   const avatarUrl = user?.user_metadata?.avatar_url;
@@ -404,13 +427,13 @@ export default function MaisPage() {
               </div>
             </div>
 
-            <div className="mt-5 rounded-[22px] border border-surface-border/40 bg-surface-raised/60 px-4 py-3">
+            <div className="mt-5 overflow-hidden rounded-[22px] border border-surface-border/40 bg-surface-raised/60 divide-y divide-surface-border/40">
               <button
                 onClick={handleBiometricToggle}
-                className="flex w-full items-center gap-3 rounded-xl text-left transition-all active:scale-[0.99]"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-all active:bg-surface-border/30"
               >
                 <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
                     isBiometricEnabled
                       ? "border-ice/20 bg-ice/10"
                       : "border-surface-border/50 bg-surface"
@@ -422,23 +445,60 @@ export default function MaisPage() {
                   />
                 </div>
 
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-ink-primary">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-ink-primary">
                     Biometria
                   </p>
-                  <p className="text-xs text-ink-muted">
-                    Desbloqueio rápido e seguro no dispositivo
+                  <p className="truncate text-xs text-ink-muted">
+                    Desbloqueio rápido no dispositivo
                   </p>
                 </div>
 
                 <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
                     isBiometricEnabled
                       ? "bg-ice/15 text-ice"
                       : "bg-surface-border text-ink-muted"
                   }`}
                 >
                   {isBiometricEnabled ? "Ativada" : "Desativada"}
+                </span>
+              </button>
+
+              <button
+                onClick={handleNotificationsToggle}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-all active:bg-surface-border/30"
+              >
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
+                    isNotificationsEnabled
+                      ? "border-emerald-400/20 bg-emerald-400/10"
+                      : "border-surface-border/50 bg-surface"
+                  }`}
+                >
+                  <Bell
+                    size={18}
+                    className={isNotificationsEnabled ? "text-emerald-400" : "text-ink-muted"}
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-ink-primary">
+                    Lembretes de dose
+                  </p>
+                  <p className="truncate text-xs text-ink-muted">
+                    Notificações push de medicamentos
+                  </p>
+                </div>
+
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+                    isNotificationsEnabled
+                      ? "bg-emerald-400/15 text-emerald-400"
+                      : "bg-surface-border text-ink-muted"
+                  }`}
+                >
+                  {isNotificationsEnabled ? "Ativado" : "Desativado"}
                 </span>
               </button>
             </div>
