@@ -29,24 +29,26 @@ interface TableCheck {
   error?: string;
 }
 
-// 1. LISTA ATUALIZADA COM TODAS AS TABELAS INCLUINDO CIDS E LOCAIS
+// 1. LISTA ATUALIZADA (SEM CIDs e COM Consultas/Cirurgias)
 const TABLES: { key: string; label: string }[] = [
   { key: "persons", label: "Pessoas" },
-  { key: "documents", label: "Documentos" },
-  { key: "exames", label: "Exames" }, 
+  { key: "medicos", label: "Médicos" },
+  { key: "hospitais", label: "Hospitais" },
+  { key: "locais", label: "Locais/Postos" },
+  { key: "laboratorios", label: "Laboratórios" },
+  { key: "farmacias", label: "Farmácias" },
+  { key: "instituicoes", label: "Instituições" },
+  { key: "tratamentos", label: "Tratamentos" },
+  { key: "consultas", label: "Consultas" },
+  { key: "cirurgias", label: "Cirurgias" },
+  { key: "exames", label: "Exames" },
   { key: "medicamentos", label: "Medicamentos" },
   { key: "renovacoes", label: "Renovações" },
-  { key: "tratamentos", label: "Tratamentos" },
-  { key: "cids", label: "CIDs" },
-  { key: "locais", label: "Locais/Postos" },
+  { key: "doseLogs", label: "Registro de Doses" },
+  { key: "documents", label: "Documentos" },
+  { key: "anexos_clinicos", label: "Anexos Clínicos" },
   { key: "credentials", label: "Senhas e Acessos" },
   { key: "cards", label: "Contas e Cartões" },
-  { key: "instituicoes", label: "Instituições" },
-  { key: "medicos", label: "Médicos" },
-  { key: "farmacias", label: "Farmácias" },
-  { key: "hospitais", label: "Hospitais" },
-  { key: "laboratorios", label: "Laboratórios" }, 
-  { key: "doseLogs", label: "Registro de Doses" },
   { key: "vaults", label: "Cofres" },
 ];
 
@@ -105,7 +107,7 @@ export default function DiagnosticoPage() {
     trigger("success");
   }, [user, trigger]);
 
-  // Função de Push Direto turbinada cobrindo todas as tabelas novas e renovações
+  // Função de Push Direto atualizada com a ordem correta e sem CIDs
   const forcePushAll = async () => {
     if (!user?.id) return;
     trigger("vibrate");
@@ -116,18 +118,10 @@ export default function DiagnosticoPage() {
 
     try {
       const tablesToPush = [
-        "cids",
-        "locais",
-        "exames", 
-        "laboratorios", 
-        "medicos", 
-        "hospitais", 
-        "farmacias", 
-        "tratamentos", 
-        "medicamentos", 
-        "renovacoes", 
-        "doseLogs",
-        "documents"
+        "persons", "medicos", "hospitais", "locais", "laboratorios", "instituicoes", "tratamentos",
+        "documents", "exames", "medicamentos", "renovacoes", "doseLogs",
+        "consultas", "cirurgias", "anexos_clinicos",
+        "vaults", "credentials", "cards"
       ];
       
       let count = 0;
