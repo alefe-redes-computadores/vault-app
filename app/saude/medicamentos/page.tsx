@@ -3,27 +3,13 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { 
-  ArrowLeft, 
-  Pill, 
-  Circle, 
-  Droplet, 
-  Syringe, 
-  StickyNote, 
-  Plus, 
-  ChevronRight, 
-  Activity 
-} from "lucide-react";
+import { ArrowLeft, Pill, Circle, Droplet, Syringe, StickyNote, Plus, ChevronRight, Activity, Calendar, AlertTriangle } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { usePersons } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import {
-  computeEstoqueInfo,
-  getDaysUntil,
-  TIPO_RECEITA_LABELS,
-} from "@/lib/health-utils";
+import { computeEstoqueInfo, getDaysUntil } from "@/lib/health-utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -39,18 +25,17 @@ const FORMATOS = [
 
 function formatDate(date?: string) {
   if (!date) return null;
-  try { return format(new Date(date), "dd/MM/yyyy", { locale: ptBR }); } 
-  catch { return null; }
+  return format(new Date(date), "dd MMM", { locale: ptBR });
 }
 
-function getReceitaBadgeStyle(tipo?: string) {
-  switch (tipo) {
-    case "amarela": return "bg-amber-400/20 text-amber-300 border border-amber-400/30";
-    case "azul": return "bg-blue-400/20 text-blue-300 border border-blue-400/30";
-    case "branca": return "bg-zinc-400/20 text-zinc-300 border border-zinc-400/30";
-    default: return "bg-violet-400/15 text-violet-300 border border-violet-400/30";
-  }
-}
+const getTratamentoStyle = (nome: string) => {
+  const n = nome.toLowerCase();
+  if (n.includes("tdah")) return "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
+  if (n.includes("dor")) return "bg-coral/10 border-coral/20 text-coral";
+  if (n.includes("depress")) return "bg-blue-500/10 border-blue-500/20 text-blue-400";
+  if (n.includes("ansied")) return "bg-amber-400/10 border-amber-400/20 text-amber-400";
+  return "bg-violet-500/10 border-violet-500/20 text-violet-400";
+};
 
 export default function MedicamentosListPage() {
   const router = useRouter();
@@ -63,7 +48,7 @@ export default function MedicamentosListPage() {
 
   const tratamentoMap = useMemo(() => {
     const map = new Map();
-    tratamentos.forEach((t: any) => map.set(t.id, t.nome));
+    tratamentos.forEach((t: any) => map.set(t.id, { nome: t.nome }));
     return map;
   }, [tratamentos]);
 
@@ -82,135 +67,89 @@ export default function MedicamentosListPage() {
     return map;
   }, [vinculos]);
 
-  const sorted = useMemo(() => {
-    return [...(medicamentos || [])].sort((a, b) => {
-      const da = getDaysUntil(a.proxima_renovacao) ?? 9999;
-      const db = getDaysUntil(b.proxima_renovacao) ?? 9999;
-      return da - db;
-    });
-  }, [medicamentos]);
+  const sorted = useMemo(() => [...(medicamentos || [])].sort((a, b) => (getDaysUntil(a.proxima_renovacao) ?? 9999) - (getDaysUntil(b.proxima_renovacao) ?? 9999)), [medicamentos]);
 
-  const isLoading = medicamentos === undefined;
-
-  if (isLoading) return <LoadingSkeleton />;
+  if (medicamentos === undefined) return <LoadingSkeleton />;
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} aria-label="Voltar" className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Pill size={18} className="text-ice" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
-              </div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Meus medicamentos</h1>
-              <p className="mt-1 text-sm text-ink-muted">{sorted.length} cadastrado{sorted.length !== 1 ? "s" : ""}</p>
+            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"><ArrowLeft size={18} /></button>
+            <div>
+              <h1 className="font-display text-xl font-semibold text-ink-primary">Meus medicamentos</h1>
+              <p className="text-sm text-ink-muted">{sorted.length} ativos</p>
             </div>
           </div>
         </header>
 
-        <section className="space-y-3 px-5 pt-5">
-          {sorted.length === 0 ? (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }} className="flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm">
-              <div className="glow-ice mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-ice/15 bg-surface-raised">
-                <Pill size={22} className="text-ice/60" />
-              </div>
-              <h3 className="font-display text-base font-semibold text-ink-primary">Nenhum medicamento cadastrado</h3>
-              <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-ink-muted">Cadastre pra acompanhar renovação de receita e estoque.</p>
-              <button onClick={() => { trigger("vibrate"); router.push("/saude/medicamentos/novo"); }} className="glow-ice mt-6 inline-flex items-center gap-2 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void transition-all duration-200 active:scale-95">
-                <Plus size={16} /> Cadastrar medicamento
-              </button>
-            </motion.div>
-          ) : (
-            <>
-              {sorted.map((med, index) => {
-                const estoqueInfo = computeEstoqueInfo(med);
-                const qtd = estoqueInfo?.quantidadeRestante ?? null;
-                const isEstoqueCritico = qtd !== null && qtd < 5;
-                const isEstoqueBaixo = qtd !== null && qtd >= 5 && qtd < 10;
-                const personName = med.person_id ? personMap.get(med.person_id) : null;
+        <section className="space-y-4 px-5 pt-5">
+          {sorted.map((med, index) => {
+            const estoqueInfo = computeEstoqueInfo(med);
+            const qtd = estoqueInfo?.quantidadeRestante ?? null;
+            const isEstoqueCritico = qtd !== null && qtd < 10;
+            const personName = med.person_id ? personMap.get(med.person_id) : null;
+            let tIds = med.id ? vinculosMap.get(med.id) || [] : [];
+            
+            const SelectedFormatIcon = FORMATOS.find(f => f.id === med.formato)?.icon || Pill;
+            const color1 = med.cores?.[0] || "#60A5FA";
+
+            return (
+              <motion.button
+                key={med.id}
+                onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
+                className="w-full rounded-[24px] border border-surface-border bg-surface p-4 text-left shadow-md hover:bg-surface-raised relative overflow-hidden"
+              >
+                <div className={`absolute left-0 top-0 bottom-0 w-2 ${med.tipo_receita === 'amarela' ? 'bg-amber-400' : med.tipo_receita === 'azul' ? 'bg-blue-400' : 'bg-ice/50'}`} />
                 
-                // Correção aplicada aqui com verificação de segurança do ID
-                let tIds = med.id ? vinculosMap.get(med.id) || [] : [];
-                if (tIds.length === 0 && med.tratamento_id) tIds = [med.tratamento_id];
-
-                // Identidade Visual
-                const SelectedFormatIcon = FORMATOS.find(f => f.id === med.formato)?.icon || Pill;
-                const cores = med.cores || [];
-                const hasTwoColors = cores.length === 2;
-                const color1 = cores[0] || "#9CA3AF";
-                const color2 = hasTwoColors ? cores[1] : color1;
-                const gradientId = `list-split-${med.id}`;
-
-                return (
-                  <motion.button
-                    key={med.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.3) }}
-                    onClick={() => {
-                      trigger("vibrate");
-                      router.push(`/saude/medicamentos/detalhes?id=${med.id}`);
-                    }}
-                    className="flex w-full items-start gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
-                  >
-                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${med.tipo_receita === 'amarela' ? 'bg-amber-400' : med.tipo_receita === 'azul' ? 'bg-blue-400' : 'bg-ice/40'}`} />
-
-                    <svg width="0" height="0" className="absolute">
-                      <defs>
-                        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="50%" stopColor={color1} />
-                          <stop offset="50%" stopColor={color2} />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">
-                      <SelectedFormatIcon size={20} stroke={hasTwoColors ? `url(#${gradientId})` : color1} strokeWidth={2} />
+                <div className="flex items-start gap-4 ml-1">
+                  <div className="h-12 w-12 rounded-2xl flex items-center justify-center border border-surface-border shadow-inner" style={{ backgroundColor: color1 + '15' }}>
+                     <SelectedFormatIcon size={24} stroke={color1} strokeWidth={2.4} fill={color1 + '44'} />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    {/* Linha 1: NOME (MAIÚSCULO) + DOSAGEM + PESSOA */}
+                    <div className="flex items-baseline gap-2 overflow-hidden">
+                      <p className="font-display text-base font-bold text-ink-primary uppercase truncate">{med.nome}</p>
+                      <p className="text-[10px] font-medium text-ink-muted shrink-0 truncate">{med.dosagem}</p>
+                      {personName && <span className="shrink-0 rounded-full bg-ice/10 px-2 py-0.5 text-[9px] font-bold text-ice uppercase">{personName}</span>}
                     </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="truncate font-display text-sm font-semibold text-ink-primary">{med.nome}</p>
-                        {personName && <span className="shrink-0 rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[9px] font-semibold text-ink-muted uppercase tracking-wide">Pessoa: {personName}</span>}
-                        {med.tipo_receita && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getReceitaBadgeStyle(med.tipo_receita)}`}>{TIPO_RECEITA_LABELS[med.tipo_receita] || med.tipo_receita}</span>}
-                        {tIds.map(tId => {
-                          const tName = tratamentoMap.get(tId);
-                          if (!tName) return null;
-                          return (
-                            <span key={tId} className="shrink-0 inline-flex items-center gap-1 rounded-full bg-violet-400/10 border border-violet-400/20 px-2 py-0.5 text-[9px] font-semibold text-violet-300">
-                              <Activity size={10} /> {tName}
-                            </span>
-                          );
-                        })}
-                      </div>
+                    {/* Linha 2: Médico */}
+                    <p className="text-xs font-medium text-ink-muted mt-0.5 truncate">{med.medico}</p>
 
-                      <p className="mt-0.5 text-xs text-ink-muted">{med.dosagem} · Dr(a). {med.medico}</p>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-                        <span className="text-ink-muted">Renova em {formatDate(med.proxima_renovacao) || "—"}</span>
-                        {estoqueInfo && (
-                          <span className={`font-medium ${isEstoqueCritico ? "text-coral font-semibold animate-pulse" : isEstoqueBaixo ? "text-amber-400" : "text-ice/80"}`}>
-                            {qtd} {estoqueInfo.unidade} restantes {isEstoqueCritico ? "Atenção" : ""}
+                    {/* Linha 3: Tratamentos */}
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {tIds.map(tId => {
+                        const t = tratamentoMap.get(tId);
+                        if (!t) return null;
+                        return (
+                          <span key={tId} className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide border ${getTratamentoStyle(t.nome)}`}>
+                            {t.nome}
                           </span>
-                        )}
-                      </div>
+                        );
+                      })}
                     </div>
 
-                    <ChevronRight size={16} className="mt-1 shrink-0 text-ink-faint" />
-                  </motion.button>
-                );
-              })}
+                    {/* Linha 4: Estoque e Data */}
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-surface-border/40">
+                       <span className={`text-[11px] font-bold ${isEstoqueCritico ? "text-coral animate-pulse" : "text-emerald-400"}`}>
+                         {qtd !== null ? `${qtd} ${estoqueInfo?.unidade || 'doses'}` : 'Sem estoque'}
+                       </span>
+                       <span className="text-[11px] font-mono font-semibold text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg">
+                         Renova: {formatDate(med.proxima_renovacao) || "—"}
+                       </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.button>
+            );
+          })}
 
-              <button onClick={() => { trigger("vibrate"); router.push("/saude/medicamentos/novo"); }} className="flex w-full items-center justify-center gap-2 rounded-[24px] border border-dashed border-surface-border/60 bg-surface/40 py-4 text-sm font-medium text-ink-muted transition-all active:scale-[0.985] hover:border-ice/30 hover:text-ice">
-                <Plus size={16} /> Cadastrar medicamento
-              </button>
-            </>
-          )}
+          <button onClick={() => { trigger("vibrate"); router.push("/saude/medicamentos/novo"); }} className="flex w-full items-center justify-center gap-2 rounded-[24px] border border-dashed border-surface-border/60 bg-surface/40 py-4 text-sm font-medium text-ink-muted hover:border-ice/30 hover:text-ice">
+            <Plus size={16} /> Cadastrar medicamento
+          </button>
         </section>
       </main>
     </PageTransition>
