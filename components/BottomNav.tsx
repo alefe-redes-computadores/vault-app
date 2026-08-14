@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   Heart,
-  Images, // ✅ Ícone da Galeria importado
+  Images, // ✅ Ícone da Galeria
   LayoutGrid,
   Plus,
   Pill,
@@ -14,6 +14,7 @@ import {
   CreditCard,
   Landmark,
   FolderHeart,
+  UploadCloud,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -31,7 +32,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
   { id: "saude", icon: Heart, label: "Saúde", path: "/saude" },
-  { id: "galeria", icon: Images, label: "Galeria", path: "/galeria" }, // ✅ Substituído Favoritos por Galeria
+  { id: "galeria", icon: Images, label: "Galeria", path: "/galeria" },
   { id: "mais", icon: LayoutGrid, label: "Mais", path: "/mais" },
 ];
 
@@ -59,6 +60,11 @@ const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "conta", label: "Nova conta bancária", icon: Landmark, path: "/contas/novo" },
 ];
 
+// ✅ Opção de menu flutuante para a Galeria
+const GALERIA_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "upload-galeria", label: "Adicionar à Galeria", icon: UploadCloud, path: "/galeria?upload=true" },
+];
+
 const HIDDEN_ON_PATHS = ["/novo", "/login", "/auth/callback", "/cartoes/novo", "/contas/novo"];
 
 function shouldHideNav(pathname: string): boolean {
@@ -83,6 +89,7 @@ function shouldHideNav(pathname: string): boolean {
 function getComposeOptions(pathname: string): ComposeOption[] {
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
+  if (pathname === "/galeria") return GALERIA_COMPOSE_OPTIONS; // ✅ Roteia para a Galeria
   return DEFAULT_COMPOSE_OPTIONS;
 }
 
@@ -217,7 +224,7 @@ export function BottomNav() {
               const colMap: Record<string, string> = {
                 home: "col-start-1",
                 saude: "col-start-2",
-                galeria: "col-start-4", // ✅ Mapeado para a 4ª coluna
+                galeria: "col-start-4",
                 mais: "col-start-5",
               };
 
