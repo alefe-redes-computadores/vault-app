@@ -39,7 +39,6 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
-// ✅ IMPORT corrigido: safeUpdateMedicamento e getLocalTodayISO adicionados
 import { db, safeUpdateMedicamento } from "@/lib/db";
 import { HealthNotifications } from "@/components/HealthNotifications";
 import { MedicamentosNotifications } from "@/components/MedicamentosNotifications";
@@ -127,7 +126,6 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
 export default function SaudePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
-  // ✅ CORREÇÃO 1: Fuso horário local para o painel principal
   const hoje = getLocalTodayISO();
 
   const documents = useDocuments();
@@ -136,7 +134,9 @@ export default function SaudePage() {
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
   const { locais } = useLocais();
-  const { doseLogs, marcarDose } = useDoseLogs(hoje);
+  
+  // ✅ CORREÇÃO APLICADA: Mapeando marcarComoTomada para marcarDose
+  const { doseLogs, marcarComoTomada: marcarDose } = useDoseLogs(hoje);
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
@@ -148,7 +148,6 @@ export default function SaudePage() {
 
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
   
-  // ✅ CORREÇÃO 2: Travas anti-clique duplo adicionadas no Dashboard
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
   const [isProcessandoTudo, setIsProcessandoTudo] = useState(false);
 
@@ -181,7 +180,6 @@ export default function SaudePage() {
     return lista;
   }, [medicamentos, doseLogs, horaAtual]);
 
-  // ✅ CORREÇÃO 3: Lógica individual de "Tomar Dose" pelo modal com abatimento de estoque
   const handleTomarDosePendente = async (d: { medicamentoId: string; nome: string; horario: string }) => {
     if (processandoDoseId) return;
     
@@ -189,7 +187,8 @@ export default function SaudePage() {
     trigger("success");
     
     try {
-      await marcarDose(d.medicamentoId, hoje, d.horario, true);
+      // ✅ Chamada com apenas 3 argumentos exigidos pelo hook
+      await marcarDose(d.medicamentoId, hoje, d.horario);
       
       const medOriginal = medicamentos?.find(m => m.id === d.medicamentoId);
       if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
@@ -205,7 +204,6 @@ export default function SaudePage() {
     }
   };
 
-  // ✅ CORREÇÃO 4: Lógica de "Tomar Tudo Agora" segura com abatimento de estoque em massa
   const handleTomarTodasAtrasadas = async () => {
     if (isProcessandoTudo) return;
     setIsProcessandoTudo(true);
@@ -213,7 +211,8 @@ export default function SaudePage() {
     
     try {
       for (const d of dosesPendentesAtrasadas) {
-        await marcarDose(d.medicamentoId, hoje, d.horario, true);
+        // ✅ Chamada com apenas 3 argumentos exigidos pelo hook
+        await marcarDose(d.medicamentoId, hoje, d.horario);
         
         const medOriginal = medicamentos?.find(m => m.id === d.medicamentoId);
         if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
