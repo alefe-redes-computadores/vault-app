@@ -24,6 +24,7 @@ import {
   Calendar,
   DollarSign,
   FileText,
+  CalendarCheck2,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -119,6 +120,11 @@ export default function SaudePage() {
   const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
   const renovacoes = useLiveQuery(() => db.table("renovacoes").toArray(), []) || [];
 
+  // Buscando compromissos de hoje para exibição imediata no painel
+  const consultasHoje = useLiveQuery(() => db.table("consultas").where("data").equals(hoje).toArray(), [hoje]) || [];
+  const cirurgiasHoje = useLiveQuery(() => db.table("cirurgias").where("data").equals(hoje).toArray(), [hoje]) || [];
+  const examesHoje = useLiveQuery(() => db.table("exames").where("data").equals(hoje).toArray(), [hoje]) || [];
+
   // Cálculo do total gasto histórico com renovações e farmácias
   const totalGastoGeral = useMemo(() => {
     let soma = 0;
@@ -156,8 +162,9 @@ export default function SaudePage() {
     }
   };
 
-  const docAlerts = useMemo(() => getDocumentAlerts(documents || []), [documents]);
-  const exameAlerts = useMemo(() => getExameAlerts(exames || []), [exames]);
+  // Filtro estrito: Apenas alertas realmente urgentes (vencidos ou vencem em até 5 dias) para evitar poluição visual
+  const docAlerts = useMemo(() => getDocumentAlerts(documents || []).filter(a => a.daysUntil <= 5), [documents]);
+  const exameAlerts = useMemo(() => getExameAlerts(exames || []).filter(a => a.daysUntil <= 5), [exames]);
 
   const otherAlerts = useMemo(
     () => [...docAlerts, ...exameAlerts].sort((a, b) => a.daysUntil - b.daysUntil),
@@ -207,6 +214,7 @@ export default function SaudePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-5">
+          
           {/* BOTÕES DE AÇÃO RÁPIDA */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -231,6 +239,28 @@ export default function SaudePage() {
                 </button>
               );
             })}
+          </motion.div>
+
+          {/* CARD DE ATALHO INTUITIVO PARA O CRONOGRAMA DE HOJE */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.01 }}
+            onClick={() => { trigger("vibrate"); router.push("/saude/hoje"); }}
+            className="flex items-center justify-between rounded-[24px] border border-ice/40 bg-gradient-to-r from-ice/10 via-surface to-surface p-4 shadow-sm cursor-pointer hover:border-ice/60 transition-all active:scale-[0.985]"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-ice/20 text-ice">
+                <CalendarCheck2 size={22} />
+              </div>
+              <div>
+                <p className="text-xs uppercase font-mono text-ice font-bold">Rotina e Doses de Hoje</p>
+                <p className="text-sm font-semibold text-ink-primary mt-0.5">
+                  Ver cronograma, horários e compromissos
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-ice" />
           </motion.div>
 
           {/* CARD ANALÍTICO DE CUSTOS E RENOVAÇÕES */}
@@ -258,6 +288,41 @@ export default function SaudePage() {
               <ChevronRight size={16} />
             </div>
           </motion.div>
+
+          {/* DESTAQUE DE COMPROMISSOS DE HOJE (SE HOUVER) */}
+          {(consultasHoje.length > 0 || cirurgiasHoje.length > 0 || examesHoje.length > 0) && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: 0.025 }}
+              className="rounded-[26px] border border-coral/30 bg-coral/5 p-4 space-y-2.5"
+            >
+              <div className="flex items-center gap-2">
+                <Calendar size={16} className="text-coral" />
+                <h3 className="font-display text-sm font-bold text-ink-primary">Você tem compromissos hoje!</h3>
+              </div>
+              <div className="space-y-2">
+                {consultasHoje.map((c: any) => (
+                  <div key={c.id} onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)} className="flex items-center justify-between bg-surface p-3 rounded-2xl border border-surface-border/50 cursor-pointer text-xs">
+                    <span className="font-semibold text-ink-primary">Consulta: {c.especialidade} (Dr(a). {c.medico})</span>
+                    <span className="text-coral font-mono font-bold">Hoje</span>
+                  </div>
+                ))}
+                {cirurgiasHoje.map((cir: any) => (
+                  <div key={cir.id} onClick={() => router.push(`/saude/cirurgias/detalhes?id=${cir.id}`)} className="flex items-center justify-between bg-surface p-3 rounded-2xl border border-surface-border/50 cursor-pointer text-xs">
+                    <span className="font-semibold text-ink-primary">Cirurgia: {cir.procedimento}</span>
+                    <span className="text-coral font-mono font-bold">Hoje</span>
+                  </div>
+                ))}
+                {examesHoje.map((ex: any) => (
+                  <div key={ex.id} onClick={() => router.push(`/saude/exames/detalhes?id=${ex.id}`)} className="flex items-center justify-between bg-surface p-3 rounded-2xl border border-surface-border/50 cursor-pointer text-xs">
+                    <span className="font-semibold text-ink-primary">Exame: {ex.nome}</span>
+                    <span className="text-coral font-mono font-bold">Hoje</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* ALERTA DE DOSES PENDENTES */}
           {dosesPendentesAtrasadas.length > 0 && (
@@ -359,7 +424,7 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* ALERTAS RESTANTES (Documentos e Exames) */}
+          {/* ALERTAS RESTANTES (Documentos e Exames Urgentes) */}
           {otherAlerts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -369,7 +434,7 @@ export default function SaudePage() {
               <div className="mb-3 flex items-center gap-2">
                 <FileWarning size={15} className="text-coral" />
                 <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Atenção: Exames e Documentos
+                  Atenção: Prazos Críticos
                 </h2>
               </div>
               
