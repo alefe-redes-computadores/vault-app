@@ -227,6 +227,7 @@ function EditarMedicamentoContent() {
         status: statusAtivo ? "ativo" : "descontinuado",
         motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
         medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
+        data_descontinucao: !statusAtivo ? todayISO() : undefined,
         estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
         estoque_data_referencia: estoqueAtivo ? estoqueDataReferencia : undefined,
         estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
@@ -339,7 +340,7 @@ function EditarMedicamentoContent() {
             )}
             <button onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"><Plus size={16} /><span className="text-sm font-medium">Adicionar Tratamento / CID</span></button>
           </motion.div>
-          
+
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
              <div className="flex items-center gap-2 mb-3"><Palette size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Identidade Visual</h3></div>
              <div className="mb-4">
@@ -362,6 +363,57 @@ function EditarMedicamentoContent() {
                </div>
              </div>
           </motion.div>
+
+          {/* ============================================================ */}
+          {/* BLOCO DE AUDITORIA DE STATUS (ATIVO / DESCONTINUADO) */}
+          {/* ============================================================ */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-ink-primary">Status do Medicamento</h3>
+                <p className="text-xs text-ink-muted">Indique se o uso está ativo ou descontinuado</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setStatusAtivo(!statusAtivo);
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  statusAtivo ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "bg-coral/15 text-coral border border-coral/30"
+                }`}
+              >
+                {statusAtivo ? "Ativo" : "Descontinuado"}
+              </button>
+            </div>
+
+            {!statusAtivo && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3 pt-3 border-t border-surface-border/40">
+                <Input 
+                  label="Motivo da descontinuação" 
+                  placeholder="Ex: Efeito colateral, troca de medicação..." 
+                  value={motivoDescontinuacao} 
+                  onChange={(e) => setMotivoDescontinuacao(e.target.value)} 
+                />
+                
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico responsável pela suspensão</label>
+                  <button 
+                    type="button" 
+                    onClick={() => { trigger("vibrate"); setIsDoctorDescontinuacaoModalOpen(true); }} 
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <UserCheck size={16} className="text-ice shrink-0" />
+                      <span className="truncate text-ink-primary">
+                        {selectedMedicoDescontinuacao ? `Dr(a). ${selectedMedicoDescontinuacao.nome}` : "Selecionar médico da suspensão (opcional)..."}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
@@ -376,7 +428,23 @@ function EditarMedicamentoContent() {
         <SelectionModal isOpen={isPharmacyModalOpen} onClose={() => setIsPharmacyModalOpen(false)} onSelect={(item: any) => setFarmaciaId(item.id)} items={farmacias} title="Farmácia / Local de Retirada" renderItem={(item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p></div>)} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsPharmacyModalOpen(false); router.push("/saude/locais/novo"); }} createNewLabel="Cadastrar Nova Farmácia" />
 
         <SelectionModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} onSelect={(item: any) => { if (!tratamentosSelecionados.includes(item.id!)) setTratamentosSelecionados(prev => [...prev, item.id!]); }} items={tratamentos} title="Vincular a Tratamento/CID" renderItem={(item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>)} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsTratamentoModalOpen(false); setIsCreatingTratamento(true); }} createNewLabel="Novo Tratamento" />
-        
+
+        {/* ============================================================ */}
+        {/* SELECTION MODAL PARA MÉDICO DE DESCONTINUAÇÃO */}
+        {/* ============================================================ */}
+        <SelectionModal 
+          isOpen={isDoctorDescontinuacaoModalOpen} 
+          onClose={() => setIsDoctorDescontinuacaoModalOpen(false)} 
+          onSelect={(item: any) => setMedicoDescontinuacaoId(item.id)} 
+          items={medicos} 
+          title="Médico da Suspensão" 
+          renderItem={(item: any) => (<div><p className="font-medium text-ink-primary">Dr(a). {item.nome}</p></div>)} 
+          getItemId={(item: any) => item.id!} 
+          getItemLabel={(item: any) => item.nome} 
+          onCreateNew={() => { setIsDoctorDescontinuacaoModalOpen(false); router.push("/saude/medicos/novo"); }} 
+          createNewLabel="Cadastrar Novo Médico" 
+        />
+
         <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir medicamento" message={`Tem certeza que deseja excluir "${nome}"?`} confirmLabel="Excluir" cancelLabel="Cancelar" type="danger" />
       </main>
     </PageTransition>
