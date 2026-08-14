@@ -271,3 +271,14 @@ export function estoqueLevelLabel(level: AlertLevel, diasRestantes: number): str
   if (diasRestantes === 0) return "Acaba hoje";
   return `Acaba em ${diasRestantes} dia${diasRestantes !== 1 ? "s" : ""}`;
 }
+
+// ============================================================
+// DATA LOCAL — Garante strings de data no fuso horário do dispositivo
+// ============================================================
+export function getLocalTodayISO(): string {
+  const d = new Date();
+  // Ajusta para o fuso horário local e formata como YYYY-MM-DD
+  const offset = d.getTimezoneOffset();
+  const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+  return localDate.toISOString().split('T')[0];
+}
