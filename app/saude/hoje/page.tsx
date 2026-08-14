@@ -66,6 +66,7 @@ export default function HojePage() {
   
   // Trava anti-race condition rigorosa para cliques duplos
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const doses = useMemo<DoseItemExt[]>(() => {
     const list: DoseItemExt[] = [];
@@ -120,11 +121,16 @@ export default function HojePage() {
   const totalTomadas = doses.filter((d) => d.tomada).length;
   const isLoading = medicamentos === undefined || doseLogs === undefined;
 
+  // ============================================================
+  // handleToggle — COM TRAVA ANTI-RACE CONDITION E ESTORNO
+  // ============================================================
   const handleToggle = async (item: DoseItemExt) => {
-    const chaveDose = `${item.medicamentoId}-${item.horario}`;
-    if (processandoDoseId === chaveDose) return; // Bloqueia duplo clique
+    // 1. Trava anti-race condition (bloqueia se já houver processamento)
+    if (processandoDoseId) return;
 
+    const chaveDose = `${item.medicamentoId}-${item.horario}`;
     setProcessandoDoseId(chaveDose);
+
     const proximaTomada = !item.tomada;
     trigger(proximaTomada ? "success" : "vibrate");
 
@@ -133,9 +139,10 @@ export default function HojePage() {
 
       const medOriginal = medicamentos?.find(m => m.id === item.medicamentoId);
       if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
+        // 2. Lógica de Estorno: Se proximaTomada é false (desmarcou), soma o estoque
         const delta = proximaTomada ? -item.unidadePorDose : item.unidadePorDose;
-        const novoEstoque = Math.max(0, medOriginal.estoque_quantidade + delta);
-        
+        const novoEstoque = Math.max(0, (medOriginal.estoque_quantidade || 0) + delta);
+
         await safeUpdateMedicamento(item.medicamentoId, {
           estoque_quantidade: novoEstoque,
           estoque_data_referencia: hoje
@@ -146,15 +153,23 @@ export default function HojePage() {
           setModalAberto(true);
         }
       }
-    } catch (error) {
-      console.error("Erro ao atualizar dose:", error);
+    } catch (e) {
+      console.error("Erro na dose:", e);
+      showToast("Erro ao atualizar dose", "error");
     } finally {
+      // 3. Libera apenas no finally
       setProcessandoDoseId(null);
     }
   };
 
+  // ============================================================
+  // handleSalvarRenovacaoDoModal — COM TRAVA isProcessing
+  // ============================================================
   const handleSalvarRenovacaoDoModal = async () => {
-    if (!medicamentoSelecionado?.id) return;
+    // Trava anti-duplo clique
+    if (!medicamentoSelecionado?.id || isProcessing) return;
+
+    setIsProcessing(true);
     trigger("success");
 
     try {
@@ -163,7 +178,7 @@ export default function HojePage() {
         medicamento_id: medicamentoSelecionado.id,
         data: hoje,
         preco: precoRenovacao ? Number(precoRenovacao.replace(",", ".")) : undefined,
-        observacoes: observacoesRenovacao || "Renovação rápida gerada pelo alerta de estoque crítico"
+        observacoes: observacoesRenovacao || "Renovação rápida via alerta"
       });
 
       const estoqueAtual = medicamentoSelecionado.estoque_quantidade || 0;
@@ -172,13 +187,15 @@ export default function HojePage() {
         estoque_data_referencia: hoje
       });
 
-      showToast("Estoque atualizado e renovação registrada!", "success");
+      showToast("Sucesso!", "success");
       setModalAberto(false);
       setPrecoRenovacao("");
       setObservacoesRenovacao("");
-    } catch (error) {
-      console.error("Erro ao registrar renovação:", error);
-      showToast("Erro ao registrar renovação.", "error");
+    } catch (e) {
+      console.error("Erro ao renovar:", e);
+      showToast("Erro ao renovar", "error");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -357,7 +374,9 @@ export default function HojePage() {
                 </div>
                 <div className="flex items-center gap-2 pt-2">
                   <button onClick={() => setModalAberto(false)} className="flex-1 rounded-2xl border border-surface-border bg-surface-raised py-3 text-xs font-semibold text-ink-muted">Depois</button>
-                  <button onClick={handleSalvarRenovacaoDoModal} className="flex-1 rounded-2xl bg-emerald-400 py-3 text-xs font-semibold text-void shadow-md">Repor e Renovar</button>
+                  <button onClick={handleSalvarRenovacaoDoModal} disabled={isProcessing} className="flex-1 rounded-2xl bg-emerald-400 py-3 text-xs font-semibold text-void shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isProcessing ? "Salvando..." : "Repor e Renovar"}
+                  </button>
                 </div>
               </motion.div>
             </div>
