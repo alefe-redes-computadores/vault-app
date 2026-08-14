@@ -33,28 +33,28 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     name: 'Saúde',
     icon: 'Heart',
     color: '#EC4899',
-    description: 'Prontuários, receitas, laudos, medicamentos'
+    description: 'Prontuários, receitas, laudos, medicamentos',
   },
   pessoal: {
     id: 'pessoal',
     name: 'Pessoal',
     icon: 'User',
     color: '#3B82F6',
-    description: 'C.I.N, CPF, CNH, Certidões'
+    description: 'C.I.N, CPF, CNH, Certidões',
   },
   empresa: {
     id: 'empresa',
     name: 'Empresa',
     icon: 'Building2',
     color: '#7C9CB5',
-    description: 'Documentos corporativos'
+    description: 'Documentos corporativos',
   },
   outros: {
     id: 'outros',
     name: 'Outros',
     icon: 'FolderOpen',
     color: '#6B7280',
-    description: 'Documentos diversos'
+    description: 'Documentos diversos',
   },
 };
 
@@ -98,7 +98,7 @@ export interface Document {
   type: DocumentType;
   title: string;
   description?: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   attachments: Attachment[];
   is_favorite: boolean;
   vault_id?: string;
@@ -126,51 +126,52 @@ export const TYPE_CATEGORY_MAP: Record<DocumentType, CategoryId[]> = {
   outro: ['pessoal', 'saude', 'empresa', 'outros'],
 };
 
-export const DOCUMENT_FIELDS: Record<
-  DocumentType,
-  Array<{
-    key: string;
-    label: string;
-    type: 'text' | 'date' | 'select';
-    options?: string[];
-    required?: boolean;
-  }>
-> = {
+export type DocumentFieldType = 'text' | 'date' | 'select';
+
+export interface DocumentField {
+  key: string;
+  label: string;
+  type: DocumentFieldType;
+  options?: string[];
+  required?: boolean;
+}
+
+export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
   rg: [
     {
       key: 'modelo',
       label: 'Modelo do Documento',
       type: 'select',
       options: ['C.I.N (Nova Identidade)', 'RG (Antigo)'],
-      required: true
+      required: true,
     },
     {
       key: 'cpf',
       label: 'Número do CPF',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'rg_number',
       label: 'Número do RG (Se modelo antigo)',
-      type: 'text'
+      type: 'text',
     },
     {
       key: 'issue_date',
       label: 'Data de emissão',
       type: 'date',
-      required: true
+      required: true,
     },
     {
       key: 'expiry_date',
       label: 'Data de validade',
-      type: 'date'
+      type: 'date',
     },
     {
       key: 'issuer',
       label: 'Órgão emissor',
       type: 'text',
-      required: true
+      required: true,
     },
   ],
 
@@ -179,8 +180,8 @@ export const DOCUMENT_FIELDS: Record<
       key: 'number',
       label: 'Número do CPF',
       type: 'text',
-      required: true
-    }
+      required: true,
+    },
   ],
 
   cnh: [
@@ -188,26 +189,26 @@ export const DOCUMENT_FIELDS: Record<
       key: 'number',
       label: 'Número da CNH',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'category',
       label: 'Categoria',
       type: 'select',
       options: ['A', 'B', 'AB', 'C', 'D', 'E'],
-      required: true
+      required: true,
     },
     {
       key: 'issue_date',
       label: 'Data de emissão',
       type: 'date',
-      required: true
+      required: true,
     },
     {
       key: 'expiry_date',
       label: 'Data de validade',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -216,39 +217,39 @@ export const DOCUMENT_FIELDS: Record<
       key: 'nome_registrado',
       label: 'Nome Registrado',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'matricula',
       label: 'Matrícula',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'livro',
       label: 'Livro',
-      type: 'text'
+      type: 'text',
     },
     {
       key: 'folha',
       label: 'Folha',
-      type: 'text'
+      type: 'text',
     },
     {
       key: 'termo',
       label: 'Termo',
-      type: 'text'
+      type: 'text',
     },
     {
       key: 'cartorio',
       label: 'Cartório de Registro',
-      type: 'text'
+      type: 'text',
     },
     {
       key: 'data_nascimento',
       label: 'Data de Nascimento',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -257,19 +258,19 @@ export const DOCUMENT_FIELDS: Record<
       key: 'number',
       label: 'Número do Título',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'zona',
       label: 'Zona Eleitoral',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'secao',
       label: 'Seção',
       type: 'text',
-      required: true
+      required: true,
     },
   ],
 
@@ -278,24 +279,24 @@ export const DOCUMENT_FIELDS: Record<
       key: 'institution',
       label: 'Instituição de ensino',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'course',
       label: 'Curso',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'duration',
       label: 'Duração (ex: 120 horas)',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'completion_date',
       label: 'Data de conclusão',
-      type: 'date'
+      type: 'date',
     },
   ],
 
@@ -304,36 +305,36 @@ export const DOCUMENT_FIELDS: Record<
       key: 'medicamento_id',
       label: 'Medicamento',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'dosage',
       label: 'Dosagem',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'medico_id',
       label: 'Médico',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'farmacia_id',
       label: 'Farmácia',
-      type: 'select'
+      type: 'select',
     },
     {
       key: 'prescription_date',
       label: 'Data da receita',
       type: 'date',
-      required: true
+      required: true,
     },
     {
       key: 'renewal_date',
       label: 'Próxima renovação',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -342,25 +343,25 @@ export const DOCUMENT_FIELDS: Record<
       key: 'hospital_id',
       label: 'Hospital',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'medico_id',
       label: 'Médico',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'specialty',
       label: 'Especialidade',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'date',
       label: 'Data',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -369,25 +370,25 @@ export const DOCUMENT_FIELDS: Record<
       key: 'medico_id',
       label: 'Médico',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'specialty',
       label: 'Especialidade',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'hospital_id',
       label: 'Hospital',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'date',
       label: 'Data',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -396,24 +397,24 @@ export const DOCUMENT_FIELDS: Record<
       key: 'from_medico_id',
       label: 'Quem encaminhou (Médico)',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'to_medico_id',
       label: 'Para quem (Médico - opcional)',
-      type: 'select'
+      type: 'select',
     },
     {
       key: 'reason',
       label: 'Motivo',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'date',
       label: 'Data',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -422,29 +423,29 @@ export const DOCUMENT_FIELDS: Record<
       key: 'medico_id',
       label: 'Médico',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'specialty',
       label: 'Especialidade',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'hospital_id',
       label: 'Clínica / Hospital',
-      type: 'select'
+      type: 'select',
     },
     {
       key: 'date',
       label: 'Data da Consulta',
       type: 'date',
-      required: true
+      required: true,
     },
     {
       key: 'reason',
       label: 'Motivo da Consulta',
-      type: 'text'
+      type: 'text',
     },
   ],
 
@@ -453,25 +454,25 @@ export const DOCUMENT_FIELDS: Record<
       key: 'procedure',
       label: 'Procedimento',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'medico_id',
       label: 'Médico Cirurgião',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'hospital_id',
       label: 'Hospital',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'date',
       label: 'Data da Cirurgia',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -480,13 +481,13 @@ export const DOCUMENT_FIELDS: Record<
       key: 'laboratorio_id',
       label: 'Laboratório',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'data_exame',
       label: 'Data do Exame',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -495,19 +496,19 @@ export const DOCUMENT_FIELDS: Record<
       key: 'hospital_id',
       label: 'Local / Hospital',
       type: 'select',
-      required: true
+      required: true,
     },
     {
       key: 'tipo',
       label: 'Tipo de Exame (Ex: Raio-X, RM)',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'data_exame',
       label: 'Data do Exame',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -516,13 +517,13 @@ export const DOCUMENT_FIELDS: Record<
       key: 'orgao',
       label: 'Órgão Emissor / Instituição',
       type: 'text',
-      required: true
+      required: true,
     },
     {
       key: 'validade',
       label: 'Validade',
       type: 'date',
-      required: true
+      required: true,
     },
   ],
 
@@ -530,12 +531,12 @@ export const DOCUMENT_FIELDS: Record<
     {
       key: 'custom_field_1',
       label: 'Campo personalizado 1',
-      type: 'text'
+      type: 'text',
     },
     {
       key: 'custom_field_2',
       label: 'Campo personalizado 2',
-      type: 'text'
+      type: 'text',
     },
   ],
 };
