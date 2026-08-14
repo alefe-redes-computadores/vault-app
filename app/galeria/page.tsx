@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Images, HeartPulse, Shield, User, Plus, 
-  X, Share2, FileText, Download, AlertCircle 
+  Images, HeartPulse, Shield, User, 
+  X, Share2, FileText 
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useGaleria, type GalleryItem } from "@/hooks/useGaleria";
@@ -15,13 +16,21 @@ import { UploadGaleriaModal } from "@/components/UploadGaleriaModal";
 export default function GaleriaPage() {
   const { trigger } = useHapticFeedback();
   const persons = usePersons();
+  const searchParams = useSearchParams();
   
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"saude" | "pessoal">("saude");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [lightboxItem, setLightboxItem] = useState<GalleryItem | null>(null);
 
-  // Motor da Galeria que criamos (traz tudo unificado)
+  // Se o menu inferior central disparar o upload via query params, abre o modal automaticamente
+  useEffect(() => {
+    if (searchParams.get("upload") === "true") {
+      setIsUploadOpen(true);
+    }
+  }, [searchParams]);
+
+  // Motor da Galeria (traz tudo unificado)
   const { items, isLoading } = useGaleria(selectedPerson || undefined);
 
   // Filtra as abas e agrupa por mês/ano dinamicamente
@@ -52,7 +61,6 @@ export default function GaleriaPage() {
           url: item.url,
         });
       } else {
-        // Fallback: abre em nova aba se não tiver Web Share API (ex: PC antigo)
         window.open(item.url, "_blank");
       }
     } catch (error) {
@@ -63,7 +71,7 @@ export default function GaleriaPage() {
   const openLightbox = (item: GalleryItem) => {
     trigger("vibrate");
     if (item.file_type === "pdf") {
-      window.open(item.url, "_blank"); // PDFs abrem direto no visualizador do celular
+      window.open(item.url, "_blank");
     } else {
       setLightboxItem(item);
     }
@@ -148,7 +156,7 @@ export default function GaleriaPage() {
                 <Images size={28} className="text-ink-faint" />
               </div>
               <p className="mt-4 font-display text-lg font-medium text-ink-primary">Nenhum arquivo encontrado</p>
-              <p className="mt-1 max-w-[250px] text-sm text-ink-muted">Clique no botão abaixo para digitalizar seus primeiros comprovantes.</p>
+              <p className="mt-1 max-w-[250px] text-sm text-ink-muted">Toque no botão central (+) no menu inferior para adicionar novos arquivos.</p>
             </div>
           ) : (
             Object.entries(groupedFilteredItems).map(([mesAno, groupItems]) => (
@@ -164,9 +172,13 @@ export default function GaleriaPage() {
                     >
                       {item.file_type === "image" ? (
                         <img 
-                          src={item.thumbnail_url || item.url} 
+                          src={item.url} 
                           alt={item.title} 
                           loading="lazy"
+                          onError={(e) => {
+                            // Oculta elemento se der erro de carregamento da imagem
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
                           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                         />
                       ) : (
@@ -176,7 +188,7 @@ export default function GaleriaPage() {
                         </div>
                       )}
                       
-                      {/* Degradê e Título (Aparece no fundo do quadrado) */}
+                      {/* Degradê e Título */}
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-void/90 via-void/40 to-transparent p-2 pt-6">
                         <p className="truncate text-[10px] font-medium text-white/90">{item.title}</p>
                       </div>
@@ -187,16 +199,6 @@ export default function GaleriaPage() {
             ))
           )}
         </section>
-
-        {/* FAB (Botão Flutuante de Upload) */}
-        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-5 z-30">
-          <button
-            onClick={() => { trigger("vibrate"); setIsUploadOpen(true); }}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-[0_8px_30px_rgb(125,211,252,0.3)] transition-transform active:scale-90"
-          >
-            <Plus size={24} />
-          </button>
-        </div>
 
         {/* MODAL DE UPLOAD INTELIGENTE */}
         <UploadGaleriaModal 
@@ -223,12 +225,12 @@ export default function GaleriaPage() {
                 </button>
               </div>
 
-              {/* Imagem (Permite zoom pelo celular nativamente) */}
-              <div className="flex-1 overflow-auto p-4">
+              {/* Imagem em tela cheia */}
+              <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
                 <img 
                   src={lightboxItem.url} 
                   alt={lightboxItem.title} 
-                  className="h-full w-full object-contain"
+                  className="max-h-full max-w-full object-contain rounded-xl"
                 />
               </div>
 
