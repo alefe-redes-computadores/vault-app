@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, CheckCircle2, Circle, Pill, Clock, 
-  CircleDot, AlertTriangle, ShieldAlert, Brain, Flame, HeartPulse, Activity, Stethoscope 
+  AlertTriangle, ShieldAlert, Brain, Flame, HeartPulse, Activity, Stethoscope, Calendar, FlaskConical, PlusCircle, X, DollarSign
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
@@ -13,20 +13,12 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { db, safeAddRenovacao, safeUpdateMedicamento } from "@/lib/db";
 import { computeEstoqueInfo } from "@/lib/health-utils";
+import { useToast } from "@/components/ToastProvider";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function getTratamentoIcon(nome: string) {
-  const n = (nome || "").toLowerCase();
-  if (n.includes("tdah")) return Brain;
-  if (n.includes("dor") || n.includes("neuropática")) return Flame;
-  if (n.includes("depress")) return HeartPulse;
-  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
-  return Activity;
 }
 
 function getPeriodoDoDia(horario: string) {
@@ -44,6 +36,8 @@ interface DoseItemExt {
   tomada: boolean;
   cor: string;
   estoqueRestante: number;
+  unidadeMedida: string;
+  unidadePorDose: number;
   medicoNome?: string;
   tratamentoNome?: string;
 }
@@ -51,14 +45,26 @@ interface DoseItemExt {
 export default function HojePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const hoje = todayISO();
 
   const { medicamentos } = useMedicamentos();
   const { doseLogs, marcarDose } = useDoseLogs(hoje);
 
-  // Busca tratamentos e médicos para enriquecer os dados relacionais
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
+
+  // Buscando eventos clínicos do dia atual
+  const consultas = useLiveQuery(() => db.table("consultas").where("data").equals(hoje).toArray(), [hoje]) || [];
+  const cirurgias = useLiveQuery(() => db.table("cirurgias").where("data").equals(hoje).toArray(), [hoje]) || [];
+  const examesDoDia = useLiveQuery(() => db.table("exames").where("data").equals(hoje).toArray(), [hoje]) || [];
+
+  // Estados para o Modal Inteligente de Estoque Crítico / Nova Renovação
+  const [modalAberto, setModalAberto] = useState(false);
+  const [medicamentoSelecionado, setMedicamentoSelecionado] = useState<any>(null);
+  const [precoRenovacao, setPrecoRenovacao] = useState("");
+  const [observacoesRenovacao, setObservacoesRenovacao] = useState("");
+  const [adicionarMaisEstoque, setAdicionarMaisEstoque] = useState(30);
 
   const doses = useMemo<DoseItemExt[]>(() => {
     const list: DoseItemExt[] = [];
@@ -67,8 +73,6 @@ export default function HojePage() {
       
       const estoqueInfo = computeEstoqueInfo(med);
       const medicoObj = medicos.find(m => m.id === med.medico_id);
-      
-      // Busca vínculo de tratamento (direto ou via N:N)
       const tratamentoObj = tratamentos.find(t => t.id === med.tratamento_id);
 
       for (const horario of med.estoque_horarios) {
@@ -85,6 +89,8 @@ export default function HojePage() {
           tomada: !!log?.tomado_em,
           cor: (med as any).cor || "#8B5CF6",
           estoqueRestante: estoqueInfo?.quantidadeRestante ?? 0,
+          unidadeMedida: med.estoque_unidade_medida || "unidades",
+          unidadePorDose: med.estoque_unidade_por_dose || 1,
           medicoNome: medicoObj?.nome || med.medico,
           tratamentoNome: tratamentoObj?.nome,
         });
@@ -93,7 +99,6 @@ export default function HojePage() {
     return list.sort((a, b) => a.horario.localeCompare(b.horario));
   }, [medicamentos, doseLogs, medicos, tratamentos]);
 
-  // Agrupamento por Período do Dia (Manhã, Tarde, Noite)
   const dosesAgrupadas = useMemo(() => {
     const grupos: Record<string, { label: string; sub: string; items: DoseItemExt[] }> = {
       manha: { label: "Manhã", sub: "Início do dia", items: [] },
@@ -115,8 +120,60 @@ export default function HojePage() {
   const isLoading = medicamentos === undefined || doseLogs === undefined;
 
   const handleToggle = async (item: DoseItemExt) => {
-    trigger(item.tomada ? "vibrate" : "success");
-    await marcarDose(item.medicamentoId, hoje, item.horario, !item.tomada);
+    const proximaTomada = !item.tomada;
+    trigger(proximaTomada ? "success" : "vibrate");
+
+    // 1. Marca ou desmarca a dose no log
+    await marcarDose(item.medicamentoId, hoje, item.horario, proximaTomada);
+
+    // 2. Abatimento inteligente de estoque local se tomado
+    const medOriginal = medicamentos?.find(m => m.id === item.medicamentoId);
+    if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
+      const delta = proximaTomada ? -item.unidadePorDose : item.unidadePorDose;
+      const novoEstoque = Math.max(0, medOriginal.estoque_quantidade + delta);
+      
+      await safeUpdateMedicamento(item.medicamentoId, {
+        estoque_quantidade: novoEstoque,
+        estoque_data_referencia: hoje
+      });
+
+      // Se o estoque estiver crítico (<= 3 doses) e o usuário marcou como tomado, sugere renovação
+      if (proximaTomada && (novoEstoque - (medOriginal.estoque_horarios?.length || 1) * item.unidadePorDose) <= 3) {
+        setMedicamentoSelecionado(medOriginal);
+        setModalAberto(true);
+      }
+    }
+  };
+
+  const handleSalvarRenovacaoDoModal = async () => {
+    if (!medicamentoSelecionado?.id) return;
+    trigger("success");
+
+    try {
+      // Cria o registro de renovação com preço e data atual
+      await safeAddRenovacao({
+        user_id: medicamentoSelecionado.user_id,
+        medicamento_id: medicamentoSelecionado.id,
+        data: hoje,
+        preco: precoRenovacao ? Number(precoRenovacao.replace(",", ".")) : undefined,
+        observacoes: observacoesRenovacao || "Renovação rápida gerada pelo alerta de estoque crítico"
+      });
+
+      // Atualiza o estoque do medicamento somando as novas unidades
+      const estoqueAtual = medicamentoSelecionado.estoque_quantidade || 0;
+      await safeUpdateMedicamento(medicamentoSelecionado.id, {
+        estoque_quantidade: estoqueAtual + Number(adicionarMaisEstoque),
+        estoque_data_referencia: hoje
+      });
+
+      showToast("Estoque atualizado e renovação registrada com sucesso!", "success");
+      setModalAberto(false);
+      setPrecoRenovacao("");
+      setObservacoesRenovacao("");
+    } catch (error) {
+      console.error("Erro ao registrar renovação:", error);
+      showToast("Erro ao registrar renovação.", "error");
+    }
   };
 
   if (isLoading) {
@@ -132,10 +189,7 @@ export default function HojePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => {
-                  trigger("vibrate");
-                  router.back();
-                }}
+                onClick={() => { trigger("vibrate"); router.back(); }}
                 aria-label="Voltar"
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
@@ -164,6 +218,67 @@ export default function HojePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-6">
+          
+          {/* COMPROMISSOS E EXAMES DO DIA */}
+          {(consultas.length > 0 || cirurgias.length > 0 || examesDoDia.length > 0) && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <Calendar size={16} className="text-coral" />
+                <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
+                  Compromissos e Exames de Hoje
+                </h2>
+              </div>
+
+              <div className="space-y-2.5">
+                {consultas.map((c: any) => (
+                  <div key={c.id} onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${c.id}`); }} className="flex items-center justify-between rounded-[24px] border border-ice/30 bg-ice/5 p-4 cursor-pointer active:scale-[0.98] shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice/20 text-ice">
+                        <Stethoscope size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-ink-primary">Consulta agendada</p>
+                        <p className="text-xs text-ink-muted">{c.especialidade || "Atendimento clínico"} • Dr(a). {c.medico}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono text-ice font-bold bg-ice/10 px-2.5 py-1 rounded-full">Hoje</span>
+                  </div>
+                ))}
+
+                {cirurgias.map((cir: any) => (
+                  <div key={cir.id} onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }} className="flex items-center justify-between rounded-[24px] border border-coral/30 bg-coral/5 p-4 cursor-pointer active:scale-[0.98] shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-coral/20 text-coral">
+                        <Activity size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-ink-primary">Procedimento Cirúrgico</p>
+                        <p className="text-xs text-ink-muted">{cir.procedimento || "Cirurgia programada"}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono text-coral font-bold bg-coral/10 px-2.5 py-1 rounded-full">Hoje</span>
+                  </div>
+                ))}
+
+                {examesDoDia.map((ex: any) => (
+                  <div key={ex.id} onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${ex.id}`); }} className="flex items-center justify-between rounded-[24px] border border-emerald-400/30 bg-emerald-400/5 p-4 cursor-pointer active:scale-[0.98] shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/20 text-emerald-400">
+                        <FlaskConical size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-ink-primary">Realização de Exame</p>
+                        <p className="text-xs text-ink-muted">{ex.nome} • {ex.laboratorio || "Laboratório"}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono text-emerald-400 font-bold bg-emerald-400/10 px-2.5 py-1 rounded-full">Hoje</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* CRONOGRAMA DE DOSES */}
           {doses.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -238,7 +353,6 @@ export default function HojePage() {
                               </span>
                             </div>
 
-                            {/* Tags Cruzadas: Tratamento e Médico (Corrigido para tratamentoNome) */}
                             <div className="mt-1 flex items-center gap-2 flex-wrap">
                               {item.tratamentoNome && (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-violet-400/10 text-violet-300 border border-violet-400/20">
@@ -252,16 +366,14 @@ export default function HojePage() {
                               )}
                             </div>
 
-                            {/* Alerta de Estoque Baixo */}
-                            {item.estoqueRestante <= 5 && !item.tomada && (
-                              <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-coral">
-                                <AlertTriangle size={12} /> Estoque crítico ({item.estoqueRestante} restantes)
+                            {item.estoqueRestante <= 3 && (
+                              <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-coral animate-pulse">
+                                <AlertTriangle size={12} /> Estoque crítico ({item.estoqueRestante} {item.unidadeMedida} restantes)
                               </div>
                             )}
                           </div>
                         </div>
 
-                        {/* Horário da Dose */}
                         <div className="shrink-0 text-right">
                           <span
                             className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-mono font-bold ${
@@ -284,6 +396,94 @@ export default function HojePage() {
             ))
           )}
         </section>
+
+        {/* MODAL INTELIGENTE DE ESTOQUE CRÍTICO / NOVA RENOVAÇÃO */}
+        <AnimatePresence>
+          {modalAberto && medicamentoSelecionado && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="w-full max-w-md overflow-hidden rounded-[32px] border border-surface-border bg-surface p-6 shadow-2xl space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-coral/20 text-coral">
+                      <AlertTriangle size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-base font-bold text-ink-primary">Estoque Baixo!</h3>
+                      <p className="text-xs text-ink-muted">{medicamentoSelecionado.nome}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setModalAberto(false)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-raised text-ink-muted hover:text-ink-primary"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  As doses deste medicamento estão acabando. Deseja registrar a renovação desta receita agora e repor o estoque no sistema?
+                </p>
+
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <label className="text-[11px] font-medium text-ink-muted block mb-1">Unidades a adicionar no estoque</label>
+                    <input
+                      type="number"
+                      value={adicionarMaisEstoque}
+                      onChange={(e) => setAdicionarMaisEstoque(Number(e.target.value))}
+                      className="w-full rounded-2xl border border-surface-border/60 bg-surface-raised px-4 py-3 text-sm text-ink-primary outline-none focus:border-ice"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-medium text-ink-muted block mb-1">Preço pago (R$) — Opcional</label>
+                    <div className="relative">
+                      <DollarSign size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400" />
+                      <input
+                        type="text"
+                        placeholder="0,00"
+                        value={precoRenovacao}
+                        onChange={(e) => setPrecoRenovacao(e.target.value)}
+                        className="w-full rounded-2xl border border-surface-border/60 bg-surface-raised pl-10 pr-4 py-3 text-sm text-ink-primary outline-none focus:border-ice font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-medium text-ink-muted block mb-1">Observações da Renovação</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Comprado na Farmácia X / Retirado pelo SUS"
+                      value={observacoesRenovacao}
+                      onChange={(e) => setObservacoesRenovacao(e.target.value)}
+                      className="w-full rounded-2xl border border-surface-border/60 bg-surface-raised px-4 py-3 text-sm text-ink-primary outline-none focus:border-ice"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-3">
+                  <button
+                    onClick={() => setModalAberto(false)}
+                    className="flex-1 rounded-2xl border border-surface-border bg-surface-raised py-3 text-xs font-semibold text-ink-muted hover:text-ink-primary active:scale-95"
+                  >
+                    Depois
+                  </button>
+                  <button
+                    onClick={handleSalvarRenovacaoDoModal}
+                    className="flex-1 rounded-2xl bg-emerald-400 py-3 text-xs font-semibold text-void shadow-md shadow-emerald-400/20 active:scale-95"
+                  >
+                    Repor e Renovar
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </main>
     </PageTransition>
   );
