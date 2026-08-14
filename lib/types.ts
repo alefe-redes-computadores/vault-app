@@ -8,6 +8,7 @@ export interface Person {
   email?: string;
   phone?: string;
   avatar_url?: string;
+  color: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -187,7 +188,7 @@ export interface SyncQueueItem {
     | 'consultas'
     | 'cirurgias'
     | 'doseLogs'
-    | 'credentials' 
+    | 'credentials'
     | 'cards'
     | 'instituicoes'
     | 'tratamentos'
@@ -209,13 +210,13 @@ export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
 export interface Medicamento {
   id?: string;
   user_id: string;
-  person_id?: string; 
+  person_id?: string;
   document_id: string;
   nome: string;
   dosagem: string;
   medico_id?: string;
   farmacia_id?: string;
-  tratamento_ids?: string[]; 
+  tratamento_ids?: string[];
   medico: string;
   farmacia?: string;
   data_receita: string;
@@ -232,13 +233,13 @@ export interface Medicamento {
   estoque_horarios?: string[];
   estoque_unidade_por_dose?: number;
   estoque_unidade_medida?: string;
-  formato?: string;                    
-  cores?: string[];                    
-  motivo_descontinuacao?: string;      
-  medico_descontinuacao_id?: string;   
-  medico_descontinuacao_nome?: string; 
+  formato?: string;
+  cores?: string[];
+  motivo_descontinuacao?: string;
+  medico_descontinuacao_id?: string;
+  medico_descontinuacao_nome?: string;
   substituido_por_id?: string;
-  data_descontinuacao?: string;        
+  data_descontinuacao?: string;
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -247,7 +248,7 @@ export interface Medicamento {
 export interface Renovacao {
   id?: string;
   user_id: string;
-  person_id?: string; 
+  person_id?: string;
   medicamento_id: string;
   local_id?: string;
   data: string;
@@ -264,10 +265,10 @@ export interface DoseLog {
   user_id: string;
   person_id?: string;
   medicamento_id: string;
-  data: string; 
-  horario: string; 
+  data: string;
+  horario: string;
   tomado_em?: string;
-  ignorado_em?: string; // ✅ ADICIONADO AQUI PARA SUPORTAR O BOTÃO "IGNORAR"
+  ignorado_em?: string;
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -276,7 +277,7 @@ export interface DoseLog {
 export interface Exame {
   id?: string;
   user_id?: string;
-  person_id?: string; 
+  person_id?: string;
   nome: string;
   laboratorio_id?: string;
   medico_id?: string;
@@ -366,21 +367,91 @@ export interface VaultDocument {
 // ============================================================
 // 8. MÓDULO SAÚDE E ENTIDADES PAI
 // ============================================================
-export interface Medico { id?: string; user_id: string; nome: string; especialidade?: string; crm?: string; telefone?: string; email?: string; created_at: string; updated_at: string; synced: boolean; }
-export interface Farmacia { id?: string; user_id: string; nome: string; endereco?: string; telefone?: string; created_at: string; updated_at: string; synced: boolean; }
-export interface Hospital { id?: string; user_id: string; nome: string; endereco?: string; telefone?: string; created_at: string; updated_at: string; synced: boolean; }
-export interface LocalSaude { id?: string; user_id: string; nome: string; endereco?: string; telefone?: string; tipo?: string; created_at?: string; updated_at?: string; synced?: boolean; }
-export interface Laboratorio { id?: string; user_id: string; nome: string; endereco?: string; telefone?: string; created_at: string; updated_at: string; synced: boolean; }
-export interface InstituicaoEnsino { id?: string; user_id: string; nome: string; cnpj?: string; created_at: string; updated_at: string; synced: boolean; }
-export interface Cid { id?: string; user_id: string; codigo: string; descricao: string; created_at: string; updated_at: string; synced: boolean; }
+export interface Medico {
+  id?: string;
+  user_id: string;
+  nome: string;
+  especialidade?: string;
+  crm?: string;
+  telefone?: string;
+  email?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface Farmacia {
+  id?: string;
+  user_id: string;
+  nome: string;
+  endereco?: string;
+  telefone?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface Hospital {
+  id?: string;
+  user_id: string;
+  nome: string;
+  endereco?: string;
+  telefone?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface LocalSaude {
+  id?: string;
+  user_id: string;
+  nome: string;
+  endereco?: string;
+  telefone?: string;
+  tipo?: string;
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
+}
+
+export interface Laboratorio {
+  id?: string;
+  user_id: string;
+  nome: string;
+  endereco?: string;
+  telefone?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface InstituicaoEnsino {
+  id?: string;
+  user_id: string;
+  nome: string;
+  cnpj?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface Cid {
+  id?: string;
+  user_id: string;
+  codigo: string;
+  descricao: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
 
 export interface Tratamento {
   id?: string;
   user_id: string;
-  person_id?: string; 
+  person_id?: string;
   nome: string;
-  cid_id?: string; 
-  condicao?: string; 
+  cid_id?: string;
+  condicao?: string;
   data_inicio?: string;
   status: 'ativo' | 'concluido' | 'suspenso';
   created_at: string;
@@ -389,7 +460,7 @@ export interface Tratamento {
 }
 
 // ============================================================
-// 9. GERENCIADOR DE SENHAS (CREDENCIAIS) 
+// 9. GERENCIADOR DE SENHAS (CREDENCIAIS)
 // ============================================================
 export interface Credential {
   id?: string;
@@ -408,7 +479,7 @@ export interface Credential {
 }
 
 // ============================================================
-// 10. BANCOS & CARTÕES (CARDS) 
+// 10. BANCOS & CARTÕES (CARDS)
 // ============================================================
 export type CardType = 'cartao_credito' | 'cartao_debito' | 'conta_corrente' | 'conta_poupanca' | 'conta_digital';
 export type CardBrand = 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard' | 'unknown';
@@ -416,17 +487,17 @@ export type CardBrand = 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard' | '
 export interface BankCard {
   id?: string;
   user_id: string;
-  title: string;                    
-  bank_name: string;                
-  type: CardType;                   
-  card_number_encrypted?: string;   
-  card_holder?: string;             
-  brand?: CardBrand;                
-  expiry_date?: string;             
-  cvv_encrypted?: string;           
-  agency?: string;                  
-  account?: string;                 
-  notes?: string;                   
+  title: string;
+  bank_name: string;
+  type: CardType;
+  card_number_encrypted?: string;
+  card_holder?: string;
+  brand?: CardBrand;
+  expiry_date?: string;
+  cvv_encrypted?: string;
+  agency?: string;
+  account?: string;
+  notes?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
