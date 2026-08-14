@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Loader2, ShieldAlert } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { exportAllData, downloadJSON } from "@/lib/export";
@@ -78,7 +78,6 @@ export function ExportButton({ variant = "icon" }: ExportButtonProps) {
         confirmLabel="Entendido, exportar"
         cancelLabel="Cancelar"
         type="warning"
-        icon={<ShieldAlert className="text-amber-400" size={24} />}
       />
     </>
   );
