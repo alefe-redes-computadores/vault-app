@@ -260,9 +260,11 @@ export interface SyncQueueItem {
     | 'medicos'
     | 'farmacias'
     | 'hospitais'
-    | 'locais' // ✅ Adicionado à fila de sync
+    | 'locais'
     | 'laboratorios'
     | 'exames'
+    | 'consultas'
+    | 'cirurgias'
     | 'doseLogs'
     | 'credentials' 
     | 'cards'
@@ -323,9 +325,9 @@ export interface Renovacao {
   user_id: string;
   person_id?: string; 
   medicamento_id: string;
-  local_id?: string;     // ✅ Vínculo relacional com locais/postos
+  local_id?: string;
   data: string;
-  preco?: number;        // ✅ Campo de custo relacional
+  preco?: number;
   anexo_url?: string;
   observacoes?: string;
   created_at?: string;
@@ -363,6 +365,40 @@ export interface Exame {
   synced?: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+// ✅ Adicionadas interfaces Cirurgia e Consulta que faltavam no export
+export interface Cirurgia {
+  id?: string;
+  user_id: string;
+  person_id?: string;
+  procedimento: string;
+  data: string;
+  medico_id?: string;
+  hospital_id?: string;
+  status: 'agendada' | 'realizada' | 'cancelada';
+  observacoes?: string;
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
+}
+
+export interface Consulta {
+  id?: string;
+  user_id: string;
+  person_id?: string;
+  especialidade: string;
+  medico: string;
+  medico_id?: string;
+  hospital_id?: string;
+  data: string;
+  horario?: string;
+  motivo?: string;
+  observacoes?: string;
+  status: 'agendada' | 'realizada' | 'cancelada';
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
 }
 
 // ============================================================
@@ -441,7 +477,6 @@ export interface Hospital {
   synced: boolean;
 }
 
-// ✅ Nova interface para Postos de Saúde e Clínicas
 export interface LocalSaude {
   id?: string;
   user_id: string;
