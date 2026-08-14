@@ -16,7 +16,9 @@ import {
   ShieldAlert,
   ChevronRight,
   History,
-  FileText
+  FileText,
+  Stethoscope,
+  ArrowLeftRight
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -24,6 +26,7 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { DocumentCard } from "@/components/DocumentCard";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { useMedicos } from "@/hooks/useMedicos";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Tratamento, Document } from "@/lib/types";
@@ -66,6 +69,7 @@ function TratamentoContent() {
   const id = searchParams.get("id");
   const { favorite } = useSafeDb();
   const { medicamentos } = useMedicamentos();
+  const { medicos } = useMedicos();
 
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +116,12 @@ function TratamentoContent() {
     });
   }, [medicamentos, id, linkedDocuments]);
 
+  // Cruzamento relacional dos médicos associados aos medicamentos deste tratamento
+  const linkedMedicos = useMemo(() => {
+    const medIds = new Set(linkedMedicamentos.map((m: any) => m.medico_id).filter(Boolean));
+    return medicos.filter(med => medIds.has(med.id));
+  }, [linkedMedicamentos, medicos]);
+
   const handleFavoriteToggle = async (docId: string) => {
     await favorite(docId);
     trigger("vibrate");
@@ -121,10 +131,10 @@ function TratamentoContent() {
   if (!tratamento) return null;
 
   const IconComp = getTratamentoIcon(tratamento.nome);
-  const tratamentoCor = "#8B5CF6"; // Cor padrão roxo segura para o tipo Tratamento
+  const tratamentoCor = (tratamento as any).cor || "#8B5CF6"; 
   
-  const medicamentosAtivos = linkedMedicamentos.filter(m => m.status !== "descontinuado");
-  const medicamentosDescontinuados = linkedMedicamentos.filter(m => m.status === "descontinuado");
+  const medicamentosAtivos = linkedMedicamentos.filter((m: any) => m.status !== "descontinuado");
+  const medicamentosDescontinuados = linkedMedicamentos.filter((m: any) => m.status === "descontinuado");
 
   return (
     <PageTransition>
@@ -220,6 +230,31 @@ function TratamentoContent() {
             </div>
           </motion.div>
 
+          {/* EQUIPE CLÍNICA (Cruzamento de Médicos) */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
+            <div className="flex items-center gap-2 pl-1">
+              <Stethoscope size={16} className="text-ice" />
+              <h3 className="font-display text-base font-semibold text-ink-primary">Equipe Clínica</h3>
+            </div>
+            {linkedMedicos.length === 0 ? (
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
+                <p className="text-xs text-ink-muted">Nenhum médico vinculado aos medicamentos deste tratamento.</p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {linkedMedicos.map(m => (
+                  <button 
+                    key={m.id} 
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${m.id}`); }} 
+                    className="rounded-full bg-surface border border-surface-border px-4 py-2 text-sm font-medium text-ink-primary shadow-sm hover:border-ice/30 transition-all active:scale-95"
+                  >
+                    Dr(a). {m.nome}
+                  </button>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
@@ -276,7 +311,7 @@ function TratamentoContent() {
                     )}
                     {med.medicamento_substituto_nome && (
                       <div className="flex items-center gap-1.5 text-[11px] font-medium text-ice mt-2 bg-ice/10 w-fit px-2 py-1 rounded-md border border-ice/10">
-                        <ArrowLeft size={10} className="rotate-180" />
+                        <ArrowLeftRight size={10} />
                         Substituído por: {med.medicamento_substituto_nome}
                       </div>
                     )}
