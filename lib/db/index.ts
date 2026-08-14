@@ -47,6 +47,7 @@ class VaultDB extends Dexie {
   constructor() {
     super('vault-db');
     
+    // ... Versões antigas (mantidas para compatibilidade retroativa no celular)
     this.version(2).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed' });
     this.version(3).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, medicamento_id, data' });
     this.version(4).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced' });
@@ -61,31 +62,9 @@ class VaultDB extends Dexie {
     this.version(13).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', laboratorios: 'id, user_id, nome, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced', cards: 'id, user_id, title, bank_name, type, brand, synced', instituicoes: 'id, user_id, nome, synced', tratamentos: 'id, user_id, nome, status, synced' });
     this.version(14).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', laboratorios: 'id, user_id, nome, synced', exames: 'id, user_id, nome, laboratorio, data, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced', cards: 'id, user_id, title, bank_name, type, brand, synced', instituicoes: 'id, user_id, nome, synced', tratamentos: 'id, user_id, nome, status, synced' });
     this.version(15).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, document_id, nome, medico, proxima_renovacao, tratamento_id, status', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', laboratorios: 'id, user_id, nome, synced', exames: 'id, user_id, nome, laboratorio, data, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced', cards: 'id, user_id, title, bank_name, type, brand, synced', instituicoes: 'id, user_id, nome, synced', tratamentos: 'id, user_id, nome, status, synced', medicamento_tratamentos: 'id, medicamento_id, tratamento_id', anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at' });
-
-    this.version(16).stores({
-      persons: 'id, user_id, name, synced, created_at',
-      documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
-      syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed',
-      medicamentos: 'id, user_id, person_id, document_id, nome, medico_id, farmacia_id, proxima_renovacao, status, tratamento_id',
-      renovacoes: 'id, user_id, medicamento_id, data',
-      vaults: 'id, user_id, name, synced, created_at',
-      vaultMembers: 'id, vault_id, user_id, email, status, synced',
-      medicos: 'id, user_id, nome, especialidade, synced',
-      farmacias: 'id, user_id, nome, synced',
-      hospitais: 'id, user_id, nome, synced',
-      laboratorios: 'id, user_id, nome, synced',
-      exames: 'id, user_id, person_id, nome, laboratorio_id, medico_id, data, synced',
-      doseLogs: 'id, user_id, medicamento_id, data, horario',
-      credentials: 'id, user_id, vault_id, title, category, synced',
-      cards: 'id, user_id, title, bank_name, type, brand, synced',
-      instituicoes: 'id, user_id, nome, synced',
-      tratamentos: 'id, user_id, person_id, nome, cid_id, status, synced',
-      medicamento_tratamentos: 'id, medicamento_id, tratamento_id',
-      anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at',
-      cids: 'id, user_id, codigo, descricao, synced',
-      exame_tratamentos: 'id, exame_id, tratamento_id'
-    });
-
+    this.version(16).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, user_id, person_id, document_id, nome, medico_id, farmacia_id, proxima_renovacao, status, tratamento_id', renovacoes: 'id, user_id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced', medicos: 'id, user_id, nome, especialidade, synced', farmacias: 'id, user_id, nome, synced', hospitais: 'id, user_id, nome, synced', laboratorios: 'id, user_id, nome, synced', exames: 'id, user_id, person_id, nome, laboratorio_id, medico_id, data, synced', doseLogs: 'id, user_id, medicamento_id, data, horario', credentials: 'id, user_id, vault_id, title, category, synced', cards: 'id, user_id, title, bank_name, type, brand, synced', instituicoes: 'id, user_id, nome, synced', tratamentos: 'id, user_id, person_id, nome, cid_id, status, synced', medicamento_tratamentos: 'id, medicamento_id, tratamento_id', anexos_clinicos: 'id, user_id, person_id, tratamento_id, medicamento_id, tipo, *tags, created_at', cids: 'id, user_id, codigo, descricao, synced', exame_tratamentos: 'id, exame_id, tratamento_id' });
+    
+    // Versão 17 FINAL E LIMPA
     this.version(17).stores({
       persons: 'id, user_id, name, synced, created_at',
       documents: 'id, user_id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id',
@@ -120,31 +99,21 @@ export const db = new VaultDB();
 function nowIso() { return new Date().toISOString(); }
 function triggerSyncProcess() { if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync:process')); }
 
-// FUNÇÕES DE SINCRONIZAÇÃO N:N (Medicamentos <-> Tratamentos)
 export async function syncMedicamentoTratamentos(medicamentoId: string, tratamentoIds: string[]): Promise<void> {
   await db.transaction('rw', db.medicamento_tratamentos, async () => {
     await db.medicamento_tratamentos.where('medicamento_id').equals(medicamentoId).delete();
-    const novosVinculos = tratamentoIds.map(tId => ({
-      id: generateId(),
-      medicamento_id: medicamentoId,
-      tratamento_id: tId
-    }));
-    if (novosVinculos.length > 0) {
-      await db.medicamento_tratamentos.bulkAdd(novosVinculos);
-    }
+    const novosVinculos = tratamentoIds.map(tId => ({ id: generateId(), medicamento_id: medicamentoId, tratamento_id: tId }));
+    if (novosVinculos.length > 0) { await db.medicamento_tratamentos.bulkAdd(novosVinculos); }
   });
 }
 
-// ============================================================
-// FUNÇÕES CRUD PARA LOCAIS (Postos / Clínicas) - EXPORTADAS
-// ============================================================
 export async function safeAddLocal(data: Omit<LocalSaude, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
   const full: LocalSaude = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
   return db.transaction('rw', db.locais, db.syncQueue, async () => {
     await db.locais.add(full);
-    await db.syncQueue.add({ id: generateId(), table: 'locais' as any, operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'locais', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
     return id;
   });
@@ -155,7 +124,7 @@ export async function safeUpdateLocal(id: string, changes: Partial<LocalSaude>):
   await db.transaction('rw', db.locais, db.syncQueue, async () => {
     await db.locais.update(id, { ...changes, updated_at: timestamp, synced: false });
     const updated = await db.locais.get(id);
-    await db.syncQueue.add({ id: generateId(), table: 'locais' as any, operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'locais', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
@@ -164,12 +133,11 @@ export async function safeDeleteLocal(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.locais, db.syncQueue, async () => {
     await db.locais.delete(id);
-    await db.syncQueue.add({ id: generateId(), table: 'locais' as any, operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'locais', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
 
-// FUNÇÕES CRUD PARA EXAMES
 export async function safeAddExame(data: Omit<Exame, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -201,7 +169,6 @@ export async function safeDeleteExame(id: string): Promise<void> {
   });
 }
 
-// FUNÇÕES CRUD EXISTENTES
 export async function safeAddPerson(person: Omit<Person, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -626,9 +593,6 @@ export async function safeDeleteTratamento(id: string): Promise<void> {
   });
 }
 
-// ============================================================
-// FUNÇÕES CRUD PARA CIDs
-// ============================================================
 export async function safeAddCid(data: Omit<Cid, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -660,16 +624,13 @@ export async function safeDeleteCid(id: string): Promise<void> {
   });
 }
 
-// ============================================================
-// FUNÇÕES CRUD PARA CONSULTAS
-// ============================================================
 export async function safeAddConsulta(data: Omit<Consulta, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
   const full: Consulta = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
   return db.transaction('rw', db.consultas, db.syncQueue, async () => {
     await db.consultas.add(full);
-    await db.syncQueue.add({ id: generateId(), table: 'consultas' as any, operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'consultas', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
     return id;
   });
@@ -680,7 +641,7 @@ export async function safeUpdateConsulta(id: string, changes: Partial<Consulta>)
   await db.transaction('rw', db.consultas, db.syncQueue, async () => {
     await db.consultas.update(id, { ...changes, updated_at: timestamp, synced: false });
     const updated = await db.consultas.get(id);
-    await db.syncQueue.add({ id: generateId(), table: 'consultas' as any, operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'consultas', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
@@ -689,21 +650,18 @@ export async function safeDeleteConsulta(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.consultas, db.syncQueue, async () => {
     await db.consultas.delete(id);
-    await db.syncQueue.add({ id: generateId(), table: 'consultas' as any, operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'consultas', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
 
-// ============================================================
-// FUNÇÕES CRUD PARA CIRURGIAS / PROCEDIMENTOS
-// ============================================================
 export async function safeAddCirurgia(data: Omit<Cirurgia, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
   const full: Cirurgia = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
   return db.transaction('rw', db.cirurgias, db.syncQueue, async () => {
     await db.cirurgias.add(full);
-    await db.syncQueue.add({ id: generateId(), table: 'cirurgias' as any, operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'cirurgias', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
     return id;
   });
@@ -714,7 +672,7 @@ export async function safeUpdateCirurgia(id: string, changes: Partial<Cirurgia>)
   await db.transaction('rw', db.cirurgias, db.syncQueue, async () => {
     await db.cirurgias.update(id, { ...changes, updated_at: timestamp, synced: false });
     const updated = await db.cirurgias.get(id);
-    await db.syncQueue.add({ id: generateId(), table: 'cirurgias' as any, operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'cirurgias', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
@@ -723,21 +681,18 @@ export async function safeDeleteCirurgia(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.cirurgias, db.syncQueue, async () => {
     await db.cirurgias.delete(id);
-    await db.syncQueue.add({ id: generateId(), table: 'cirurgias' as any, operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'cirurgias', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
 
-// ============================================================
-// FUNÇÕES CRUD PARA ANEXOS CLÍNICOS (Galeria)
-// ============================================================
 export async function safeAddAnexoClinico(data: Omit<any, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
   const full = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
   return db.transaction('rw', db.anexos_clinicos, db.syncQueue, async () => {
     await db.anexos_clinicos.add(full);
-    await db.syncQueue.add({ id: generateId(), table: 'anexos_clinicos' as any, operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'anexos_clinicos', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
     return id;
   });
@@ -748,7 +703,7 @@ export async function safeUpdateAnexoClinico(id: string, changes: Partial<any>):
   await db.transaction('rw', db.anexos_clinicos, db.syncQueue, async () => {
     await db.anexos_clinicos.update(id, { ...changes, updated_at: timestamp, synced: false });
     const updated = await db.anexos_clinicos.get(id);
-    await db.syncQueue.add({ id: generateId(), table: 'anexos_clinicos' as any, operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'anexos_clinicos', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
@@ -757,7 +712,7 @@ export async function safeDeleteAnexoClinico(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.anexos_clinicos, db.syncQueue, async () => {
     await db.anexos_clinicos.delete(id);
-    await db.syncQueue.add({ id: generateId(), table: 'anexos_clinicos' as any, operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({ id: generateId(), table: 'anexos_clinicos', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
