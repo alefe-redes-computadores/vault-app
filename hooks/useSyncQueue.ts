@@ -9,6 +9,8 @@ import type {
 } from '@/lib/types';
 
 const MAX_RETRIES = 5;
+// Teto máximo de espera para o Backoff Exponencial (60 segundos)
+const MAX_BACKOFF_MS = 60000; 
 
 export function useSyncQueue() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -48,19 +50,14 @@ export function useSyncQueue() {
   const syncPerson = async (item: any) => {
     if (!supabase) return;
     const person = item.payload as any;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('persons').insert({
-          id: person.id, user_id: person.user_id, name: person.name, email: person.email || null, phone: person.phone || null, avatar_url: person.avatar_url || null, created_at: person.created_at, updated_at: person.updated_at,
-        });
+        const { error } = await supabase.from('persons').insert({ id: person.id, user_id: person.user_id, name: person.name, email: person.email || null, phone: person.phone || null, avatar_url: person.avatar_url || null, created_at: person.created_at, updated_at: person.updated_at });
         if (error) throw new Error(`Persons insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('persons').update({
-          name: person.name, email: person.email || null, phone: person.phone || null, avatar_url: person.avatar_url || null, updated_at: person.updated_at,
-        }).eq('id', person.id);
+        const { error } = await supabase.from('persons').update({ name: person.name, email: person.email || null, phone: person.phone || null, avatar_url: person.avatar_url || null, updated_at: person.updated_at }).eq('id', person.id);
         if (error) throw new Error(`Persons update error: ${error.message}`);
         break;
       }
@@ -76,19 +73,14 @@ export function useSyncQueue() {
   const syncMedico = async (item: any) => {
     if (!supabase) return;
     const medico = item.payload as Medico;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('medicos').insert({
-          id: medico.id, user_id: medico.user_id, nome: medico.nome, especialidade: medico.especialidade || null, crm: medico.crm || null, telefone: medico.telefone || null, email: medico.email || null, created_at: medico.created_at, updated_at: medico.updated_at,
-        });
+        const { error } = await supabase.from('medicos').insert({ id: medico.id, user_id: medico.user_id, nome: medico.nome, especialidade: medico.especialidade || null, crm: medico.crm || null, telefone: medico.telefone || null, email: medico.email || null, created_at: medico.created_at, updated_at: medico.updated_at });
         if (error) throw new Error(`Medicos insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('medicos').update({
-          nome: medico.nome, especialidade: medico.especialidade || null, crm: medico.crm || null, telefone: medico.telefone || null, email: medico.email || null, updated_at: medico.updated_at,
-        }).eq('id', medico.id);
+        const { error } = await supabase.from('medicos').update({ nome: medico.nome, especialidade: medico.especialidade || null, crm: medico.crm || null, telefone: medico.telefone || null, email: medico.email || null, updated_at: medico.updated_at }).eq('id', medico.id);
         if (error) throw new Error(`Medicos update error: ${error.message}`);
         break;
       }
@@ -104,19 +96,14 @@ export function useSyncQueue() {
   const syncHospital = async (item: any) => {
     if (!supabase) return;
     const hospital = item.payload as Hospital;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('hospitais').insert({
-          id: hospital.id, user_id: hospital.user_id, nome: hospital.nome, endereco: hospital.endereco || null, telefone: hospital.telefone || null, created_at: hospital.created_at, updated_at: hospital.updated_at,
-        });
+        const { error } = await supabase.from('hospitais').insert({ id: hospital.id, user_id: hospital.user_id, nome: hospital.nome, endereco: hospital.endereco || null, telefone: hospital.telefone || null, created_at: hospital.created_at, updated_at: hospital.updated_at });
         if (error) throw new Error(`Hospitais insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('hospitais').update({
-          nome: hospital.nome, endereco: hospital.endereco || null, telefone: hospital.telefone || null, updated_at: hospital.updated_at,
-        }).eq('id', hospital.id);
+        const { error } = await supabase.from('hospitais').update({ nome: hospital.nome, endereco: hospital.endereco || null, telefone: hospital.telefone || null, updated_at: hospital.updated_at }).eq('id', hospital.id);
         if (error) throw new Error(`Hospitais update error: ${error.message}`);
         break;
       }
@@ -132,19 +119,14 @@ export function useSyncQueue() {
   const syncLocal = async (item: any) => {
     if (!supabase) return;
     const local = item.payload as LocalSaude;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('locais').insert({
-          id: local.id, user_id: local.user_id, nome: local.nome, endereco: local.endereco || null, telefone: local.telefone || null, tipo: local.tipo || null, created_at: local.created_at, updated_at: local.updated_at,
-        });
+        const { error } = await supabase.from('locais').insert({ id: local.id, user_id: local.user_id, nome: local.nome, endereco: local.endereco || null, telefone: local.telefone || null, tipo: local.tipo || null, created_at: local.created_at, updated_at: local.updated_at });
         if (error) throw new Error(`Locais insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('locais').update({
-          nome: local.nome, endereco: local.endereco || null, telefone: local.telefone || null, tipo: local.tipo || null, updated_at: local.updated_at,
-        }).eq('id', local.id);
+        const { error } = await supabase.from('locais').update({ nome: local.nome, endereco: local.endereco || null, telefone: local.telefone || null, tipo: local.tipo || null, updated_at: local.updated_at }).eq('id', local.id);
         if (error) throw new Error(`Locais update error: ${error.message}`);
         break;
       }
@@ -160,19 +142,14 @@ export function useSyncQueue() {
   const syncLaboratorio = async (item: any) => {
     if (!supabase) return;
     const lab = item.payload as Laboratorio;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('laboratorios').insert({
-          id: lab.id, user_id: lab.user_id, nome: lab.nome, endereco: lab.endereco || null, telefone: lab.telefone || null, created_at: lab.created_at, updated_at: lab.updated_at,
-        });
+        const { error } = await supabase.from('laboratorios').insert({ id: lab.id, user_id: lab.user_id, nome: lab.nome, endereco: lab.endereco || null, telefone: lab.telefone || null, created_at: lab.created_at, updated_at: lab.updated_at });
         if (error) throw new Error(`Laboratorios insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('laboratorios').update({
-          nome: lab.nome, endereco: lab.endereco || null, telefone: lab.telefone || null, updated_at: lab.updated_at,
-        }).eq('id', lab.id);
+        const { error } = await supabase.from('laboratorios').update({ nome: lab.nome, endereco: lab.endereco || null, telefone: lab.telefone || null, updated_at: lab.updated_at }).eq('id', lab.id);
         if (error) throw new Error(`Laboratorios update error: ${error.message}`);
         break;
       }
@@ -188,19 +165,14 @@ export function useSyncQueue() {
   const syncInstituicao = async (item: any) => {
     if (!supabase) return;
     const inst = item.payload as InstituicaoEnsino;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('instituicoes').insert({
-          id: inst.id, user_id: inst.user_id, nome: inst.nome, cnpj: inst.cnpj || null, created_at: inst.created_at, updated_at: inst.updated_at,
-        });
+        const { error } = await supabase.from('instituicoes').insert({ id: inst.id, user_id: inst.user_id, nome: inst.nome, cnpj: inst.cnpj || null, created_at: inst.created_at, updated_at: inst.updated_at });
         if (error) throw new Error(`Instituicoes insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('instituicoes').update({
-          nome: inst.nome, cnpj: inst.cnpj || null, updated_at: inst.updated_at,
-        }).eq('id', inst.id);
+        const { error } = await supabase.from('instituicoes').update({ nome: inst.nome, cnpj: inst.cnpj || null, updated_at: inst.updated_at }).eq('id', inst.id);
         if (error) throw new Error(`Instituicoes update error: ${error.message}`);
         break;
       }
@@ -216,19 +188,14 @@ export function useSyncQueue() {
   const syncTratamento = async (item: any) => {
     if (!supabase) return;
     const trat = item.payload as Tratamento;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('tratamentos').insert({
-          id: trat.id, user_id: trat.user_id, person_id: trat.person_id || null, nome: trat.nome, cid_id: trat.cid_id || null, condicao: trat.condicao || null, status: trat.status, created_at: trat.created_at, updated_at: trat.updated_at,
-        });
+        const { error } = await supabase.from('tratamentos').insert({ id: trat.id, user_id: trat.user_id, person_id: trat.person_id || null, nome: trat.nome, cid_id: trat.cid_id || null, condicao: trat.condicao || null, status: trat.status, created_at: trat.created_at, updated_at: trat.updated_at });
         if (error) throw new Error(`Tratamentos insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('tratamentos').update({
-          nome: trat.nome, cid_id: trat.cid_id || null, condicao: trat.condicao || null, status: trat.status, updated_at: trat.updated_at,
-        }).eq('id', trat.id);
+        const { error } = await supabase.from('tratamentos').update({ nome: trat.nome, cid_id: trat.cid_id || null, condicao: trat.condicao || null, status: trat.status, updated_at: trat.updated_at }).eq('id', trat.id);
         if (error) throw new Error(`Tratamentos update error: ${error.message}`);
         break;
       }
@@ -244,19 +211,14 @@ export function useSyncQueue() {
   const syncConsulta = async (item: any) => {
     if (!supabase) return;
     const con = item.payload as Consulta;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('consultas').insert({
-          id: con.id, user_id: con.user_id, person_id: con.person_id || null, medico_id: con.medico_id || null, hospital_id: con.hospital_id || null, data: con.data, status: con.status, motivo: con.motivo || null, observacoes: con.observacoes || null, created_at: con.created_at, updated_at: con.updated_at,
-        });
+        const { error } = await supabase.from('consultas').insert({ id: con.id, user_id: con.user_id, person_id: con.person_id || null, medico_id: con.medico_id || null, hospital_id: con.hospital_id || null, data: con.data, status: con.status, motivo: con.motivo || null, observacoes: con.observacoes || null, created_at: con.created_at, updated_at: con.updated_at });
         if (error) throw new Error(`Consultas insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('consultas').update({
-          medico_id: con.medico_id || null, hospital_id: con.hospital_id || null, data: con.data, status: con.status, motivo: con.motivo || null, observacoes: con.observacoes || null, updated_at: con.updated_at,
-        }).eq('id', con.id);
+        const { error } = await supabase.from('consultas').update({ medico_id: con.medico_id || null, hospital_id: con.hospital_id || null, data: con.data, status: con.status, motivo: con.motivo || null, observacoes: con.observacoes || null, updated_at: con.updated_at }).eq('id', con.id);
         if (error) throw new Error(`Consultas update error: ${error.message}`);
         break;
       }
@@ -272,19 +234,14 @@ export function useSyncQueue() {
   const syncCirurgia = async (item: any) => {
     if (!supabase) return;
     const cir = item.payload as Cirurgia;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('cirurgias').insert({
-          id: cir.id, user_id: cir.user_id, person_id: cir.person_id || null, medico_id: cir.medico_id || null, hospital_id: cir.hospital_id || null, data: cir.data, status: cir.status, procedimento: cir.procedimento, observacoes: cir.observacoes || null, created_at: cir.created_at, updated_at: cir.updated_at,
-        });
+        const { error } = await supabase.from('cirurgias').insert({ id: cir.id, user_id: cir.user_id, person_id: cir.person_id || null, medico_id: cir.medico_id || null, hospital_id: cir.hospital_id || null, data: cir.data, status: cir.status, procedimento: cir.procedimento, observacoes: cir.observacoes || null, created_at: cir.created_at, updated_at: cir.updated_at });
         if (error) throw new Error(`Cirurgias insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('cirurgias').update({
-          medico_id: cir.medico_id || null, hospital_id: cir.hospital_id || null, data: cir.data, status: cir.status, procedimento: cir.procedimento, observacoes: cir.observacoes || null, updated_at: cir.updated_at,
-        }).eq('id', cir.id);
+        const { error } = await supabase.from('cirurgias').update({ medico_id: cir.medico_id || null, hospital_id: cir.hospital_id || null, data: cir.data, status: cir.status, procedimento: cir.procedimento, observacoes: cir.observacoes || null, updated_at: cir.updated_at }).eq('id', cir.id);
         if (error) throw new Error(`Cirurgias update error: ${error.message}`);
         break;
       }
@@ -300,19 +257,14 @@ export function useSyncQueue() {
   const syncExame = async (item: any) => {
     if (!supabase) return;
     const exame = item.payload as Exame;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('exames').insert({
-          id: exame.id, user_id: exame.user_id, person_id: exame.person_id || null, nome: exame.nome, laboratorio_id: exame.laboratorio_id || null, medico_id: exame.medico_id || null, data: exame.data, data_retorno: exame.data_retorno || null, motivo: exame.motivo || null, observacoes: exame.observacoes || null, anexo_url: exame.anexo_url || null, created_at: exame.created_at, updated_at: exame.updated_at,
-        });
+        const { error } = await supabase.from('exames').insert({ id: exame.id, user_id: exame.user_id, person_id: exame.person_id || null, nome: exame.nome, laboratorio_id: exame.laboratorio_id || null, medico_id: exame.medico_id || null, data: exame.data, data_retorno: exame.data_retorno || null, motivo: exame.motivo || null, observacoes: exame.observacoes || null, anexo_url: exame.anexo_url || null, created_at: exame.created_at, updated_at: exame.updated_at });
         if (error) throw new Error(`Exames insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('exames').update({
-          nome: exame.nome, laboratorio_id: exame.laboratorio_id || null, medico_id: exame.medico_id || null, data: exame.data, data_retorno: exame.data_retorno || null, motivo: exame.motivo || null, observacoes: exame.observacoes || null, anexo_url: exame.anexo_url || null, updated_at: exame.updated_at,
-        }).eq('id', exame.id);
+        const { error } = await supabase.from('exames').update({ nome: exame.nome, laboratorio_id: exame.laboratorio_id || null, medico_id: exame.medico_id || null, data: exame.data, data_retorno: exame.data_retorno || null, motivo: exame.motivo || null, observacoes: exame.observacoes || null, anexo_url: exame.anexo_url || null, updated_at: exame.updated_at }).eq('id', exame.id);
         if (error) throw new Error(`Exames update error: ${error.message}`);
         break;
       }
@@ -328,12 +280,9 @@ export function useSyncQueue() {
   const syncAnexoClinico = async (item: any) => {
     if (!supabase) return;
     const anexo = item.payload as any;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('anexos_clinicos').insert({
-          id: anexo.id, user_id: anexo.user_id, person_id: anexo.person_id || null, tratamento_id: anexo.tratamento_id || null, medicamento_id: anexo.medicamento_id || null, tipo: anexo.tipo, url: anexo.url, thumbnail_url: anexo.thumbnail_url || null, tags: anexo.tags || [], created_at: anexo.created_at, updated_at: anexo.updated_at,
-        });
+        const { error } = await supabase.from('anexos_clinicos').insert({ id: anexo.id, user_id: anexo.user_id, person_id: anexo.person_id || null, tratamento_id: anexo.tratamento_id || null, medicamento_id: anexo.medicamento_id || null, tipo: anexo.tipo, url: anexo.url, thumbnail_url: anexo.thumbnail_url || null, tags: anexo.tags || [], created_at: anexo.created_at, updated_at: anexo.updated_at });
         if (error) throw new Error(`Anexos clinicos insert error: ${error.message}`);
         break;
       }
@@ -349,19 +298,14 @@ export function useSyncQueue() {
   const syncMedicamento = async (item: any) => {
     if (!supabase) return;
     const med = item.payload as any;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('medicamentos').insert({
-          id: med.id, document_id: med.document_id || '', user_id: med.user_id, nome: med.nome, dosagem: med.dosagem, medico: med.medico, farmacia: med.farmacia || null, data_receita: med.data_receita, proxima_renovacao: med.proxima_renovacao, observacoes: med.observacoes || null, tipo_receita: med.tipo_receita || 'comum', created_at: med.created_at, updated_at: med.updated_at,
-        });
+        const { error } = await supabase.from('medicamentos').insert({ id: med.id, document_id: med.document_id || '', user_id: med.user_id, nome: med.nome, dosagem: med.dosagem, medico: med.medico, farmacia: med.farmacia || null, data_receita: med.data_receita, proxima_renovacao: med.proxima_renovacao, observacoes: med.observacoes || null, tipo_receita: med.tipo_receita || 'comum', created_at: med.created_at, updated_at: med.updated_at });
         if (error) throw new Error(`Medicamentos insert error: ${error.message}`);
         break;
       }
       case 'update': {
-        const { error } = await supabase.from('medicamentos').update({
-          nome: med.nome, dosagem: med.dosagem, medico: med.medico, farmacia: med.farmacia || null, data_receita: med.data_receita, proxima_renovacao: med.proxima_renovacao, observacoes: med.observacoes || null, tipo_receita: med.tipo_receita || 'comum', updated_at: med.updated_at,
-        }).eq('id', med.id);
+        const { error } = await supabase.from('medicamentos').update({ nome: med.nome, dosagem: med.dosagem, medico: med.medico, farmacia: med.farmacia || null, data_receita: med.data_receita, proxima_renovacao: med.proxima_renovacao, observacoes: med.observacoes || null, tipo_receita: med.tipo_receita || 'comum', updated_at: med.updated_at }).eq('id', med.id);
         if (error) throw new Error(`Medicamentos update error: ${error.message}`);
         break;
       }
@@ -377,12 +321,9 @@ export function useSyncQueue() {
   const syncRenovacao = async (item: any) => {
     if (!supabase) return;
     const ren = item.payload as any;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('renovacoes').insert({
-          id: ren.id, medicamento_id: ren.medicamento_id, user_id: ren.user_id, data: ren.data, anexo_url: ren.anexo_url || null, observacoes: ren.observacoes || null, created_at: ren.created_at, updated_at: ren.updated_at,
-        });
+        const { error } = await supabase.from('renovacoes').insert({ id: ren.id, medicamento_id: ren.medicamento_id, user_id: ren.user_id, data: ren.data, anexo_url: ren.anexo_url || null, observacoes: ren.observacoes || null, created_at: ren.created_at, updated_at: ren.updated_at });
         if (error) throw new Error(`Renovacoes insert error: ${error.message}`);
         break;
       }
@@ -398,12 +339,9 @@ export function useSyncQueue() {
   const syncDoseLog = async (item: any) => {
     if (!supabase) return;
     const log = item.payload as DoseLog;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('dose_logs').insert({
-          id: log.id, user_id: log.user_id, medicamento_id: log.medicamento_id, data: log.data, horario: log.horario, tomado_em: log.tomado_em || null, created_at: log.created_at, updated_at: log.updated_at,
-        });
+        const { error } = await supabase.from('dose_logs').insert({ id: log.id, user_id: log.user_id, medicamento_id: log.medicamento_id, data: log.data, horario: log.horario, tomado_em: log.tomado_em || null, created_at: log.created_at, updated_at: log.updated_at });
         if (error) throw new Error(`Dose_logs insert error: ${error.message}`);
         break;
       }
@@ -419,12 +357,9 @@ export function useSyncQueue() {
   const syncDocument = async (item: any) => {
     if (!supabase) return;
     const doc = item.payload as Document;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('documents').insert({
-          id: doc.id, user_id: doc.user_id, person_id: doc.person_id, category_id: doc.category_id, type: doc.type, title: doc.title, description: doc.description, metadata: doc.metadata, attachments: doc.attachments, is_favorite: doc.is_favorite, vault_id: doc.vault_id || null, created_at: doc.created_at, updated_at: doc.updated_at,
-        });
+        const { error } = await supabase.from('documents').insert({ id: doc.id, user_id: doc.user_id, person_id: doc.person_id, category_id: doc.category_id, type: doc.type, title: doc.title, description: doc.description, metadata: doc.metadata, attachments: doc.attachments, is_favorite: doc.is_favorite, vault_id: doc.vault_id || null, created_at: doc.created_at, updated_at: doc.updated_at });
         if (error) throw new Error(`Documents insert error: ${error.message}`);
         break;
       }
@@ -440,12 +375,9 @@ export function useSyncQueue() {
   const syncVault = async (item: any) => {
     if (!supabase) return;
     const vault = item.payload as Vault;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('vaults').insert({
-          id: vault.id, user_id: vault.user_id, name: vault.name, description: vault.description || null, icon: vault.icon, color: vault.color, created_at: vault.created_at, updated_at: vault.updated_at,
-        });
+        const { error } = await supabase.from('vaults').insert({ id: vault.id, user_id: vault.user_id, name: vault.name, description: vault.description || null, icon: vault.icon, color: vault.color, created_at: vault.created_at, updated_at: vault.updated_at });
         if (error) throw new Error(`Vaults insert error: ${error.message}`);
         break;
       }
@@ -461,12 +393,9 @@ export function useSyncQueue() {
   const syncVaultMember = async (item: any) => {
     if (!supabase) return;
     const member = item.payload as VaultMember;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('vault_members').insert({
-          id: member.id, vault_id: member.vault_id, user_id: member.user_id, email: member.email, name: member.name || null, permission: member.permission, invited_by: member.invited_by, status: member.status, invited_at: member.invited_at, updated_at: member.updated_at,
-        });
+        const { error } = await supabase.from('vault_members').insert({ id: member.id, vault_id: member.vault_id, user_id: member.user_id, email: member.email, name: member.name || null, permission: member.permission, invited_by: member.invited_by, status: member.status, invited_at: member.invited_at, updated_at: member.updated_at });
         if (error) throw new Error(`Vault_members insert error: ${error.message}`);
         break;
       }
@@ -482,12 +411,9 @@ export function useSyncQueue() {
   const syncCredential = async (item: any) => {
     if (!supabase) return;
     const cred = item.payload as Credential;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('credentials').insert({
-          id: cred.id, user_id: cred.user_id, vault_id: cred.vault_id || null, title: cred.title, username: cred.username || null, password_encrypted: cred.password_encrypted, url: cred.url || null, notes: cred.notes || null, category: cred.category, password_history: cred.password_history || null, created_at: cred.created_at, updated_at: cred.updated_at,
-        });
+        const { error } = await supabase.from('credentials').insert({ id: cred.id, user_id: cred.user_id, vault_id: cred.vault_id || null, title: cred.title, username: cred.username || null, password_encrypted: cred.password_encrypted, url: cred.url || null, notes: cred.notes || null, category: cred.category, password_history: cred.password_history || null, created_at: cred.created_at, updated_at: cred.updated_at });
         if (error) throw new Error(`Credentials insert error: ${error.message}`);
         break;
       }
@@ -503,12 +429,9 @@ export function useSyncQueue() {
   const syncCard = async (item: any) => {
     if (!supabase) return;
     const card = item.payload as BankCard;
-
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('cards').insert({
-          id: card.id, user_id: card.user_id, title: card.title, bank_name: card.bank_name, type: card.type, card_number_encrypted: card.card_number_encrypted || null, card_holder: card.card_holder || null, brand: card.brand || null, expiry_date: card.expiry_date || null, cvv_encrypted: card.cvv_encrypted || null, agency: card.agency || null, account: card.account || null, notes: card.notes || null, created_at: card.created_at, updated_at: card.updated_at,
-        });
+        const { error } = await supabase.from('cards').insert({ id: card.id, user_id: card.user_id, title: card.title, bank_name: card.bank_name, type: card.type, card_number_encrypted: card.card_number_encrypted || null, card_holder: card.card_holder || null, brand: card.brand || null, expiry_date: card.expiry_date || null, cvv_encrypted: card.cvv_encrypted || null, agency: card.agency || null, account: card.account || null, notes: card.notes || null, created_at: card.created_at, updated_at: card.updated_at });
         if (error) throw new Error(`Cards insert error: ${error.message}`);
         break;
       }
@@ -539,7 +462,6 @@ export function useSyncQueue() {
 
       if (queue.length === 0) return;
 
-      // Ordem estrita: Pais primeiro (Locais, Medicos), Filhos depois (Exames, Consultas)
       const priorityOrder = [
         'persons', 'medicos', 'hospitais', 'locais', 'laboratorios', 'instituicoes', 'tratamentos', 
         'documents', 'exames', 'medicamentos', 'renovacoes', 'doseLogs', 
@@ -554,8 +476,13 @@ export function useSyncQueue() {
       });
 
       let successCount = 0;
+      let maxRetryInQueue = 0;
 
       for (const item of queue) {
+        if ((item.retry_count || 0) > maxRetryInQueue) {
+          maxRetryInQueue = item.retry_count || 0;
+        }
+
         try {
           if (item.table === 'persons') await syncPerson(item);
           else if (item.table === 'medicos') await syncMedico(item);
@@ -600,7 +527,12 @@ export function useSyncQueue() {
 
       if (remaining > 0) {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => { processQueue(); }, 5000);
+        
+        // 🔄 CÁLCULO DO BACKOFF EXPONENCIAL
+        // Base de 5s multiplica por 2 dependendo do nível de retry. Max: 60s
+        const delay = Math.min(5000 * Math.pow(2, maxRetryInQueue), MAX_BACKOFF_MS);
+        
+        timeoutRef.current = setTimeout(() => { processQueue(); }, delay);
       }
     } catch (error) {
       addLog(`❌ Erro ao processar fila: ${error}`, 'error');
