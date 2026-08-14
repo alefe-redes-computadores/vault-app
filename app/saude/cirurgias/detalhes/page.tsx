@@ -12,11 +12,9 @@ import {
   Edit3, 
   Trash2, 
   CheckCircle2, 
-  RotateCcw,
   Pill,
   FileText,
-  Syringe,
-  Paperclip
+  Syringe
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -50,7 +48,6 @@ function DetalhesCirurgiaContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Consultando dados correlacionados
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
@@ -64,14 +61,14 @@ function DetalhesCirurgiaContent() {
       try {
         const cirData = await db.cirurgias.get(id);
         if (cirData) {
-          setCirurgia(cirData);
+          setCirurgia(cirData as Cirurgia);
           if (cirData.medico_id) {
             const medData = await db.medicos.get(cirData.medico_id);
-            if (medData) setMedico(medData);
+            if (medData) setMedico(medData as Medico);
           }
           if (cirData.hospital_id) {
             const hospData = await db.hospitais.get(cirData.hospital_id);
-            if (hospData) setHospital(hospData);
+            if (hospData) setHospital(hospData as Hospital);
           }
         } else {
           router.push("/saude/cirurgias");
@@ -86,11 +83,9 @@ function DetalhesCirurgiaContent() {
     fetchData();
   }, [id, router]);
 
-  // Vínculos cruzados focados em Cirurgia (Exames pré-op e Remédios pós-op)
   const medicamentosPosOperatorio = useMemo(() => {
     if (!cirurgia) return [];
     return medicamentos.filter((m: Medicamento) => {
-      // Puxa medicamentos prescritos na mesma data ou pelo mesmo cirurgião
       const matchMedico = cirurgia.medico_id && m.medico_id === cirurgia.medico_id;
       const matchData = m.data_receita === cirurgia.data;
       return matchMedico || matchData;
@@ -172,14 +167,12 @@ function DetalhesCirurgiaContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          {/* Card Principal de Resumo */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4 relative overflow-hidden"
           >
-            {/* Efeito visual sutil de fundo para cirurgias */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-coral/5 rounded-bl-full pointer-events-none" />
 
             <div className="flex items-start justify-between gap-3 relative z-10">
@@ -236,12 +229,10 @@ function DetalhesCirurgiaContent() {
             )}
           </motion.div>
 
-          {/* Seção de Dados Vinculados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-4">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">Registros Clínicos do Procedimento</h3>
 
             <div className="grid grid-cols-1 gap-3">
-              {/* Medicamentos Relacionados */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -271,7 +262,6 @@ function DetalhesCirurgiaContent() {
                 )}
               </div>
 
-              {/* Exames Pré/Pós */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                   <Syringe size={16} className="text-ice" />
@@ -295,7 +285,6 @@ function DetalhesCirurgiaContent() {
             </div>
           </motion.div>
 
-          {/* Ações Rápidas (Pós-Cirurgia) */}
           {cirurgia.status === "agendada" && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-3 pt-2">
               <h3 className="font-display text-sm font-semibold text-ink-muted px-1">Ações de Atualização</h3>
