@@ -40,6 +40,7 @@ import {
   suggestRenewalDate,
   VALIDADE_RECEITA_DIAS,
   TIPO_RECEITA_LABELS,
+  getLocalTodayISO,
 } from "@/lib/health-utils";
 import {
   scheduleDoseNotifications,
@@ -66,7 +67,6 @@ const fadeUp = {
 
 const TIPO_OPTIONS: TipoReceita[] = ["comum", "amarela", "azul", "branca"];
 
-// ✅ CORREÇÃO 1: Adicionado Circle (Redondo)
 const FORMATOS = [
   { id: "comprimido", label: "Redondo", icon: Circle },
   { id: "capsula", label: "Cápsula", icon: Pill },
@@ -79,10 +79,6 @@ const CORES_DISPONIVEIS = [
   "#FFFFFF", "#FCA5A5", "#F87171", "#FBBF24", "#34D399", 
   "#60A5FA", "#818CF8", "#A78BFA", "#F472B6", "#9CA3AF"
 ];
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function getTratamentoIcon(nome: string) {
   const n = nome.toLowerCase();
@@ -164,7 +160,7 @@ function EditarMedicamentoContent() {
 
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
-  const [estoqueDataReferencia, setEstoqueDataReferencia] = useState(todayISO());
+  const [estoqueDataReferencia, setEstoqueDataReferencia] = useState(getLocalTodayISO());
   const [estoqueUnidade, setEstoqueUnidade] = useState("comprimido(s)");
   const [estoqueUnidadePorDose, setEstoqueUnidadePorDose] = useState("1");
   const [horarios, setHorarios] = useState<string[]>([""]);
@@ -284,7 +280,7 @@ function EditarMedicamentoContent() {
 
   const registrarContagemHoje = () => {
     trigger("vibrate");
-    setEstoqueDataReferencia(todayISO());
+    setEstoqueDataReferencia(getLocalTodayISO());
   };
 
   const handleCreateTratamento = async () => {
@@ -380,8 +376,7 @@ function EditarMedicamentoContent() {
         medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
         medico_descontinuacao_nome: !statusAtivo ? medicoDescontinuacaoNome.trim() || undefined : undefined,
         substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
-        // ✅ CORREÇÃO 5: data_descontinuacao adicionada
-        data_descontinuacao: !statusAtivo ? todayISO() : undefined,
+        data_descontinuacao: !statusAtivo ? getLocalTodayISO() : undefined,
         estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
         estoque_data_referencia: estoqueAtivo ? estoqueDataReferencia : undefined,
         estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
@@ -459,7 +454,6 @@ function EditarMedicamentoContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        {/* ✅ CORREÇÃO 4: SVG com Gradiente para Ícone de Duas Cores */}
         <svg width="0" height="0" className="absolute">
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -480,7 +474,6 @@ function EditarMedicamentoContent() {
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                {/* ✅ CORREÇÃO 6: Ícone com gradiente dinâmico */}
                 <SelectedFormatIcon 
                   size={16} 
                   stroke={hasTwoColors ? `url(#${gradientId})` : color1} 
@@ -1026,7 +1019,6 @@ function EditarMedicamentoContent() {
   );
 }
 
-// ✅ CORREÇÃO 7: Wrapper com Suspense
 export default function EditarMedicamentoPage() {
   return (
     <Suspense fallback={<LoadingSkeleton />}>
