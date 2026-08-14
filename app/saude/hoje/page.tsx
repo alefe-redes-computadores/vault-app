@@ -14,12 +14,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, safeAddRenovacao, safeUpdateMedicamento } from "@/lib/db";
-import { computeEstoqueInfo } from "@/lib/health-utils";
+import { computeEstoqueInfo, getLocalTodayISO } from "@/lib/health-utils";
 import { useToast } from "@/components/ToastProvider";
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function getPeriodoDoDia(horario: string) {
   const [h] = horario.split(":").map(Number);
@@ -46,7 +42,8 @@ export default function HojePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
-  const hoje = todayISO();
+  // ✅ CORREÇÃO 1: Usando a data baseada no fuso horário local
+  const hoje = getLocalTodayISO();
 
   const { medicamentos } = useMedicamentos();
   const { doseLogs, marcarDose } = useDoseLogs(hoje);
@@ -64,7 +61,7 @@ export default function HojePage() {
   const [observacoesRenovacao, setObservacoesRenovacao] = useState("");
   const [adicionarMaisEstoque, setAdicionarMaisEstoque] = useState(30);
   
-  // Trava anti-race condition rigorosa para cliques duplos
+  // ✅ CORREÇÃO 2: Trava anti-race condition mantida
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -121,11 +118,7 @@ export default function HojePage() {
   const totalTomadas = doses.filter((d) => d.tomada).length;
   const isLoading = medicamentos === undefined || doseLogs === undefined;
 
-  // ============================================================
-  // handleToggle — COM TRAVA ANTI-RACE CONDITION E ESTORNO
-  // ============================================================
   const handleToggle = async (item: DoseItemExt) => {
-    // 1. Trava anti-race condition (bloqueia se já houver processamento)
     if (processandoDoseId) return;
 
     const chaveDose = `${item.medicamentoId}-${item.horario}`;
@@ -139,7 +132,6 @@ export default function HojePage() {
 
       const medOriginal = medicamentos?.find(m => m.id === item.medicamentoId);
       if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
-        // 2. Lógica de Estorno: Se proximaTomada é false (desmarcou), soma o estoque
         const delta = proximaTomada ? -item.unidadePorDose : item.unidadePorDose;
         const novoEstoque = Math.max(0, (medOriginal.estoque_quantidade || 0) + delta);
 
@@ -157,16 +149,11 @@ export default function HojePage() {
       console.error("Erro na dose:", e);
       showToast("Erro ao atualizar dose", "error");
     } finally {
-      // 3. Libera apenas no finally
       setProcessandoDoseId(null);
     }
   };
 
-  // ============================================================
-  // handleSalvarRenovacaoDoModal — COM TRAVA isProcessing
-  // ============================================================
   const handleSalvarRenovacaoDoModal = async () => {
-    // Trava anti-duplo clique
     if (!medicamentoSelecionado?.id || isProcessing) return;
 
     setIsProcessing(true);
