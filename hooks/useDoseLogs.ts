@@ -1,60 +1,66 @@
 "use client";
 
+import { useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, safeSetDoseLog } from "@/lib/db";
-import { useAuth } from "./useAuth";
-import { useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import type { DoseLog } from "@/lib/types";
 
-/**
- * Retorna os dose_logs de um dia específico (ou de todos, se `data` for omitido).
- * `data` no formato "YYYY-MM-DD".
- */
-export function useDoseLogs(data?: string) {
+export function useDoseLogs(dataEspecifia?: string) {
   const { user } = useAuth();
 
+  // Se passar uma data, filtra. Se não, traz tudo.
   const doseLogs = useLiveQuery(
     () => {
-      if (!user?.id) return [];
-
-      // OTIMIZAÇÃO DE PERFORMANCE (FASE 3):
-      // Buscar pelo index da data reduz drasticamente a carga na memória RAM,
-      // pois puxa apenas as doses de um único dia antes de filtrar o usuário.
-      if (data) {
-        return db.doseLogs
-          .where("data")
-          .equals(data)
-          .filter((log) => log.user_id === user.id)
-          .toArray();
+      if (dataEspecifia) {
+        return db.doseLogs.where("data").equals(dataEspecifia).toArray();
       }
-
-      // Fallback: se não tiver data, puxa tudo do usuário (usado em relatórios gerais)
-      return db.doseLogs
-        .where("user_id")
-        .equals(user.id)
-        .toArray();
+      return db.doseLogs.toArray();
     },
-    [user?.id, data],
-    []
+    [dataEspecifia]
   );
 
-  /**
-   * Marca (ou desmarca) uma dose como tomada.
-   * `tomada = true` grava o horário atual; `false` limpa (volta a pendente).
-   */
-  const marcarDose = useCallback(
-    async (medicamentoId: string, dataDose: string, horario: string, tomada: boolean) => {
-      if (!user?.id) return;
-
+  const marcarComoTomada = useCallback(
+    async (medicamentoId: string, dataDose: string, horario: string) => {
       return safeSetDoseLog({
-        user_id: user.id,
+        user_id: user?.id || "",
         medicamento_id: medicamentoId,
         data: dataDose,
         horario,
-        tomado_em: tomada ? new Date().toISOString() : undefined,
+        tomado_em: new Date().toISOString(),
+        ignorado_em: undefined, // Garante que limpa o ignorado se ele mudar de ideia
       });
     },
-    [user?.id] // Dependência ajustada para user?.id para evitar recriações desnecessárias
+    [user]
   );
 
-  return { doseLogs, marcarDose };
+  const marcarComoIgnorada = useCallback(
+    async (medicamentoId: string, dataDose: string, horario: string) => {
+      return safeSetDoseLog({
+        user_id: user?.id || "",
+        medicamento_id: medicamentoId,
+        data: dataDose,
+        horario,
+        ignorado_em: new Date().toISOString(),
+        tomado_em: undefined, // Garante que limpa o tomado se ele mudar de ideia
+      });
+    },
+    [user]
+  );
+
+  const desmarcarDose = useCallback(
+    async (medicamentoId: string, dataDose: string, horario: string) => {
+      return safeSetDoseLog({
+        user_id: user?.id || "",
+        medicamento_id: medicamentoId,
+        data: dataDose,
+        horario,
+        tomado_em: undefined,
+        ignorado_em: undefined,
+      });
+    },
+    [user]
+  );
+
+  return { doseLogs, marcarComoTomada, marcarComoIgnorada, desmarcarDose };
 }
