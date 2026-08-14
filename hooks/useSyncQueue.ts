@@ -9,7 +9,6 @@ import type {
 } from '@/lib/types';
 
 const MAX_RETRIES = 5;
-// Teto máximo de espera para o Backoff Exponencial (60 segundos)
 const MAX_BACKOFF_MS = 60000; 
 
 export function useSyncQueue() {
@@ -336,13 +335,35 @@ export function useSyncQueue() {
     if (item.operation !== 'delete' && ren.id) await db.renovacoes.update(ren.id, { synced: true });
   };
 
+  // ============================================================
+  // ✅ CORREÇÃO APLICADA: Empacotando o campo ignorado_em para a nuvem
+  // ============================================================
   const syncDoseLog = async (item: any) => {
     if (!supabase) return;
     const log = item.payload as DoseLog;
     switch (item.operation) {
       case 'add': {
-        const { error } = await supabase.from('dose_logs').insert({ id: log.id, user_id: log.user_id, medicamento_id: log.medicamento_id, data: log.data, horario: log.horario, tomado_em: log.tomado_em || null, created_at: log.created_at, updated_at: log.updated_at });
+        const { error } = await supabase.from('dose_logs').insert({ 
+          id: log.id, 
+          user_id: log.user_id, 
+          medicamento_id: log.medicamento_id, 
+          data: log.data, 
+          horario: log.horario, 
+          tomado_em: log.tomado_em || null, 
+          ignorado_em: log.ignorado_em || null, // ✅ CAMPO ENVIADO PARA SUPABASE
+          created_at: log.created_at, 
+          updated_at: log.updated_at 
+        });
         if (error) throw new Error(`Dose_logs insert error: ${error.message}`);
+        break;
+      }
+      case 'update': {
+        const { error } = await supabase.from('dose_logs').update({ 
+          tomado_em: log.tomado_em || null,
+          ignorado_em: log.ignorado_em || null, // ✅ CAMPO ENVIADO PARA SUPABASE
+          updated_at: log.updated_at 
+        }).eq('id', log.id);
+        if (error) throw new Error(`Dose_logs update error: ${error.message}`);
         break;
       }
       case 'delete': {
@@ -444,9 +465,6 @@ export function useSyncQueue() {
     if (item.operation !== 'delete' && card.id) await db.cards.update(card.id, { synced: true });
   };
 
-  // ============================================================
-  // FUNÇÃO DE SYNC PARA medicamento_tratamentos (ADICIONADA)
-  // ============================================================
   const syncMedicamentoTratamento = async (item: any) => {
     if (!supabase) return;
     const link = item.payload as any;
@@ -484,9 +502,6 @@ export function useSyncQueue() {
 
       if (queue.length === 0) return;
 
-      // ============================================================
-      // PRIORITY ORDER ATUALIZADO (medicamento_tratamentos incluso)
-      // ============================================================
       const priorityOrder = [
         'persons', 'medicos', 'hospitais', 'locais', 'laboratorios', 'instituicoes', 
         'tratamentos', 'medicamentos', 'medicamento_tratamentos',
@@ -517,9 +532,6 @@ export function useSyncQueue() {
           else if (item.table === 'laboratorios') await syncLaboratorio(item);
           else if (item.table === 'instituicoes') await syncInstituicao(item);
           else if (item.table === 'tratamentos') await syncTratamento(item);
-          // ============================================================
-          // MAPEAMENTO ADICIONADO PARA medicamento_tratamentos
-          // ============================================================
           else if (item.table === 'medicamento_tratamentos') await syncMedicamentoTratamento(item);
           else if (item.table === 'documents') await syncDocument(item);
           else if (item.table === 'exames') await syncExame(item);
@@ -557,11 +569,7 @@ export function useSyncQueue() {
 
       if (remaining > 0) {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        
-        // 🔄 CÁLCULO DO BACKOFF EXPONENCIAL
-        // Base de 5s multiplica por 2 dependendo do nível de retry. Max: 60s
         const delay = Math.min(5000 * Math.pow(2, maxRetryInQueue), MAX_BACKOFF_MS);
-        
         timeoutRef.current = setTimeout(() => { processQueue(); }, delay);
       }
     } catch (error) {
