@@ -31,7 +31,12 @@ function TratamentoListContent() {
 
   const listaEnriquecida = useMemo(() => {
     return tratamentos.map(t => {
-      const meds = medicamentos.filter(m => m.tratamento_id === t.id || (m.tratamento_ids && m.tratamento_ids.includes(t.id)));
+      const meds = medicamentos.filter(m => {
+        // Validação rigorosa para o TypeScript: se não tiver ID, ignora.
+        if (!t.id) return false;
+        // Agora o TS sabe que t.id é 100% uma string
+        return m.tratamento_id === t.id || (m.tratamento_ids && m.tratamento_ids.includes(t.id));
+      });
       return { ...t, medicamentosCount: meds.length };
     });
   }, [tratamentos, medicamentos]);
