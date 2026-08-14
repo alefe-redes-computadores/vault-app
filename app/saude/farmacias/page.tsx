@@ -106,7 +106,7 @@ export default function FarmaciasPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400">
-                      <Building2 size2={20} />
+                      <Building2 size={20} />
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-base font-semibold text-ink-primary">{farmacia.nome}</p>
@@ -140,7 +140,6 @@ export default function FarmaciasPage() {
                   </div>
                 </div>
 
-                {/* Bloco Analítico Relacional de Preços e Vínculos */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-surface-border/40">
                   <div className="rounded-xl bg-surface-raised/60 p-2.5">
                     <p className="text-[10px] uppercase font-mono text-ink-muted flex items-center gap-1">
