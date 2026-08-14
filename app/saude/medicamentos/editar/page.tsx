@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -67,6 +66,7 @@ const fadeUp = {
 
 const TIPO_OPTIONS: TipoReceita[] = ["comum", "amarela", "azul", "branca"];
 
+// ✅ CORREÇÃO 1: Adicionado Circle (Redondo)
 const FORMATOS = [
   { id: "comprimido", label: "Redondo", icon: Circle },
   { id: "capsula", label: "Cápsula", icon: Pill },
@@ -116,7 +116,6 @@ function EditarMedicamentoContent() {
   const [notFound, setNotFound] = useState(false);
   const [documentId, setDocumentId] = useState<string>("");
 
-  // Dados Básicos e Visuais
   const [personId, setPersonId] = useState<string>("");
   const [nome, setNome] = useState("");
   const [dosagem, setDosagem] = useState("");
@@ -132,20 +131,17 @@ function EditarMedicamentoContent() {
   const [proximaRenovacao, setProximaRenovacao] = useState("");
   const [observacoes, setObservacoes] = useState("");
   
-  // Status e Descontinuação
   const [statusAtivo, setStatusAtivo] = useState(true); 
   const [motivoDescontinuacao, setMotivoDescontinuacao] = useState("");
   const [medicoDescontinuacaoId, setMedicoDescontinuacaoId] = useState("");
   const [medicoDescontinuacaoNome, setMedicoDescontinuacaoNome] = useState("");
   const [substituidoPorId, setSubstituidoPorId] = useState<string>("");
   
-  // Modais de Seleção
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isDoctorDescontinuacaoModalOpen, setIsDoctorDescontinuacaoModalOpen] = useState(false);
   const [isSubstitutoModalOpen, setIsSubstitutoModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   
-  // Tratamentos (Múltiplos N:N)
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
@@ -153,7 +149,6 @@ function EditarMedicamentoContent() {
   const [newTratamentoName, setNewTratamentoName] = useState("");
   const [isSavingTratamento, setIsSavingTratamento] = useState(false);
   
-  // Queries Auxiliares
   const medicamentosQuery = useLiveQuery(() => db.table("medicamentos").toArray(), []) || [];
   const medicamentosAtivos = medicamentosQuery.filter((m: any) => m.id !== id);
   const selectedSubstituto = medicamentosQuery.find((m: any) => m.id === substituidoPorId);
@@ -167,7 +162,6 @@ function EditarMedicamentoContent() {
   const selectedMedicoDescontinuacao = medicos.find((m: any) => m.id === medicoDescontinuacaoId) || medicos.find((m: any) => m.nome === medicoDescontinuacaoNome);
   const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId);
 
-  // Estoque
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
   const [estoqueDataReferencia, setEstoqueDataReferencia] = useState(todayISO());
@@ -386,6 +380,8 @@ function EditarMedicamentoContent() {
         medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
         medico_descontinuacao_nome: !statusAtivo ? medicoDescontinuacaoNome.trim() || undefined : undefined,
         substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
+        // ✅ CORREÇÃO 5: data_descontinuacao adicionada
+        data_descontinuacao: !statusAtivo ? todayISO() : undefined,
         estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
         estoque_data_referencia: estoqueAtivo ? estoqueDataReferencia : undefined,
         estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
@@ -455,7 +451,7 @@ function EditarMedicamentoContent() {
     );
   }
 
-  const SelectedFormatIcon = FORMATOS.find(f => f.id === formato)?.icon || Pill;
+  const SelectedFormatIcon = FORMATOS.find(f => f.id === formato)?.icon || Circle;
   const hasTwoColors = cores.length === 2;
   const color1 = cores[0] || "#9CA3AF";
   const gradientId = `split-${id}`;
@@ -463,7 +459,7 @@ function EditarMedicamentoContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        {/* SVG com Gradiente para Ícone de Duas Cores */}
+        {/* ✅ CORREÇÃO 4: SVG com Gradiente para Ícone de Duas Cores */}
         <svg width="0" height="0" className="absolute">
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -484,7 +480,11 @@ function EditarMedicamentoContent() {
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <SelectedFormatIcon size={16} stroke={hasTwoColors ? `url(#${gradientId})` : color1} />
+                {/* ✅ CORREÇÃO 6: Ícone com gradiente dinâmico */}
+                <SelectedFormatIcon 
+                  size={16} 
+                  stroke={hasTwoColors ? `url(#${gradientId})` : color1} 
+                />
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
                   Vault
                 </p>
@@ -505,7 +505,6 @@ function EditarMedicamentoContent() {
 
         <section className="space-y-4 px-5 pt-6">
 
-          {/* SELETOR DE PESSOA */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ duration: 0.28 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa <span className="text-coral">*</span></p>
             <div className="flex flex-wrap gap-2">
@@ -581,7 +580,6 @@ function EditarMedicamentoContent() {
              </div>
           </motion.div>
 
-          {/* BLOCO DE STATUS (ATIVO / DESCONTINUADO AVANÇADO) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
@@ -792,7 +790,6 @@ function EditarMedicamentoContent() {
             </div>
           </motion.div>
 
-          {/* HISTÓRICO CLÍNICO */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                 <History size={100} />
@@ -839,7 +836,6 @@ function EditarMedicamentoContent() {
              </button>
           </motion.div>
 
-          {/* ESTOQUE */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ duration: 0.28, delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <button onClick={toggleEstoque} className="flex w-full items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -909,7 +905,6 @@ function EditarMedicamentoContent() {
           </Button>
         </div>
 
-        {/* Modal de Substituição de Medicamento */}
         <SelectionModal
           isOpen={isSubstitutoModalOpen}
           onClose={() => setIsSubstitutoModalOpen(false)}
@@ -929,7 +924,6 @@ function EditarMedicamentoContent() {
           createNewLabel="Cadastrar Novo Medicamento"
         />
 
-        {/* Modal: Médico que Descontinuou */}
         <SelectionModal
           isOpen={isDoctorDescontinuacaoModalOpen}
           onClose={() => setIsDoctorDescontinuacaoModalOpen(false)}
@@ -1032,6 +1026,7 @@ function EditarMedicamentoContent() {
   );
 }
 
+// ✅ CORREÇÃO 7: Wrapper com Suspense
 export default function EditarMedicamentoPage() {
   return (
     <Suspense fallback={<LoadingSkeleton />}>
