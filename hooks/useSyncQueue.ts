@@ -444,6 +444,28 @@ export function useSyncQueue() {
     if (item.operation !== 'delete' && card.id) await db.cards.update(card.id, { synced: true });
   };
 
+  // ============================================================
+  // FUNÇÃO DE SYNC PARA medicamento_tratamentos (ADICIONADA)
+  // ============================================================
+  const syncMedicamentoTratamento = async (item: any) => {
+    if (!supabase) return;
+    const link = item.payload as any;
+    
+    if (item.operation === 'add') {
+      const { error } = await supabase.from('medicamento_tratamentos').insert({
+        id: link.id,
+        medicamento_id: link.medicamento_id,
+        tratamento_id: link.tratamento_id
+      });
+      if (error) throw new Error(`Link insert error: ${error.message}`);
+    } else if (item.operation === 'delete') {
+      const { error } = await supabase.from('medicamento_tratamentos').delete().eq('id', item.payload.id);
+      if (error) throw new Error(`Link delete error: ${error.message}`);
+    }
+    
+    if (item.operation !== 'delete' && link.id) await db.medicamento_tratamentos.update(link.id, { synced: true });
+  };
+
   const processQueue = useCallback(async () => {
     if (processingRef.current || !isOnline) return;
 
@@ -462,9 +484,13 @@ export function useSyncQueue() {
 
       if (queue.length === 0) return;
 
+      // ============================================================
+      // PRIORITY ORDER ATUALIZADO (medicamento_tratamentos incluso)
+      // ============================================================
       const priorityOrder = [
-        'persons', 'medicos', 'hospitais', 'locais', 'laboratorios', 'instituicoes', 'tratamentos', 
-        'documents', 'exames', 'medicamentos', 'renovacoes', 'doseLogs', 
+        'persons', 'medicos', 'hospitais', 'locais', 'laboratorios', 'instituicoes', 
+        'tratamentos', 'medicamentos', 'medicamento_tratamentos',
+        'documents', 'exames', 'renovacoes', 'doseLogs', 
         'consultas', 'cirurgias', 'anexos_clinicos',
         'vaults', 'vaultMembers', 'credentials', 'cards'
       ];
@@ -491,6 +517,10 @@ export function useSyncQueue() {
           else if (item.table === 'laboratorios') await syncLaboratorio(item);
           else if (item.table === 'instituicoes') await syncInstituicao(item);
           else if (item.table === 'tratamentos') await syncTratamento(item);
+          // ============================================================
+          // MAPEAMENTO ADICIONADO PARA medicamento_tratamentos
+          // ============================================================
+          else if (item.table === 'medicamento_tratamentos') await syncMedicamentoTratamento(item);
           else if (item.table === 'documents') await syncDocument(item);
           else if (item.table === 'exames') await syncExame(item);
           else if (item.table === 'medicamentos') await syncMedicamento(item);
