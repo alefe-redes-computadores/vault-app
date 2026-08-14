@@ -29,7 +29,7 @@ interface TableCheck {
   error?: string;
 }
 
-// 1. LISTA ATUALIZADA COM AS NOVAS TABELAS (EXAMES E LABORATÓRIOS INCLUÍDOS)
+// 1. LISTA ATUALIZADA COM TODAS AS TABELAS INCLUINDO CIDS E LOCAIS
 const TABLES: { key: string; label: string }[] = [
   { key: "persons", label: "Pessoas" },
   { key: "documents", label: "Documentos" },
@@ -37,6 +37,8 @@ const TABLES: { key: string; label: string }[] = [
   { key: "medicamentos", label: "Medicamentos" },
   { key: "renovacoes", label: "Renovações" },
   { key: "tratamentos", label: "Tratamentos" },
+  { key: "cids", label: "CIDs" },
+  { key: "locais", label: "Locais/Postos" },
   { key: "credentials", label: "Senhas e Acessos" },
   { key: "cards", label: "Contas e Cartões" },
   { key: "instituicoes", label: "Instituições" },
@@ -103,7 +105,7 @@ export default function DiagnosticoPage() {
     trigger("success");
   }, [user, trigger]);
 
-  // Função de Push Direto turbinada para varrer as tabelas novas também
+  // Função de Push Direto turbinada cobrindo todas as tabelas novas e renovações
   const forcePushAll = async () => {
     if (!user?.id) return;
     trigger("vibrate");
@@ -113,8 +115,9 @@ export default function DiagnosticoPage() {
     let errorMsg = "";
 
     try {
-      // 2. LISTA EXPANDIDA PARA FORÇAR O UPLOAD DAS ENTIDADES NOVAS
       const tablesToPush = [
+        "cids",
+        "locais",
         "exames", 
         "laboratorios", 
         "medicos", 
@@ -122,6 +125,7 @@ export default function DiagnosticoPage() {
         "farmacias", 
         "tratamentos", 
         "medicamentos", 
+        "renovacoes", 
         "doseLogs",
         "documents"
       ];
@@ -132,15 +136,13 @@ export default function DiagnosticoPage() {
         const items = await (db as any)[tableName].toArray();
 
         if (items.length > 0) {
-          // Burlar a fila de sync e enviar como UPSERT (cria se não existir, atualiza se existir)
           const { error } = await supabase.from(tableName).upsert(items);
 
           if (error) {
             errorMsg = `Tabela ${tableName}: ${error.message || error.details}`;
-            break; // Para no primeiro erro para vermos a causa
+            break;
           } else {
             count += items.length;
-            // Atualiza localmente para dizer que agora está na nuvem
             for (const item of items) {
               await (db as any)[tableName].update(item.id, { synced: true });
             }
