@@ -1,49 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowLeft, 
-  Loader2, 
-  Save, 
-  Pill, 
-  Circle, // <-- Novo formato (Redondo)
-  Trash2, 
-  AlertTriangle, 
-  Package, 
-  Plus, 
-  Clock, 
-  Activity,
-  Brain,
-  ShieldAlert,
-  HeartPulse,
-  Flame,
-  History,
-  ExternalLink,
-  Stethoscope,
-  ArrowRightLeft,
-  Droplet,
-  Syringe,
-  StickyNote,
-  Palette,
-  X
+  ArrowLeft, Loader2, Save, Pill, Circle, Trash2, AlertTriangle, 
+  Package, Plus, Clock, Activity, Brain, ShieldAlert, HeartPulse, 
+  Flame, StickyNote, Stethoscope, Droplet, Syringe, Palette, X, Store, UserCheck
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHapticFeedback } from "@/lib/haptics";
-import {
-  suggestRenewalDate,
-  VALIDADE_RECEITA_DIAS,
-  TIPO_RECEITA_LABELS,
-} from "@/lib/health-utils";
-import {
-  scheduleDoseNotifications,
-  cancelDoseNotifications,
-  requestNotificationPermission,
-} from "@/lib/dose-notifications";
+import { suggestRenewalDate, VALIDADE_RECEITA_DIAS, TIPO_RECEITA_LABELS } from "@/lib/health-utils";
 import type { TipoReceita } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -64,7 +34,6 @@ const fadeUp = {
 
 const TIPO_OPTIONS: TipoReceita[] = ["comum", "amarela", "azul", "branca"];
 
-// Adicionado o Comprimido Redondo (Circle)
 const FORMATOS = [
   { id: "comprimido", label: "Redondo", icon: Circle },
   { id: "capsula", label: "Cápsula", icon: Pill },
@@ -91,14 +60,7 @@ function getTratamentoIcon(nome: string) {
   return Activity;
 }
 
-function formatDataMesAno(dataIso: string) {
-  if (!dataIso) return "";
-  const [year, month] = dataIso.split("-");
-  const meses = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
-  return `${meses[parseInt(month) - 1]}/${year.slice(2)}`;
-}
-
-export default function EditarMedicamentoPage() {
+function EditarMedicamentoContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -112,17 +74,14 @@ export default function EditarMedicamentoPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [documentId, setDocumentId] = useState<string>("");
 
-  const [personId, setPersonId] = useState<string>("");
+  const [personId, setPersonId] = useState("");
   const [nome, setNome] = useState("");
   const [dosagem, setDosagem] = useState("");
-  const [formato, setFormato] = useState("capsula"); // Padrão
+  const [formato, setFormato] = useState("capsula");
   const [cores, setCores] = useState<string[]>([]);
   
-  const [medicoNome, setMedicoNome] = useState("");
   const [medicoId, setMedicoId] = useState("");
-  const [farmaciaNome, setFarmaciaNome] = useState("");
   const [farmaciaId, setFarmaciaId] = useState("");
   const [tipoReceita, setTipoReceita] = useState<TipoReceita>("comum");
   const [dataReceita, setDataReceita] = useState("");
@@ -132,13 +91,10 @@ export default function EditarMedicamentoPage() {
   const [statusAtivo, setStatusAtivo] = useState(true); 
   const [motivoDescontinuacao, setMotivoDescontinuacao] = useState("");
   const [medicoDescontinuacaoId, setMedicoDescontinuacaoId] = useState("");
-  const [medicoDescontinuacaoNome, setMedicoDescontinuacaoNome] = useState("");
-  const [substituidoPorId, setSubstituidoPorId] = useState<string>("");
   
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
-  const [isDoctorDescontinuacaoModalOpen, setIsDoctorDescontinuacaoModalOpen] = useState(false);
-  const [isSubstitutoModalOpen, setIsSubstitutoModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
+  const [isDoctorDescontinuacaoModalOpen, setIsDoctorDescontinuacaoModalOpen] = useState(false);
   
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
@@ -147,17 +103,8 @@ export default function EditarMedicamentoPage() {
   const [newTratamentoName, setNewTratamentoName] = useState("");
   const [isSavingTratamento, setIsSavingTratamento] = useState(false);
   
-  const medicamentosQuery = useLiveQuery(() => db.table("medicamentos").toArray(), []) || [];
-  const medicamentosAtivos = medicamentosQuery.filter((m: any) => m.id !== id);
-  const selectedSubstituto = medicamentosQuery.find((m: any) => m.id === substituidoPorId);
-
-  const renovacoes = useLiveQuery(
-    () => db.renovacoes.where("medicamento_id").equals(id).reverse().sortBy("data"),
-    [id]
-  ) || [];
-  
-  const selectedMedico = medicos.find((m: any) => m.id === medicoId) || medicos.find((m: any) => m.nome === medicoNome);
-  const selectedMedicoDescontinuacao = medicos.find((m: any) => m.id === medicoDescontinuacaoId) || medicos.find((m: any) => m.nome === medicoDescontinuacaoNome);
+  const selectedMedico = medicos.find((m: any) => m.id === medicoId);
+  const selectedMedicoDescontinuacao = medicos.find((m: any) => m.id === medicoDescontinuacaoId);
   const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId);
 
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
@@ -166,7 +113,6 @@ export default function EditarMedicamentoPage() {
   const [estoqueUnidade, setEstoqueUnidade] = useState("comprimido(s)");
   const [estoqueUnidadePorDose, setEstoqueUnidadePorDose] = useState("1");
   const [horarios, setHorarios] = useState<string[]>([""]);
-  const [horariosOriginais, setHorariosOriginais] = useState<string[]>([]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -174,10 +120,6 @@ export default function EditarMedicamentoPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const diasValidade = VALIDADE_RECEITA_DIAS[tipoReceita];
-  const consumoDiario = horarios.filter((h) => h).length * (Number(estoqueUnidadePorDose) || 1);
-  const diasEstimados = estoqueAtivo && consumoDiario > 0 && Number(estoqueQuantidade) > 0
-      ? Math.floor(Number(estoqueQuantidade) / consumoDiario)
-      : null;
 
   useEffect(() => {
     if (!id) {
@@ -195,9 +137,7 @@ export default function EditarMedicamentoPage() {
         setFormato(item.formato || "capsula");
         setCores(item.cores || []);
         
-        setMedicoNome(item.medico || "");
         setMedicoId(item.medico_id || "");
-        setFarmaciaNome(item.farmacia || "");
         setFarmaciaId(item.farmacia_id || "");
         setDataReceita(item.data_receita || "");
         setProximaRenovacao(item.proxima_renovacao || "");
@@ -207,18 +147,12 @@ export default function EditarMedicamentoPage() {
         setStatusAtivo(item.status !== "descontinuado");
         setMotivoDescontinuacao(item.motivo_descontinuacao || "");
         setMedicoDescontinuacaoId(item.medico_descontinuacao_id || "");
-        setMedicoDescontinuacaoNome(item.medico_descontinuacao_nome || "");
-        setSubstituidoPorId(item.substituido_por_id || "");
 
         const vinculos = await db.medicamento_tratamentos.where('medicamento_id').equals(id).toArray();
         const tIds = vinculos.map((v: any) => v.tratamento_id);
         
-        if (tIds.length === 0 && item.tratamento_id) {
-          tIds.push(item.tratamento_id);
-        }
+        if (tIds.length === 0 && item.tratamento_id) tIds.push(item.tratamento_id);
         setTratamentosSelecionados(tIds);
-
-        if (item.document_id) setDocumentId(item.document_id);
 
         if (typeof item.estoque_quantidade === "number" && item.estoque_data_referencia && item.estoque_horarios) {
           setEstoqueAtivo(true);
@@ -227,7 +161,6 @@ export default function EditarMedicamentoPage() {
           setEstoqueUnidade(item.estoque_unidade_medida || "comprimido(s)");
           setEstoqueUnidadePorDose(String(item.estoque_unidade_por_dose || 1));
           setHorarios(item.estoque_horarios);
-          setHorariosOriginais(item.estoque_horarios);
         }
       }
       setIsLoading(false);
@@ -238,18 +171,12 @@ export default function EditarMedicamentoPage() {
     trigger("vibrate");
     setCores(prev => {
       if (prev.includes(hex)) return prev.filter(c => c !== hex);
-      if (prev.length >= 2) return [prev[1], hex]; // Substitui a segunda
+      if (prev.length >= 2) return [prev[1], hex]; 
       return [...prev, hex];
     });
   };
 
-  const handleTipoReceitaChange = (tipo: TipoReceita) => { trigger("vibrate"); setTipoReceita(tipo); };
   const aplicarSugestaoValidade = () => { if (dataReceita && diasValidade) { trigger("vibrate"); setProximaRenovacao(suggestRenewalDate(dataReceita, tipoReceita)); } };
-  const toggleEstoque = () => { trigger("vibrate"); setEstoqueAtivo(!estoqueAtivo); };
-  const updateHorario = (index: number, value: string) => setHorarios(prev => prev.map((h, i) => (i === index ? value : h)));
-  const addHorario = () => { trigger("vibrate"); setHorarios(prev => [...prev, ""]); };
-  const removeHorario = (index: number) => { trigger("vibrate"); setHorarios(prev => prev.filter((_, i) => i !== index)); };
-  const registrarContagemHoje = () => { trigger("vibrate"); setEstoqueDataReferencia(todayISO()); };
 
   const handleCreateTratamento = async () => {
     if (!newTratamentoName.trim()) return;
@@ -274,8 +201,6 @@ export default function EditarMedicamentoPage() {
     if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
     if (!dosagem.trim()) newErrors.dosagem = "Dosagem é obrigatória";
     if (!dataReceita) newErrors.dataReceita = "Data da receita é obrigatória";
-    if (estoqueAtivo && (!estoqueQuantidade || Number(estoqueQuantidade) <= 0)) newErrors.estoqueQuantidade = "Informe a quantidade";
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -291,10 +216,8 @@ export default function EditarMedicamentoPage() {
         nome: nome.trim(),
         dosagem: dosagem.trim(),
         formato,
-        cores, // Salvando as cores corretamente no banco local e nuvem
-        medico: medicoNome.trim(),
+        cores,
         medico_id: medicoId || undefined,
-        farmacia: farmaciaNome.trim() || undefined,
         farmacia_id: farmaciaId || undefined,
         data_receita: dataReceita,
         proxima_renovacao: proximaRenovacao,
@@ -304,8 +227,6 @@ export default function EditarMedicamentoPage() {
         status: statusAtivo ? "ativo" : "descontinuado",
         motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
         medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
-        medico_descontinuacao_nome: !statusAtivo ? medicoDescontinuacaoNome.trim() || undefined : undefined,
-        substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
         estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
         estoque_data_referencia: estoqueAtivo ? estoqueDataReferencia : undefined,
         estoque_horarios: estoqueAtivo ? horariosFiltrados : undefined,
@@ -314,7 +235,7 @@ export default function EditarMedicamentoPage() {
       } as any);
 
       trigger("success");
-      router.back(); // Volta para a tela de visualização ou listagem corretamente
+      router.back();
     } catch (error) {
       trigger("error");
     } finally {
@@ -324,16 +245,14 @@ export default function EditarMedicamentoPage() {
 
   const handleDelete = async () => {
     setDeleting(true);
-    try { await deleteMedicamento(id); trigger("success"); router.replace("/saude"); } 
+    try { await deleteMedicamento(id); trigger("success"); router.replace("/saude/medicamentos"); } 
     catch (error) { trigger("error"); }
   };
 
   if (isLoading) return <LoadingSkeleton />;
-  if (notFound) return <PageTransition><main className="flex min-h-screen flex-col items-center justify-center bg-void px-6 text-center"><p className="font-display text-lg font-semibold text-ink-primary">Não encontrado</p><button onClick={() => router.replace("/saude")} className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void">Voltar</button></main></PageTransition>;
+  if (notFound) return null;
 
   const SelectedFormatIcon = FORMATOS.find(f => f.id === formato)?.icon || Pill;
-
-  // Lógica de Renderização Metade/Metade
   const hasTwoColors = cores.length === 2;
   const color1 = cores[0] || "#9CA3AF";
   const color2 = hasTwoColors ? cores[1] : color1;
@@ -342,8 +261,6 @@ export default function EditarMedicamentoPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        
-        {/* DEFINIÇÃO DO GRADIENTE SVG PARA O ÍCONE BICOLOR CORTE SECO */}
         <svg width="0" height="0" className="absolute">
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -368,103 +285,36 @@ export default function EditarMedicamentoPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa <span className="text-coral">*</span></p>
-            <div className="flex flex-wrap gap-2">
-              {persons.map((person: any) => {
-                const active = personId === person.id;
-                return (
-                  <button key={person.id} onClick={() => { trigger("vibrate"); setPersonId(person.id!); }} className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${active ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{person.name}</button>
-                );
-              })}
-            </div>
-          </motion.div>
-          
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-             <div className="flex items-center gap-2 mb-3">
-               <Palette size={16} className="text-ice" />
-               <h3 className="text-sm font-semibold text-ink-primary">Identidade Visual</h3>
-             </div>
-             
-             <div className="mb-4">
-               <p className="text-xs text-ink-muted mb-2">Formato</p>
-               <div className="flex flex-wrap gap-2">
-                 {FORMATOS.map((f) => {
-                   const isActive = formato === f.id;
-                   const Icon = f.icon;
-                   return (
-                     <button
-                       key={f.id}
-                       onClick={() => { trigger("vibrate"); setFormato(f.id); }}
-                       className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 px-4 border transition-all ${isActive ? "bg-ice/15 border-ice text-ice" : "bg-surface-raised border-surface-border/40 text-ink-muted"}`}
-                     >
-                       <Icon size={20} />
-                       <span className="text-[10px] font-medium">{f.label}</span>
-                     </button>
-                   );
-                 })}
-               </div>
-             </div>
-
-             <div>
-               <p className="text-xs text-ink-muted mb-2">Cores (selecione até 2)</p>
-               <div className="flex flex-wrap gap-2.5 items-center">
-                 {CORES_DISPONIVEIS.map((hex) => {
-                   const isSelected = cores.includes(hex);
-                   return (
-                     <button
-                       key={hex}
-                       onClick={() => toggleCor(hex)}
-                       className={`h-8 w-8 rounded-full border-2 transition-all ${isSelected ? "border-ice scale-110 shadow-md shadow-ice/20" : "border-transparent scale-100"}`}
-                       style={{ backgroundColor: hex, outline: hex === "#FFFFFF" && !isSelected ? "1px solid rgba(255,255,255,0.1)" : "none" }}
-                     />
-                   );
-                 })}
-                 
-                 {/* Input de Cor Customizada disfarçado de Botão de + */}
-                 <div className="relative h-8 w-8 rounded-full border-2 border-surface-border border-dashed flex items-center justify-center overflow-hidden hover:border-ice/50 transition-colors">
-                    <Plus size={14} className="text-ink-muted" />
-                    <input 
-                      type="color" 
-                      className="absolute -inset-2 h-14 w-14 opacity-0 cursor-pointer" 
-                      onChange={(e) => {
-                        const newColor = e.target.value.toUpperCase();
-                        if(!cores.includes(newColor)) toggleCor(newColor);
-                      }} 
-                    />
-                 </div>
-               </div>
-
-               <div className="mt-4 flex flex-col items-center justify-center rounded-2xl bg-surface-raised border border-surface-border py-4 shadow-sm">
-                  <p className="text-[10px] uppercase tracking-wider text-ink-muted mb-2">Pré-visualização</p>
-                  {/* UM ÚNICO ÍCONE APLICANDO AS DUAS CORES */}
-                  <SelectedFormatIcon size={32} stroke={hasTwoColors ? `url(#${gradientId})` : color1} strokeWidth={2} />
-               </div>
-             </div>
+            <Input label="Medicamento" placeholder="Ex: Losartana, Sertralina..." value={nome} onChange={(e) => setNome(e.target.value)} error={errors.nome} required />
+            <Input label="Dosagem" placeholder="Ex: 50mg, 1x ao dia" value={dosagem} onChange={(e) => setDosagem(e.target.value)} error={errors.dosagem} required />
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div><h3 className="text-sm font-semibold text-ink-primary">Status do Tratamento</h3><p className="text-xs text-ink-muted mt-0.5">{statusAtivo ? "Remédio em uso contínuo." : "Medicamento descontinuado."}</p></div>
-              <button onClick={() => { trigger("vibrate"); setStatusAtivo(!statusAtivo); }} className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${statusAtivo ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" : "bg-coral/10 text-coral border border-coral/20"}`}>{statusAtivo ? "ATIVO" : "DESCONTINUADO"}</button>
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico Prescritor</label>
+              <button type="button" onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between transition-colors hover:border-ice/50">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <UserCheck size={16} className="text-ice shrink-0" />
+                  <span className="truncate text-ink-primary">{selectedMedico ? `Dr(a). ${selectedMedico.nome}` : "Selecionar médico..."}</span>
+                </div>
+              </button>
             </div>
-            <AnimatePresence>
-              {!statusAtivo && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                  <div className="mt-4 pt-4 border-t border-surface-border/40 space-y-4">
-                    <Input label="Motivo da Suspensão / Relato" placeholder="Ex: Causa muito sono..." value={motivoDescontinuacao} onChange={(e) => setMotivoDescontinuacao(e.target.value)} />
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2"><Stethoscope size={14} className="text-ink-muted" />Qual médico suspendeu?</label>
-                      <button onClick={() => { trigger("vibrate"); setIsDoctorDescontinuacaoModalOpen(true); }} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left transition-colors hover:border-ice/50">
-                        {selectedMedicoDescontinuacao ? <span className="font-medium text-ink-primary">{selectedMedicoDescontinuacao.nome}</span> : <span className="text-ink-muted">{medicoDescontinuacaoNome || "Selecionar médico..."}</span>}
-                        <span className="text-xs text-ice font-medium">Alterar</span>
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia / Local de Retirada</label>
+              <button type="button" onClick={() => { trigger("vibrate"); setIsPharmacyModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between transition-colors hover:border-ice/50">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Store size={16} className="text-amber-400 shrink-0" />
+                  <span className="truncate text-ink-primary">{selectedFarmacia ? selectedFarmacia.nome : "Selecionar farmácia..."}</span>
+                </div>
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-surface-border/40">
+              <div className="space-y-1.5"><label className="block text-sm font-medium text-ink-primary">Data da receita <span className="text-coral">*</span></label><input type="date" value={dataReceita} onChange={(e) => setDataReceita(e.target.value)} className={`w-full rounded-2xl border bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice/50 focus:ring-2 focus:ring-ice/15 ${errors.dataReceita ? "border-coral/50" : "border-surface-border/50"}`} /></div>
+              <div className="space-y-1.5"><label className="block text-sm font-medium text-ink-primary">Próxima renovação</label><input type="date" value={proximaRenovacao} onChange={(e) => setProximaRenovacao(e.target.value)} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice/50 focus:ring-2 focus:ring-ice/15" /></div>
+            </div>
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
@@ -489,68 +339,28 @@ export default function EditarMedicamentoPage() {
             )}
             <button onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"><Plus size={16} /><span className="text-sm font-medium">Adicionar Tratamento / CID</span></button>
           </motion.div>
-
+          
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <p className="mb-3 text-sm font-medium text-ink-primary">Tipo de receita</p>
-            <div className="grid grid-cols-2 gap-2">
-              {TIPO_OPTIONS.map((tipo) => {
-                const active = tipoReceita === tipo;
-                return (
-                  <button key={tipo} onClick={() => handleTipoReceitaChange(tipo)} className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${active ? (tipo === "comum" ? "border-ice bg-ice/12 text-ice" : "border-violet-400 bg-violet-400/12 text-violet-300") : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"}`}>{TIPO_RECEITA_LABELS[tipo]}</button>
-                );
-              })}
-            </div>
-            {diasValidade && (
-              <div className="mt-3 flex items-start justify-between gap-2 rounded-2xl bg-violet-400/8 px-3 py-2.5">
-                <div className="flex items-start gap-2"><AlertTriangle size={14} className="mt-0.5 shrink-0 text-violet-300" /><p className="text-xs leading-5 text-ink-muted">Receita {TIPO_RECEITA_LABELS[tipoReceita].toLowerCase()} vale <span className="font-medium text-ink-primary">{diasValidade} dias</span>.</p></div>
-                <button onClick={aplicarSugestaoValidade} className="shrink-0 whitespace-nowrap text-xs font-medium text-violet-300 hover:text-violet-200">Aplicar +{diasValidade}d</button>
-              </div>
-            )}
-          </motion.div>
-
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input label="Medicamento" placeholder="Ex: Losartana, Sertralina..." value={nome} onChange={(e) => setNome(e.target.value)} error={errors.nome} required />
-            <Input label="Dosagem" placeholder="Ex: 50mg, 1x ao dia" value={dosagem} onChange={(e) => setDosagem(e.target.value)} error={errors.dosagem} required />
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><label className="block text-sm font-medium text-ink-primary">Data da receita <span className="text-coral">*</span></label><input type="date" value={dataReceita} onChange={(e) => setDataReceita(e.target.value)} className={`w-full rounded-2xl border bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice/50 focus:ring-2 focus:ring-ice/15 ${errors.dataReceita ? "border-coral/50" : "border-surface-border/50"}`} /></div>
-              <div className="space-y-1.5"><label className="block text-sm font-medium text-ink-primary">Próxima renovação</label><input type="date" value={proximaRenovacao} onChange={(e) => setProximaRenovacao(e.target.value)} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice/50 focus:ring-2 focus:ring-ice/15" /></div>
-            </div>
-          </motion.div>
-
-          {/* ESTOQUE */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <button onClick={toggleEstoque} className="flex w-full items-center justify-between">
-              <div className="flex items-center gap-2.5"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice"><Package size={16} /></div><div className="text-left"><p className="text-sm font-medium text-ink-primary">Acompanhar estoque</p><p className="text-xs text-ink-muted">Receba alerta e lembrete de dose</p></div></div>
-              <div className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${estoqueAtivo ? "bg-ice" : "bg-surface-border"}`}><div className={`h-5 w-5 rounded-full bg-void transition-transform ${estoqueAtivo ? "translate-x-5" : "translate-x-0"}`} /></div>
-            </button>
-            <AnimatePresence>
-              {estoqueAtivo && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                  <div className="mt-4 space-y-3 border-t border-surface-border/40 pt-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5"><label className="block text-sm font-medium text-ink-primary">Quant. atual <span className="text-coral">*</span></label><input type="number" min="0" inputMode="numeric" placeholder="Ex: 30" value={estoqueQuantidade} onChange={(e) => setEstoqueQuantidade(e.target.value)} className="w-full rounded-2xl border bg-surface-raised px-4 py-3 text-ink-primary outline-none" /></div>
-                      <Input label="Unidade" placeholder="comprimido(s)" value={estoqueUnidade} onChange={(e) => setEstoqueUnidade(e.target.value)} />
-                    </div>
-                    <div>
-                      <div className="mb-1.5 flex items-center justify-between"><label className="block text-sm font-medium text-ink-primary">Horários <span className="text-coral">*</span></label><button onClick={addHorario} className="flex items-center gap-1 text-xs font-medium text-ice hover:text-ice/80"><Plus size={13} /> Adicionar</button></div>
-                      <div className="space-y-2">
-                        {horarios.map((horario, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <div className="relative flex-1"><Clock size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" /><input type="time" value={horario} onChange={(e) => updateHorario(index, e.target.value)} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised py-3 pl-9 pr-3 text-ink-primary outline-none" /></div>
-                            {horarios.length > 1 && <button onClick={() => removeHorario(index)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface-border/40 hover:text-coral"><Trash2 size={14} /></button>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <TextArea label="Notas Clínicas (opcional)" placeholder="Ex: tomar em jejum, causou muito sono..." value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
+             <div className="flex items-center gap-2 mb-3"><Palette size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Identidade Visual</h3></div>
+             <div className="mb-4">
+               <div className="flex flex-wrap gap-2">
+                 {FORMATOS.map((f) => {
+                   const isActive = formato === f.id;
+                   const Icon = f.icon;
+                   return (
+                     <button key={f.id} onClick={() => { trigger("vibrate"); setFormato(f.id); }} className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 px-4 border transition-all ${isActive ? "bg-ice/15 border-ice text-ice" : "bg-surface-raised border-surface-border/40 text-ink-muted"}`}><Icon size={20} /><span className="text-[10px] font-medium">{f.label}</span></button>
+                   );
+                 })}
+               </div>
+             </div>
+             <div>
+               <div className="flex flex-wrap gap-2.5 items-center">
+                 {CORES_DISPONIVEIS.map((hex) => {
+                   const isSelected = cores.includes(hex);
+                   return <button key={hex} onClick={() => toggleCor(hex)} className={`h-8 w-8 rounded-full border-2 transition-all ${isSelected ? "border-ice scale-110 shadow-md shadow-ice/20" : "border-transparent scale-100"}`} style={{ backgroundColor: hex, outline: hex === "#FFFFFF" && !isSelected ? "1px solid rgba(255,255,255,0.1)" : "none" }} />
+                 })}
+               </div>
+             </div>
           </motion.div>
         </section>
 
@@ -560,13 +370,19 @@ export default function EditarMedicamentoPage() {
           </Button>
         </div>
 
-        {/* TODAS AS MODAIS FORAM MANTIDAS INTACTAS ABAIXO, APENAS OCULTADAS NO TEXTO PARA FOCAR NA UI */}
-        <SelectionModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} onSelect={(item: any) => { trigger("vibrate"); if (!tratamentosSelecionados.includes(item.id!)) setTratamentosSelecionados(prev => [...prev, item.id!]); }} items={tratamentos} title="Vincular a Tratamento/CID" placeholder="Buscar tratamento..." renderItem={(item: any) => { const IconComp = getTratamentoIcon(item.nome); return (<div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400"><IconComp size={18} /></div><div><p className="font-medium text-ink-primary">{item.nome}</p></div></div>); }} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }} createNewLabel="Novo Tratamento" />
-        <BottomSheet isOpen={isCreatingTratamento} onClose={() => { trigger("vibrate"); setIsCreatingTratamento(false); setNewTratamentoName(""); }} title="Cadastrar Tratamento" ><div className="space-y-4 px-1 pb-2"><Input label="Nome do Tratamento / CID" placeholder="Ex: TDAH, Dor Crônica..." value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus /><Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={isSavingTratamento || !newTratamentoName.trim()} className="flex items-center justify-center gap-2">{isSavingTratamento ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Salvar e selecionar</Button></div></BottomSheet>
-        <SelectionModal isOpen={isDoctorDescontinuacaoModalOpen} onClose={() => setIsDoctorDescontinuacaoModalOpen(false)} onSelect={(item: any) => { trigger("vibrate"); setMedicoDescontinuacaoNome(item.nome); setMedicoDescontinuacaoId(item.id); }} items={medicos} title="Médico que suspendeu" placeholder="Buscar médico..." renderItem={(item: any) => (<div className="flex items-center gap-3"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={14} /></div><div><p className="font-medium text-ink-primary">{item.nome}</p></div></div>)} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsDoctorDescontinuacaoModalOpen(false); trigger("vibrate"); router.push("/saude/medicos/novo"); }} createNewLabel="Cadastrar Novo Médico" />
+        {/* MODAIS RELACIONAIS ATUALIZADAS */}
+        <SelectionModal isOpen={isDoctorModalOpen} onClose={() => setIsDoctorModalOpen(false)} onSelect={(item: any) => setMedicoId(item.id)} items={medicos} title="Médico Prescritor" renderItem={(item: any) => (<div><p className="font-medium text-ink-primary">Dr(a). {item.nome}</p></div>)} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsDoctorModalOpen(false); router.push("/saude/medicos/novo"); }} createNewLabel="Cadastrar Novo Médico" />
         
-        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir medicamento" message={`Tem certeza que deseja excluir "${nome}"?`} confirmLabel="Excluir" cancelLabel="Cancelar" isLoading={deleting} type="danger" />
+        <SelectionModal isOpen={isPharmacyModalOpen} onClose={() => setIsPharmacyModalOpen(false)} onSelect={(item: any) => setFarmaciaId(item.id)} items={farmacias} title="Farmácia / Local de Retirada" renderItem={(item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p></div>)} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsPharmacyModalOpen(false); router.push("/saude/locais/novo"); }} createNewLabel="Cadastrar Nova Farmácia" />
+
+        <SelectionModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} onSelect={(item: any) => { if (!tratamentosSelecionados.includes(item.id!)) setTratamentosSelecionados(prev => [...prev, item.id!]); }} items={tratamentos} title="Vincular a Tratamento/CID" renderItem={(item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>)} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsTratamentoModalOpen(false); setIsCreatingTratamento(true); }} createNewLabel="Novo Tratamento" />
+        
+        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir medicamento" message={`Tem certeza que deseja excluir "${nome}"?`} confirmLabel="Excluir" cancelLabel="Cancelar" type="danger" />
       </main>
     </PageTransition>
   );
+}
+
+export default function EditarMedicamentoPage() {
+  return <Suspense fallback={<LoadingSkeleton />}><EditarMedicamentoContent /></Suspense>;
 }
