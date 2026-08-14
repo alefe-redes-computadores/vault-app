@@ -14,11 +14,24 @@ export function useDoseLogs(data?: string) {
 
   const doseLogs = useLiveQuery(
     () => {
-      let query = db.doseLogs.where("user_id").equals(user?.id || "");
+      if (!user?.id) return [];
+
+      // OTIMIZAÇÃO DE PERFORMANCE (FASE 3):
+      // Buscar pelo index da data reduz drasticamente a carga na memória RAM,
+      // pois puxa apenas as doses de um único dia antes de filtrar o usuário.
       if (data) {
-        query = query.and((log) => log.data === data);
+        return db.doseLogs
+          .where("data")
+          .equals(data)
+          .filter((log) => log.user_id === user.id)
+          .toArray();
       }
-      return query.toArray();
+
+      // Fallback: se não tiver data, puxa tudo do usuário (usado em relatórios gerais)
+      return db.doseLogs
+        .where("user_id")
+        .equals(user.id)
+        .toArray();
     },
     [user?.id, data],
     []
@@ -30,15 +43,17 @@ export function useDoseLogs(data?: string) {
    */
   const marcarDose = useCallback(
     async (medicamentoId: string, dataDose: string, horario: string, tomada: boolean) => {
+      if (!user?.id) return;
+
       return safeSetDoseLog({
-        user_id: user?.id || "",
+        user_id: user.id,
         medicamento_id: medicamentoId,
         data: dataDose,
         horario,
         tomado_em: tomada ? new Date().toISOString() : undefined,
       });
     },
-    [user]
+    [user?.id] // Dependência ajustada para user?.id para evitar recriações desnecessárias
   );
 
   return { doseLogs, marcarDose };
