@@ -237,7 +237,8 @@ export interface Medicamento {
   motivo_descontinuacao?: string;      
   medico_descontinuacao_id?: string;   
   medico_descontinuacao_nome?: string; 
-  substituido_por_id?: string;         
+  substituido_por_id?: string;
+  data_descontinuacao?: string;        
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
