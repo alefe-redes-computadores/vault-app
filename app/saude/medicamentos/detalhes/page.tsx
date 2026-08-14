@@ -52,7 +52,6 @@ function MedicamentoDetalhesContent() {
   const medico = useLiveQuery(() => med?.medico_id ? db.medicos.get(med.medico_id) : undefined, [med?.medico_id]);
   const farmacia = useLiveQuery(() => med?.farmacia_id ? db.farmacias.get(med.farmacia_id) : undefined, [med?.farmacia_id]);
   
-  // Cruzando o histórico de renovações/retiradas deste remédio
   const renovacoes = useLiveQuery(
     () => db.table("renovacoes").where("medicamento_id").equals(id || "").toArray(),
     [id]
@@ -72,9 +71,10 @@ function MedicamentoDetalhesContent() {
   const FormatIcon = FORMATOS.find(f => f.id === med.formato)?.icon || Pill;
   const estoqueInfo = computeEstoqueInfo(med);
   
-  const hasTwoColors = med.cores && med.cores.length === 2;
+  const hasTwoColors = !!(med.cores && med.cores.length === 2);
   const color1 = med.cores?.[0] || "#9CA3AF";
-  const color2 = hasTwoColors ? med.cores[1] : color1;
+  // AQUI FOI CORRIGIDO: med.cores?.[1]
+  const color2 = hasTwoColors ? med.cores?.[1] || color1 : color1;
   const gradientId = `detalhe-${id}`;
 
   return (
@@ -103,7 +103,6 @@ function MedicamentoDetalhesContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          {/* CARD HERO (IDENTIDADE VISUAL) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="flex flex-col items-center text-center rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm">
             <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 shadow-sm">
               <FormatIcon size={36} stroke={hasTwoColors ? `url(#${gradientId})` : color1} strokeWidth={2} />
@@ -112,12 +111,10 @@ function MedicamentoDetalhesContent() {
             <p className="text-sm font-medium text-ice mt-1">{med.dosagem}</p>
           </motion.div>
 
-          {/* VÍNCULOS RELACIONAIS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 pt-2">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">Rede de Apoio</h3>
 
             <div className="grid grid-cols-1 gap-3">
-              {/* Card do Médico */}
               <div 
                 onClick={() => { if(medico) { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${medico.id}`); } }}
                 className={`flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm ${medico ? 'cursor-pointer hover:border-ice/30 transition-all active:scale-[0.98]' : ''}`}
@@ -134,7 +131,6 @@ function MedicamentoDetalhesContent() {
                 {medico && <ChevronRight size={16} className="text-ink-faint" />}
               </div>
 
-              {/* Card da Farmácia/Local */}
               <div 
                 onClick={() => { if(farmacia) { trigger("vibrate"); router.push(`/saude/locais/detalhes?id=${farmacia.id}`); } }}
                 className={`flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm ${farmacia ? 'cursor-pointer hover:border-amber-400/30 transition-all active:scale-[0.98]' : ''}`}
@@ -153,7 +149,6 @@ function MedicamentoDetalhesContent() {
             </div>
           </motion.div>
 
-          {/* HISTÓRICO DE RENOVAÇÕES */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-4 pt-2">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">
               Histórico de Retirada
