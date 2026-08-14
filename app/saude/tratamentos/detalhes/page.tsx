@@ -18,7 +18,8 @@ import {
   History,
   FileText,
   Stethoscope,
-  ArrowLeftRight
+  ArrowLeftRight,
+  DollarSign
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -99,6 +100,7 @@ function TratamentoContent() {
   }, [id, router]);
 
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
+  const allRenovacoes = useLiveQuery(() => db.table("renovacoes").toArray(), []) || [];
 
   const linkedDocuments = useMemo(() => {
     if (!id) return [];
@@ -115,6 +117,19 @@ function TratamentoContent() {
       return matchTratamentoId || matchDocumentId;
     });
   }, [medicamentos, id, linkedDocuments]);
+
+  // Cruzamento analítico: Custo total investido nas renovações dos remédios deste tratamento
+  const custoTotalTratamento = useMemo(() => {
+    if (!linkedMedicamentos.length || !allRenovacoes.length) return 0;
+    const medIds = new Set(linkedMedicamentos.map((m: any) => m.id));
+    let total = 0;
+    allRenovacoes.forEach((r: any) => {
+      if (medIds.has(r.medicamento_id) && typeof r.preco === "number" && r.preco > 0) {
+        total += r.preco;
+      }
+    });
+    return total;
+  }, [linkedMedicamentos, allRenovacoes]);
 
   // Cruzamento relacional dos médicos associados aos medicamentos deste tratamento
   const linkedMedicos = useMemo(() => {
@@ -218,14 +233,20 @@ function TratamentoContent() {
               </div>
             )}
 
-            <div className="relative z-10 mt-5 grid grid-cols-2 gap-3 border-t border-surface-border/50 pt-5">
+            <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5">
               <div className="flex flex-col">
                 <span className="text-xs font-medium text-ink-muted">Medicamentos</span>
                 <span className="font-mono text-xl font-semibold text-ink-primary mt-0.5">{medicamentosAtivos.length} <span className="text-xs font-normal text-ink-faint">ativos</span></span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-medium text-ink-muted">Laudos / Receitas</span>
+                <span className="text-xs font-medium text-ink-muted">Laudos</span>
                 <span className="font-mono text-xl font-semibold text-ink-primary mt-0.5">{linkedDocuments.length}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-ink-muted">Custo Total</span>
+                <span className="font-mono text-base font-semibold text-emerald-400 mt-1">
+                  {custoTotalTratamento > 0 ? `R$ ${custoTotalTratamento.toFixed(2).replace(".", ",")}` : "R$ 0,00"}
+                </span>
               </div>
             </div>
           </motion.div>
