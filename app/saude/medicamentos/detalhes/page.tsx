@@ -6,7 +6,8 @@ import { motion } from "framer-motion";
 import { 
   ArrowLeft, Pill, Circle, Droplet, Syringe, StickyNote, 
   ChevronRight, Edit3, Package, Stethoscope, Store, User,
-  FileText, Calendar, Activity, Brain, Flame, HeartPulse, ShieldAlert
+  FileText, Calendar, Activity, Brain, Flame, HeartPulse, ShieldAlert,
+  AlertTriangle, DollarSign, CheckCircle2, History, Building2, Plus, Sparkles, RefreshCw
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -65,17 +66,46 @@ function MedicamentoDetalhesContent() {
     return await db.tratamentos.where('id').anyOf(tIds).toArray();
   }, [id, med?.tratamento_id]);
 
+  // Cálculo de Preço Médio com Retrocompatibilidade e Gratuito SUS
+  const precoMedioInfo = useMemo(() => {
+    if (renovacoes.length === 0) {
+      return { texto: med?.preco ? `R$ ${Number(med.preco).toFixed(2).replace(".", ",")}` : "Não informado", gratuito: false };
+    }
+    
+    const precosValidos = renovacoes.filter((r: any) => r.preco !== undefined && r.preco !== null && r.preco >= 0);
+    if (precosValidos.length === 0) return { texto: "Gratuito (SUS / Estadual)", gratuito: true };
+
+    const soma = precosValidos.reduce((acc: number, r: any) => acc + Number(r.preco), 0);
+    const media = soma / precosValidos.length;
+    
+    if (media === 0) return { texto: "Gratuito (SUS / Estadual)", gratuito: true };
+    return { texto: `R$ ${media.toFixed(2).replace(".", ",")}`, gratuito: false };
+  }, [renovacoes, med]);
+
   if (med === undefined) return <LoadingSkeleton />;
   if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
 
   const FormatIcon = FORMATOS.find(f => f.id === med.formato)?.icon || Pill;
   const estoqueInfo = computeEstoqueInfo(med);
-  
+  const qtdRestante = estoqueInfo?.quantidadeRestante ?? 0;
+
+  // Cores dinâmicas para o alerta de quantidade restante (Regra de Negócio: Verde, Amarelo, Vermelho Piscante)
+  let qtdCorClass = "text-emerald-400 font-bold";
+  let QtdIcon = CheckCircle2;
+  if (qtdRestante <= 9) {
+    qtdCorClass = "text-coral animate-pulse font-bold";
+    QtdIcon = AlertTriangle;
+  } else if (qtdRestante <= 14) {
+    qtdCorClass = "text-amber-400 font-bold";
+    QtdIcon = AlertTriangle;
+  }
+
   const hasTwoColors = !!(med.cores && med.cores.length === 2);
   const color1 = med.cores?.[0] || "#9CA3AF";
-  // AQUI FOI CORRIGIDO: med.cores?.[1]
   const color2 = hasTwoColors ? med.cores?.[1] || color1 : color1;
-  const gradientId = `detalhe-${id}`;
+  const gradientId = `detalhe-grad-${id}`;
+
+  const isDescontinuado = med.status === "descontinuado";
 
   return (
     <PageTransition>
@@ -103,15 +133,98 @@ function MedicamentoDetalhesContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="flex flex-col items-center text-center rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm">
-            <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 shadow-sm">
-              <FormatIcon size={36} stroke={hasTwoColors ? `url(#${gradientId})` : color1} strokeWidth={2} />
+          {/* Card Principal Repaginado (Estilo Painel Clínico de Tratamento) */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="relative overflow-hidden rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm">
+            <div className="absolute right-0 top-0 p-6 opacity-5 pointer-events-none">
+              <FormatIcon size={140} stroke={hasTwoColors ? `url(#${gradientId})` : color1} />
             </div>
-            <h1 className="font-display text-2xl font-bold text-ink-primary">{med.nome}</h1>
-            <p className="text-sm font-medium text-ice mt-1">{med.dosagem}</p>
+
+            <div className="flex items-center gap-4 relative z-10">
+              <div 
+                className="flex h-16 w-16 items-center justify-center rounded-2xl border border-surface-border/50 shadow-sm shrink-0" 
+                style={{ backgroundColor: color1 + '22' }}
+              >
+                <FormatIcon 
+                  size={32} 
+                  stroke={hasTwoColors ? `url(#${gradientId})` : color1} 
+                  strokeWidth={2.4} 
+                  fill={color1 + '44'} 
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="font-display text-2xl font-bold text-ink-primary truncate">{med.nome}</h1>
+                  {isDescontinuado && (
+                    <span className="rounded-full bg-coral/20 px-2.5 py-0.5 text-[10px] font-bold text-coral uppercase tracking-wide">
+                      Descontinuado
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-medium text-ice mt-0.5">{med.dosagem}</p>
+              </div>
+            </div>
+
+            {/* Grid de Informações Cruciais */}
+            <div className="mt-6 grid grid-cols-2 gap-3 pt-4 border-t border-surface-border/40 relative z-10">
+              <div className="rounded-2xl bg-surface-raised p-3 border border-surface-border/30">
+                <p className="text-[11px] text-ink-muted uppercase tracking-wider">Estoque Atual</p>
+                <div className={`mt-1 flex items-center gap-1.5 text-sm ${qtdCorClass}`}>
+                  <QtdIcon size={16} />
+                  <span>{qtdRestante} {estoqueInfo?.unidade || "unid."}</span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-surface-raised p-3 border border-surface-border/30">
+                <p className="text-[11px] text-ink-muted uppercase tracking-wider">Custo / Preço Médio</p>
+                <div className="mt-1 flex items-center gap-1.5 text-sm font-bold text-emerald-400">
+                  <DollarSign size={16} />
+                  <span className="truncate">{precoMedioInfo.texto}</span>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 pt-2">
+          {/* 💡 Insight Inteligente se o estoque estiver baixo ou zerado */}
+          {qtdRestante <= 10 && !isDescontinuado && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 flex items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/20 text-amber-400">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-amber-300 uppercase tracking-wide">Estoque Baixo</p>
+                  <p className="text-xs text-ink-muted mt-0.5">Deseja registrar uma nova compra ou renovação?</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/nova?medicamento_id=${id}`); }}
+                className="shrink-0 rounded-xl bg-amber-400 text-void px-3.5 py-2 text-xs font-bold transition-transform active:scale-95"
+              >
+                Renovar
+              </button>
+            </motion.div>
+          )}
+
+          {/* Tratamentos e CIDs Vinculados */}
+          {tratamentos && tratamentos.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
+              <h3 className="font-display text-sm font-semibold text-ink-primary px-1">Tratamentos Associados</h3>
+              <div className="flex flex-wrap gap-2">
+                {tratamentos.map((t: any) => {
+                  const IconComp = getTratamentoIcon(t.nome);
+                  return (
+                    <div key={t.id} className="flex items-center gap-2 rounded-2xl border border-violet-400/30 bg-violet-400/10 px-4 py-2.5">
+                      <IconComp size={16} className="text-violet-400" />
+                      <span className="text-xs font-semibold text-violet-300">{t.nome}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Rede de Apoio (Médico e Farmácia) */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-4 pt-2">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">Rede de Apoio</h3>
 
             <div className="grid grid-cols-1 gap-3">
@@ -149,22 +262,26 @@ function MedicamentoDetalhesContent() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-4 pt-2">
-            <h3 className="font-display text-base font-semibold text-ink-primary px-1">
-              Histórico de Retirada
-            </h3>
+          {/* Histórico de Retirada (Últimas Compras / Renovações) */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.08 }} className="space-y-4 pt-2">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="font-display text-base font-semibold text-ink-primary">
+                Histórico de Retirada
+              </h3>
+              <button 
+                onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/nova?medicamento_id=${id}`); }}
+                className="text-xs font-semibold text-ice bg-ice/10 px-3.5 py-2 rounded-xl hover:bg-ice/20 transition-colors flex items-center gap-1.5"
+              >
+                <Plus size={14} /> Nova Receita
+              </button>
+            </div>
 
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
-              <div className="flex items-center gap-2">
-                <FileText size={16} className="text-emerald-400" />
-                <h4 className="text-sm font-semibold text-ink-primary">Renovações ({renovacoes.length})</h4>
-              </div>
-              
               {renovacoes.length === 0 ? (
-                <p className="text-xs text-ink-muted py-2">Nenhum registro de renovação ou compra para este medicamento.</p>
+                <p className="text-xs text-ink-muted py-3 text-center">Nenhum registro de renovação ou compra para este medicamento.</p>
               ) : (
                 <div className="space-y-2">
-                  {renovacoes.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map((r: any) => (
+                  {renovacoes.sort((a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime()).map((r: any) => (
                     <div 
                       key={r.id} 
                       onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }}
@@ -177,11 +294,11 @@ function MedicamentoDetalhesContent() {
                         <div>
                           <p className="text-sm font-semibold text-ink-primary font-mono">{formatDateDisplay(r.data)}</p>
                           <p className="text-[11px] font-medium text-emerald-400 mt-0.5">
-                            {r.preco ? `Custo: R$ ${Number(r.preco).toFixed(2).replace(".", ",")}` : "Sem custo (SUS)"}
+                            {r.preco !== undefined && r.preco !== null && r.preco > 0 ? `Custo: R$ ${Number(r.preco).toFixed(2).replace(".", ",")}` : "Gratuito (SUS / Estadual)"}
                           </p>
                         </div>
                       </div>
-                      <FileText size={18} className="text-ice/70" />
+                      <ChevronRight size={16} className="text-ink-faint" />
                     </div>
                   ))}
                 </div>
