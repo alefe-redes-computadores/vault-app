@@ -23,7 +23,6 @@ import {
   MapPin,
   Calendar,
   DollarSign,
-  FileText,
   CalendarCheck2,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -120,12 +119,10 @@ export default function SaudePage() {
   const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
   const renovacoes = useLiveQuery(() => db.table("renovacoes").toArray(), []) || [];
 
-  // Buscando compromissos de hoje para exibição imediata no painel
   const consultasHoje = useLiveQuery(() => db.table("consultas").where("data").equals(hoje).toArray(), [hoje]) || [];
   const cirurgiasHoje = useLiveQuery(() => db.table("cirurgias").where("data").equals(hoje).toArray(), [hoje]) || [];
   const examesHoje = useLiveQuery(() => db.table("exames").where("data").equals(hoje).toArray(), [hoje]) || [];
 
-  // Cálculo do total gasto histórico com renovações e farmácias
   const totalGastoGeral = useMemo(() => {
     let soma = 0;
     renovacoes.forEach((r: any) => {
@@ -215,7 +212,6 @@ export default function SaudePage() {
 
         <section className="space-y-6 px-5 pt-5">
           
-          {/* BOTÕES DE AÇÃO RÁPIDA */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -241,7 +237,6 @@ export default function SaudePage() {
             })}
           </motion.div>
 
-          {/* CARD DE ATALHO INTUITIVO PARA O CRONOGRAMA DE HOJE */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -263,7 +258,6 @@ export default function SaudePage() {
             <ChevronRight size={18} className="text-ice" />
           </motion.div>
 
-          {/* CARD ANALÍTICO DE CUSTOS E RENOVAÇÕES */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -289,7 +283,6 @@ export default function SaudePage() {
             </div>
           </motion.div>
 
-          {/* DESTAQUE DE COMPROMISSOS DE HOJE (SE HOUVER) */}
           {(consultasHoje.length > 0 || cirurgiasHoje.length > 0 || examesHoje.length > 0) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -324,7 +317,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* ALERTA DE DOSES PENDENTES */}
           {dosesPendentesAtrasadas.length > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -365,7 +357,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* BANNERS INTELIGENTES */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -376,7 +367,6 @@ export default function SaudePage() {
             <MedicamentosNotifications />
           </motion.div>
 
-          {/* TRATAMENTOS ATIVOS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -424,7 +414,6 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* ALERTAS RESTANTES (Documentos e Exames Urgentes) */}
           {otherAlerts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -446,7 +435,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* CARDS DE ATALHOS CLÍNICOS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -506,7 +494,6 @@ export default function SaudePage() {
             </button>
           </motion.div>
 
-          {/* SUA REDE ATUALIZADA */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
