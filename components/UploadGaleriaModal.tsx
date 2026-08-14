@@ -52,20 +52,25 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (selectedFile.type.startsWith("image/")) {
-      try {
-        const compressedBlob = await compressImage(selectedFile);
-        const compressedFile = new File([compressedBlob], selectedFile.name, { type: "image/jpeg" });
-        setFile(compressedFile);
-        setPreview(URL.createObjectURL(compressedBlob));
-      } catch (error) {
-        console.error("Erro ao comprimir imagem:", error);
-        setFile(selectedFile);
+    try {
+      // Como seu utilitário já ignora PDFs e já devolve um File, chamamos direto!
+      const finalFile = await compressImage(selectedFile);
+      
+      setFile(finalFile);
+      
+      // Gera o preview apenas se for imagem
+      if (finalFile.type.startsWith("image/")) {
+        setPreview(URL.createObjectURL(finalFile));
+      } else {
+        setPreview(null);
+      }
+    } catch (error) {
+      console.error("Erro ao processar arquivo:", error);
+      // Fallback de segurança caso a compressão falhe
+      setFile(selectedFile);
+      if (selectedFile.type.startsWith("image/")) {
         setPreview(URL.createObjectURL(selectedFile));
       }
-    } else {
-      setFile(selectedFile);
-      setPreview(null);
     }
   };
 
@@ -81,7 +86,7 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
       // 1. Upload para o Supabase Storage (Alinhado com a arquitetura do Wizard)
       const fileExt = file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      // ✅ AJUSTE: Organiza em pastas (user_id / categoria / arquivo) igual ao Wizard
+      // Organiza em pastas (user_id / categoria / arquivo) igual ao Wizard
       const filePath = `${user.id}/${categoria}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
