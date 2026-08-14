@@ -414,14 +414,21 @@ export default function SaudePage() {
               <div className="space-y-2.5">
                 {tratamentos.map((tratamento) => {
                   const IconComponent = getTratamentoIcon(tratamento.nome);
+                  // AQUI ESTÁ A CORREÇÃO DA COR APLICADA!
+                  const cor = (tratamento as any).cor || "#8B5CF6"; 
+                  
                   return (
                     <button
                       key={tratamento.id}
                       onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${tratamento.id}`); }}
-                      className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+                      className="flex w-full items-center justify-between rounded-[22px] border bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 overflow-hidden"
+                      style={{ borderLeft: `5px solid ${cor}`, borderColor: `${cor}30` }}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
+                        <div 
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+                          style={{ backgroundColor: `${cor}15`, color: cor }}
+                        >
                           <IconComponent size={20} />
                         </div>
                         <div className="min-w-0">
