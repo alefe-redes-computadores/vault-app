@@ -6,6 +6,8 @@ import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useSentry } from "@/hooks/useSentry";
+// ✅ IMPORT ADICIONADO: O hook que escuta as ações da notificação de dose ("Tomei" / "Ignorar")
+import { useDoseNotificationActions } from "@/hooks/useDoseNotificationActions";
 import { BottomNav } from "./BottomNav";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
@@ -23,6 +25,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [isPullDone, setIsPullDone] = useState(false);
   const [pullAttempted, setPullAttempted] = useState(false);
 
+  // ✅ CHAMADA DO HOOK ADICIONADA: Fica ouvindo os botões "Tomei"/"Ignorar" da push notification
+  useDoseNotificationActions();
+
   // ============================================================
   // 0. STATUS BAR NATIVA — imersiva (overlay), consistente com
   // capacitor.config.ts. Antes esse useEffect fazia
@@ -36,9 +41,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
       try {
         StatusBar.setOverlaysWebView({ overlay: true });
         StatusBar.setStyle({ style: Style.Dark }); // ícones claros p/ fundo escuro
-        // Com overlay:true a cor de fundo da status bar não é pintada
-        // (ela fica transparente, mostrando o próprio app por trás) —
-        // por isso não chamamos mais setBackgroundColor aqui.
       } catch (e) {
         console.error("Erro ao configurar StatusBar nativa:", e);
       }
