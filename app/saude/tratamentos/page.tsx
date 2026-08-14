@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useMemo, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Activity, Plus, FolderHeart, ChevronRight, Brain, Flame, HeartPulse, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Plus, ChevronRight, Activity, Brain, Flame, HeartPulse, ShieldAlert, Pill, Stethoscope } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -26,8 +26,15 @@ function TratamentoListContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   
-  // Busca todos os tratamentos cadastrados
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
+
+  const listaEnriquecida = useMemo(() => {
+    return tratamentos.map(t => {
+      const meds = medicamentos.filter(m => m.tratamento_id === t.id || (m.tratamento_ids && m.tratamento_ids.includes(t.id)));
+      return { ...t, medicamentosCount: meds.length };
+    });
+  }, [tratamentos, medicamentos]);
 
   if (tratamentos === undefined) return <LoadingSkeleton />;
 
@@ -47,14 +54,14 @@ function TratamentoListContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-3">
-          {tratamentos.length === 0 ? (
+          {listaEnriquecida.length === 0 ? (
             <div className="rounded-[24px] border border-dashed border-surface-border p-10 text-center">
               <p className="text-sm text-ink-muted">Nenhum tratamento cadastrado ainda.</p>
             </div>
           ) : (
-            tratamentos.map((t: any) => {
+            listaEnriquecida.map((t: any) => {
               const IconComp = getTratamentoIcon(t.nome);
-              const cor = t.cor || "#8B5CF6"; // Cor personalizada
+              const cor = t.cor || "#8B5CF6";
               return (
                 <motion.button
                   key={t.id}
@@ -70,7 +77,11 @@ function TratamentoListContent() {
                   </div>
                   <div className="min-w-0 flex-1 text-left">
                     <p className="font-semibold text-ink-primary truncate">{t.nome}</p>
-                    <p className="text-xs text-ink-muted truncate">{t.condicao || "Sem condição vinculada"}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <Pill size={10} className="text-ice" /> {t.medicamentosCount} med(s)
+                      </span>
+                    </div>
                   </div>
                   <ChevronRight size={18} className="text-ink-faint" />
                 </motion.button>
