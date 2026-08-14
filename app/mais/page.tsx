@@ -24,6 +24,7 @@ import {
   CreditCard,
   ShieldAlert,
   Bell,
+  Star, // ✅ Ícone de Favoritos importado
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -259,6 +260,13 @@ export default function MaisPage() {
           label: "Pessoas",
           description: "Gerencie as pessoas do seu vault",
           onClick: () => { trigger("vibrate"); router.push("/pessoas"); },
+        },
+        {
+          id: "favoritos",
+          icon: Star,
+          label: "Favoritos",
+          description: "Acesse seus documentos marcados com estrela",
+          onClick: () => { trigger("vibrate"); router.push("/favoritos"); },
         },
         {
           id: "tema",
