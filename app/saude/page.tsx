@@ -39,7 +39,8 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+// ✅ IMPORT corrigido: safeUpdateMedicamento e getLocalTodayISO adicionados
+import { db, safeUpdateMedicamento } from "@/lib/db";
 import { HealthNotifications } from "@/components/HealthNotifications";
 import { MedicamentosNotifications } from "@/components/MedicamentosNotifications";
 import {
@@ -47,12 +48,9 @@ import {
   getExameAlerts,
   alertLevelColor,
   alertLevelLabel,
+  getLocalTodayISO,
   type HealthAlert,
 } from "@/lib/health-utils";
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function getTratamentoIcon(nome: string) {
   const n = (nome || "").toLowerCase();
@@ -63,7 +61,6 @@ function getTratamentoIcon(nome: string) {
   return Activity;
 }
 
-// COMPONENTE DE ALERTA MODIFICADO (Com atalho de Renovação)
 function AlertRow({ alert }: { alert: HealthAlert }) {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
@@ -130,7 +127,8 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
 export default function SaudePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
-  const hoje = todayISO();
+  // ✅ CORREÇÃO 1: Fuso horário local para o painel principal
+  const hoje = getLocalTodayISO();
 
   const documents = useDocuments();
   const { medicamentos } = useMedicamentos();
@@ -148,10 +146,11 @@ export default function SaudePage() {
   const cirurgiasHoje = useLiveQuery(() => db.table("cirurgias").where("data").equals(hoje).toArray(), [hoje]) || [];
   const examesHoje = useLiveQuery(() => db.table("exames").where("data").equals(hoje).toArray(), [hoje]) || [];
 
-  // ============================================================
-  // ESTADOS ADICIONADOS
-  // ============================================================
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
+  
+  // ✅ CORREÇÃO 2: Travas anti-clique duplo adicionadas no Dashboard
+  const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
+  const [isProcessandoTudo, setIsProcessandoTudo] = useState(false);
 
   const totalGastoGeral = useMemo(() => {
     let soma = 0;
@@ -182,12 +181,54 @@ export default function SaudePage() {
     return lista;
   }, [medicamentos, doseLogs, horaAtual]);
 
-  const handleTomarTodasAtrasadas = async () => {
+  // ✅ CORREÇÃO 3: Lógica individual de "Tomar Dose" pelo modal com abatimento de estoque
+  const handleTomarDosePendente = async (d: { medicamentoId: string; nome: string; horario: string }) => {
+    if (processandoDoseId) return;
+    
+    setProcessandoDoseId(`${d.medicamentoId}-${d.horario}`);
     trigger("success");
-    for (const d of dosesPendentesAtrasadas) {
+    
+    try {
       await marcarDose(d.medicamentoId, hoje, d.horario, true);
+      
+      const medOriginal = medicamentos?.find(m => m.id === d.medicamentoId);
+      if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
+        const unidadePorDose = medOriginal.estoque_unidade_por_dose || 1;
+        const novoEstoque = Math.max(0, medOriginal.estoque_quantidade - unidadePorDose);
+        await safeUpdateMedicamento(d.medicamentoId, {
+          estoque_quantidade: novoEstoque,
+          estoque_data_referencia: hoje
+        });
+      }
+    } finally {
+      setProcessandoDoseId(null);
     }
-    setModalPendenciasAberto(false);
+  };
+
+  // ✅ CORREÇÃO 4: Lógica de "Tomar Tudo Agora" segura com abatimento de estoque em massa
+  const handleTomarTodasAtrasadas = async () => {
+    if (isProcessandoTudo) return;
+    setIsProcessandoTudo(true);
+    trigger("success");
+    
+    try {
+      for (const d of dosesPendentesAtrasadas) {
+        await marcarDose(d.medicamentoId, hoje, d.horario, true);
+        
+        const medOriginal = medicamentos?.find(m => m.id === d.medicamentoId);
+        if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
+          const unidadePorDose = medOriginal.estoque_unidade_por_dose || 1;
+          const novoEstoque = Math.max(0, medOriginal.estoque_quantidade - unidadePorDose);
+          await safeUpdateMedicamento(d.medicamentoId, {
+            estoque_quantidade: novoEstoque,
+            estoque_data_referencia: hoje
+          });
+        }
+      }
+      setModalPendenciasAberto(false);
+    } finally {
+      setIsProcessandoTudo(false);
+    }
   };
 
   const docAlerts = useMemo(() => getDocumentAlerts(documents || []).filter(a => a.daysUntil <= 5), [documents]);
@@ -347,9 +388,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* ============================================================ */}
-          {/* CARD DE PENDÊNCIAS INTELIGENTE (SUBSTITUÍDO) */}
-          {/* ============================================================ */}
           {dosesPendentesAtrasadas.length > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -568,7 +606,6 @@ export default function SaudePage() {
             </div>
           </motion.div>
 
-          {/* ARQUIVO CLÍNICO (Acesso aos Documentos de Saúde) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -598,9 +635,6 @@ export default function SaudePage() {
           </motion.div>
         </section>
 
-        {/* ============================================================ */}
-        {/* MODAL DE SELEÇÃO (UX REFINADA) */}
-        {/* ============================================================ */}
         <AnimatePresence>
           {modalPendenciasAberto && (
             <div 
@@ -628,23 +662,24 @@ export default function SaudePage() {
                 </div>
                 
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-                  {dosesPendentesAtrasadas.map((d, index) => (
-                    <div key={`${d.medicamentoId}-${index}`} className="flex items-center justify-between p-3.5 bg-surface-raised rounded-2xl border border-surface-border/50">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ink-primary truncate">{d.nome}</p>
-                        <p className="text-[10px] text-ink-muted font-mono">{d.horario}</p>
+                  {dosesPendentesAtrasadas.map((d, index) => {
+                    const isProcessingThisDose = processandoDoseId === `${d.medicamentoId}-${d.horario}`;
+                    return (
+                      <div key={`${d.medicamentoId}-${index}`} className={`flex items-center justify-between p-3.5 bg-surface-raised rounded-2xl border border-surface-border/50 ${isProcessingThisDose ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-ink-primary truncate">{d.nome}</p>
+                          <p className="text-[10px] text-ink-muted font-mono">{d.horario}</p>
+                        </div>
+                        <button 
+                          onClick={() => handleTomarDosePendente(d)}
+                          disabled={isProcessingThisDose || isProcessandoTudo}
+                          className="text-emerald-400 font-bold text-xs px-3 py-1.5 rounded-lg bg-emerald-400/10 active:scale-95 transition-all disabled:opacity-50"
+                        >
+                          {isProcessingThisDose ? "Salvando..." : "Tomar"}
+                        </button>
                       </div>
-                      <button 
-                        onClick={() => { 
-                          trigger("success");
-                          marcarDose(d.medicamentoId, hoje, d.horario, true); 
-                        }}
-                        className="text-emerald-400 font-bold text-xs px-3 py-1.5 rounded-lg bg-emerald-400/10 active:scale-95 transition-all"
-                      >
-                        Tomar
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
@@ -656,9 +691,10 @@ export default function SaudePage() {
                   </button>
                   <button 
                     onClick={handleTomarTodasAtrasadas} 
-                    className="p-3.5 text-xs font-semibold rounded-2xl bg-coral text-white shadow-md shadow-coral/20 active:scale-95 transition-all"
+                    disabled={isProcessandoTudo || dosesPendentesAtrasadas.length === 0}
+                    className="p-3.5 text-xs font-semibold rounded-2xl bg-coral text-white shadow-md shadow-coral/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Tomar Tudo Agora
+                    {isProcessandoTudo ? "Processando..." : "Tomar Tudo Agora"}
                   </button>
                 </div>
               </motion.div>
