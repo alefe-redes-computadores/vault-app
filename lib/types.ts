@@ -27,34 +27,10 @@ export interface Category {
 }
 
 export const CATEGORIES: Record<CategoryId, Category> = {
-  saude: {
-    id: 'saude',
-    name: 'Saúde',
-    icon: 'Heart',
-    color: '#EC4899',
-    description: 'Prontuários, receitas, laudos, medicamentos',
-  },
-  pessoal: {
-    id: 'pessoal',
-    name: 'Pessoal',
-    icon: 'User',
-    color: '#3B82F6',
-    description: 'C.I.N, CPF, CNH, Certidões',
-  },
-  empresa: {
-    id: 'empresa',
-    name: 'Empresa',
-    icon: 'Building2',
-    color: '#7C9CB5',
-    description: 'Documentos corporativos',
-  },
-  outros: {
-    id: 'outros',
-    name: 'Outros',
-    icon: 'FolderOpen',
-    color: '#6B7280',
-    description: 'Documentos diversos',
-  },
+  saude: { id: 'saude', name: 'Saúde', icon: 'Heart', color: '#EC4899', description: 'Prontuários, receitas, laudos, medicamentos' },
+  pessoal: { id: 'pessoal', name: 'Pessoal', icon: 'User', color: '#3B82F6', description: 'C.I.N, CPF, CNH, Certidões' },
+  empresa: { id: 'empresa', name: 'Empresa', icon: 'Building2', color: '#7C9CB5', description: 'Documentos corporativos' },
+  outros: { id: 'outros', name: 'Outros', icon: 'FolderOpen', color: '#6B7280', description: 'Documentos diversos' },
 };
 
 export const AREAS = CATEGORIES;
@@ -63,23 +39,7 @@ export const CATEGORY_META = CATEGORIES;
 // ============================================================
 // 3. DOCUMENTOS
 // ============================================================
-export type DocumentType =
-  | 'rg'
-  | 'cpf'
-  | 'cnh'
-  | 'certidao_nascimento'
-  | 'titulo_eleitor'
-  | 'certificado'
-  | 'receita'
-  | 'prontuario'
-  | 'laudo'
-  | 'encaminhamento'
-  | 'consulta'
-  | 'cirurgia'
-  | 'exame_sangue'
-  | 'exame_imagem'
-  | 'credencial'
-  | 'outro';
+export type DocumentType = 'rg' | 'cpf' | 'cnh' | 'certidao_nascimento' | 'titulo_eleitor' | 'certificado' | 'receita' | 'prontuario' | 'laudo' | 'encaminhamento' | 'consulta' | 'cirurgia' | 'exame_sangue' | 'exame_imagem' | 'credencial' | 'outro';
 
 export interface Attachment {
   id: string;
@@ -106,33 +66,13 @@ export interface Document {
   synced: boolean;
 }
 
-// MAPA DE RELAÇÃO: Quais tipos de documento pertencem a quais categorias
 export const TYPE_CATEGORY_MAP: Record<DocumentType, CategoryId[]> = {
-  rg: ['pessoal'],
-  cpf: ['pessoal'],
-  cnh: ['pessoal'],
-  certidao_nascimento: ['pessoal'],
-  titulo_eleitor: ['pessoal'],
-  receita: ['saude'],
-  prontuario: ['saude'],
-  laudo: ['saude'],
-  encaminhamento: ['saude'],
-  consulta: ['saude'],
-  cirurgia: ['saude'],
-  exame_sangue: ['saude'],
-  exame_imagem: ['saude'],
-  credencial: ['saude'],
-  certificado: ['pessoal', 'empresa', 'outros'],
-  outro: ['pessoal', 'saude', 'empresa', 'outros']
+  rg: ['pessoal'], cpf: ['pessoal'], cnh: ['pessoal'], certidao_nascimento: ['pessoal'], titulo_eleitor: ['pessoal'],
+  receita: ['saude'], prontuario: ['saude'], laudo: ['saude'], encaminhamento: ['saude'], consulta: ['saude'], cirurgia: ['saude'],
+  exame_sangue: ['saude'], exame_imagem: ['saude'], credencial: ['saude'], certificado: ['pessoal', 'empresa', 'outros'], outro: ['pessoal', 'saude', 'empresa', 'outros']
 };
 
-// ============================================================
-// 3.1 CAMPOS POR TIPO DE DOCUMENTO (Atualizado para IDs)
-// ============================================================
-export const DOCUMENT_FIELDS: Record<
-  DocumentType,
-  Array<{ key: string; label: string; type: 'text' | 'date' | 'select'; options?: string[]; required?: boolean }>
-> = {
+export const DOCUMENT_FIELDS: Record<DocumentType, Array<{ key: string; label: string; type: 'text' | 'date' | 'select'; options?: string[]; required?: boolean }>> = {
   rg: [
     { key: 'modelo', label: 'Modelo do Documento', type: 'select', options: ['C.I.N (Nova Identidade)', 'RG (Antigo)'], required: true },
     { key: 'cpf', label: 'Número do CPF', type: 'text', required: true },
@@ -227,26 +167,7 @@ export const DOCUMENT_FIELDS: Record<
 };
 
 // ============================================================
-// 4. METADADOS
-// ============================================================
-export type RGMetadata = { modelo: string; cpf: string; rg_number?: string; issue_date: string; expiry_date: string; issuer: string; };
-export type CPFMetadata = { number: string; };
-export type CNHMetadata = { number: string; category: 'A' | 'B' | 'AB' | 'C' | 'D' | 'E'; issue_date: string; expiry_date: string; };
-export type CertidaoMetadata = { nome_registrado: string; matricula: string; livro?: string; folha?: string; termo?: string; cartorio?: string; data_nascimento: string; };
-export type TituloEleitorMetadata = { number: string; zona: string; secao: string; };
-export type CertificadoMetadata = { institution: string; course: string; duration: string; completion_date?: string; };
-export type ReceitaMetadata = { medicamento_id?: string; medication: string; dosage: string; medico_id: string; farmacia_id?: string; prescription_date: string; renewal_date: string; };
-export type ProntuarioMetadata = { hospital_id: string; medico_id: string; specialty: string; date: string; };
-export type LaudoMetadata = { medico_id: string; specialty: string; hospital_id: string; date: string; };
-export type EncaminhamentoMetadata = { from_medico_id: string; to_medico_id?: string; reason: string; date: string; };
-export type ConsultaMetadata = { medico_id: string; specialty: string; hospital_id?: string; date: string; reason?: string; };
-export type CirurgiaMetadata = { procedure: string; medico_id: string; hospital_id: string; date: string; };
-export type ExameSangueMetadata = { laboratorio_id: string; data_exame: string; };
-export type ExameImagemMetadata = { hospital_id: string; tipo: string; data_exame: string; };
-export type CredencialMetadata = { orgao: string; validade: string; };
-
-// ============================================================
-// 5. FILA DE SINCRONIZAÇÃO
+// 5. FILA DE SINCRONIZAÇÃO (ATUALIZADA)
 // ============================================================
 export interface SyncQueueItem {
   id?: string;
@@ -270,7 +191,9 @@ export interface SyncQueueItem {
     | 'cards'
     | 'instituicoes'
     | 'tratamentos'
-    | 'cids';
+    | 'cids'
+    | 'anexos_clinicos'
+    | 'medicamento_tratamentos';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -367,7 +290,6 @@ export interface Exame {
   updated_at?: string;
 }
 
-// ✅ Adicionadas interfaces Cirurgia e Consulta que faltavam no export
 export interface Cirurgia {
   id?: string;
   user_id: string;
@@ -442,83 +364,13 @@ export interface VaultDocument {
 // ============================================================
 // 8. MÓDULO SAÚDE E ENTIDADES PAI
 // ============================================================
-export interface Medico {
-  id?: string;
-  user_id: string;
-  nome: string;
-  especialidade?: string;
-  crm?: string;
-  telefone?: string;
-  email?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
-}
-
-export interface Farmacia {
-  id?: string;
-  user_id: string;
-  nome: string;
-  endereco?: string;
-  telefone?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
-}
-
-export interface Hospital {
-  id?: string;
-  user_id: string;
-  nome: string;
-  endereco?: string;
-  telefone?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
-}
-
-export interface LocalSaude {
-  id?: string;
-  user_id: string;
-  nome: string;
-  endereco?: string;
-  telefone?: string;
-  tipo?: string;
-  created_at?: string;
-  updated_at?: string;
-  synced?: boolean;
-}
-
-export interface Laboratorio {
-  id?: string;
-  user_id: string;
-  nome: string;
-  endereco?: string;
-  telefone?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
-}
-
-export interface InstituicaoEnsino {
-  id?: string;
-  user_id: string;
-  nome: string;
-  cnpj?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
-}
-
-export interface Cid {
-  id?: string;
-  user_id: string;
-  codigo: string;
-  descricao: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
-}
+export interface Medico { id?: string; user_id: string; nome: string; especialidade?: string; crm?: string; telefone?: string; email?: string; created_at: string; updated_at: string; synced: boolean; }
+export interface Farmacia { id?: string; user_id: string; nome: string; endereco?: string; telefone?: string; created_at: string; updated_at: string; synced: boolean; }
+export interface Hospital { id?: string; user_id: string; nome: string; endereco?: string; telefone?: string; created_at: string; updated_at: string; synced: boolean; }
+export interface LocalSaude { id?: string; user_id: string; nome: string; endereco?: string; telefone?: string; tipo?: string; created_at?: string; updated_at?: string; synced?: boolean; }
+export interface Laboratorio { id?: string; user_id: string; nome: string; endereco?: string; telefone?: string; created_at: string; updated_at: string; synced: boolean; }
+export interface InstituicaoEnsino { id?: string; user_id: string; nome: string; cnpj?: string; created_at: string; updated_at: string; synced: boolean; }
+export interface Cid { id?: string; user_id: string; codigo: string; descricao: string; created_at: string; updated_at: string; synced: boolean; }
 
 export interface Tratamento {
   id?: string;
