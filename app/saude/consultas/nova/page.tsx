@@ -10,17 +10,15 @@ import {
   Calendar,
   Building2,
   UserCheck,
-  FileText,
   Upload,
   Camera,
   X,
   Image as ImageIcon
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
-import { db } from "@/lib/db";
+import { db, safeAddConsulta } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -65,7 +63,6 @@ export default function NovaConsultaPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
-  const { add } = useSafeDb();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -161,22 +158,19 @@ export default function NovaConsultaPage() {
       }
 
       const dataISO = parseDateToISO(dataDisplay);
-      const agoraISO = new Date().toISOString();
-
-      await add("consultas", {
+      
+      await safeAddConsulta({
         user_id: user?.id || "",
+        especialidade: selectedMedico?.especialidade || "Geral",
+        medico: selectedMedico?.nome || "Médico",
         medico_id: medicoId,
         hospital_id: hospitalId || undefined,
         data: dataISO,
         status,
         motivo: motivo.trim() || undefined,
         observacoes: observacoes.trim() || undefined,
-        created_at: agoraISO,
-        updated_at: agoraISO,
-        synced: false,
       });
 
-      // Se houver anexo, podemos salvar opcionalmente na tabela de anexos clínicos ou metadata
       trigger("success");
       router.push("/saude/consultas");
     } catch (error) {
@@ -212,7 +206,6 @@ export default function NovaConsultaPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* Médico Vinculado */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico <span className="text-coral">*</span></label>
             <button 
@@ -227,7 +220,6 @@ export default function NovaConsultaPage() {
             </button>
           </motion.div>
 
-          {/* Hospital / Clínica */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital / Clínica (Opcional)</label>
             <button 
@@ -242,7 +234,6 @@ export default function NovaConsultaPage() {
             </button>
           </motion.div>
 
-          {/* Data e Status */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">Data da Consulta <span className="text-coral">*</span></label>
@@ -257,9 +248,7 @@ export default function NovaConsultaPage() {
                   className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm" 
                 />
               </div>
-              <p className="text-[10px] text-ink-muted px-1">Permite agendamento ou cadastro retroativo.</p>
             </div>
-
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">Status</label>
               <div className="grid grid-cols-3 gap-1.5">
@@ -281,27 +270,14 @@ export default function NovaConsultaPage() {
             </div>
           </motion.div>
 
-          {/* Motivo / Especialidade */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.09 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input
-              label="Motivo / Assunto (Opcional)"
-              placeholder="Ex: Retorno de exames, dor neuropática..."
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-            />
+            <Input label="Motivo / Assunto (Opcional)" placeholder="Ex: Retorno de exames, dor neuropática..." value={motivo} onChange={(e) => setMotivo(e.target.value)} />
           </motion.div>
 
-          {/* Observações */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.12 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <TextArea 
-              label="Anotações e Prescrições (Opcional)" 
-              value={observacoes} 
-              onChange={(e) => setObservacoes(e.target.value)} 
-              placeholder="Instruções do médico, exames solicitados..." 
-            />
+            <TextArea label="Anotações e Prescrições (Opcional)" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Instruções do médico, exames solicitados..." />
           </motion.div>
 
-          {/* Anexo de Comprovante / Receita */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="mb-3"><label className="block text-sm font-medium text-ink-primary">Comprovante / Anexo</label></div>
             {!attachment ? (
@@ -319,50 +295,14 @@ export default function NovaConsultaPage() {
           </motion.div>
         </section>
 
-        {/* Botão Fixo Inferior */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading}>
             {loading ? <Loader2 size={16} className="animate-spin" /> : "Salvar Consulta"}
           </Button>
         </div>
 
-        {/* Modal de Seleção de Médico */}
-        <SelectionModal 
-          isOpen={isMedicoModalOpen} 
-          onClose={() => setIsMedicoModalOpen(false)} 
-          onSelect={(item: any) => setMedicoId(item.id!)} 
-          items={medicos} 
-          title="Selecionar Médico" 
-          renderItem={(item: any) => (
-            <div>
-              <p className="font-medium text-ink-primary">Dr(a). {item.nome}</p>
-              <p className="text-xs text-ink-muted">{item.especialidade || "Especialidade não informada"}</p>
-            </div>
-          )} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          onCreateNew={() => {}} 
-          createNewLabel="" 
-        />
-
-        {/* Modal de Seleção de Hospital */}
-        <SelectionModal 
-          isOpen={isHospitalModalOpen} 
-          onClose={() => setIsHospitalModalOpen(false)} 
-          onSelect={(item: any) => setHospitalId(item.id!)} 
-          items={hospitais} 
-          title="Selecionar Hospital / Clínica" 
-          renderItem={(item: any) => (
-            <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
-              <p className="text-xs text-ink-muted">{item.endereco || "Endereço não informado"}</p>
-            </div>
-          )} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          onCreateNew={() => {}} 
-          createNewLabel="" 
-        />
+        <SelectionModal isOpen={isMedicoModalOpen} onClose={() => setIsMedicoModalOpen(false)} onSelect={(item: any) => setMedicoId(item.id!)} items={medicos} title="Selecionar Médico" renderItem={(item: any) => <div><p className="font-medium text-ink-primary">Dr(a). {item.nome}</p><p className="text-xs text-ink-muted">{item.especialidade || "Especialidade não informada"}</p></div>} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => {}} createNewLabel="" />
+        <SelectionModal isOpen={isHospitalModalOpen} onClose={() => setIsHospitalModalOpen(false)} onSelect={(item: any) => setHospitalId(item.id!)} items={hospitais} title="Selecionar Hospital / Clínica" renderItem={(item: any) => <div><p className="font-medium text-ink-primary">{item.nome}</p><p className="text-xs text-ink-muted">{item.endereco || "Endereço não informado"}</p></div>} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => {}} createNewLabel="" />
       </main>
     </PageTransition>
   );
