@@ -252,19 +252,54 @@ export async function safeUpdateMedicamento(id: string, changes: Partial<Medicam
   });
 }
 
-// CORREÇÃO: Limpeza em Cascata de Medicamentos
-export async function safeDeleteMedicamento(id: string): Promise<void> {
-  const timestamp = nowIso();
-  await db.transaction('rw', db.medicamentos, db.medicamento_tratamentos, db.syncQueue, async () => {
-    // Apaga registros órfãos na tabela de junção
-    await db.medicamento_tratamentos.where('medicamento_id').equals(id).delete();
-    
-    // Apaga o medicamento
-    await db.medicamentos.delete(id);
-    
-    await db.syncQueue.add({ id: generateId(), table: 'medicamentos', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
-    triggerSyncProcess();
-  });
+// ============================================================
+// CORREÇÃO: safeDeleteMedicamento com Cascade Delete Atômico
+// ============================================================
+export async function safeDeleteMedicamento(medicamentoId: string) {
+  // Transação atômica envolvendo as tabelas de medicamentos, junções e fila de sync
+  return await db.transaction(
+    "rw",
+    [db.medicamentos, db.medicamento_tratamentos, db.syncQueue],
+    async () => {
+      // 1. Apaga o medicamento
+      await db.medicamentos.delete(medicamentoId);
+
+      // Adiciona o delete do medicamento na fila de sync
+      await db.syncQueue.add({
+        id: generateId(),
+        table: 'medicamentos',
+        operation: 'delete',
+        payload: { id: medicamentoId },
+        created_at: nowIso(),
+        retry_count: 0,
+        failed: false,
+      });
+
+      // 2. Busca todas as junções órfãs (N:N)
+      const vinculos = await db.medicamento_tratamentos
+        .where("medicamento_id")
+        .equals(medicamentoId)
+        .toArray();
+
+      // 3. Deleta as junções localmente e enfileira CADA UMA na fila de sync
+      for (const vinculo of vinculos) {
+        await db.medicamento_tratamentos.delete(vinculo.id!);
+        
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'medicamento_tratamentos',
+          operation: 'delete',
+          payload: { id: vinculo.id! },
+          created_at: nowIso(),
+          retry_count: 0,
+          failed: false,
+        });
+      }
+
+      // Dispara o processamento da fila
+      triggerSyncProcess();
+    }
+  );
 }
 
 export async function safeAddRenovacao(ren: Omit<Renovacao, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
