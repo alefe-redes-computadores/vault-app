@@ -42,11 +42,12 @@ export default function HojePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
-  // ✅ CORREÇÃO 1: Usando a data baseada no fuso horário local
+  // ✅ Data baseada no fuso horário local
   const hoje = getLocalTodayISO();
 
   const { medicamentos } = useMedicamentos();
-  const { doseLogs, marcarDose } = useDoseLogs(hoje);
+  // ✅ CORREÇÃO APLICADA: Mapeando marcarComoTomada para marcarDose
+  const { doseLogs, marcarComoTomada: marcarDose } = useDoseLogs(hoje);
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
@@ -61,7 +62,7 @@ export default function HojePage() {
   const [observacoesRenovacao, setObservacoesRenovacao] = useState("");
   const [adicionarMaisEstoque, setAdicionarMaisEstoque] = useState(30);
   
-  // ✅ CORREÇÃO 2: Trava anti-race condition mantida
+  // ✅ Trava anti-race condition mantida
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
