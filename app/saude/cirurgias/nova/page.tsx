@@ -12,9 +12,8 @@ import {
   UserCheck
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { db } from "@/lib/db";
+import { db, safeAddCirurgia } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -58,7 +57,6 @@ export default function NovaCirurgiaPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
-  const { add } = useSafeDb();
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
@@ -100,9 +98,8 @@ export default function NovaCirurgiaPage() {
     setLoading(true);
     try {
       const dataISO = parseDateToISO(dataDisplay);
-      const agoraISO = new Date().toISOString();
 
-      await add("cirurgias", {
+      await safeAddCirurgia({
         user_id: user?.id || "",
         procedimento: procedimento.trim(),
         medico_id: medicoId || undefined,
@@ -110,9 +107,6 @@ export default function NovaCirurgiaPage() {
         data: dataISO,
         status,
         observacoes: observacoes.trim() || undefined,
-        created_at: agoraISO,
-        updated_at: agoraISO,
-        synced: false,
       });
 
       trigger("success");
