@@ -659,3 +659,105 @@ export async function safeDeleteCid(id: string): Promise<void> {
     triggerSyncProcess();
   });
 }
+
+// ============================================================
+// FUNÇÕES CRUD PARA CONSULTAS
+// ============================================================
+export async function safeAddConsulta(data: Omit<Consulta, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Consulta = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.consultas, db.syncQueue, async () => {
+    await db.consultas.add(full);
+    await db.syncQueue.add({ id: generateId(), table: 'consultas' as any, operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateConsulta(id: string, changes: Partial<Consulta>): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.consultas, db.syncQueue, async () => {
+    await db.consultas.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.consultas.get(id);
+    await db.syncQueue.add({ id: generateId(), table: 'consultas' as any, operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteConsulta(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.consultas, db.syncQueue, async () => {
+    await db.consultas.delete(id);
+    await db.syncQueue.add({ id: generateId(), table: 'consultas' as any, operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+// ============================================================
+// FUNÇÕES CRUD PARA CIRURGIAS / PROCEDIMENTOS
+// ============================================================
+export async function safeAddCirurgia(data: Omit<Cirurgia, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full: Cirurgia = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.cirurgias, db.syncQueue, async () => {
+    await db.cirurgias.add(full);
+    await db.syncQueue.add({ id: generateId(), table: 'cirurgias' as any, operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateCirurgia(id: string, changes: Partial<Cirurgia>): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.cirurgias, db.syncQueue, async () => {
+    await db.cirurgias.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.cirurgias.get(id);
+    await db.syncQueue.add({ id: generateId(), table: 'cirurgias' as any, operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteCirurgia(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.cirurgias, db.syncQueue, async () => {
+    await db.cirurgias.delete(id);
+    await db.syncQueue.add({ id: generateId(), table: 'cirurgias' as any, operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+// ============================================================
+// FUNÇÕES CRUD PARA ANEXOS CLÍNICOS (Galeria)
+// ============================================================
+export async function safeAddAnexoClinico(data: Omit<any, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+  const full = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  return db.transaction('rw', db.anexos_clinicos, db.syncQueue, async () => {
+    await db.anexos_clinicos.add(full);
+    await db.syncQueue.add({ id: generateId(), table: 'anexos_clinicos' as any, operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+    return id;
+  });
+}
+
+export async function safeUpdateAnexoClinico(id: string, changes: Partial<any>): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.anexos_clinicos, db.syncQueue, async () => {
+    await db.anexos_clinicos.update(id, { ...changes, updated_at: timestamp, synced: false });
+    const updated = await db.anexos_clinicos.get(id);
+    await db.syncQueue.add({ id: generateId(), table: 'anexos_clinicos' as any, operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
+
+export async function safeDeleteAnexoClinico(id: string): Promise<void> {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.anexos_clinicos, db.syncQueue, async () => {
+    await db.anexos_clinicos.delete(id);
+    await db.syncQueue.add({ id: generateId(), table: 'anexos_clinicos' as any, operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
+    triggerSyncProcess();
+  });
+}
