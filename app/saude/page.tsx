@@ -68,8 +68,8 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
   const { trigger } = useHapticFeedback();
   const color = alertLevelColor(alert.level);
   
-  // Verifica se o alerta tem relação com receita para exibir o botão de renovação
-  const isReceita = alert.title?.toLowerCase().includes("receita") || alert.subtitle?.toLowerCase().includes("receita") || alert.kind === "receita";
+  // Verifica se o alerta tem relação com receita para exibir o botão de renovação (CORRIGIDO PARA O TYPESCRIPT)
+  const isReceita = alert.title?.toLowerCase().includes("receita") || alert.subtitle?.toLowerCase().includes("receita");
 
   return (
     <div
