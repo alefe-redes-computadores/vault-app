@@ -251,10 +251,16 @@ export async function safeUpdateMedicamento(id: string, changes: Partial<Medicam
   });
 }
 
+// CORREÇÃO: Limpeza em Cascata de Medicamentos
 export async function safeDeleteMedicamento(id: string): Promise<void> {
   const timestamp = nowIso();
-  await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+  await db.transaction('rw', db.medicamentos, db.medicamento_tratamentos, db.syncQueue, async () => {
+    // Apaga registros órfãos na tabela de junção
+    await db.medicamento_tratamentos.where('medicamento_id').equals(id).delete();
+    
+    // Apaga o medicamento
     await db.medicamentos.delete(id);
+    
     await db.syncQueue.add({ id: generateId(), table: 'medicamentos', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
@@ -584,43 +590,46 @@ export async function safeUpdateTratamento(id: string, changes: Partial<Tratamen
   });
 }
 
+// CORREÇÃO: Limpeza em Cascata de Tratamentos
 export async function safeDeleteTratamento(id: string): Promise<void> {
   const timestamp = nowIso();
-  await db.transaction('rw', db.tratamentos, db.syncQueue, async () => {
+  await db.transaction('rw', db.tratamentos, db.medicamento_tratamentos, db.syncQueue, async () => {
+    // Apaga registros órfãos na tabela de junção
+    await db.medicamento_tratamentos.where('tratamento_id').equals(id).delete();
+    
+    // Apaga o tratamento
     await db.tratamentos.delete(id);
+    
     await db.syncQueue.add({ id: generateId(), table: 'tratamentos', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
 
+// CORREÇÃO: CIDs não vão mais para a Fila de Sincronização (Local Only/Otimização)
 export async function safeAddCid(data: Omit<Cid, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
-  const full: Cid = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
-  return db.transaction('rw', db.cids, db.syncQueue, async () => {
+  // Marcado como synced: true para não travar a fila do Supabase
+  const full: Cid = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: true }; 
+  return db.transaction('rw', db.cids, async () => {
     await db.cids.add(full);
-    await db.syncQueue.add({ id: generateId(), table: 'cids', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
-    triggerSyncProcess();
+    // Removemos o db.syncQueue.add() daqui
     return id;
   });
 }
 
 export async function safeUpdateCid(id: string, changes: Partial<Cid>): Promise<void> {
   const timestamp = nowIso();
-  await db.transaction('rw', db.cids, db.syncQueue, async () => {
-    await db.cids.update(id, { ...changes, updated_at: timestamp, synced: false });
-    const updated = await db.cids.get(id);
-    await db.syncQueue.add({ id: generateId(), table: 'cids', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
-    triggerSyncProcess();
+  await db.transaction('rw', db.cids, async () => {
+    await db.cids.update(id, { ...changes, updated_at: timestamp });
+    // Removemos o db.syncQueue.add() daqui
   });
 }
 
 export async function safeDeleteCid(id: string): Promise<void> {
-  const timestamp = nowIso();
-  await db.transaction('rw', db.cids, db.syncQueue, async () => {
+  await db.transaction('rw', db.cids, async () => {
     await db.cids.delete(id);
-    await db.syncQueue.add({ id: generateId(), table: 'cids', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
-    triggerSyncProcess();
+    // Removemos o db.syncQueue.add() daqui
   });
 }
 
