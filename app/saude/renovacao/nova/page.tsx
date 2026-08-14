@@ -6,27 +6,31 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Loader2,
-  Save,
   FileWarning,
   Upload,
   Camera,
   X,
-  FileText,
   Image as ImageIcon,
   DollarSign,
   Calendar,
+  Store,
+  PackagePlus,
+  Package,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
+import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
-import { VALIDADE_RECEITA_DIAS } from "@/lib/health-utils";
+import { VALIDADE_RECEITA_DIAS, getLocalTodayISO } from "@/lib/health-utils";
 import type { Attachment, TipoReceita } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
+import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
+import { safeUpdateMedicamento } from "@/lib/db";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -52,12 +56,23 @@ function parseDateToISO(displayStr: string): string {
 function handleDateMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 8);
   if (clean.length > 4) {
-    return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`
+    return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
   }
   if (clean.length > 2) {
-    return `${clean.slice(0, 2)}/${clean.slice(2)}`
+    return `${clean.slice(0, 2)}/${clean.slice(2)}`;
   }
   return clean;
+}
+
+// Máscara monetária dinâmica (Ex: 15000 -> 150,00)
+function handleCurrencyMask(value: string): string {
+  const clean = value.replace(/\D/g, "");
+  if (!clean) return "";
+  const numberVal = parseInt(clean, 10) / 100;
+  return numberVal.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function addDaysToISO(dateISO: string, days: number): string {
@@ -76,18 +91,26 @@ export default function NovaRenovacaoPage() {
   const { user } = useAuth();
   const { medicamentos, updateMedicamento } = useMedicamentos();
   const { addRenovacao } = useRenovacoes();
+  const { farmacias } = useFarmacias();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [medicamentoId, setMedicamentoId] = useState("");
   const [isMedModalOpen, setIsMedModalOpen] = useState(false);
+  const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   
   const todayISO = new Date().toISOString().slice(0, 10);
   const [dataDisplay, setDataDisplay] = useState(formatDateToDisplay(todayISO));
   const [proximaDisplay, setProximaDisplay] = useState("");
   
+  // Opção expansiva de Compra / Reposição de Estoque
+  const [registrarCompra, setRegistrarCompra] = useState(false);
   const [preco, setPreco] = useState("");
+  const [farmaciaId, setFarmaciaId] = useState("");
+  const [farmaciaNome, setFarmaciaNome] = useState("");
+  const [quantidadeAdicionar, setQuantidadeAdicionar] = useState("30");
+
   const [observacoes, setObservacoes] = useState("");
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
@@ -96,6 +119,7 @@ export default function NovaRenovacaoPage() {
   const [loading, setLoading] = useState(false);
 
   const selectedMedicamento = medicamentos.find((m: any) => m.id === medicamentoId);
+  const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId) || farmacias.find((f: any) => f.nome === farmaciaNome);
 
   useEffect(() => {
     if (autoSelectMedId && medicamentos.length > 0 && !medicamentoId) {
@@ -196,8 +220,11 @@ export default function NovaRenovacaoPage() {
 
       const dataISO = parseDateToISO(dataDisplay);
       const proximaISO = proximaDisplay.length === 10 ? parseDateToISO(proximaDisplay) : addDaysToISO(dataISO, 30);
-      const precoNumerico = preco ? parseFloat(preco.replace(",", ".")) : undefined;
+      
+      // Converte preço formatado para número decimal (ex: "150,00" -> 150.00)
+      const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
 
+      // 1. Salva o registro histórico de renovação vinculado ao medicamento na nuvem/Dexie
       await addRenovacao({
         medicamento_id: medicamentoId,
         data: dataISO,
@@ -206,10 +233,26 @@ export default function NovaRenovacaoPage() {
         observacoes: observacoes.trim() || undefined,
       });
 
-      await updateMedicamento(medicamentoId, {
+      // 2. Prepara os dados base para atualizar datas da receita
+      const dadosUpdate: any = {
         data_receita: dataISO,
         proxima_renovacao: proximaISO,
-      });
+      };
+
+      // 3. Se o usuário marcou que comprou o remédio agora, atualiza o estoque e farmácia dinamicamente
+      if (registrarCompra && selectedMedicamento) {
+        const estoqueAtual = Number(selectedMedicamento.estoque_quantidade) || 0;
+        const qtdAdicionada = Number(quantidadeAdicionar) || 0;
+        
+        dadosUpdate.estoque_quantidade = estoqueAtual + qtdAdicionada;
+        dadosUpdate.estoque_data_referencia = getLocalTodayISO();
+        if (selectedFarmacia) {
+          dadosUpdate.farmacia = selectedFarmacia.nome;
+          dadosUpdate.farmacia_id = selectedFarmacia.id;
+        }
+      }
+
+      await updateMedicamento(medicamentoId, dadosUpdate);
 
       trigger("success");
       if (autoSelectMedId) {
@@ -285,25 +328,91 @@ export default function NovaRenovacaoPage() {
             </div>
           </motion.div>
 
+          {/* SEÇÃO EXPANSIVA: REGISTRAR COMPRA / REPOSIÇÃO DE ESTOQUE */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Preço pago (R$) — Opcional</label>
-              <div className="relative">
-                <DollarSign size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="0,00"
-                  value={preco}
-                  onChange={(e) => setPreco(e.target.value)}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-10 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice"
-                />
+            <button 
+              onClick={() => { trigger("vibrate"); setRegistrarCompra(!registrarCompra); }} 
+              className="flex w-full items-center justify-between"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                  <PackagePlus size={16} />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-ink-primary">Já comprou / Repôs estoque?</p>
+                  <p className="text-xs text-ink-muted">Adicionar custo e somar unidades ao estoque</p>
+                </div>
               </div>
-            </div>
-            <p className="mt-1 text-[11px] text-ink-muted px-1">Este valor será salvo para histórico de custos e comparação mensal.</p>
+              <div className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${registrarCompra ? "bg-emerald-400" : "bg-surface-border"}`}>
+                <div className={`h-5 w-5 rounded-full bg-void transition-transform ${registrarCompra ? "translate-x-5" : "translate-x-0"}`} />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {registrarCompra && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }} 
+                  animate={{ opacity: 1, height: "auto" }} 
+                  exit={{ opacity: 0, height: 0 }} 
+                  transition={{ duration: 0.22 }} 
+                  className="overflow-hidden"
+                >
+                  <div className="mt-4 space-y-3.5 border-t border-surface-border/40 pt-4">
+                    {/* Preço com máscara monetária corretíssima */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-ink-primary">Preço pago (R$)</label>
+                      <div className="relative">
+                        <DollarSign size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0,00"
+                          value={preco}
+                          onChange={(e) => setPreco(handleCurrencyMask(e.target.value))}
+                          className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-10 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice"
+                        />
+                      </div>
+                      <p className="text-[11px] text-ink-muted px-1">Salvo no histórico financeiro de saúde e nuvem.</p>
+                    </div>
+
+                    {/* Farmácia onde comprou */}
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia da Compra</label>
+                      <button 
+                        onClick={() => { trigger("vibrate"); setIsPharmacyModalOpen(true); }} 
+                        className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Store size={16} className="text-ink-muted" />
+                          {selectedFarmacia ? selectedFarmacia.nome : (farmaciaNome || "Selecionar farmácia...")}
+                        </span>
+                        <span className="text-xs text-ice font-medium">Alterar</span>
+                      </button>
+                    </div>
+
+                    {/* Quantidade a adicionar no estoque */}
+                    <Input 
+                      label="Quantidade comprada (unidades/comprimidos)" 
+                      type="number" 
+                      min="1" 
+                      inputMode="numeric" 
+                      value={quantidadeAdicionar} 
+                      onChange={(e) => setQuantidadeAdicionar(e.target.value)} 
+                      placeholder="Ex: 30"
+                    />
+                    {selectedMedicamento && (
+                      <p className="text-xs text-ink-muted px-1">
+                        * O estoque atual ({selectedMedicamento.estoque_quantidade ?? 0} {selectedMedicamento.estoque_unidade_medida || "unidades"}) passará a ser <span className="font-bold text-emerald-400">{(Number(selectedMedicamento.estoque_quantidade) || 0) + (Number(quantidadeAdicionar) || 0)}</span> após salvar.
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.08 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <TextArea label="Notas (opcional)" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Farmácia onde comprou, observações do médico..." />
+            <TextArea label="Notas (opcional)" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Observações do médico, lote..." />
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.12 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
@@ -329,7 +438,36 @@ export default function NovaRenovacaoPage() {
           </Button>
         </div>
 
-        <SelectionModal isOpen={isMedModalOpen} onClose={() => setIsMedModalOpen(false)} onSelect={handleSelectMedicamento} items={medicamentos} title="Selecionar medicamento" renderItem={(item: any) => <div><p className="font-medium">{item.nome}</p><p className="text-xs text-ink-muted">{item.dosagem}</p></div>} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => {}} createNewLabel="" />
+        {/* Modal de Seleção de Medicamento */}
+        <SelectionModal 
+          isOpen={isMedModalOpen} 
+          onClose={() => setIsMedModalOpen(false)} 
+          onSelect={handleSelectMedicamento} 
+          items={medicamentos} 
+          title="Selecionar medicamento" 
+          renderItem={(item: any) => <div><p className="font-medium">{item.nome}</p><p className="text-xs text-ink-muted">{item.dosagem}</p></div>} 
+          getItemId={(item: any) => item.id!} 
+          getItemLabel={(item: any) => item.nome} 
+          onCreateNew={() => {}} 
+          createNewLabel="" 
+        />
+
+        {/* Modal de Seleção de Farmácia Dinâmica */}
+        <SelectionModal
+          isOpen={isPharmacyModalOpen}
+          onClose={() => setIsPharmacyModalOpen(false)}
+          onSelect={(item: any) => { trigger("vibrate"); setFarmaciaNome(item.nome); setFarmaciaId(item.id); }}
+          items={farmacias}
+          title="Selecionar farmácia"
+          placeholder="Buscar farmácia..."
+          renderItem={(item: any) => (
+            <div><p className="font-medium text-ink-primary">{item.nome}</p>{item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}</div>
+          )}
+          getItemId={(item: any) => item.id!}
+          getItemLabel={(item: any) => item.nome}
+          onCreateNew={() => { setIsPharmacyModalOpen(false); trigger("vibrate"); router.push("/saude/farmacias/novo"); }}
+          createNewLabel="Criar farmácia"
+        />
       </main>
     </PageTransition>
   );
