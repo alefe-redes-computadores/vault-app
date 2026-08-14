@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, Building2, Search, Plus, ChevronRight, 
-  MapPin, Phone, Pill, DollarSign, TrendingUp, Calendar 
+  MapPin, Phone, Pill, DollarSign, Edit3 
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -20,43 +20,30 @@ export default function FarmaciasPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
 
-  // Buscas relacionais em tempo real via Dexie
   const farmacias = useLiveQuery(() => db.farmacias.toArray(), []) || [];
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
   const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
-  // Cruzando dados: medicamentos vinculados e cálculo analítico de preços por farmácia
   const farmaciasComAnalise = useMemo(() => {
     return farmacias.map((farmacia) => {
-      // Medicamentos associados a esta farmácia
       const medsDaFarmacia = medicamentos.filter(
         (m: any) => m.farmacia_id === farmacia.id || m.farmacia?.toLowerCase() === farmacia.nome.toLowerCase()
       );
 
       const medIds = new Set(medsDaFarmacia.map((m: any) => m.id));
-
-      // Renovações ligadas aos remédios desta farmácia
       const renovacoesDaFarmacia = renovacoes.filter((r: any) => medIds.has(r.medicamento_id));
 
-      // Calcular o total gasto e média de preços
       let totalGasto = 0;
-      let totalRenovacoesComPreco = 0;
-
       renovacoesDaFarmacia.forEach((r: any) => {
         if (typeof r.preco === "number" && r.preco > 0) {
           totalGasto += r.preco;
-          totalRenovacoesComPreco++;
         }
       });
-
-      const mediaPreco = totalRenovacoesComPreco > 0 ? totalGasto / totalRenovacoesComPreco : 0;
 
       return {
         ...farmacia,
         medicamentosCount: medsDaFarmacia.length,
         totalGasto,
-        mediaPreco,
-        renovacoesCount: renovacoesDaFarmacia.length,
       };
     });
   }, [farmacias, medicamentos, renovacoes]);
@@ -76,6 +63,7 @@ export default function FarmaciasPage() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -111,14 +99,14 @@ export default function FarmaciasPage() {
                 key={farmacia.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                onClick={() => { trigger("vibrate"); router.push(`/saude/farmacias/editar?id=${farmacia.id}`); }}
+                onClick={() => { trigger("vibrate"); router.push(`/saude/farmacias/detalhes?id=${farmacia.id}`); }}
                 className="flex w-full flex-col gap-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden cursor-pointer"
                 style={{ borderLeft: "6px solid #F59E0B" }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400">
-                      <Building2 size={20} />
+                      <Building2 size2={20} />
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-base font-semibold text-ink-primary">{farmacia.nome}</p>
@@ -136,7 +124,20 @@ export default function FarmaciasPage() {
                       </div>
                     </div>
                   </div>
-                  <ChevronRight size={16} className="shrink-0 text-ink-faint self-center" />
+                  <div className="flex items-center gap-2 self-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        trigger("vibrate");
+                        router.push(`/saude/farmacias/editar?id=${farmacia.id}`);
+                      }}
+                      className="h-8 w-8 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted hover:text-amber-400 transition-colors"
+                      aria-label="Editar farmácia"
+                    >
+                      <Edit3 size={14} />
+                    </button>
+                    <ChevronRight size={16} className="text-ink-faint" />
+                  </div>
                 </div>
 
                 {/* Bloco Analítico Relacional de Preços e Vínculos */}
@@ -155,7 +156,7 @@ export default function FarmaciasPage() {
                       <DollarSign size={11} className="text-emerald-400" /> Total Histórico Gasto
                     </p>
                     <p className="mt-0.5 text-sm font-semibold text-ink-primary">
-                      {farmacia.totalGasto > 0 ? `R$ ${farmacia.totalGasto.toFixed(2).replace(".", ",")}` : "Nenhum preço reg."}
+                      {farmacia.totalGasto > 0 ? `R$ ${farmacia.totalGasto.toFixed(2).replace(".", ",")}` : "R$ 0,00"}
                     </p>
                   </div>
                 </div>
