@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Heart,
@@ -25,7 +25,8 @@ import {
   DollarSign,
   CalendarCheck2,
   FileHeart,
-  Plus
+  Plus,
+  X
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -68,7 +69,6 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
   const { trigger } = useHapticFeedback();
   const color = alertLevelColor(alert.level);
   
-  // Verifica se o alerta tem relação com receita para exibir o botão de renovação (CORRIGIDO PARA O TYPESCRIPT)
   const isReceita = alert.title?.toLowerCase().includes("receita") || alert.subtitle?.toLowerCase().includes("receita");
 
   return (
@@ -112,9 +112,8 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
         {isReceita && (
           <button
             onClick={(e) => {
-              e.stopPropagation(); // Impede de abrir os detalhes da receita
+              e.stopPropagation();
               trigger("vibrate");
-              // Leva direto para nova renovação
               router.push("/saude/renovacao/nova");
             }}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted hover:border-emerald-400/50 hover:text-emerald-400 active:scale-95 transition-all shadow-sm"
@@ -149,6 +148,11 @@ export default function SaudePage() {
   const cirurgiasHoje = useLiveQuery(() => db.table("cirurgias").where("data").equals(hoje).toArray(), [hoje]) || [];
   const examesHoje = useLiveQuery(() => db.table("exames").where("data").equals(hoje).toArray(), [hoje]) || [];
 
+  // ============================================================
+  // ESTADOS ADICIONADOS
+  // ============================================================
+  const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
+
   const totalGastoGeral = useMemo(() => {
     let soma = 0;
     renovacoes.forEach((r: any) => {
@@ -168,7 +172,7 @@ export default function SaudePage() {
     for (const med of medicamentos) {
       if (!med.id || med.status === "descontinuado" || !med.estoque_horarios) continue;
       for (const horario of med.estoque_horarios) {
-        if (!horario || horario > horaAtual) continue; 
+        if (!horario || horario > horaAtual) continue;
         const log = doseLogs.find((l) => l.medicamento_id === med.id && l.horario === horario);
         if (!log?.tomado_em) {
           lista.push({ medicamentoId: med.id, nome: med.nome, horario });
@@ -183,6 +187,7 @@ export default function SaudePage() {
     for (const d of dosesPendentesAtrasadas) {
       await marcarDose(d.medicamentoId, hoje, d.horario, true);
     }
+    setModalPendenciasAberto(false);
   };
 
   const docAlerts = useMemo(() => getDocumentAlerts(documents || []).filter(a => a.daysUntil <= 5), [documents]);
@@ -342,42 +347,29 @@ export default function SaudePage() {
             </motion.div>
           )}
 
+          {/* ============================================================ */}
+          {/* CARD DE PENDÊNCIAS INTELIGENTE (SUBSTITUÍDO) */}
+          {/* ============================================================ */}
           {dosesPendentesAtrasadas.length > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.25 }}
-              className="relative overflow-hidden rounded-[26px] border border-coral/30 bg-gradient-to-br from-coral/15 via-surface to-surface p-5 shadow-lg shadow-coral/5"
+              className="rounded-[26px] border border-coral/30 bg-surface p-5 shadow-lg shadow-coral/5"
             >
-              <div className="flex items-start gap-3.5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-coral/20 text-coral">
-                  <Clock size={22} className="animate-pulse" />
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 flex items-center justify-center rounded-2xl bg-coral/20 text-coral">
+                  <Clock size={20} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-display text-base font-bold text-ink-primary">
-                    Doses pendentes hoje!
-                  </h3>
-                  <p className="mt-0.5 text-xs text-ink-muted leading-relaxed">
-                    Você esqueceu de tomar <strong className="text-ink-primary">{dosesPendentesAtrasadas.length} medicamento(s)</strong> nos horários programados.
-                  </p>
-                  
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {dosesPendentesAtrasadas.map((d, i) => (
-                      <span key={i} className="inline-flex items-center gap-1 rounded-full bg-surface-raised px-2.5 py-1 text-[10px] font-mono font-medium text-ink-primary border border-surface-border/50">
-                        <span className="text-coral font-bold">{d.horario}</span> {d.nome}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 flex items-center gap-2.5">
-                    <button
-                      onClick={handleTomarTodasAtrasadas}
-                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-coral px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-coral/20 transition-all active:scale-95"
-                    >
-                      <CheckCircle2 size={15} /> Tomar Todos Agora
-                    </button>
-                  </div>
+                  <h3 className="text-sm font-bold">{dosesPendentesAtrasadas.length} pendências</h3>
+                  <p className="text-[11px] text-ink-muted">Ações rápidas de saúde</p>
                 </div>
+                <button 
+                  onClick={() => setModalPendenciasAberto(true)}
+                  className="px-4 py-2 bg-coral text-white text-[11px] font-bold rounded-xl active:scale-95"
+                >
+                  Gerenciar
+                </button>
               </div>
             </motion.div>
           )}
@@ -414,7 +406,6 @@ export default function SaudePage() {
               <div className="space-y-2.5">
                 {tratamentos.map((tratamento) => {
                   const IconComponent = getTratamentoIcon(tratamento.nome);
-                  // AQUI ESTÁ A CORREÇÃO DA COR APLICADA!
                   const cor = (tratamento as any).cor || "#8B5CF6"; 
                   
                   return (
@@ -606,6 +597,74 @@ export default function SaudePage() {
             </button>
           </motion.div>
         </section>
+
+        {/* ============================================================ */}
+        {/* MODAL DE SELEÇÃO (UX REFINADA) */}
+        {/* ============================================================ */}
+        <AnimatePresence>
+          {modalPendenciasAberto && (
+            <div 
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-void/80 backdrop-blur-md"
+              onClick={() => setModalPendenciasAberto(false)}
+            >
+              <motion.div 
+                initial={{ opacity: 0, y: 50, scale: 0.95 }} 
+                animate={{ opacity: 1, y: 0, scale: 1 }} 
+                exit={{ opacity: 0, y: 50, scale: 0.95 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md bg-surface rounded-[32px] p-6 shadow-2xl space-y-5 border border-surface-border"
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-ink-primary">Doses Pendentes</h3>
+                    <p className="text-xs text-ink-muted">Gerencie suas pendências de hoje</p>
+                  </div>
+                  <button 
+                    onClick={() => setModalPendenciasAberto(false)} 
+                    className="h-8 w-8 flex items-center justify-center rounded-full bg-surface-raised hover:bg-surface-border transition-colors"
+                  >
+                    <X size={16}/>
+                  </button>
+                </div>
+                
+                <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                  {dosesPendentesAtrasadas.map((d, index) => (
+                    <div key={`${d.medicamentoId}-${index}`} className="flex items-center justify-between p-3.5 bg-surface-raised rounded-2xl border border-surface-border/50">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink-primary truncate">{d.nome}</p>
+                        <p className="text-[10px] text-ink-muted font-mono">{d.horario}</p>
+                      </div>
+                      <button 
+                        onClick={() => { 
+                          trigger("success");
+                          marcarDose(d.medicamentoId, hoje, d.horario, true); 
+                        }}
+                        className="text-emerald-400 font-bold text-xs px-3 py-1.5 rounded-lg bg-emerald-400/10 active:scale-95 transition-all"
+                      >
+                        Tomar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <button 
+                    onClick={() => { setModalPendenciasAberto(false); router.push("/saude/hoje"); }} 
+                    className="p-3.5 text-xs font-semibold rounded-2xl bg-surface-raised hover:bg-surface-border transition-all active:scale-95"
+                  >
+                    Expandir Cronograma
+                  </button>
+                  <button 
+                    onClick={handleTomarTodasAtrasadas} 
+                    className="p-3.5 text-xs font-semibold rounded-2xl bg-coral text-white shadow-md shadow-coral/20 active:scale-95 transition-all"
+                  >
+                    Tomar Tudo Agora
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </main>
     </PageTransition>
   );
