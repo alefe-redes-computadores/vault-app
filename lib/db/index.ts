@@ -6,6 +6,7 @@ import type {
   Consulta, Cirurgia
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
+import { getLocalTodayISO } from '@/lib/health-utils';
 
 function generateId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -288,20 +289,44 @@ export async function safeUpdateRenovacao(id: string, changes: Partial<Renovacao
   });
 }
 
+// ============================================================
+// safeSetDoseLog CORRIGIDO — com suporte a data local via health-utils
+// ============================================================
 export async function safeSetDoseLog(data: Omit<DoseLog, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
-  const existing = await db.doseLogs.where('medicamento_id').equals(data.medicamento_id).filter((l) => l.data === data.data && l.horario === data.horario).first();
+  // Garante que a data usa o padrão local se não vier definida
+  const targetDate = data.data || getLocalTodayISO();
+  
+  const existing = await db.doseLogs
+    .where('medicamento_id')
+    .equals(data.medicamento_id)
+    .filter((l) => l.data === targetDate && l.horario === data.horario)
+    .first();
+
   if (existing) {
     await db.transaction('rw', db.doseLogs, db.syncQueue, async () => {
-      await db.doseLogs.update(existing.id!, { tomado_em: data.tomado_em, updated_at: timestamp, synced: false });
+      await db.doseLogs.update(existing.id!, { 
+        tomado_em: data.tomado_em || timestamp, 
+        updated_at: timestamp, 
+        synced: false 
+      });
       const updated = await db.doseLogs.get(existing.id!);
       await db.syncQueue.add({ id: generateId(), table: 'doseLogs', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
       triggerSyncProcess();
     });
     return existing.id!;
   }
+
   const id = generateId();
-  const full: DoseLog = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: false };
+  const full: DoseLog = { 
+    ...data, 
+    data: targetDate, 
+    id, 
+    created_at: timestamp, 
+    updated_at: timestamp, 
+    synced: false 
+  };
+
   return db.transaction('rw', db.doseLogs, db.syncQueue, async () => {
     await db.doseLogs.add(full);
     await db.syncQueue.add({ id: generateId(), table: 'doseLogs', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
@@ -605,15 +630,15 @@ export async function safeDeleteTratamento(id: string): Promise<void> {
   });
 }
 
-// CORREÇÃO: CIDs não vão mais para a Fila de Sincronização (Local Only/Otimização)
+// ============================================================
+// CIDs — LOCAL ONLY (não vão para a fila de sincronização)
+// ============================================================
 export async function safeAddCid(data: Omit<Cid, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
-  // Marcado como synced: true para não travar a fila do Supabase
-  const full: Cid = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: true }; 
+  const full: Cid = { ...data, id, created_at: timestamp, updated_at: timestamp, synced: true };
   return db.transaction('rw', db.cids, async () => {
     await db.cids.add(full);
-    // Removemos o db.syncQueue.add() daqui
     return id;
   });
 }
@@ -622,14 +647,12 @@ export async function safeUpdateCid(id: string, changes: Partial<Cid>): Promise<
   const timestamp = nowIso();
   await db.transaction('rw', db.cids, async () => {
     await db.cids.update(id, { ...changes, updated_at: timestamp });
-    // Removemos o db.syncQueue.add() daqui
   });
 }
 
 export async function safeDeleteCid(id: string): Promise<void> {
   await db.transaction('rw', db.cids, async () => {
     await db.cids.delete(id);
-    // Removemos o db.syncQueue.add() daqui
   });
 }
 
