@@ -48,7 +48,6 @@ class VaultDB extends Dexie {
   constructor() {
     super('vault-db');
     
-    // ... Versões antigas (mantidas para compatibilidade retroativa no celular)
     this.version(2).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed' });
     this.version(3).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, medicamento_id, data' });
     this.version(4).stores({ persons: 'id, user_id, name, synced, created_at', documents: 'id, person_id, category_id, type, title, is_favorite, synced, created_at, vault_id', syncQueue: 'id, table, operation, created_at, user_id, retry_count, failed', medicamentos: 'id, document_id, nome, medico, proxima_renovacao', renovacoes: 'id, medicamento_id, data', vaults: 'id, user_id, name, synced, created_at', vaultMembers: 'id, vault_id, user_id, email, status, synced' });
@@ -252,19 +251,13 @@ export async function safeUpdateMedicamento(id: string, changes: Partial<Medicam
   });
 }
 
-// ============================================================
-// CORREÇÃO: safeDeleteMedicamento com Cascade Delete Atômico
-// ============================================================
 export async function safeDeleteMedicamento(medicamentoId: string) {
-  // Transação atômica envolvendo as tabelas de medicamentos, junções e fila de sync
   return await db.transaction(
     "rw",
     [db.medicamentos, db.medicamento_tratamentos, db.syncQueue],
     async () => {
-      // 1. Apaga o medicamento
       await db.medicamentos.delete(medicamentoId);
 
-      // Adiciona o delete do medicamento na fila de sync
       await db.syncQueue.add({
         id: generateId(),
         table: 'medicamentos',
@@ -275,13 +268,11 @@ export async function safeDeleteMedicamento(medicamentoId: string) {
         failed: false,
       });
 
-      // 2. Busca todas as junções órfãs (N:N)
       const vinculos = await db.medicamento_tratamentos
         .where("medicamento_id")
         .equals(medicamentoId)
         .toArray();
 
-      // 3. Deleta as junções localmente e enfileira CADA UMA na fila de sync
       for (const vinculo of vinculos) {
         await db.medicamento_tratamentos.delete(vinculo.id!);
         
@@ -295,8 +286,6 @@ export async function safeDeleteMedicamento(medicamentoId: string) {
           failed: false,
         });
       }
-
-      // Dispara o processamento da fila
       triggerSyncProcess();
     }
   );
@@ -325,13 +314,14 @@ export async function safeUpdateRenovacao(id: string, changes: Partial<Renovacao
 }
 
 // ============================================================
-// safeSetDoseLog CORRIGIDO — com suporte a data local via health-utils
+// safeSetDoseLog CORRIGIDO — Suporta ignorado_em e fuso horário
 // ============================================================
-export async function safeSetDoseLog(data: Omit<DoseLog, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
+export async function safeSetDoseLog(
+  data: Omit<DoseLog, 'id' | 'created_at' | 'updated_at' | 'synced'>
+): Promise<string> {
   const timestamp = nowIso();
-  // Garante que a data usa o padrão local se não vier definida
   const targetDate = data.data || getLocalTodayISO();
-  
+
   const existing = await db.doseLogs
     .where('medicamento_id')
     .equals(data.medicamento_id)
@@ -340,13 +330,17 @@ export async function safeSetDoseLog(data: Omit<DoseLog, 'id' | 'created_at' | '
 
   if (existing) {
     await db.transaction('rw', db.doseLogs, db.syncQueue, async () => {
-      await db.doseLogs.update(existing.id!, { 
-        tomado_em: data.tomado_em || timestamp, 
-        updated_at: timestamp, 
-        synced: false 
+      await db.doseLogs.update(existing.id!, {
+        tomado_em: data.tomado_em,
+        ignorado_em: data.ignorado_em, // ✅ SUPORTE AO "IGNORAR" AQUI
+        updated_at: timestamp,
+        synced: false,
       });
       const updated = await db.doseLogs.get(existing.id!);
-      await db.syncQueue.add({ id: generateId(), table: 'doseLogs', operation: 'update', payload: { ...updated }, created_at: timestamp, retry_count: 0, failed: false });
+      await db.syncQueue.add({
+        id: generateId(), table: 'doseLogs', operation: 'update', payload: { ...updated },
+        created_at: timestamp, retry_count: 0, failed: false,
+      });
       triggerSyncProcess();
     });
     return existing.id!;
@@ -361,10 +355,12 @@ export async function safeSetDoseLog(data: Omit<DoseLog, 'id' | 'created_at' | '
     updated_at: timestamp, 
     synced: false 
   };
-
   return db.transaction('rw', db.doseLogs, db.syncQueue, async () => {
     await db.doseLogs.add(full);
-    await db.syncQueue.add({ id: generateId(), table: 'doseLogs', operation: 'add', payload: { ...full }, created_at: timestamp, retry_count: 0, failed: false });
+    await db.syncQueue.add({
+      id: generateId(), table: 'doseLogs', operation: 'add', payload: { ...full },
+      created_at: timestamp, retry_count: 0, failed: false,
+    });
     triggerSyncProcess();
     return id;
   });
@@ -650,24 +646,16 @@ export async function safeUpdateTratamento(id: string, changes: Partial<Tratamen
   });
 }
 
-// CORREÇÃO: Limpeza em Cascata de Tratamentos
 export async function safeDeleteTratamento(id: string): Promise<void> {
   const timestamp = nowIso();
   await db.transaction('rw', db.tratamentos, db.medicamento_tratamentos, db.syncQueue, async () => {
-    // Apaga registros órfãos na tabela de junção
     await db.medicamento_tratamentos.where('tratamento_id').equals(id).delete();
-    
-    // Apaga o tratamento
     await db.tratamentos.delete(id);
-    
     await db.syncQueue.add({ id: generateId(), table: 'tratamentos', operation: 'delete', payload: { id }, created_at: timestamp, retry_count: 0, failed: false });
     triggerSyncProcess();
   });
 }
 
-// ============================================================
-// CIDs — LOCAL ONLY (não vão para a fila de sincronização)
-// ============================================================
 export async function safeAddCid(data: Omit<Cid, 'id' | 'created_at' | 'updated_at' | 'synced'>): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
