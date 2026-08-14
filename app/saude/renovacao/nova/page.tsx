@@ -24,7 +24,6 @@ import { uploadFile } from "@/lib/supabase/storage";
 import { VALIDADE_RECEITA_DIAS } from "@/lib/health-utils";
 import type { Attachment, TipoReceita } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
@@ -290,13 +289,13 @@ export default function NovaRenovacaoPage() {
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">Preço pago (R$) — Opcional</label>
               <div className="relative">
-                <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                <DollarSign size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="0,00"
                   value={preco}
                   onChange={(e) => setPreco(e.target.value)}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm"
+                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-10 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice"
                 />
               </div>
             </div>
