@@ -24,6 +24,8 @@ import {
   Calendar,
   DollarSign,
   CalendarCheck2,
+  FileHeart,
+  Plus
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -60,45 +62,69 @@ function getTratamentoIcon(nome: string) {
   return Activity;
 }
 
+// COMPONENTE DE ALERTA MODIFICADO (Com atalho de Renovação)
 function AlertRow({ alert }: { alert: HealthAlert }) {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const color = alertLevelColor(alert.level);
+  
+  // Verifica se o alerta tem relação com receita para exibir o botão de renovação
+  const isReceita = alert.title?.toLowerCase().includes("receita") || alert.subtitle?.toLowerCase().includes("receita") || alert.kind === "receita";
 
   return (
-    <button
-      onClick={() => {
-        trigger("vibrate");
-        router.push(alert.href);
-      }}
-      className="flex w-full items-center gap-3 rounded-[22px] border bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+    <div
+      className="flex w-full items-center justify-between gap-2 rounded-[22px] border bg-surface p-3.5 shadow-sm transition-all"
       style={{ borderColor: `${color}30` }}
     >
-      <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: `${color}18` }}
+      <button
+        onClick={() => {
+          trigger("vibrate");
+          router.push(alert.href);
+        }}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.985]"
       >
-        {alert.kind === "exame" ? (
-          <FlaskConical size={18} style={{ color }} />
-        ) : (
-          <FileWarning size={18} style={{ color }} />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+          style={{ backgroundColor: `${color}18` }}
+        >
+          {alert.kind === "exame" ? (
+            <FlaskConical size={18} style={{ color }} />
+          ) : (
+            <FileWarning size={18} style={{ color }} />
+          )}
+        </div>
+        <div className="min-w-0 flex-1 pr-2">
           <p className="truncate text-sm font-semibold text-ink-primary">
             {alert.title}
           </p>
+          <p className="truncate text-xs text-ink-muted">{alert.subtitle}</p>
         </div>
-        <p className="truncate text-xs text-ink-muted">{alert.subtitle}</p>
+      </button>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <span
+          className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
+          style={{ backgroundColor: `${color}18`, color }}
+        >
+          {alertLevelLabel(alert.level, alert.daysUntil)}
+        </span>
+
+        {isReceita && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation(); // Impede de abrir os detalhes da receita
+              trigger("vibrate");
+              // Leva direto para nova renovação
+              router.push("/saude/renovacao/nova");
+            }}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted hover:border-emerald-400/50 hover:text-emerald-400 active:scale-95 transition-all shadow-sm"
+            title="Adicionar Renovação"
+          >
+            <Plus size={15} />
+          </button>
+        )}
       </div>
-      <span
-        className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold"
-        style={{ backgroundColor: `${color}18`, color }}
-      >
-        {alertLevelLabel(alert.level, alert.daysUntil)}
-      </span>
-    </button>
+    </div>
   );
 }
 
@@ -159,7 +185,6 @@ export default function SaudePage() {
     }
   };
 
-  // Filtro estrito: Apenas alertas realmente urgentes (vencidos ou vencem em até 5 dias) para evitar poluição visual
   const docAlerts = useMemo(() => getDocumentAlerts(documents || []).filter(a => a.daysUntil <= 5), [documents]);
   const exameAlerts = useMemo(() => getExameAlerts(exames || []).filter(a => a.daysUntil <= 5), [exames]);
 
@@ -543,6 +568,35 @@ export default function SaudePage() {
                 <p className="text-[10px] text-ink-muted">Postos</p>
               </button>
             </div>
+          </motion.div>
+
+          {/* ARQUIVO CLÍNICO (Acesso aos Documentos de Saúde) */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.16 }}
+            className="pb-4"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-display text-sm font-semibold text-ink-primary">
+                Arquivo Clínico
+              </h2>
+            </div>
+            <button
+              onClick={() => { trigger("vibrate"); router.push("/saude/documentos"); }}
+              className="flex w-full items-center justify-between rounded-[22px] border border-ice/30 bg-gradient-to-r from-ice/5 to-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:border-ice/50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                  <FileHeart size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-ink-primary">Documentos de Saúde</p>
+                  <p className="text-[10px] text-ink-muted">Receitas, laudos e exames arquivados</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-ice" />
+            </button>
           </motion.div>
         </section>
       </main>
