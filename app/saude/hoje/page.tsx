@@ -42,11 +42,9 @@ export default function HojePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
-  // ✅ Data baseada no fuso horário local
   const hoje = getLocalTodayISO();
 
   const { medicamentos } = useMedicamentos();
-  // ✅ CORREÇÃO APLICADA: Mapeando marcarComoTomada para marcarDose
   const { doseLogs, marcarComoTomada: marcarDose } = useDoseLogs(hoje);
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
@@ -62,7 +60,6 @@ export default function HojePage() {
   const [observacoesRenovacao, setObservacoesRenovacao] = useState("");
   const [adicionarMaisEstoque, setAdicionarMaisEstoque] = useState(30);
   
-  // ✅ Trava anti-race condition mantida
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -129,7 +126,8 @@ export default function HojePage() {
     trigger(proximaTomada ? "success" : "vibrate");
 
     try {
-      await marcarDose(item.medicamentoId, hoje, item.horario, proximaTomada);
+      // ✅ CORREÇÃO: Passando apenas os 3 argumentos exigidos pelo hook
+      await marcarDose(item.medicamentoId, hoje, item.horario);
 
       const medOriginal = medicamentos?.find(m => m.id === item.medicamentoId);
       if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
