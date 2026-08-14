@@ -348,10 +348,11 @@ export default function NewDocumentPage() {
 
     try {
       if (isCreatingParent.type === "pessoa") {
+        // 🔧 CORREÇÃO: adicionamos a propriedade color (exigida pelo TypeScript)
         const id = await safeAddPerson({
           user_id: user.id,
           name: newParentName.trim(),
-          color: DEFAULT_PERSON_COLOR,
+          color: DEFAULT_PERSON_COLOR, // <-- ESSA É A CORREÇÃO
         });
 
         handleChange("person_id", id);
