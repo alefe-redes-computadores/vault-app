@@ -38,6 +38,7 @@ function useDebounce(value: string, delay: number = 300) {
 
 type TabType = "receitas" | "prontuarios" | "exames";
 
+// ✅ Interface explícita para os grupos
 interface GroupData {
   groupKey: string;
   groupName: string;
@@ -109,9 +110,10 @@ export default function DocumentsPage() {
     });
   }, [paginatedDocs, activeTab, selectedMonth]);
 
-  // ✅ CORRIGIDO: Tipagem explícita do Map
-  const groupedReceitas = useMemo(() => {
+  // ✅ CORRIGIDO: Tipagem explícita e uso de tipos
+  const groupedReceitas = useMemo((): GroupData[] => {
     if (activeTab !== "receitas") return [];
+
     const groups = new Map<string, GroupData>();
 
     for (const doc of filteredDocs) {
@@ -121,7 +123,7 @@ export default function DocumentsPage() {
       if (!groups.has(groupKey)) {
         groups.set(groupKey, {
           groupKey,
-          groupName: medName,
+          groupName: String(medName), // ✅ Força a ser string
           documents: [],
           count: 0,
         });
