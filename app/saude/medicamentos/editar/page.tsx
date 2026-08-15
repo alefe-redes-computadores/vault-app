@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo, useRef } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -67,6 +67,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal, getTratamentoIcon } from "@/components/saude/SeletorTratamentoModal";
 import { SeletorReceita } from "@/components/saude/SeletorReceita";
+import { useToast } from "@/components/ToastProvider";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -15 } };
 
@@ -115,9 +116,14 @@ type EditIntent = "menu" | "compra" | "posologia" | "rede" | "suspensao" | "basi
 
 function EditarMedicamentoContent() {
   const { trigger } = useHapticFeedback();
+  const { showError } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
+
+  // ✅ CORREÇÃO 1: editIntent lendo do searchParams
+  const intentParam = searchParams.get("intent") as EditIntent;
+  const [editIntent, setEditIntent] = useState<EditIntent>(intentParam || "menu");
 
   const { user } = useAuth();
   const persons = usePersons();
@@ -136,8 +142,8 @@ function EditarMedicamentoContent() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [editIntent, setEditIntent] = useState<EditIntent>("menu");
   const [hasChanges, setHasChanges] = useState(false);
+  const [showConfirmExitModal, setShowConfirmExitModal] = useState(false);
 
   // Dados Básicos
   const [documentId, setDocumentId] = useState("");
@@ -167,7 +173,7 @@ function EditarMedicamentoContent() {
   const [renovacaoEditadaManualmente, setRenovacaoEditadaManualmente] = useState(false);
   const [observacoes, setObservacoes] = useState("");
 
-  // Evolução Clínica (Aumento/Redução de Dose)
+  // Evolução Clínica
   const [dosagemOriginal, setDosagemOriginal] = useState("");
   const [novaDosagem, setNovaDosagem] = useState("");
   const [medicoEvolucaoNome, setMedicoEvolucaoNome] = useState("");
@@ -635,6 +641,7 @@ function EditarMedicamentoContent() {
       }
     } catch (error) {
       console.error("Erro ao salvar:", error);
+      showError("Erro ao salvar alterações. Tente novamente.");
       trigger("error");
     } finally {
       setSaving(false);
@@ -660,8 +667,12 @@ function EditarMedicamentoContent() {
     }
   };
 
+  // ✅ CORREÇÃO 5: handleBack com confirmação de saída
   const handleBack = () => {
-    trigger("vibrate");
+    if (hasChanges && editIntent !== "menu") {
+      setShowConfirmExitModal(true);
+      return;
+    }
     if (editIntent !== "menu") {
       setEditIntent("menu");
     } else {
@@ -715,9 +726,20 @@ function EditarMedicamentoContent() {
                 <SelectedFormatIcon size={16} fill={hasTwoColors ? `url(#${gradientId})` : cores[0] || "#9CA3AF"} stroke="none" />
                 <p className="font-mono text-[11px] uppercase tracking-widest text-ice">Ajustes</p>
               </div>
-              <h1 className="mt-0.5 truncate text-xl font-bold uppercase text-ink-primary">
-                {editIntent === "menu" ? nome || "Medicamento" : `Editando ${nome}`}
-              </h1>
+              <div className="flex items-center justify-between">
+                <h1 className="mt-0.5 truncate text-xl font-bold uppercase text-ink-primary">
+                  {editIntent === "menu" ? nome || "Medicamento" : `Editando ${nome}`}
+                </h1>
+                {/* ✅ CORREÇÃO 2: Botão Descartar */}
+                {hasChanges && editIntent !== "menu" && (
+                  <button
+                    onClick={() => setShowConfirmExitModal(true)}
+                    className="ml-4 shrink-0 text-sm font-medium text-ink-muted transition-colors hover:text-coral"
+                  >
+                    Descartar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -1431,6 +1453,22 @@ function EditarMedicamentoContent() {
           message="Você está prestes a desativar o controle de estoque para este medicamento. Os dados atuais de quantidade e horários serão perdidos."
           confirmLabel="Desativar"
           cancelLabel="Cancelar"
+          type="warning"
+        />
+
+        {/* ✅ CORREÇÃO 5: Modal de confirmação para saída com alterações */}
+        <ConfirmationModal
+          isOpen={showConfirmExitModal}
+          onClose={() => setShowConfirmExitModal(false)}
+          onConfirm={() => {
+            setHasChanges(false);
+            setEditIntent("menu");
+            setShowConfirmExitModal(false);
+          }}
+          title="Descartar alterações?"
+          message="Você tem alterações não salvas. Deseja descartá-las e voltar?"
+          confirmLabel="Descartar"
+          cancelLabel="Continuar editando"
           type="warning"
         />
 
