@@ -15,12 +15,12 @@ import { DocumentPreview } from "@/components/galeria/DocumentPreview";
 import { DocumentViewer } from "@/components/galeria/DocumentViewer";
 
 // ============================================================================
-// COMPONENTES DE ESTADO INTERNO (Empty & Skeleton)
+// COMPONENTES DE CONTEÚDO (GalleryContent)
 // ============================================================================
 
 function GallerySkeleton() {
   return (
-    <div className="animate-pulse space-y-8">
+    <div className="animate-pulse space-y-8 px-5 pt-8">
       <div>
         <div className="mb-4 h-4 w-28 rounded-md bg-surface-border/40"></div>
         <div className="grid grid-cols-2 gap-4">
@@ -34,18 +34,18 @@ function GallerySkeleton() {
 }
 
 function GalleryEmptyState({ activeTab, personName }: { activeTab: "saude" | "pessoal", personName?: string }) {
-  let title = "Nenhum arquivo encontrado";
-  let subtitle = "Adicione documentos para mantê-los seguros.";
+  let title = "Sua galeria está vazia";
+  let subtitle = "Adicione documentos, exames e receitas para mantê-los seguros.";
 
   if (personName) {
-    title = `Sem documentos de ${personName.split(' ')[0]}`;
+    title = `Nenhum documento encontrado para ${personName.split(' ')[0]}`;
     subtitle = `Não há registros de ${activeTab === "saude" ? "saúde" : "uso pessoal"} para esta pessoa.`;
   } else if (activeTab === "saude") {
     title = "Nenhum documento de saúde";
     subtitle = "Receitas, exames e laudos médicos aparecerão aqui.";
-  } else {
+  } else if (activeTab === "pessoal") {
     title = "Nenhum documento pessoal";
-    subtitle = "RG, CNH e certificados podem ser armazenados aqui.";
+    subtitle = "RG, CNH, passaporte e certificados podem ser armazenados aqui.";
   }
 
   return (
@@ -68,40 +68,37 @@ export default function GaleriaPage() {
   const persons = usePersons();
   const searchParams = useSearchParams();
   
-  // Estado Visual
+  // ESTADO VISUAL
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"saude" | "pessoal">("saude");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [viewingItem, setViewingItem] = useState<GalleryItem | null>(null);
 
-  // Auto-abre modal de upload via query param
   useEffect(() => {
     if (searchParams.get("upload") === "true") setIsUploadOpen(true);
   }, [searchParams]);
 
-  // Trava scroll do body no viewer/modal
   useEffect(() => {
     if (viewingItem || isUploadOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'unset';
     return () => { document.body.style.overflow = 'unset'; };
   }, [viewingItem, isUploadOpen]);
 
-  // DADOS (O Dexie comanda. isLoading = undefined real)
+  // CAMADA DE DADOS (Dexie Orchestrator)
   const { items, isLoading } = useGaleria(selectedPerson || undefined);
 
-  // ACCENT LAYER (Identidade Dinâmica)
+  // ACCENT LAYER (A cor da pessoa atua como highlight sutil)
   const activePersonObj = useMemo(() => persons.find((p: any) => p.id === selectedPerson), [persons, selectedPerson]);
   const themeColors = { saude: "#34D399", pessoal: "#38BDF8" }; 
   const accentColor = activePersonObj?.color || themeColors[activeTab];
 
-  // AGRUPAMENTO INTELIGENTE (Camada de Apresentação)
+  // AGRUPAMENTO SEMÂNTICO (Hoje, Ontem, 7 Dias, Meses)
   const groupedFilteredItems = useMemo(() => {
     const filtered = items.filter((item) => item.category === activeTab);
     const groups: Record<string, GalleryItem[]> = {};
     
-    // Obter data base de referência para "Recentes" (últimos 7 dias)
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const hojeBase = new Date();
+    hojeBase.setHours(0, 0, 0, 0);
 
     filtered.forEach((item) => {
       const d = new Date(item.date);
@@ -110,13 +107,14 @@ export default function GaleriaPage() {
       const docDate = new Date(d);
       docDate.setHours(0, 0, 0, 0);
 
-      const diffTime = hoje.getTime() - docDate.getTime();
+      const diffTime = hojeBase.getTime() - docDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       let label = "";
-      if (diffDays >= 0 && diffDays <= 7) {
-        label = "Recentes";
-      } else {
+      if (diffDays === 0) label = "Hoje";
+      else if (diffDays === 1) label = "Ontem";
+      else if (diffDays > 1 && diffDays <= 7) label = "Últimos 7 dias";
+      else {
         const mesAno = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
         label = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
       }
@@ -125,17 +123,24 @@ export default function GaleriaPage() {
       groups[label].push(item);
     });
 
+    // Força a ordem semântica das chaves
     const orderedGroups: Record<string, GalleryItem[]> = {};
-    if (groups["Recentes"]) orderedGroups["Recentes"] = groups["Recentes"];
+    const prioKeys = ["Hoje", "Ontem", "Últimos 7 dias"];
+    
+    prioKeys.forEach(key => {
+      if (groups[key]) orderedGroups[key] = groups[key];
+    });
+    
     Object.keys(groups).forEach(key => {
-      if (key !== "Recentes") orderedGroups[key] = groups[key];
+      if (!prioKeys.includes(key)) orderedGroups[key] = groups[key];
     });
 
     return orderedGroups;
   }, [items, activeTab]);
 
+  // APENAS AÇÕES DIRETAS POSSUEM HAPTICS
   const handleShare = async (item: GalleryItem) => {
-    trigger("vibrate"); // Ação explícita
+    trigger("vibrate"); // Haptic aprovado para ação de saída
     try {
       if (navigator.share) await navigator.share({ title: item.title, url: item.url });
     } catch (error) {}
@@ -146,7 +151,7 @@ export default function GaleriaPage() {
       <main className="min-h-screen bg-void pb-[calc(6rem+env(safe-area-inset-bottom))]">
         
         {/* GALLERY HEADER */}
-        <header className="sticky top-0 z-20 bg-void/85 pt-safe backdrop-blur-xl transition-colors duration-300">
+        <header className="sticky top-0 z-20 bg-void/85 pt-safe backdrop-blur-xl transition-colors duration-300 border-b border-surface-border/30">
           <div className="px-5 pt-6 pb-4 flex items-center justify-between">
             <h1 className="font-display text-[28px] font-bold text-ink-primary tracking-tight">Galeria</h1>
             <button className="h-11 w-11 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-primary transition-transform active:scale-95">
@@ -154,14 +159,14 @@ export default function GaleriaPage() {
             </button>
           </div>
             
-          {/* PERSON SELECTOR (Accent Layer) */}
+          {/* PERSON SELECTOR (Accent Layer Suave) */}
           <div className="flex gap-3 overflow-x-auto px-5 pb-5 custom-scrollbar">
             <button
-              onClick={() => setSelectedPerson(null)}
+              onClick={() => setSelectedPerson(null)} // Sem Haptic
               className={`flex shrink-0 items-center gap-2 rounded-full border px-5 py-2.5 transition-all duration-300 ${
-                selectedPerson === null ? "bg-opacity-15 font-bold" : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                selectedPerson === null ? "font-bold" : "border-surface-border/50 bg-surface-raised text-ink-muted"
               }`}
-              style={selectedPerson === null ? { borderColor: accentColor, backgroundColor: `${accentColor}15`, color: accentColor } : {}}
+              style={selectedPerson === null ? { borderColor: accentColor, backgroundColor: `${accentColor}1A`, color: accentColor } : {}}
             >
               <Images size={15} />
               <span className="text-sm">Todos</span>
@@ -170,11 +175,11 @@ export default function GaleriaPage() {
             {persons.map((p: any) => (
               <button
                 key={p.id}
-                onClick={() => setSelectedPerson(p.id)}
+                onClick={() => setSelectedPerson(p.id)} // Sem Haptic
                 className={`flex shrink-0 items-center gap-2 rounded-full border pr-5 pl-2 py-1.5 transition-all duration-300 ${
-                  selectedPerson === p.id ? "bg-opacity-15 font-bold" : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                  selectedPerson === p.id ? "font-bold" : "border-surface-border/50 bg-surface-raised text-ink-muted"
                 }`}
-                style={selectedPerson === p.id ? { borderColor: accentColor, backgroundColor: `${accentColor}15`, color: accentColor } : {}}
+                style={selectedPerson === p.id ? { borderColor: accentColor, backgroundColor: `${accentColor}1A`, color: accentColor } : {}}
               >
                 {p.avatar_url ? (
                   <img src={p.avatar_url} alt={p.name} className="h-7 w-7 rounded-full object-cover shadow-sm" />
@@ -188,10 +193,10 @@ export default function GaleriaPage() {
             ))}
           </div>
 
-          {/* CATEGORY TABS (Accent Layer) */}
-          <div className="flex border-b border-surface-border/30">
+          {/* CATEGORY TABS */}
+          <div className="flex">
             <button
-              onClick={() => setActiveTab("saude")}
+              onClick={() => setActiveTab("saude")} // Sem Haptic
               className={`relative flex-1 py-4 text-[13px] uppercase tracking-widest font-bold transition-colors duration-300 ${
                 activeTab === "saude" ? "text-ink-primary" : "text-ink-muted"
               }`}
@@ -204,7 +209,7 @@ export default function GaleriaPage() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab("pessoal")}
+              onClick={() => setActiveTab("pessoal")} // Sem Haptic
               className={`relative flex-1 py-4 text-[13px] uppercase tracking-widest font-bold transition-colors duration-300 ${
                 activeTab === "pessoal" ? "text-ink-primary" : "text-ink-muted"
               }`}
@@ -220,31 +225,32 @@ export default function GaleriaPage() {
         </header>
 
         {/* GALLERY CONTENT */}
-        <section className="px-5 pt-8">
-          {isLoading ? (
-            <GallerySkeleton />
-          ) : Object.keys(groupedFilteredItems).length === 0 ? (
-            <GalleryEmptyState activeTab={activeTab} personName={activePersonObj?.name} />
-          ) : (
+        {isLoading ? (
+          <GallerySkeleton />
+        ) : Object.keys(groupedFilteredItems).length === 0 ? (
+          <GalleryEmptyState activeTab={activeTab} personName={activePersonObj?.name} />
+        ) : (
+          <section className="px-5 pt-8">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
               {Object.entries(groupedFilteredItems).map(([mesAno, groupItems]) => (
                 <div key={mesAno} className="mb-10">
                   <h2 className="mb-4 pl-1 text-[11px] font-bold uppercase tracking-[0.2em] text-ink-muted">{mesAno}</h2>
+                  {/* Grid de 2 Colunas (Premium) */}
                   <div className="grid grid-cols-2 gap-4">
                     {groupItems.map((item) => (
                       <DocumentPreview 
                         key={item.id} 
                         item={item} 
                         accentColor={accentColor} 
-                        onClick={(i) => setViewingItem(i)} 
+                        onClick={(i) => setViewingItem(i)} // Sem Haptic de abertura
                       />
                     ))}
                   </div>
                 </div>
               ))}
             </motion.div>
-          )}
-        </section>
+          </section>
+        )}
 
         <UploadGaleriaModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
 
@@ -252,7 +258,7 @@ export default function GaleriaPage() {
           {viewingItem && (
             <DocumentViewer 
               item={viewingItem} 
-              onClose={() => setViewingItem(null)} 
+              onClose={() => setViewingItem(null)} // Sem Haptic de fechamento
               onShare={handleShare} 
             />
           )}
