@@ -98,7 +98,8 @@ export interface Document {
   type: DocumentType;
   title: string;
   description?: string;
-  metadata: Record<string, unknown>;
+  // ✅ CORRIGIDO: Alterado de 'unknown' para 'any' para não quebrar a leitura de datas nos Cards e Telas
+  metadata: Record<string, any>;
   attachments: Attachment[];
   is_favorite: boolean;
   vault_id?: string;
@@ -573,7 +574,7 @@ export interface SyncQueueItem {
 
   operation: 'add' | 'update' | 'delete';
 
-  payload: Record<string, unknown>;
+  payload: Record<string, any>;
 
   created_at: string;
 
@@ -650,7 +651,6 @@ export interface Medicamento {
   synced?: boolean;
 }
 
-// ✅ ATUALIZADO: Adicionada a tipagem robusta para a nova tabela de Renovações
 export interface Renovacao {
   id?: string;
   user_id: string;
