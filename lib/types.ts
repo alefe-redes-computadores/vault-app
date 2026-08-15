@@ -602,6 +602,9 @@ export interface Medicamento {
   medico_id?: string;
   farmacia_id?: string;
 
+  // ✅ ADICIONADO: campo para estabelecimento (hospital/unidade de saúde)
+  estabelecimento_id?: string;
+
   // Relacionamento N:N com tratamentos
   tratamento_ids?: string[];
 
@@ -652,6 +655,9 @@ export interface Medicamento {
   medico_descontinuacao_nome?: string;
   substituido_por_id?: string;
   data_descontinuacao?: string;
+
+  // ✅ ADICIONADO: campo de preço médio (usado no detalhes)
+  preco?: number;
 
   created_at?: string;
   updated_at?: string;
