@@ -98,7 +98,6 @@ export interface Document {
   type: DocumentType;
   title: string;
   description?: string;
-  // ✅ CORRIGIDO: Alterado de 'unknown' para 'any' para não quebrar a leitura de datas nos Cards e Telas
   metadata: Record<string, any>;
   attachments: Attachment[];
   is_favorite: boolean;
@@ -570,7 +569,8 @@ export interface SyncQueueItem {
     | 'tratamentos'
     | 'cids'
     | 'anexos_clinicos'
-    | 'medicamento_tratamentos';
+    | 'medicamento_tratamentos'
+    | 'exame_tratamentos'; // ✅ CORRIGIDO: Adicionado exame_tratamentos
 
   operation: 'add' | 'update' | 'delete';
 
