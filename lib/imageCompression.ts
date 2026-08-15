@@ -1,4 +1,4 @@
-Export async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File> {
+export async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File> {
   // Se não for imagem (ex: PDF), retorna o arquivo original sem mexer
   if (!file.type.startsWith("image/")) {
     return file;
