@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, UploadCloud, FileText, Image as ImageIcon, 
@@ -11,7 +11,7 @@ import { usePersons } from "@/hooks/usePersons";
 import { safeAddDocument, safeAddAnexoClinico } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/lib/supabase/client";
-import { compressImage } from "@/lib/imageCompression";
+import { compressImage, generateThumbnail } from "@/lib/imageCompression";
 
 interface UploadGaleriaModalProps {
   isOpen: boolean;
@@ -27,15 +27,26 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [file, setFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  
   const [personId, setPersonId] = useState<string>("");
   const [categoria, setCategoria] = useState<"pessoal" | "saude">("saude");
   const [titulo, setTitulo] = useState("");
   
   const [isUploading, setIsUploading] = useState(false);
 
+  // Limpeza de memória (Evita vazamento do createObjectURL)
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
   const resetState = () => {
     setFile(null);
+    setThumbnailFile(null);
+    if (preview) URL.revokeObjectURL(preview);
     setPreview(null);
     setPersonId("");
     setCategoria("saude");
@@ -53,20 +64,23 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
     if (!selectedFile) return;
 
     try {
-      // Como seu utilitário já ignora PDFs e já devolve um File, chamamos direto!
-      const finalFile = await compressImage(selectedFile);
+      const isImage = selectedFile.type.startsWith("image/");
+      
+      // Se for imagem, faz dupla compressão (Alta para visualização, Baixa para Grid)
+      const finalFile = await compressImage(selectedFile, 1600, 0.8);
+      const thumbFile = isImage ? await generateThumbnail(selectedFile) : null;
       
       setFile(finalFile);
+      setThumbnailFile(thumbFile);
       
-      // Gera o preview apenas se for imagem
-      if (finalFile.type.startsWith("image/")) {
+      if (isImage) {
+        if (preview) URL.revokeObjectURL(preview); // Limpa o anterior
         setPreview(URL.createObjectURL(finalFile));
       } else {
         setPreview(null);
       }
     } catch (error) {
       console.error("Erro ao processar arquivo:", error);
-      // Fallback de segurança caso a compressão falhe
       setFile(selectedFile);
       if (selectedFile.type.startsWith("image/")) {
         setPreview(URL.createObjectURL(selectedFile));
@@ -83,35 +97,54 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
     setIsUploading(true);
 
     try {
-      // 1. Upload para o Supabase Storage (Alinhado com a arquitetura do Wizard)
+      const isImage = file.type.startsWith("image/");
       const fileExt = file.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      // Organiza em pastas (user_id / categoria / arquivo) igual ao Wizard
+      const baseUuid = crypto.randomUUID();
+      
+      const fileName = `${baseUuid}.${fileExt}`;
       const filePath = `${user.id}/${categoria}/${fileName}`;
 
+      // 1. Upload do Arquivo Principal
       const { error: uploadError } = await supabase.storage
         .from('vault-attachments')
         .upload(filePath, file);
-
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
         .from('vault-attachments')
         .getPublicUrl(filePath);
 
-      // 2. Roteamento Inteligente
+      let thumbnailPublicUrl = undefined;
+
+      // 2. Upload da Miniatura (Se for imagem)
+      if (isImage && thumbnailFile) {
+        const thumbPath = `${user.id}/${categoria}/thumb_${fileName}`;
+        const { error: thumbError } = await supabase.storage
+          .from('vault-attachments')
+          .upload(thumbPath, thumbnailFile);
+          
+        if (!thumbError) {
+          const { data: thumbData } = supabase.storage
+            .from('vault-attachments')
+            .getPublicUrl(thumbPath);
+          thumbnailPublicUrl = thumbData.publicUrl;
+        }
+      }
+
+      // 3. Roteamento Inteligente no Dexie (Salvando Original + Thumbnail)
       if (categoria === "pessoal") {
         await safeAddDocument({
           user_id: user.id,
           person_id: personId,
           category_id: "pessoal",
-          type: "outro", // Usa o tipo "outro" para não exigir metadados rígidos
+          type: "outro", 
           title: titulo.trim(),
           metadata: {},
           attachments: [{
             id: crypto.randomUUID(),
             name: file.name,
             url: publicUrl,
+            thumbnail_url: thumbnailPublicUrl, // Amarrado com o novo Type!
             type: file.type.includes("pdf") ? "pdf" : "image",
             uploaded_at: new Date().toISOString()
           }],
@@ -123,7 +156,8 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
           person_id: personId,
           tipo: titulo.trim(),
           url: publicUrl,
-          tags: ["Upload Expresso"], // Tag para identificar que veio da Galeria
+          thumbnail_url: thumbnailPublicUrl, // Amarrado no banco de saúde!
+          tags: ["Upload Expresso"],
         });
       }
 
@@ -165,7 +199,6 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
 
             <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-6">
               
-              {/* Seleção de Arquivo */}
               {!file ? (
                 <div 
                   onClick={() => fileInputRef.current?.click()}
@@ -190,7 +223,7 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
                     </div>
                   )}
                   <button 
-                    onClick={() => { setFile(null); setPreview(null); }}
+                    onClick={() => { setFile(null); setThumbnailFile(null); setPreview(null); }}
                     className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-void/80 text-white backdrop-blur-md"
                   >
                     <X size={14} />
@@ -206,7 +239,6 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
                 className="hidden" 
               />
 
-              {/* Roteamento Inteligente */}
               {file && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                   
