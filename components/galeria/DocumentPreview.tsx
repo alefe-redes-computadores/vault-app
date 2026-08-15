@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Image as ImageIcon, AlertCircle } from "lucide-react";
+import { FileText, Image as ImageIcon, FileWarning } from "lucide-react";
 import type { GalleryItem } from "@/hooks/useGaleria";
 
 interface DocumentPreviewProps {
@@ -12,17 +12,20 @@ interface DocumentPreviewProps {
 export function DocumentPreview({ item, accentColor, onClick }: DocumentPreviewProps) {
   const [imgStatus, setImgStatus] = useState<"idle" | "loading" | "success" | "error">("loading");
 
+  // Usa a miniatura ultraleve se existir, caso contrário tenta a original
+  const imageSource = item.thumbnail_url || item.url;
+
   return (
     <motion.button
       whileTap={{ scale: 0.97 }}
       onClick={() => onClick(item)}
       className="group relative aspect-square w-full overflow-hidden rounded-[20px] border bg-surface transition-all"
-      style={{ borderColor: `${accentColor}30` }} // Accent Layer Média
+      style={{ borderColor: `${accentColor}30` }} // Accent Layer Média (30% opacidade)
     >
       {item.file_type === "pdf" ? (
         // STATE: PDF PREVIEW
         <div className="flex h-full w-full flex-col items-center justify-center bg-void/30 p-4 transition-colors group-hover:bg-void/50">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-[18px] bg-coral/10 text-coral shadow-inner">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-[18px] shadow-inner" style={{ backgroundColor: `${accentColor}1A`, color: accentColor }}>
             <FileText size={26} strokeWidth={1.5} />
           </div>
           <span className="rounded-lg bg-surface-border/50 px-2.5 py-1 text-[10px] font-bold text-ink-primary uppercase tracking-widest">PDF</span>
@@ -39,13 +42,13 @@ export function DocumentPreview({ item, accentColor, onClick }: DocumentPreviewP
           {imgStatus === "error" ? (
             <div className="flex h-full w-full flex-col items-center justify-center bg-void/30 p-4">
               <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-surface-border/30 text-ink-muted">
-                <ImageIcon size={18} />
+                <FileWarning size={18} />
               </div>
               <span className="text-[10px] font-medium text-ink-muted text-center leading-tight">Prévia<br/>Indisponível</span>
             </div>
           ) : (
             <img 
-              src={item.url} 
+              src={imageSource} 
               alt={item.title} 
               loading="lazy"
               onLoad={() => setImgStatus("success")}
