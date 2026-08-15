@@ -25,6 +25,7 @@ import type {
 import { deleteFile } from '@/lib/supabase/storage';
 import { getLocalTodayISO } from '@/lib/health-utils';
 
+
 function generateId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
