@@ -85,10 +85,12 @@ export type DocumentType =
 export interface Attachment {
   id: string;
   url: string;
+  thumbnail_url?: string; 
   name: string;
   type: 'image' | 'pdf';
   uploaded_at: string;
 }
+
 
 export interface Document {
   id?: string;
