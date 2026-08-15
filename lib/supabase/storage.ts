@@ -1,6 +1,7 @@
 import { supabase } from "./client";
 
-const DEFAULT_BUCKET = "documents";
+// 🔥 PADRONIZADO: Resolve o conflito de rotas e previne Erro 404
+const DEFAULT_BUCKET = "vault-attachments";
 
 // Gerador de UUID compatível
 function generateId(): string {
@@ -23,7 +24,7 @@ export async function uploadFile(
   folder: string = "docs"
 ): Promise<{ url: string; error: Error | null }> {
   try {
-    // CORREÇÃO: Se a pasta for 'avatars', usamos o bucket 'avatars'. Caso contrário, 'documents'.
+    // CORREÇÃO: Se a pasta for 'avatars', usamos o bucket 'avatars'. Caso contrário, usamos o DEFAULT_BUCKET.
     const bucketName = folder === "avatars" ? "avatars" : DEFAULT_BUCKET;
 
     const fileExt = file.name.split(".").pop();
