@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Loader2, Save, Pill, Upload, Camera, X, FileText, Package, Plus, Trash2, Clock,
-  Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, ArrowRight
+  Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, ArrowRight, Info
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,7 +15,7 @@ import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
-import { suggestRenewalDate, VALIDADE_RECEITA_DIAS, TIPO_RECEITA_LABELS } from "@/lib/health-utils";
+import { suggestRenewalDate, VALIDADE_RECEITA_DIAS, TIPO_RECEITA_LABELS, getLocalTodayISO } from "@/lib/health-utils";
 import { scheduleDoseNotifications, requestNotificationPermission } from "@/lib/dose-notifications";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -151,7 +151,7 @@ export default function NovoMedicamentoPage() {
     if (novoFormato !== "gota") setEstoqueGotasCalculado(0);
   };
 
-  // ✅ CORRIGIDO: Função toggleCor foi restaurada e fixada no componente
+  // ✅ Função toggleCor restaurada no componente
   const toggleCor = (hex: string) => {
     trigger("vibrate");
     setCores(prev => {
@@ -470,7 +470,7 @@ export default function NovoMedicamentoPage() {
             </div>
           </motion.div>
 
-          {/* UPLOAD DE RECEITA AQUI (COMPLETO) */}
+          {/* UPLOAD DE RECEITA */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="mb-3 flex items-center gap-2"><FileText size={16} className="text-ice" /><div><h3 className="text-sm font-semibold text-ink-primary">Anexo / Foto da Receita</h3></div></div>
             {!attachment ? (
@@ -492,8 +492,38 @@ export default function NovoMedicamentoPage() {
 
           <SeletorTratamentoModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} selectedIds={tratamentosSelecionados} onChange={setTratamentosSelecionados} personId={personId} />
           
-          <SelectionModal isOpen={isDoctorModalOpen} onClose={() => setIsDoctorModalOpen(false)} title="Selecionar médico" items={medicos} selectedId={medicoId} getItemId={(item: any) => item.id} getItemLabel={(item: any) => item.nome} onSelect={(item: any) => { trigger("vibrate"); setMedicoId(item.id); setMedicoNome(item.nome); setIsDoctorModalOpen(false); }} />
-          <SelectionModal isOpen={isPharmacyModalOpen} onClose={() => setIsPharmacyModalOpen(false)} title="Selecionar farmácia" items={farmacias} selectedId={farmaciaId} getItemId={(item: any) => item.id} getItemLabel={(item: any) => item.nome} onSelect={(item: any) => { trigger("vibrate"); setFarmaciaId(item.id); setFarmaciaNome(item.nome); setIsPharmacyModalOpen(false); }} />
+          {/* ✅ CORREÇÃO APLICADA: Modais tipados estritamente, sem a prop selectedId e com renderItem obrigatório */}
+          <SelectionModal 
+            isOpen={isDoctorModalOpen} 
+            onClose={() => setIsDoctorModalOpen(false)} 
+            title="Selecionar médico" 
+            items={medicos} 
+            getItemId={(item: any) => item.id!} 
+            getItemLabel={(item: any) => item.nome} 
+            onSelect={(item: any) => { trigger("vibrate"); setMedicoId(item.id); setMedicoNome(item.nome); setIsDoctorModalOpen(false); }} 
+            renderItem={(item: any) => (
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={14} /></div>
+                <div><p className="font-medium text-ink-primary">{item.nome}</p>{item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}</div>
+              </div>
+            )}
+          />
+          
+          <SelectionModal 
+            isOpen={isPharmacyModalOpen} 
+            onClose={() => setIsPharmacyModalOpen(false)} 
+            title="Selecionar farmácia" 
+            items={farmacias} 
+            getItemId={(item: any) => item.id!} 
+            getItemLabel={(item: any) => item.nome} 
+            onSelect={(item: any) => { trigger("vibrate"); setFarmaciaId(item.id); setFarmaciaNome(item.nome); setIsPharmacyModalOpen(false); }} 
+            renderItem={(item: any) => (
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0"><Store size={14} /></div>
+                <div className="min-w-0"><p className="truncate font-medium text-ink-primary">{item.nome}</p>{item.endereco && <p className="truncate text-xs text-ink-muted">{item.endereco}</p>}</div>
+              </div>
+            )}
+          />
 
         </section>
 
