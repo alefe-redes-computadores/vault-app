@@ -47,6 +47,7 @@ export function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) 
       transform.current.scale = newScale;
       requestAnimationFrame(applyTransform);
     } else if (e.touches.length === 1 && isPanning.current) {
+      // Arrastar (Pan) protegido pela GPU
       transform.current.x = e.touches[0].clientX - lastPan.current.x;
       transform.current.y = e.touches[0].clientY - lastPan.current.y;
       requestAnimationFrame(applyTransform);
@@ -57,7 +58,7 @@ export function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) 
     initialPinch.current.dist = 0;
     isPanning.current = false;
     
-    // Snap back: Se o usuário tirar muito o zoom, volta ao normal com transição suave
+    // Snap back: Se o usuário tirar muito o zoom, volta ao normal com transição suave e zera posição
     if (transform.current.scale < 1.05) {
       transform.current = { scale: 1, x: 0, y: 0 };
       if (imgRef.current) {
@@ -109,6 +110,7 @@ export function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) 
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
+            {/* Visualiza sempre a URL ORIGINAL em alta definição, nunca a thumb */}
             <img 
               ref={imgRef}
               src={item.url} 
