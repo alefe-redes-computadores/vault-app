@@ -502,15 +502,17 @@ export async function safeUpdateLocal(
 
     const updated = await db.locais.get(id);
 
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'locais',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
+    if (updated) {
+      await db.syncQueue.add({
+        id: generateId(),
+        table: 'locais',
+        operation: 'update',
+        payload: { ...updated },
+        created_at: timestamp,
+        retry_count: 0,
+        failed: false,
+      });
+    }
 
     triggerSyncProcess();
   });
@@ -600,15 +602,17 @@ export async function safeUpdateExame(
 
     const updated = await db.exames.get(id);
 
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'exames',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
+    if (updated) {
+      await db.syncQueue.add({
+        id: generateId(),
+        table: 'exames',
+        operation: 'update',
+        payload: { ...updated },
+        created_at: timestamp,
+        retry_count: 0,
+        failed: false,
+      });
+    }
 
     triggerSyncProcess();
   });
@@ -760,15 +764,17 @@ export async function safeUpdateDocument(
 
     const updated = await db.documents.get(id);
 
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'documents',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
+    if (updated) {
+      await db.syncQueue.add({
+        id: generateId(),
+        table: 'documents',
+        operation: 'update',
+        payload: { ...updated },
+        created_at: timestamp,
+        retry_count: 0,
+        failed: false,
+      });
+    }
 
     triggerSyncProcess();
   });
@@ -897,15 +903,17 @@ export async function safeUpdateMedicamento(
 
       const updated = await db.medicamentos.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'medicamentos',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'medicamentos',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -1026,15 +1034,17 @@ export async function safeUpdateRenovacao(
 
     const updated = await db.renovacoes.get(id);
 
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'renovacoes',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
+    if (updated) {
+      await db.syncQueue.add({
+        id: generateId(),
+        table: 'renovacoes',
+        operation: 'update',
+        payload: { ...updated },
+        created_at: timestamp,
+        retry_count: 0,
+        failed: false,
+      });
+    }
 
     triggerSyncProcess();
   });
@@ -1072,30 +1082,31 @@ export async function safeSetDoseLog(
         await db.doseLogs.update(existing.id!, {
           ...data,
           data: targetDate,
-          atualizado_em: data.atualizado_em,
           tomado_em: data.tomado_em,
           ignorado_em: data.ignorado_em,
           updated_at: timestamp,
           synced: false,
         });
 
-        const updated = await db.doseLogs.get(existing.id);
+        const updated = await db.doseLogs.get(existing.id!);
 
-        await db.syncQueue.add({
-          id: generateId(),
-          table: 'doseLogs',
-          operation: 'update',
-          payload: { ...updated },
-          created_at: timestamp,
-          retry_count: 0,
-          failed: false,
-        });
+        if (updated) {
+          await db.syncQueue.add({
+            id: generateId(),
+            table: 'doseLogs',
+            operation: 'update',
+            payload: { ...updated },
+            created_at: timestamp,
+            retry_count: 0,
+            failed: false,
+          });
+        }
 
         triggerSyncProcess();
       },
     );
 
-    return existing.id;
+    return existing.id!;
   }
 
   const id = generateId();
@@ -1231,15 +1242,17 @@ export async function safeUpdateVaultMember(
 
       const updated = await db.vaultMembers.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'vaultMembers',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'vaultMembers',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -1271,15 +1284,17 @@ export async function shareDocumentWithVault(
 
       const updated = await db.documents.get(documentId);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'documents',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'documents',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -1356,15 +1371,17 @@ export async function safeUpdateMedico(
 
     const updated = await db.medicos.get(id);
 
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'medicos',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
+    if (updated) {
+      await db.syncQueue.add({
+        id: generateId(),
+        table: 'medicos',
+        operation: 'update',
+        payload: { ...updated },
+        created_at: timestamp,
+        retry_count: 0,
+        failed: false,
+      });
+    }
 
     triggerSyncProcess();
   });
@@ -1458,15 +1475,17 @@ export async function safeUpdateFarmacia(
 
       const updated = await db.farmacias.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'farmacias',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'farmacias',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -1566,15 +1585,17 @@ export async function safeUpdateHospital(
 
       const updated = await db.hospitais.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'hospitais',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'hospitais',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -1682,15 +1703,17 @@ export async function safeUpdateLaboratorio(
 
       const updated = await db.laboratorios.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'laboratorios',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'laboratorios',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -1798,15 +1821,17 @@ export async function safeUpdateCredential(
 
       const updated = await db.credentials.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'credentials',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'credentials',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -1902,15 +1927,17 @@ export async function safeUpdateCard(
 
     const updated = await db.cards.get(id);
 
-    await db.syncQueue.add({
-      id: generateId(),
-      table: 'cards',
-      operation: 'update',
-      payload: { ...updated },
-      created_at: timestamp,
-      retry_count: 0,
-      failed: false,
-    });
+    if (updated) {
+      await db.syncQueue.add({
+        id: generateId(),
+        table: 'cards',
+        operation: 'update',
+        payload: { ...updated },
+        created_at: timestamp,
+        retry_count: 0,
+        failed: false,
+      });
+    }
 
     triggerSyncProcess();
   });
@@ -2012,15 +2039,17 @@ export async function safeUpdateInstituicao(
 
       const updated = await db.instituicoes.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'instituicoes',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'instituicoes',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -2128,15 +2157,17 @@ export async function safeUpdateTratamento(
 
       const updated = await db.tratamentos.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'tratamentos',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'tratamentos',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -2320,15 +2351,17 @@ export async function safeUpdateConsulta(
 
       const updated = await db.consultas.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'consultas',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'consultas',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -2436,15 +2469,17 @@ export async function safeUpdateCirurgia(
 
       const updated = await db.cirurgias.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'cirurgias',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'cirurgias',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
@@ -2549,15 +2584,17 @@ export async function safeUpdateAnexoClinico(
 
       const updated = await db.anexos_clinicos.get(id);
 
-      await db.syncQueue.add({
-        id: generateId(),
-        table: 'anexos_clinicos',
-        operation: 'update',
-        payload: { ...updated },
-        created_at: timestamp,
-        retry_count: 0,
-        failed: false,
-      });
+      if (updated) {
+        await db.syncQueue.add({
+          id: generateId(),
+          table: 'anexos_clinicos',
+          operation: 'update',
+          payload: { ...updated },
+          created_at: timestamp,
+          retry_count: 0,
+          failed: false,
+        });
+      }
 
       triggerSyncProcess();
     },
