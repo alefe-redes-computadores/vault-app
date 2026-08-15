@@ -591,9 +591,6 @@ export interface Medicamento {
   user_id: string;
   person_id?: string;
 
-  // Documento da receita relacionado ao medicamento.
-  // Opcional para manter compatibilidade com medicamentos
-  // cadastrados sem documento vinculado.
   document_id?: string;
 
   nome: string;
@@ -601,11 +598,8 @@ export interface Medicamento {
 
   medico_id?: string;
   farmacia_id?: string;
-
-  // ✅ ADICIONADO: campo para estabelecimento (hospital/unidade de saúde)
   estabelecimento_id?: string;
 
-  // Relacionamento N:N com tratamentos
   tratamento_ids?: string[];
 
   medico: string;
@@ -617,10 +611,8 @@ export interface Medicamento {
   observacoes?: string;
   tipo_receita?: TipoReceita;
 
-  // Compatibilidade com relacionamento antigo 1:N
   tratamento_id?: string;
 
-  // Formato antigo / compatibilidade
   forma_farmaceutica?:
     | 'capsula'
     | 'comprimido'
@@ -631,32 +623,26 @@ export interface Medicamento {
   cor_principal?: string;
   cor_secundaria?: string;
 
-  // Status do tratamento
   status?: 'ativo' | 'descontinuado';
 
-  // Estoque
   estoque_quantidade?: number;
   estoque_data_referencia?: string;
   estoque_horarios?: string[];
   estoque_unidade_por_dose?: number;
   estoque_unidade_medida?: string;
 
-  // Calculadora de gotas
   estoque_ml_total?: number;
   estoque_gotas_por_ml?: number;
 
-  // Identidade visual atual
   formato?: string;
   cores?: string[];
 
-  // Descontinuação
   motivo_descontinuacao?: string;
   medico_descontinuacao_id?: string;
   medico_descontinuacao_nome?: string;
   substituido_por_id?: string;
   data_descontinuacao?: string;
 
-  // ✅ ADICIONADO: campo de preço médio (usado no detalhes)
   preco?: number;
 
   created_at?: string;
@@ -664,16 +650,29 @@ export interface Medicamento {
   synced?: boolean;
 }
 
+// ✅ ATUALIZADO: Adicionada a tipagem robusta para a nova tabela de Renovações
 export interface Renovacao {
   id?: string;
   user_id: string;
   person_id?: string;
   medicamento_id: string;
-  local_id?: string;
-  data: string;
+  
+  // Relacionamentos Fortes
+  medico_id?: string;
+  estabelecimento_id?: string;
+  farmacia_id?: string;
+  local_id?: string; // Mantido para retrocompatibilidade
+  
+  // Dados Financeiros e de Reposição
+  quantidade?: number;
   preco?: number;
+  lote?: string;
+  validade_produto?: string;
+
+  data: string;
   anexo_url?: string;
   observacoes?: string;
+  
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
