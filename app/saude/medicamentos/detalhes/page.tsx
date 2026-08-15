@@ -39,14 +39,23 @@ function MedicamentoDetalhesContent() {
   const { trigger } = useHapticFeedback();
   const [infoModalOpen, setInfoModalOpen] = useState(false);
 
-  // Consultas Dexie idênticas à sua estrutura original
+  // Consultas Dexie
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);
   const medico = useLiveQuery(() => med?.medico_id ? db.medicos.get(med.medico_id) : undefined, [med?.medico_id]);
-  const estabelecimento = useLiveQuery(() => med?.estabelecimento_id ? db.table("hospitais").get(med.estabelecimento_id) : undefined, [med?.estabelecimento_id]);
-  const farmacia = useLiveQuery(() => med?.farmacia_id ? db.farmacias.get(med.farmacia_id) : undefined, [med?.farmacia_id]);
+  
+  // ✅ CORRIGIDO: Usa o campo estabelecimento_id
+  const estabelecimento = useLiveQuery(
+    () => med?.estabelecimento_id ? db.hospitais.get(med.estabelecimento_id) : undefined,
+    [med?.estabelecimento_id]
+  );
+  
+  const farmacia = useLiveQuery(
+    () => med?.farmacia_id ? db.farmacias.get(med.farmacia_id) : undefined,
+    [med?.farmacia_id]
+  );
   
   const renovacoes = useLiveQuery(
-    () => db.table("renovacoes").where("medicamento_id").equals(id || "").toArray(),
+    () => db.renovacoes.where("medicamento_id").equals(id || "").toArray(),
     [id]
   ) || [];
 
