@@ -1069,7 +1069,7 @@ export async function safeSetDoseLog(
       db.doseLogs,
       db.syncQueue,
       async () => {
-        await db.doseLogs.update(existing.id, {
+        await db.doseLogs.update(existing.id!, {
           ...data,
           data: targetDate,
           atualizado_em: data.atualizado_em,
