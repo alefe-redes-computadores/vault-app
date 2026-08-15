@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 // 🧩 Importando os novos arquivos isolados
 import { useRenovacaoInteligente } from "@/hooks/useRenovacaoInteligente";
