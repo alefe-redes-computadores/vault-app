@@ -58,13 +58,14 @@ function MedicamentoDetalhesContent() {
     [id]
   ) || [];
 
+  // ✅ CORRIGIDO: Adicionado o fallback || [] para o TypeScript não reclamar de 'undefined'
   const tratamentos = useLiveQuery(async () => {
     if (!id) return [];
     const vinculos = await db.medicamento_tratamentos.where('medicamento_id').equals(id).toArray();
     let tIds = vinculos.map(v => v.tratamento_id);
     if (tIds.length === 0 && med?.tratamento_id) tIds = [med.tratamento_id];
     return await db.tratamentos.where('id').anyOf(tIds).toArray();
-  }, [id, med?.tratamento_id]);
+  }, [id, med?.tratamento_id]) || [];
 
   if (med === undefined) return <LoadingSkeleton />;
   if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
@@ -90,8 +91,7 @@ function MedicamentoDetalhesContent() {
     return 'border-ice/30 bg-ice/5 text-ice';
   };
 
-  // ✅ CORRIGIDO: Garantir que tipo_receita seja uma string válida
-  const tipoReceitaLabel = TIPO_RECEITA_LABELS[med.tipo_receita || 'comum'] || med.tipo_receita || 'comum';
+  const tipoReceitaLabel = TIPO_RECEITA_LABELS[med.tipo_receita as keyof typeof TIPO_RECEITA_LABELS || 'comum'] || med.tipo_receita || 'comum';
 
   // Função para abrir o mapa localmente com o endereço preenchido
   const abrirNoMapa = (enderecoStr?: string) => {
@@ -292,12 +292,12 @@ function MedicamentoDetalhesContent() {
           </div>
         </div>
 
-        {/* Modal de Informações da Receita (BottomSheet com Backdrop Click) */}
+        {/* Modal de Informações da Receita */}
         <BottomSheet isOpen={infoModalOpen} onClose={() => setInfoModalOpen(false)} title="Regulamentação da Receita">
           <div className="p-4 space-y-4 text-sm text-ink-muted">
              <div className="rounded-2xl bg-surface-raised p-4 border border-surface-border space-y-2">
                <p className="font-semibold text-ink-primary">Controle: {tipoReceitaLabel}</p>
-               <p>O prazo de validade legal para preenchimento e compra desta prescrição é de até <b>{VALIDADE_RECEITA_DIAS[med.tipo_receita || 'comum']} dias</b> contados a partir da data de emissão.</p>
+               <p>O prazo de validade legal para preenchimento e compra desta prescrição é de até <b>{VALIDADE_RECEITA_DIAS[(med.tipo_receita as keyof typeof VALIDADE_RECEITA_DIAS) || 'comum']} dias</b> contados a partir da data de emissão.</p>
              </div>
              
              <button 
