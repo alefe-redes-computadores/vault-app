@@ -38,7 +38,6 @@ function useDebounce(value: string, delay: number = 300) {
 
 type TabType = "receitas" | "prontuarios" | "exames";
 
-// ✅ Interface explícita para os grupos
 interface GroupData {
   groupKey: string;
   groupName: string;
@@ -110,7 +109,6 @@ export default function DocumentsPage() {
     });
   }, [paginatedDocs, activeTab, selectedMonth]);
 
-  // ✅ CORRIGIDO: Tipagem explícita e uso de tipos
   const groupedReceitas = useMemo((): GroupData[] => {
     if (activeTab !== "receitas") return [];
 
@@ -123,7 +121,7 @@ export default function DocumentsPage() {
       if (!groups.has(groupKey)) {
         groups.set(groupKey, {
           groupKey,
-          groupName: String(medName), // ✅ Força a ser string
+          groupName: String(medName),
           documents: [],
           count: 0,
         });
@@ -142,9 +140,11 @@ export default function DocumentsPage() {
     const groups: { [key: string]: any[] } = {};
 
     for (const doc of filteredDocs) {
-      const dateStr = doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
+      // ✅ CORRIGIDO: Garantir que dateStr seja uma string ou vazia
+      const dateStr = doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at || "";
       let monthYearKey = "Geral";
-      if (dateStr) {
+
+      if (dateStr && typeof dateStr === "string") {
         try {
           const parsed = parseISO(dateStr);
           monthYearKey = format(parsed, "MMMM 'de' yyyy", { locale: ptBR });
@@ -153,6 +153,7 @@ export default function DocumentsPage() {
           monthYearKey = "Geral";
         }
       }
+
       if (!groups[monthYearKey]) groups[monthYearKey] = [];
       groups[monthYearKey].push(doc);
     }
