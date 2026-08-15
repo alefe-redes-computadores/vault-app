@@ -22,7 +22,6 @@ import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Attachment, Document, TipoReceita } from "@/lib/types";
 
-// Importações dos novos componentes e inteligência
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -31,7 +30,9 @@ import { SelectionModal } from "@/components/SelectionModal";
 import { SeletorReceita } from "@/components/saude/SeletorReceita";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { sugerirHorarios } from "@/lib/health-insights";
+import { useToast } from "@/components/ToastProvider";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 } };
 
@@ -68,6 +69,7 @@ const CORES_DISPONIVEIS = ["#FFFFFF", "#FCA5A5", "#F87171", "#FBBF24", "#34D399"
 
 export default function NovoMedicamentoPage() {
   const { trigger } = useHapticFeedback();
+  const { showToast, showError, showSuccess, showInfo } = useToast();
   const router = useRouter();
   const { user } = useAuth();
   const persons = usePersons();
@@ -76,7 +78,6 @@ export default function NovoMedicamentoPage() {
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
 
-  // Consultas Auxiliares
   const hospitaisLocais = useLiveQuery(() => db.table("hospitais").toArray(), []) || [];
   const medicamentosQuery = useLiveQuery(() => db.table("medicamentos").toArray(), []) || [];
 
@@ -137,6 +138,9 @@ export default function NovoMedicamentoPage() {
   const [activeEstabelecimentoTab, setActiveEstabelecimentoTab] = useState("hospital");
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
 
+  // ✅ Estado para o modal de confirmação
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
   // Validações
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeFields, setShakeFields] = useState<string[]>([]);
@@ -165,7 +169,7 @@ export default function NovoMedicamentoPage() {
       const novosHorarios = sugerirHorarios(primeiroHorario, Number(vezesAoDia));
       setHorarios(novosHorarios.length > 0 ? novosHorarios : [primeiroHorario]);
     } else if (tipoUso !== "continuo") {
-      setHorarios([]); // SOS não precisa de horários fixos
+      setHorarios([]);
     }
   }, [vezesAoDia, primeiroHorario, tipoUso]);
 
@@ -251,6 +255,7 @@ export default function NovoMedicamentoPage() {
     setTimeout(() => setShakeFields([]), 600);
   };
 
+  // ✅ Validação por etapa com verificação de data de renovação
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     const shakeList: string[] = [];
@@ -266,8 +271,16 @@ export default function NovoMedicamentoPage() {
     }
     if (step === 3) {
       if (dataReceitaTexto && dataReceitaTexto.length < 10) { newErrors.dataReceitaTexto = "Data inválida"; shakeList.push("dataReceitaTexto"); }
+      // ✅ Validação da data de renovação
+      if (!proximaRenovacaoTexto || proximaRenovacaoTexto.length < 10) {
+        newErrors.proximaRenovacaoTexto = "Data de renovação inválida";
+        shakeList.push("proximaRenovacaoTexto");
+      }
       if (estoqueAtivo) {
-          if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) { newErrors.estoqueQuantidade = "Faltou quantidade"; shakeList.push("estoqueQuantidade"); }
+        if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) {
+          newErrors.estoqueQuantidade = "Faltou quantidade";
+          shakeList.push("estoqueQuantidade");
+        }
       }
     }
 
@@ -295,15 +308,12 @@ export default function NovoMedicamentoPage() {
   const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido");
   const gradientId = `split-novo`;
 
-  const handleSubmit = async () => {
-    if (!validateStep(3)) return;
-    
-    if (!estoqueAtivo && confirm("Você não preencheu o estoque atual. Deseja salvar mesmo assim para ter controle de histórico de receitas?") === false) {
-      return;
-    }
-
+  // ✅ Função de salvamento extraída para ser chamada pelo modal
+  const salvarMedicamento = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
     setUploadProgress(0);
+
     try {
       const dataReceitaISO = brParaIso(dataReceitaTexto);
       const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
@@ -332,16 +342,29 @@ export default function NovoMedicamentoPage() {
       }
 
       const medicamentoId = await addMedicamento({
-        document_id: docId || undefined, person_id: personId, nome: nome.trim(), dosagem: dosagem.trim(), formato, cores,
-        tipo_uso: tipoUso,
-        medico: selectedMedico?.nome || medicoNome.trim(), medico_id: medicoId || undefined, 
+        document_id: docId || undefined,
+        person_id: personId,
+        nome: nome.trim(),
+        dosagem: dosagem.trim(),
+        formato,
+        cores,
+        tipo_uso: tipoUso, // ✅ Envia o tipo de uso para o banco
+        medico: selectedMedico?.nome || medicoNome.trim(),
+        medico_id: medicoId || undefined,
         estabelecimento_id: estabelecimentoId || undefined,
-        farmacia: selectedFarmacia?.nome || farmaciaNome.trim(), farmacia_id: farmaciaId || undefined,
+        farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
+        farmacia_id: farmaciaId || undefined,
         preco: preco ? Number(preco.replace(',', '.')) : undefined,
-        data_receita: dataReceitaISO, proxima_renovacao: proximaRenovacaoISO, observacoes: observacoes.trim() || undefined,
-        tipo_receita: tipoReceita, tratamento_ids: tratamentosSelecionados, status: "ativo",
-        estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined, estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-        estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined, estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
+        data_receita: dataReceitaISO,
+        proxima_renovacao: proximaRenovacaoISO,
+        observacoes: observacoes.trim() || undefined,
+        tipo_receita: tipoReceita,
+        tratamento_ids: tratamentosSelecionados,
+        status: "ativo",
+        estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+        estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
+        estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
+        estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
         estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
       } as any);
 
@@ -350,9 +373,28 @@ export default function NovoMedicamentoPage() {
         if (granted) await scheduleDoseNotifications({ id: medicamentoId, nome: nome.trim(), dosagem: dosagem.trim(), estoque_horarios: horariosFiltrados } as any);
       }
 
+      showSuccess("Medicamento cadastrado com sucesso!");
       trigger("success");
       router.replace("/saude");
-    } catch (error) { trigger("error"); } finally { setLoading(false); setUploadProgress(0); }
+    } catch (error) {
+      console.error("Erro ao salvar medicamento:", error);
+      showError("Erro ao salvar medicamento. Tente novamente.");
+      trigger("error");
+    } finally {
+      setLoading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  // ✅ Novo handleSubmit que exibe o modal de confirmação
+  const handleSubmit = async () => {
+    if (!validateStep(3)) return;
+    
+    if (!estoqueAtivo) {
+      setShowConfirmModal(true);
+      return;
+    }
+    await salvarMedicamento();
   };
 
   return (
@@ -374,7 +416,9 @@ export default function NovoMedicamentoPage() {
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pt-4 pb-3 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"><X size={18} className="text-ink-primary" /></button>
+              <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95">
+                <X size={18} className="text-ink-primary" />
+              </button>
               <h1 className="font-display text-lg font-semibold text-ink-primary">Novo Cadastro</h1>
             </div>
             <span className="text-xs font-bold text-ice bg-ice/10 px-3 py-1 rounded-full">Etapa {currentStep} de {totalSteps}</span>
@@ -629,7 +673,7 @@ export default function NovoMedicamentoPage() {
           </div>
         </div>
 
-        {/* ================= MODAIS BLINDADOS ================= */}
+        {/* ================= MODAIS ================= */}
         
         <SelectionModal 
           isOpen={isPharmacyModalOpen} 
@@ -667,7 +711,6 @@ export default function NovoMedicamentoPage() {
           )}
         />
 
-        {/* NOVO MODAL COM ABAS: HOSPITAIS VS LOCAIS */}
         <SelectionModal 
           isOpen={isEstabelecimentoModalOpen} 
           onClose={() => setIsEstabelecimentoModalOpen(false)} 
@@ -701,6 +744,18 @@ export default function NovoMedicamentoPage() {
         />
         
         <SeletorTratamentoModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} selectedIds={tratamentosSelecionados} onChange={setTratamentosSelecionados} personId={personId} />
+
+        {/* ✅ MODAL DE CONFIRMAÇÃO PARA SALVAR SEM ESTOQUE */}
+        <ConfirmationModal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          onConfirm={salvarMedicamento}
+          title="Salvar sem estoque?"
+          message="Você não preencheu o controle de estoque. Deseja salvar o medicamento apenas como histórico de receita?"
+          confirmLabel="Salvar mesmo assim"
+          cancelLabel="Voltar e preencher"
+          type="warning"
+        />
 
       </main>
     </PageTransition>
