@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Loader2, Save, Pill, Upload, Camera, X, FileText, Package, Plus, Trash2, Clock,
-  Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, ArrowRight, Info
+  Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, ArrowRight, Info, Store
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
