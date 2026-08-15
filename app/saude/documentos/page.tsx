@@ -38,6 +38,13 @@ function useDebounce(value: string, delay: number = 300) {
 
 type TabType = "receitas" | "prontuarios" | "exames";
 
+interface GroupData {
+  groupKey: string;
+  groupName: string;
+  documents: any[];
+  count: number;
+}
+
 export default function DocumentsPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -50,8 +57,7 @@ export default function DocumentsPage() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | "all">("all");
-  
-  // Filtro de Mês Padrão: Mês atual no formato "yyyy-MM" ou "all"
+
   const currentMonthDefault = format(new Date(), "yyyy-MM");
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthDefault);
 
@@ -103,20 +109,27 @@ export default function DocumentsPage() {
     });
   }, [paginatedDocs, activeTab, selectedMonth]);
 
+  // ✅ CORRIGIDO: Tipagem explícita do Map
   const groupedReceitas = useMemo(() => {
     if (activeTab !== "receitas") return [];
-    const groups: Map<string, { groupKey: string; groupName: string; documents: any[]; count: number }> = new Map();
+    const groups = new Map<string, GroupData>();
 
     for (const doc of filteredDocs) {
       const medName = doc.metadata?.medication || "Medicamento Geral";
       const groupKey = `med-${medName}`;
 
       if (!groups.has(groupKey)) {
-        groups.set(groupKey, { groupKey, groupName: medName, documents: [], count: 0 });
+        groups.set(groupKey, {
+          groupKey,
+          groupName: medName,
+          documents: [],
+          count: 0,
+        });
       }
 
-      groups.get(groupKey)!.documents.push(doc);
-      groups.get(groupKey)!.count += 1;
+      const group = groups.get(groupKey)!;
+      group.documents.push(doc);
+      group.count += 1;
     }
 
     return Array.from(groups.values());
@@ -185,7 +198,6 @@ export default function DocumentsPage() {
     }));
   };
 
-  // ✅ CORREÇÃO AQUI: Hook movido para cima ANTES do if (isLoading)
   const formattedSelectedMonthLabel = useMemo(() => {
     if (selectedMonth === "all") return "Todos os meses";
     try {
@@ -198,7 +210,6 @@ export default function DocumentsPage() {
     }
   }, [selectedMonth]);
 
-  // Renderização de carregamento deve ser sempre DEPOIS de todos os hooks
   if (isLoading) {
     return <LoadingSkeleton />;
   }
