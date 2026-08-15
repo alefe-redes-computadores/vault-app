@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, Loader2, Save, Pill, Trash2, AlertTriangle, Package, 
   Plus, Clock, Activity, Stethoscope, Droplet, Syringe, StickyNote, 
-  Palette, Info, Store, ArrowRightLeft, X, Link2, ExternalLink
+  Palette, Info, Store, ArrowRightLeft, X, Circle, CheckCircle2
 } from "lucide-react";
 
 import { usePersons } from "@/hooks/usePersons";
@@ -17,7 +17,6 @@ import { useHapticFeedback } from "@/lib/haptics";
 import {
   suggestRenewalDate,
   VALIDADE_RECEITA_DIAS,
-  TIPO_RECEITA_LABELS,
   getLocalTodayISO,
 } from "@/lib/health-utils";
 import {
@@ -35,11 +34,11 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { SeletorReceita } from "@/components/saude/SeletorReceita";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal, getTratamentoIcon } from "@/components/saude/SeletorTratamentoModal";
+import { SeletorReceita } from "@/components/saude/SeletorReceita";
 
-const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
+const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
 
 // --- MÁSCARAS E HELPERS ---
 function mascaraData(value: string) {
@@ -64,7 +63,7 @@ const SplitPillIcon = ({ size, fill = "currentColor" }: any) => (
 );
 
 const FORMATOS = [
-  { id: "comprimido", label: "Redondo", icon: Pill },
+  { id: "comprimido", label: "Redondo", icon: Circle },
   { id: "partido", label: "Partido", icon: SplitPillIcon },
   { id: "capsula", label: "Cápsula", icon: Pill },
   { id: "gota", label: "Gotas", icon: Droplet },
@@ -127,6 +126,14 @@ function EditarMedicamentoContent() {
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // Body Scroll Lock (Trava o fundo quando qualquer modal está aberto)
+  const isAnyModalOpen = isTratamentoModalOpen || isDoctorModalOpen || isDoctorDescontinuacaoModalOpen || isSubstitutoModalOpen || isPharmacyModalOpen || showDeleteModal;
+  useEffect(() => {
+    if (isAnyModalOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isAnyModalOpen]);
+
   // Controle de Estoque Avançado
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
@@ -153,7 +160,6 @@ function EditarMedicamentoContent() {
   const selectedSubstituto = medicamentosQuery.find((m: any) => m.id === substituidoPorId);
   const selectedTratamentos = tratamentos.filter((t: any) => tratamentosSelecionados.includes(t.id));
 
-  // Inteligência de Previsão de Consumo (Dias Estimados)
   const diasValidadeReceita = VALIDADE_RECEITA_DIAS[tipoReceita];
   const horariosPreenchidos = horarios.filter((h) => h.trim());
   const consumoDiario = horariosPreenchidos.length * (Number(estoqueUnidadePorDose) || 1);
@@ -218,7 +224,6 @@ function EditarMedicamentoContent() {
     }).catch(() => { setNotFound(true); setIsLoading(false); });
   }, [id]);
 
-  // Inteligência de Validade e Sugestão Automática
   const handleDataReceitaBlur = () => {
     const isoData = brParaIso(dataReceitaTexto);
     if (!isoData) return;
@@ -277,7 +282,7 @@ function EditarMedicamentoContent() {
     if (!personId) { newErrors.personId = "Obrigatório"; shakeList.push("personId"); }
     if (!nome.trim()) { newErrors.nome = "Obrigatório"; shakeList.push("nome"); }
     if (!dosagem.trim()) { newErrors.dosagem = "Obrigatória"; shakeList.push("dosagem"); }
-    if (!medicoNome.trim()) { newErrors.medico = "Obrigatório"; shakeList.push("medico"); }
+    if (!medicoId && !medicoNome.trim()) { newErrors.medico = "Obrigatório"; shakeList.push("medico"); }
     if (!dataReceitaTexto || dataReceitaTexto.length < 10) { newErrors.dataReceitaTexto = "Data inválida"; shakeList.push("dataReceitaTexto"); }
     if (!statusAtivo && !motivoDescontinuacao.trim()) { newErrors.motivoDescontinuacao = "Informe o motivo"; shakeList.push("motivoDescontinuacao"); }
 
@@ -370,7 +375,7 @@ function EditarMedicamentoContent() {
     </main>
   );
 
-  const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || Pill;
+  const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || Circle;
   const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido" || formato === "capsula");
   const gradientId = `split-${id}`;
 
@@ -396,15 +401,15 @@ function EditarMedicamentoContent() {
               </div>
               <h1 className="mt-0.5 truncate text-xl font-bold uppercase text-ink-primary">{nome || "Medicamento"}</h1>
             </div>
-            <button onClick={() => setShowDeleteModal(true)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral"><Trash2 size={16} /></button>
+            <button onClick={() => setShowDeleteModal(true)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-colors hover:bg-coral hover:text-void"><Trash2 size={16} /></button>
           </div>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
+        <section className="space-y-6 px-5 pt-6">
           <AnimatePresence>
             {showRenovacaoWarning && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-                <div className="mb-2 flex flex-col gap-3 rounded-[24px] border border-amber-400/30 bg-amber-400/10 p-4 shadow-sm">
+                <div className="mb-2 flex flex-col gap-3 rounded-[24px] border border-amber-400/30 bg-amber-400/10 p-5 shadow-sm">
                   <div className="flex items-start gap-3">
                     <Info size={20} className="mt-0.5 shrink-0 text-amber-400" />
                     <p className="text-sm text-amber-200"><strong>Atualizando estoque ou validade?</strong><br />Para não quebrar o seu histórico de compras/gastos, sugerimos usar a ferramenta de Renovação Oficial.</p>
@@ -415,18 +420,36 @@ function EditarMedicamentoContent() {
             )}
           </AnimatePresence>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className={`rounded-[28px] border bg-surface p-4 shadow-sm transition-all ${shakeFields.includes('personId') ? 'animate-shake border-coral/80' : 'border-surface-border/50'}`}>
-            <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa <span className="text-coral">*</span></p>
-            <div className="flex flex-wrap gap-2">
+          {/* Seletor de Pessoas com Avatar */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all ${shakeFields.includes('personId') ? 'animate-shake border-coral/80' : 'border-surface-border/50'}`}>
+            <p className="mb-3 text-sm font-medium text-ink-primary">Para quem é? <span className="text-coral">*</span></p>
+            <div className="flex flex-wrap gap-2.5">
               {persons.map((p: any) => (
-                <button key={p.id} onClick={() => { trigger("vibrate"); setPersonId(p.id!); }} className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all ${personId === p.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{p.name}</button>
+                <button 
+                  key={p.id} 
+                  onClick={() => { trigger("vibrate"); setPersonId(p.id!); }} 
+                  className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-all ${personId === p.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                >
+                  {p.avatar_url ? (
+                    <img src={p.avatar_url} alt={p.name} className="h-6 w-6 rounded-full object-cover shadow-sm" />
+                  ) : (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-void border border-surface-border text-[10px] text-ink-primary font-bold shadow-inner">
+                      {p.name.charAt(0)}
+                    </div>
+                  )}
+                  {p.name}
+                </button>
               ))}
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="mb-4 flex items-center gap-2"><Palette size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Identidade Visual</h3></div>
-            <div className="mb-4 grid grid-cols-3 gap-2">
+          {/* Identidade Visual com Prévia Restaurada */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+               <div className="flex items-center gap-2"><Palette size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Identidade Visual</h3></div>
+            </div>
+            
+            <div className="mb-5 grid grid-cols-3 gap-2.5">
               {FORMATOS.map((f) => {
                 const isActive = formato === f.id;
                 const Icon = f.icon;
@@ -438,11 +461,19 @@ function EditarMedicamentoContent() {
                 );
               })}
             </div>
+
             <p className="mb-2 text-xs text-ink-muted">Cores (até 2)</p>
-            <div className="flex flex-wrap gap-2.5">
+            <div className="flex flex-wrap gap-2.5 mb-5">
               {CORES_DISPONIVEIS.map((hex) => (
-                <button key={hex} onClick={() => toggleCor(hex)} className={`h-8 w-8 rounded-full border-2 transition-all ${cores.includes(hex) ? "scale-110 border-ice" : "border-transparent"}`} style={{ backgroundColor: hex }} />
+                <button key={hex} onClick={() => toggleCor(hex)} className={`h-8 w-8 rounded-full border-2 transition-transform ${cores.includes(hex) ? "scale-110 border-ice" : "border-transparent"}`} style={{ backgroundColor: hex }} />
               ))}
+            </div>
+
+            {/* Prévia Dinâmica */}
+            <div className="mt-2 flex justify-center">
+              <div className="flex h-20 w-32 items-center justify-center rounded-2xl border border-surface-border bg-void/50 shadow-inner">
+                <SelectedFormatIcon size={40} fill={hasTwoColors ? `url(#${gradientId})` : (cores[0] || "#9CA3AF")} stroke="none" />
+              </div>
             </div>
           </motion.div>
 
@@ -452,82 +483,97 @@ function EditarMedicamentoContent() {
             </motion.div>
           )}
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          {/* Dados e Rede de Apoio Estrita Relacional */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
             <div className={`transition-all ${shakeFields.includes('nome') ? 'animate-shake' : ''}`}>
               <Input label="Medicamento" placeholder="Ex: Losartana..." value={nome} onChange={(e) => setNome(e.target.value)} error={errors.nome} />
             </div>
             <div className={`transition-all ${shakeFields.includes('dosagem') ? 'animate-shake' : ''}`}>
               <Input label="Dosagem" placeholder="Ex: 50mg, 1x ao dia" value={dosagem} onChange={(e) => setDosagem(e.target.value)} error={errors.dosagem} />
             </div>
+            
             <div className={`transition-all ${shakeFields.includes('medico') ? 'animate-shake' : ''}`}>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2"><Stethoscope size={14} className="text-ink-muted"/> Médico Prescritor *</label>
-              <button onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }} className="flex w-full items-center justify-between rounded-2xl border bg-surface-raised px-4 py-3 text-left border-surface-border/50 hover:border-ice/50">
-                <span className="truncate font-medium text-ink-primary">{selectedMedico?.nome || medicoNome || "Selecionar médico"}</span>
-                <span className="ml-2 text-xs font-medium text-ice">Alterar</span>
+              <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2"><Stethoscope size={14} className="text-ink-muted"/> Médico Prescritor <span className="text-coral">*</span></label>
+              <button onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }} className={`flex w-full items-center justify-between rounded-2xl border bg-surface-raised px-4 py-3.5 text-left transition-colors ${errors.medico ? "border-coral/50" : "border-surface-border/50 hover:border-ice/50"}`}>
+                <span className="truncate font-medium text-ink-primary">{selectedMedico?.nome || medicoNome || "Vincular médico cadastrado..."}</span>
+                <span className="ml-2 text-xs font-bold text-ice">Selecionar</span>
               </button>
             </div>
+            
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2"><Store size={14} className="text-ink-muted"/> Farmácia</label>
-              <button onClick={() => setIsPharmacyModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left hover:border-ice/50">
-                <span className="truncate font-medium text-ink-primary">{selectedFarmacia?.nome || farmaciaNome || "Selecionar farmácia"}</span>
-                <span className="ml-2 text-xs font-medium text-ice">Alterar</span>
+              <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2"><Store size={14} className="text-ink-muted"/> Farmácia Habitual</label>
+              <button onClick={() => setIsPharmacyModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left transition-colors hover:border-ice/50">
+                <span className="truncate font-medium text-ink-primary">{selectedFarmacia?.nome || farmaciaNome || "Vincular farmácia..."}</span>
+                <span className="ml-2 text-xs font-bold text-ice">Selecionar</span>
               </button>
             </div>
           </motion.div>
 
-          {/* INTELIGÊNCIA DE RECEITA COM VALIDADE AUTOMÁTICA */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <SeletorReceita selected={tipoReceita} onChange={handleTipoReceitaChange} />
-            <div className="grid grid-cols-2 gap-3 mt-4">
+          {/* SELETOR DE RECEITA REUTILIZÁVEL E MODULARIZADO */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+            <SeletorReceita 
+              selected={tipoReceita} 
+              onChange={handleTipoReceitaChange} 
+              onRenovarClick={() => router.push(`/saude/renovacao/nova?medicamento_id=${id}`)}
+            />
+            
+            <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-surface-border/40">
               <div className={`transition-all ${shakeFields.includes('dataReceitaTexto') ? 'animate-shake' : ''}`}>
                 <Input label="Data da receita *" placeholder="DD/MM/AAAA" value={dataReceitaTexto} onChange={handleDateChange(setDataReceitaTexto)} onBlur={handleDataReceitaBlur} maxLength={10} inputMode="numeric" error={errors.dataReceitaTexto} />
               </div>
               <Input label="Renovação estimada" placeholder="DD/MM/AAAA" value={proximaRenovacaoTexto} onChange={handleDateChange(setProximaRenovacaoTexto)} maxLength={10} inputMode="numeric" />
             </div>
-            {diasValidadeReceita && (
-              <p className="mt-2 text-[11px] text-ink-muted">Validade padrão para este tipo de receita: <b>{diasValidadeReceita} dias</b>.</p>
-            )}
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div><h3 className="text-sm font-semibold text-ink-primary">Estoque & Alertas</h3><p className="mt-0.5 text-xs text-ink-muted">Controle quantidade e horários.</p></div>
-              <button onClick={() => { setEstoqueAtivo(!estoqueAtivo); if(!estoqueAtivo) setShowRenovacaoWarning(true); }} className={`h-6 w-11 rounded-full p-0.5 transition-colors ${estoqueAtivo ? "bg-ice" : "bg-surface-raised border border-surface-border"}`}><div className={`h-5 w-5 rounded-full bg-void shadow-sm transition-transform ${estoqueAtivo ? "translate-x-5" : ""}`} /></button>
+          {/* Estoque Refinado */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h3 className="text-sm font-semibold text-ink-primary">Controle de Estoque</h3>
+                <p className="text-xs text-ink-muted mt-0.5">Doses, horários e previsões.</p>
+              </div>
+              <button onClick={() => { trigger("vibrate"); setEstoqueAtivo(!estoqueAtivo); if(!estoqueAtivo) setShowRenovacaoWarning(true); }} className={`h-7 w-12 rounded-full p-1 transition-colors ${estoqueAtivo ? "bg-ice" : "bg-surface-raised border border-surface-border"}`}>
+                <div className={`h-5 w-5 rounded-full bg-void shadow-sm transition-transform ${estoqueAtivo ? "translate-x-5" : ""}`} />
+              </button>
             </div>
 
             <AnimatePresence>
               {estoqueAtivo && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-4 pt-2 overflow-hidden border-t border-surface-border/40">
-                  <div className="grid grid-cols-2 gap-3">
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-5 pt-4 overflow-hidden border-t border-surface-border/40 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className={`transition-all ${shakeFields.includes('estoqueQuantidade') ? 'animate-shake' : ''}`}>
-                      <Input label="Quantidade Atual" type="number" inputMode="numeric" value={estoqueQuantidade} onChange={(e) => handleEstoqueChange(e.target.value)} error={errors.estoqueQuantidade} />
+                      <Input label="Unidades na caixa" type="number" inputMode="numeric" value={estoqueQuantidade} onChange={(e) => handleEstoqueChange(e.target.value)} error={errors.estoqueQuantidade} />
                     </div>
                     <div className={`transition-all ${shakeFields.includes('estoqueUnidadePorDose') ? 'animate-shake' : ''}`}>
-                      <Input label="Unid/Dose (Ex: 0.25 ou 0.5)" type="number" inputMode="decimal" step="0.25" value={estoqueUnidadePorDose} onChange={(e) => setEstoqueUnidadePorDose(e.target.value)} error={errors.estoqueUnidadePorDose} />
+                      <Input label="Gasto por dose" type="number" inputMode="decimal" step="0.25" placeholder="Ex: 1 ou 0.5" value={estoqueUnidadePorDose} onChange={(e) => setEstoqueUnidadePorDose(e.target.value)} error={errors.estoqueUnidadePorDose} />
                     </div>
                   </div>
+                  
                   <div className={`transition-all ${shakeFields.includes('estoqueDataReferenciaTexto') ? 'animate-shake' : ''}`}>
-                     <Input label="Data da contagem (DD/MM/AAAA)" placeholder="DD/MM/AAAA" value={estoqueDataReferenciaTexto} onChange={handleDateChange(setEstoqueDataReferenciaTexto)} maxLength={10} inputMode="numeric" error={errors.estoqueDataReferenciaTexto} />
+                     <Input label="Data da última contagem" placeholder="DD/MM/AAAA" value={estoqueDataReferenciaTexto} onChange={handleDateChange(setEstoqueDataReferenciaTexto)} maxLength={10} inputMode="numeric" error={errors.estoqueDataReferenciaTexto} />
                   </div>
 
                   {diasEstimadosEstoque !== null && (
-                    <div className="flex items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/5 px-3.5 py-3">
-                      <div className="flex items-center gap-2"><Clock size={15} className="text-emerald-400" /><span className="text-xs font-medium text-ink-primary">Previsão de consumo</span></div>
+                    <div className="flex items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3">
+                      <div className="flex items-center gap-2"><Clock size={16} className="text-emerald-400" /><span className="text-sm font-medium text-ink-primary">Previsão de consumo</span></div>
                       <span className="font-mono text-sm font-bold text-emerald-400">{diasEstimadosEstoque} {diasEstimadosEstoque === 1 ? "dia" : "dias"}</span>
                     </div>
                   )}
                   
-                  <div className={`transition-all ${shakeFields.includes('horarios') ? 'animate-shake' : ''}`}>
-                    <label className="text-sm text-ink-muted mb-2 flex items-center justify-between">Horários (HH:MM) <button onClick={addHorario} className="text-ice font-bold text-xs">+ ADD</button></label>
-                    <div className="flex flex-wrap gap-2">
+                  <div className={`transition-all ${shakeFields.includes('horarios') ? 'animate-shake' : ''} p-4 rounded-2xl bg-surface-raised border border-surface-border/50`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-medium text-ink-primary">Alarmes (HH:MM)</label>
+                      <button onClick={addHorario} className="text-ice font-bold text-xs bg-ice/10 px-3 py-1.5 rounded-lg">+ Novo Alarme</button>
+                    </div>
+                    <div className="flex flex-wrap gap-2.5">
                       {horarios.map((h, i) => (
                         <div key={i} className="flex items-center gap-1">
                           <input type="text" placeholder="08:00" value={h} maxLength={5} onChange={(e) => {
                             let v = e.target.value.replace(/\D/g, "");
                             if(v.length > 2) v = v.substring(0,2) + ":" + v.substring(2);
                             updateHorario(i, v);
-                          }} className="w-16 bg-surface-raised border border-surface-border/50 rounded-xl text-center py-2 text-sm font-mono focus:border-ice outline-none" />
-                          {horarios.length > 1 && <button onClick={() => removeHorario(i)} className="p-2 text-coral bg-coral/10 rounded-xl"><Trash2 size={14}/></button>}
+                          }} className="w-16 bg-void border border-surface-border rounded-xl text-center py-2.5 text-sm font-mono focus:border-ice outline-none shadow-inner" />
+                          {horarios.length > 1 && <button onClick={() => removeHorario(i)} className="p-2.5 text-coral bg-coral/10 hover:bg-coral/20 rounded-xl transition-colors"><X size={14}/></button>}
                         </div>
                       ))}
                     </div>
@@ -537,33 +583,34 @@ function EditarMedicamentoContent() {
             </AnimatePresence>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          {/* Status e Descontinuação */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <div><h3 className="text-sm font-semibold text-ink-primary">Status do Tratamento</h3><p className="mt-0.5 text-xs text-ink-muted">Controle se este medicamento continua em uso.</p></div>
-              <button onClick={() => setStatusAtivo(!statusAtivo)} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold ${statusAtivo ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400" : "border-coral/20 bg-coral/10 text-coral"}`}>{statusAtivo ? "ATIVO" : "DESCONTINUADO"}</button>
+              <div><h3 className="text-sm font-semibold text-ink-primary">Status Atual</h3><p className="mt-0.5 text-xs text-ink-muted">Acompanhamento ativo?</p></div>
+              <button onClick={() => { trigger("vibrate"); setStatusAtivo(!statusAtivo); }} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-colors ${statusAtivo ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400" : "border-coral/30 bg-coral/10 text-coral"}`}>{statusAtivo ? "EM USO" : "SUSPENSO"}</button>
             </div>
 
             <AnimatePresence>
               {!statusAtivo && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                  <div className="mt-4 space-y-3 border-t border-surface-border/40 pt-4">
+                  <div className="mt-5 space-y-4 border-t border-surface-border/40 pt-5">
                     <div className={`transition-all ${shakeFields.includes('motivoDescontinuacao') ? 'animate-shake' : ''}`}>
-                      <TextArea label="Motivo da suspensão *" placeholder="Ex: substituído, efeitos adversos..." value={motivoDescontinuacao} onChange={(e) => setMotivoDescontinuacao(e.target.value)} error={errors.motivoDescontinuacao} />
+                      <TextArea label="Motivo da suspensão *" placeholder="Ex: efeitos adversos, alta médica..." value={motivoDescontinuacao} onChange={(e) => setMotivoDescontinuacao(e.target.value)} error={errors.motivoDescontinuacao} />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2"><Stethoscope size={14} className="text-ink-muted"/> Médico que suspendeu</label>
-                      <button onClick={() => setIsDoctorDescontinuacaoModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left">
-                        <span className="truncate font-medium text-ink-primary">{selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome || "Selecionar médico"}</span>
-                        <span className="ml-2 text-xs font-medium text-ice">Alterar</span>
+                      <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2"><Stethoscope size={14} className="text-ink-muted"/> Médico que ordenou a parada</label>
+                      <button onClick={() => setIsDoctorDescontinuacaoModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left">
+                        <span className="truncate font-medium text-ink-primary">{selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome || "Vincular médico..."}</span>
+                        <span className="ml-2 text-xs font-bold text-ice">Selecionar</span>
                       </button>
                     </div>
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2"><ArrowRightLeft size={14} className="text-ink-muted"/> Substituído por</label>
-                      <button onClick={() => setIsSubstitutoModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left">
+                      <button onClick={() => setIsSubstitutoModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left">
                         <span className="truncate font-medium text-ink-primary">{selectedSubstituto ? selectedSubstituto.nome : "Nenhum substituto"}</span>
-                        <span className="ml-2 text-xs font-medium text-ice">{selectedSubstituto ? "Alterar" : "Vincular"}</span>
+                        <span className="ml-2 text-xs font-bold text-ice">{selectedSubstituto ? "Alterar" : "Vincular"}</span>
                       </button>
-                      {substituidoPorId && <button onClick={() => setSubstituidoPorId("")} className="mt-2 text-xs font-medium text-coral">Remover substituto</button>}
+                      {substituidoPorId && <button onClick={() => setSubstituidoPorId("")} className="mt-2 text-xs font-medium text-coral flex items-center gap-1"><X size={12}/> Remover substituto</button>}
                     </div>
                   </div>
                 </motion.div>
@@ -571,39 +618,38 @@ function EditarMedicamentoContent() {
             </AnimatePresence>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <div><h3 className="text-sm font-semibold text-ink-primary">Tratamentos Relacionados</h3><p className="mt-0.5 text-xs text-ink-muted">CIDs ou Motivos.</p></div>
-              <Activity size={17} className="text-ice" />
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div><h3 className="text-sm font-semibold text-ink-primary">Quadros / CIDs Vinculados</h3><p className="mt-0.5 text-xs text-ink-muted">Organize seu histórico clínico.</p></div>
+              <Activity size={18} className="text-ice" />
             </div>
             {selectedTratamentos.length > 0 ? (
-              <div className="mb-3 flex flex-wrap gap-2">
+              <div className="mb-4 flex flex-wrap gap-2.5">
                 {selectedTratamentos.map((t: any) => {
                   const Icon = getTratamentoIcon(t.nome);
                   return (
-                    <button key={t.id} onClick={() => {
-                        trigger("vibrate");
-                        setTratamentosSelecionados((prev) => prev.filter((id) => id !== t.id));
-                      }} 
-                      className="flex items-center gap-2 rounded-full border border-ice/30 bg-ice/10 px-3 py-2 text-xs font-medium text-ice"><Icon size={13} /><span>{t.nome}</span><X size={12} /></button>
+                    <button key={t.id} onClick={() => { trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((id) => id !== t.id)); }} className="flex items-center gap-2 rounded-full border border-ice/30 bg-ice/10 px-3.5 py-2 text-xs font-semibold text-ice hover:bg-coral/10 hover:border-coral/30 hover:text-coral transition-colors">
+                      <Icon size={14} /><span>{t.nome}</span><X size={14} className="opacity-70" />
+                    </button>
                   );
                 })}
               </div>
-            ) : <p className="text-xs text-ink-muted mb-3">Nenhum tratamento vinculado.</p>}
-            <button onClick={() => setIsTratamentoModalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-sm font-medium text-ink-primary transition-colors hover:border-ice/50"><Plus size={15} />Gerenciar tratamentos</button>
+            ) : <p className="text-xs text-ink-muted mb-4 p-4 border border-dashed border-surface-border rounded-2xl text-center bg-surface-raised">Nenhum quadro vinculado a este remédio.</p>}
+            <button onClick={() => setIsTratamentoModalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-surface-border/50 bg-void py-3.5 text-sm font-bold text-ink-primary transition-colors hover:border-ice/50 shadow-inner"><Plus size={16} />Gerenciar Tratamentos</button>
           </motion.div>
           
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <TextArea label="Notas Estruturais (opcional)" placeholder="Anotações fixas do cadastro..." value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
+          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+            <TextArea label="Anotações Estruturais" placeholder="Posologia complexa, dicas de uso..." value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
           </motion.div>
         </section>
 
-        <div className="sticky bottom-0 z-10 -mx-5 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
-            {saving ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar Edição Completa</>}
+        <div className="sticky bottom-0 z-10 -mx-5 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl">
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/20 h-14 rounded-[20px] font-bold text-base">
+            {saving ? <><Loader2 size={20} className="animate-spin" /> Salvando...</> : <><Save size={20} /> Salvar Edição Completa</>}
           </Button>
         </div>
 
+        {/* Modais blindados e padronizados com renderItem */}
         <SelectionModal 
           isOpen={isDoctorModalOpen} 
           onClose={() => setIsDoctorModalOpen(false)} 
@@ -613,9 +659,9 @@ function EditarMedicamentoContent() {
           getItemId={(i: any) => i.id!} 
           getItemLabel={(i: any) => i.nome} 
           renderItem={(item: any) => (
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={14} /></div>
-              <div><p className="font-medium text-ink-primary">{item.nome}</p>{item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}</div>
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={18} /></div>
+              <div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p>{item.especialidade && <p className="text-xs text-ink-muted mt-0.5">{item.especialidade}</p>}</div>
             </div>
           )}
         />
@@ -625,13 +671,13 @@ function EditarMedicamentoContent() {
           onClose={() => setIsDoctorDescontinuacaoModalOpen(false)} 
           onSelect={(item: any) => { setMedicoDescontinuacaoNome(item.nome); setMedicoDescontinuacaoId(item.id); setIsDoctorDescontinuacaoModalOpen(false); }} 
           items={medicos} 
-          title="Médico da Descontinuação" 
+          title="Médico da Suspensão" 
           getItemId={(i: any) => i.id!} 
           getItemLabel={(i: any) => i.nome} 
           renderItem={(item: any) => (
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={14} /></div>
-              <div><p className="font-medium text-ink-primary">{item.nome}</p>{item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}</div>
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-coral/10 text-coral shrink-0"><Stethoscope size={18} /></div>
+              <div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p>{item.especialidade && <p className="text-xs text-ink-muted mt-0.5">{item.especialidade}</p>}</div>
             </div>
           )}
         />
@@ -641,13 +687,13 @@ function EditarMedicamentoContent() {
           onClose={() => setIsPharmacyModalOpen(false)} 
           onSelect={(item: any) => { setFarmaciaNome(item.nome); setFarmaciaId(item.id); setIsPharmacyModalOpen(false); }} 
           items={farmacias} 
-          title="Farmácia" 
+          title="Farmácia Habitual" 
           getItemId={(i: any) => i.id!} 
           getItemLabel={(i: any) => i.nome} 
           renderItem={(item: any) => (
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0"><Store size={14} /></div>
-              <div className="min-w-0"><p className="truncate font-medium text-ink-primary">{item.nome}</p>{item.endereco && <p className="truncate text-xs text-ink-muted">{item.endereco}</p>}</div>
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0"><Store size={18} /></div>
+              <div className="min-w-0 text-left"><p className="truncate font-semibold text-ink-primary">{item.nome}</p>{item.endereco && <p className="truncate text-xs text-ink-muted mt-0.5">{item.endereco}</p>}</div>
             </div>
           )}
         />
@@ -657,20 +703,20 @@ function EditarMedicamentoContent() {
           onClose={() => setIsSubstitutoModalOpen(false)} 
           onSelect={(item: any) => { setSubstituidoPorId(item.id); setIsSubstitutoModalOpen(false); }} 
           items={medicamentosAtivos} 
-          title="Medicamento substituto" 
+          title="Qual remédio substituiu?" 
           getItemId={(i: any) => i.id!} 
           getItemLabel={(i: any) => `${i.nome} ${i.dosagem || ""}`} 
           renderItem={(item: any) => (
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Pill size={14} /></div>
-              <div className="min-w-0"><p className="truncate font-medium text-ink-primary">{item.nome}</p>{item.dosagem && <p className="truncate text-xs text-ink-muted">{item.dosagem}</p>}</div>
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400 shrink-0"><ArrowRightLeft size={18} /></div>
+              <div className="min-w-0 text-left"><p className="truncate font-semibold text-ink-primary">{item.nome}</p>{item.dosagem && <p className="truncate text-xs text-ink-muted mt-0.5">{item.dosagem}</p>}</div>
             </div>
           )}
         />
         
         <SeletorTratamentoModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} selectedIds={tratamentosSelecionados} onChange={setTratamentosSelecionados} personId={personId} />
 
-        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir medicamento" message={`Excluir permanentemente o registro de "${nome}"? Essa ação não poderá ser desfeita.`} confirmLabel="Excluir" cancelLabel="Cancelar" isLoading={deleting} type="danger" />
+        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir medicamento" message={`Excluir permanentemente o registro de "${nome}"? Essa ação não poderá ser desfeita e todas as doses registradas podem ficar orfãs.`} confirmLabel="Excluir" cancelLabel="Cancelar" isLoading={deleting} type="danger" />
       </main>
     </PageTransition>
   );
