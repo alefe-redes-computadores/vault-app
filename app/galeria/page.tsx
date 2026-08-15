@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Images, HeartPulse, Shield, User, Search 
+  Images, HeartPulse, Shield, Search 
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useGaleria, type GalleryItem } from "@/hooks/useGaleria";
@@ -74,19 +74,19 @@ export default function GaleriaPage() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [viewingItem, setViewingItem] = useState<GalleryItem | null>(null);
 
-  // Auto-abre modal de upload
+  // Auto-abre modal de upload via query param
   useEffect(() => {
     if (searchParams.get("upload") === "true") setIsUploadOpen(true);
   }, [searchParams]);
 
-  // Trava scroll do body
+  // Trava scroll do body no viewer/modal
   useEffect(() => {
     if (viewingItem || isUploadOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'unset';
     return () => { document.body.style.overflow = 'unset'; };
   }, [viewingItem, isUploadOpen]);
 
-  // DADOS (O Dexie comanda aqui, isLoading só é true no primeiro respiro do banco)
+  // DADOS (O Dexie comanda. isLoading = undefined real)
   const { items, isLoading } = useGaleria(selectedPerson || undefined);
 
   // ACCENT LAYER (Identidade Dinâmica)
@@ -94,25 +94,27 @@ export default function GaleriaPage() {
   const themeColors = { saude: "#34D399", pessoal: "#38BDF8" }; 
   const accentColor = activePersonObj?.color || themeColors[activeTab];
 
-  // AGRUPAMENTO INTELIGENTE (Recentes vs Datas Antigas)
+  // AGRUPAMENTO INTELIGENTE (Camada de Apresentação)
   const groupedFilteredItems = useMemo(() => {
     const filtered = items.filter((item) => item.category === activeTab);
     const groups: Record<string, GalleryItem[]> = {};
-    const hoje = new Date();
     
-    // Zera horas para comparação justa
+    // Obter data base de referência para "Recentes" (últimos 7 dias)
+    const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
     filtered.forEach((item) => {
       const d = new Date(item.date);
       if (isNaN(d.getTime())) return;
-      d.setHours(0, 0, 0, 0);
+      
+      const docDate = new Date(d);
+      docDate.setHours(0, 0, 0, 0);
 
-      const diffTime = Math.abs(hoje.getTime() - d.getTime());
+      const diffTime = hoje.getTime() - docDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       let label = "";
-      if (diffDays <= 7) {
+      if (diffDays >= 0 && diffDays <= 7) {
         label = "Recentes";
       } else {
         const mesAno = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
@@ -123,7 +125,6 @@ export default function GaleriaPage() {
       groups[label].push(item);
     });
 
-    // Ordenação para "Recentes" aparecer primeiro
     const orderedGroups: Record<string, GalleryItem[]> = {};
     if (groups["Recentes"]) orderedGroups["Recentes"] = groups["Recentes"];
     Object.keys(groups).forEach(key => {
@@ -134,7 +135,7 @@ export default function GaleriaPage() {
   }, [items, activeTab]);
 
   const handleShare = async (item: GalleryItem) => {
-    trigger("vibrate");
+    trigger("vibrate"); // Ação explícita
     try {
       if (navigator.share) await navigator.share({ title: item.title, url: item.url });
     } catch (error) {}
@@ -220,7 +221,7 @@ export default function GaleriaPage() {
 
         {/* GALLERY CONTENT */}
         <section className="px-5 pt-8">
-          {isLoading && items.length === 0 ? (
+          {isLoading ? (
             <GallerySkeleton />
           ) : Object.keys(groupedFilteredItems).length === 0 ? (
             <GalleryEmptyState activeTab={activeTab} personName={activePersonObj?.name} />
@@ -235,7 +236,7 @@ export default function GaleriaPage() {
                         key={item.id} 
                         item={item} 
                         accentColor={accentColor} 
-                        onClick={(i) => { trigger("vibrate"); setViewingItem(i); }} 
+                        onClick={(i) => setViewingItem(i)} 
                       />
                     ))}
                   </div>
