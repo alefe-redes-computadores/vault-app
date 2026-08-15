@@ -151,6 +151,16 @@ export default function NovoMedicamentoPage() {
     if (novoFormato !== "gota") setEstoqueGotasCalculado(0);
   };
 
+  // ✅ CORRIGIDO: Função toggleCor foi restaurada e fixada no componente
+  const toggleCor = (hex: string) => {
+    trigger("vibrate");
+    setCores(prev => {
+      if (prev.includes(hex)) return prev.filter((c) => c !== hex);
+      if (prev.length >= 2) return [prev[1], hex];
+      return [...prev, hex];
+    });
+  };
+
   // 4. Tratamento Completo de Upload
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
