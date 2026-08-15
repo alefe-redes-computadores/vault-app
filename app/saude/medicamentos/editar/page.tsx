@@ -604,10 +604,69 @@ function EditarMedicamentoContent() {
           </Button>
         </div>
 
-        <SelectionModal isOpen={isDoctorModalOpen} onClose={() => setIsDoctorModalOpen(false)} onSelect={(item: any) => { setMedicoNome(item.nome); setMedicoId(item.id); setIsDoctorModalOpen(false); }} items={medicos} title="Médico Prescritor" getItemId={(i: any) => i.id!} getItemLabel={(i: any) => i.nome} />
-        <SelectionModal isOpen={isDoctorDescontinuacaoModalOpen} onClose={() => setIsDoctorDescontinuacaoModalOpen(false)} onSelect={(item: any) => { setMedicoDescontinuacaoNome(item.nome); setMedicoDescontinuacaoId(item.id); setIsDoctorDescontinuacaoModalOpen(false); }} items={medicos} title="Médico da Descontinuação" getItemId={(i: any) => i.id!} getItemLabel={(i: any) => i.nome} />
-        <SelectionModal isOpen={isPharmacyModalOpen} onClose={() => setIsPharmacyModalOpen(false)} onSelect={(item: any) => { setFarmaciaNome(item.nome); setFarmaciaId(item.id); setIsPharmacyModalOpen(false); }} items={farmacias} title="Farmácia" getItemId={(i: any) => i.id!} getItemLabel={(i: any) => i.nome} />
-        <SelectionModal isOpen={isSubstitutoModalOpen} onClose={() => setIsSubstitutoModalOpen(false)} onSelect={(item: any) => { setSubstituidoPorId(item.id); setIsSubstitutoModalOpen(false); }} items={medicamentosAtivos} title="Medicamento substituto" getItemId={(i: any) => i.id!} getItemLabel={(i: any) => `${i.nome} ${i.dosagem || ""}`} />
+        <SelectionModal 
+          isOpen={isDoctorModalOpen} 
+          onClose={() => setIsDoctorModalOpen(false)} 
+          onSelect={(item: any) => { setMedicoNome(item.nome); setMedicoId(item.id); setIsDoctorModalOpen(false); }} 
+          items={medicos} 
+          title="Médico Prescritor" 
+          getItemId={(i: any) => i.id!} 
+          getItemLabel={(i: any) => i.nome} 
+          renderItem={(item: any) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={14} /></div>
+              <div><p className="font-medium text-ink-primary">{item.nome}</p>{item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}</div>
+            </div>
+          )}
+        />
+        
+        <SelectionModal 
+          isOpen={isDoctorDescontinuacaoModalOpen} 
+          onClose={() => setIsDoctorDescontinuacaoModalOpen(false)} 
+          onSelect={(item: any) => { setMedicoDescontinuacaoNome(item.nome); setMedicoDescontinuacaoId(item.id); setIsDoctorDescontinuacaoModalOpen(false); }} 
+          items={medicos} 
+          title="Médico da Descontinuação" 
+          getItemId={(i: any) => i.id!} 
+          getItemLabel={(i: any) => i.nome} 
+          renderItem={(item: any) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={14} /></div>
+              <div><p className="font-medium text-ink-primary">{item.nome}</p>{item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}</div>
+            </div>
+          )}
+        />
+        
+        <SelectionModal 
+          isOpen={isPharmacyModalOpen} 
+          onClose={() => setIsPharmacyModalOpen(false)} 
+          onSelect={(item: any) => { setFarmaciaNome(item.nome); setFarmaciaId(item.id); setIsPharmacyModalOpen(false); }} 
+          items={farmacias} 
+          title="Farmácia" 
+          getItemId={(i: any) => i.id!} 
+          getItemLabel={(i: any) => i.nome} 
+          renderItem={(item: any) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0"><Store size={14} /></div>
+              <div className="min-w-0"><p className="truncate font-medium text-ink-primary">{item.nome}</p>{item.endereco && <p className="truncate text-xs text-ink-muted">{item.endereco}</p>}</div>
+            </div>
+          )}
+        />
+        
+        <SelectionModal 
+          isOpen={isSubstitutoModalOpen} 
+          onClose={() => setIsSubstitutoModalOpen(false)} 
+          onSelect={(item: any) => { setSubstituidoPorId(item.id); setIsSubstitutoModalOpen(false); }} 
+          items={medicamentosAtivos} 
+          title="Medicamento substituto" 
+          getItemId={(i: any) => i.id!} 
+          getItemLabel={(i: any) => `${i.nome} ${i.dosagem || ""}`} 
+          renderItem={(item: any) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Pill size={14} /></div>
+              <div className="min-w-0"><p className="truncate font-medium text-ink-primary">{item.nome}</p>{item.dosagem && <p className="truncate text-xs text-ink-muted">{item.dosagem}</p>}</div>
+            </div>
+          )}
+        />
         
         <SeletorTratamentoModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} selectedIds={tratamentosSelecionados} onChange={setTratamentosSelecionados} personId={personId} />
 
