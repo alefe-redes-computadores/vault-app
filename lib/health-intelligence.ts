@@ -11,7 +11,6 @@ export function validarVinculoMedicoLocal(
   estabelecimentoId: string
 ): boolean {
   if (!medico || !estabelecimentoId) return true;
-  // Usa o campo 'estabelecimentos' (se existir) ou busca na tabela de vínculos
   if (medico.estabelecimentos && Array.isArray(medico.estabelecimentos)) {
     return medico.estabelecimentos.includes(estabelecimentoId);
   }
@@ -24,11 +23,7 @@ export function validarVinculoMedicoLocal(
 export function sugerirRenovacao(medicamento: Medicamento) {
   const estoque = computeEstoqueInfo(medicamento);
   if (!estoque) {
-    return {
-      deveRenovar: false,
-      mensagem: "",
-      urgencia: "nenhuma" as const,
-    };
+    return { deveRenovar: false, mensagem: "", urgencia: "nenhuma" as const };
   }
 
   const consumoDiario =
@@ -65,11 +60,7 @@ export function sugerirRenovacao(medicamento: Medicamento) {
     };
   }
 
-  return {
-    deveRenovar: false,
-    mensagem: "",
-    urgencia: "nenhuma" as const,
-  };
+  return { deveRenovar: false, mensagem: "", urgencia: "nenhuma" as const };
 }
 
 // ============================================================
@@ -80,9 +71,7 @@ export function analisarMelhorFarmacia(renovacoes: Renovacao[]) {
 
   renovacoes.forEach((r) => {
     if (r.farmacia_id && r.preco) {
-      if (!farmaciasPrecos[r.farmacia_id]) {
-        farmaciasPrecos[r.farmacia_id] = [];
-      }
+      if (!farmaciasPrecos[r.farmacia_id]) farmaciasPrecos[r.farmacia_id] = [];
       farmaciasPrecos[r.farmacia_id].push(Number(r.preco));
     }
   });
@@ -110,9 +99,7 @@ export function calcularEconomia(renovacoes: Renovacao[]) {
 
   if (anteriores.length === 0) return null;
 
-  const mediaAnterior =
-    anteriores.reduce((acc, r) => acc + (r.preco || 0), 0) / anteriores.length;
-
+  const mediaAnterior = anteriores.reduce((acc, r) => acc + (r.preco || 0), 0) / anteriores.length;
   const economia = (mediaAnterior - (ultima.preco || 0)).toFixed(2);
   const percentual = ((Number(economia) / mediaAnterior) * 100).toFixed(1);
 
@@ -125,12 +112,9 @@ export function calcularEconomia(renovacoes: Renovacao[]) {
 }
 
 // ============================================================
-// 5. SUGERIR HORÁRIOS (ASSISTENTE)
+// 5. SUGERIR HORÁRIOS (ASSISTENTE / SMART DOSAGE)
 // ============================================================
-export function sugerirHorarios(
-  primeiroHorario: string,
-  vezesAoDia: number
-): string[] {
+export function sugerirHorarios(primeiroHorario: string, vezesAoDia: number): string[] {
   if (!primeiroHorario || vezesAoDia < 1) return [];
 
   const [h, m] = primeiroHorario.split(":").map(Number);
@@ -139,11 +123,59 @@ export function sugerirHorarios(
 
   for (let i = 0; i < vezesAoDia; i++) {
     const hora = (h + i * intervalo) % 24;
-    const minuto = i === 0 ? m : 0;
-    horarios.push(
-      `${String(hora).padStart(2, "0")}:${String(minuto).padStart(2, "0")}`
-    );
+    // CORREÇÃO: Mantém os minutos originais (ex: 08:30 -> 20:30)
+    horarios.push(`${String(hora).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
   }
 
   return horarios;
+}
+
+// ============================================================
+// 6. VALIDAÇÃO DE RECEITA À PROVA DE FALHAS
+// ============================================================
+export function isReceitaVencidaSegura(dataRenovacao?: string): boolean {
+  if (!dataRenovacao) return false;
+  try {
+    const dataExp = new Date(dataRenovacao);
+    if (isNaN(dataExp.getTime())) return false;
+    return dataExp < new Date();
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================
+// 7. COMPORTAMENTO DE USO (ALERTAS INTELIGENTES)
+// ============================================================
+export function analisarComportamentoUso(medicamento: any, historicoDoses: any[]) {
+  if (!historicoDoses || historicoDoses.length === 0) return null;
+
+  const umaSemanaAtras = new Date();
+  umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7);
+  
+  const dosesRecentes = historicoDoses.filter(d => new Date(d.timestamp || d.data) >= umaSemanaAtras);
+  const isEsporadico = medicamento.tipo_uso === 'esporadico' || medicamento.tipo_uso === 'sos';
+
+  // SOS usado com alta frequência
+  if (isEsporadico && dosesRecentes.length >= 4) {
+    return {
+      tipo: 'padrao_esporadico',
+      titulo: 'Aumento no uso de SOS',
+      mensagem: `Você utilizou "${medicamento.nome}" ${dosesRecentes.length} vezes na última semana. Considere reavaliar com seu médico.`,
+      acaoSugerida: 'Conversar com médico'
+    };
+  }
+
+  // Queda na adesão
+  const dosesPerdidas = dosesRecentes.filter(d => d.status === 'perdido' || d.status === 'ignorado');
+  if (dosesPerdidas.length >= 3) {
+    return {
+      tipo: 'alerta_adesao',
+      titulo: 'Atenção aos horários',
+      mensagem: `Você perdeu algumas doses de "${medicamento.nome}" recentemente. A constância é essencial.`,
+      acaoSugerida: 'Ajustar alarmes'
+    };
+  }
+
+  return null;
 }
