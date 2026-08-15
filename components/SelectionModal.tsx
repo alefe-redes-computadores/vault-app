@@ -2,10 +2,17 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Loader2, Search, Check } from "lucide-react";
+import { X, Plus, Loader2, Search, Check, Layers } from "lucide-react";
 import { Input } from "./ui/Input";
 import { Button } from "./ui/Button";
 import { useHapticFeedback } from "@/lib/haptics";
+
+export interface SelectionTab {
+  id: string;
+  label: string;
+  activeColor?: string; // Ex: 'bg-coral text-void'
+  inactiveColor?: string; // Ex: 'text-ink-muted border-surface-border'
+}
 
 interface SelectionModalProps<T> {
   isOpen: boolean;
@@ -18,10 +25,15 @@ interface SelectionModalProps<T> {
   getItemId: (item: T) => string;
   getItemLabel: (item: T) => string;
   
+  // 🔥 NOVO: Suporte a Abas Categorizadas
+  tabs?: SelectionTab[];
+  activeTab?: string;
+  onTabChange?: (tabId: string) => void;
+
   // 🔥 NOVO: Suporte a Cadastro-Relâmpago Inline (Opcional)
   enableQuickCreate?: boolean;
   quickCreatePlaceholder?: string;
-  onQuickCreate?: (name: string) => Promise<T | string | void>;
+  onQuickCreate?: (name: string, currentTabId?: string) => Promise<T | string | void>;
   
   onCreateNew?: () => void;
   createNewLabel?: string;
@@ -38,6 +50,9 @@ export function SelectionModal<T>({
   renderItem,
   getItemId,
   getItemLabel,
+  tabs,
+  activeTab,
+  onTabChange,
   enableQuickCreate = false,
   quickCreatePlaceholder = "Digite o nome completo...",
   onQuickCreate,
@@ -85,7 +100,8 @@ export function SelectionModal<T>({
     trigger("vibrate");
 
     try {
-      const createdItem = await onQuickCreate(quickName.trim());
+      // Passa a aba ativa para o criador saber QUAL tipo de item está criando
+      const createdItem = await onQuickCreate(quickName.trim(), activeTab);
       if (createdItem && typeof createdItem !== "string") {
         onSelect(createdItem as T);
       }
@@ -106,11 +122,18 @@ export function SelectionModal<T>({
     }
   };
 
+  const handleTabClick = (tabId: string) => {
+    trigger("vibrate");
+    if (onTabChange) onTabChange(tabId);
+  };
+
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
       onClose();
     }
   };
+
+  const activeTabConfig = tabs?.find(t => t.id === activeTab);
 
   return (
     <AnimatePresence>
@@ -141,9 +164,8 @@ export function SelectionModal<T>({
                 <p className="text-[11px] uppercase tracking-[0.22em] text-ink-faint">
                   Seleção
                 </p>
-
                 <h3 className="mt-1 font-display text-lg font-semibold text-ink-primary">
-                  {isCreatingMode ? `Cadastrar ${title}` : title}
+                  {isCreatingMode ? `Cadastrar novo` : title}
                 </h3>
               </div>
 
@@ -157,9 +179,19 @@ export function SelectionModal<T>({
               </button>
             </div>
 
-            {/* FLUXO DINÂMICO: Se estiver no modo de criação rápida, vira input simples */}
+            {/* FLUXO DINÂMICO: Modo de Criação Rápida */}
             {isCreatingMode ? (
               <form onSubmit={handleQuickSubmit} className="space-y-4 py-2">
+                {tabs && activeTabConfig && (
+                  <div className="flex items-center gap-2 rounded-xl bg-surface-raised p-3 border border-surface-border/50">
+                    <Layers size={16} className="text-ink-muted" />
+                    <p className="text-xs font-medium text-ink-muted">Salvando na categoria:</p>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${activeTabConfig.activeColor || 'bg-ice text-void'}`}>
+                      {activeTabConfig.label}
+                    </span>
+                  </div>
+                )}
+
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-ink-muted">
                     Nome / Descrição Principal
@@ -208,26 +240,45 @@ export function SelectionModal<T>({
               </form>
             ) : (
               <>
+                {/* 🔥 RENDERIZAÇÃO DAS ABAS (TABS) */}
+                {tabs && tabs.length > 0 && (
+                  <div className="mb-4 flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                    {tabs.map((tab) => {
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => handleTabClick(tab.id)}
+                          className={`whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-bold transition-all border ${
+                            isActive
+                              ? tab.activeColor || "bg-ice text-void border-transparent"
+                              : tab.inactiveColor || "bg-surface-raised text-ink-muted border-surface-border/50 hover:border-ice/30"
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="relative mb-4">
                   <Search
                     size={16}
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
                   />
-
                   <Input
                     placeholder={placeholder}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    autoFocus
                     className="w-full pl-9"
                   />
                 </div>
 
-                <div className="flex-1 space-y-2 overflow-y-auto pr-1">
+                <div className="flex-1 space-y-2 overflow-y-auto pr-1 min-h-[200px]">
                   {loading ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="flex h-full flex-col items-center justify-center py-10 text-center">
                       <Loader2 size={24} className="animate-spin text-ice" />
-
                       <p className="mt-3 text-sm text-ink-muted">
                         Carregando itens...
                       </p>
@@ -237,7 +288,6 @@ export function SelectionModal<T>({
                       <p className="font-display text-base font-semibold text-ink-primary">
                         Nenhum item encontrado
                       </p>
-
                       <p className="mt-1 text-sm text-ink-muted">
                         Tente outro termo de busca ou cadastre um novo agora.
                       </p>
