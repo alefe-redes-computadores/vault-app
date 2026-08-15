@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Loader2, Save, Pill, Upload, Camera, X, FileText, Package, Plus, Trash2, Clock,
   Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, ArrowRight, Info, Store,
-  Building2, CheckCircle2, ChevronRight, ChevronLeft, DollarSign
+  Building2, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, TrendingUp, Sparkles
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,21 +22,20 @@ import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Attachment, Document, TipoReceita } from "@/lib/types";
 
+// Componentes UI e Inteligência
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SeletorReceita } from "@/components/saude/SeletorReceita";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { sugerirHorarios } from "@/lib/health-insights";
-import { useToast } from "@/components/ToastProvider";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 } };
 
-// MÁSCARAS E HELPERS
 function mascaraData(value: string) {
   return value.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').replace(/(\d{2})(\d)/, '$1/$2').replace(/(\d{4})\d+?$/, '$1');
 }
@@ -69,7 +68,6 @@ const CORES_DISPONIVEIS = ["#FFFFFF", "#FCA5A5", "#F87171", "#FBBF24", "#34D399"
 
 export default function NovoMedicamentoPage() {
   const { trigger } = useHapticFeedback();
-  const { showToast, showError, showSuccess, showInfo } = useToast();
   const router = useRouter();
   const { user } = useAuth();
   const persons = usePersons();
@@ -84,11 +82,11 @@ export default function NovoMedicamentoPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // ================= ESTADOS DO FLUXO EM ETAPAS =================
+  // Estados do Fluxo
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 3;
 
-  // Etapa 1: O Medicamento
+  // Etapa 1
   const [personId, setPersonId] = useState<string>("");
   const [nome, setNome] = useState("");
   const [dosagem, setDosagem] = useState("");
@@ -100,13 +98,12 @@ export default function NovoMedicamentoPage() {
   const [horarios, setHorarios] = useState<string[]>(["08:00"]);
   const [estoqueUnidadePorDose, setEstoqueUnidadePorDose] = useState("1");
   
-  // Gotas
   const isGotas = formato === "gota";
   const [mlTotal, setMlTotal] = useState("");
   const [gotasPorMl, setGotasPorMl] = useState("20");
   const [estoqueGotasCalculado, setEstoqueGotasCalculado] = useState(0);
 
-  // Etapa 2: Emissão e Compra
+  // Etapa 2
   const [medicoId, setMedicoId] = useState<string>("");
   const [medicoNome, setMedicoNome] = useState("");
   const [estabelecimentoId, setEstabelecimentoId] = useState<string>("");
@@ -115,7 +112,7 @@ export default function NovoMedicamentoPage() {
   const [farmaciaNome, setFarmaciaNome] = useState("");
   const [preco, setPreco] = useState("");
 
-  // Etapa 3: Controle
+  // Etapa 3
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
   const [estoqueDataReferenciaTexto, setEstoqueDataReferenciaTexto] = useState(isoParaBr(new Date().toISOString().slice(0, 10)));
@@ -126,7 +123,7 @@ export default function NovoMedicamentoPage() {
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [observacoes, setObservacoes] = useState("");
 
-  // Arquivos
+  // Upload
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -137,50 +134,48 @@ export default function NovoMedicamentoPage() {
   const [isEstabelecimentoModalOpen, setIsEstabelecimentoModalOpen] = useState(false);
   const [activeEstabelecimentoTab, setActiveEstabelecimentoTab] = useState("hospital");
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
+  const [showDesativarEstoqueModal, setShowDesativarEstoqueModal] = useState(false);
 
-  // ✅ Estado para o modal de confirmação
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  // Autocomplete Inteligente & Duplicidade
+  const [isTypingName, setIsTypingName] = useState(false);
+  const [isRecognized, setIsRecognized] = useState(false); // NOVO: Feedback Visual
+  const [showDuplicateActionModal, setShowDuplicateActionModal] = useState(false);
+  const [selectedDuplicate, setSelectedDuplicate] = useState<any | null>(null);
 
-  // Validações
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeFields, setShakeFields] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // --- INTELIGÊNCIAS DE UX ---
-  
-  // 1. Verificar Duplicidade em Tempo Real
-  const medicamentoDuplicado = useMemo(() => {
-    if (nome.length <= 2) return null;
-    return medicamentosQuery.find(
-      (m: any) => m.nome.toLowerCase() === nome.toLowerCase().trim() && m.status !== "descontinuado"
-    ) || null;
-  }, [nome, medicamentosQuery]);
-
-  // 2. Preencher cor e pessoa padrão
   useEffect(() => {
-    if (persons.length > 0 && !personId) {
-      setPersonId(persons[0].id!);
-    }
+    if (persons.length > 0 && !personId) setPersonId(persons[0].id!);
   }, [persons, personId]);
 
-  // Assistente de Horários Automático (Smart Dosage)
+  // Autocomplete Lógica
+  const suggestions = useMemo(() => {
+    if (nome.length < 2 || !isTypingName) return [];
+    return medicamentosQuery.filter((m: any) => 
+      m.nome.toLowerCase().includes(nome.toLowerCase()) && 
+      m.status !== "descontinuado"
+    ).slice(0, 4);
+  }, [nome, medicamentosQuery, isTypingName]);
+
+  const handleSuggestionClick = (med: any) => {
+    trigger("vibrate");
+    setNome(med.nome);
+    setIsTypingName(false);
+    setSelectedDuplicate(med);
+    setShowDuplicateActionModal(true);
+  };
+
+  // Smart Dosage Automático
   useEffect(() => {
     if (tipoUso === "continuo" && vezesAoDia && primeiroHorario) {
       const novosHorarios = sugerirHorarios(primeiroHorario, Number(vezesAoDia));
       setHorarios(novosHorarios.length > 0 ? novosHorarios : [primeiroHorario]);
     } else if (tipoUso !== "continuo") {
-      setHorarios([]);
+      setHorarios([]); 
     }
   }, [vezesAoDia, primeiroHorario, tipoUso]);
-
-  // 3. Atualizar Unidade por dose ao trocar formato
-  const handleFormatoChange = (novoFormato: string) => {
-    trigger("vibrate");
-    setFormato(novoFormato);
-    if (novoFormato === "partido") setEstoqueUnidadePorDose("0.5");
-    else if (novoFormato !== "gota") setEstoqueUnidadePorDose("1");
-    if (novoFormato !== "gota") setEstoqueGotasCalculado(0);
-  };
 
   const toggleCor = (hex: string) => {
     trigger("vibrate");
@@ -191,35 +186,20 @@ export default function NovoMedicamentoPage() {
     });
   };
 
-  // 4. Tratamento Completo de Upload
+  const handleFormatoChange = (novoFormato: string) => {
+    trigger("vibrate");
+    setFormato(novoFormato);
+    if (novoFormato === "partido") setEstoqueUnidadePorDose("0.5");
+    else if (novoFormato !== "gota") setEstoqueUnidadePorDose("1");
+    if (novoFormato !== "gota") setEstoqueGotasCalculado(0);
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       trigger("vibrate");
       setLocalFile(file);
-      setAttachment({
-        id: crypto.randomUUID(),
-        url: URL.createObjectURL(file),
-        name: file.name,
-        type: file.type.startsWith("image") ? "image" : "pdf",
-        uploaded_at: new Date().toISOString(),
-      });
-    }
-    e.target.value = "";
-  };
-
-  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      trigger("vibrate");
-      setLocalFile(file);
-      setAttachment({
-        id: crypto.randomUUID(),
-        url: URL.createObjectURL(file),
-        name: `receita_${Date.now()}.jpg`,
-        type: "image",
-        uploaded_at: new Date().toISOString(),
-      });
+      setAttachment({ id: crypto.randomUUID(), url: URL.createObjectURL(file), name: file.name, type: file.type.startsWith("image") ? "image" : "pdf", uploaded_at: new Date().toISOString() });
     }
     e.target.value = "";
   };
@@ -231,7 +211,6 @@ export default function NovoMedicamentoPage() {
     trigger("vibrate");
   };
 
-  // 5. Cálculo de Datas Automáticas
   const handleDataReceitaBlur = () => {
     const isoData = brParaIso(dataReceitaTexto);
     if (!isoData) return;
@@ -242,20 +221,12 @@ export default function NovoMedicamentoPage() {
     }
   };
 
-  const isReceitaVencida = () => {
-    const isoReceita = brParaIso(dataReceitaTexto);
-    if (!isoReceita) return false;
-    const expDate = new Date(suggestRenewalDate(isoReceita, tipoReceita));
-    return expDate < new Date();
-  };
-
   const triggerShake = (fieldNames: string[]) => {
     trigger("error");
     setShakeFields(fieldNames);
     setTimeout(() => setShakeFields([]), 600);
   };
 
-  // ✅ Validação por etapa com verificação de data de renovação
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     const shakeList: string[] = [];
@@ -265,22 +236,24 @@ export default function NovoMedicamentoPage() {
       if (!nome.trim()) { newErrors.nome = "Obrigatório"; shakeList.push("nome"); }
       if (!dosagem.trim()) { newErrors.dosagem = "Obrigatório"; shakeList.push("dosagem"); }
       if (tipoUso === 'continuo' && (!vezesAoDia || Number(vezesAoDia) <= 0)) { newErrors.vezesAoDia = "Obrigatório"; shakeList.push("vezesAoDia"); }
-    }
-    if (step === 2) {
-      if (!farmaciaId && !farmaciaNome) { newErrors.farmacia = "Obrigatório informar onde comprou"; shakeList.push("farmacia"); }
+      
+      const exactDuplicate = medicamentosQuery.find((m: any) => 
+         m.nome.toLowerCase() === nome.toLowerCase().trim() && 
+         m.dosagem.toLowerCase() === dosagem.toLowerCase().trim() && 
+         m.person_id === personId && 
+         m.status !== "descontinuado"
+      );
+      if (exactDuplicate) {
+         newErrors.nome = "Remédio exato já cadastrado";
+         shakeList.push("nome");
+         trigger("error");
+      }
     }
     if (step === 3) {
       if (dataReceitaTexto && dataReceitaTexto.length < 10) { newErrors.dataReceitaTexto = "Data inválida"; shakeList.push("dataReceitaTexto"); }
-      // ✅ Validação da data de renovação
-      if (!proximaRenovacaoTexto || proximaRenovacaoTexto.length < 10) {
-        newErrors.proximaRenovacaoTexto = "Data de renovação inválida";
-        shakeList.push("proximaRenovacaoTexto");
-      }
+      if (proximaRenovacaoTexto && proximaRenovacaoTexto.length < 10) { newErrors.proximaRenovacaoTexto = "Data inválida"; shakeList.push("proximaRenovacaoTexto"); }
       if (estoqueAtivo) {
-        if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) {
-          newErrors.estoqueQuantidade = "Faltou quantidade";
-          shakeList.push("estoqueQuantidade");
-        }
+          if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) { newErrors.estoqueQuantidade = "Faltou quantidade"; shakeList.push("estoqueQuantidade"); }
       }
     }
 
@@ -303,17 +276,19 @@ export default function NovoMedicamentoPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // --- RENDERS E ESTILOS ---
-  const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || Pill;
-  const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido");
-  const gradientId = `split-novo`;
+  const toggleEstoque = () => {
+    trigger("vibrate");
+    if (estoqueAtivo && (Number(estoqueQuantidade) > 0 || horarios.filter(Boolean).length > 0)) {
+      setShowDesativarEstoqueModal(true);
+      return;
+    }
+    setEstoqueAtivo(!estoqueAtivo);
+  };
 
-  // ✅ Função de salvamento extraída para ser chamada pelo modal
-  const salvarMedicamento = async () => {
-    setShowConfirmModal(false);
+  const handleSubmit = async () => {
+    if (!validateStep(3)) return;
     setLoading(true);
     setUploadProgress(0);
-
     try {
       const dataReceitaISO = brParaIso(dataReceitaTexto);
       const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
@@ -342,29 +317,16 @@ export default function NovoMedicamentoPage() {
       }
 
       const medicamentoId = await addMedicamento({
-        document_id: docId || undefined,
-        person_id: personId,
-        nome: nome.trim(),
-        dosagem: dosagem.trim(),
-        formato,
-        cores,
-        tipo_uso: tipoUso, // ✅ Envia o tipo de uso para o banco
-        medico: selectedMedico?.nome || medicoNome.trim(),
-        medico_id: medicoId || undefined,
+        document_id: docId || undefined, person_id: personId, nome: nome.trim(), dosagem: dosagem.trim(), formato, cores,
+        tipo_uso: tipoUso,
+        medico: medicoNome.trim() || undefined, medico_id: medicoId || undefined, 
         estabelecimento_id: estabelecimentoId || undefined,
-        farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
-        farmacia_id: farmaciaId || undefined,
+        farmacia: farmaciaNome.trim() || undefined, farmacia_id: farmaciaId || undefined,
         preco: preco ? Number(preco.replace(',', '.')) : undefined,
-        data_receita: dataReceitaISO,
-        proxima_renovacao: proximaRenovacaoISO,
-        observacoes: observacoes.trim() || undefined,
-        tipo_receita: tipoReceita,
-        tratamento_ids: tratamentosSelecionados,
-        status: "ativo",
-        estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
-        estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-        estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
-        estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
+        data_receita: dataReceitaISO, proxima_renovacao: proximaRenovacaoISO, observacoes: observacoes.trim() || undefined,
+        tipo_receita: tipoReceita, tratamento_ids: tratamentosSelecionados, status: "ativo",
+        estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined, estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
+        estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined, estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
         estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
       } as any);
 
@@ -373,61 +335,34 @@ export default function NovoMedicamentoPage() {
         if (granted) await scheduleDoseNotifications({ id: medicamentoId, nome: nome.trim(), dosagem: dosagem.trim(), estoque_horarios: horariosFiltrados } as any);
       }
 
-      showSuccess("Medicamento cadastrado com sucesso!");
       trigger("success");
       router.replace("/saude");
-    } catch (error) {
-      console.error("Erro ao salvar medicamento:", error);
-      showError("Erro ao salvar medicamento. Tente novamente.");
-      trigger("error");
-    } finally {
-      setLoading(false);
-      setUploadProgress(0);
-    }
+    } catch (error) { trigger("error"); } finally { setLoading(false); setUploadProgress(0); }
   };
 
-  // ✅ Novo handleSubmit que exibe o modal de confirmação
-  const handleSubmit = async () => {
-    if (!validateStep(3)) return;
-    
-    if (!estoqueAtivo) {
-      setShowConfirmModal(true);
-      return;
-    }
-    await salvarMedicamento();
-  };
+  const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || Pill;
+  const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido");
+  const gradientId = `split-novo`;
+  const getPersonName = (pId: string) => persons.find((p: any) => p.id === pId)?.name || "Alguém";
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={() => {}} />
 
-        <svg width="0" height="0" className="absolute">
-          <defs>
-            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="50%" stopColor={cores[0] || "#9CA3AF"} />
-              <stop offset="50%" stopColor={cores.length === 2 ? cores[1] : (cores[0] || "#9CA3AF")} />
-            </linearGradient>
-          </defs>
-        </svg>
+        <svg width="0" height="0" className="absolute"><defs><linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="50%" stopColor={cores[0] || "#9CA3AF"} /><stop offset="50%" stopColor={cores.length === 2 ? cores[1] : (cores[0] || "#9CA3AF")} /></linearGradient></defs></svg>
 
-        {/* HEADER COM PROGRESS BAR */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pt-4 pb-3 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95">
-                <X size={18} className="text-ink-primary" />
-              </button>
+              <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"><X size={18} className="text-ink-primary" /></button>
               <h1 className="font-display text-lg font-semibold text-ink-primary">Novo Cadastro</h1>
             </div>
             <span className="text-xs font-bold text-ice bg-ice/10 px-3 py-1 rounded-full">Etapa {currentStep} de {totalSteps}</span>
           </div>
-          
           <div className="flex gap-2 w-full h-1.5 rounded-full overflow-hidden bg-surface-raised">
-            {[1, 2, 3].map((step) => (
-              <div key={step} className={`h-full flex-1 transition-colors duration-300 ${step <= currentStep ? 'bg-ice' : 'bg-surface-border/30'}`} />
-            ))}
+            {[1, 2, 3].map((step) => ( <div key={step} className={`h-full flex-1 transition-colors duration-300 ${step <= currentStep ? 'bg-ice' : 'bg-surface-border/30'}`} /> ))}
           </div>
         </header>
 
@@ -448,21 +383,42 @@ export default function NovoMedicamentoPage() {
                 </div>
 
                 <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-                  <div className={`transition-all ${shakeFields.includes('nome') ? 'animate-shake' : ''}`}>
-                    <Input label="Medicamento" placeholder="Ex: Sertralina" value={nome} onChange={(e) => setNome(e.target.value)} error={errors.nome} />
+                  {/* AUTOCOMPLETE HÍBRIDO COM FEEDBACK VISUAL */}
+                  <div className={`relative transition-all ${shakeFields.includes('nome') ? 'animate-shake' : ''}`}>
+                    <Input 
+                      label="Medicamento" 
+                      placeholder="Ex: Sertralina" 
+                      value={nome} 
+                      onChange={(e) => { setNome(e.target.value); setIsTypingName(true); setIsRecognized(false); }} 
+                      onFocus={() => setIsTypingName(true)}
+                      error={errors.nome} 
+                    />
+                    
+                    <AnimatePresence>
+                      {isRecognized && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+                          <p className="text-[10px] text-emerald-400 mt-1.5 flex items-center gap-1 font-medium ml-1"><Sparkles size={12}/> Reconhecido. Prosseguindo como nova variação.</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    
+                    <AnimatePresence>
+                      {suggestions.length > 0 && isTypingName && (
+                        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} className="absolute z-10 w-full mt-2 rounded-2xl border border-surface-border/60 bg-surface shadow-xl overflow-hidden backdrop-blur-xl">
+                          <div className="p-2 bg-surface-raised/50 border-b border-surface-border/40">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted ml-2">Já Cadastrados</span>
+                          </div>
+                          {suggestions.map((med: any) => (
+                            <button key={med.id} type="button" onClick={() => handleSuggestionClick(med)} className="flex items-center gap-3 w-full p-3 text-left border-b border-surface-border/40 last:border-0 hover:bg-surface-raised transition-colors">
+                              <div className="h-8 w-8 rounded-full bg-ice/10 flex items-center justify-center text-ice shrink-0"><Pill size={14}/></div>
+                              <div><p className="font-semibold text-ink-primary text-sm leading-tight">{med.nome}</p><p className="text-xs text-ink-muted mt-0.5">{med.dosagem} • {getPersonName(med.person_id)}</p></div>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                   
-                  <AnimatePresence>
-                    {medicamentoDuplicado && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-                        <div className="flex items-center justify-between rounded-xl bg-amber-400/10 border border-amber-400/30 p-3 mt-1">
-                          <div className="flex items-center gap-2 text-amber-400 text-xs font-medium"><AlertTriangle size={14} /> Você já cadastrou este remédio.</div>
-                          <button onClick={() => router.push(`/saude/medicamentos/editar?id=${medicamentoDuplicado.id}`)} className="text-[10px] font-bold text-void bg-amber-400 px-2.5 py-1.5 rounded-lg flex items-center gap-1">Editar <ArrowRight size={10}/></button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
                   <div className={`transition-all ${shakeFields.includes('dosagem') ? 'animate-shake' : ''}`}>
                     <Input label={isGotas ? "Dosagem (ex: 20 gotas/ml)" : "Dosagem (ex: 50mg)"} value={dosagem} onChange={(e) => setDosagem(e.target.value)} error={errors.dosagem} />
                   </div>
@@ -487,7 +443,6 @@ export default function NovoMedicamentoPage() {
                       <button type="button" key={hex} onClick={() => toggleCor(hex)} className={`h-8 w-8 rounded-full border-2 transition-transform ${cores.includes(hex) ? "scale-110 border-ice" : "border-transparent"}`} style={{ backgroundColor: hex }} />
                     ))}
                   </div>
-                  
                   <div className="mt-4 flex justify-center">
                     <div className="flex h-16 w-24 items-center justify-center rounded-2xl border border-surface-border bg-void/50 shadow-inner">
                       <SelectedFormatIcon size={32} fill={hasTwoColors ? `url(#${gradientId})` : (cores[0] || "#9CA3AF")} stroke="none" />
@@ -495,12 +450,11 @@ export default function NovoMedicamentoPage() {
                   </div>
                 </div>
 
-                {/* SMART DOSAGE: Uso Contínuo vs SOS */}
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
                   <div className="mb-4 flex items-center gap-2"><Clock size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Posologia & Uso</h3></div>
                   <div className="grid grid-cols-2 gap-3 mb-5">
                     <button type="button" onClick={() => { trigger("vibrate"); setTipoUso("continuo"); }} className={`rounded-xl border py-3 text-sm font-bold transition-all ${tipoUso === "continuo" ? "border-ice bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>Contínuo (Diário)</button>
-                    <button type="button" onClick={() => { trigger("vibrate"); setTipoUso("esporadico"); }} className={`rounded-xl border py-3 text-sm font-bold transition-all ${tipoUso === "esporadico" ? "border-amber-400 bg-amber-400/10 text-amber-400" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>Uso Esporádico / SOS</button>
+                    <button type="button" onClick={() => { trigger("vibrate"); setTipoUso("esporadico"); }} className={`rounded-xl border py-3 text-sm font-bold transition-all ${tipoUso === "esporadico" ? "border-amber-400 bg-amber-400/10 text-amber-400" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>Esporádico / SOS</button>
                   </div>
 
                   {tipoUso === "continuo" && (
@@ -518,7 +472,6 @@ export default function NovoMedicamentoPage() {
                             <span key={i} className="bg-void border border-surface-border px-3 py-1.5 rounded-lg text-sm font-mono text-ice font-bold">{h}</span>
                           ))}
                         </div>
-                        <p className="text-[10px] text-ink-faint mt-2">Nós te lembraremos automaticamente nesses horários.</p>
                       </div>
                     </div>
                   )}
@@ -526,21 +479,18 @@ export default function NovoMedicamentoPage() {
                      <p className="text-xs text-ink-muted text-center p-3 bg-surface-raised rounded-xl">O app não emitirá alarmes diários, mas você poderá registrar doses avulsas para abater do estoque quando usar.</p>
                   )}
                 </div>
-
               </motion.div>
             )}
 
             {/* ================= ETAPA 2 ================= */}
             {currentStep === 2 && (
               <motion.div key="step2" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
-                
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
                   <div className="mb-2 flex items-center gap-2"><Store size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Aquisição</h3></div>
                   <div className={`transition-all ${shakeFields.includes('farmacia') ? 'animate-shake' : ''}`}>
                     <label className="mb-1.5 block text-sm font-medium text-ink-primary">Em qual farmácia comprou? <span className="text-coral">*</span></label>
                     <button type="button" onClick={() => setIsPharmacyModalOpen(true)} className={`flex w-full items-center justify-between rounded-2xl border bg-surface-raised px-4 py-3.5 text-left transition-all ${errors.farmacia ? "border-coral/50" : "border-surface-border/50 hover:border-ice/50"}`}>
-                      <span className="truncate font-medium text-ink-primary">{farmaciaNome || "Selecionar farmácia..."}</span>
-                      <span className="text-xs font-bold text-ice">Selecionar</span>
+                      <span className="truncate font-medium text-ink-primary">{farmaciaNome || "Selecionar farmácia..."}</span><span className="text-xs font-bold text-ice">Selecionar</span>
                     </button>
                     {errors.farmacia && <p className="text-coral text-xs mt-1">{errors.farmacia}</p>}
                   </div>
@@ -551,41 +501,34 @@ export default function NovoMedicamentoPage() {
 
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
                   <div className="mb-2 flex items-center gap-2"><Stethoscope size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Rede de Apoio (Opcional)</h3></div>
-                  
                   <div>
                     <label className="mb-1.5 block text-xs font-medium text-ink-muted">Médico Prescritor</label>
                     <button type="button" onClick={() => setIsDoctorModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left">
-                      <span className="block truncate font-medium text-ink-primary">{medicoNome || "Vincular médico..."}</span>
-                      <span className="text-xs font-bold text-ice">Alterar</span>
+                      <span className="block truncate font-medium text-ink-primary">{medicoNome || "Vincular médico..."}</span><span className="text-xs font-bold text-ice">Alterar</span>
                     </button>
                   </div>
-                  
                   <div>
                     <label className="mb-1.5 block text-xs font-medium text-ink-muted">Hospital / Clínica</label>
                     <button type="button" onClick={() => setIsEstabelecimentoModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left">
-                      <span className="truncate font-medium text-ink-primary">{estabelecimentoNome || "Vincular local..."}</span>
-                      <span className="text-xs font-bold text-ice">Alterar</span>
+                      <span className="truncate font-medium text-ink-primary">{estabelecimentoNome || "Vincular local..."}</span><span className="text-xs font-bold text-ice">Alterar</span>
                     </button>
                   </div>
                 </div>
-
               </motion.div>
             )}
 
             {/* ================= ETAPA 3 ================= */}
             {currentStep === 3 && (
               <motion.div key="step3" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
-                
                 <CalculadoraGotas isAtivo={isGotas} onToggle={(ativo) => { setFormato(ativo ? "gota" : "comprimido"); }} mlTotal={mlTotal} setMlTotal={setMlTotal} gotasPorMl={gotasPorMl} setGotasPorMl={setGotasPorMl} onEstoqueCalculado={(v) => { setEstoqueGotasCalculado(v); if(estoqueAtivo) setEstoqueQuantidade(String(v)); }} />
 
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2"><Package size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Controle de Estoque</h3></div>
-                    <button onClick={() => setEstoqueAtivo(!estoqueAtivo)} className={`h-6 w-11 rounded-full p-0.5 transition-colors ${estoqueAtivo ? "bg-ice" : "bg-surface-raised border border-surface-border"}`}>
+                    <button onClick={toggleEstoque} className={`h-6 w-11 rounded-full p-0.5 transition-colors ${estoqueAtivo ? "bg-ice" : "bg-surface-raised border border-surface-border"}`}>
                       <div className={`h-5 w-5 rounded-full bg-void shadow-sm transition-transform ${estoqueAtivo ? "translate-x-5" : ""}`} />
                     </button>
                   </div>
-                  
                   <AnimatePresence>
                   {estoqueAtivo && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
@@ -595,7 +538,7 @@ export default function NovoMedicamentoPage() {
                         </div>
                         <Input label="Dose gasta (ex: 1)" type="number" inputMode="decimal" step="0.5" value={estoqueUnidadePorDose} onChange={(e) => setEstoqueUnidadePorDose(e.target.value)} />
                       </div>
-                      <Input label="Data da Compra/Contagem" value={estoqueDataReferenciaTexto} onChange={(e) => setEstoqueDataReferenciaTexto(mascaraData(e.target.value))} maxLength={10} inputMode="numeric" />
+                      <Input label="Data da Compra" value={estoqueDataReferenciaTexto} onChange={(e) => setEstoqueDataReferenciaTexto(mascaraData(e.target.value))} maxLength={10} inputMode="numeric" />
                     </motion.div>
                   )}
                   </AnimatePresence>
@@ -603,28 +546,16 @@ export default function NovoMedicamentoPage() {
 
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
                   <div className="mb-4 flex items-center gap-2"><FileText size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Receita & Vínculos</h3></div>
-                  
                   <SeletorReceita selected={tipoReceita} onChange={setTipoReceita} />
                   <div className="grid grid-cols-2 gap-3 mt-4 mb-5">
                     <Input label="Data da receita" placeholder="DD/MM/AAAA" value={dataReceitaTexto} onChange={(e) => setDataReceitaTexto(mascaraData(e.target.value))} onBlur={handleDataReceitaBlur} maxLength={10} inputMode="numeric" />
                     <Input label="Vencimento" placeholder="DD/MM/AAAA" value={proximaRenovacaoTexto} onChange={(e) => setProximaRenovacaoTexto(mascaraData(e.target.value))} maxLength={10} inputMode="numeric" />
                   </div>
-                  
-                  <AnimatePresence>
-                    {isReceitaVencida() && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-                        <div className="mt-3 flex items-start gap-2 rounded-xl bg-coral/10 border border-coral/30 p-3 text-coral">
-                          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                          <p className="text-[11px] font-medium leading-tight">Receita antiga/vencida. O cadastro será salvo apenas para histórico de tratamento.</p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
                   {!attachment ? (
                     <div className="grid grid-cols-2 gap-3 mt-4">
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"><Upload size={18} /><span className="text-xs font-semibold">Anexar Arquivo</span></button>
-                      <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"><Camera size={18} /><span className="text-xs font-semibold">Tirar Foto</span></button>
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"><Upload size={18} /><span className="text-xs font-semibold">Anexar</span></button>
+                      <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"><Camera size={18} /><span className="text-xs font-semibold">Foto</span></button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised p-3 mt-4">
@@ -633,7 +564,6 @@ export default function NovoMedicamentoPage() {
                       <button type="button" onClick={removeAttachment} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-coral/10 text-coral"><X size={16} /></button>
                     </div>
                   )}
-                  {uploadProgress > 0 && <div className="mt-3 h-1.5 rounded-full bg-surface-raised"><div className="h-full rounded-full bg-ice transition-all" style={{ width: `${uploadProgress}%` }} /></div>}
                   
                   <div className="mt-6 pt-5 border-t border-surface-border/40">
                     <button type="button" onClick={() => setIsTratamentoModalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-surface-border bg-surface-raised py-3 text-sm font-bold text-ink-primary transition-colors hover:border-ice/50">
@@ -645,14 +575,13 @@ export default function NovoMedicamentoPage() {
                     <TextArea label="Anotações" placeholder="Posologia complexa, dicas..." value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
                   </div>
                 </div>
-
               </motion.div>
             )}
 
           </AnimatePresence>
         </section>
 
-        {/* ================= FOOTER FLUTUANTE DE NAVEGAÇÃO ================= */}
+        {/* ================= FOOTER ================= */}
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-surface-border/40 bg-void/90 p-5 backdrop-blur-xl pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div className="flex gap-3 max-w-2xl mx-auto">
             {currentStep > 1 && (
@@ -660,7 +589,6 @@ export default function NovoMedicamentoPage() {
                 <ChevronLeft size={20} />
               </Button>
             )}
-            
             {currentStep < totalSteps ? (
               <Button type="button" onClick={nextStep} className="flex-1 flex items-center justify-center gap-2 shadow-lg shadow-ice/20 h-14 rounded-2xl text-base font-bold">
                 Avançar <ChevronRight size={20} />
@@ -674,89 +602,58 @@ export default function NovoMedicamentoPage() {
         </div>
 
         {/* ================= MODAIS ================= */}
-        
-        <SelectionModal 
-          isOpen={isPharmacyModalOpen} 
-          onClose={() => setIsPharmacyModalOpen(false)} 
-          title="Selecionar Farmácia" 
-          items={farmacias} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          enableQuickCreate
-          onQuickCreate={async (name) => {
-            const id = await db.table("farmacias").add({ user_id: user?.id, nome: name, created_at: new Date().toISOString(), synced: false });
-            return { id, nome: name };
-          }}
-          onSelect={(item: any) => { setFarmaciaId(item.id); setFarmaciaNome(item.nome); setIsPharmacyModalOpen(false); }} 
-          renderItem={(item: any) => (
-            <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0"><Store size={18} /></div><div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div></div>
-          )}
-        />
-
-        <SelectionModal 
-          isOpen={isDoctorModalOpen} 
-          onClose={() => setIsDoctorModalOpen(false)} 
-          title="Médico Prescritor" 
-          items={medicos} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          enableQuickCreate
-          onQuickCreate={async (name) => {
-            const id = await db.table("medicos").add({ user_id: user?.id, nome: name, created_at: new Date().toISOString(), synced: false });
-            return { id, nome: name };
-          }}
-          onSelect={(item: any) => { setMedicoId(item.id); setMedicoNome(item.nome); setIsDoctorModalOpen(false); }} 
-          renderItem={(item: any) => (
-            <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={18} /></div><div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div></div>
-          )}
-        />
-
-        <SelectionModal 
-          isOpen={isEstabelecimentoModalOpen} 
-          onClose={() => setIsEstabelecimentoModalOpen(false)} 
-          title="Selecionar Local" 
-          activeTab={activeEstabelecimentoTab}
-          onTabChange={setActiveEstabelecimentoTab}
-          tabs={[
-            { id: 'hospital', label: 'Hospitais', activeColor: 'bg-coral text-void border-transparent' },
-            { id: 'clinica', label: 'Postos/Clínicas', activeColor: 'bg-emerald-400 text-void border-transparent' }
-          ]}
-          items={hospitaisLocais.filter(h => activeEstabelecimentoTab === 'hospital' ? h.tipo === 'hospital' : h.tipo !== 'hospital')} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          enableQuickCreate
-          onQuickCreate={async (name, tabId) => {
-            const id = await db.table("hospitais").add({ user_id: user?.id, nome: name, tipo: tabId, created_at: new Date().toISOString(), synced: false });
-            return { id, nome: name, tipo: tabId };
-          }}
-          onSelect={(item: any) => { setEstabelecimentoId(item.id); setEstabelecimentoNome(item.nome); setIsEstabelecimentoModalOpen(false); }} 
-          renderItem={(item: any) => (
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${item.tipo === 'hospital' ? 'bg-coral/10 text-coral' : 'bg-emerald-400/10 text-emerald-400'}`}>
-                <Building2 size={18} />
-              </div>
-              <div className="text-left">
-                <p className="font-semibold text-ink-primary">{item.nome}</p>
-                <p className="text-xs text-ink-muted uppercase">{item.tipo === 'hospital' ? 'Hospital' : 'Clínica/Posto'}</p>
-              </div>
-            </div>
-          )}
-        />
-        
-        <SeletorTratamentoModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} selectedIds={tratamentosSelecionados} onChange={setTratamentosSelecionados} personId={personId} />
-
-        {/* ✅ MODAL DE CONFIRMAÇÃO PARA SALVAR SEM ESTOQUE */}
         <ConfirmationModal
-          isOpen={showConfirmModal}
-          onClose={() => setShowConfirmModal(false)}
-          onConfirm={salvarMedicamento}
-          title="Salvar sem estoque?"
-          message="Você não preencheu o controle de estoque. Deseja salvar o medicamento apenas como histórico de receita?"
-          confirmLabel="Salvar mesmo assim"
-          cancelLabel="Voltar e preencher"
-          type="warning"
+          isOpen={showDesativarEstoqueModal}
+          onClose={() => setShowDesativarEstoqueModal(false)}
+          onConfirm={() => { setEstoqueAtivo(false); setShowDesativarEstoqueModal(false); }}
+          title="Desativar controle de estoque?"
+          message="Você está prestes a desativar o controle de estoque para este medicamento. Os dados atuais serão perdidos."
+          confirmLabel="Desativar" cancelLabel="Cancelar" type="warning"
         />
 
+        {/* Modal Inteligente de Ação por Duplicidade */}
+        <AnimatePresence>
+          {showDuplicateActionModal && selectedDuplicate && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-4 backdrop-blur-md" onClick={() => setShowDuplicateActionModal(false)}>
+              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-surface p-6 shadow-vault">
+                <div className="flex justify-between items-start mb-5">
+                   <div>
+                     <div className="flex items-center gap-2 text-amber-400 mb-1"><AlertTriangle size={16} /><span className="text-xs font-bold uppercase tracking-widest">Aviso Inteligente</span></div>
+                     <h2 className="text-xl font-display font-bold text-ink-primary">Você já possui {selectedDuplicate.nome}</h2>
+                     <p className="text-sm text-ink-muted mt-1">Este medicamento ({selectedDuplicate.dosagem}) já está vinculado a {getPersonName(selectedDuplicate.person_id)}. O que deseja fazer?</p>
+                   </div>
+                   <button onClick={() => setShowDuplicateActionModal(false)} className="h-8 w-8 bg-surface-raised rounded-full flex items-center justify-center text-ink-muted"><X size={16}/></button>
+                </div>
+                
+                <div className="space-y-3">
+                  <button onClick={() => router.push(`/saude/medicamentos/editar?id=${selectedDuplicate.id}&intent=evolucao`)} className="w-full flex items-center justify-between p-4 rounded-2xl bg-ice/10 border border-ice/20 active:scale-95 transition-all">
+                     <div className="flex items-center gap-3 text-left">
+                       <div className="h-10 w-10 bg-ice/20 text-ice rounded-xl flex items-center justify-center"><TrendingUp size={20}/></div>
+                       <div><p className="font-bold text-ice">Aumento/Redução de Dose</p><p className="text-xs text-ink-muted">Manter histórico e alterar dosagem</p></div>
+                     </div><ChevronRight size={18} className="text-ice opacity-50"/>
+                  </button>
+                  <button onClick={() => router.push(`/saude/medicamentos/editar?id=${selectedDuplicate.id}&intent=compra`)} className="w-full flex items-center justify-between p-4 rounded-2xl bg-emerald-400/10 border border-emerald-400/20 active:scale-95 transition-all">
+                     <div className="flex items-center gap-3 text-left">
+                       <div className="h-10 w-10 bg-emerald-400/20 text-emerald-400 rounded-xl flex items-center justify-center"><Package size={20}/></div>
+                       <div><p className="font-bold text-emerald-400">Nova Compra / Estoque</p><p className="text-xs text-ink-muted">Atualizar caixas e renovação</p></div>
+                     </div><ChevronRight size={18} className="text-emerald-400 opacity-50"/>
+                  </button>
+                  <button onClick={() => { setShowDuplicateActionModal(false); setIsRecognized(true); }} className="w-full flex items-center justify-between p-4 rounded-2xl bg-surface-raised border border-surface-border active:scale-95 transition-all">
+                     <div className="flex items-center gap-3 text-left">
+                       <div className="h-10 w-10 bg-void border border-surface-border text-ink-muted rounded-xl flex items-center justify-center"><Plus size={20}/></div>
+                       <div><p className="font-bold text-ink-primary">Continuar novo cadastro</p><p className="text-xs text-ink-muted">Cadastrar variação separada</p></div>
+                     </div><ChevronRight size={18} className="text-ink-muted opacity-50"/>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <SelectionModal isOpen={isPharmacyModalOpen} onClose={() => setIsPharmacyModalOpen(false)} title="Selecionar Farmácia" items={farmacias} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} enableQuickCreate onQuickCreate={async (name) => { const id = await db.table("farmacias").add({ user_id: user?.id, nome: name, created_at: new Date().toISOString(), synced: false }); return { id, nome: name }; }} onSelect={(item: any) => { setFarmaciaId(item.id); setFarmaciaNome(item.nome); setIsPharmacyModalOpen(false); }} renderItem={(item: any) => ( <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0"><Store size={18} /></div><div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div></div> )} />
+        <SelectionModal isOpen={isDoctorModalOpen} onClose={() => setIsDoctorModalOpen(false)} title="Médico Prescritor" items={medicos} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} enableQuickCreate onQuickCreate={async (name) => { const id = await db.table("medicos").add({ user_id: user?.id, nome: name, created_at: new Date().toISOString(), synced: false }); return { id, nome: name }; }} onSelect={(item: any) => { setMedicoId(item.id); setMedicoNome(item.nome); setIsDoctorModalOpen(false); }} renderItem={(item: any) => ( <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={18} /></div><div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div></div> )} />
+        <SelectionModal isOpen={isEstabelecimentoModalOpen} onClose={() => setIsEstabelecimentoModalOpen(false)} title="Selecionar Local" activeTab={activeEstabelecimentoTab} onTabChange={setActiveEstabelecimentoTab} tabs={[ { id: 'hospital', label: 'Hospitais', activeColor: 'bg-coral text-void border-transparent' }, { id: 'clinica', label: 'Postos/Clínicas', activeColor: 'bg-emerald-400 text-void border-transparent' } ]} items={hospitaisLocais.filter(h => activeEstabelecimentoTab === 'hospital' ? h.tipo === 'hospital' : h.tipo !== 'hospital')} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} enableQuickCreate onQuickCreate={async (name, tabId) => { const id = await db.table("hospitais").add({ user_id: user?.id, nome: name, tipo: tabId, created_at: new Date().toISOString(), synced: false }); return { id, nome: name, tipo: tabId }; }} onSelect={(item: any) => { setEstabelecimentoId(item.id); setEstabelecimentoNome(item.nome); setIsEstabelecimentoModalOpen(false); }} renderItem={(item: any) => ( <div className="flex items-center gap-3"> <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${item.tipo === 'hospital' ? 'bg-coral/10 text-coral' : 'bg-emerald-400/10 text-emerald-400'}`}> <Building2 size={18} /> </div> <div className="text-left"> <p className="font-semibold text-ink-primary">{item.nome}</p> <p className="text-xs text-ink-muted uppercase">{item.tipo === 'hospital' ? 'Hospital' : 'Clínica/Posto'}</p> </div> </div> )} />
+        <SeletorTratamentoModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} selectedIds={tratamentosSelecionados} onChange={setTratamentosSelecionados} personId={personId} />
       </main>
     </PageTransition>
   );
