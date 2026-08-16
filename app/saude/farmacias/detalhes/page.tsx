@@ -34,6 +34,7 @@ function DetalhesFarmaciaContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // ✅ CORRIGIDO: Usa db.renovacoes (já estava correto)
   const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
   useEffect(() => {
@@ -51,12 +52,13 @@ function DetalhesFarmaciaContent() {
     });
   }, [id, getFarmacia, router]);
 
-  // Cruzamento analítico de medicamentos e gastos
+  // ✅ CORRIGIDO: Cruzamento analítico de medicamentos e gastos
   const analiseFarmacia = useMemo(() => {
     if (!farmacia || !medicamentos) return { medicamentosVinculados: [], totalGasto: 0 };
 
+    // ✅ Usa apenas farmacia_id (fallback por nome removido)
     const medicamentosVinculados = medicamentos.filter(
-      (m: any) => m.farmacia_id === farmacia.id || m.farmacia?.toLowerCase() === farmacia.nome.toLowerCase()
+      (m: any) => m.farmacia_id === farmacia.id
     );
 
     const medIds = new Set(medicamentosVinculados.map((m: any) => m.id));
