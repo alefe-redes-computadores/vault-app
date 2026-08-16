@@ -139,12 +139,12 @@ export default function SaudePage() {
   const { doseLogs, marcarComoTomada: marcarDose } = useDoseLogs(hoje);
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
-  const renovacoes = useLiveQuery(() => db.table("renovacoes").toArray(), []) || [];
+  const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
+  const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
-  const consultasHoje = useLiveQuery(() => db.table("consultas").where("data").equals(hoje).toArray(), [hoje]) || [];
-  const cirurgiasHoje = useLiveQuery(() => db.table("cirurgias").where("data").equals(hoje).toArray(), [hoje]) || [];
-  const examesHoje = useLiveQuery(() => db.table("exames").where("data").equals(hoje).toArray(), [hoje]) || [];
+  const consultasHoje = useLiveQuery(() => db.consultas.where("data").equals(hoje).toArray(), [hoje]) || [];
+  const cirurgiasHoje = useLiveQuery(() => db.cirurgias.where("data").equals(hoje).toArray(), [hoje]) || [];
+  const examesHoje = useLiveQuery(() => db.exames.where("data").equals(hoje).toArray(), [hoje]) || [];
 
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
   
@@ -443,7 +443,7 @@ export default function SaudePage() {
               <div className="space-y-2.5">
                 {tratamentos.map((tratamento) => {
                   const IconComponent = getTratamentoIcon(tratamento.nome);
-                  const cor = (tratamento as any).cor || "#8B5CF6"; 
+                  const cor = tratamento.cor || "#8B5CF6"; 
                   
                   return (
                     <button
