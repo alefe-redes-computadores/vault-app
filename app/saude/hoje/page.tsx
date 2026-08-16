@@ -50,9 +50,10 @@ export default function HojePage() {
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
 
-  const consultas = useLiveQuery(() => db.table("consultas").where("data").equals(hoje).toArray(), [hoje]) || [];
-  const cirurgias = useLiveQuery(() => db.table("cirurgias").where("data").equals(hoje).toArray(), [hoje]) || [];
-  const examesDoDia = useLiveQuery(() => db.table("exames").where("data").equals(hoje).toArray(), [hoje]) || [];
+  // ✅ CORREÇÃO APLICADA: Substituição de db.table(...) por db.[entidade]
+  const consultas = useLiveQuery(() => db.consultas.where("data").equals(hoje).toArray(), [hoje]) || [];
+  const cirurgias = useLiveQuery(() => db.cirurgias.where("data").equals(hoje).toArray(), [hoje]) || [];
+  const examesDoDia = useLiveQuery(() => db.exames.where("data").equals(hoje).toArray(), [hoje]) || [];
 
   const [modalAberto, setModalAberto] = useState(false);
   const [medicamentoSelecionado, setMedicamentoSelecionado] = useState<any>(null);
@@ -70,7 +71,9 @@ export default function HojePage() {
       
       const estoqueInfo = computeEstoqueInfo(med);
       const medicoObj = medicos.find(m => m.id === med.medico_id);
-      const tratamentoObj = med.tratamento_ids?.length ? tratamentos.find(t => t.id === med.tratamento_ids[0]) : undefined;
+      
+      // ✅ CORREÇÃO APLICADA: Fallback seguro para array vazio agradar o compilador do TypeScript
+      const tratamentoObj = tratamentos.find(t => t.id === (med.tratamento_ids || [])[0]);
 
       for (const horario of med.estoque_horarios) {
         if (!horario) continue;
@@ -84,7 +87,8 @@ export default function HojePage() {
           dosagem: med.dosagem,
           horario,
           tomada: !!log?.tomado_em,
-          cor: (med as any).cor || "#8B5CF6",
+          // ✅ CORREÇÃO APLICADA: Tipagem sem "as any", buscando do tratamentoObj primeiro
+          cor: tratamentoObj?.cor || med.cor_principal || "#8B5CF6",
           estoqueRestante: estoqueInfo?.quantidadeRestante ?? 0,
           unidadeMedida: med.estoque_unidade_medida || "unidades",
           unidadePorDose: med.estoque_unidade_por_dose || 1,
@@ -126,7 +130,6 @@ export default function HojePage() {
     trigger(proximaTomada ? "success" : "vibrate");
 
     try {
-      // ✅ CORREÇÃO: Passando apenas os 3 argumentos exigidos pelo hook
       await marcarDose(item.medicamentoId, hoje, item.horario);
 
       const medOriginal = medicamentos?.find(m => m.id === item.medicamentoId);
