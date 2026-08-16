@@ -21,6 +21,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { SelectionModal } from "@/components/SelectionModal";
 import type { Consulta } from "@/lib/types";
+// ✅ NOVO: import do hook
+import { useConsultas } from "@/hooks/useConsultas";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -63,6 +65,9 @@ function EditarConsultaContent() {
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
+  // ✅ NOVO: useConsultas
+  const { getConsulta, updateConsulta } = useConsultas();
+
   const [isLoading, setIsLoading] = useState(true);
   const [medicoId, setMedicoId] = useState("");
   const [hospitalId, setHospitalId] = useState("");
@@ -82,7 +87,9 @@ function EditarConsultaContent() {
       router.push("/saude/consultas");
       return;
     }
-    db.consultas.get(id).then((data) => {
+    const loadConsulta = async () => {
+      // ✅ CORRIGIDO: usa getConsulta do hook
+      const data = await getConsulta(id);
       if (data) {
         setMedicoId(data.medico_id || "");
         setHospitalId(data.hospital_id || "");
@@ -94,8 +101,9 @@ function EditarConsultaContent() {
         router.push("/saude/consultas");
       }
       setIsLoading(false);
-    });
-  }, [id, router]);
+    };
+    loadConsulta();
+  }, [id, router, getConsulta]);
 
   const selectedMedico = medicos.find((m: any) => m.id === medicoId);
   const selectedHospital = hospitais.find((h: any) => h.id === hospitalId);
@@ -113,15 +121,14 @@ function EditarConsultaContent() {
     try {
       const dataISO = parseDateToISO(dataDisplay);
 
-      await db.consultas.update(id, {
+      // ✅ CORRIGIDO: usa updateConsulta do hook
+      await updateConsulta(id, {
         medico_id: medicoId,
         hospital_id: hospitalId || undefined,
         data: dataISO,
         status,
         motivo: motivo.trim() || undefined,
         observacoes: observacoes.trim() || undefined,
-        updated_at: new Date().toISOString(),
-        synced: false,
       });
 
       trigger("success");
