@@ -1,6 +1,4 @@
-// lib/repositories/hospitais.ts
-
-import { db, safeAddHospital, safeUpdateHospital, safeDeleteHospital } from "@/lib/db";
+import { db, safeAddHospital, safeUpdateHospital, safeDeleteHospital, safeUpdateDocument, safeUpdateConsulta, safeUpdateCirurgia, safeUpdateExame } from "@/lib/db";
 import type { Hospital } from "@/lib/types";
 
 export const hospitaisRepository = {
@@ -21,40 +19,36 @@ export const hospitaisRepository = {
   },
 
   /**
-   * Exclusão Segura
+   * Exclusão Segura com Sincronização (Cascade Delete)
    * Remove o hospital e limpa o ID dele de documentos, consultas, cirurgias e exames.
+   * TODAS as operações usam safe... para manter sync com a nuvem.
    */
   async deleteSafe(id: string) {
-    return db.transaction('rw', db.hospitais, db.documents, db.consultas, db.cirurgias, db.exames, async () => {
-      await db.hospitais.delete(id);
+    // 1. Deleta o hospital (já coloca na fila de sync)
+    await safeDeleteHospital(id);
 
-      const documentosAfetados = await db.documents.where('hospital_id').equals(id).toArray();
-      for (const doc of documentosAfetados) {
-        if (doc.id) {
-          await db.documents.update(doc.id, { hospital_id: undefined });
-        }
-      }
+    // 2. Limpa documentos (usando safeUpdate)
+    const documentosAfetados = await db.documents.where('hospital_id').equals(id).toArray();
+    for (const doc of documentosAfetados) {
+      if (doc.id) await safeUpdateDocument(doc.id, { hospital_id: undefined });
+    }
 
-      const consultasAfetadas = await db.consultas.where('hospital_id').equals(id).toArray();
-      for (const con of consultasAfetadas) {
-        if (con.id) {
-          await db.consultas.update(con.id, { hospital_id: undefined });
-        }
-      }
+    // 3. Limpa consultas (usando safeUpdate)
+    const consultasAfetadas = await db.consultas.where('hospital_id').equals(id).toArray();
+    for (const con of consultasAfetadas) {
+      if (con.id) await safeUpdateConsulta(con.id, { hospital_id: undefined });
+    }
 
-      const cirurgiasAfetadas = await db.cirurgias.where('hospital_id').equals(id).toArray();
-      for (const cir of cirurgiasAfetadas) {
-        if (cir.id) {
-          await db.cirurgias.update(cir.id, { hospital_id: undefined });
-        }
-      }
+    // 4. Limpa cirurgias (usando safeUpdate)
+    const cirurgiasAfetadas = await db.cirurgias.where('hospital_id').equals(id).toArray();
+    for (const cir of cirurgiasAfetadas) {
+      if (cir.id) await safeUpdateCirurgia(cir.id, { hospital_id: undefined });
+    }
 
-      const examesAfetados = await db.exames.where('laboratorio_id').equals(id).toArray();
-      for (const exame of examesAfetados) {
-        if (exame.id) {
-          await db.exames.update(exame.id, { laboratorio_id: undefined });
-        }
-      }
-    });
+    // 5. Limpa exames (usando safeUpdate)
+    const examesAfetados = await db.exames.where('laboratorio_id').equals(id).toArray();
+    for (const exame of examesAfetados) {
+      if (exame.id) await safeUpdateExame(exame.id, { laboratorio_id: undefined });
+    }
   }
 };
