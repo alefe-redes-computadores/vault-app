@@ -83,6 +83,8 @@ function DetalhesCirurgiaContent() {
     fetchData();
   }, [id, router]);
 
+  // ✅ Mantido, com comentário explicativo
+  // Nota: Associação por médico e data (aproximação, já que não temos cirurgia_id)
   const medicamentosPosOperatorio = useMemo(() => {
     if (!cirurgia) return [];
     return medicamentos.filter((m: Medicamento) => {
