@@ -404,3 +404,43 @@ export function analisarRotinaDiaria(
 
   return null;
 }
+
+// ============================================================
+// 12. VALIDAÇÃO INTELIGENTE DE RECEITAS ARQUIVADAS
+// ============================================================
+export interface StatusReceita {
+  status: 'valida' | 'proxima' | 'vencida' | 'renovada_historico';
+  label: string;
+  color: string;
+}
+
+export function analisarReceitaArquivada(
+  dataReceita: string | undefined, // Data de emissão ou validade que tá no documento
+  medicamentoAlvo: any | null,    // Medicamento que essa receita atende
+  renovacoesDoMedicamento: any[]  // Histórico de compras desse remédio
+): StatusReceita | null {
+  if (!dataReceita) return null;
+
+  // 1. Verifica se houve compra APÓS a data desta receita
+  const temRenovacaoRecente = renovacoesDoMedicamento.some(
+    r => new Date(r.data) >= new Date(dataReceita)
+  );
+
+  if (temRenovacaoRecente) {
+    // O usuário já usou essa receita ou pegou uma mais nova e comprou o remédio
+    return { status: 'renovada_historico', label: 'Arquivada (Renovada)', color: '#38BDF8' }; // Azul informativo, não vermelho crítico
+  }
+
+  // 2. Se não renovou, a receita ainda é a "vigente" pro usuário. Vamos checar se estourou.
+  const vencida = isReceitaVencidaSegura(dataReceita);
+  const dias = getDaysUntil(dataReceita);
+
+  if (vencida) {
+    return { status: 'vencida', label: 'Vencida', color: '#EF4444' };
+  } else if (dias !== null && dias <= 7) {
+    return { status: 'proxima', label: 'Vence em breve', color: '#F59E0B' };
+  }
+
+  return { status: 'valida', label: 'Válida', color: '#10B981' };
+}
+
