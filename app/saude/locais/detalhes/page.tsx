@@ -33,9 +33,9 @@ function DetalhesLocalContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Cruzando o histórico de renovações feitas neste local
+  // ✅ CORRIGIDO: Usa db.renovacoes em vez de db.table("renovacoes")
   const renovacoes = useLiveQuery(
-    () => db.table("renovacoes").where("local_id").equals(id || "").toArray(),
+    () => db.renovacoes.where("local_id").equals(id || "").toArray(),
     [id]
   ) || [];
 
@@ -45,7 +45,8 @@ function DetalhesLocalContent() {
       return;
     }
     
-    db.table("locais").get(id).then((res) => {
+    // ✅ CORRIGIDO: Usa db.locais em vez de db.table("locais")
+    db.locais.get(id).then((res) => {
       if (res) {
         setLocal(res);
       } else {
@@ -59,7 +60,8 @@ function DetalhesLocalContent() {
     trigger("vibrate");
     if (!id) return;
     try {
-      await db.table("locais").delete(id);
+      // ✅ CORRIGIDO: Usa db.locais em vez de db.table("locais")
+      await db.locais.delete(id);
       trigger("success");
       router.replace("/saude/locais");
     } catch (error) {
