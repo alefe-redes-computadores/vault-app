@@ -14,6 +14,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+// ✅ NOVO: import do hook
+import { useExames } from "@/hooks/useExames";
 
 function getTratamentoIcon(nome: string) {
   const n = nome.toLowerCase();
@@ -29,12 +31,11 @@ export default function ExamesPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
 
-  // ✅ CORRIGIDO: db.exames em vez de db.table("exames")
-  const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
+  // ✅ CORRIGIDO: usa o hook useExames
+  const { exames } = useExames();
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   
-  // ✅ CORRIGIDO: A tabela exame_tratamentos é mantida para compatibilidade,
-  // mas futuramente podemos migrar para o campo tratamento_ids
+  // ✅ CORRIGIDO: A tabela exame_tratamentos é mantida para compatibilidade
   const vinculos = useLiveQuery(() => db.exame_tratamentos.toArray(), []) || [];
   const persons = useLiveQuery(() => db.persons.toArray(), []) || [];
 
@@ -50,7 +51,7 @@ export default function ExamesPage() {
     return map;
   }, [vinculos]);
 
-  const filteredExames = exames.filter((exame: any) => 
+  const filteredExames = (exames || []).filter((exame: any) => 
     exame.nome?.toLowerCase().includes(search.toLowerCase()) ||
     exame.laboratorio?.toLowerCase().includes(search.toLowerCase())
   );
