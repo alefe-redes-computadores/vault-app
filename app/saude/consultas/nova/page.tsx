@@ -18,7 +18,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
-import { db, safeAddConsulta } from "@/lib/db";
+import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -26,6 +26,8 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 import type { Attachment } from "@/lib/types";
+// ✅ NOVO: import do hook
+import { useConsultas } from "@/hooks/useConsultas";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -69,6 +71,9 @@ export default function NovaConsultaPage() {
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
+
+  // ✅ NOVO: useConsultas
+  const { addConsulta } = useConsultas();
 
   const [medicoId, setMedicoId] = useState("");
   const [hospitalId, setHospitalId] = useState("");
@@ -159,7 +164,8 @@ export default function NovaConsultaPage() {
 
       const dataISO = parseDateToISO(dataDisplay);
       
-      await safeAddConsulta({
+      // ✅ CORRIGIDO: usa addConsulta do hook
+      await addConsulta({
         user_id: user?.id || "",
         especialidade: selectedMedico?.especialidade || "Geral",
         medico: selectedMedico?.nome || "Médico",
