@@ -16,7 +16,6 @@ import { db, safeAddMedico, safeAddHospital, safeAddTratamento } from "@/lib/db"
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
 import { usePersons } from "@/hooks/usePersons";
-// ✅ NOVO: import do hook
 import { useExames } from "@/hooks/useExames";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -49,7 +48,6 @@ export default function NovoExamePage() {
   const { medicos } = useMedicos();
   const { hospitais } = useHospitais();
   const persons = usePersons();
-  // ✅ NOVO: useExames
   const { addExame } = useExames();
 
   const [personId, setPersonId] = useState<string>(persons[0]?.id || "");
@@ -169,9 +167,8 @@ export default function NovoExamePage() {
       const listaExames = nomesExames.split(/,|\n/).map(item => item.trim()).filter(Boolean);
 
       for (const nomeExame of listaExames) {
-        // ✅ CORRIGIDO: usa addExame do hook
+        // ✅ CORRIGIDO: user_id removido (hook injeta internamente)
         await addExame({
-          user_id: user?.id || "default_user",
           person_id: personId,
           nome: nomeExame,
           laboratorio: localRealizacao.trim() || undefined,
