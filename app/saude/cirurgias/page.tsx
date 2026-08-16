@@ -35,6 +35,7 @@ export default function CirurgiasPage() {
   
   const [abaAtiva, setAbaAtiva] = useState<"proximas" | "historico">("proximas");
 
+  // ✅ JÁ ESTÁ CORRETO (usa db.cirurgias, db.medicos, db.hospitais)
   const cirurgias = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
@@ -54,9 +55,7 @@ export default function CirurgiasPage() {
       }
     });
 
-    // Próximas: mais cedo primeiro (crescente)
     prox.sort((a, b) => a.data.localeCompare(b.data));
-    // Histórico: mais recentes primeiro (decrescente)
     hist.sort((a, b) => b.data.localeCompare(a.data));
 
     return { proximas: prox, historico: hist };
