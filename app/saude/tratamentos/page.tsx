@@ -24,6 +24,10 @@ function getTratamentoIcon(nome: string) {
   return Activity;
 }
 
+function formatCurrency(value: number): string {
+  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+}
+
 function TratamentoListContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -163,7 +167,7 @@ function TratamentoListContent() {
                       </span>
                       {t.totalGasto > 0 && (
                         <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-md flex items-center gap-1">
-                          <DollarSign size={10} className="text-emerald-400" /> R$ {t.totalGasto.toFixed(2).replace(".", ",")}
+                          <DollarSign size={10} className="text-emerald-400" /> {formatCurrency(t.totalGasto)}
                         </span>
                       )}
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
