@@ -25,7 +25,7 @@ import {
   AlertTriangle,
   ChevronRight,
   History,
-  Pill
+  AlertOctagon
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -90,6 +90,11 @@ function DetalhesExameContent() {
       return;
     }
     const loadExame = async () => {
+      // ✅ CORRIGIDO: verifica se id é string antes de chamar getExame
+      if (typeof id !== 'string') {
+        router.push("/saude/exames");
+        return;
+      }
       const data = await getExame(id);
       if (data) {
         setExame(data);
@@ -127,14 +132,19 @@ function DetalhesExameContent() {
   const medicoEncontrado = medico !== undefined;
   const laboratorioEncontrado = laboratorio !== undefined;
 
-  // Verifica se o médico tem dados mínimos (nome) para ser considerado válido
   const medicoValido = medicoEncontrado && medico?.nome;
   const laboratorioValido = laboratorioEncontrado && laboratorio?.nome;
 
-  // Criação rápida de médico
+  // ✅ CORRIGIDO: verifica se id é string antes de usar em funções que esperam string
+  const exameId = typeof id === 'string' ? id : undefined;
+
   const handleCreateMedico = async () => {
     if (!newMedicoNome.trim()) {
       showToast("Nome do médico é obrigatório", "error");
+      return;
+    }
+    if (!exameId) {
+      showToast("Erro: ID do exame não encontrado", "error");
       return;
     }
     trigger("vibrate");
@@ -144,13 +154,13 @@ function DetalhesExameContent() {
         nome: newMedicoNome.trim(),
         especialidade: newMedicoEspecialidade.trim() || undefined,
       });
-      await updateExame(exame.id, { medico_id: newId });
+      await updateExame(exameId, { medico_id: newId });
       showToast("Médico vinculado com sucesso!", "success");
       setIsCreatingMedico(false);
       setNewMedicoNome("");
       setNewMedicoEspecialidade("");
       // Recarregar exame
-      const updated = await getExame(id);
+      const updated = await getExame(exameId);
       if (updated) setExame(updated);
     } catch (error) {
       console.error("Erro ao criar médico:", error);
@@ -163,6 +173,10 @@ function DetalhesExameContent() {
       showToast("Nome do laboratório é obrigatório", "error");
       return;
     }
+    if (!exameId) {
+      showToast("Erro: ID do exame não encontrado", "error");
+      return;
+    }
     trigger("vibrate");
     try {
       const newId = await safeAddHospital({
@@ -170,12 +184,12 @@ function DetalhesExameContent() {
         nome: newLaboratorioNome.trim(),
         tipo: "laboratorio",
       });
-      await updateExame(exame.id, { laboratorio_id: newId });
+      await updateExame(exameId, { laboratorio_id: newId });
       showToast("Laboratório vinculado com sucesso!", "success");
       setIsCreatingLaboratorio(false);
       setNewLaboratorioNome("");
       // Recarregar exame
-      const updated = await getExame(id);
+      const updated = await getExame(exameId);
       if (updated) setExame(updated);
     } catch (error) {
       console.error("Erro ao criar laboratório:", error);
@@ -184,11 +198,11 @@ function DetalhesExameContent() {
   };
 
   const handleDelete = async () => {
-    if (!id) return;
+    if (!exameId) return;
     setDeleting(true);
     trigger("vibrate");
     try {
-      await deleteExame(id);
+      await deleteExame(exameId);
       trigger("success");
       router.push("/saude/exames");
     } catch (error) {
@@ -218,6 +232,44 @@ function DetalhesExameContent() {
   }
 
   const personName = person?.name || persons.find(p => p.id === exame.person_id)?.name || "Pessoa não encontrada";
+
+  // ✅ CORRIGIDO: função handleSelectMedico com validação de exameId
+  const handleSelectMedico = async (item: any) => {
+    if (!exameId) {
+      showToast("Erro: ID do exame não encontrado", "error");
+      return;
+    }
+    trigger("vibrate");
+    try {
+      await updateExame(exameId, { medico_id: item.id });
+      showToast("Médico atualizado com sucesso!", "success");
+      const updated = await getExame(exameId);
+      if (updated) setExame(updated);
+      setIsMedicoModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao atualizar médico:", error);
+      showToast("Erro ao atualizar médico", "error");
+    }
+  };
+
+  // ✅ CORRIGIDO: função handleSelectLaboratorio com validação de exameId
+  const handleSelectLaboratorio = async (item: any) => {
+    if (!exameId) {
+      showToast("Erro: ID do exame não encontrado", "error");
+      return;
+    }
+    trigger("vibrate");
+    try {
+      await updateExame(exameId, { laboratorio_id: item.id });
+      showToast("Laboratório atualizado com sucesso!", "success");
+      const updated = await getExame(exameId);
+      if (updated) setExame(updated);
+      setIsLaboratorioModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao atualizar laboratório:", error);
+      showToast("Erro ao atualizar laboratório", "error");
+    }
+  };
 
   return (
     <PageTransition>
@@ -493,19 +545,7 @@ function DetalhesExameContent() {
         <SelectionModal
           isOpen={isMedicoModalOpen}
           onClose={() => setIsMedicoModalOpen(false)}
-          onSelect={async (item: any) => {
-            trigger("vibrate");
-            try {
-              await updateExame(exame.id, { medico_id: item.id });
-              showToast("Médico atualizado com sucesso!", "success");
-              const updated = await getExame(id);
-              if (updated) setExame(updated);
-              setIsMedicoModalOpen(false);
-            } catch (error) {
-              console.error("Erro ao atualizar médico:", error);
-              showToast("Erro ao atualizar médico", "error");
-            }
-          }}
+          onSelect={handleSelectMedico}
           items={medicos}
           title="Selecionar Médico"
           placeholder="Buscar médico..."
@@ -525,19 +565,7 @@ function DetalhesExameContent() {
         <SelectionModal
           isOpen={isLaboratorioModalOpen}
           onClose={() => setIsLaboratorioModalOpen(false)}
-          onSelect={async (item: any) => {
-            trigger("vibrate");
-            try {
-              await updateExame(exame.id, { laboratorio_id: item.id });
-              showToast("Laboratório atualizado com sucesso!", "success");
-              const updated = await getExame(id);
-              if (updated) setExame(updated);
-              setIsLaboratorioModalOpen(false);
-            } catch (error) {
-              console.error("Erro ao atualizar laboratório:", error);
-              showToast("Erro ao atualizar laboratório", "error");
-            }
-          }}
+          onSelect={handleSelectLaboratorio}
           items={hospitais.filter(h => h.tipo === 'laboratorio')}
           title="Selecionar Laboratório"
           placeholder="Buscar laboratório..."
