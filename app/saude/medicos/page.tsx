@@ -24,7 +24,8 @@ export default function MedicosPage() {
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const documentos = useLiveQuery(() => db.table("documents").toArray(), []) || [];
+  // ✅ CORRIGIDO: db.documents em vez de db.table("documents")
+  const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
   const cirurgias = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
 
