@@ -23,6 +23,8 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Cirurgia, Medico, Hospital, Medicamento, Exame } from "@/lib/types";
+// ✅ NOVO: import do hook
+import { useCirurgias } from "@/hooks/useCirurgias";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -48,6 +50,9 @@ function DetalhesCirurgiaContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // ✅ NOVO: useCirurgias
+  const { getCirurgia, updateCirurgia, deleteCirurgia } = useCirurgias();
+
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
@@ -59,16 +64,17 @@ function DetalhesCirurgiaContent() {
 
     const fetchData = async () => {
       try {
-        const cirData = await db.cirurgias.get(id);
+        // ✅ CORRIGIDO: usa getCirurgia do hook
+        const cirData = await getCirurgia(id);
         if (cirData) {
-          setCirurgia(cirData as Cirurgia);
+          setCirurgia(cirData);
           if (cirData.medico_id) {
             const medData = await db.medicos.get(cirData.medico_id);
-            if (medData) setMedico(medData as Medico);
+            if (medData) setMedico(medData);
           }
           if (cirData.hospital_id) {
             const hospData = await db.hospitais.get(cirData.hospital_id);
-            if (hospData) setHospital(hospData as Hospital);
+            if (hospData) setHospital(hospData);
           }
         } else {
           router.push("/saude/cirurgias");
@@ -81,9 +87,8 @@ function DetalhesCirurgiaContent() {
     };
 
     fetchData();
-  }, [id, router]);
+  }, [id, router, getCirurgia]);
 
-  // ✅ Mantido, com comentário explicativo
   // Nota: Associação por médico e data (aproximação, já que não temos cirurgia_id)
   const medicamentosPosOperatorio = useMemo(() => {
     if (!cirurgia) return [];
@@ -106,10 +111,9 @@ function DetalhesCirurgiaContent() {
     trigger("vibrate");
     if (!id || !cirurgia) return;
     try {
-      await db.cirurgias.update(id, {
+      // ✅ CORRIGIDO: usa updateCirurgia do hook
+      await updateCirurgia(id, {
         status: novoStatus,
-        updated_at: new Date().toISOString(),
-        synced: false,
       });
       setCirurgia({ ...cirurgia, status: novoStatus });
       trigger("success");
@@ -123,7 +127,8 @@ function DetalhesCirurgiaContent() {
     trigger("vibrate");
     if (!id) return;
     try {
-      await db.cirurgias.delete(id);
+      // ✅ CORRIGIDO: usa deleteCirurgia do hook
+      await deleteCirurgia(id);
       trigger("success");
       router.replace("/saude/cirurgias");
     } catch (error) {
