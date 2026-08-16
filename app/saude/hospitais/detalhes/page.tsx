@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2, 
-  Activity, FlaskConical, ExternalLink 
+  Activity, FlaskConical, ExternalLink, Stethoscope, Calendar,
+  Clock
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -14,6 +15,13 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+
+function formatDateDisplay(isoStr: string): string {
+  if (!isoStr) return "";
+  const parts = isoStr.split("-");
+  if (parts.length !== 3) return isoStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -32,9 +40,10 @@ function DetalhesHospitalContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // ✅ CORRIGIDO: Usa db.documents e db.exames
   const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
+  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+  const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
 
   useEffect(() => {
     if (!id) {
@@ -51,22 +60,40 @@ function DetalhesHospitalContent() {
     });
   }, [id, getHospital, router]);
 
-  // ✅ CORRIGIDO: Cruzamento relacional usando campos diretos
-  const procedimentosVinculados = useMemo(() => {
-    if (!id) return { cirurgias: [], exames: [] };
+  // 🔧 Análise completa do hospital
+  const analiseHospital = useMemo(() => {
+    if (!id) return { 
+      cirurgias: [], 
+      exames: [], 
+      consultas: [], 
+      medicos: [],
+      ultimaConsulta: null,
+    };
     
-    // ✅ Usa hospital_id direto em vez de metadata
-    const cirurgias = documentos.filter((d: any) => 
-      d.hospital_id === id && d.category_id === 'saude'
-    );
-
-    // ✅ Usa hospital_id ou laboratorio_id
-    const examesUnidade = exames.filter((e: any) => 
+    const docsDoHospital = documentos.filter((d: any) => d.hospital_id === id);
+    const cirurgias = docsDoHospital.filter((d: any) => d.type === 'cirurgia');
+    
+    const examesDoHospital = exames.filter((e: any) => 
       e.hospital_id === id || e.laboratorio_id === id
     );
 
-    return { cirurgias, exames: examesUnidade };
-  }, [id, documentos, exames]);
+    const consultasDoHospital = consultas.filter((c: any) => c.hospital_id === id);
+
+    const medicoIds = new Set(consultasDoHospital.map(c => c.medico_id).filter(Boolean));
+    const medicosDoHospital = medicos.filter(m => medicoIds.has(m.id));
+
+    const ultimaConsulta = consultasDoHospital.length > 0
+      ? consultasDoHospital.sort((a, b) => b.data.localeCompare(a.data))[0]
+      : null;
+
+    return { 
+      cirurgias, 
+      exames: examesDoHospital, 
+      consultas: consultasDoHospital, 
+      medicos: medicosDoHospital,
+      ultimaConsulta,
+    };
+  }, [id, documentos, exames, consultas, medicos]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -86,6 +113,8 @@ function DetalhesHospitalContent() {
   if (isLoading) return <LoadingSkeleton />;
   if (!hospital) return null;
 
+  const cor = hospital.tipo === 'clinica' ? '#34D399' : '#38BDF8';
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
@@ -99,7 +128,7 @@ function DetalhesHospitalContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Unidade Clínica</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em]" style={{ color: cor }}>Unidade Clínica</p>
               <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Detalhes da Unidade</h1>
             </div>
           </div>
@@ -129,6 +158,7 @@ function DetalhesHospitalContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
+            style={{ borderLeft: `6px solid ${cor}` }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/20">
@@ -138,6 +168,15 @@ function DetalhesHospitalContent() {
                 <h2 className="font-display text-xl font-bold text-ink-primary truncate">
                   {hospital.nome}
                 </h2>
+                {hospital.tipo && (
+                  <span className={`inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border mt-1 ${
+                    hospital.tipo === 'clinica' 
+                      ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-400'
+                      : 'border-ice/30 bg-ice/10 text-ice'
+                  }`}>
+                    {hospital.tipo === 'clinica' ? 'Clínica' : 'Hospital'}
+                  </span>
+                )}
                 {hospital.endereco && (
                   <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5 truncate">
                     <MapPin size={13} className="shrink-0 text-ink-faint" /> {hospital.endereco}
@@ -150,21 +189,67 @@ function DetalhesHospitalContent() {
                 )}
               </div>
             </div>
+
+            {/* 🔧 Última consulta */}
+            {analiseHospital.ultimaConsulta && (
+              <div className="pt-2 border-t border-surface-border/40">
+                <div className="flex items-center gap-2 text-xs text-ink-muted">
+                  <Clock size={14} className={cor === '#38BDF8' ? 'text-ice' : 'text-emerald-400'} />
+                  <span>Última consulta: <span className="font-medium text-ink-primary">{formatDateDisplay(analiseHospital.ultimaConsulta.data)}</span></span>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-surface-border/40">
+              <div className="rounded-2xl bg-surface-raised p-3 text-center">
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Consultas</p>
+                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseHospital.consultas.length}</p>
+              </div>
+              <div className="rounded-2xl bg-surface-raised p-3 text-center">
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Cirurgias</p>
+                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseHospital.cirurgias.length}</p>
+              </div>
+              <div className="rounded-2xl bg-surface-raised p-3 text-center">
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Exames</p>
+                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseHospital.exames.length}</p>
+              </div>
+            </div>
           </motion.div>
 
-          {/* Histórico Relacional: Cirurgias e Prontuários */}
+          {/* 🔧 Médicos que atendem no hospital */}
+          {analiseHospital.medicos.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
+              <div className="flex items-center gap-2 pl-1">
+                <Stethoscope size={16} className="text-ice" />
+                <h3 className="font-display text-base font-semibold text-ink-primary">Médicos que atendem aqui</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {analiseHospital.medicos.map(m => (
+                  <button 
+                    key={m.id} 
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${m.id}`); }} 
+                    className="rounded-full bg-surface border border-surface-border px-4 py-2 text-sm font-medium text-ink-primary shadow-sm hover:border-ice/30 transition-all active:scale-95"
+                  >
+                    Dr(a). {m.nome}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Histórico Relacional: Cirurgias */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
-              <Activity size={16} className="text-ice" /> Cirurgias e Prontuários ({procedimentosVinculados.cirurgias.length})
+              <Activity size={16} className="text-ice" /> Cirurgias ({analiseHospital.cirurgias.length})
             </h3>
 
-            {procedimentosVinculados.cirurgias.length === 0 ? (
+            {analiseHospital.cirurgias.length === 0 ? (
               <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
                 <p className="text-xs text-ink-muted">Nenhum procedimento registrado nesta unidade.</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {procedimentosVinculados.cirurgias.map((doc: any) => (
+                {analiseHospital.cirurgias.map((doc: any) => (
                   <div
                     key={doc.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/documentos`); }}
@@ -176,7 +261,7 @@ function DetalhesHospitalContent() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-ink-primary truncate">{doc.title}</p>
-                        <p className="text-[11px] text-ink-muted">{doc.metadata?.date || "Data não informada"}</p>
+                        <p className="text-[11px] text-ink-muted">{doc.metadata?.date ? formatDateDisplay(doc.metadata.date) : "Data não informada"}</p>
                       </div>
                     </div>
                     <ExternalLink size={15} className="text-ink-faint shrink-0" />
@@ -189,16 +274,16 @@ function DetalhesHospitalContent() {
           {/* Histórico Relacional: Exames */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
-              <FlaskConical size={16} className="text-violet-400" /> Exames Realizados ({procedimentosVinculados.exames.length})
+              <FlaskConical size={16} className="text-violet-400" /> Exames Realizados ({analiseHospital.exames.length})
             </h3>
 
-            {procedimentosVinculados.exames.length === 0 ? (
+            {analiseHospital.exames.length === 0 ? (
               <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
                 <p className="text-xs text-ink-muted">Nenhum exame vinculado a esta unidade.</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {procedimentosVinculados.exames.map((exame: any) => (
+                {analiseHospital.exames.map((exame: any) => (
                   <div
                     key={exame.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }}
@@ -210,7 +295,7 @@ function DetalhesHospitalContent() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-ink-primary truncate">{exame.nome}</p>
-                        <p className="text-[11px] text-ink-muted">{exame.data || "Data não informada"}</p>
+                        <p className="text-[11px] text-ink-muted">{exame.data ? formatDateDisplay(exame.data) : "Data não informada"}</p>
                       </div>
                     </div>
                     <ExternalLink size={15} className="text-ink-faint shrink-0" />
