@@ -238,3 +238,114 @@ export function analisarFarmaciaDetalhada(farmaciaContexto: {
 
   return null;
 }
+
+// ============================================================
+// 10. VISÃO GERAL DA REDE (MOTOR DE ALERTAS CRUZADOS)
+// ============================================================
+export interface AlertaVisaoGeral {
+  tipo: 'estoque' | 'receita' | 'consulta' | 'exame' | 'cirurgia';
+  mensagem: string;
+  urgencia: 'alta' | 'media' | 'baixa';
+  link: string;
+}
+
+export function gerarAlertasVisaoGeral(contexto: {
+  medicamentos: any[];
+  consultas: any[];
+  exames: any[];
+  cirurgias: any[];
+}): AlertaVisaoGeral[] {
+  const alerts: AlertaVisaoGeral[] = [];
+  const hoje = new Date();
+  
+  const seteDias = new Date(hoje);
+  seteDias.setDate(hoje.getDate() + 7);
+  
+  const trintaDias = new Date(hoje);
+  trintaDias.setDate(hoje.getDate() + 30);
+
+  // 1. Medicamentos (Estoque e Receita)
+  contexto.medicamentos.forEach(med => {
+    const insight = sugerirRenovacao(med);
+    if (insight.deveRenovar) {
+      alerts.push({
+        tipo: 'estoque',
+        mensagem: insight.mensagem,
+        urgencia: insight.urgencia,
+        link: `/saude/medicamentos/detalhes?id=${med.id}`,
+      });
+    }
+
+    if (isReceitaVencidaSegura(med.proxima_renovacao)) {
+      alerts.push({
+        tipo: 'receita',
+        mensagem: `Receita de ${med.nome} está vencida.`,
+        urgencia: 'alta',
+        link: `/saude/medicamentos/detalhes?id=${med.id}`,
+      });
+    }
+  });
+
+  // 2. Consultas (Próximos 7 dias)
+  contexto.consultas.forEach(con => {
+    if (con.status === 'agendada') {
+      const dataCon = new Date(con.data);
+      if (dataCon >= hoje && dataCon <= seteDias) {
+        const dias = Math.ceil((dataCon.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+        const nomeMedico = con.medico || con.medico_nome || 'médico';
+        alerts.push({
+          tipo: 'consulta',
+          mensagem: `Consulta com ${nomeMedico} em ${dias} dia${dias > 1 ? 's' : ''}`,
+          urgencia: dias <= 2 ? 'alta' : 'media',
+          link: `/saude/consultas/detalhes?id=${con.id}`,
+        });
+      }
+    }
+  });
+
+  // 3. Exames (Vencidos ou Próximos 7 dias)
+  contexto.exames.forEach(exame => {
+    if (exame.data_retorno) {
+      const dias = getDaysUntil(exame.data_retorno);
+      if (dias !== null) {
+        if (dias < 0) {
+          alerts.push({
+            tipo: 'exame',
+            mensagem: `Prazo do exame "${exame.nome}" venceu há ${Math.abs(dias)} dia(s)`,
+            urgencia: 'alta',
+            link: `/saude/exames/detalhes?id=${exame.id}`,
+          });
+        } else if (dias <= 7) {
+          alerts.push({
+            tipo: 'exame',
+            mensagem: `Apresentação do exame "${exame.nome}" em ${dias} dia(s)`,
+            urgencia: dias <= 2 ? 'alta' : 'media',
+            link: `/saude/exames/detalhes?id=${exame.id}`,
+          });
+        }
+      }
+    }
+  });
+
+  // 4. Cirurgias (Próximos 30 dias)
+  contexto.cirurgias.forEach(cir => {
+    if (cir.status === 'agendada') {
+      const dataCir = new Date(cir.data);
+      if (dataCir >= hoje && dataCir <= trintaDias) {
+        const dias = Math.ceil((dataCir.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+        alerts.push({
+          tipo: 'cirurgia',
+          mensagem: `Cirurgia "${cir.procedimento}" em ${dias} dia${dias > 1 ? 's' : ''}`,
+          urgencia: dias <= 7 ? 'alta' : 'media',
+          link: `/saude/cirurgias/detalhes?id=${cir.id}`,
+        });
+      }
+    }
+  });
+
+  // Ordenar por urgência
+  return alerts.sort((a, b) => {
+    const ordem = { alta: 0, media: 1, baixa: 2 };
+    return ordem[a.urgencia] - ordem[b.urgencia];
+  });
+}
