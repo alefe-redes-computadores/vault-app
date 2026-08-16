@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, Building2, Search, ChevronRight, 
-  MapPin, Phone, Edit3, Filter, X, Activity, FlaskConical,
-  Stethoscope, Calendar
+  MapPin, Phone, Edit3, Filter, X, Calendar
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -33,41 +32,40 @@ export default function HospitaisPage() {
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
+  // 🐛 AQUI ESTAVA O BUG: Faltava puxar a tabela de cirurgias correta!
+  const cirurgias = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
 
   const hospitaisComCruzamento = useMemo(() => {
     return hospitais.map((hospital) => {
-      // Documentos vinculados
       const docsDoHospital = documentos.filter((d: any) => d.hospital_id === hospital.id);
-      const cirurgias = docsDoHospital.filter((d: any) => d.type === 'cirurgia');
       const docsConsultas = docsDoHospital.filter((d: any) => d.type === 'consulta' || d.type === 'prontuario');
       
-      // Exames vinculados
+      // 🐛 Correção: Puxando da tabela certa
+      const cirurgiasDoHospital = cirurgias.filter((c: any) => c.hospital_id === hospital.id);
+      
       const examesDoHospital = exames.filter((e: any) => 
         e.hospital_id === hospital.id || e.laboratorio_id === hospital.id
       );
 
-      // Consultas vinculadas via hospital_id
       const consultasDoHospital = consultas.filter((c: any) => c.hospital_id === hospital.id);
 
-      // Médicos que atendem no hospital (via consultas)
       const medicoIds = new Set(consultasDoHospital.map(c => c.medico_id).filter(Boolean));
       const medicosDoHospital = medicos.filter(m => medicoIds.has(m.id));
 
-      // Último atendimento (consulta mais recente)
       const ultimoAtendimento = consultasDoHospital.length > 0
         ? consultasDoHospital.sort((a, b) => b.data.localeCompare(a.data))[0]
         : null;
 
       return {
         ...hospital,
-        cirurgiasCount: cirurgias.length,
+        cirurgiasCount: cirurgiasDoHospital.length, // Agora sim vai contar certo!
         consultasCount: docsConsultas.length + consultasDoHospital.length,
         examesCount: examesDoHospital.length,
         medicosCount: medicosDoHospital.length,
         ultimoAtendimento,
       };
     });
-  }, [hospitais, documentos, exames, consultas, medicos]);
+  }, [hospitais, documentos, exames, consultas, medicos, cirurgias]);
 
   const filteredHospitais = useMemo(() => {
     let result = hospitaisComCruzamento;
@@ -96,7 +94,6 @@ export default function HospitaisPage() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
-              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -116,7 +113,6 @@ export default function HospitaisPage() {
             />
           </div>
 
-          {/* 🔧 FILTROS */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
             
@@ -216,7 +212,6 @@ export default function HospitaisPage() {
                           router.push(`/saude/hospitais/editar?id=${hospital.id}`);
                         }}
                         className="h-8 w-8 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted hover:text-ice transition-colors"
-                        aria-label="Editar hospital"
                       >
                         <Edit3 size={14} />
                       </button>
@@ -224,7 +219,6 @@ export default function HospitaisPage() {
                     </div>
                   </div>
 
-                  {/* 🔧 Último atendimento */}
                   {hospital.ultimoAtendimento && (
                     <div className="flex items-center gap-1.5 text-[10px] text-ink-muted">
                       <Calendar size={12} className="text-ice" />
