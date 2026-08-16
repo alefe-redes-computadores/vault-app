@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ElementType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, AlertCircle, Info, X, Loader2 } from "lucide-react";
 
@@ -15,6 +15,7 @@ interface ToastProps {
     label: string;
     onClick: () => void;
   };
+  icon?: ElementType;
 }
 
 const ICONS = {
@@ -57,6 +58,7 @@ export function Toast({
   duration = 3000,
   onClose,
   action,
+  icon: CustomIcon,
 }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
 
@@ -71,9 +73,12 @@ export function Toast({
     return () => clearTimeout(timer);
   }, [duration, onClose, type]);
 
-  const Icon = ICONS[type];
+  // Se um ícone customizado foi enviado, use-o. Senão, pegue o padrão do tipo.
+  const Icon = CustomIcon || ICONS[type];
   const accent = ACCENTS[type];
-  const isSpin = type === "loading";
+  
+  // Só aplica a animação de giro se for o ícone de loading oficial (sem customização)
+  const isSpin = type === "loading" && !CustomIcon;
 
   const dismiss = () => {
     setIsVisible(false);
