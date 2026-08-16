@@ -19,7 +19,8 @@ import {
   FileText,
   Stethoscope,
   ArrowLeftRight,
-  DollarSign
+  DollarSign,
+  AlertCircle
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -54,6 +55,18 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+// Cores padrão para tratamentos sem cor definida
+const CORES_PADRAO = [
+  "#8B5CF6", // Roxo
+  "#EC4899", // Rosa
+  "#3B82F6", // Azul
+  "#F59E0B", // Amarelo
+  "#10B981", // Verde
+  "#EF4444", // Vermelho
+  "#F97316", // Laranja
+  "#06B6D4", // Ciano
+];
+
 function getTratamentoIcon(nome: string) {
   const n = nome.toLowerCase();
   if (n.includes("tdah")) return Brain;
@@ -61,6 +74,10 @@ function getTratamentoIcon(nome: string) {
   if (n.includes("depress")) return HeartPulse;
   if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
   return Activity;
+}
+
+function getCorPorIndex(index: number): string {
+  return CORES_PADRAO[index % CORES_PADRAO.length];
 }
 
 function TratamentoContent() {
@@ -100,7 +117,16 @@ function TratamentoContent() {
   }, [id, router]);
 
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
-  const allRenovacoes = useLiveQuery(() => db.table("renovacoes").toArray(), []) || [];
+  const allRenovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
+
+  // ✅ CORRIGIDO: Usa MultiEntry Index *tratamento_ids
+  const linkedMedicamentos = useMemo(() => {
+    if (!id || !medicamentos) return [];
+    return medicamentos.filter((m: any) => {
+      // Verifica se o tratamento está no array tratamento_ids
+      return m.tratamento_ids && m.tratamento_ids.includes(id);
+    });
+  }, [medicamentos, id]);
 
   const linkedDocuments = useMemo(() => {
     if (!id) return [];
@@ -109,16 +135,7 @@ function TratamentoContent() {
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [allDocuments, id]);
 
-  const linkedMedicamentos = useMemo(() => {
-    if (!id || !medicamentos) return [];
-    return medicamentos.filter((m: any) => {
-      const matchTratamentoId = m.tratamento_id === id || (m.tratamento_ids && m.tratamento_ids.includes(id));
-      const matchDocumentId = m.document_id && linkedDocuments.some(d => d.id === m.document_id);
-      return matchTratamentoId || matchDocumentId;
-    });
-  }, [medicamentos, id, linkedDocuments]);
-
-  // Cruzamento analítico: Custo total investido nas renovações dos remédios deste tratamento
+  // ✅ CORRIGIDO: Custo total do tratamento
   const custoTotalTratamento = useMemo(() => {
     if (!linkedMedicamentos.length || !allRenovacoes.length) return 0;
     const medIds = new Set(linkedMedicamentos.map((m: any) => m.id));
@@ -131,7 +148,7 @@ function TratamentoContent() {
     return total;
   }, [linkedMedicamentos, allRenovacoes]);
 
-  // Cruzamento relacional dos médicos associados aos medicamentos deste tratamento
+  // ✅ CORRIGIDO: Médicos vinculados via medicamentos
   const linkedMedicos = useMemo(() => {
     const medIds = new Set(linkedMedicamentos.map((m: any) => m.medico_id).filter(Boolean));
     return medicos.filter(med => medIds.has(med.id));
@@ -146,7 +163,8 @@ function TratamentoContent() {
   if (!tratamento) return null;
 
   const IconComp = getTratamentoIcon(tratamento.nome);
-  const tratamentoCor = (tratamento as any).cor || "#8B5CF6"; 
+  // ✅ CORRIGIDO: Usa cor do tratamento ou gera uma baseada no índice
+  const tratamentoCor = tratamento.cor || getCorPorIndex(tratamento.id ? parseInt(tratamento.id) : 0);
   
   const medicamentosAtivos = linkedMedicamentos.filter((m: any) => m.status !== "descontinuado");
   const medicamentosDescontinuados = linkedMedicamentos.filter((m: any) => m.status === "descontinuado");
@@ -191,6 +209,7 @@ function TratamentoContent() {
 
         <section className="px-5 pt-6 space-y-6">
           
+          {/* Card Principal */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -251,7 +270,7 @@ function TratamentoContent() {
             </div>
           </motion.div>
 
-          {/* EQUIPE CLÍNICA (Cruzamento de Médicos) */}
+          {/* Equipe Clínica */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Stethoscope size={16} className="text-ice" />
@@ -276,6 +295,7 @@ function TratamentoContent() {
             )}
           </motion.div>
 
+          {/* Medicamentos Ativos */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
@@ -313,6 +333,7 @@ function TratamentoContent() {
             )}
           </motion.div>
 
+          {/* Medicamentos Descontinuados */}
           {medicamentosDescontinuados.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -342,6 +363,7 @@ function TratamentoContent() {
             </motion.div>
           )}
 
+          {/* Documentos Vinculados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
             <div className="flex items-center justify-between pl-1 pr-1">
               <div className="flex items-center gap-2">
