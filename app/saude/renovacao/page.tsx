@@ -27,7 +27,8 @@ export default function RenovacoesPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
 
-  const renovacoes = useLiveQuery(() => db.table("renovacoes").toArray(), []) || [];
+  // ✅ CORRIGIDO: db.renovacoes em vez de db.table("renovacoes")
+  const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
 
   const medicamentoMap = useMemo(() => new Map(medicamentos.map((m: any) => [m.id, m])), [medicamentos]);
