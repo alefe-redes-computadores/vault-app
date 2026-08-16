@@ -22,7 +22,6 @@ import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Attachment, Document, TipoReceita } from "@/lib/types";
 
-// Componentes UI e Inteligência
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -76,8 +75,10 @@ export default function NovoMedicamentoPage() {
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
 
-  const hospitaisLocais = useLiveQuery(() => db.table("hospitais").toArray(), []) || [];
-  const medicamentosQuery = useLiveQuery(() => db.table("medicamentos").toArray(), []) || [];
+  // ✅ CORRIGIDO: db.hospitais em vez de db.table("hospitais")
+  const hospitaisLocais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
+  // ✅ CORRIGIDO: db.medicamentos em vez de db.table("medicamentos")
+  const medicamentosQuery = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -138,7 +139,7 @@ export default function NovoMedicamentoPage() {
 
   // Autocomplete Inteligente & Duplicidade
   const [isTypingName, setIsTypingName] = useState(false);
-  const [isRecognized, setIsRecognized] = useState(false); // NOVO: Feedback Visual
+  const [isRecognized, setIsRecognized] = useState(false);
   const [showDuplicateActionModal, setShowDuplicateActionModal] = useState(false);
   const [selectedDuplicate, setSelectedDuplicate] = useState<any | null>(null);
 
@@ -650,10 +651,117 @@ export default function NovoMedicamentoPage() {
           )}
         </AnimatePresence>
 
-        <SelectionModal isOpen={isPharmacyModalOpen} onClose={() => setIsPharmacyModalOpen(false)} title="Selecionar Farmácia" items={farmacias} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} enableQuickCreate onQuickCreate={async (name) => { const id = await db.table("farmacias").add({ user_id: user?.id, nome: name, created_at: new Date().toISOString(), synced: false }); return { id, nome: name }; }} onSelect={(item: any) => { setFarmaciaId(item.id); setFarmaciaNome(item.nome); setIsPharmacyModalOpen(false); }} renderItem={(item: any) => ( <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0"><Store size={18} /></div><div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div></div> )} />
-        <SelectionModal isOpen={isDoctorModalOpen} onClose={() => setIsDoctorModalOpen(false)} title="Médico Prescritor" items={medicos} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} enableQuickCreate onQuickCreate={async (name) => { const id = await db.table("medicos").add({ user_id: user?.id, nome: name, created_at: new Date().toISOString(), synced: false }); return { id, nome: name }; }} onSelect={(item: any) => { setMedicoId(item.id); setMedicoNome(item.nome); setIsDoctorModalOpen(false); }} renderItem={(item: any) => ( <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={18} /></div><div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div></div> )} />
-        <SelectionModal isOpen={isEstabelecimentoModalOpen} onClose={() => setIsEstabelecimentoModalOpen(false)} title="Selecionar Local" activeTab={activeEstabelecimentoTab} onTabChange={setActiveEstabelecimentoTab} tabs={[ { id: 'hospital', label: 'Hospitais', activeColor: 'bg-coral text-void border-transparent' }, { id: 'clinica', label: 'Postos/Clínicas', activeColor: 'bg-emerald-400 text-void border-transparent' } ]} items={hospitaisLocais.filter(h => activeEstabelecimentoTab === 'hospital' ? h.tipo === 'hospital' : h.tipo !== 'hospital')} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} enableQuickCreate onQuickCreate={async (name, tabId) => { const id = await db.table("hospitais").add({ user_id: user?.id, nome: name, tipo: tabId, created_at: new Date().toISOString(), synced: false }); return { id, nome: name, tipo: tabId }; }} onSelect={(item: any) => { setEstabelecimentoId(item.id); setEstabelecimentoNome(item.nome); setIsEstabelecimentoModalOpen(false); }} renderItem={(item: any) => ( <div className="flex items-center gap-3"> <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${item.tipo === 'hospital' ? 'bg-coral/10 text-coral' : 'bg-emerald-400/10 text-emerald-400'}`}> <Building2 size={18} /> </div> <div className="text-left"> <p className="font-semibold text-ink-primary">{item.nome}</p> <p className="text-xs text-ink-muted uppercase">{item.tipo === 'hospital' ? 'Hospital' : 'Clínica/Posto'}</p> </div> </div> )} />
-        <SeletorTratamentoModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} selectedIds={tratamentosSelecionados} onChange={setTratamentosSelecionados} personId={personId} />
+        <SelectionModal 
+          isOpen={isPharmacyModalOpen} 
+          onClose={() => setIsPharmacyModalOpen(false)} 
+          title="Selecionar Farmácia" 
+          items={farmacias} 
+          getItemId={(item: any) => item.id!} 
+          getItemLabel={(item: any) => item.nome} 
+          enableQuickCreate 
+          // ✅ CORRIGIDO: db.farmacias.add em vez de db.table("farmacias").add
+          onQuickCreate={async (name) => { 
+            const id = await db.farmacias.add({ 
+              user_id: user?.id, 
+              nome: name, 
+              created_at: new Date().toISOString(), 
+              synced: false 
+            }); 
+            return { id, nome: name }; 
+          }} 
+          onSelect={(item: any) => { 
+            setFarmaciaId(item.id); 
+            setFarmaciaNome(item.nome); 
+            setIsPharmacyModalOpen(false); 
+          }} 
+          renderItem={(item: any) => ( 
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0"><Store size={18} /></div>
+              <div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div>
+            </div> 
+          )} 
+        />
+
+        <SelectionModal 
+          isOpen={isDoctorModalOpen} 
+          onClose={() => setIsDoctorModalOpen(false)} 
+          title="Médico Prescritor" 
+          items={medicos} 
+          getItemId={(item: any) => item.id!} 
+          getItemLabel={(item: any) => item.nome} 
+          enableQuickCreate 
+          onQuickCreate={async (name) => { 
+            const id = await db.medicos.add({ 
+              user_id: user?.id, 
+              nome: name, 
+              created_at: new Date().toISOString(), 
+              synced: false 
+            }); 
+            return { id, nome: name }; 
+          }} 
+          onSelect={(item: any) => { 
+            setMedicoId(item.id); 
+            setMedicoNome(item.nome); 
+            setIsDoctorModalOpen(false); 
+          }} 
+          renderItem={(item: any) => ( 
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={18} /></div>
+              <div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div>
+            </div> 
+          )} 
+        />
+
+        <SelectionModal 
+          isOpen={isEstabelecimentoModalOpen} 
+          onClose={() => setIsEstabelecimentoModalOpen(false)} 
+          title="Selecionar Local" 
+          activeTab={activeEstabelecimentoTab} 
+          onTabChange={setActiveEstabelecimentoTab} 
+          tabs={[ 
+            { id: 'hospital', label: 'Hospitais', activeColor: 'bg-coral text-void border-transparent' }, 
+            { id: 'clinica', label: 'Postos/Clínicas', activeColor: 'bg-emerald-400 text-void border-transparent' } 
+          ]} 
+          items={hospitaisLocais.filter(h => activeEstabelecimentoTab === 'hospital' ? h.tipo === 'hospital' : h.tipo !== 'hospital')} 
+          getItemId={(item: any) => item.id!} 
+          getItemLabel={(item: any) => item.nome} 
+          enableQuickCreate 
+          // ✅ CORRIGIDO: db.hospitais.add em vez de db.table("hospitais").add
+          onQuickCreate={async (name, tabId) => { 
+            const id = await db.hospitais.add({ 
+              user_id: user?.id, 
+              nome: name, 
+              tipo: tabId, 
+              created_at: new Date().toISOString(), 
+              synced: false 
+            }); 
+            return { id, nome: name, tipo: tabId }; 
+          }} 
+          onSelect={(item: any) => { 
+            setEstabelecimentoId(item.id); 
+            setEstabelecimentoNome(item.nome); 
+            setIsEstabelecimentoModalOpen(false); 
+          }} 
+          renderItem={(item: any) => ( 
+            <div className="flex items-center gap-3"> 
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${item.tipo === 'hospital' ? 'bg-coral/10 text-coral' : 'bg-emerald-400/10 text-emerald-400'}`}> 
+                <Building2 size={18} /> 
+              </div> 
+              <div className="text-left"> 
+                <p className="font-semibold text-ink-primary">{item.nome}</p> 
+                <p className="text-xs text-ink-muted uppercase">{item.tipo === 'hospital' ? 'Hospital' : 'Clínica/Posto'}</p> 
+              </div> 
+            </div> 
+          )} 
+        />
+
+        <SeletorTratamentoModal 
+          isOpen={isTratamentoModalOpen} 
+          onClose={() => setIsTratamentoModalOpen(false)} 
+          selectedIds={tratamentosSelecionados} 
+          onChange={setTratamentosSelecionados} 
+          personId={personId} 
+        />
       </main>
     </PageTransition>
   );
