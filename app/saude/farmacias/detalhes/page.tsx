@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2, 
-  Pill, DollarSign, ExternalLink 
+  Pill, DollarSign, ExternalLink, Clock, TrendingDown, TrendingUp,
+  AlertCircle
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -15,6 +16,18 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { calcularEconomia, isReceitaVencidaSegura } from "@/lib/health-insights";
+
+function formatDateDisplay(isoStr: string): string {
+  if (!isoStr) return "";
+  const parts = isoStr.split("-");
+  if (parts.length !== 3) return isoStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function formatCurrency(value: number): string {
+  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -34,7 +47,6 @@ function DetalhesFarmaciaContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // ✅ CORRIGIDO: Usa db.renovacoes (já estava correto)
   const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
   useEffect(() => {
@@ -52,18 +64,30 @@ function DetalhesFarmaciaContent() {
     });
   }, [id, getFarmacia, router]);
 
-  // ✅ CORRIGIDO: Cruzamento analítico de medicamentos e gastos
+  // 🔧 Análise completa da farmácia
   const analiseFarmacia = useMemo(() => {
-    if (!farmacia || !medicamentos) return { medicamentosVinculados: [], totalGasto: 0 };
+    if (!farmacia || !medicamentos) {
+      return { 
+        medicamentosVinculados: [], 
+        totalGasto: 0, 
+        precoMedio: 0,
+        ultimaCompra: null,
+        ultimasRenovacoes: [],
+        economia: null,
+      };
+    }
 
-    // ✅ Usa apenas farmacia_id (fallback por nome removido)
+    // Medicamentos vinculados via farmacia_id
     const medicamentosVinculados = medicamentos.filter(
       (m: any) => m.farmacia_id === farmacia.id
     );
 
     const medIds = new Set(medicamentosVinculados.map((m: any) => m.id));
-    const renovacoesDaFarmacia = renovacoes.filter((r: any) => medIds.has(r.medicamento_id));
+    const renovacoesDaFarmacia = renovacoes
+      .filter((r: any) => medIds.has(r.medicamento_id))
+      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
+    // Total gasto
     let totalGasto = 0;
     renovacoesDaFarmacia.forEach((r: any) => {
       if (typeof r.preco === "number" && r.preco > 0) {
@@ -71,8 +95,47 @@ function DetalhesFarmaciaContent() {
       }
     });
 
-    return { medicamentosVinculados, totalGasto };
+    // Preço médio
+    const precos = renovacoesDaFarmacia
+      .filter((r: any) => typeof r.preco === "number" && r.preco > 0)
+      .map((r: any) => r.preco);
+    const precoMedio = precos.length > 0 
+      ? precos.reduce((a, b) => a + b, 0) / precos.length 
+      : 0;
+
+    // Última compra
+    const ultimaCompra = renovacoesDaFarmacia.length > 0 ? renovacoesDaFarmacia[0] : null;
+
+    // Últimas 5 renovações (com nome do medicamento)
+    const ultimasRenovacoes = renovacoesDaFarmacia.slice(0, 5).map((r: any) => {
+      const med = medicamentosVinculados.find((m: any) => m.id === r.medicamento_id);
+      return {
+        ...r,
+        medicamento_nome: med?.nome || "Medicamento",
+        dosagem: med?.dosagem || "",
+      };
+    });
+
+    // 🔧 Economia (via health-insights)
+    const economia = calcularEconomia(renovacoesDaFarmacia);
+
+    return {
+      medicamentosVinculados,
+      totalGasto,
+      precoMedio,
+      ultimaCompra,
+      ultimasRenovacoes,
+      economia,
+    };
   }, [farmacia, medicamentos, renovacoes]);
+
+  // 🔧 Medicamentos com badge de receita vencida
+  const medicamentosComBadge = useMemo(() => {
+    return analiseFarmacia.medicamentosVinculados.map((med: any) => ({
+      ...med,
+      receitaVencida: isReceitaVencidaSegura(med.proxima_renovacao),
+    }));
+  }, [analiseFarmacia.medicamentosVinculados]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -135,6 +198,7 @@ function DetalhesFarmaciaContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
+            style={{ borderLeft: "6px solid #F59E0B" }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400 border border-amber-400/20">
@@ -157,34 +221,110 @@ function DetalhesFarmaciaContent() {
               </div>
             </div>
 
+            {/* 🔧 Última compra */}
+            {analiseFarmacia.ultimaCompra && (
+              <div className="pt-2 border-t border-surface-border/40">
+                <div className="flex items-center gap-2 text-xs text-ink-muted">
+                  <Clock size={14} className="text-amber-400" />
+                  <span>Última compra: <span className="font-medium text-ink-primary">{formatDateDisplay(analiseFarmacia.ultimaCompra.data)}</span></span>
+                  {analiseFarmacia.ultimaCompra.preco && (
+                    <span className="font-medium text-emerald-400 ml-1">
+                      ({formatCurrency(analiseFarmacia.ultimaCompra.preco)})
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Bloco Analítico */}
-            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-surface-border/40">
+            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-surface-border/40">
               <div className="rounded-2xl bg-surface-raised p-3">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Vinculados</p>
-                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseFarmacia.medicamentosVinculados.length} medicamento(s)</p>
+                <p className="mt-0.5 text-sm font-semibold text-ink-primary">
+                  {analiseFarmacia.medicamentosVinculados.length} medicamento(s)
+                </p>
               </div>
               <div className="rounded-2xl bg-surface-raised p-3">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Total Gasto</p>
                 <p className="mt-0.5 text-sm font-semibold text-emerald-400">
-                  {analiseFarmacia.totalGasto > 0 ? `R$ ${analiseFarmacia.totalGasto.toFixed(2).replace(".", ",")}` : "R$ 0,00"}
+                  {analiseFarmacia.totalGasto > 0 ? formatCurrency(analiseFarmacia.totalGasto) : "R$ 0,00"}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-surface-raised p-3">
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Preço Médio</p>
+                <p className="mt-0.5 text-sm font-semibold text-ink-primary">
+                  {analiseFarmacia.precoMedio > 0 ? formatCurrency(analiseFarmacia.precoMedio) : "—"}
                 </p>
               </div>
             </div>
+
+            {/* 🔧 Economia (health-insights) */}
+            {analiseFarmacia.economia && (
+              <div className="pt-2 border-t border-surface-border/40">
+                <div className={`flex items-center gap-2 text-xs ${analiseFarmacia.economia.economia > 0 ? 'text-emerald-400' : 'text-coral'}`}>
+                  {analiseFarmacia.economia.economia > 0 ? (
+                    <TrendingDown size={14} />
+                  ) : (
+                    <TrendingUp size={14} />
+                  )}
+                  <span>
+                    {analiseFarmacia.economia.economia > 0 
+                      ? `Economia de ${formatCurrency(Math.abs(analiseFarmacia.economia.economia))} (${Math.abs(analiseFarmacia.economia.percentual)}%) na última compra`
+                      : `Aumento de ${formatCurrency(Math.abs(analiseFarmacia.economia.economia))} (${Math.abs(analiseFarmacia.economia.percentual)}%) na última compra`
+                    }
+                  </span>
+                </div>
+              </div>
+            )}
           </motion.div>
 
-          {/* Histórico Relacional: Medicamentos Vinculados */}
+          {/* 🔧 Últimas Renovações */}
+          {analiseFarmacia.ultimasRenovacoes.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
+              <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
+                <Clock size={16} className="text-amber-400" /> Últimas Compras
+              </h3>
+              <div className="space-y-2">
+                {analiseFarmacia.ultimasRenovacoes.map((ren: any) => (
+                  <div
+                    key={ren.id}
+                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-ink-primary">{ren.medicamento_nome}</p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(ren.data)}</p>
+                        {ren.dosagem && (
+                          <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">
+                            {ren.dosagem}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {ren.preco && (
+                      <span className="text-sm font-semibold text-emerald-400">
+                        {formatCurrency(ren.preco)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Medicamentos Vinculados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
-              <Pill size={16} className="text-amber-400" /> Medicamentos Retirados ({analiseFarmacia.medicamentosVinculados.length})
+              <Pill size={16} className="text-amber-400" /> Medicamentos Retirados ({medicamentosComBadge.length})
             </h3>
 
-            {analiseFarmacia.medicamentosVinculados.length === 0 ? (
+            {medicamentosComBadge.length === 0 ? (
               <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
                 <p className="text-xs text-ink-muted">Nenhum medicamento vinculado a esta farmácia.</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {analiseFarmacia.medicamentosVinculados.map((med: any) => (
+                {medicamentosComBadge.map((med: any) => (
                   <div
                     key={med.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
@@ -195,7 +335,14 @@ function DetalhesFarmaciaContent() {
                         <Pill size={16} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ink-primary truncate">{med.nome}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-ink-primary truncate">{med.nome}</p>
+                          {med.receitaVencida && (
+                            <span className="shrink-0 text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">
+                              Vencida
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-ink-muted">{med.dosagem || "Uso contínuo"}</p>
                       </div>
                     </div>
