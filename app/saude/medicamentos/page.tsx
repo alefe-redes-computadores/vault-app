@@ -60,7 +60,6 @@ export default function MedicamentosListPage() {
     localStorage.setItem("vault_med_filtro_pessoa", selectedPersonId);
   }, [selectedPersonId]);
 
-  // ✅ CORRIGIDO: usa db.tratamentos (sem tabela de junção)
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
 
   const tratamentoMap = useMemo(() => {
@@ -96,7 +95,7 @@ export default function MedicamentosListPage() {
 
     if (atual <= 0) {
       trigger("error");
-      setToastMessage(`⚠️ Estoque de ${med.nome} esgotado!`);
+      setToastMessage(`Estoque de ${med.nome} esgotado!`);
       setTomandoDoseId(null);
       setTimeout(() => setToastMessage(null), 3000);
       return;
@@ -108,14 +107,14 @@ export default function MedicamentosListPage() {
       await updateMedicamento(med.id, {
         estoque_quantidade: novoEstoque,
         estoque_data_referencia: new Date().toISOString().slice(0, 10),
-      } as any);
+      });
 
       const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-      setToastMessage(`💊 1 dose de ${med.nome} registrada às ${horaAtual}!`);
+      setToastMessage(`1 dose de ${med.nome} registrada às ${horaAtual}`);
       setTimeout(() => setToastMessage(null), 3000);
     } catch {
       trigger("error");
-      setToastMessage(`Erro ao registrar dose.`);
+      setToastMessage(`Erro ao registrar dose de ${med.nome}`);
       setTimeout(() => setToastMessage(null), 3000);
     } finally {
       setTomandoDoseId(null);
@@ -286,7 +285,6 @@ export default function MedicamentosListPage() {
               const qtd = estoqueInfo?.quantidadeRestante ?? null;
               const isEstoqueCritico = qtd !== null && qtd < 10;
               const person = med.person_id ? personMap.get(med.person_id) : null;
-              // ✅ CORRIGIDO: usa tratamento_ids diretamente do medicamento
               const tIds = med.tratamento_ids || [];
               const isSuspenso = med.status === "descontinuado";
               const isControlado = med.tipo_receita === "amarela";
