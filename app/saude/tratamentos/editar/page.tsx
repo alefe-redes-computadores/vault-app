@@ -16,7 +16,6 @@ import { useCids } from "@/hooks/useCids";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
-// Paleta de cores para os tratamentos
 const CORES_TRATAMENTO = ["#8B5CF6", "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#EC4899", "#6366F1"];
 
 function EditarTratamentoContent() {
@@ -57,7 +56,6 @@ function EditarTratamentoContent() {
         setCidId(data.cid_id || "");
         setStatus(data.status || "ativo");
         setDataInicio(data.created_at ? data.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
-        // Recupera a cor salva ou define a roxa como padrão
         setCor((data as any).cor || "#8B5CF6");
       }
       setIsLoading(false);
@@ -73,7 +71,7 @@ function EditarTratamentoContent() {
       const cidSelecionado = cids?.find(c => c.id === cidId);
       const condicaoTexto = cidSelecionado ? cidSelecionado.descricao : condicao.trim();
 
-      // Forçamos o 'as any' aqui para injetar a cor de UI sem quebrar a tipagem do domínio principal
+      // ✅ CORRIGIDO: removido as any (cor já está tipada em Tratamento)
       await db.tratamentos.update(id, {
         nome: nome.trim(),
         condicao: condicaoTexto || undefined,
@@ -82,7 +80,7 @@ function EditarTratamentoContent() {
         cor, 
         created_at: dataInicio ? new Date(dataInicio).toISOString() : tratamento?.created_at,
         updated_at: new Date().toISOString(),
-      } as any);
+      });
 
       trigger("success");
       router.replace(`/saude/tratamentos/detalhes?id=${id}`);
@@ -126,7 +124,6 @@ function EditarTratamentoContent() {
               </button>
             </div>
 
-            {/* SELETOR DE CORES */}
             <div className="space-y-2 pt-1">
               <label className="block text-sm font-medium text-ink-primary">Cor de Identificação</label>
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -175,7 +172,6 @@ function EditarTratamentoContent() {
           message="Tem certeza que deseja excluir este tratamento? O histórico de medicamentos associados não será apagado, mas perderão este vínculo." 
         />
 
-        {/* MODAL DO CID CORRIGIDO */}
         <AnimatePresence>
           {showCidModal && (
             <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-void/80 backdrop-blur-sm p-0 sm:p-4">
