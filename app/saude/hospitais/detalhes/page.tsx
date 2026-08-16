@@ -32,8 +32,9 @@ function DetalhesHospitalContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const documentos = useLiveQuery(() => db.table("documents").toArray(), []) || [];
-  const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
+  // ✅ CORRIGIDO: Usa db.documents e db.exames
+  const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
+  const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
   useEffect(() => {
     if (!id) {
@@ -50,14 +51,16 @@ function DetalhesHospitalContent() {
     });
   }, [id, getHospital, router]);
 
-  // Cruzamento relacional em tempo real
+  // ✅ CORRIGIDO: Cruzamento relacional usando campos diretos
   const procedimentosVinculados = useMemo(() => {
     if (!id) return { cirurgias: [], exames: [] };
     
+    // ✅ Usa hospital_id direto em vez de metadata
     const cirurgias = documentos.filter((d: any) => 
-      d.metadata?.hospital_id === id && (d.type === 'cirurgia' || d.type === 'prontuario' || d.type === 'consulta')
+      d.hospital_id === id && d.category_id === 'saude'
     );
 
+    // ✅ Usa hospital_id ou laboratorio_id
     const examesUnidade = exames.filter((e: any) => 
       e.hospital_id === id || e.laboratorio_id === id
     );
