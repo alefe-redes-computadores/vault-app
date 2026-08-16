@@ -25,6 +25,8 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Consulta, Medico, Hospital, Medicamento, Exame } from "@/lib/types";
+// ✅ NOVO: import do hook
+import { useConsultas } from "@/hooks/useConsultas";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -50,6 +52,9 @@ function DetalhesConsultaContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // ✅ NOVO: useConsultas
+  const { getConsulta, updateConsulta, deleteConsulta } = useConsultas();
+
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
@@ -61,7 +66,8 @@ function DetalhesConsultaContent() {
 
     const fetchData = async () => {
       try {
-        const conData = await db.consultas.get(id);
+        // ✅ CORRIGIDO: usa getConsulta do hook
+        const conData = await getConsulta(id);
         if (conData) {
           setConsulta(conData);
           if (conData.medico_id) {
@@ -83,9 +89,8 @@ function DetalhesConsultaContent() {
     };
 
     fetchData();
-  }, [id, router]);
+  }, [id, router, getConsulta]);
 
-  // ✅ Mantido, com comentário explicativo
   // Nota: Associação por médico e data (aproximação, já que não temos consulta_id)
   const medicamentosRelacionados = useMemo(() => {
     if (!consulta) return [];
@@ -109,10 +114,9 @@ function DetalhesConsultaContent() {
     trigger("vibrate");
     if (!id || !consulta) return;
     try {
-      await db.consultas.update(id, {
+      // ✅ CORRIGIDO: usa updateConsulta do hook
+      await updateConsulta(id, {
         status: novoStatus,
-        updated_at: new Date().toISOString(),
-        synced: false,
       });
       setConsulta({ ...consulta, status: novoStatus });
       trigger("success");
@@ -131,7 +135,8 @@ function DetalhesConsultaContent() {
     trigger("vibrate");
     if (!id) return;
     try {
-      await db.consultas.delete(id);
+      // ✅ CORRIGIDO: usa deleteConsulta do hook
+      await deleteConsulta(id);
       trigger("success");
       router.replace("/saude/consultas");
     } catch (error) {
