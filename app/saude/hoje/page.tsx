@@ -70,7 +70,7 @@ export default function HojePage() {
       
       const estoqueInfo = computeEstoqueInfo(med);
       const medicoObj = medicos.find(m => m.id === med.medico_id);
-      const tratamentoObj = tratamentos.find(t => t.id === med.tratamento_id);
+      const tratamentoObj = med.tratamento_ids?.length ? tratamentos.find(t => t.id === med.tratamento_ids[0]) : undefined;
 
       for (const horario of med.estoque_horarios) {
         if (!horario) continue;
