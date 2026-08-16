@@ -1,5 +1,3 @@
-// lib/repositories/consultas.ts
-
 import { db, safeAddConsulta, safeUpdateConsulta, safeDeleteConsulta } from "@/lib/db";
 import type { Consulta } from "@/lib/types";
 
