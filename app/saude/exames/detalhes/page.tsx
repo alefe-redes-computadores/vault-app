@@ -25,13 +25,15 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, safeDeleteExame } from "@/lib/db";
+import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
+// ✅ NOVO: import do hook
+import { useExames } from "@/hooks/useExames";
 
 function getTratamentoIcon(nome: string) {
   const n = nome.toLowerCase();
@@ -51,21 +53,41 @@ function DetalhesExameContent() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // ✅ CORRIGIDO: Usa db.exames em vez de db.table("exames")
-  const exame = useLiveQuery(() => (id ? db.exames.get(id) : undefined), [id]);
+  // ✅ CORRIGIDO: usa o hook useExames
+  const { getExame, deleteExame } = useExames();
+  const [exame, setExame] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Busca o exame via hook
+  useState(() => {
+    if (!id) {
+      router.push("/saude/exames");
+      return;
+    }
+    const loadExame = async () => {
+      const data = await getExame(id);
+      if (data) {
+        setExame(data);
+      } else {
+        router.push("/saude/exames");
+      }
+      setIsLoading(false);
+    };
+    loadExame();
+  }, [id, router, getExame]);
 
   // Busca Dados Relacionais Cruzados
   const person = useLiveQuery(() => exame?.person_id ? db.persons.get(exame.person_id) : undefined, [exame?.person_id]);
   const medico = useLiveQuery(() => exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined, [exame?.medico_id]);
   const laboratorio = useLiveQuery(() => exame?.laboratorio_id ? db.hospitais.get(exame.laboratorio_id) : undefined, [exame?.laboratorio_id]);
 
-  // ✅ CORRIGIDO: Usa exame.tratamento_ids (MultiEntry Index) em vez de exame_tratamentos
+  // ✅ CORRIGIDO: Usa exame.tratamento_ids (MultiEntry Index)
   const tratamentos = useLiveQuery(() => {
     if (!exame?.tratamento_ids || exame.tratamento_ids.length === 0) return [];
     return db.tratamentos.where('id').anyOf(exame.tratamento_ids).toArray();
   }, [exame?.tratamento_ids]);
 
-  // ✅ CORRIGIDO: Histórico evolutivo usando db.exames
+  // Histórico evolutivo usando db.exames
   const historicoRelacionado = useLiveQuery(() => {
     if (!exame) return [];
     return db.exames
@@ -75,9 +97,8 @@ function DetalhesExameContent() {
       .toArray();
   }, [exame, id]) || [];
 
-  if (!exame) {
-    return <LoadingSkeleton />;
-  }
+  if (isLoading) return <LoadingSkeleton />;
+  if (!exame) return null;
 
   // Cálculos de Alertas Inteligentes de Prazo
   let diasParaApresentacao = null;
@@ -95,7 +116,8 @@ function DetalhesExameContent() {
     setDeleting(true);
     trigger("vibrate");
     try {
-      await safeDeleteExame(id);
+      // ✅ CORRIGIDO: usa deleteExame do hook
+      await deleteExame(id);
       trigger("success");
       router.push("/saude/exames");
     } catch (error) {
