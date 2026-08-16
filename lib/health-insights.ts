@@ -208,3 +208,33 @@ export function analisarMedico(medicoContexto: {
 
   return null;
 }
+
+// ============================================================
+// 9. VIGILÂNCIA DE FARMÁCIA (CONTEXTO DE ESTABELECIMENTOS)
+// ============================================================
+export interface FarmaciaInsight {
+  status: 'destaque_preco' | 'alerta_gasto' | 'neutro';
+  mensagem: string;
+}
+
+export function analisarFarmaciaDetalhada(farmaciaContexto: {
+  totalGasto: number;
+  comprasCount: number;
+  isMaisEconomica: boolean;
+}): FarmaciaInsight | null {
+  if (farmaciaContexto.isMaisEconomica && farmaciaContexto.comprasCount > 0) {
+    return {
+      status: 'destaque_preco',
+      mensagem: 'Esta é a sua farmácia mais econômica com base no histórico de preços.'
+    };
+  }
+
+  if (farmaciaContexto.totalGasto > 300) {
+    return {
+      status: 'alerta_gasto',
+      mensagem: `Alto volume financeiro histórico acumulado (R$ ${farmaciaContexto.totalGasto.toFixed(2)}).`
+    };
+  }
+
+  return null;
+}
