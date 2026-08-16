@@ -1,5 +1,3 @@
-// lib/repositories/cirurgias.ts
-
 import { db, safeAddCirurgia, safeUpdateCirurgia, safeDeleteCirurgia } from "@/lib/db";
 import type { Cirurgia } from "@/lib/types";
 
