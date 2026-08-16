@@ -45,7 +45,6 @@ const FORMATOS = [
   { id: "adesivo", label: "Adesivo", icon: StickyNote },
 ];
 
-// Tipagem local
 interface HistDosagem { dosagem_antiga: string; data_mudanca: string; medico_responsavel: string; }
 
 function MedicamentoDetalhesContent() {
@@ -78,6 +77,12 @@ function MedicamentoDetalhesContent() {
     return db.tratamentos.where('id').anyOf(med.tratamento_ids).toArray();
   }, [med?.tratamento_ids]) || [];
 
+  // ✅ CORREÇÃO: Busca todas as farmácias para resolver os nomes nas renovações
+  const farmaciasMap = useLiveQuery(() => 
+    db.farmacias.toArray().then(f => new Map(f.map(item => [item.id, item.nome]))), 
+    []
+  ) || new Map<string, string>();
+
   // ============================================================
   // AÇÃO: TOMAR DOSE
   // ============================================================
@@ -102,12 +107,10 @@ function MedicamentoDetalhesContent() {
 
     try {
       const now = new Date();
-      // Atualiza Estoque
       await updateMedicamento(med.id, {
         estoque_quantidade: novoEstoque,
         estoque_data_referencia: now.toISOString().slice(0, 10),
       });
-      // Registra Dose
       await db.doseLogs.add({
         user_id: med.user_id,
         medicamento_id: med.id,
@@ -126,10 +129,6 @@ function MedicamentoDetalhesContent() {
       setTimeout(() => setToastMessage(null), 3000);
     }
   }, [med, updateMedicamento, trigger]);
-
-  // ============================================================
-  // RENDER
-  // ============================================================
 
   if (med === undefined) return <LoadingSkeleton />;
   if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
@@ -195,7 +194,6 @@ Estoque: ${qtd} doses`;
     window.open(`tel:${telefone}`, "_blank");
   };
 
-  // Cálculos Financeiros
   const custoTotalRenovacoes = renovacoes.reduce((acc, r: Renovacao) => {
     const p = typeof r.preco === 'number' ? r.preco : Number(r.preco) || 0;
     return acc + p;
@@ -463,18 +461,22 @@ Estoque: ${qtd} doses`;
                    )}
                  </div>
                  <AnimatePresence>
-                   {displayedRenovacoes.map((r: Renovacao, index: number) => (
-                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} key={r.id || index} className="bg-surface p-3.5 rounded-2xl border border-surface-border flex justify-between items-center shadow-sm">
-                       <div className="flex items-center gap-3">
-                         <div className="h-8 w-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted"><Calendar size={14}/></div>
-                         <div>
-                           <p className="text-xs font-bold text-ink-primary">{formatDate(r.data || r.created_at)}</p>
-                           {r.farmacia_nome && <p className="text-[10px] text-ink-muted">{r.farmacia_nome}</p>}
+                   {displayedRenovacoes.map((r: Renovacao, index: number) => {
+                     // ✅ CORREÇÃO: Busca o nome da farmácia a partir do ID
+                     const farmaciaNome = r.farmacia_id ? farmaciasMap.get(r.farmacia_id) : null;
+                     return (
+                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} key={r.id || index} className="bg-surface p-3.5 rounded-2xl border border-surface-border flex justify-between items-center shadow-sm">
+                         <div className="flex items-center gap-3">
+                           <div className="h-8 w-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted"><Calendar size={14}/></div>
+                           <div>
+                             <p className="text-xs font-bold text-ink-primary">{formatDate(r.data || r.created_at)}</p>
+                             {farmaciaNome && <p className="text-[10px] text-ink-muted">{farmaciaNome}</p>}
+                           </div>
                          </div>
-                       </div>
-                       <p className="text-xs text-emerald-400 font-mono font-bold bg-emerald-400/10 px-2 py-1 rounded-lg">R$ {Number(r.preco || 0).toFixed(2)}</p>
-                     </motion.div>
-                   ))}
+                         <p className="text-xs text-emerald-400 font-mono font-bold bg-emerald-400/10 px-2 py-1 rounded-lg">R$ {Number(r.preco || 0).toFixed(2)}</p>
+                       </motion.div>
+                     );
+                   })}
                  </AnimatePresence>
                </div>
              )}
