@@ -178,3 +178,33 @@ export function analisarComportamentoUso(medicamento: any, historicoDoses: any[]
 
   return null;
 }
+
+// ============================================================
+// 8. VIGILÂNCIA MÉDICA (CONTEXTO ESPECÍFICO DE MÉDICOS)
+// ============================================================
+export interface MedicoInsight {
+  urgencia: 'alta' | 'media' | 'baixa' | 'nenhuma';
+  mensagem: string;
+  tipo: 'estoque' | 'adesao' | 'frequencia' | 'nenhum';
+}
+
+export function analisarMedico(medicoContexto: { 
+  medicamentos: any[], 
+  consultasCount: number, 
+  ultimaConsulta: any 
+}): MedicoInsight | null {
+  
+  const mesesDesdeUltimaConsulta = medicoContexto.ultimaConsulta 
+    ? (new Date().getTime() - new Date(medicoContexto.ultimaConsulta.data).getTime()) / (1000 * 60 * 60 * 24 * 30)
+    : 12;
+
+  if (medicoContexto.medicamentos.length > 0 && mesesDesdeUltimaConsulta > 6) {
+    return {
+      urgencia: 'media',
+      tipo: 'frequencia',
+      mensagem: `Sem consulta há ${Math.floor(mesesDesdeUltimaConsulta)} meses com prescrições ativas.`
+    };
+  }
+
+  return null;
+}
