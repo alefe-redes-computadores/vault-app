@@ -26,7 +26,8 @@ import {
   CalendarCheck2,
   FileHeart,
   Plus,
-  X
+  X,
+  Users,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -50,6 +51,7 @@ import {
   getLocalTodayISO,
   type HealthAlert,
 } from "@/lib/health-utils";
+import { sugerirRenovacao } from "@/lib/health-insights";
 
 function getTratamentoIcon(nome: string) {
   const n = (nome || "").toLowerCase();
@@ -64,7 +66,6 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const color = alertLevelColor(alert.level);
-  
   const isReceita = alert.title?.toLowerCase().includes("receita") || alert.subtitle?.toLowerCase().includes("receita");
 
   return (
@@ -134,8 +135,6 @@ export default function SaudePage() {
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
   const { locais } = useLocais();
-  
-  // ✅ CORREÇÃO APLICADA: Mapeando marcarComoTomada para marcarDose
   const { doseLogs, marcarComoTomada: marcarDose } = useDoseLogs(hoje);
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
@@ -147,7 +146,6 @@ export default function SaudePage() {
   const examesHoje = useLiveQuery(() => db.exames.where("data").equals(hoje).toArray(), [hoje]) || [];
 
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
-  
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
   const [isProcessandoTudo, setIsProcessandoTudo] = useState(false);
 
@@ -180,23 +178,41 @@ export default function SaudePage() {
     return lista;
   }, [medicamentos, doseLogs, horaAtual]);
 
+  const alertasEstoque = useMemo(() => {
+    if (!medicamentos) return [];
+    return medicamentos
+      .filter(m => m.status !== "descontinuado")
+      .map(m => {
+        const insight = sugerirRenovacao(m);
+        if (insight.deveRenovar) {
+          return {
+            id: m.id,
+            title: m.nome,
+            subtitle: insight.mensagem,
+            level: insight.urgencia === "alta" ? 2 : 1,
+            kind: "estoque" as const,
+            href: `/saude/medicamentos/detalhes?id=${m.id}`,
+            daysUntil: 0,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  }, [medicamentos]);
+
   const handleTomarDosePendente = async (d: { medicamentoId: string; nome: string; horario: string }) => {
     if (processandoDoseId) return;
-    
     setProcessandoDoseId(`${d.medicamentoId}-${d.horario}`);
     trigger("success");
-    
     try {
-      // ✅ Chamada com apenas 3 argumentos exigidos pelo hook
       await marcarDose(d.medicamentoId, hoje, d.horario);
-      
       const medOriginal = medicamentos?.find(m => m.id === d.medicamentoId);
       if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
         const unidadePorDose = medOriginal.estoque_unidade_por_dose || 1;
         const novoEstoque = Math.max(0, medOriginal.estoque_quantidade - unidadePorDose);
         await safeUpdateMedicamento(d.medicamentoId, {
           estoque_quantidade: novoEstoque,
-          estoque_data_referencia: hoje
+          estoque_data_referencia: hoje,
         });
       }
     } finally {
@@ -208,19 +224,16 @@ export default function SaudePage() {
     if (isProcessandoTudo) return;
     setIsProcessandoTudo(true);
     trigger("success");
-    
     try {
       for (const d of dosesPendentesAtrasadas) {
-        // ✅ Chamada com apenas 3 argumentos exigidos pelo hook
         await marcarDose(d.medicamentoId, hoje, d.horario);
-        
         const medOriginal = medicamentos?.find(m => m.id === d.medicamentoId);
         if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
           const unidadePorDose = medOriginal.estoque_unidade_por_dose || 1;
           const novoEstoque = Math.max(0, medOriginal.estoque_quantidade - unidadePorDose);
           await safeUpdateMedicamento(d.medicamentoId, {
             estoque_quantidade: novoEstoque,
-            estoque_data_referencia: hoje
+            estoque_data_referencia: hoje,
           });
         }
       }
@@ -232,14 +245,14 @@ export default function SaudePage() {
 
   const docAlerts = useMemo(() => getDocumentAlerts(documents || []).filter(a => a.daysUntil <= 5), [documents]);
   const exameAlerts = useMemo(() => getExameAlerts(exames || []).filter(a => a.daysUntil <= 5), [exames]);
+  const estoqueAlerts = useMemo(() => alertasEstoque, [alertasEstoque]);
 
   const otherAlerts = useMemo(
-    () => [...docAlerts, ...exameAlerts].sort((a, b) => a.daysUntil - b.daysUntil),
-    [docAlerts, exameAlerts]
+    () => [...docAlerts, ...exameAlerts, ...estoqueAlerts].sort((a, b) => a.daysUntil - b.daysUntil),
+    [docAlerts, exameAlerts, estoqueAlerts]
   );
 
   const isLoading = documents === undefined || medicamentos === undefined || exames === undefined;
-
   if (isLoading) return <LoadingSkeleton />;
 
   const quickActions = [
@@ -260,20 +273,15 @@ export default function SaudePage() {
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
-
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <Heart size={18} className="text-coral" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                  Vault
-                </p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
               </div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
-                Saúde
-              </h1>
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Saúde</h1>
               <p className="mt-1 text-sm text-ink-muted">
-                {dosesPendentesAtrasadas.length > 0 
-                  ? `${dosesPendentesAtrasadas.length} dose(s) pendente(s)` 
+                {dosesPendentesAtrasadas.length > 0
+                  ? `${dosesPendentesAtrasadas.length} dose(s) pendente(s)`
                   : "Painel Clínico atualizado"}
               </p>
             </div>
@@ -281,7 +289,6 @@ export default function SaudePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-5">
-          
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -362,7 +369,7 @@ export default function SaudePage() {
             >
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-coral" />
-                <h3 className="font-display text-sm font-bold text-ink-primary">Você tem compromissos hoje!</h3>
+                <h3 className="font-display text-sm font-bold text-ink-primary">Compromissos de hoje</h3>
               </div>
               <div className="space-y-2">
                 {consultasHoje.map((c: any) => (
@@ -401,7 +408,7 @@ export default function SaudePage() {
                   <h3 className="text-sm font-bold">{dosesPendentesAtrasadas.length} pendências</h3>
                   <p className="text-[11px] text-ink-muted">Ações rápidas de saúde</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setModalPendenciasAberto(true)}
                   className="px-4 py-2 bg-coral text-white text-[11px] font-bold rounded-xl active:scale-95"
                 >
@@ -429,12 +436,9 @@ export default function SaudePage() {
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FolderHeart size={15} className="text-violet-400" />
-                <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Tratamentos Ativos
-                </h2>
+                <h2 className="font-display text-sm font-semibold text-ink-primary">Tratamentos Ativos</h2>
               </div>
             </div>
-
             {tratamentos.length === 0 ? (
               <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-6 text-center">
                 <p className="text-sm text-ink-muted">Nenhum tratamento cadastrado.</p>
@@ -443,8 +447,7 @@ export default function SaudePage() {
               <div className="space-y-2.5">
                 {tratamentos.map((tratamento) => {
                   const IconComponent = getTratamentoIcon(tratamento.nome);
-                  const cor = tratamento.cor || "#8B5CF6"; 
-                  
+                  const cor = tratamento.cor || "#8B5CF6";
                   return (
                     <button
                       key={tratamento.id}
@@ -453,7 +456,7 @@ export default function SaudePage() {
                       style={{ borderLeft: `5px solid ${cor}`, borderColor: `${cor}30` }}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div 
+                        <div
                           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
                           style={{ backgroundColor: `${cor}15`, color: cor }}
                         >
@@ -482,11 +485,8 @@ export default function SaudePage() {
             >
               <div className="mb-3 flex items-center gap-2">
                 <FileWarning size={15} className="text-coral" />
-                <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Atenção: Prazos Críticos
-                </h2>
+                <h2 className="font-display text-sm font-semibold text-ink-primary">Alertas Inteligentes</h2>
               </div>
-              
               <div className="space-y-2.5">
                 {otherAlerts.map((alert) => (
                   <AlertRow key={`${alert.kind}-${alert.id}`} alert={alert} />
@@ -526,7 +526,7 @@ export default function SaudePage() {
                 <p className="text-[10px] text-ink-muted">Procedimentos</p>
               </div>
             </button>
-            
+
             <button
               onClick={() => { trigger("vibrate"); router.push("/saude/exames"); }}
               className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
@@ -561,12 +561,15 @@ export default function SaudePage() {
             className="rounded-[24px] border border-surface-border/50 bg-surface p-4"
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-sm font-semibold text-ink-primary">
-                Sua rede e locais
-              </h2>
+              <h2 className="font-display text-sm font-semibold text-ink-primary">Sua rede e locais</h2>
+              <button
+                onClick={() => { trigger("vibrate"); router.push("/saude/rede"); }}
+                className="text-[10px] font-medium text-ice bg-ice/10 px-3 py-1 rounded-full hover:bg-ice/20 transition-colors"
+              >
+                Ver rede completa →
+              </button>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center">
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/medicos"); }}
                 className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
@@ -575,7 +578,6 @@ export default function SaudePage() {
                 <p className="font-display text-base font-semibold text-ink-primary">{(medicos || []).length}</p>
                 <p className="text-[10px] text-ink-muted">Médicos</p>
               </button>
-
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/farmacias"); }}
                 className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
@@ -584,7 +586,6 @@ export default function SaudePage() {
                 <p className="font-display text-base font-semibold text-ink-primary">{(farmacias || []).length}</p>
                 <p className="text-[10px] text-ink-muted">Farmácias</p>
               </button>
-
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/hospitais"); }}
                 className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
@@ -593,7 +594,6 @@ export default function SaudePage() {
                 <p className="font-display text-base font-semibold text-ink-primary">{(hospitais || []).length}</p>
                 <p className="text-[10px] text-ink-muted">Hospitais</p>
               </button>
-
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/locais"); }}
                 className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
@@ -601,6 +601,14 @@ export default function SaudePage() {
                 <MapPin size={16} className="text-emerald-400 mb-1" />
                 <p className="font-display text-base font-semibold text-ink-primary">{(locais || []).length}</p>
                 <p className="text-[10px] text-ink-muted">Postos</p>
+              </button>
+              <button
+                onClick={() => { trigger("vibrate"); router.push("/saude/rede"); }}
+                className="rounded-2xl bg-gradient-to-br from-ice/10 to-violet-400/10 py-3 px-2 transition-all active:scale-95 hover:from-ice/20 hover:to-violet-400/20 border border-ice/20 cursor-pointer flex flex-col items-center justify-center"
+              >
+                <Users size={16} className="text-ice mb-1" />
+                <p className="font-display text-base font-semibold text-ink-primary">Rede</p>
+                <p className="text-[10px] text-ink-muted">Visualizar</p>
               </button>
             </div>
           </motion.div>
@@ -612,9 +620,7 @@ export default function SaudePage() {
             className="pb-4"
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-sm font-semibold text-ink-primary">
-                Arquivo Clínico
-              </h2>
+              <h2 className="font-display text-sm font-semibold text-ink-primary">Arquivo Clínico</h2>
             </div>
             <button
               onClick={() => { trigger("vibrate"); router.push("/saude/documentos"); }}
@@ -636,13 +642,13 @@ export default function SaudePage() {
 
         <AnimatePresence>
           {modalPendenciasAberto && (
-            <div 
+            <div
               className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-void/80 backdrop-blur-md"
               onClick={() => setModalPendenciasAberto(false)}
             >
-              <motion.div 
-                initial={{ opacity: 0, y: 50, scale: 0.95 }} 
-                animate={{ opacity: 1, y: 0, scale: 1 }} 
+              <motion.div
+                initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 50, scale: 0.95 }}
                 onClick={(e) => e.stopPropagation()}
                 className="w-full max-w-md bg-surface rounded-[32px] p-6 shadow-2xl space-y-5 border border-surface-border"
@@ -652,14 +658,14 @@ export default function SaudePage() {
                     <h3 className="font-display text-lg font-bold text-ink-primary">Doses Pendentes</h3>
                     <p className="text-xs text-ink-muted">Gerencie suas pendências de hoje</p>
                   </div>
-                  <button 
-                    onClick={() => setModalPendenciasAberto(false)} 
+                  <button
+                    onClick={() => setModalPendenciasAberto(false)}
                     className="h-8 w-8 flex items-center justify-center rounded-full bg-surface-raised hover:bg-surface-border transition-colors"
                   >
-                    <X size={16}/>
+                    <X size={16} />
                   </button>
                 </div>
-                
+
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
                   {dosesPendentesAtrasadas.map((d, index) => {
                     const isProcessingThisDose = processandoDoseId === `${d.medicamentoId}-${d.horario}`;
@@ -669,7 +675,7 @@ export default function SaudePage() {
                           <p className="text-sm font-semibold text-ink-primary truncate">{d.nome}</p>
                           <p className="text-[10px] text-ink-muted font-mono">{d.horario}</p>
                         </div>
-                        <button 
+                        <button
                           onClick={() => handleTomarDosePendente(d)}
                           disabled={isProcessingThisDose || isProcessandoTudo}
                           className="text-emerald-400 font-bold text-xs px-3 py-1.5 rounded-lg bg-emerald-400/10 active:scale-95 transition-all disabled:opacity-50"
@@ -682,14 +688,14 @@ export default function SaudePage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
-                  <button 
-                    onClick={() => { setModalPendenciasAberto(false); router.push("/saude/hoje"); }} 
+                  <button
+                    onClick={() => { setModalPendenciasAberto(false); router.push("/saude/hoje"); }}
                     className="p-3.5 text-xs font-semibold rounded-2xl bg-surface-raised hover:bg-surface-border transition-all active:scale-95"
                   >
                     Expandir Cronograma
                   </button>
-                  <button 
-                    onClick={handleTomarTodasAtrasadas} 
+                  <button
+                    onClick={handleTomarTodasAtrasadas}
                     disabled={isProcessandoTudo || dosesPendentesAtrasadas.length === 0}
                     className="p-3.5 text-xs font-semibold rounded-2xl bg-coral text-white shadow-md shadow-coral/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
