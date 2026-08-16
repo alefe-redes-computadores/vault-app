@@ -1,3 +1,5 @@
+// lib/types.ts
+
 // ============================================================
 // 1. PESSOAS
 // ============================================================
@@ -91,7 +93,6 @@ export interface Attachment {
   uploaded_at: string;
 }
 
-
 export interface Document {
   id?: string;
   user_id: string;
@@ -140,406 +141,95 @@ export interface DocumentField {
 
 export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
   rg: [
-    {
-      key: 'modelo',
-      label: 'Modelo do Documento',
-      type: 'select',
-      options: ['C.I.N (Nova Identidade)', 'RG (Antigo)'],
-      required: true,
-    },
-    {
-      key: 'cpf',
-      label: 'Número do CPF',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'rg_number',
-      label: 'Número do RG (Se modelo antigo)',
-      type: 'text',
-    },
-    {
-      key: 'issue_date',
-      label: 'Data de emissão',
-      type: 'date',
-      required: true,
-    },
-    {
-      key: 'expiry_date',
-      label: 'Data de validade',
-      type: 'date',
-    },
-    {
-      key: 'issuer',
-      label: 'Órgão emissor',
-      type: 'text',
-      required: true,
-    },
+    { key: 'modelo', label: 'Modelo do Documento', type: 'select', options: ['C.I.N (Nova Identidade)', 'RG (Antigo)'], required: true },
+    { key: 'cpf', label: 'Número do CPF', type: 'text', required: true },
+    { key: 'rg_number', label: 'Número do RG', type: 'text' },
+    { key: 'issue_date', label: 'Data de emissão', type: 'date', required: true },
+    { key: 'expiry_date', label: 'Data de validade', type: 'date' },
+    { key: 'issuer', label: 'Órgão emissor', type: 'text', required: true },
   ],
-
-  cpf: [
-    {
-      key: 'number',
-      label: 'Número do CPF',
-      type: 'text',
-      required: true,
-    },
-  ],
-
+  cpf: [ { key: 'number', label: 'Número do CPF', type: 'text', required: true } ],
   cnh: [
-    {
-      key: 'number',
-      label: 'Número da CNH',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'category',
-      label: 'Categoria',
-      type: 'select',
-      options: ['A', 'B', 'AB', 'C', 'D', 'E'],
-      required: true,
-    },
-    {
-      key: 'issue_date',
-      label: 'Data de emissão',
-      type: 'date',
-      required: true,
-    },
-    {
-      key: 'expiry_date',
-      label: 'Data de validade',
-      type: 'date',
-      required: true,
-    },
+    { key: 'number', label: 'Número da CNH', type: 'text', required: true },
+    { key: 'category', label: 'Categoria', type: 'select', options: ['A', 'B', 'AB', 'C', 'D', 'E'], required: true },
+    { key: 'issue_date', label: 'Data de emissão', type: 'date', required: true },
+    { key: 'expiry_date', label: 'Data de validade', type: 'date', required: true },
   ],
-
   certidao_nascimento: [
-    {
-      key: 'nome_registrado',
-      label: 'Nome Registrado',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'matricula',
-      label: 'Matrícula',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'livro',
-      label: 'Livro',
-      type: 'text',
-    },
-    {
-      key: 'folha',
-      label: 'Folha',
-      type: 'text',
-    },
-    {
-      key: 'termo',
-      label: 'Termo',
-      type: 'text',
-    },
-    {
-      key: 'cartorio',
-      label: 'Cartório de Registro',
-      type: 'text',
-    },
-    {
-      key: 'data_nascimento',
-      label: 'Data de Nascimento',
-      type: 'date',
-      required: true,
-    },
+    { key: 'nome_registrado', label: 'Nome Registrado', type: 'text', required: true },
+    { key: 'matricula', label: 'Matrícula', type: 'text', required: true },
+    { key: 'livro', label: 'Livro', type: 'text' },
+    { key: 'folha', label: 'Folha', type: 'text' },
+    { key: 'termo', label: 'Termo', type: 'text' },
+    { key: 'cartorio', label: 'Cartório de Registro', type: 'text' },
+    { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date', required: true },
   ],
-
   titulo_eleitor: [
-    {
-      key: 'number',
-      label: 'Número do Título',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'zona',
-      label: 'Zona Eleitoral',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'secao',
-      label: 'Seção',
-      type: 'text',
-      required: true,
-    },
+    { key: 'number', label: 'Número do Título', type: 'text', required: true },
+    { key: 'zona', label: 'Zona Eleitoral', type: 'text', required: true },
+    { key: 'secao', label: 'Seção', type: 'text', required: true },
   ],
-
   certificado: [
-    {
-      key: 'institution',
-      label: 'Instituição de ensino',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'course',
-      label: 'Curso',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'duration',
-      label: 'Duração (ex: 120 horas)',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'completion_date',
-      label: 'Data de conclusão',
-      type: 'date',
-    },
+    { key: 'institution', label: 'Instituição de ensino', type: 'text', required: true },
+    { key: 'course', label: 'Curso', type: 'text', required: true },
+    { key: 'duration', label: 'Duração (ex: 120 horas)', type: 'text', required: true },
+    { key: 'completion_date', label: 'Data de conclusão', type: 'date' },
   ],
-
   receita: [
-    {
-      key: 'medicamento_id',
-      label: 'Medicamento',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'dosage',
-      label: 'Dosagem',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'medico_id',
-      label: 'Médico',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'farmacia_id',
-      label: 'Farmácia',
-      type: 'select',
-    },
-    {
-      key: 'prescription_date',
-      label: 'Data da receita',
-      type: 'date',
-      required: true,
-    },
-    {
-      key: 'renewal_date',
-      label: 'Próxima renovação',
-      type: 'date',
-      required: true,
-    },
+    { key: 'medicamento_id', label: 'Medicamento', type: 'select', required: true },
+    { key: 'dosage', label: 'Dosagem', type: 'text', required: true },
+    { key: 'medico_id', label: 'Médico', type: 'select', required: true },
+    { key: 'farmacia_id', label: 'Farmácia', type: 'select' },
+    { key: 'prescription_date', label: 'Data da receita', type: 'date', required: true },
+    { key: 'renewal_date', label: 'Próxima renovação', type: 'date', required: true },
   ],
-
   prontuario: [
-    {
-      key: 'hospital_id',
-      label: 'Hospital',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'medico_id',
-      label: 'Médico',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'specialty',
-      label: 'Especialidade',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'date',
-      label: 'Data',
-      type: 'date',
-      required: true,
-    },
+    { key: 'hospital_id', label: 'Hospital', type: 'select', required: true },
+    { key: 'medico_id', label: 'Médico', type: 'select', required: true },
+    { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
+    { key: 'date', label: 'Data', type: 'date', required: true },
   ],
-
   laudo: [
-    {
-      key: 'medico_id',
-      label: 'Médico',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'specialty',
-      label: 'Especialidade',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'hospital_id',
-      label: 'Hospital',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'date',
-      label: 'Data',
-      type: 'date',
-      required: true,
-    },
+    { key: 'medico_id', label: 'Médico', type: 'select', required: true },
+    { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
+    { key: 'hospital_id', label: 'Hospital', type: 'select', required: true },
+    { key: 'date', label: 'Data', type: 'date', required: true },
   ],
-
   encaminhamento: [
-    {
-      key: 'from_medico_id',
-      label: 'Quem encaminhou (Médico)',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'to_medico_id',
-      label: 'Para quem (Médico - opcional)',
-      type: 'select',
-    },
-    {
-      key: 'reason',
-      label: 'Motivo',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'date',
-      label: 'Data',
-      type: 'date',
-      required: true,
-    },
+    { key: 'from_medico_id', label: 'Quem encaminhou (Médico)', type: 'select', required: true },
+    { key: 'to_medico_id', label: 'Para quem (Médico - opcional)', type: 'select' },
+    { key: 'reason', label: 'Motivo', type: 'text', required: true },
+    { key: 'date', label: 'Data', type: 'date', required: true },
   ],
-
   consulta: [
-    {
-      key: 'medico_id',
-      label: 'Médico',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'specialty',
-      label: 'Especialidade',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'hospital_id',
-      label: 'Clínica / Hospital',
-      type: 'select',
-    },
-    {
-      key: 'date',
-      label: 'Data da Consulta',
-      type: 'date',
-      required: true,
-    },
-    {
-      key: 'reason',
-      label: 'Motivo da Consulta',
-      type: 'text',
-    },
+    { key: 'medico_id', label: 'Médico', type: 'select', required: true },
+    { key: 'specialty', label: 'Especialidade', type: 'text', required: true },
+    { key: 'hospital_id', label: 'Clínica / Hospital', type: 'select' },
+    { key: 'date', label: 'Data da Consulta', type: 'date', required: true },
+    { key: 'reason', label: 'Motivo da Consulta', type: 'text' },
   ],
-
   cirurgia: [
-    {
-      key: 'procedure',
-      label: 'Procedimento',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'medico_id',
-      label: 'Médico Cirurgião',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'hospital_id',
-      label: 'Hospital',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'date',
-      label: 'Data da Cirurgia',
-      type: 'date',
-      required: true,
-    },
+    { key: 'procedure', label: 'Procedimento', type: 'text', required: true },
+    { key: 'medico_id', label: 'Médico Cirurgião', type: 'select', required: true },
+    { key: 'hospital_id', label: 'Hospital', type: 'select', required: true },
+    { key: 'date', label: 'Data da Cirurgia', type: 'date', required: true },
   ],
-
   exame_sangue: [
-    {
-      key: 'laboratorio_id',
-      label: 'Laboratório',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'data_exame',
-      label: 'Data do Exame',
-      type: 'date',
-      required: true,
-    },
+    { key: 'laboratorio_id', label: 'Laboratório', type: 'select', required: true },
+    { key: 'data_exame', label: 'Data do Exame', type: 'date', required: true },
   ],
-
   exame_imagem: [
-    {
-      key: 'hospital_id',
-      label: 'Local / Hospital',
-      type: 'select',
-      required: true,
-    },
-    {
-      key: 'tipo',
-      label: 'Tipo de Exame (Ex: Raio-X, RM)',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'data_exame',
-      label: 'Data do Exame',
-      type: 'date',
-      required: true,
-    },
+    { key: 'hospital_id', label: 'Local / Hospital', type: 'select', required: true },
+    { key: 'tipo', label: 'Tipo de Exame (Ex: Raio-X, RM)', type: 'text', required: true },
+    { key: 'data_exame', label: 'Data do Exame', type: 'date', required: true },
   ],
-
   credencial: [
-    {
-      key: 'orgao',
-      label: 'Órgão Emissor / Instituição',
-      type: 'text',
-      required: true,
-    },
-    {
-      key: 'validade',
-      label: 'Validade',
-      type: 'date',
-      required: true,
-    },
+    { key: 'orgao', label: 'Órgão Emissor / Instituição', type: 'text', required: true },
+    { key: 'validade', label: 'Validade', type: 'date', required: true },
   ],
-
   outro: [
-    {
-      key: 'custom_field_1',
-      label: 'Campo personalizado 1',
-      type: 'text',
-    },
-    {
-      key: 'custom_field_2',
-      label: 'Campo personalizado 2',
-      type: 'text',
-    },
+    { key: 'custom_field_1', label: 'Campo personalizado 1', type: 'text' },
+    { key: 'custom_field_2', label: 'Campo personalizado 2', type: 'text' },
   ],
 };
 
@@ -548,7 +238,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
 // ============================================================
 export interface SyncQueueItem {
   id?: string;
-
   table:
     | 'persons'
     | 'documents'
@@ -570,16 +259,10 @@ export interface SyncQueueItem {
     | 'instituicoes'
     | 'tratamentos'
     | 'cids'
-    | 'anexos_clinicos'
-    | 'medicamento_tratamentos'
-    | 'exame_tratamentos'; // ✅ CORRIGIDO: Adicionado exame_tratamentos
-
+    | 'anexos_clinicos';
   operation: 'add' | 'update' | 'delete';
-
   payload: Record<string, any>;
-
   created_at: string;
-
   retry_count?: number;
   failed?: boolean;
 }
@@ -593,61 +276,44 @@ export interface Medicamento {
   id?: string;
   user_id: string;
   person_id?: string;
-
   document_id?: string;
-
   nome: string;
   dosagem: string;
-
   medico_id?: string;
   farmacia_id?: string;
   estabelecimento_id?: string;
-
-  tratamento_ids?: string[];
-
+  tratamento_ids?: string[]; // ✅ MultiEntry Index array
   medico: string;
   farmacia?: string;
-
   data_receita: string;
   proxima_renovacao: string;
-
   observacoes?: string;
   tipo_receita?: TipoReceita;
-
-  tratamento_id?: string;
-
-  forma_farmaceutica?:
-    | 'capsula'
-    | 'comprimido'
-    | 'gota'
-    | 'injecao'
-    | 'adesivo';
-
+  tipo_uso?: 'continuo' | 'esporadico' | 'sos';
+  forma_farmaceutica?: 'capsula' | 'comprimido' | 'gota' | 'injecao' | 'adesivo';
   cor_principal?: string;
   cor_secundaria?: string;
-
   status?: 'ativo' | 'descontinuado';
-
   estoque_quantidade?: number;
   estoque_data_referencia?: string;
   estoque_horarios?: string[];
   estoque_unidade_por_dose?: number;
   estoque_unidade_medida?: string;
-
   estoque_ml_total?: number;
   estoque_gotas_por_ml?: number;
-
   formato?: string;
   cores?: string[];
-
   motivo_descontinuacao?: string;
   medico_descontinuacao_id?: string;
   medico_descontinuacao_nome?: string;
   substituido_por_id?: string;
   data_descontinuacao?: string;
-
   preco?: number;
-
+  historico_dosagens?: {
+    dosagem_antiga: string;
+    data_mudanca: string;
+    medico_responsavel: string;
+  }[];
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -658,23 +324,17 @@ export interface Renovacao {
   user_id: string;
   person_id?: string;
   medicamento_id: string;
-  
-  // Relacionamentos Fortes
   medico_id?: string;
   estabelecimento_id?: string;
   farmacia_id?: string;
-  local_id?: string; // Mantido para retrocompatibilidade
-  
-  // Dados Financeiros e de Reposição
+  local_id?: string; 
   quantidade?: number;
   preco?: number;
   lote?: string;
   validade_produto?: string;
-
   data: string;
   anexo_url?: string;
   observacoes?: string;
-  
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -689,6 +349,7 @@ export interface DoseLog {
   horario: string;
   tomado_em?: string;
   ignorado_em?: string;
+  quantidade?: number;
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -708,6 +369,7 @@ export interface Exame {
   motivo?: string;
   observacoes?: string;
   anexo_url?: string;
+  tratamento_ids?: string[]; // ✅ MultiEntry Index array
   synced?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -817,6 +479,7 @@ export interface Hospital {
   nome: string;
   endereco?: string;
   telefone?: string;
+  tipo?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -830,7 +493,7 @@ export interface LocalSaude {
   telefone?: string;
   tipo?: string;
   created_at?: string;
-  updated_at?: string;
+  updated_at: string;
   synced?: boolean;
 }
 
@@ -874,6 +537,7 @@ export interface Tratamento {
   condicao?: string;
   data_inicio?: string;
   status: 'ativo' | 'concluido' | 'suspenso';
+  cor?: string; // ✅ Identidade Visual
   created_at: string;
   updated_at: string;
   synced: boolean;
