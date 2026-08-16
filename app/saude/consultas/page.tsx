@@ -10,10 +10,7 @@ import {
   ChevronRight,
   Stethoscope,
   Filter,
-  X,
-  CheckCircle2,
-  Clock,
-  XCircle
+  X
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -105,8 +102,6 @@ export default function ConsultasPage() {
                 <h1 className="mt-1 truncate font-display text-xl font-semibold text-ink-primary">Consultas Médicas</h1>
               </div>
             </div>
-
-            {/* 🔧 Botão "Cadastrar" removido - via menu inferior */}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-surface-raised p-1 border border-surface-border/40">
@@ -132,7 +127,6 @@ export default function ConsultasPage() {
             </button>
           </div>
 
-          {/* 🔧 FILTROS */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
             
