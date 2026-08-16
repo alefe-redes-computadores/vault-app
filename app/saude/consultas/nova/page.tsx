@@ -26,7 +26,6 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 import type { Attachment } from "@/lib/types";
-// ✅ NOVO: import do hook
 import { useConsultas } from "@/hooks/useConsultas";
 
 const fadeUp = {
@@ -72,7 +71,6 @@ export default function NovaConsultaPage() {
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
-  // ✅ NOVO: useConsultas
   const { addConsulta } = useConsultas();
 
   const [medicoId, setMedicoId] = useState("");
@@ -163,10 +161,8 @@ export default function NovaConsultaPage() {
       }
 
       const dataISO = parseDateToISO(dataDisplay);
-      
-      // ✅ CORRIGIDO: usa addConsulta do hook
+
       await addConsulta({
-        user_id: user?.id || "",
         especialidade: selectedMedico?.especialidade || "Geral",
         medico: selectedMedico?.nome || "Médico",
         medico_id: medicoId,
