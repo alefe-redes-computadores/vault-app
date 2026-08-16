@@ -84,7 +84,6 @@ function MedicamentoDetalhesContent() {
   // ============================================================
 
   const handleTomarAgora = useCallback(async () => {
-    // ✅ CORREÇÃO APLICADA: Trava de segurança exigindo que med e med.id existam
     if (!med || !med.id) return;
     trigger("success");
 
@@ -111,6 +110,7 @@ function MedicamentoDetalhesContent() {
       });
       // Registra Dose
       await db.doseLogs.add({
+        user_id: med.user_id, // ✅ CORREÇÃO: Propriedade obrigatória injetada
         medicamento_id: med.id,
         data: now.toISOString().slice(0, 10),
         horario: now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
