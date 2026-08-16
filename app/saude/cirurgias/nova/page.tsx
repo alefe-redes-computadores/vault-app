@@ -13,13 +13,15 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
-import { db, safeAddCirurgia } from "@/lib/db";
+import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
+// ✅ NOVO: import do hook
+import { useCirurgias } from "@/hooks/useCirurgias";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -61,6 +63,9 @@ export default function NovaCirurgiaPage() {
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
+  // ✅ NOVO: useCirurgias
+  const { addCirurgia } = useCirurgias();
+
   const [procedimento, setProcedimento] = useState("");
   const [medicoId, setMedicoId] = useState("");
   const [hospitalId, setHospitalId] = useState("");
@@ -99,7 +104,8 @@ export default function NovaCirurgiaPage() {
     try {
       const dataISO = parseDateToISO(dataDisplay);
 
-      await safeAddCirurgia({
+      // ✅ CORRIGIDO: usa addCirurgia do hook
+      await addCirurgia({
         user_id: user?.id || "",
         procedimento: procedimento.trim(),
         medico_id: medicoId || undefined,
@@ -141,7 +147,6 @@ export default function NovaCirurgiaPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* Procedimento */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <Input
               label="Procedimento / Cirurgia"
@@ -153,7 +158,6 @@ export default function NovaCirurgiaPage() {
             />
           </motion.div>
 
-          {/* Médico Vinculado */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico / Cirurgião Responsável (Opcional)</label>
             <button 
@@ -168,7 +172,6 @@ export default function NovaCirurgiaPage() {
             </button>
           </motion.div>
 
-          {/* Hospital / Clínica */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital / Unidade (Opcional)</label>
             <button 
@@ -183,7 +186,6 @@ export default function NovaCirurgiaPage() {
             </button>
           </motion.div>
 
-          {/* Data e Status */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.09 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">Data da Cirurgia <span className="text-coral">*</span></label>
@@ -222,7 +224,6 @@ export default function NovaCirurgiaPage() {
             </div>
           </motion.div>
 
-          {/* Observações */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.12 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <TextArea 
               label="Orientações e Preparo (Opcional)" 
@@ -233,7 +234,6 @@ export default function NovaCirurgiaPage() {
           </motion.div>
         </section>
 
-        {/* Botão Fixo Inferior */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button 
             variant="primary" 
@@ -247,7 +247,6 @@ export default function NovaCirurgiaPage() {
           </Button>
         </div>
 
-        {/* Modais de Seleção */}
         <SelectionModal 
           isOpen={isMedicoModalOpen} 
           onClose={() => setIsMedicoModalOpen(false)} 
