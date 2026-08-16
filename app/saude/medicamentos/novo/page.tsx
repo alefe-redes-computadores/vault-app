@@ -681,7 +681,8 @@ export default function NovoMedicamentoPage() {
             const id = await db.farmacias.add({ 
               user_id: user?.id || "", 
               nome: name, 
-              created_at: new Date().toISOString(), 
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
               synced: false 
             }); 
             return { id, nome: name }; 
@@ -711,7 +712,8 @@ export default function NovoMedicamentoPage() {
             const id = await db.medicos.add({ 
               user_id: user?.id || "", 
               nome: name, 
-              created_at: new Date().toISOString(), 
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
               synced: false 
             }); 
             return { id, nome: name }; 
@@ -748,7 +750,8 @@ export default function NovoMedicamentoPage() {
               user_id: user?.id || "", 
               nome: name, 
               tipo: tabId, 
-              created_at: new Date().toISOString(), 
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
               synced: false 
             }); 
             return { id, nome: name, tipo: tabId }; 
