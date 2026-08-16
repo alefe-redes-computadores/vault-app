@@ -349,3 +349,58 @@ export function gerarAlertasVisaoGeral(contexto: {
     return ordem[a.urgencia] - ordem[b.urgencia];
   });
 }
+
+// ============================================================
+// 11. ASSISTENTE DIÁRIO (INSIGHTS CRUZADOS DA ROTINA)
+// ============================================================
+export interface RotinaInsight {
+  titulo: string;
+  mensagem: string;
+  icone: 'alerta' | 'info' | 'medico' | 'cirurgia';
+  urgencia: 'alta' | 'media' | 'baixa';
+}
+
+export function analisarRotinaDiaria(
+  dosesHoje: any[],
+  compromissosHoje: any[]
+): RotinaInsight | null {
+  // Regra 1: Risco Cirúrgico (Jejum/Interação)
+  const cirurgiaHoje = compromissosHoje.find(c => c.tipo === 'cirurgia');
+  if (cirurgiaHoje && dosesHoje.some(d => !d.tomada && !d.ignorada)) {
+     return {
+       titulo: 'Atenção: Jejum e Medicações',
+       mensagem: `Você tem uma cirurgia hoje (${cirurgiaHoje.procedimento}). Confirme com sua equipe médica antes de tomar qualquer dose pendente.`,
+       icone: 'cirurgia',
+       urgencia: 'alta'
+     };
+  }
+
+  // Regra 2: Risco de Exame (Ex: Exames de Sangue pedem jejum)
+  const exameHoje = compromissosHoje.find(c => c.tipo === 'exame' && (
+    c.nome.toLowerCase().includes('sangue') || 
+    c.nome.toLowerCase().includes('glicemia') || 
+    c.nome.toLowerCase().includes('colesterol')
+  ));
+  if (exameHoje && dosesHoje.some(d => !d.tomada && !d.ignorada && Number(d.horario.split(':')[0]) < 12)) {
+     return {
+       titulo: 'Exame Laboratorial Hoje',
+       mensagem: `Verifique os requisitos de jejum para o exame "${exameHoje.nome}" antes de tomar medicamentos pela manhã.`,
+       icone: 'alerta',
+       urgencia: 'media'
+     };
+  }
+
+  // Regra 3: Aproveitamento de Consulta
+  const consultaHoje = compromissosHoje.find(c => c.tipo === 'consulta');
+  if (consultaHoje) {
+     const medico = consultaHoje.medico || consultaHoje.medico_nome || 'seu médico';
+     return {
+       titulo: 'Dia de Consulta',
+       mensagem: `Você verá o(a) Dr(a). ${medico} hoje. Aproveite para relatar como está sendo sua adesão à rotina de medicamentos.`,
+       icone: 'medico',
+       urgencia: 'baixa'
+     };
+  }
+
+  return null;
+}
