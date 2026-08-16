@@ -19,7 +19,6 @@ import {
   HeartPulse,
   Flame,
   FlaskConical,
-  CheckCircle2,
   MapPin,
   Calendar,
   DollarSign,
@@ -197,7 +196,7 @@ export default function SaudePage() {
         }
         return null;
       })
-      .filter(Boolean);
+      .filter(Boolean) as HealthAlert[];
   }, [medicamentos]);
 
   const handleTomarDosePendente = async (d: { medicamentoId: string; nome: string; horario: string }) => {
@@ -289,6 +288,7 @@ export default function SaudePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-5">
+          {/* Ações Rápidas */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -314,6 +314,7 @@ export default function SaudePage() {
             })}
           </motion.div>
 
+          {/* Rotina e Doses */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -335,6 +336,7 @@ export default function SaudePage() {
             <ChevronRight size={18} className="text-ice" />
           </motion.div>
 
+          {/* Financeiro / Renovações */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -360,6 +362,7 @@ export default function SaudePage() {
             </div>
           </motion.div>
 
+          {/* Compromissos de Hoje */}
           {(consultasHoje.length > 0 || cirurgiasHoje.length > 0 || examesHoje.length > 0) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -373,19 +376,19 @@ export default function SaudePage() {
               </div>
               <div className="space-y-2">
                 {consultasHoje.map((c: any) => (
-                  <div key={c.id} onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)} className="flex items-center justify-between bg-surface p-3 rounded-2xl border border-surface-border/50 cursor-pointer text-xs">
+                  <div key={c.id} onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${c.id}`); }} className="flex items-center justify-between bg-surface p-3 rounded-2xl border border-surface-border/50 cursor-pointer text-xs active:scale-[0.985] transition-all">
                     <span className="font-semibold text-ink-primary">Consulta: {c.especialidade} (Dr(a). {c.medico})</span>
                     <span className="text-coral font-mono font-bold">Hoje</span>
                   </div>
                 ))}
                 {cirurgiasHoje.map((cir: any) => (
-                  <div key={cir.id} onClick={() => router.push(`/saude/cirurgias/detalhes?id=${cir.id}`)} className="flex items-center justify-between bg-surface p-3 rounded-2xl border border-surface-border/50 cursor-pointer text-xs">
+                  <div key={cir.id} onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }} className="flex items-center justify-between bg-surface p-3 rounded-2xl border border-surface-border/50 cursor-pointer text-xs active:scale-[0.985] transition-all">
                     <span className="font-semibold text-ink-primary">Cirurgia: {cir.procedimento}</span>
                     <span className="text-coral font-mono font-bold">Hoje</span>
                   </div>
                 ))}
                 {examesHoje.map((ex: any) => (
-                  <div key={ex.id} onClick={() => router.push(`/saude/exames/detalhes?id=${ex.id}`)} className="flex items-center justify-between bg-surface p-3 rounded-2xl border border-surface-border/50 cursor-pointer text-xs">
+                  <div key={ex.id} onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${ex.id}`); }} className="flex items-center justify-between bg-surface p-3 rounded-2xl border border-surface-border/50 cursor-pointer text-xs active:scale-[0.985] transition-all">
                     <span className="font-semibold text-ink-primary">Exame: {ex.nome}</span>
                     <span className="text-coral font-mono font-bold">Hoje</span>
                   </div>
@@ -394,6 +397,7 @@ export default function SaudePage() {
             </motion.div>
           )}
 
+          {/* Doses Pendentes */}
           {dosesPendentesAtrasadas.length > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -409,7 +413,7 @@ export default function SaudePage() {
                   <p className="text-[11px] text-ink-muted">Ações rápidas de saúde</p>
                 </div>
                 <button
-                  onClick={() => setModalPendenciasAberto(true)}
+                  onClick={() => { trigger("vibrate"); setModalPendenciasAberto(true); }}
                   className="px-4 py-2 bg-coral text-white text-[11px] font-bold rounded-xl active:scale-95"
                 >
                   Gerenciar
@@ -428,6 +432,7 @@ export default function SaudePage() {
             <MedicamentosNotifications />
           </motion.div>
 
+          {/* Tratamentos Ativos */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -477,6 +482,7 @@ export default function SaudePage() {
             )}
           </motion.div>
 
+          {/* Alertas Gerais */}
           {otherAlerts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -495,6 +501,7 @@ export default function SaudePage() {
             </motion.div>
           )}
 
+          {/* Grid de Categorias */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -554,6 +561,7 @@ export default function SaudePage() {
             </button>
           </motion.div>
 
+          {/* Entidades Relacionais (Médicos, Farmácias...) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -613,6 +621,7 @@ export default function SaudePage() {
             </div>
           </motion.div>
 
+          {/* Arquivo Clínico */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -640,11 +649,12 @@ export default function SaudePage() {
           </motion.div>
         </section>
 
+        {/* Modal de Pendências (Doses) */}
         <AnimatePresence>
           {modalPendenciasAberto && (
             <div
               className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-void/80 backdrop-blur-md"
-              onClick={() => setModalPendenciasAberto(false)}
+              onClick={() => { trigger("vibrate"); setModalPendenciasAberto(false); }}
             >
               <motion.div
                 initial={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -659,8 +669,8 @@ export default function SaudePage() {
                     <p className="text-xs text-ink-muted">Gerencie suas pendências de hoje</p>
                   </div>
                   <button
-                    onClick={() => setModalPendenciasAberto(false)}
-                    className="h-8 w-8 flex items-center justify-center rounded-full bg-surface-raised hover:bg-surface-border transition-colors"
+                    onClick={() => { trigger("vibrate"); setModalPendenciasAberto(false); }}
+                    className="h-8 w-8 flex items-center justify-center rounded-full bg-surface-raised hover:bg-surface-border transition-colors active:scale-95"
                   >
                     <X size={16} />
                   </button>
@@ -689,7 +699,7 @@ export default function SaudePage() {
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <button
-                    onClick={() => { setModalPendenciasAberto(false); router.push("/saude/hoje"); }}
+                    onClick={() => { trigger("vibrate"); setModalPendenciasAberto(false); router.push("/saude/hoje"); }}
                     className="p-3.5 text-xs font-semibold rounded-2xl bg-surface-raised hover:bg-surface-border transition-all active:scale-95"
                   >
                     Expandir Cronograma
