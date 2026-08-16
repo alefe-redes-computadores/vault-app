@@ -35,6 +35,7 @@ export default function ConsultasPage() {
   
   const [abaAtiva, setAbaAtiva] = useState<"proximas" | "historico">("proximas");
 
+  // ✅ JÁ ESTÁ CORRETO (usa db.consultas, db.medicos, db.hospitais)
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
