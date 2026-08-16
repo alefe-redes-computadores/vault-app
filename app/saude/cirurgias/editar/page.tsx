@@ -20,6 +20,8 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { SelectionModal } from "@/components/SelectionModal";
+// ✅ NOVO: import do hook
+import { useCirurgias } from "@/hooks/useCirurgias";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -62,6 +64,9 @@ function EditarCirurgiaContent() {
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
+  // ✅ NOVO: useCirurgias
+  const { getCirurgia, updateCirurgia } = useCirurgias();
+
   const [isLoading, setIsLoading] = useState(true);
   const [procedimento, setProcedimento] = useState("");
   const [medicoId, setMedicoId] = useState("");
@@ -82,7 +87,9 @@ function EditarCirurgiaContent() {
       router.push("/saude/cirurgias");
       return;
     }
-    db.cirurgias.get(id).then((data) => {
+    const loadCirurgia = async () => {
+      // ✅ CORRIGIDO: usa getCirurgia do hook
+      const data = await getCirurgia(id);
       if (data) {
         setProcedimento(data.procedimento);
         setMedicoId(data.medico_id || "");
@@ -94,8 +101,9 @@ function EditarCirurgiaContent() {
         router.push("/saude/cirurgias");
       }
       setIsLoading(false);
-    });
-  }, [id, router]);
+    };
+    loadCirurgia();
+  }, [id, router, getCirurgia]);
 
   const selectedMedico = medicos.find((m: any) => m.id === medicoId);
   const selectedHospital = hospitais.find((h: any) => h.id === hospitalId);
@@ -120,15 +128,14 @@ function EditarCirurgiaContent() {
     try {
       const dataISO = parseDateToISO(dataDisplay);
 
-      await db.cirurgias.update(id, {
+      // ✅ CORRIGIDO: usa updateCirurgia do hook
+      await updateCirurgia(id, {
         procedimento: procedimento.trim(),
         medico_id: medicoId || undefined,
         hospital_id: hospitalId || undefined,
         data: dataISO,
         status,
         observacoes: observacoes.trim() || undefined,
-        updated_at: new Date().toISOString(),
-        synced: false,
       });
 
       trigger("success");
