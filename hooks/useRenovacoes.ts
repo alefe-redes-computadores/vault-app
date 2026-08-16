@@ -1,7 +1,8 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, safeAddRenovacao, safeUpdateRenovacao } from "@/lib/db";
+import { db } from "@/lib/db";
+import { renovacoesRepository } from "@/lib/repositories/renovacoes";
 import { useAuth } from "./useAuth";
 import { useCallback } from "react";
 import type { Renovacao } from "@/lib/types";
@@ -21,20 +22,30 @@ export function useRenovacoes(medicamentoId?: string) {
     []
   );
 
+  const getRenovacao = useCallback((id: string) => {
+    return renovacoesRepository.getById(id);
+  }, []);
+
   const addRenovacao = useCallback(
     async (data: Omit<Renovacao, "id" | "user_id" | "created_at" | "updated_at" | "synced">) => {
-      return safeAddRenovacao({ ...data, user_id: user?.id || "" });
+      return renovacoesRepository.create({ ...data, user_id: user?.id || "" });
     },
     [user]
   );
 
   const updateRenovacao = useCallback(async (id: string, data: Partial<Renovacao>) => {
-    return safeUpdateRenovacao(id, data);
+    return renovacoesRepository.update(id, data);
+  }, []);
+
+  const deleteRenovacao = useCallback(async (id: string) => {
+    return renovacoesRepository.delete(id);
   }, []);
 
   return {
     renovacoes,
+    getRenovacao,
     addRenovacao,
     updateRenovacao,
+    deleteRenovacao,
   };
 }
