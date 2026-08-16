@@ -81,7 +81,6 @@ export default function NovoMedicamentoPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Estados do Fluxo
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 3;
 
@@ -149,7 +148,6 @@ export default function NovoMedicamentoPage() {
     if (persons.length > 0 && !personId) setPersonId(persons[0].id!);
   }, [persons, personId]);
 
-  // Autocomplete Lógica
   const suggestions = useMemo(() => {
     if (nome.length < 2 || !isTypingName) return [];
     return medicamentosQuery.filter((m: any) => 
@@ -166,7 +164,6 @@ export default function NovoMedicamentoPage() {
     setShowDuplicateActionModal(true);
   };
 
-  // Smart Dosage Automático
   useEffect(() => {
     if (tipoUso === "continuo" && vezesAoDia && primeiroHorario) {
       const novosHorarios = sugerirHorarios(primeiroHorario, Number(vezesAoDia));
@@ -337,15 +334,15 @@ export default function NovoMedicamentoPage() {
         formato,
         cores,
         tipo_uso: tipoUso,
-        medico: medicoNome.trim() || undefined,
+        medico: medicoNome?.trim() || "",
         medico_id: medicoId || undefined,
         estabelecimento_id: estabelecimentoId || undefined,
-        farmacia: farmaciaNome.trim() || undefined,
+        farmacia: farmaciaNome?.trim() || "",
         farmacia_id: farmaciaId || undefined,
         preco: preco ? Number(preco.replace(',', '.')) : undefined,
         data_receita: dataReceitaISO,
         proxima_renovacao: proximaRenovacaoISO,
-        observacoes: observacoes.trim() || undefined,
+        observacoes: observacoes?.trim() || undefined,
         tipo_receita: tipoReceita,
         tratamento_ids: tratamentosSelecionados,
         status: "ativo",
@@ -606,7 +603,6 @@ export default function NovoMedicamentoPage() {
           </AnimatePresence>
         </section>
 
-        {/* ================= FOOTER ================= */}
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-surface-border/40 bg-void/90 p-5 backdrop-blur-xl pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div className="flex gap-3 max-w-2xl mx-auto">
             {currentStep > 1 && (
@@ -626,7 +622,6 @@ export default function NovoMedicamentoPage() {
           </div>
         </div>
 
-        {/* ================= MODAIS ================= */}
         <ConfirmationModal
           isOpen={showDesativarEstoqueModal}
           onClose={() => setShowDesativarEstoqueModal(false)}
@@ -636,7 +631,6 @@ export default function NovoMedicamentoPage() {
           confirmLabel="Desativar" cancelLabel="Cancelar" type="warning"
         />
 
-        {/* Modal Inteligente de Ação por Duplicidade */}
         <AnimatePresence>
           {showDuplicateActionModal && selectedDuplicate && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-4 backdrop-blur-md" onClick={() => setShowDuplicateActionModal(false)}>
@@ -685,7 +679,7 @@ export default function NovoMedicamentoPage() {
           enableQuickCreate 
           onQuickCreate={async (name) => { 
             const id = await db.farmacias.add({ 
-              user_id: user?.id, 
+              user_id: user?.id || "", 
               nome: name, 
               created_at: new Date().toISOString(), 
               synced: false 
@@ -715,7 +709,7 @@ export default function NovoMedicamentoPage() {
           enableQuickCreate 
           onQuickCreate={async (name) => { 
             const id = await db.medicos.add({ 
-              user_id: user?.id, 
+              user_id: user?.id || "", 
               nome: name, 
               created_at: new Date().toISOString(), 
               synced: false 
@@ -751,7 +745,7 @@ export default function NovoMedicamentoPage() {
           enableQuickCreate 
           onQuickCreate={async (name, tabId) => { 
             const id = await db.hospitais.add({ 
-              user_id: user?.id, 
+              user_id: user?.id || "", 
               nome: name, 
               tipo: tabId, 
               created_at: new Date().toISOString(), 
