@@ -96,10 +96,9 @@ class VaultDB extends Dexie {
     this.version(16).stores({ cids: 'id', exame_tratamentos: 'id' });
     this.version(17).stores({ locais: 'id', consultas: 'id', cirurgias: 'id' });
 
-    // ✅ VERSÃO 18: MultiEntry Indexes (*tratamento_ids) + índices relacionais
+    // VERSÃO 18: MultiEntry Indexes (*tratamento_ids) + índices relacionais
     this.version(18).stores({
       persons: 'id, user_id, name, synced, updated_at',
-      // ✅ ADICIONADO: hospital_id, medico_id
       documents: 'id, user_id, person_id, category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id',
       medicamentos: 'id, user_id, person_id, document_id, medico_id, farmacia_id, estabelecimento_id, status, synced, updated_at, *tratamento_ids',
       renovacoes: 'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, local_id, synced, updated_at',
@@ -119,14 +118,34 @@ class VaultDB extends Dexie {
       cids: 'id, user_id, codigo, synced, updated_at',
       anexos_clinicos: 'id, user_id, synced, updated_at',
       syncQueue: 'id, table, operation, created_at, retry_count, failed',
-    }).upgrade(tx => {
-      // Migração: Lemos as antigas tabelas de junção e injetamos nos arrays diretos
-      return tx.table('medicamentos').toCollection().modify(async (med) => {
-        if (!med.tratamento_ids) {
-          const vinculos = await tx.table('medicamento_tratamentos').where('medicamento_id').equals(med.id).toArray();
-          med.tratamento_ids = vinculos.map(v => v.tratamento_id);
-          if (med.tratamento_ids.length === 0 && med.tratamento_id) {
-            med.tratamento_ids.push(med.tratamento_id);
+    }).upgrade(async (tx) => {
+      // 1. Migrar medicamentos: ler medicamento_tratamentos e preencher tratamento_ids
+      await tx.table('medicamentos').toCollection().modify(async (med) => {
+        if (!med.tratamento_ids || med.tratamento_ids.length === 0) {
+          const vinculos = await tx.table('medicamento_tratamentos')
+            .where('medicamento_id')
+            .equals(med.id)
+            .toArray();
+          const ids = vinculos.map(v => v.tratamento_id);
+          if (ids.length === 0 && med.tratamento_id) {
+            ids.push(med.tratamento_id);
+          }
+          if (ids.length > 0) {
+            med.tratamento_ids = ids;
+          }
+        }
+      });
+
+      // 2. Migrar exames: ler exame_tratamentos e preencher tratamento_ids
+      await tx.table('exames').toCollection().modify(async (exame) => {
+        if (!exame.tratamento_ids || exame.tratamento_ids.length === 0) {
+          const vinculos = await tx.table('exame_tratamentos')
+            .where('exame_id')
+            .equals(exame.id)
+            .toArray();
+          const ids = vinculos.map(v => v.tratamento_id);
+          if (ids.length > 0) {
+            exame.tratamento_ids = ids;
           }
         }
       });
