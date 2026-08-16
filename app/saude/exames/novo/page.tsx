@@ -15,7 +15,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { db, safeAddExame, safeAddMedico, safeAddHospital, safeAddTratamento } from "@/lib/db";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
-import { usePersons } from "@/hooks/usePersons"; // <-- Importamos perfis
+import { usePersons } from "@/hooks/usePersons";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,15 +48,14 @@ export default function NovoExamePage() {
   const { hospitais } = useHospitais();
   const persons = usePersons();
 
-  // Estados do Formulário e Relacionais
   const [personId, setPersonId] = useState<string>(persons[0]?.id || "");
   const [nomesExames, setNomesExames] = useState(""); 
   
   const [localRealizacao, setLocalRealizacao] = useState("");
-  const [laboratorioId, setLaboratorioId] = useState(""); // Novo
+  const [laboratorioId, setLaboratorioId] = useState("");
   
   const [medicoSolicitante, setMedicoSolicitante] = useState("");
-  const [medicoId, setMedicoId] = useState(""); // Novo
+  const [medicoId, setMedicoId] = useState("");
   
   const [dataSolicitacao, setDataSolicitacao] = useState(todayISO());
   const [dataRetorno, setDataRetorno] = useState("");
@@ -64,7 +63,6 @@ export default function NovoExamePage() {
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
 
-  // Modais de Seleção e Criação rápida
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   
@@ -75,7 +73,7 @@ export default function NovoExamePage() {
   const [isCreatingLocal, setIsCreatingLocal] = useState(false);
   const [newLocalName, setNewLocalName] = useState("");
 
-  // Relacionamento com Tratamentos N:N
+  // ✅ CORRIGIDO: usa db.tratamentos e tratamento_ids
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
@@ -168,38 +166,25 @@ export default function NovoExamePage() {
       const listaExames = nomesExames.split(/,|\n/).map(item => item.trim()).filter(Boolean);
 
       for (const nomeExame of listaExames) {
-        const exameId = await safeAddExame({
+        // ✅ CORRIGIDO: adiciona tratamento_ids
+        await safeAddExame({
           user_id: user?.id || "default_user",
-          person_id: personId, // NOVO: Vincula o dono do exame
+          person_id: personId,
           nome: nomeExame,
           laboratorio: localRealizacao.trim() || undefined,
-          laboratorio_id: laboratorioId || undefined, // NOVO
+          laboratorio_id: laboratorioId || undefined,
           medico: medicoSolicitante.trim() || undefined,
-          medico_id: medicoId || undefined, // NOVO
+          medico_id: medicoId || undefined,
           data: dataSolicitacao,
           data_retorno: dataRetorno || undefined,
           motivo: motivo.trim() || undefined,
           observacoes: observacoes.trim() || undefined,
           anexo_url: anexoUrl || undefined,
+          tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
         });
-
-        // Sincroniza Relação N:N (Tabela exame_tratamentos)
-        if (tratamentosSelecionados.length > 0) {
-          await db.transaction('rw', db.exame_tratamentos, async () => {
-            for (const tId of tratamentosSelecionados) {
-              await db.exame_tratamentos.put({
-                id: crypto.randomUUID(),
-                exame_id: exameId,
-                tratamento_id: tId,
-                user_id: user?.id || "default_user",
-                synced: false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              });
-            }
-          });
-        }
       }
+
+      // ✅ REMOVIDA a manipulação da tabela exame_tratamentos
 
       trigger("success");
       router.push("/saude/exames");
@@ -252,7 +237,6 @@ export default function NovoExamePage() {
             {errors.personId && <p className="mt-2 text-xs text-coral">{errors.personId}</p>}
           </motion.div>
 
-          {/* TRATAMENTOS VINCULADOS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -351,12 +335,10 @@ export default function NovoExamePage() {
           </Button>
         </div>
 
-        {/* MODAIS MANTIDAS IGUAIS */}
         <SelectionModal isOpen={isLocalModalOpen} onClose={() => setIsLocalModalOpen(false)} onSelect={(item: any) => { trigger("vibrate"); setLaboratorioId(item.id); setLocalRealizacao(item.nome); }} items={hospitais} title="Selecionar Hospital / Laboratório" placeholder="Buscar local..." renderItem={(item: any) => <p className="font-medium text-ink-primary">{item.nome}</p>} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsLocalModalOpen(false); trigger("vibrate"); setIsCreatingLocal(true); }} createNewLabel="Cadastrar Novo Local" />
         <SelectionModal isOpen={isDoctorModalOpen} onClose={() => setIsDoctorModalOpen(false)} onSelect={(item: any) => { trigger("vibrate"); setMedicoId(item.id); setMedicoSolicitante(item.nome); }} items={medicos} title="Selecionar Médico" placeholder="Buscar médico..." renderItem={(item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p>{item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}</div>)} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsDoctorModalOpen(false); trigger("vibrate"); setIsCreatingDoctor(true); }} createNewLabel="Cadastrar Novo Médico" />
         <SelectionModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} onSelect={(item: any) => { trigger("vibrate"); if (!tratamentosSelecionados.includes(item.id!)) setTratamentosSelecionados(prev => [...prev, item.id!]); }} items={tratamentos} title="Vincular a Tratamento" placeholder="Buscar tratamento..." renderItem={(item: any) => { const IconComp = getTratamentoIcon(item.nome); return (<div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400"><IconComp size={18} /></div><div><p className="font-medium text-ink-primary">{item.nome}</p></div></div>); }} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }} createNewLabel="Novo Tratamento" />
 
-        {/* BOTTOM SHEETS MANTIDOS */}
         <BottomSheet isOpen={isCreatingDoctor} onClose={() => setIsCreatingDoctor(false)} title="Novo Médico"><div className="space-y-4 px-1 pb-2"><Input label="Nome do Médico" placeholder="Ex: Dr. João" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} autoFocus /><Input label="Especialidade" placeholder="Ex: Cardiologista" value={newDocEspecialidade} onChange={(e) => setNewDocEspecialidade(e.target.value)} /><Button variant="primary" fullWidth onClick={handleCreateDoctor} disabled={!newDocName.trim()}>Salvar e Selecionar</Button></div></BottomSheet>
         <BottomSheet isOpen={isCreatingLocal} onClose={() => setIsCreatingLocal(false)} title="Novo Local / Hospital"><div className="space-y-4 px-1 pb-2"><Input label="Nome do Hospital ou Laboratório" placeholder="Ex: Sabin, Hospital das Clínicas..." value={newLocalName} onChange={(e) => setNewLocalName(e.target.value)} autoFocus /><Button variant="primary" fullWidth onClick={handleCreateLocal} disabled={!newLocalName.trim()}>Salvar e Selecionar</Button></div></BottomSheet>
         <BottomSheet isOpen={isCreatingTratamento} onClose={() => { setIsCreatingTratamento(false); setNewTratamentoName(""); }} title="Cadastrar Tratamento" ><div className="space-y-4 px-1 pb-2"><Input label="Nome" placeholder="Ex: TDAH, Dor Crônica..." value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus /><Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={isSavingTratamento || !newTratamentoName.trim()} className="flex items-center justify-center gap-2">{isSavingTratamento ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Salvar e selecionar</Button></div></BottomSheet>
