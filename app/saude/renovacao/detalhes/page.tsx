@@ -33,6 +33,8 @@ function DetalhesRenovacaoContent() {
 
   const [renovacao, setRenovacao] = useState<any>(null);
   const [medicamento, setMedicamento] = useState<any>(null);
+  const [medico, setMedico] = useState<any>(null);
+  const [farmacia, setFarmacia] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -43,25 +45,49 @@ function DetalhesRenovacaoContent() {
       return;
     }
 
-    db.table("renovacoes").get(id).then(async (res) => {
-      if (res) {
-        setRenovacao(res);
-        if (res.medicamento_id) {
-          const med = await db.medicamentos.get(res.medicamento_id);
-          setMedicamento(med);
+    const fetchData = async () => {
+      try {
+        // ✅ CORRIGIDO: Usa db.renovacoes em vez de db.table("renovacoes")
+        const res = await db.renovacoes.get(id);
+        if (res) {
+          setRenovacao(res);
+          
+          // Busca medicamento vinculado
+          if (res.medicamento_id) {
+            const med = await db.medicamentos.get(res.medicamento_id);
+            setMedicamento(med);
+            
+            // Busca médico vinculado (se existir)
+            if (res.medico_id) {
+              const doc = await db.medicos.get(res.medico_id);
+              setMedico(doc);
+            }
+            
+            // Busca farmácia vinculada (se existir)
+            if (res.farmacia_id) {
+              const farm = await db.farmacias.get(res.farmacia_id);
+              setFarmacia(farm);
+            }
+          }
+        } else {
+          router.push("/saude/renovacao");
         }
-      } else {
+      } catch (error) {
+        console.error("Erro ao buscar renovação:", error);
         router.push("/saude/renovacao");
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    });
+    };
+    
+    fetchData();
   }, [id, router]);
 
   const handleDelete = async () => {
     setDeleting(true);
     trigger("vibrate");
     try {
-      await db.table("renovacoes").delete(id!);
+      await db.renovacoes.delete(id!);
       trigger("success");
       router.replace("/saude/renovacao");
     } catch (error) {
@@ -75,6 +101,10 @@ function DetalhesRenovacaoContent() {
 
   if (isLoading) return <LoadingSkeleton />;
   if (!renovacao) return null;
+
+  const precoFormatado = renovacao.preco 
+    ? `R$ ${Number(renovacao.preco).toFixed(2).replace(".", ",")}` 
+    : "SUS / Gratuito";
 
   return (
     <PageTransition>
@@ -122,6 +152,16 @@ function DetalhesRenovacaoContent() {
                 <p className="text-sm font-medium text-ice mt-0.5">
                   {medicamento?.dosagem || ""}
                 </p>
+                {medico && (
+                  <p className="text-xs text-ink-muted mt-1">
+                    <span className="font-medium">Prescrito por:</span> Dr(a). {medico.nome}
+                  </p>
+                )}
+                {farmacia && (
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    <span className="font-medium">Farmácia:</span> {farmacia.nome}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -132,9 +172,7 @@ function DetalhesRenovacaoContent() {
               </div>
               <div className="rounded-2xl bg-surface-raised p-3">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Custo Registrado</p>
-                <p className="mt-0.5 text-sm font-semibold text-emerald-400">
-                  {renovacao.preco ? `R$ ${Number(renovacao.preco).toFixed(2).replace(".", ",")}` : "SUS / Gratuito"}
-                </p>
+                <p className="mt-0.5 text-sm font-semibold text-emerald-400">{precoFormatado}</p>
               </div>
             </div>
 
@@ -159,6 +197,35 @@ function DetalhesRenovacaoContent() {
               </a>
             )}
           </motion.div>
+
+          {/* ✅ NOVO: Informações do Médico e Farmácia */}
+          {(medico || farmacia) && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
+              <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Rede de Apoio</h3>
+              {medico && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
+                    <Pill size={14} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-ink-muted">Médico</p>
+                    <p className="text-sm font-semibold text-ink-primary">Dr(a). {medico.nome}</p>
+                  </div>
+                </div>
+              )}
+              {farmacia && (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400">
+                    <DollarSign size={14} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-ink-muted">Farmácia</p>
+                    <p className="text-sm font-semibold text-ink-primary">{farmacia.nome}</p>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
         </section>
 
         <ConfirmationModal 
@@ -167,6 +234,7 @@ function DetalhesRenovacaoContent() {
           onConfirm={handleDelete} 
           title="Excluir Registro" 
           message="Tem certeza que deseja excluir este registro de renovação?" 
+          isLoading={deleting}
         />
       </main>
     </PageTransition>
