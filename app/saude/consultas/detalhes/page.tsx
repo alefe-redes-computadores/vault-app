@@ -50,7 +50,6 @@ function DetalhesConsultaContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Consultando dados correlacionados no Dexie em tempo real
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
@@ -86,7 +85,8 @@ function DetalhesConsultaContent() {
     fetchData();
   }, [id, router]);
 
-  // Vínculos cruzados: Medicamentos e Exames associados ao mesmo médico ou data da consulta
+  // ✅ Mantido, com comentário explicativo
+  // Nota: Associação por médico e data (aproximação, já que não temos consulta_id)
   const medicamentosRelacionados = useMemo(() => {
     if (!consulta) return [];
     return medicamentos.filter((m: Medicamento) => {
@@ -177,7 +177,6 @@ function DetalhesConsultaContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          {/* Card Principal de Resumo */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -242,12 +241,10 @@ function DetalhesConsultaContent() {
             )}
           </motion.div>
 
-          {/* Seção de Dados Vinculados (Receitas e Exames correlacionados) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-4">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">Registros Vinculados ao Atendimento</h3>
 
             <div className="grid grid-cols-1 gap-3">
-              {/* Bloco de Medicamentos/Receitas Relacionadas */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -277,7 +274,6 @@ function DetalhesConsultaContent() {
                 )}
               </div>
 
-              {/* Bloco de Exames Relacionados */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -307,7 +303,6 @@ function DetalhesConsultaContent() {
             </div>
           </motion.div>
 
-          {/* Ações Rápidas (Pós-Consulta / Reagendamento) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-3 pt-2">
             <h3 className="font-display text-sm font-semibold text-ink-muted px-1">Ações de Acompanhamento</h3>
             
