@@ -1,6 +1,6 @@
 // lib/repositories/tratamentos.ts
 
-import { db } from "@/lib/db";
+import { db, safeAddTratamento, safeUpdateTratamento, safeDeleteTratamento } from "@/lib/db";
 import type { Tratamento } from "@/lib/types";
 
 export const tratamentosRepository = {
@@ -12,35 +12,46 @@ export const tratamentosRepository = {
     return db.tratamentos.get(id);
   },
 
-  async create(data: Tratamento) {
-    return db.tratamentos.add(data);
+  async create(data: Omit<Tratamento, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
+    return safeAddTratamento(data);
   },
 
   async update(id: string, data: Partial<Tratamento>) {
-    return db.tratamentos.update(id, data);
+    return safeUpdateTratamento(id, data);
   },
 
   /**
-   * Exclusão Segura (Simulação de Cascade Delete)
-   * Remove o tratamento e limpa o ID dele de todos os medicamentos vinculados.
+   * Exclusão Segura (Cascade Delete Simulado)
+   * Remove o tratamento e limpa o ID dele de medicamentos e exames vinculados.
    */
   async deleteSafe(id: string) {
-    return db.transaction('rw', db.tratamentos, db.medicamentos, async () => {
+    return db.transaction('rw', db.tratamentos, db.medicamentos, db.exames, async () => {
       // 1. Exclui o tratamento
       await db.tratamentos.delete(id);
 
-      // 2. Busca todos os medicamentos que possuem este ID no array
+      // 2. Limpa medicamentos
       const medicamentosAfetados = await db.medicamentos
         .where('tratamento_ids')
         .equals(id)
         .toArray();
 
-      // 3. Varre e remove o ID fantasma de cada medicamento
       for (const med of medicamentosAfetados) {
         if (med.id && med.tratamento_ids) {
-          // Filtra removendo o ID deletado e garantindo valores únicos com Set
           const novosIds = Array.from(new Set(med.tratamento_ids.filter(tId => tId !== id)));
           await db.medicamentos.update(med.id, { tratamento_ids: novosIds });
+        }
+      }
+
+      // 3. Limpa exames (✅ NOVO)
+      const examesAfetados = await db.exames
+        .where('tratamento_ids')
+        .equals(id)
+        .toArray();
+
+      for (const exame of examesAfetados) {
+        if (exame.id && exame.tratamento_ids) {
+          const novosIds = Array.from(new Set(exame.tratamento_ids.filter(tId => tId !== id)));
+          await db.exames.update(exame.id, { tratamento_ids: novosIds });
         }
       }
     });
