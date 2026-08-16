@@ -46,9 +46,9 @@ export default function LocaisPage() {
         }
       });
 
-      const ultimaRenovacao = historico.sort((a: any, b: any) => 
-        new Date(b.data).getTime() - new Date(a.data).getTime()
-      )[0];
+      const ultimaRenovacao = historico.length > 0 
+        ? historico.sort((a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime())[0]
+        : null;
 
       return { 
         ...local, 
@@ -104,7 +104,6 @@ export default function LocaisPage() {
             />
           </div>
 
-          {/* 🔧 FILTROS */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
             
