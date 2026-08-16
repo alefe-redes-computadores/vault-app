@@ -44,7 +44,8 @@ export default function EditarExamePage() {
   const { hospitais } = useHospitais();
   const persons = usePersons();
 
-  const exame = useLiveQuery(() => (id ? db.table("exames").get(id) : undefined), [id]);
+  // ✅ CORRIGIDO: usa db.exames em vez de db.table("exames")
+  const exame = useLiveQuery(() => (id ? db.exames.get(id) : undefined), [id]);
 
   const [personId, setPersonId] = useState("");
   const [nome, setNome] = useState("");
@@ -61,7 +62,7 @@ export default function EditarExamePage() {
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
 
-  // Tratamentos Vinculados N:N
+  // ✅ CORRIGIDO: usa exame.tratamento_ids diretamente
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
@@ -94,10 +95,8 @@ export default function EditarExamePage() {
       setObservacoes(exame.observacoes || "");
       setAnexoUrl(exame.anexo_url || "");
 
-      // Busca vínculos N:N de tratamentos
-      db.exame_tratamentos.where('exame_id').equals(id!).toArray().then(vinculos => {
-        setTratamentosSelecionados(vinculos.map(v => v.tratamento_id));
-      });
+      // ✅ CORRIGIDO: carrega tratamento_ids diretamente do exame
+      setTratamentosSelecionados(exame.tratamento_ids || []);
     }
   }, [id, exame]);
 
@@ -138,6 +137,7 @@ export default function EditarExamePage() {
 
     setSaving(true);
     try {
+      // ✅ CORRIGIDO: atualiza o exame com tratamento_ids
       await safeUpdateExame(id, {
         person_id: personId || undefined,
         nome: nome.trim(),
@@ -150,24 +150,10 @@ export default function EditarExamePage() {
         motivo: motivo.trim() || undefined,
         observacoes: observacoes.trim() || undefined,
         anexo_url: anexoUrl.trim() || undefined,
+        tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
       });
 
-      // Sincroniza a tabela N:N de exames e tratamentos
-      await db.transaction('rw', db.exame_tratamentos, async () => {
-        await db.exame_tratamentos.where('exame_id').equals(id).delete();
-        for (const tId of tratamentosSelecionados) {
-          await db.exame_tratamentos.put({
-            id: crypto.randomUUID(),
-            exame_id: id,
-            tratamento_id: tId,
-            user_id: user?.id || "default_user",
-            synced: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-        }
-      });
-
+      // ✅ REMOVIDA a manipulação da tabela exame_tratamentos
       trigger("success");
       router.replace(`/saude/exames/detalhes?id=${id}`);
     } catch (error) {
