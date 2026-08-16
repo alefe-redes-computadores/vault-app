@@ -62,7 +62,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
-import { db } from "@/lib/db";
+import { db, safeAddHospital } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal, getTratamentoIcon } from "@/components/saude/SeletorTratamentoModal";
@@ -1514,12 +1514,11 @@ function EditarMedicamentoContent() {
           getItemLabel={(item: any) => item.nome}
           enableQuickCreate
           onQuickCreate={async (name, tabId) => {
-            const id = await db.hospitais.add({
-              user_id: user?.id,
+            // ✅ CORRIGIDO: user_id com fallback e usando safeAddHospital
+            const id = await safeAddHospital({
+              user_id: user?.id || "",
               nome: name,
               tipo: tabId,
-              created_at: new Date().toISOString(),
-              synced: false,
             });
             return { id, nome: name, tipo: tabId };
           }}
