@@ -11,7 +11,6 @@ import {
   Building2,
   UserCheck
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -20,7 +19,6 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
-// ✅ NOVO: import do hook
 import { useCirurgias } from "@/hooks/useCirurgias";
 
 const fadeUp = {
@@ -58,12 +56,10 @@ function handleDateMask(value: string): string {
 export default function NovaCirurgiaPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { user } = useAuth();
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
-  // ✅ NOVO: useCirurgias
   const { addCirurgia } = useCirurgias();
 
   const [procedimento, setProcedimento] = useState("");
@@ -104,9 +100,7 @@ export default function NovaCirurgiaPage() {
     try {
       const dataISO = parseDateToISO(dataDisplay);
 
-      // ✅ CORRIGIDO: usa addCirurgia do hook
       await addCirurgia({
-        user_id: user?.id || "",
         procedimento: procedimento.trim(),
         medico_id: medicoId || undefined,
         hospital_id: hospitalId || undefined,
