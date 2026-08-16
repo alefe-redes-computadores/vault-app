@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, safeAddCid, safeUpdateCid, safeDeleteCid } from "@/lib/db";
+import { db } from "@/lib/db";
+import { cidsRepository } from "@/lib/repositories/cids";
 import { useAuth } from "./useAuth";
+import { useCallback } from "react";
 import type { Cid } from "@/lib/types";
 
 export function useCids() {
@@ -15,20 +16,36 @@ export function useCids() {
     []
   );
 
+  const getCid = useCallback((id: string) => {
+    return cidsRepository.getById(id);
+  }, []);
+
   const addCid = useCallback(
     async (data: Omit<Cid, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return safeAddCid({ ...data, user_id: user?.id || "" });
+      return cidsRepository.create({ ...data, user_id: user?.id || "" });
     },
     [user]
   );
 
   const updateCid = useCallback(async (id: string, data: Partial<Cid>) => {
-    return safeUpdateCid(id, data);
+    return cidsRepository.update(id, data);
   }, []);
 
   const deleteCid = useCallback(async (id: string) => {
-    return safeDeleteCid(id);
+    return cidsRepository.delete(id);
   }, []);
 
-  return { cids, addCid, updateCid, deleteCid };
+  // ✅ Versão segura com cascade delete
+  const deleteCidSafe = useCallback(async (id: string) => {
+    return cidsRepository.deleteSafe(id);
+  }, []);
+
+  return {
+    cids,
+    getCid,
+    addCid,
+    updateCid,
+    deleteCid,
+    deleteCidSafe,
+  };
 }
