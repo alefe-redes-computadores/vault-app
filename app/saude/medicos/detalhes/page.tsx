@@ -14,7 +14,8 @@ import {
   Activity,
   Pill,
   ChevronRight,
-  User
+  User,
+  Building2
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -46,10 +47,23 @@ function DetalhesMedicoContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Consultas Cruzadas em Tempo Real
+  // ✅ CORRIGIDO: Adicionado suporte a estabelecimentos onde atende
   const consultas = useLiveQuery(() => db.consultas.where("medico_id").equals(id || "").toArray(), [id]) || [];
   const cirurgias = useLiveQuery(() => db.cirurgias.where("medico_id").equals(id || "").toArray(), [id]) || [];
   const medicamentos = useLiveQuery(() => db.medicamentos.where("medico_id").equals(id || "").toArray(), [id]) || [];
+  
+  // ✅ NOVO: Busca estabelecimentos onde o médico atende (via consultas/cirurgias)
+  const estabelecimentosIds = useMemo(() => {
+    const ids = new Set<string>();
+    consultas.forEach(c => c.hospital_id && ids.add(c.hospital_id));
+    cirurgias.forEach(c => c.hospital_id && ids.add(c.hospital_id));
+    return Array.from(ids);
+  }, [consultas, cirurgias]);
+
+  const estabelecimentos = useLiveQuery(() => {
+    if (estabelecimentosIds.length === 0) return [];
+    return db.hospitais.where('id').anyOf(estabelecimentosIds).toArray();
+  }, [estabelecimentosIds]) || [];
 
   useEffect(() => {
     if (!id) {
@@ -171,6 +185,22 @@ function DetalhesMedicoContent() {
                 )}
               </div>
             )}
+
+            {/* ✅ NOVO: Estabelecimentos onde atende */}
+            {estabelecimentos.length > 0 && (
+              <div className="pt-4 border-t border-surface-border/40">
+                <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
+                  <Building2 size={14} className="text-ice" /> Atende em:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {estabelecimentos.map((h: any) => (
+                    <span key={h.id} className="text-xs bg-surface-raised border border-surface-border/40 px-3 py-1.5 rounded-full text-ink-primary">
+                      {h.nome}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
 
           {/* Histórico Clínico Cruzado */}
@@ -218,7 +248,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhum procedimento registrado.</p>
                 ) : (
                   <div className="space-y-2">
-                    {cirurgias.sort((a, b) => b.data.localeCompare(a.data)).map((cir: Cirurgia) => (
+                    {cirurgias.sort((a, b) => b.data.localeCompare(a.data)).slice(0, 3).map((cir: Cirurgia) => (
                       <div 
                         key={cir.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
@@ -231,6 +261,9 @@ function DetalhesMedicoContent() {
                         <ChevronRight size={14} className="text-ink-faint" />
                       </div>
                     ))}
+                    {cirurgias.length > 3 && (
+                      <p className="text-[10px] text-center text-ink-muted pt-1">E mais {cirurgias.length - 3} registro(s)...</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -245,7 +278,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhum medicamento prescrito por este médico.</p>
                 ) : (
                   <div className="space-y-2">
-                    {medicamentos.map((med: Medicamento) => (
+                    {medicamentos.slice(0, 3).map((med: Medicamento) => (
                       <div 
                         key={med.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
@@ -258,6 +291,9 @@ function DetalhesMedicoContent() {
                         <ChevronRight size={14} className="text-ink-faint" />
                       </div>
                     ))}
+                    {medicamentos.length > 3 && (
+                      <p className="text-[10px] text-center text-ink-muted pt-1">E mais {medicamentos.length - 3} registro(s)...</p>
+                    )}
                   </div>
                 )}
               </div>
