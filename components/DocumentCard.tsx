@@ -28,11 +28,16 @@ import { ptBR } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ToastProvider";
 
+// 🔧 INTERFACE ATUALIZADA COM SUPORTE PARA AS NOVAS PROPS
 interface DocumentCardProps {
   document: Document;
   personName?: string;
   onFavoriteToggle?: (id: string) => void;
   compact?: boolean;
+  // 🔧 NOVAS PROPS
+  alerta?: { status: string; label: string; color: string } | null;
+  personColor?: string;
+  medicamento?: any;
 }
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
@@ -52,7 +57,6 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   outro: FolderOpen,
 };
 
-// Dicionário amigável para traduzir o tipo técnico do documento no badge
 const TYPE_LABELS: Record<string, string> = {
   rg: "C.I.N / RG",
   cpf: "CPF",
@@ -72,7 +76,6 @@ const TYPE_LABELS: Record<string, string> = {
   outro: "Outro",
 };
 
-// Funções utilitárias de formatação de documentos
 const formatCPF = (val: string) => {
   const digits = val.replace(/\D/g, "");
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
@@ -86,7 +89,6 @@ const formatRG = (val: string) => {
   return val;
 };
 
-// Formatação blindada para datas
 const formatDate = (dateString?: string) => {
   if (!dateString || dateString.trim() === "") return null;
   try {
@@ -102,7 +104,7 @@ const formatDate = (dateString?: string) => {
     }
     return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
   } catch {
-    return dateString; 
+    return dateString;
   }
 };
 
@@ -111,6 +113,9 @@ function DocumentCardComponent({
   personName,
   onFavoriteToggle,
   compact = false,
+  alerta,
+  personColor,
+  medicamento,
 }: DocumentCardProps) {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -120,9 +125,9 @@ function DocumentCardComponent({
   const [isFavoriteAnimating, setIsFavoriteAnimating] = useState(false);
 
   const category = CATEGORIES[document.category_id];
-  const color = category?.color || "#6B7280";
+  const color = personColor || category?.color || "#6B7280";
   const TypeIcon = TYPE_ICONS[document.type] || FileText;
-  const friendlyTypeLabel = TYPE_LABELS[document.type] || document.type.replace('_', ' ');
+  const friendlyTypeLabel = TYPE_LABELS[document.type] || document.type.replace("_", " ");
 
   const handlePress = useCallback(() => {
     trigger("vibrate");
@@ -136,9 +141,7 @@ function DocumentCardComponent({
       setIsFavoriteAnimating(true);
       setTimeout(() => setIsFavoriteAnimating(false), 420);
       showToast(
-        document.is_favorite
-          ? "Removido dos favoritos"
-          : "Adicionado aos favoritos",
+        document.is_favorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
         "info"
       );
       onFavoriteToggle?.(document.id!);
@@ -167,9 +170,9 @@ function DocumentCardComponent({
         "modelo",
       ].includes(key)
   );
-  
+
   const rawFirstMeta = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
-  
+
   const firstMetadata = (() => {
     if (!rawFirstMeta) return null;
     const strVal = String(rawFirstMeta);
@@ -182,13 +185,19 @@ function DocumentCardComponent({
     return strVal;
   })();
 
-  const rawIssueDate = document.metadata?.issue_date || document.metadata?.data_nascimento || document.metadata?.data_exame || document.metadata?.date;
-  const rawExpiryDate = document.metadata?.expiry_date || document.metadata?.renewal_date || document.metadata?.validade;
-  
+  const rawIssueDate =
+    document.metadata?.issue_date ||
+    document.metadata?.data_nascimento ||
+    document.metadata?.data_exame ||
+    document.metadata?.date;
+  const rawExpiryDate =
+    document.metadata?.expiry_date || document.metadata?.renewal_date || document.metadata?.validade;
+
   const formattedIssue = formatDate(rawIssueDate);
   const formattedExpiry = formatDate(rawExpiryDate);
 
-  const isExpiring = rawExpiryDate && new Date(rawExpiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const isExpiring =
+    rawExpiryDate && new Date(rawExpiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const isExpired = rawExpiryDate && new Date(rawExpiryDate) < new Date();
 
   const handleSyncIconClick = useCallback(
@@ -221,21 +230,15 @@ function DocumentCardComponent({
             <TypeIcon size={18} style={{ color }} />
           </div>
 
-          {/* Container flexível com min-w-0 para conter o texto e evitar estouro */}
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                {/* Título blindado contra cortes com quebra de palavras */}
                 <h3 className="w-full break-words font-display text-[15px] font-semibold leading-snug text-ink-primary">
                   {document.title}
                 </h3>
 
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
-                  {personName ? (
-                    <span>{personName}</span>
-                  ) : (
-                    <span>{friendlyTypeLabel}</span>
-                  )}
+                  {personName ? <span>{personName}</span> : <span>{friendlyTypeLabel}</span>}
 
                   {category && (
                     <span
@@ -247,6 +250,19 @@ function DocumentCardComponent({
                       }}
                     >
                       {category.name}
+                    </span>
+                  )}
+
+                  {/* 🔧 BADGE DE STATUS DA RECEITA */}
+                  {alerta && (
+                    <span
+                      className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor: `${alerta.color}20`,
+                        color: alerta.color,
+                      }}
+                    >
+                      {alerta.label}
                     </span>
                   )}
                 </div>
@@ -289,7 +305,8 @@ function DocumentCardComponent({
                 <div className="flex items-center gap-1 text-xs text-ink-muted">
                   <Calendar size={12} />
                   <span>
-                    {document.type === "certidao_nascimento" ? "Nascimento:" : "Emissão:"} {formattedIssue}
+                    {document.type === "certidao_nascimento" ? "Nascimento:" : "Emissão:"}{" "}
+                    {formattedIssue}
                   </span>
                 </div>
               )}
@@ -306,7 +323,8 @@ function DocumentCardComponent({
                 >
                   <Calendar size={12} />
                   <span>
-                    {isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"} {formattedExpiry}
+                    {isExpired ? "Vencido:" : isExpiring ? "Vence em:" : "Vence:"}{" "}
+                    {formattedExpiry}
                   </span>
                 </div>
               )}
@@ -324,11 +342,7 @@ function DocumentCardComponent({
           <div className="flex items-center gap-2 text-xs text-ink-faint">
             {hasAttachments && (
               <span className="inline-flex items-center gap-1">
-                {hasImageAttachment ? (
-                  <ImageIcon size={13} />
-                ) : (
-                  <Paperclip size={13} />
-                )}
+                {hasImageAttachment ? <ImageIcon size={13} /> : <Paperclip size={13} />}
                 <span>
                   {document.attachments.length} anexo
                   {document.attachments.length !== 1 ? "s" : ""}
@@ -373,6 +387,8 @@ export const DocumentCard = memo(DocumentCardComponent, (prevProps, nextProps) =
     prevProps.document.is_favorite === nextProps.document.is_favorite &&
     prevProps.document.synced === nextProps.document.synced &&
     prevProps.compact === nextProps.compact &&
-    prevProps.personName === nextProps.personName
+    prevProps.personName === nextProps.personName &&
+    prevProps.alerta?.status === nextProps.alerta?.status &&
+    prevProps.personColor === nextProps.personColor
   );
 });
