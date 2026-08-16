@@ -20,6 +20,9 @@ import {
   Edit,
   FlaskConical,
   MapPin,
+  Activity,
+  Copy,
+  RotateCcw,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -117,7 +120,7 @@ const HOSPITAIS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
 const LOCAIS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-local", label: "Novo Local", icon: MapPin, path: "/saude/locais/novo" },
 ];
-const LOCAIS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
+const LOCAIS_DETALHE_COMPOSE_OPTIONS: ComposerOption[] = [
   { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
   { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
   { id: "editar-local", label: "Editar Local", icon: Edit, path: "/saude/locais/editar" },
@@ -132,6 +135,38 @@ const RENOVACOES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
 const RENOVACOES_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "editar-renovacao", label: "Editar Renovação", icon: Edit, path: "/saude/renovacao/editar" },
   { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
+];
+
+// ============================================================
+// EXAMES (NOVO)
+// ============================================================
+const EXAMES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "novo-exame", label: "Novo Exame", icon: FlaskConical, path: "/saude/exames/novo" },
+];
+const EXAMES_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "editar-exame", label: "Editar Exame", icon: Edit, path: "/saude/exames/editar" },
+  { id: "duplicar-exame", label: "Solicitar Novamente", icon: Copy, path: "/saude/exames/novo" },
+];
+
+// ============================================================
+// CONSULTAS (NOVO)
+// ============================================================
+const CONSULTAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "nova-consulta", label: "Nova Consulta", icon: Calendar, path: "/saude/consultas/nova" },
+];
+const CONSULTAS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "editar-consulta", label: "Editar Consulta", icon: Edit, path: "/saude/consultas/editar" },
+  { id: "reagendar-consulta", label: "Reagendar Consulta", icon: RotateCcw, path: "/saude/consultas/nova" },
+];
+
+// ============================================================
+// CIRURGIAS (NOVO)
+// ============================================================
+const CIRURGIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
+];
+const CIRURGIAS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "editar-cirurgia", label: "Editar Cirurgia", icon: Edit, path: "/saude/cirurgias/editar" },
 ];
 
 // ============================================================
@@ -191,6 +226,18 @@ function getComposeOptions(pathname: string): ComposeOption[] {
   if (pathname === "/saude/renovacao") return RENOVACOES_LIST_COMPOSE_OPTIONS;
   if (pathname.startsWith("/saude/renovacao/detalhes")) return RENOVACOES_DETALHE_COMPOSE_OPTIONS;
   
+  // EXAMES (NOVO)
+  if (pathname === "/saude/exames") return EXAMES_LIST_COMPOSE_OPTIONS;
+  if (pathname.startsWith("/saude/exames/detalhes")) return EXAMES_DETALHE_COMPOSE_OPTIONS;
+  
+  // CONSULTAS (NOVO)
+  if (pathname === "/saude/consultas") return CONSULTAS_LIST_COMPOSE_OPTIONS;
+  if (pathname.startsWith("/saude/consultas/detalhes")) return CONSULTAS_DETALHE_COMPOSE_OPTIONS;
+  
+  // CIRURGIAS (NOVO)
+  if (pathname === "/saude/cirurgias") return CIRURGIAS_LIST_COMPOSE_OPTIONS;
+  if (pathname.startsWith("/saude/cirurgias/detalhes")) return CIRURGIAS_DETALHE_COMPOSE_OPTIONS;
+  
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
   if (pathname === "/galeria") return GALERIA_COMPOSE_OPTIONS;
@@ -205,7 +252,6 @@ export function BottomNav() {
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
 
-  // Extrai ID da URL (genérico)
   const getEntityIdFromPath = (): string | null => {
     const params = new URLSearchParams(window.location.search);
     return params.get("id");
@@ -274,7 +320,6 @@ export function BottomNav() {
 
     let path = option.path;
 
-    // Ações contextuais que precisam de ID
     const isContextualAction = [
       "nova-consulta",
       "nova-cirurgia",
@@ -288,6 +333,11 @@ export function BottomNav() {
       "editar-hospital",
       "editar-local",
       "editar-renovacao",
+      "editar-exame",
+      "duplicar-exame",
+      "editar-consulta",
+      "reagendar-consulta",
+      "editar-cirurgia",
     ].includes(option.id);
 
     if (isContextualAction) {
@@ -301,8 +351,20 @@ export function BottomNav() {
         else if (pathname.includes('/hospitais/detalhes')) paramName = 'hospital_id';
         else if (pathname.includes('/locais/detalhes')) paramName = 'local_id';
         else if (pathname.includes('/renovacao/detalhes')) paramName = 'renovacao_id';
+        else if (pathname.includes('/exames/detalhes')) paramName = 'exame_id';
+        else if (pathname.includes('/consultas/detalhes')) paramName = 'consulta_id';
+        else if (pathname.includes('/cirurgias/detalhes')) paramName = 'cirurgia_id';
         
-        path = `${path}${separator}${paramName}=${entityId}`;
+        // Se for "reagendar-consulta", passamos também o medico_id e hospital_id
+        if (option.id === "reagendar-consulta") {
+          // Podemos pegar da URL, mas vamos simplificar passando apenas o id da consulta
+          // A página de criação pode usar esse parâmetro para pré-preencher
+          path = `${path}${separator}reagendar=true&consulta_id=${entityId}`;
+        } else if (option.id === "duplicar-exame") {
+          path = `${path}${separator}duplicar=${entityId}`;
+        } else {
+          path = `${path}${separator}${paramName}=${entityId}`;
+        }
       } else {
         // Fallback: vai para a página principal correspondente
         if (pathname.includes('/medicos')) router.push("/saude/medicos");
@@ -311,6 +373,9 @@ export function BottomNav() {
         else if (pathname.includes('/hospitais')) router.push("/saude/hospitais");
         else if (pathname.includes('/locais')) router.push("/saude/locais");
         else if (pathname.includes('/renovacao')) router.push("/saude/renovacao");
+        else if (pathname.includes('/exames')) router.push("/saude/exames");
+        else if (pathname.includes('/consultas')) router.push("/saude/consultas");
+        else if (pathname.includes('/cirurgias')) router.push("/saude/cirurgias");
         else router.push("/saude");
         return;
       }
