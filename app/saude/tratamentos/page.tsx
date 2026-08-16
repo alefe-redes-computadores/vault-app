@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, Suspense } from "react";
+import { useMemo, Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plus, ChevronRight, Activity, Brain, Flame, HeartPulse, ShieldAlert, Pill, Stethoscope } from "lucide-react";
+import { 
+  ArrowLeft, ChevronRight, Activity, Brain, Flame, HeartPulse, 
+  ShieldAlert, Pill, Filter, X, DollarSign
+} from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { Button } from "@/components/ui/Button";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 
@@ -25,20 +27,43 @@ function getTratamentoIcon(nome: string) {
 function TratamentoListContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "ativo" | "concluido" | "suspenso">("todos");
   
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
+  const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
   const listaEnriquecida = useMemo(() => {
     return tratamentos.map(t => {
-      // ✅ CORRIGIDO: usa apenas tratamento_ids
       const meds = medicamentos.filter(m => {
         if (!t.id) return false;
         return m.tratamento_ids && m.tratamento_ids.includes(t.id);
       });
-      return { ...t, medicamentosCount: meds.length };
+      
+      // Custo total do tratamento (via renovações)
+      const medIds = new Set(meds.map(m => m.id));
+      let totalGasto = 0;
+      renovacoes.forEach(r => {
+        if (medIds.has(r.medicamento_id) && typeof r.preco === "number" && r.preco > 0) {
+          totalGasto += r.preco;
+        }
+      });
+
+      return { 
+        ...t, 
+        medicamentosCount: meds.length,
+        totalGasto,
+      };
     });
-  }, [tratamentos, medicamentos]);
+  }, [tratamentos, medicamentos, renovacoes]);
+
+  const filteredList = useMemo(() => {
+    let result = listaEnriquecida;
+    if (filtroStatus !== "todos") {
+      result = result.filter(t => t.status === filtroStatus);
+    }
+    return result.sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [listaEnriquecida, filtroStatus]);
 
   if (tratamentos === undefined) return <LoadingSkeleton />;
 
@@ -52,18 +77,69 @@ function TratamentoListContent() {
             </button>
             <div className="min-w-0 flex-1">
               <h1 className="font-display text-xl font-semibold text-ink-primary">Seus Tratamentos</h1>
-              <p className="text-xs text-ink-muted">{tratamentos.length} em acompanhamento</p>
+              <p className="text-xs text-ink-muted">{filteredList.length} em acompanhamento</p>
             </div>
+          </div>
+
+          {/* 🔧 FILTROS */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <Filter size={14} className="text-ink-muted" />
+            
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "ativo" ? "todos" : "ativo"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroStatus === "ativo"
+                  ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Em andamento
+            </button>
+
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "concluido" ? "todos" : "concluido"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroStatus === "concluido"
+                  ? "border-ice bg-ice/20 text-ice"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Concluído
+            </button>
+
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "suspenso" ? "todos" : "suspenso"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroStatus === "suspenso"
+                  ? "border-coral bg-coral/20 text-coral"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Suspenso
+            </button>
+
+            {filtroStatus !== "todos" && (
+              <button
+                onClick={() => { trigger("vibrate"); setFiltroStatus("todos"); }}
+                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
+              >
+                <X size={12} /> Limpar
+              </button>
+            )}
           </div>
         </header>
 
         <section className="px-5 pt-6 space-y-3">
-          {listaEnriquecida.length === 0 ? (
+          {filteredList.length === 0 ? (
             <div className="rounded-[24px] border border-dashed border-surface-border p-10 text-center">
-              <p className="text-sm text-ink-muted">Nenhum tratamento cadastrado ainda.</p>
+              <p className="text-sm text-ink-muted">
+                {filtroStatus !== "todos" 
+                  ? "Nenhum tratamento com esse status." 
+                  : "Nenhum tratamento cadastrado ainda."}
+              </p>
             </div>
           ) : (
-            listaEnriquecida.map((t: any) => {
+            filteredList.map((t: any) => {
               const IconComp = getTratamentoIcon(t.nome);
               const cor = t.cor || "#8B5CF6";
               return (
@@ -81,9 +157,21 @@ function TratamentoListContent() {
                   </div>
                   <div className="min-w-0 flex-1 text-left">
                     <p className="font-semibold text-ink-primary truncate">{t.nome}</p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-md flex items-center gap-1">
                         <Pill size={10} className="text-ice" /> {t.medicamentosCount} med(s)
+                      </span>
+                      {t.totalGasto > 0 && (
+                        <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <DollarSign size={10} className="text-emerald-400" /> R$ {t.totalGasto.toFixed(2).replace(".", ",")}
+                        </span>
+                      )}
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                        t.status === "ativo" ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" :
+                        t.status === "concluido" ? "bg-ice/10 text-ice border border-ice/20" :
+                        "bg-coral/10 text-coral border border-coral/20"
+                      }`}>
+                        {t.status === "ativo" ? "Ativo" : t.status === "concluido" ? "Concluído" : "Suspenso"}
                       </span>
                     </div>
                   </div>
@@ -92,10 +180,6 @@ function TratamentoListContent() {
               );
             })
           )}
-          
-          <Button variant="primary" fullWidth onClick={() => { trigger("vibrate"); router.push("/saude/tratamentos/novo"); }} className="mt-4">
-            <Plus size={16} className="mr-2" /> Novo Tratamento
-          </Button>
         </section>
       </main>
     </PageTransition>
