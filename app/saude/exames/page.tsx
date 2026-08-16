@@ -29,8 +29,12 @@ export default function ExamesPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
 
-  const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
+  // ✅ CORRIGIDO: db.exames em vez de db.table("exames")
+  const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  
+  // ✅ CORRIGIDO: A tabela exame_tratamentos é mantida para compatibilidade,
+  // mas futuramente podemos migrar para o campo tratamento_ids
   const vinculos = useLiveQuery(() => db.exame_tratamentos.toArray(), []) || [];
   const persons = useLiveQuery(() => db.persons.toArray(), []) || [];
 
@@ -83,7 +87,6 @@ export default function ExamesPage() {
               const personName = personMap.get(exame.person_id);
               const tIds = vinculosMap.get(exame.id) || [];
               const primeiroTratamento = tIds.length > 0 ? tratamentoMap.get(tIds[0]) : null;
-              // CORREÇÃO: Cast para (any) para evitar erro de tipo na propriedade .cor
               const corTratamento = (primeiroTratamento as any)?.cor || "#10B981";
 
               return (
@@ -94,7 +97,6 @@ export default function ExamesPage() {
                   onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }}
                   className="flex w-full items-start gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
                 >
-                  {/* BARRINHA LATERAL DINÂMICA PELA COR DO TRATAMENTO */}
                   <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: corTratamento }} />
 
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">
