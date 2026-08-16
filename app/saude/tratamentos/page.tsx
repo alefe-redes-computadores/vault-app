@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, ChevronRight, Activity, Brain, Flame, HeartPulse, 
-  ShieldAlert, Pill, Filter, X, DollarSign
+  ShieldAlert, Pill, Filter, X, DollarSign, AlertTriangle
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -44,7 +44,6 @@ function TratamentoListContent() {
         return m.tratamento_ids && m.tratamento_ids.includes(t.id);
       });
       
-      // Custo total do tratamento (via renovações)
       const medIds = new Set(meds.map(m => m.id));
       let totalGasto = 0;
       renovacoes.forEach(r => {
@@ -53,10 +52,14 @@ function TratamentoListContent() {
         }
       });
 
+      // 🧠 Insight: Tratamento Ativo mas sem medicamentos vinculados
+      const alertaSemMedicamento = t.status === 'ativo' && meds.length === 0;
+
       return { 
         ...t, 
         medicamentosCount: meds.length,
         totalGasto,
+        alertaSemMedicamento
       };
     });
   }, [tratamentos, medicamentos, renovacoes]);
@@ -85,7 +88,6 @@ function TratamentoListContent() {
             </div>
           </div>
 
-          {/* 🔧 FILTROS */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
             
@@ -178,6 +180,12 @@ function TratamentoListContent() {
                         {t.status === "ativo" ? "Ativo" : t.status === "concluido" ? "Concluído" : "Suspenso"}
                       </span>
                     </div>
+                    {/* 🧠 Aviso de Tratamento sem Medicação */}
+                    {t.alertaSemMedicamento && (
+                      <p className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 mt-2 bg-amber-400/10 w-fit px-2 py-0.5 rounded-md border border-amber-400/20">
+                        <AlertTriangle size={10} /> Nenhum medicamento vinculado
+                      </p>
+                    )}
                   </div>
                   <ChevronRight size={18} className="text-ink-faint" />
                 </motion.button>
