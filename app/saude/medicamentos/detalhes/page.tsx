@@ -45,7 +45,6 @@ const FORMATOS = [
 ];
 
 // Tipagens locais
-interface TratamentoVinculo { tratamento_id: string; }
 interface RenovacaoLog { preco?: number | string; data?: string; created_at?: string; id: string; farmacia_nome?: string; }
 interface HistDosagem { dosagem_antiga: string; data_mudanca: string; medico_responsavel: string; }
 
@@ -60,7 +59,10 @@ function MedicamentoDetalhesContent() {
   const [showAllRenovacoes, setShowAllRenovacoes] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' | 'loading' } | null>(null);
 
-  // Consultas Dexie
+  // ============================================================
+  // CONSULTAS DEXIE (REATIVAS)
+  // ============================================================
+
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);
   const medico = useLiveQuery(() => med?.medico_id ? db.medicos.get(med.medico_id) : undefined, [med?.medico_id]);
   const estabelecimento = useLiveQuery(() => med?.estabelecimento_id ? db.hospitais.get(med.estabelecimento_id) : undefined, [med?.estabelecimento_id]);
@@ -68,16 +70,19 @@ function MedicamentoDetalhesContent() {
   const renovacoes = useLiveQuery(() => db.renovacoes.where("medicamento_id").equals(id || "").reverse().sortBy('data'), [id]) || [];
   const documento = useLiveQuery(() => med?.document_id ? db.documents.get(med.document_id) : undefined, [med?.document_id]);
   
-  const ultimaDose = useLiveQuery(() => db.table('doseLogs').where('medicamento_id').equals(id || '').reverse().first(), [id]);
+  // ✅ CORRIGIDO: usa db.doseLogs em vez de db.table('doseLogs')
+  const ultimaDose = useLiveQuery(() => db.doseLogs.where('medicamento_id').equals(id || '').reverse().first(), [id]);
   const todosMedicamentosAtivos = useLiveQuery(() => db.medicamentos.where("status").notEqual("descontinuado").toArray(), []) || [];
   
-  const tratamentos = useLiveQuery(async () => {
-    if (!id) return [];
-    const vinculos = await db.medicamento_tratamentos.where('medicamento_id').equals(id).toArray();
-    let tIds = vinculos.map((v: TratamentoVinculo) => v.tratamento_id);
-    if (tIds.length === 0 && med?.tratamento_id) tIds = [med.tratamento_id];
-    return await db.tratamentos.where('id').anyOf(tIds).toArray();
-  }, [id, med?.tratamento_id]) || [];
+  // ✅ CORRIGIDO: usa tratamento_ids (MultiEntry Index) diretamente
+  const tratamentos = useLiveQuery(() => {
+    if (!med?.tratamento_ids || med.tratamento_ids.length === 0) return [];
+    return db.tratamentos.where('id').anyOf(med.tratamento_ids).toArray();
+  }, [med?.tratamento_ids]) || [];
+
+  // ============================================================
+  // AÇÃO: TOMAR DOSE
+  // ============================================================
 
   const handleTomarAgora = useCallback(async () => {
     if (!med) return;
@@ -104,8 +109,8 @@ function MedicamentoDetalhesContent() {
         estoque_quantidade: novoEstoque,
         estoque_data_referencia: now.toISOString().slice(0, 10),
       });
-      // Registra Dose
-      await db.table("doseLogs").add({
+      // Registra Dose (usando db.doseLogs)
+      await db.doseLogs.add({
         medicamento_id: med.id,
         data: now.toISOString().slice(0, 10),
         horario: now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
@@ -122,6 +127,10 @@ function MedicamentoDetalhesContent() {
       setTimeout(() => setToastMessage(null), 3000);
     }
   }, [med, updateMedicamento, trigger]);
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   if (med === undefined) return <LoadingSkeleton />;
   if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
