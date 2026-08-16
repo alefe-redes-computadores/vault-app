@@ -1,6 +1,4 @@
-// lib/repositories/locais.ts
-
-import { db, safeAddLocal, safeUpdateLocal, safeDeleteLocal } from "@/lib/db";
+import { db, safeAddLocal, safeUpdateLocal, safeDeleteLocal, safeUpdateRenovacao } from "@/lib/db";
 import type { LocalSaude } from "@/lib/types";
 
 export const locaisRepository = {
@@ -21,19 +19,18 @@ export const locaisRepository = {
   },
 
   /**
-   * Exclusão Segura
+   * Exclusão Segura com Sincronização (Cascade Delete)
    * Remove o local e limpa o ID dele de renovações.
+   * TODAS as operações usam safe... para manter sync com a nuvem.
    */
   async deleteSafe(id: string) {
-    return db.transaction('rw', db.locais, db.renovacoes, async () => {
-      await db.locais.delete(id);
+    // 1. Deleta o local (já coloca na fila de sync)
+    await safeDeleteLocal(id);
 
-      const renovacoesAfetadas = await db.renovacoes.where('local_id').equals(id).toArray();
-      for (const ren of renovacoesAfetadas) {
-        if (ren.id) {
-          await db.renovacoes.update(ren.id, { local_id: undefined });
-        }
-      }
-    });
+    // 2. Limpa renovações (usando safeUpdate)
+    const renovacoesAfetadas = await db.renovacoes.where('local_id').equals(id).toArray();
+    for (const ren of renovacoesAfetadas) {
+      if (ren.id) await safeUpdateRenovacao(ren.id, { local_id: undefined });
+    }
   }
 };
