@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, FileWarning, Calendar, DollarSign, ExternalLink, 
-  Trash2, Pill, FileText 
+  Trash2, Pill, FileText, Edit3 
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -47,23 +47,19 @@ function DetalhesRenovacaoContent() {
 
     const fetchData = async () => {
       try {
-        // ✅ CORRIGIDO: Usa db.renovacoes em vez de db.table("renovacoes")
         const res = await db.renovacoes.get(id);
         if (res) {
           setRenovacao(res);
           
-          // Busca medicamento vinculado
           if (res.medicamento_id) {
             const med = await db.medicamentos.get(res.medicamento_id);
             setMedicamento(med);
             
-            // Busca médico vinculado (se existir)
             if (res.medico_id) {
               const doc = await db.medicos.get(res.medico_id);
               setMedico(doc);
             }
             
-            // Busca farmácia vinculada (se existir)
             if (res.farmacia_id) {
               const farm = await db.farmacias.get(res.farmacia_id);
               setFarmacia(farm);
@@ -124,6 +120,13 @@ function DetalhesRenovacaoContent() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/editar?id=${id}`); }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ice transition-all active:scale-95 hover:bg-ice/10"
+              aria-label="Editar renovação"
+            >
+              <Edit3 size={16} />
+            </button>
             <button
               onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
@@ -198,7 +201,6 @@ function DetalhesRenovacaoContent() {
             )}
           </motion.div>
 
-          {/* ✅ NOVO: Informações do Médico e Farmácia */}
           {(medico || farmacia) && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
               <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Rede de Apoio</h3>
