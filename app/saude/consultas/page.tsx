@@ -16,6 +16,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Consulta } from "@/lib/types";
+// ✅ NOVO: import do hook
+import { useConsultas } from "@/hooks/useConsultas";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -35,8 +37,8 @@ export default function ConsultasPage() {
   
   const [abaAtiva, setAbaAtiva] = useState<"proximas" | "historico">("proximas");
 
-  // ✅ JÁ ESTÁ CORRETO (usa db.consultas, db.medicos, db.hospitais)
-  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+  // ✅ CORRIGIDO: usa o hook useConsultas
+  const { consultas } = useConsultas();
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
@@ -46,7 +48,7 @@ export default function ConsultasPage() {
     const prox: Consulta[] = [];
     const hist: Consulta[] = [];
 
-    consultas.forEach((c) => {
+    (consultas || []).forEach((c) => {
       const isPassada = c.data < hojeISO || c.status === "realizada" || c.status === "cancelada";
       if (isPassada) {
         hist.push(c);
