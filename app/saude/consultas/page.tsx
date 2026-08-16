@@ -5,18 +5,21 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, 
-  Plus, 
   Calendar as CalendarIcon, 
   Building2, 
   ChevronRight,
-  Stethoscope
+  Stethoscope,
+  Filter,
+  X,
+  CheckCircle2,
+  Clock,
+  XCircle
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Consulta } from "@/lib/types";
-// ✅ NOVO: import do hook
 import { useConsultas } from "@/hooks/useConsultas";
 
 const fadeUp = {
@@ -36,8 +39,8 @@ export default function ConsultasPage() {
   const router = useRouter();
   
   const [abaAtiva, setAbaAtiva] = useState<"proximas" | "historico">("proximas");
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "agendada" | "realizada" | "cancelada">("todos");
 
-  // ✅ CORRIGIDO: usa o hook useConsultas
   const { consultas } = useConsultas();
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
@@ -63,7 +66,12 @@ export default function ConsultasPage() {
     return { proximas: prox, historico: hist };
   }, [consultas, hojeISO]);
 
-  const listaExibida = abaAtiva === "proximas" ? proximas : historico;
+  const listaBase = abaAtiva === "proximas" ? proximas : historico;
+
+  const listaExibida = useMemo(() => {
+    if (filtroStatus === "todos") return listaBase;
+    return listaBase.filter(c => c.status === filtroStatus);
+  }, [listaBase, filtroStatus]);
 
   const getMedicoNome = (id?: string) => {
     if (!id) return "Não vinculado";
@@ -98,12 +106,7 @@ export default function ConsultasPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => { trigger("vibrate"); router.push("/saude/consultas/nova"); }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ice text-void transition-all active:scale-95 shadow-md shadow-ice/20"
-            >
-              <Plus size={20} />
-            </button>
+            {/* 🔧 Botão "Cadastrar" removido - via menu inferior */}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-surface-raised p-1 border border-surface-border/40">
@@ -128,6 +131,53 @@ export default function ConsultasPage() {
               Histórico ({historico.length})
             </button>
           </div>
+
+          {/* 🔧 FILTROS */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <Filter size={14} className="text-ink-muted" />
+            
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "agendada" ? "todos" : "agendada"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroStatus === "agendada"
+                  ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Agendada
+            </button>
+
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "realizada" ? "todos" : "realizada"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroStatus === "realizada"
+                  ? "border-ice bg-ice/20 text-ice"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Realizada
+            </button>
+
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "cancelada" ? "todos" : "cancelada"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroStatus === "cancelada"
+                  ? "border-coral bg-coral/20 text-coral"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Cancelada
+            </button>
+
+            {filtroStatus !== "todos" && (
+              <button
+                onClick={() => { trigger("vibrate"); setFiltroStatus("todos"); }}
+                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
+              >
+                <X size={12} /> Limpar
+              </button>
+            )}
+          </div>
         </header>
 
         <section className="px-5 pt-6 space-y-4">
@@ -144,7 +194,7 @@ export default function ConsultasPage() {
               <h3 className="font-display text-base font-semibold text-ink-primary">Nenhuma consulta encontrada</h3>
               <p className="mt-1 text-xs text-ink-muted max-w-xs mx-auto">
                 {abaAtiva === "proximas" 
-                  ? "Você não possui consultas agendadas. Toque no botão (+) acima para agendar uma nova." 
+                  ? "Você não possui consultas agendadas." 
                   : "Não há registros passados no histórico de consultas."}
               </p>
             </motion.div>
@@ -168,7 +218,7 @@ export default function ConsultasPage() {
                           <Stethoscope size={20} />
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono text-xs font-semibold text-ice">
                               {formatDateDisplay(con.data)}
                             </span>
