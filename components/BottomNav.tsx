@@ -124,6 +124,17 @@ const LOCAIS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
 ];
 
 // ============================================================
+// RENOVAÇÕES
+// ============================================================
+const RENOVACOES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
+];
+const RENOVACOES_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "editar-renovacao", label: "Editar Renovação", icon: Edit, path: "/saude/renovacao/editar" },
+  { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
+];
+
+// ============================================================
 // CARTÕES E GALERIA
 // ============================================================
 const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
@@ -175,6 +186,10 @@ function getComposeOptions(pathname: string): ComposeOption[] {
   // LOCAIS
   if (pathname === "/saude/locais") return LOCAIS_LIST_COMPOSE_OPTIONS;
   if (pathname.startsWith("/saude/locais/detalhes")) return LOCAIS_DETALHE_COMPOSE_OPTIONS;
+  
+  // RENOVAÇÕES
+  if (pathname === "/saude/renovacao") return RENOVACOES_LIST_COMPOSE_OPTIONS;
+  if (pathname.startsWith("/saude/renovacao/detalhes")) return RENOVACOES_DETALHE_COMPOSE_OPTIONS;
   
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
@@ -272,28 +287,30 @@ export function BottomNav() {
       "novo-exame",
       "editar-hospital",
       "editar-local",
+      "editar-renovacao",
     ].includes(option.id);
 
     if (isContextualAction) {
       const entityId = getEntityIdFromPath();
       if (entityId) {
         const separator = path.includes('?') ? '&' : '?';
-        // Define qual parâmetro usar conforme o contexto
         let paramName = 'id';
         if (pathname.includes('/medicos/detalhes')) paramName = 'medico_id';
         else if (pathname.includes('/farmacias/detalhes')) paramName = 'farmacia_id';
         else if (pathname.includes('/tratamentos/detalhes')) paramName = 'tratamento_id';
         else if (pathname.includes('/hospitais/detalhes')) paramName = 'hospital_id';
         else if (pathname.includes('/locais/detalhes')) paramName = 'local_id';
+        else if (pathname.includes('/renovacao/detalhes')) paramName = 'renovacao_id';
         
         path = `${path}${separator}${paramName}=${entityId}`;
       } else {
-        // Fallback: vai para a página principal
+        // Fallback: vai para a página principal correspondente
         if (pathname.includes('/medicos')) router.push("/saude/medicos");
         else if (pathname.includes('/farmacias')) router.push("/saude/farmacias");
         else if (pathname.includes('/tratamentos')) router.push("/saude/tratamentos");
         else if (pathname.includes('/hospitais')) router.push("/saude/hospitais");
         else if (pathname.includes('/locais')) router.push("/saude/locais");
+        else if (pathname.includes('/renovacao')) router.push("/saude/renovacao");
         else router.push("/saude");
         return;
       }
