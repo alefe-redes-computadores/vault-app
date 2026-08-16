@@ -60,8 +60,8 @@ export default function MedicamentosListPage() {
     localStorage.setItem("vault_med_filtro_pessoa", selectedPersonId);
   }, [selectedPersonId]);
 
+  // ✅ CORRIGIDO: usa db.tratamentos (sem tabela de junção)
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const vinculos = useLiveQuery(() => db.medicamento_tratamentos.toArray(), []) || [];
 
   const tratamentoMap = useMemo(() => {
     const map = new Map();
@@ -74,15 +74,6 @@ export default function MedicamentosListPage() {
     persons.forEach((p: any) => map.set(p.id, p));
     return map;
   }, [persons]);
-
-  const vinculosMap = useMemo(() => {
-    const map = new Map<string, string[]>();
-    vinculos.forEach((v: any) => {
-      if (!map.has(v.medicamento_id)) map.set(v.medicamento_id, []);
-      map.get(v.medicamento_id)!.push(v.tratamento_id);
-    });
-    return map;
-  }, [vinculos]);
 
   const countByPerson = useMemo(() => {
     const map = new Map();
@@ -295,7 +286,8 @@ export default function MedicamentosListPage() {
               const qtd = estoqueInfo?.quantidadeRestante ?? null;
               const isEstoqueCritico = qtd !== null && qtd < 10;
               const person = med.person_id ? personMap.get(med.person_id) : null;
-              let tIds = med.id ? vinculosMap.get(med.id) || [] : [];
+              // ✅ CORRIGIDO: usa tratamento_ids diretamente do medicamento
+              const tIds = med.tratamento_ids || [];
               const isSuspenso = med.status === "descontinuado";
               const isControlado = med.tipo_receita === "amarela";
               
@@ -328,7 +320,7 @@ export default function MedicamentosListPage() {
                       <p className="text-xs font-medium text-ink-muted mt-0.5 truncate">{med.medico || "Médico não informado"}</p>
 
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {tIds.map(tId => {
+                        {tIds.map((tId: string) => {
                           const t = tratamentoMap.get(tId);
                           if (!t) return null;
                           return (
