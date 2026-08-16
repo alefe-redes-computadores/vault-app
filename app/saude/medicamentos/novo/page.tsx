@@ -75,9 +75,7 @@ export default function NovoMedicamentoPage() {
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
 
-  // ✅ CORRIGIDO: db.hospitais em vez de db.table("hospitais")
   const hospitaisLocais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
-  // ✅ CORRIGIDO: db.medicamentos em vez de db.table("medicamentos")
   const medicamentosQuery = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -299,11 +297,25 @@ export default function NovoMedicamentoPage() {
 
       let docId = "";
       if (dataReceitaISO || attachment) {
-        const docData: any = {
-          user_id: user?.id || "", person_id: personId, category_id: "saude", type: "receita",
-          title: `Receita — ${nome.trim()}`, description: observacoes.trim() || undefined,
-          metadata: { medication: nome.trim(), dosage: dosagem.trim(), prescription_date: dataReceitaISO, renewal_date: proximaRenovacaoISO, tratamento_ids: tratamentosSelecionados, tipo_receita: tipoReceita, formato, status: "ativo" },
-          attachments: attachment ? [attachment] : [], is_favorite: false,
+        const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'> = {
+          user_id: user?.id || "",
+          person_id: personId,
+          category_id: "saude",
+          type: "receita",
+          title: `Receita — ${nome.trim()}`,
+          description: observacoes.trim() || undefined,
+          metadata: {
+            medication: nome.trim(),
+            dosage: dosagem.trim(),
+            prescription_date: dataReceitaISO,
+            renewal_date: proximaRenovacaoISO,
+            tratamento_ids: tratamentosSelecionados,
+            tipo_receita: tipoReceita,
+            formato,
+            status: "ativo",
+          },
+          attachments: attachment ? [attachment] : [],
+          is_favorite: false,
         };
 
         docId = await addDocument(docData);
@@ -318,18 +330,31 @@ export default function NovoMedicamentoPage() {
       }
 
       const medicamentoId = await addMedicamento({
-        document_id: docId || undefined, person_id: personId, nome: nome.trim(), dosagem: dosagem.trim(), formato, cores,
+        document_id: docId || undefined,
+        person_id: personId,
+        nome: nome.trim(),
+        dosagem: dosagem.trim(),
+        formato,
+        cores,
         tipo_uso: tipoUso,
-        medico: medicoNome.trim() || undefined, medico_id: medicoId || undefined, 
+        medico: medicoNome.trim() || undefined,
+        medico_id: medicoId || undefined,
         estabelecimento_id: estabelecimentoId || undefined,
-        farmacia: farmaciaNome.trim() || undefined, farmacia_id: farmaciaId || undefined,
+        farmacia: farmaciaNome.trim() || undefined,
+        farmacia_id: farmaciaId || undefined,
         preco: preco ? Number(preco.replace(',', '.')) : undefined,
-        data_receita: dataReceitaISO, proxima_renovacao: proximaRenovacaoISO, observacoes: observacoes.trim() || undefined,
-        tipo_receita: tipoReceita, tratamento_ids: tratamentosSelecionados, status: "ativo",
-        estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined, estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-        estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined, estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
+        data_receita: dataReceitaISO,
+        proxima_renovacao: proximaRenovacaoISO,
+        observacoes: observacoes.trim() || undefined,
+        tipo_receita: tipoReceita,
+        tratamento_ids: tratamentosSelecionados,
+        status: "ativo",
+        estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+        estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
+        estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
+        estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
         estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
-      } as any);
+      });
 
       if (estoqueAtivo && tipoUso === 'continuo' && horariosFiltrados.length > 0) {
         const granted = await requestNotificationPermission();
@@ -384,7 +409,6 @@ export default function NovoMedicamentoPage() {
                 </div>
 
                 <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-                  {/* AUTOCOMPLETE HÍBRIDO COM FEEDBACK VISUAL */}
                   <div className={`relative transition-all ${shakeFields.includes('nome') ? 'animate-shake' : ''}`}>
                     <Input 
                       label="Medicamento" 
@@ -659,7 +683,6 @@ export default function NovoMedicamentoPage() {
           getItemId={(item: any) => item.id!} 
           getItemLabel={(item: any) => item.nome} 
           enableQuickCreate 
-          // ✅ CORRIGIDO: db.farmacias.add em vez de db.table("farmacias").add
           onQuickCreate={async (name) => { 
             const id = await db.farmacias.add({ 
               user_id: user?.id, 
@@ -726,7 +749,6 @@ export default function NovoMedicamentoPage() {
           getItemId={(item: any) => item.id!} 
           getItemLabel={(item: any) => item.nome} 
           enableQuickCreate 
-          // ✅ CORRIGIDO: db.hospitais.add em vez de db.table("hospitais").add
           onQuickCreate={async (name, tabId) => { 
             const id = await db.hospitais.add({ 
               user_id: user?.id, 
