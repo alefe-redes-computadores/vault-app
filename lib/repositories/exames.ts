@@ -1,5 +1,3 @@
-// lib/repositories/exames.ts
-
 import { db, safeAddExame, safeUpdateExame, safeDeleteExame } from "@/lib/db";
 import type { Exame } from "@/lib/types";
 
