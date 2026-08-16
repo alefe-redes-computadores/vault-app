@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
@@ -51,35 +51,29 @@ function DetalhesExameContent() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // 1. Busca o exame atual no Dexie
-  const exame = useLiveQuery(() => (id ? db.table("exames").get(id) : undefined), [id]);
+  // ✅ CORRIGIDO: Usa db.exames em vez de db.table("exames")
+  const exame = useLiveQuery(() => (id ? db.exames.get(id) : undefined), [id]);
 
-  // 2. Busca Dados Relacionais Cruzados
+  // Busca Dados Relacionais Cruzados
   const person = useLiveQuery(() => exame?.person_id ? db.persons.get(exame.person_id) : undefined, [exame?.person_id]);
   const medico = useLiveQuery(() => exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined, [exame?.medico_id]);
   const laboratorio = useLiveQuery(() => exame?.laboratorio_id ? db.hospitais.get(exame.laboratorio_id) : undefined, [exame?.laboratorio_id]);
 
-  // 3. Busca Tratamentos Vinculados N:N
-  const tratamentos = useLiveQuery(async () => {
-    if (!id) return [];
-    const vinculos = await db.exame_tratamentos.where('exame_id').equals(id).toArray();
-    const tIds = vinculos.map(v => v.tratamento_id);
-    if (tIds.length === 0) return [];
-    return await db.tratamentos.where('id').anyOf(tIds).toArray();
-  }, [id]);
+  // ✅ CORRIGIDO: Usa exame.tratamento_ids (MultiEntry Index) em vez de exame_tratamentos
+  const tratamentos = useLiveQuery(() => {
+    if (!exame?.tratamento_ids || exame.tratamento_ids.length === 0) return [];
+    return db.tratamentos.where('id').anyOf(exame.tratamento_ids).toArray();
+  }, [exame?.tratamento_ids]);
 
-  // 4. Histórico Evolutivo
-  const historicoRelacionado = useLiveQuery(
-    async () => {
-      if (!exame) return [];
-      return db.table("exames")
-        .where("nome")
-        .equals(exame.nome)
-        .filter((item: any) => item.id !== id)
-        .toArray();
-    },
-    [exame]
-  ) || [];
+  // ✅ CORRIGIDO: Histórico evolutivo usando db.exames
+  const historicoRelacionado = useLiveQuery(() => {
+    if (!exame) return [];
+    return db.exames
+      .where('nome')
+      .equals(exame.nome)
+      .filter(item => item.id !== id)
+      .toArray();
+  }, [exame, id]) || [];
 
   if (!exame) {
     return <LoadingSkeleton />;
@@ -115,7 +109,6 @@ function DetalhesExameContent() {
 
   const handleDuplicarExame = () => {
     trigger("vibrate");
-    // Redireciona para o novo exame passando parâmetros pré-preenchidos se necessário, ou apenas avisa
     router.push(`/saude/exames/novo`);
   };
 
@@ -169,7 +162,6 @@ function DetalhesExameContent() {
 
         <section className="px-5 pt-6 space-y-4">
           
-          {/* PERFIL (PESSOA) VINCULADA */}
           {person && (
             <div className="flex items-center gap-2 px-1">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-border/60 bg-surface px-3 py-1 text-xs font-medium text-ink-primary shadow-sm">
@@ -179,7 +171,6 @@ function DetalhesExameContent() {
             </div>
           )}
 
-          {/* BANNER INTELIGENTE DE ALERTA DE PRAZO / APRESENTAÇÃO */}
           {exame.data_retorno && (
             <motion.div 
               initial={{ opacity: 0, y: -5 }}
@@ -206,7 +197,6 @@ function DetalhesExameContent() {
             </motion.div>
           )}
 
-          {/* CARD PRINCIPAL DE INFORMAÇÕES */}
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -222,7 +212,6 @@ function DetalhesExameContent() {
               </div>
             </div>
 
-            {/* TRATAMENTOS / MOTIVOS VINCULADOS */}
             {tratamentos && tratamentos.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-ink-muted mb-2">Tratamentos / Motivos Vinculados</p>
@@ -289,7 +278,6 @@ function DetalhesExameContent() {
             )}
           </motion.div>
 
-          {/* EVOLUÇÃO HISTÓRICA */}
           {historicoRelacionado.length > 0 && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
