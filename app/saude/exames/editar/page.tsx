@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, Stethoscope, Building2, Activity, Plus, X, Brain, Flame, HeartPulse, ShieldAlert } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, safeUpdateExame, safeAddMedico, safeAddHospital, safeAddTratamento } from "@/lib/db";
+import { db, safeAddMedico, safeAddHospital, safeAddTratamento } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -15,6 +15,8 @@ import { TextArea } from "@/components/ui/TextArea";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
 import { usePersons } from "@/hooks/usePersons";
+// ✅ NOVO: import do hook
+import { useExames } from "@/hooks/useExames";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,10 +45,10 @@ export default function EditarExamePage() {
   const { medicos } = useMedicos();
   const { hospitais } = useHospitais();
   const persons = usePersons();
+  // ✅ NOVO: useExames
+  const { getExame, updateExame } = useExames();
 
-  // ✅ CORRIGIDO: usa db.exames em vez de db.table("exames")
-  const exame = useLiveQuery(() => (id ? db.exames.get(id) : undefined), [id]);
-
+  const [isLoading, setIsLoading] = useState(true);
   const [personId, setPersonId] = useState("");
   const [nome, setNome] = useState("");
   
@@ -62,7 +64,6 @@ export default function EditarExamePage() {
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
 
-  // ✅ CORRIGIDO: usa exame.tratamento_ids diretamente
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
@@ -82,27 +83,35 @@ export default function EditarExamePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (exame) {
-      setPersonId(exame.person_id || "");
-      setNome(exame.nome || "");
-      setLaboratorio(exame.laboratorio || "");
-      setLaboratorioId(exame.laboratorio_id || "");
-      setMedico(exame.medico || "");
-      setMedicoId(exame.medico_id || "");
-      setDataSolicitacao(exame.data || "");
-      setDataRetorno(exame.data_retorno || "");
-      setMotivo(exame.motivo || "");
-      setObservacoes(exame.observacoes || "");
-      setAnexoUrl(exame.anexo_url || "");
-
-      // ✅ CORRIGIDO: carrega tratamento_ids diretamente do exame
-      setTratamentosSelecionados(exame.tratamento_ids || []);
+    if (!id) {
+      router.push("/saude/exames");
+      return;
     }
-  }, [id, exame]);
-
-  if (!exame) {
-    return <LoadingSkeleton />;
-  }
+    
+    const loadExame = async () => {
+      // ✅ CORRIGIDO: usa getExame do hook
+      const data = await getExame(id);
+      if (data) {
+        setPersonId(data.person_id || "");
+        setNome(data.nome || "");
+        setLaboratorio(data.laboratorio || "");
+        setLaboratorioId(data.laboratorio_id || "");
+        setMedico(data.medico || "");
+        setMedicoId(data.medico_id || "");
+        setDataSolicitacao(data.data || "");
+        setDataRetorno(data.data_retorno || "");
+        setMotivo(data.motivo || "");
+        setObservacoes(data.observacoes || "");
+        setAnexoUrl(data.anexo_url || "");
+        setTratamentosSelecionados(data.tratamento_ids || []);
+      } else {
+        router.push("/saude/exames");
+      }
+      setIsLoading(false);
+    };
+    
+    loadExame();
+  }, [id, router, getExame]);
 
   const handleCreateTratamento = async () => {
     if (!newTratamentoName.trim()) return;
@@ -137,8 +146,8 @@ export default function EditarExamePage() {
 
     setSaving(true);
     try {
-      // ✅ CORRIGIDO: atualiza o exame com tratamento_ids
-      await safeUpdateExame(id, {
+      // ✅ CORRIGIDO: usa updateExame do hook
+      await updateExame(id, {
         person_id: personId || undefined,
         nome: nome.trim(),
         laboratorio: laboratorio.trim() || undefined,
@@ -153,7 +162,6 @@ export default function EditarExamePage() {
         tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
       });
 
-      // ✅ REMOVIDA a manipulação da tabela exame_tratamentos
       trigger("success");
       router.replace(`/saude/exames/detalhes?id=${id}`);
     } catch (error) {
@@ -163,6 +171,8 @@ export default function EditarExamePage() {
       setSaving(false);
     }
   };
+
+  if (isLoading) return <LoadingSkeleton />;
 
   return (
     <PageTransition>
