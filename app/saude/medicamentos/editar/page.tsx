@@ -121,7 +121,6 @@ function EditarMedicamentoContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
 
-  // ✅ CORREÇÃO 1: editIntent lendo do searchParams
   const intentParam = searchParams.get("intent") as EditIntent;
   const [editIntent, setEditIntent] = useState<EditIntent>(intentParam || "menu");
 
@@ -133,8 +132,10 @@ function EditarMedicamentoContent() {
   const { farmacias } = useFarmacias();
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const medicamentosQuery = useLiveQuery(() => db.table("medicamentos").toArray(), []) || [];
-  const hospitaisLocais = useLiveQuery(() => db.table("hospitais").toArray(), []) || [];
+  // ✅ CORRIGIDO: db.medicamentos em vez de db.table("medicamentos")
+  const medicamentosQuery = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
+  // ✅ CORRIGIDO: db.hospitais em vez de db.table("hospitais")
+  const hospitaisLocais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
   const medicamentosAtivos = medicamentosQuery.filter((m: any) => m.id !== id && m.status !== "descontinuado");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -294,14 +295,8 @@ function EditarMedicamentoContent() {
           if (est) setEstabelecimentoNome(est.nome);
         }
 
-        try {
-          const vinculos = await db.medicamento_tratamentos.where("medicamento_id").equals(id).toArray();
-          const tIds = vinculos.map((v: any) => v.tratamento_id);
-          if (tIds.length === 0 && item.tratamento_id) tIds.push(item.tratamento_id);
-          setTratamentosSelecionados(tIds);
-        } catch {
-          if (item.tratamento_id) setTratamentosSelecionados([item.tratamento_id]);
-        }
+        // ✅ CORRIGIDO: usa tratamento_ids diretamente
+        setTratamentosSelecionados(item.tratamento_ids || []);
 
         if (typeof item.estoque_quantidade === "number" && item.estoque_data_referencia && Array.isArray(item.estoque_horarios) && item.estoque_horarios.length > 0) {
           setEstoqueAtivo(true);
@@ -652,10 +647,8 @@ function EditarMedicamentoContent() {
     setDeleting(true);
     try {
       if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as any);
-      try {
-        const vinculos = await db.medicamento_tratamentos.where("medicamento_id").equals(id).toArray();
-        if (vinculos.length > 0) await db.medicamento_tratamentos.bulkDelete(vinculos.map((v: any) => v.id));
-      } catch {}
+      // ✅ CORRIGIDO: não precisa excluir da tabela medicamento_tratamentos
+      // (agora os vínculos estão no campo tratamento_ids do próprio medicamento)
       await deleteMedicamento(id);
       trigger("success");
       router.replace("/saude");
@@ -667,7 +660,6 @@ function EditarMedicamentoContent() {
     }
   };
 
-  // ✅ CORREÇÃO 5: handleBack com confirmação de saída
   const handleBack = () => {
     if (hasChanges && editIntent !== "menu") {
       setShowConfirmExitModal(true);
@@ -730,7 +722,6 @@ function EditarMedicamentoContent() {
                 <h1 className="mt-0.5 truncate text-xl font-bold uppercase text-ink-primary">
                   {editIntent === "menu" ? nome || "Medicamento" : `Editando ${nome}`}
                 </h1>
-                {/* ✅ CORREÇÃO 2: Botão Descartar */}
                 {hasChanges && editIntent !== "menu" && (
                   <button
                     onClick={() => setShowConfirmExitModal(true)}
@@ -1456,7 +1447,6 @@ function EditarMedicamentoContent() {
           type="warning"
         />
 
-        {/* ✅ CORREÇÃO 5: Modal de confirmação para saída com alterações */}
         <ConfirmationModal
           isOpen={showConfirmExitModal}
           onClose={() => setShowConfirmExitModal(false)}
@@ -1528,8 +1518,9 @@ function EditarMedicamentoContent() {
           getItemId={(item: any) => item.id!}
           getItemLabel={(item: any) => item.nome}
           enableQuickCreate
+          // ✅ CORRIGIDO: db.hospitais.add em vez de db.table("hospitais").add
           onQuickCreate={async (name, tabId) => {
-            const id = await db.table("hospitais").add({
+            const id = await db.hospitais.add({
               user_id: user?.id,
               nome: name,
               tipo: tabId,
