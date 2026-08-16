@@ -81,7 +81,6 @@ export default function ExamesPage() {
             <Input placeholder="Buscar exame ou laboratório..." value={search} onChange={(e) => setSearch(e.target.value)} className="border-surface-border/50 bg-surface-raised pl-9" />
           </div>
 
-          {/* 🔧 FILTROS */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
             
@@ -147,7 +146,6 @@ export default function ExamesPage() {
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <p className="truncate text-sm font-semibold text-ink-primary">{exame.nome}</p>
                       {personName && <span className="shrink-0 rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[9px] font-semibold text-ink-muted uppercase tracking-wide">👤 {personName}</span>}
-                      {/* 🔧 Badge de vencimento */}
                       {exame.vencido ? (
                         <span className="flex items-center gap-1 text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">
                           <AlertTriangle size={10} /> Vencido
