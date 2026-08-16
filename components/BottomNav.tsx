@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   Heart,
-  Images, // ✅ Ícone da Galeria
+  Images,
   LayoutGrid,
   Plus,
   Pill,
@@ -15,6 +15,9 @@ import {
   Landmark,
   FolderHeart,
   UploadCloud,
+  Calendar,
+  Syringe,
+  Edit,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -55,12 +58,24 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "local", label: "Farmácia/Hospital", icon: Building2, path: "/saude/locais/novo" },
 ];
 
+// 🔧 OPÇÕES PARA LISTAGEM DE MÉDICOS
+const MEDICOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "novo-medico", label: "Novo Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
+];
+
+// 🔧 OPÇÕES PARA DETALHES DO MÉDICO (ações contextuais)
+const MEDICOS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "nova-consulta", label: "Nova Consulta", icon: Calendar, path: "/saude/consultas/nova" },
+  { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
+  { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
+  { id: "editar-medico", label: "Editar Médico", icon: Edit, path: "/saude/medicos/editar" },
+];
+
 const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "cartao", label: "Novo cartão", icon: CreditCard, path: "/cartoes/novo" },
   { id: "conta", label: "Nova conta bancária", icon: Landmark, path: "/contas/novo" },
 ];
 
-// ✅ Opção de menu flutuante para a Galeria
 const GALERIA_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "upload-galeria", label: "Adicionar à Galeria", icon: UploadCloud, path: "/galeria?upload=true" },
 ];
@@ -87,9 +102,15 @@ function shouldHideNav(pathname: string): boolean {
 }
 
 function getComposeOptions(pathname: string): ComposeOption[] {
+  if (pathname === "/saude/medicos") {
+    return MEDICOS_LIST_COMPOSE_OPTIONS;
+  }
+  if (pathname.startsWith("/saude/medicos/detalhes")) {
+    return MEDICOS_DETALHE_COMPOSE_OPTIONS;
+  }
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
-  if (pathname === "/galeria") return GALERIA_COMPOSE_OPTIONS; // ✅ Roteia para a Galeria
+  if (pathname === "/galeria") return GALERIA_COMPOSE_OPTIONS;
   return DEFAULT_COMPOSE_OPTIONS;
 }
 
@@ -100,6 +121,14 @@ export function BottomNav() {
   const { isEnabled: isBiometricEnabled } = useBiometricPreference();
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
+
+  const getMedicoIdFromPath = (): string | null => {
+    if (pathname.startsWith("/saude/medicos/detalhes")) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("id");
+    }
+    return null;
+  };
 
   useEffect(() => {
     const checkLock = () => {
@@ -158,9 +187,30 @@ export function BottomNav() {
     setIsComposeMenuOpen((prev) => !prev);
   };
 
-  const handleComposeOptionPress = (path: string) => {
+  const handleComposeOptionPress = (option: ComposeOption) => {
     trigger("success");
     setIsComposeMenuOpen(false);
+
+    let path = option.path;
+
+    const isContextualAction = [
+      "nova-consulta",
+      "nova-cirurgia",
+      "novo-medicamento",
+      "editar-medico",
+    ].includes(option.id);
+
+    if (isContextualAction) {
+      const medicoId = getMedicoIdFromPath();
+      if (medicoId) {
+        const separator = path.includes('?') ? '&' : '?';
+        path = `${path}${separator}medico_id=${medicoId}`;
+      } else {
+        router.push("/saude/medicos");
+        return;
+      }
+    }
+
     router.push(path);
   };
 
@@ -196,7 +246,7 @@ export function BottomNav() {
                   return (
                     <button
                       key={option.id}
-                      onClick={() => handleComposeOptionPress(option.path)}
+                      onClick={() => handleComposeOptionPress(option)}
                       className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
