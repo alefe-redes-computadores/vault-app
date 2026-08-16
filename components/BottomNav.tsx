@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home,
   Heart,
@@ -115,12 +115,12 @@ const HOSPITAIS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
 ];
 
 // ============================================================
-// LOCAIS
+// LOCAIS (CORRIGIDO: ComposerOption[] → ComposeOption[])
 // ============================================================
 const LOCAIS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-local", label: "Novo Local", icon: MapPin, path: "/saude/locais/novo" },
 ];
-const LOCAIS_DETALHE_COMPOSE_OPTIONS: ComposerOption[] = [
+const LOCAIS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
   { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
   { id: "editar-local", label: "Editar Local", icon: Edit, path: "/saude/locais/editar" },
@@ -138,7 +138,7 @@ const RENOVACOES_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
 ];
 
 // ============================================================
-// EXAMES (NOVO)
+// EXAMES
 // ============================================================
 const EXAMES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-exame", label: "Novo Exame", icon: FlaskConical, path: "/saude/exames/novo" },
@@ -149,7 +149,7 @@ const EXAMES_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
 ];
 
 // ============================================================
-// CONSULTAS (NOVO)
+// CONSULTAS
 // ============================================================
 const CONSULTAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-consulta", label: "Nova Consulta", icon: Calendar, path: "/saude/consultas/nova" },
@@ -160,7 +160,7 @@ const CONSULTAS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
 ];
 
 // ============================================================
-// CIRURGIAS (NOVO)
+// CIRURGIAS
 // ============================================================
 const CIRURGIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
@@ -168,6 +168,25 @@ const CIRURGIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
 const CIRURGIAS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "editar-cirurgia", label: "Editar Cirurgia", icon: Edit, path: "/saude/cirurgias/editar" },
 ];
+
+// ============================================================
+// REDE (NOVO)
+// ============================================================
+function getRedeComposeOptions(tab: string | null): ComposeOption[] {
+  switch (tab) {
+    case "medicos":
+      return [{ id: "novo-medico", label: "Novo Médico", icon: Stethoscope, path: "/saude/medicos/novo" }];
+    case "farmacias":
+      return [{ id: "nova-farmacia", label: "Nova Farmácia", icon: Pill, path: "/saude/farmacias/novo" }];
+    case "hospitais":
+      return [{ id: "novo-hospital", label: "Novo Hospital", icon: Building2, path: "/saude/hospitais/novo" }];
+    case "tratamentos":
+      return [{ id: "novo-tratamento", label: "Novo Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" }];
+    case "visao-geral":
+    default:
+      return SAUDE_COMPOSE_OPTIONS;
+  }
+}
 
 // ============================================================
 // CARTÕES E GALERIA
@@ -182,14 +201,14 @@ const GALERIA_COMPOSE_OPTIONS: ComposeOption[] = [
 
 const HIDDEN_ON_PATHS = ["/novo", "/login", "/auth/callback", "/cartoes/novo", "/contas/novo"];
 
+// ============================================================
+// shouldHideNav (CORRIGIDO)
+// ============================================================
 function shouldHideNav(pathname: string): boolean {
   if (HIDDEN_ON_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return true;
   }
   if (pathname.includes("/editar")) {
-    return true;
-  }
-  if (pathname !== "/saude" && pathname.startsWith("/saude/")) {
     return true;
   }
   if (pathname === "/senhas" || pathname.startsWith("/senhas/")) {
@@ -198,10 +217,15 @@ function shouldHideNav(pathname: string): boolean {
   if (pathname.startsWith("/cartoes/") && pathname !== "/cartoes") {
     return true;
   }
+  // 🔧 REMOVIDA a regra que ocultava todas as subpáginas de saúde
+  // Agora o nav aparece em todas as páginas de saúde (listagens, detalhes, etc.)
   return false;
 }
 
-function getComposeOptions(pathname: string): ComposeOption[] {
+// ============================================================
+// getComposeOptions (ATUALIZADO com suporte a Rede)
+// ============================================================
+function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
   // MÉDICOS
   if (pathname === "/saude/medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
   if (pathname.startsWith("/saude/medicos/detalhes")) return MEDICOS_DETALHE_COMPOSE_OPTIONS;
@@ -226,17 +250,23 @@ function getComposeOptions(pathname: string): ComposeOption[] {
   if (pathname === "/saude/renovacao") return RENOVACOES_LIST_COMPOSE_OPTIONS;
   if (pathname.startsWith("/saude/renovacao/detalhes")) return RENOVACOES_DETALHE_COMPOSE_OPTIONS;
   
-  // EXAMES (NOVO)
+  // EXAMES
   if (pathname === "/saude/exames") return EXAMES_LIST_COMPOSE_OPTIONS;
   if (pathname.startsWith("/saude/exames/detalhes")) return EXAMES_DETALHE_COMPOSE_OPTIONS;
   
-  // CONSULTAS (NOVO)
+  // CONSULTAS
   if (pathname === "/saude/consultas") return CONSULTAS_LIST_COMPOSE_OPTIONS;
   if (pathname.startsWith("/saude/consultas/detalhes")) return CONSULTAS_DETALHE_COMPOSE_OPTIONS;
   
-  // CIRURGIAS (NOVO)
+  // CIRURGIAS
   if (pathname === "/saude/cirurgias") return CIRURGIAS_LIST_COMPOSE_OPTIONS;
   if (pathname.startsWith("/saude/cirurgias/detalhes")) return CIRURGIAS_DETALHE_COMPOSE_OPTIONS;
+  
+  // 🔧 REDE (NOVO)
+  if (pathname === "/saude/rede") {
+    const tab = searchParams.get("tab");
+    return getRedeComposeOptions(tab);
+  }
   
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
@@ -248,6 +278,7 @@ export function BottomNav() {
   const { trigger } = useHapticFeedback();
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isEnabled: isBiometricEnabled } = useBiometricPreference();
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
@@ -301,7 +332,8 @@ export function BottomNav() {
     return pathname === path || (path === "/" && pathname === "/");
   };
 
-  const composeOptions = getComposeOptions(pathname);
+  // 🔧 Passa searchParams para getComposeOptions
+  const composeOptions = getComposeOptions(pathname, searchParams);
   const hasComposeMenu = composeOptions.length > 1;
 
   const handleComposePress = () => {
@@ -355,10 +387,7 @@ export function BottomNav() {
         else if (pathname.includes('/consultas/detalhes')) paramName = 'consulta_id';
         else if (pathname.includes('/cirurgias/detalhes')) paramName = 'cirurgia_id';
         
-        // Se for "reagendar-consulta", passamos também o medico_id e hospital_id
         if (option.id === "reagendar-consulta") {
-          // Podemos pegar da URL, mas vamos simplificar passando apenas o id da consulta
-          // A página de criação pode usar esse parâmetro para pré-preencher
           path = `${path}${separator}reagendar=true&consulta_id=${entityId}`;
         } else if (option.id === "duplicar-exame") {
           path = `${path}${separator}duplicar=${entityId}`;
