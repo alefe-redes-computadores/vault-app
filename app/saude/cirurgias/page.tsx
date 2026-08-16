@@ -102,8 +102,6 @@ export default function CirurgiasPage() {
                 <h1 className="mt-1 truncate font-display text-xl font-semibold text-ink-primary">Cirurgias</h1>
               </div>
             </div>
-
-            {/* 🔧 Botão "Cadastrar" removido - via menu inferior */}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-surface-raised p-1 border border-surface-border/40">
@@ -129,7 +127,6 @@ export default function CirurgiasPage() {
             </button>
           </div>
 
-          {/* 🔧 FILTROS */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
             
