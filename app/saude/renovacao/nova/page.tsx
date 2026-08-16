@@ -37,7 +37,6 @@ import { SelectionModal } from "@/components/SelectionModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 
-// 🧩 Importando os novos arquivos isolados
 import { useRenovacaoInteligente } from "@/hooks/useRenovacaoInteligente";
 import { ModalAlertaReceita } from "@/components/saude/ModalAlertaReceita";
 
@@ -115,7 +114,6 @@ function NovaRenovacaoContent() {
   const [dataDisplay, setDataDisplay] = useState(formatDateToDisplay(todayISO));
   const [proximaDisplay, setProximaDisplay] = useState("");
   
-  // Relacionamentos por ID
   const [medicoId, setMedicoId] = useState("");
   const [medicoNome, setMedicoNome] = useState("");
   const [farmaciaId, setFarmaciaId] = useState("");
@@ -123,16 +121,15 @@ function NovaRenovacaoContent() {
   const [estabelecimentoId, setEstabelecimentoId] = useState("");
   const [estabelecimentoNome, setEstabelecimentoNome] = useState("");
 
-  const estabelecimentos = db ? useLiveQuery(() => db.table("hospitais").toArray(), []) || [] : [];
+  // ✅ CORRIGIDO: db.hospitais em vez de db.table("hospitais")
+  const estabelecimentos = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
-  // Compra / Estoque
   const [registrarCompra, setRegistrarCompra] = useState(false);
   const [preco, setPreco] = useState("");
   const [quantidadeAdicionar, setQuantidadeAdicionar] = useState("30");
   const [lote, setLote] = useState("");
   const [validadeProduto, setValidadeProduto] = useState("");
   
-  // Estados de Alerta Regulatório
   const [modalAlertaAberto, setModalAlertaAberto] = useState(false);
   const [mensagemAlertaRegulatorio, setMensagemAlertaRegulatorio] = useState("");
   const [forcarRegistroReceita, setForcarRegistroReceita] = useState(false);
@@ -148,10 +145,8 @@ function NovaRenovacaoContent() {
   const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId);
   const selectedMedico = medicos.find((m: any) => m.id === medicoId);
 
-  // 🧩 Utilizando o Hook Isolado de Inteligência de Preço e Validade
   const { analisePreco, calcularValidadePadrao } = useRenovacaoInteligente(medicamentoId, farmaciaId, preco);
 
-  // Auto-seleção via Query Param (Compatível com Capacitor)
   useEffect(() => {
     if (autoSelectMedId && medicamentos.length > 0 && !medicamentoId) {
       const med = medicamentos.find((m: any) => m.id === autoSelectMedId);
@@ -232,7 +227,6 @@ function NovaRenovacaoContent() {
     if (!medicamentoId) newErrors.medicamentoId = "Selecione o medicamento";
     if (!dataDisplay || dataDisplay.length < 10) newErrors.data = "Data inválida";
 
-    // Regra de Ouro: Validação de Receita Amarela (Limite estrito de 30 dias)
     if (selectedMedicamento && selectedMedicamento.tipo_receita === "amarela" && registrarCompra && !forcarRegistroReceita) {
       const qtd = Number(quantidadeAdicionar) || 0;
       if (qtd > 30) {
@@ -272,7 +266,6 @@ function NovaRenovacaoContent() {
       const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
       const quantidadeNum = registrarCompra ? Number(quantidadeAdicionar) || 0 : undefined;
 
-      // 1. Salva a renovação relacional na nuvem e Dexie
       await addRenovacao({
         medicamento_id: medicamentoId,
         medico_id: medicoId || undefined,
@@ -287,7 +280,6 @@ function NovaRenovacaoContent() {
         observacoes: observacoes.trim() || undefined,
       });
 
-      // 2. Prepara atualização do medicamento
       const dadosUpdate: any = {
         data_receita: dataISO,
         proxima_renovacao: proximaISO,
@@ -295,7 +287,6 @@ function NovaRenovacaoContent() {
         medico: medicoNome || undefined,
       };
 
-      // 3. Se comprou, soma no estoque e define farmácia oficial
       if (registrarCompra && selectedMedicamento) {
         const estoqueAtual = Number(selectedMedicamento.estoque_quantidade) || 0;
         dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
@@ -344,7 +335,6 @@ function NovaRenovacaoContent() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* Medicamento Vinculado */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Medicamento Vinculado <span className="text-coral">*</span></label>
             <button onClick={() => { trigger("vibrate"); setIsMedModalOpen(true); }} className={`w-full rounded-2xl border px-4 py-3 text-left text-ink-primary transition-colors ${errors.medicamentoId ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised flex items-center justify-between`}>
@@ -352,7 +342,6 @@ function NovaRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Médico Prescritor Relacional */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico Prescritor</label>
             <button onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between">
@@ -364,7 +353,6 @@ function NovaRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Unidade / Estabelecimento (Posto, Hospital, Clínica) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Unidade / Estabelecimento Emissor</label>
             <button onClick={() => { trigger("vibrate"); setIsEstabelecimentoModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between">
@@ -376,7 +364,6 @@ function NovaRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Datas da Receita e Validade */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="grid grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">Data da receita <span className="text-coral">*</span></label>
@@ -408,7 +395,6 @@ function NovaRenovacaoContent() {
             </div>
           </motion.div>
 
-          {/* SEÇÃO EXPANSIVA: COMPRA / REPOSIÇÃO DE ESTOQUE + LOTE + VALIDADE */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <button 
               onClick={() => { trigger("vibrate"); setRegistrarCompra(!registrarCompra); }} 
@@ -438,7 +424,6 @@ function NovaRenovacaoContent() {
                   className="overflow-hidden"
                 >
                   <div className="mt-4 space-y-3.5 border-t border-surface-border/40 pt-4">
-                    {/* Preço com Radar de Economia */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-medium text-ink-primary">Preço pago (R$)</label>
                       <div className="relative">
@@ -464,7 +449,6 @@ function NovaRenovacaoContent() {
                       )}
                     </div>
 
-                    {/* Farmácia Relacional */}
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia da Compra</label>
                       <button 
@@ -489,7 +473,6 @@ function NovaRenovacaoContent() {
                       placeholder="Ex: 30"
                     />
 
-                    {/* Lote e Validade do Produto */}
                     <div className="grid grid-cols-2 gap-3 pt-1">
                       <Input 
                         label="Lote do Remédio (opcional)" 
@@ -540,7 +523,6 @@ function NovaRenovacaoContent() {
           </Button>
         </div>
 
-        {/* 🧩 Componente Isolado do Modal de Alerta Regulatório */}
         <ModalAlertaReceita
           isOpen={modalAlertaAberto}
           mensagem={mensagemAlertaRegulatorio}
@@ -556,7 +538,6 @@ function NovaRenovacaoContent() {
           }}
         />
 
-        {/* Modais de Seleção Relacional por Query Params / ID */}
         <SelectionModal 
           isOpen={isMedModalOpen} 
           onClose={() => setIsMedModalOpen(false)} 
