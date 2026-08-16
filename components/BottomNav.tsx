@@ -18,8 +18,6 @@ import {
   Calendar,
   Syringe,
   Edit,
-  DollarSign,
-  ShoppingBag,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -60,12 +58,10 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "local", label: "Farmácia/Hospital", icon: Building2, path: "/saude/locais/novo" },
 ];
 
-// 🔧 OPÇÕES PARA LISTAGEM DE MÉDICOS
+// MÉDICOS
 const MEDICOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-medico", label: "Novo Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
 ];
-
-// 🔧 OPÇÕES PARA DETALHES DO MÉDICO
 const MEDICOS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-consulta", label: "Nova Consulta", icon: Calendar, path: "/saude/consultas/nova" },
   { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
@@ -73,16 +69,25 @@ const MEDICOS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "editar-medico", label: "Editar Médico", icon: Edit, path: "/saude/medicos/editar" },
 ];
 
-// 🔧 OPÇÕES PARA LISTAGEM DE FARMÁCIAS
+// FARMÁCIAS
 const FARMACIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-farmacia", label: "Nova Farmácia", icon: Building2, path: "/saude/farmacias/novo" },
 ];
-
-// 🔧 OPÇÕES PARA DETALHES DA FARMÁCIA
 const FARMACIAS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
   { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
   { id: "editar-farmacia", label: "Editar Farmácia", icon: Edit, path: "/saude/farmacias/editar" },
+];
+
+// TRATAMENTOS
+const TRATAMENTOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "novo-tratamento", label: "Novo Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" },
+];
+const TRATAMENTOS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
+  { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
+  { id: "editar-tratamento", label: "Editar Tratamento", icon: Edit, path: "/saude/tratamentos/editar" },
+  { id: "adicionar-documento", label: "Adicionar Documento", icon: UploadCloud, path: "/novo" },
 ];
 
 const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
@@ -116,21 +121,17 @@ function shouldHideNav(pathname: string): boolean {
 }
 
 function getComposeOptions(pathname: string): ComposeOption[] {
-  // 🔧 MÉDICOS
-  if (pathname === "/saude/medicos") {
-    return MEDICOS_LIST_COMPOSE_OPTIONS;
-  }
-  if (pathname.startsWith("/saude/medicos/detalhes")) {
-    return MEDICOS_DETALHE_COMPOSE_OPTIONS;
-  }
+  // MÉDICOS
+  if (pathname === "/saude/medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
+  if (pathname.startsWith("/saude/medicos/detalhes")) return MEDICOS_DETALHE_COMPOSE_OPTIONS;
   
-  // 🔧 FARMÁCIAS (NOVO)
-  if (pathname === "/saude/farmacias") {
-    return FARMACIAS_LIST_COMPOSE_OPTIONS;
-  }
-  if (pathname.startsWith("/saude/farmacias/detalhes")) {
-    return FARMACIAS_DETALHE_COMPOSE_OPTIONS;
-  }
+  // FARMÁCIAS
+  if (pathname === "/saude/farmacias") return FARMACIAS_LIST_COMPOSE_OPTIONS;
+  if (pathname.startsWith("/saude/farmacias/detalhes")) return FARMACIAS_DETALHE_COMPOSE_OPTIONS;
+  
+  // TRATAMENTOS
+  if (pathname === "/saude/tratamentos") return TRATAMENTOS_LIST_COMPOSE_OPTIONS;
+  if (pathname.startsWith("/saude/tratamentos/detalhes")) return TRATAMENTOS_DETALHE_COMPOSE_OPTIONS;
   
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
@@ -146,7 +147,6 @@ export function BottomNav() {
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
 
-  // 🔧 Extrair ID da URL (genérico)
   const getEntityIdFromPath = (): string | null => {
     const params = new URLSearchParams(window.location.search);
     return params.get("id");
@@ -215,7 +215,6 @@ export function BottomNav() {
 
     let path = option.path;
 
-    // 🔧 Ações contextuais que precisam de ID
     const isContextualAction = [
       "nova-consulta",
       "nova-cirurgia",
@@ -223,16 +222,17 @@ export function BottomNav() {
       "editar-medico",
       "nova-renovacao",
       "editar-farmacia",
+      "editar-tratamento",
+      "adicionar-documento",
     ].includes(option.id);
 
     if (isContextualAction) {
       const entityId = getEntityIdFromPath();
       if (entityId) {
         const separator = path.includes('?') ? '&' : '?';
-        path = `${path}${separator}medico_id=${entityId}`;
+        path = `${path}${separator}tratamento_id=${entityId}`;
       } else {
-        // Fallback: vai para a listagem
-        router.push("/saude/medicos");
+        router.push("/saude");
         return;
       }
     }
