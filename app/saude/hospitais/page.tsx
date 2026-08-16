@@ -20,14 +20,15 @@ export default function HospitaisPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
 
+  // ✅ CORRIGIDO: db.hospitais, db.documents, db.exames
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
-  const documentos = useLiveQuery(() => db.table("documents").toArray(), []) || [];
-  const exames = useLiveQuery(() => db.table("exames").toArray(), []) || [];
+  const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
+  const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
   const hospitaisComCruzamento = useMemo(() => {
     return hospitais.map((hospital) => {
       const docsDoHospital = documentos.filter((d: any) => 
-        d.metadata?.hospital_id === hospital.id
+        d.hospital_id === hospital.id // ✅ campo direto, não metadata
       );
 
       const cirurgias = docsDoHospital.filter((d: any) => d.type === 'cirurgia');
@@ -135,7 +136,6 @@ export default function HospitaisPage() {
                   </div>
                 </div>
 
-                {/* Tags de Resumo Relacional */}
                 <div className="grid grid-cols-3 gap-2 pt-2 border-t border-surface-border/40 text-center">
                   <div className="rounded-xl bg-surface-raised/60 p-2">
                     <p className="text-[10px] uppercase font-mono text-ink-muted">Cirurgias</p>
