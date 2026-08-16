@@ -21,7 +21,7 @@ import { sugerirRenovacao } from "@/lib/health-insights";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import type { Medicamento, Tratamento } from "@/lib/types";
+import type { Medicamento, Tratamento, Renovacao } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
 
@@ -45,8 +45,7 @@ const FORMATOS = [
   { id: "adesivo", label: "Adesivo", icon: StickyNote },
 ];
 
-// Tipagens locais
-interface RenovacaoLog { preco?: number | string; data?: string; created_at?: string; id: string; farmacia_nome?: string; }
+// Tipagem local
 interface HistDosagem { dosagem_antiga: string; data_mudanca: string; medico_responsavel: string; }
 
 function MedicamentoDetalhesContent() {
@@ -93,7 +92,7 @@ function MedicamentoDetalhesContent() {
 
     if (atual <= 0) {
       trigger("error");
-      setToastMessage({ text: `⚠️ Estoque esgotado!`, type: 'error' });
+      setToastMessage({ text: "Estoque esgotado!", type: 'error' });
       setTimeout(() => setToastMessage(null), 3000);
       return;
     }
@@ -110,7 +109,7 @@ function MedicamentoDetalhesContent() {
       });
       // Registra Dose
       await db.doseLogs.add({
-        user_id: med.user_id, // ✅ CORREÇÃO: Propriedade obrigatória injetada
+        user_id: med.user_id,
         medicamento_id: med.id,
         data: now.toISOString().slice(0, 10),
         horario: now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
@@ -118,12 +117,12 @@ function MedicamentoDetalhesContent() {
         created_at: now.toISOString()
       });
 
-      setToastMessage({ text: `💊 1 dose registrada às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}!`, type: 'success' });
+      setToastMessage({ text: `1 dose registrada às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}!`, type: 'success' });
       setTimeout(() => setToastMessage(null), 3000);
     } catch (error) {
       console.error('Erro ao registrar dose:', error);
       trigger("error");
-      setToastMessage({ text: `Erro ao registrar dose.`, type: 'error' });
+      setToastMessage({ text: "Erro ao registrar dose.", type: 'error' });
       setTimeout(() => setToastMessage(null), 3000);
     }
   }, [med, updateMedicamento, trigger]);
@@ -135,7 +134,6 @@ function MedicamentoDetalhesContent() {
   if (med === undefined) return <LoadingSkeleton />;
   if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
 
-  // Motores de inteligência e cruzamento de dados
   const estoqueInfo = computeEstoqueInfo(med);
   const qtd = estoqueInfo?.quantidadeRestante ?? 0;
   const isVencida = isReceitaVencida(med.proxima_renovacao);
@@ -158,7 +156,6 @@ function MedicamentoDetalhesContent() {
   };
   const tipoReceitaLabel = TIPO_RECEITA_LABELS[med.tipo_receita as keyof typeof TIPO_RECEITA_LABELS || 'comum'] || med.tipo_receita || 'comum';
 
-  // Ações Externas
   const abrirNoMapa = (enderecoStr?: string) => {
     if (!enderecoStr) return;
     trigger("vibrate");
@@ -174,21 +171,21 @@ function MedicamentoDetalhesContent() {
 
   const compartilharWhatsApp = () => {
     trigger("vibrate");
-    const texto = `💊 *${med.nome}*
-📊 Dosagem: ${med.dosagem}
-📅 Próxima renovação: ${formatDate(med.proxima_renovacao)}
-📦 Estoque Atual: ${qtd} doses`;
+    const texto = `*${med.nome}*
+Dosagem: ${med.dosagem}
+Próxima renovação: ${formatDate(med.proxima_renovacao)}
+Estoque Atual: ${qtd} doses`;
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
   };
 
   const copiarInfo = () => {
     trigger("vibrate");
-    const texto = `💊 ${med.nome}
-📊 Dosagem: ${med.dosagem}
-📅 Próxima renovação: ${formatDate(med.proxima_renovacao)}
-📦 Estoque: ${qtd} doses`;
+    const texto = `${med.nome}
+Dosagem: ${med.dosagem}
+Próxima renovação: ${formatDate(med.proxima_renovacao)}
+Estoque: ${qtd} doses`;
     navigator.clipboard.writeText(texto);
-    setToastMessage({ text: "📋 Informações copiadas!", type: 'success' });
+    setToastMessage({ text: "Informações copiadas!", type: 'success' });
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -199,7 +196,7 @@ function MedicamentoDetalhesContent() {
   };
 
   // Cálculos Financeiros
-  const custoTotalRenovacoes = renovacoes.reduce((acc, r: RenovacaoLog) => {
+  const custoTotalRenovacoes = renovacoes.reduce((acc, r: Renovacao) => {
     const p = typeof r.preco === 'number' ? r.preco : Number(r.preco) || 0;
     return acc + p;
   }, 0);
@@ -217,7 +214,6 @@ function MedicamentoDetalhesContent() {
     <PageTransition>
       <main className="min-h-screen bg-void pb-28 relative">
         
-        {/* TOAST FLUTUANTE DE AÇÃO RÁPIDA */}
         <AnimatePresence>
           {toastMessage && (
             <motion.div
@@ -258,7 +254,6 @@ function MedicamentoDetalhesContent() {
 
         <div className="px-5 mt-6 space-y-6">
           
-          {/* ALERTA INTELIGENTE DE ESTOQUE/RENOVAÇÃO */}
           <AnimatePresence>
             {alertaInteligente.deveRenovar && med.status !== 'descontinuado' && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
@@ -281,7 +276,6 @@ function MedicamentoDetalhesContent() {
             )}
           </AnimatePresence>
 
-          {/* CARD HERO: IDENTIDADE VISUAL */}
           <div className="rounded-[32px] bg-surface p-6 border border-surface-border shadow-lg relative overflow-hidden">
             <div className={`absolute left-0 top-0 bottom-0 w-2 ${med.status === 'descontinuado' ? 'bg-coral' : med.tipo_receita === 'amarela' ? 'bg-amber-400' : med.tipo_receita === 'azul' ? 'bg-blue-400' : 'bg-ice/50'}`} />
             
@@ -306,7 +300,6 @@ function MedicamentoDetalhesContent() {
             </div>
           </div>
 
-          {/* CARD DE ESTOQUE VIVO COM AÇÃO */}
           {med.status !== 'descontinuado' && typeof med.estoque_quantidade === 'number' && (
             <div className={`rounded-[32px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1 shadow-sm`}>
                <div className="bg-surface rounded-[28px] p-5">
@@ -337,7 +330,6 @@ function MedicamentoDetalhesContent() {
             </div>
           )}
 
-          {/* EVOLUÇÃO CLÍNICA (Histórico de Dosagens) */}
           {med.historico_dosagens && med.historico_dosagens.length > 0 && (
             <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
                <div className="flex items-center gap-2"><TrendingUp size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Evolução Clínica</h3></div>
@@ -360,7 +352,6 @@ function MedicamentoDetalhesContent() {
             </div>
           )}
 
-          {/* INTELIGÊNCIA FINANCEIRA E PREÇO MÉDIO */}
           {custoTotalAcumulado > 0 && (
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface rounded-3xl p-4 border border-surface-border shadow-sm">
@@ -376,12 +367,10 @@ function MedicamentoDetalhesContent() {
             </div>
           )}
 
-          {/* REDE DE APOIO CRUZADA */}
           <div className="space-y-3">
              <h3 className="text-sm font-semibold text-ink-primary">Rede de Prescrição & Aquisição</h3>
              <div className="space-y-2">
                
-               {/* Médico Prescritor */}
                <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-start gap-4">
                  <div className="h-10 w-10 rounded-xl bg-ice/10 flex items-center justify-center text-ice shrink-0"><Stethoscope size={20} /></div>
                  <div className="flex-1 min-w-0">
@@ -393,7 +382,6 @@ function MedicamentoDetalhesContent() {
                  </div>
                </div>
 
-               {/* Estabelecimento */}
                {estabelecimento && (
                  <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-center justify-between gap-4">
                    <div className="flex items-center gap-4 min-w-0">
@@ -412,7 +400,6 @@ function MedicamentoDetalhesContent() {
                  </div>
                )}
 
-               {/* Farmácia */}
                {(farmacia || med.farmacia) && (
                  <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-center justify-between gap-4">
                    <div className="flex items-center gap-4 min-w-0">
@@ -440,7 +427,6 @@ function MedicamentoDetalhesContent() {
              </div>
           </div>
 
-          {/* STATUS DA RECEITA & RENOVAÇÕES */}
           <div className="space-y-3">
              <div className="flex justify-between items-end mb-2">
                <h3 className="text-sm font-semibold text-ink-primary">Status da Receita</h3>
@@ -466,7 +452,6 @@ function MedicamentoDetalhesContent() {
                </div>
              </div>
              
-             {/* Mini Histórico de Renovações Recentes */}
              {renovacoes.length > 0 && (
                <div className="space-y-2 mt-4">
                  <div className="flex items-center justify-between ml-1 mb-2">
@@ -478,8 +463,8 @@ function MedicamentoDetalhesContent() {
                    )}
                  </div>
                  <AnimatePresence>
-                   {displayedRenovacoes.map((r: RenovacaoLog) => (
-                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} key={r.id} className="bg-surface p-3.5 rounded-2xl border border-surface-border flex justify-between items-center shadow-sm">
+                   {displayedRenovacoes.map((r: Renovacao, index: number) => (
+                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} key={r.id || index} className="bg-surface p-3.5 rounded-2xl border border-surface-border flex justify-between items-center shadow-sm">
                        <div className="flex items-center gap-3">
                          <div className="h-8 w-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted"><Calendar size={14}/></div>
                          <div>
@@ -497,7 +482,6 @@ function MedicamentoDetalhesContent() {
 
         </div>
 
-        {/* Modal Regulamentação da Receita */}
         <BottomSheet isOpen={infoModalOpen} onClose={() => setInfoModalOpen(false)} title="Regulamentação da Receita">
           <div className="p-5 space-y-4 text-sm text-ink-muted">
              <div className="rounded-2xl bg-surface p-4 border border-surface-border space-y-2">
