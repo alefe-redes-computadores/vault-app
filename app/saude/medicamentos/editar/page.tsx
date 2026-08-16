@@ -54,7 +54,7 @@ import {
   requestNotificationPermission,
 } from "@/lib/dose-notifications";
 import { sugerirHorarios } from "@/lib/health-insights";
-import type { TipoReceita, Attachment } from "@/lib/types";
+import type { TipoReceita, Attachment, Document } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -132,9 +132,7 @@ function EditarMedicamentoContent() {
   const { farmacias } = useFarmacias();
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  // ✅ CORRIGIDO: db.medicamentos em vez de db.table("medicamentos")
   const medicamentosQuery = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
-  // ✅ CORRIGIDO: db.hospitais em vez de db.table("hospitais")
   const hospitaisLocais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
   const medicamentosAtivos = medicamentosQuery.filter((m: any) => m.id !== id && m.status !== "descontinuado");
 
@@ -295,7 +293,6 @@ function EditarMedicamentoContent() {
           if (est) setEstabelecimentoNome(est.nome);
         }
 
-        // ✅ CORRIGIDO: usa tratamento_ids diretamente
         setTratamentosSelecionados(item.tratamento_ids || []);
 
         if (typeof item.estoque_quantidade === "number" && item.estoque_data_referencia && Array.isArray(item.estoque_horarios) && item.estoque_horarios.length > 0) {
@@ -521,7 +518,7 @@ function EditarMedicamentoContent() {
       // Documento
       let updatedDocId = documentId;
       if (!documentId && (dataReceitaISO || attachment)) {
-        const docData: any = {
+        const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'> = {
           user_id: user?.id || "",
           person_id: personId,
           category_id: "saude",
@@ -575,7 +572,7 @@ function EditarMedicamentoContent() {
         }
       }
 
-      // Atualizar medicamento
+      // Atualizar medicamento (sem `as any`)
       await updateMedicamento(id, {
         person_id: personId,
         nome: nome.trim(),
@@ -610,7 +607,7 @@ function EditarMedicamentoContent() {
         estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
         estoque_ml_total: isGotasCalcAtivo && formato === "gota" ? Number(mlTotal) : undefined,
         estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : undefined,
-      } as any);
+      });
 
       // Notificações
       if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as any);
@@ -647,8 +644,6 @@ function EditarMedicamentoContent() {
     setDeleting(true);
     try {
       if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as any);
-      // ✅ CORRIGIDO: não precisa excluir da tabela medicamento_tratamentos
-      // (agora os vínculos estão no campo tratamento_ids do próprio medicamento)
       await deleteMedicamento(id);
       trigger("success");
       router.replace("/saude");
@@ -1518,7 +1513,6 @@ function EditarMedicamentoContent() {
           getItemId={(item: any) => item.id!}
           getItemLabel={(item: any) => item.nome}
           enableQuickCreate
-          // ✅ CORRIGIDO: db.hospitais.add em vez de db.table("hospitais").add
           onQuickCreate={async (name, tabId) => {
             const id = await db.hospitais.add({
               user_id: user?.id,
