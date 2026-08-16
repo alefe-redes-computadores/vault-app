@@ -21,6 +21,7 @@ import { sugerirRenovacao } from "@/lib/health-insights";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import type { Medicamento, Tratamento } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
 
@@ -70,11 +71,9 @@ function MedicamentoDetalhesContent() {
   const renovacoes = useLiveQuery(() => db.renovacoes.where("medicamento_id").equals(id || "").reverse().sortBy('data'), [id]) || [];
   const documento = useLiveQuery(() => med?.document_id ? db.documents.get(med.document_id) : undefined, [med?.document_id]);
   
-  // ✅ CORRIGIDO: usa db.doseLogs em vez de db.table('doseLogs')
   const ultimaDose = useLiveQuery(() => db.doseLogs.where('medicamento_id').equals(id || '').reverse().first(), [id]);
   const todosMedicamentosAtivos = useLiveQuery(() => db.medicamentos.where("status").notEqual("descontinuado").toArray(), []) || [];
   
-  // ✅ CORRIGIDO: usa tratamento_ids (MultiEntry Index) diretamente
   const tratamentos = useLiveQuery(() => {
     if (!med?.tratamento_ids || med.tratamento_ids.length === 0) return [];
     return db.tratamentos.where('id').anyOf(med.tratamento_ids).toArray();
@@ -85,7 +84,8 @@ function MedicamentoDetalhesContent() {
   // ============================================================
 
   const handleTomarAgora = useCallback(async () => {
-    if (!med) return;
+    // ✅ CORREÇÃO APLICADA: Trava de segurança exigindo que med e med.id existam
+    if (!med || !med.id) return;
     trigger("success");
 
     const estoqueInfo = computeEstoqueInfo(med);
@@ -109,7 +109,7 @@ function MedicamentoDetalhesContent() {
         estoque_quantidade: novoEstoque,
         estoque_data_referencia: now.toISOString().slice(0, 10),
       });
-      // Registra Dose (usando db.doseLogs)
+      // Registra Dose
       await db.doseLogs.add({
         medicamento_id: med.id,
         data: now.toISOString().slice(0, 10),
@@ -207,7 +207,7 @@ function MedicamentoDetalhesContent() {
   const qtdeCompras = renovacoes.length + (med.preco ? 1 : 0);
   const precoMedio = qtdeCompras > 0 ? (custoTotalAcumulado / qtdeCompras) : 0;
 
-  const outrosMedsDesteMedico = todosMedicamentosAtivos.filter((m: any) => m.medico_id === med.medico_id && m.id !== med.id);
+  const outrosMedsDesteMedico = todosMedicamentosAtivos.filter((m: Medicamento) => m.medico_id === med.medico_id && m.id !== med.id);
   const displayedRenovacoes = showAllRenovacoes ? renovacoes : renovacoes.slice(0, 3);
 
   const SelectedFormatIcon = FORMATOS.find(f => f.id === med.formato)?.icon || Pill;
@@ -296,7 +296,7 @@ function MedicamentoDetalhesContent() {
                 </div>
                 <p className="text-sm font-medium text-ink-muted mt-0.5">{med.dosagem} {med.tipo_uso === 'esporadico' ? '• Uso SOS' : ''}</p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                   {tratamentos.map((t: any) => (
+                   {tratamentos.map((t: Tratamento) => (
                      <span key={t.id} className="text-[10px] font-bold uppercase tracking-wide rounded-full bg-surface-raised border border-surface-border px-2 py-0.5 text-ink-muted">
                        {t.nome}
                      </span>
