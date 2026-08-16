@@ -20,7 +20,10 @@ import {
   Stethoscope,
   ArrowLeftRight,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  TrendingDown,
+  TrendingUp
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -32,6 +35,11 @@ import { useMedicos } from "@/hooks/useMedicos";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Tratamento, Document } from "@/lib/types";
+import { 
+  isReceitaVencidaSegura, 
+  calcularEconomia,
+  sugerirRenovacao
+} from "@/lib/health-insights";
 
 const listVariants = {
   hidden: { opacity: 0 },
@@ -55,7 +63,17 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-// Cores padrão para tratamentos sem cor definida
+function formatDateDisplay(isoStr: string): string {
+  if (!isoStr) return "";
+  const parts = isoStr.split("-");
+  if (parts.length !== 3) return isoStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function formatCurrency(value: number): string {
+  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+}
+
 const CORES_PADRAO = [
   "#8B5CF6", // Roxo
   "#EC4899", // Rosa
@@ -119,15 +137,23 @@ function TratamentoContent() {
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
   const allRenovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
-  // ✅ CORRIGIDO: Usa MultiEntry Index *tratamento_ids
+  // Medicamentos vinculados via tratamento_ids
   const linkedMedicamentos = useMemo(() => {
     if (!id || !medicamentos) return [];
     return medicamentos.filter((m: any) => {
-      // Verifica se o tratamento está no array tratamento_ids
       return m.tratamento_ids && m.tratamento_ids.includes(id);
     });
   }, [medicamentos, id]);
 
+  // 🔧 Últimas renovações dos medicamentos vinculados
+  const linkedRenovacoes = useMemo(() => {
+    const medIds = new Set(linkedMedicamentos.map((m: any) => m.id));
+    return allRenovacoes
+      .filter((r: any) => medIds.has(r.medicamento_id))
+      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  }, [linkedMedicamentos, allRenovacoes]);
+
+  // Documentos vinculados
   const linkedDocuments = useMemo(() => {
     if (!id) return [];
     return allDocuments.filter((doc: Document) => {
@@ -135,24 +161,40 @@ function TratamentoContent() {
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [allDocuments, id]);
 
-  // ✅ CORRIGIDO: Custo total do tratamento
+  // Custo total
   const custoTotalTratamento = useMemo(() => {
-    if (!linkedMedicamentos.length || !allRenovacoes.length) return 0;
-    const medIds = new Set(linkedMedicamentos.map((m: any) => m.id));
     let total = 0;
-    allRenovacoes.forEach((r: any) => {
-      if (medIds.has(r.medicamento_id) && typeof r.preco === "number" && r.preco > 0) {
+    linkedRenovacoes.forEach((r: any) => {
+      if (typeof r.preco === "number" && r.preco > 0) {
         total += r.preco;
       }
     });
     return total;
-  }, [linkedMedicamentos, allRenovacoes]);
+  }, [linkedRenovacoes]);
 
-  // ✅ CORRIGIDO: Médicos vinculados via medicamentos
+  // 🔧 Economia (última compra vs média anterior)
+  const economiaInfo = useMemo(() => {
+    return calcularEconomia(linkedRenovacoes);
+  }, [linkedRenovacoes]);
+
+  // Médicos vinculados
   const linkedMedicos = useMemo(() => {
     const medIds = new Set(linkedMedicamentos.map((m: any) => m.medico_id).filter(Boolean));
     return medicos.filter(med => medIds.has(med.id));
   }, [linkedMedicamentos, medicos]);
+
+  // 🔧 Medicamentos com alertas (receita vencida, estoque crítico)
+  const medicamentosComAlertas = useMemo(() => {
+    return linkedMedicamentos.map((med: any) => {
+      const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
+      const insight = sugerirRenovacao(med);
+      return {
+        ...med,
+        receitaVencida,
+        insight,
+      };
+    });
+  }, [linkedMedicamentos]);
 
   const handleFavoriteToggle = async (docId: string) => {
     await favorite(docId);
@@ -163,11 +205,10 @@ function TratamentoContent() {
   if (!tratamento) return null;
 
   const IconComp = getTratamentoIcon(tratamento.nome);
-  // ✅ CORRIGIDO: Usa cor do tratamento ou gera uma baseada no índice
   const tratamentoCor = tratamento.cor || getCorPorIndex(tratamento.id ? parseInt(tratamento.id) : 0);
   
-  const medicamentosAtivos = linkedMedicamentos.filter((m: any) => m.status !== "descontinuado");
-  const medicamentosDescontinuados = linkedMedicamentos.filter((m: any) => m.status === "descontinuado");
+  const medicamentosAtivos = medicamentosComAlertas.filter((m: any) => m.status !== "descontinuado");
+  const medicamentosDescontinuados = medicamentosComAlertas.filter((m: any) => m.status === "descontinuado");
 
   return (
     <PageTransition>
@@ -196,13 +237,7 @@ function TratamentoContent() {
               >
                 <Edit3 size={16} />
               </button>
-              <button
-                onClick={() => { trigger("vibrate"); router.push("/novo"); }}
-                aria-label="Adicionar documento"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ice text-void transition-all active:scale-95 shadow-md shadow-ice/20"
-              >
-                <Plus size={18} />
-              </button>
+              {/* 🔧 Botão "Adicionar documento" removido - será via menu inferior */}
             </div>
           </div>
         </header>
@@ -252,6 +287,25 @@ function TratamentoContent() {
               </div>
             )}
 
+            {/* 🔧 Alertas de economia */}
+            {economiaInfo && (
+              <div className="relative z-10 mt-3 pt-3 border-t border-surface-border/40">
+                <div className={`flex items-center gap-2 text-xs ${economiaInfo.economia > 0 ? 'text-emerald-400' : 'text-coral'}`}>
+                  {economiaInfo.economia > 0 ? (
+                    <TrendingDown size={14} />
+                  ) : (
+                    <TrendingUp size={14} />
+                  )}
+                  <span>
+                    {economiaInfo.economia > 0 
+                      ? `Economia de ${formatCurrency(Math.abs(economiaInfo.economia))} (${Math.abs(economiaInfo.percentual)}%) na última compra`
+                      : `Aumento de ${formatCurrency(Math.abs(economiaInfo.economia))} (${Math.abs(economiaInfo.percentual)}%) na última compra`
+                    }
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5">
               <div className="flex flex-col">
                 <span className="text-xs font-medium text-ink-muted">Medicamentos</span>
@@ -264,7 +318,7 @@ function TratamentoContent() {
               <div className="flex flex-col">
                 <span className="text-xs font-medium text-ink-muted">Custo Total</span>
                 <span className="font-mono text-base font-semibold text-emerald-400 mt-1">
-                  {custoTotalTratamento > 0 ? `R$ ${custoTotalTratamento.toFixed(2).replace(".", ",")}` : "R$ 0,00"}
+                  {custoTotalTratamento > 0 ? formatCurrency(custoTotalTratamento) : "R$ 0,00"}
                 </span>
               </div>
             </div>
@@ -295,6 +349,35 @@ function TratamentoContent() {
             )}
           </motion.div>
 
+          {/* 🔧 Últimas Renovações */}
+          {linkedRenovacoes.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
+              <div className="flex items-center gap-2 pl-1">
+                <Clock size={16} className="text-amber-400" />
+                <h3 className="font-display text-base font-semibold text-ink-primary">Últimas Compras</h3>
+              </div>
+              <div className="space-y-2">
+                {linkedRenovacoes.slice(0, 5).map((ren: any) => {
+                  const med = linkedMedicamentos.find((m: any) => m.id === ren.medicamento_id);
+                  return (
+                    <div key={ren.id} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm">
+                      <div>
+                        <p className="text-sm font-semibold text-ink-primary">{med?.nome || "Medicamento"}</p>
+                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(ren.data)}</p>
+                      </div>
+                      {ren.preco && (
+                        <span className="text-sm font-semibold text-emerald-400">{formatCurrency(ren.preco)}</span>
+                      )}
+                    </div>
+                  );
+                })}
+                {linkedRenovacoes.length > 5 && (
+                  <p className="text-[10px] text-center text-ink-muted pt-1">E mais {linkedRenovacoes.length - 5} compra(s)...</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           {/* Medicamentos Ativos */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
@@ -321,7 +404,19 @@ function TratamentoContent() {
                           <Pill size={18} />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-ink-primary text-[15px]">{med.nome}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="truncate font-semibold text-ink-primary text-[15px]">{med.nome}</p>
+                            {med.receitaVencida && (
+                              <span className="text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">
+                                Vencida
+                              </span>
+                            )}
+                            {med.insight?.deveRenovar && (
+                              <span className="text-[8px] font-bold uppercase bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded-full">
+                                Renovar
+                              </span>
+                            )}
+                          </div>
                           <p className="truncate text-xs text-ink-muted mt-0.5">{med.dosagem} • Dr(a). {med.medico}</p>
                         </div>
                       </div>
