@@ -87,7 +87,7 @@ export type DocumentType =
 export interface Attachment {
   id: string;
   url: string;
-  thumbnail_url?: string; 
+  thumbnail_url?: string;
   name: string;
   type: 'image' | 'pdf';
   uploaded_at: string;
@@ -105,6 +105,9 @@ export interface Document {
   attachments: Attachment[];
   is_favorite: boolean;
   vault_id?: string;
+  // ✅ NOVOS CAMPOS PARA VÍNCULO RELACIONAL
+  hospital_id?: string;  // Vínculo com Hospital
+  medico_id?: string;    // Vínculo com Médico
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -148,7 +151,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
     { key: 'expiry_date', label: 'Data de validade', type: 'date' },
     { key: 'issuer', label: 'Órgão emissor', type: 'text', required: true },
   ],
-  cpf: [ { key: 'number', label: 'Número do CPF', type: 'text', required: true } ],
+  cpf: [{ key: 'number', label: 'Número do CPF', type: 'text', required: true }],
   cnh: [
     { key: 'number', label: 'Número da CNH', type: 'text', required: true },
     { key: 'category', label: 'Categoria', type: 'select', options: ['A', 'B', 'AB', 'C', 'D', 'E'], required: true },
@@ -327,7 +330,7 @@ export interface Renovacao {
   medico_id?: string;
   estabelecimento_id?: string;
   farmacia_id?: string;
-  local_id?: string; 
+  local_id?: string;
   quantidade?: number;
   preco?: number;
   lote?: string;
