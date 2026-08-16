@@ -107,7 +107,6 @@ function DetalhesExameContent() {
   const medico = useLiveQuery(() => exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined, [exame?.medico_id]);
   const laboratorio = useLiveQuery(() => exame?.laboratorio_id ? db.hospitais.get(exame.laboratorio_id) : undefined, [exame?.laboratorio_id]);
 
-  // 🔧 CORRIGIDO: usa tratamento_ids (array) em vez de exame_tratamentos
   const tratamentos = useLiveQuery(() => {
     if (!exame?.tratamento_ids || exame.tratamento_ids.length === 0) return [];
     return db.tratamentos.where('id').anyOf(exame.tratamento_ids).toArray();
@@ -282,7 +281,6 @@ function DetalhesExameContent() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* 🔧 Botão "Duplicar" removido - será via menu inferior */}
               <button
                 onClick={() => { trigger("vibrate"); router.push(`/saude/exames/editar?id=${exame.id}`); }}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice active:scale-95"
@@ -303,7 +301,6 @@ function DetalhesExameContent() {
 
         <section className="px-5 pt-6 space-y-4">
           
-          {/* ALERTA DE PRAZO - com badge de vencimento */}
           {exame.data_retorno && (
             <motion.div 
               initial={{ opacity: 0, y: -5 }}
@@ -335,11 +332,176 @@ function DetalhesExameContent() {
             </motion.div>
           )}
 
-          {/* Restante do conteúdo igual ao que você já tinha (mantive) */}
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4"
+          >
+            <div className="flex items-center gap-3.5 pb-4 border-b border-surface-border/40">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                <FlaskConical size={24} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-ink-primary">{exame.nome}</h2>
+                <p className="text-xs text-ink-muted">Registrado em {formatDate(exame.data)}</p>
+              </div>
+            </div>
 
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised/50 p-3 border border-surface-border/40">
+              <div className="flex items-center gap-3 min-w-0">
+                <Stethoscope size={16} className="text-ice shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wider text-ink-faint">Solicitante</p>
+                  {medicoValido ? (
+                    <button
+                      onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${medico.id}`); }}
+                      className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
+                    >
+                      {medico.nome}
+                      <ChevronRight size={14} className="text-ink-faint" />
+                    </button>
+                  ) : exame.medico ? (
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-ink-muted line-through">{exame.medico}</p>
+                      <span className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <AlertOctagon size={12} /> Cadastro perdido
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-ink-muted">Não informado</p>
+                  )}
+                </div>
+              </div>
+              {!medicoValido && exame.medico && (
+                <button
+                  onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
+                  className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                >
+                  Corrigir
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised/50 p-3 border border-surface-border/40">
+              <div className="flex items-center gap-3 min-w-0">
+                <Building2 size={16} className="text-emerald-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wider text-ink-faint">Local / Laboratório</p>
+                  {laboratorioValido ? (
+                    <button
+                      onClick={() => { trigger("vibrate"); router.push(`/saude/hospitais/detalhes?id=${laboratorio.id}`); }}
+                      className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
+                    >
+                      {laboratorio.nome}
+                      <ChevronRight size={14} className="text-ink-faint" />
+                    </button>
+                  ) : exame.laboratorio ? (
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-ink-muted line-through">{exame.laboratorio}</p>
+                      <span className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <AlertOctagon size={12} /> Cadastro perdido
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-ink-muted">Não informado</p>
+                  )}
+                </div>
+              </div>
+              {!laboratorioValido && exame.laboratorio && (
+                <button
+                  onClick={() => { trigger("vibrate"); setIsLaboratorioModalOpen(true); }}
+                  className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                >
+                  Corrigir
+                </button>
+              )}
+            </div>
+
+            {tratamentos && tratamentos.length > 0 && (
+              <div className="pt-2">
+                <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
+                  <Activity size={14} className="text-violet-400" /> Motivo da Solicitação
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {tratamentos.map(t => {
+                    const Icon = getTratamentoIcon(t.nome);
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${t.id}`); }}
+                        className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5 hover:bg-violet-400/20 transition-colors"
+                      >
+                        <Icon size={14} className="text-violet-400" />
+                        <span className="text-xs font-medium text-violet-300">{t.nome}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {exame.motivo && (
+              <div className="pt-2">
+                <p className="text-xs font-medium text-ink-muted mb-1">Motivo da Solicitação</p>
+                <p className="text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40">{exame.motivo}</p>
+              </div>
+            )}
+
+            {exame.observacoes && (
+              <div className="pt-2">
+                <p className="text-xs font-medium text-ink-muted mb-1">Resultados / Notas</p>
+                <p className="text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40 whitespace-pre-wrap">{exame.observacoes}</p>
+              </div>
+            )}
+
+            {exame.anexo_url && (
+              <a 
+                href={exame.anexo_url} 
+                target="_blank" 
+                rel="noreferrer"
+                className="flex items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 p-3.5 text-ice hover:bg-ice/20 transition-colors mt-2"
+              >
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  <FileText size={16} /> Ver Anexo / Documento do Exame
+                </div>
+                <ExternalLink size={14} />
+              </a>
+            )}
+          </motion.div>
+
+          {historicoExames.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-3"
+            >
+              <div className="flex items-center gap-2">
+                <History size={15} className="text-emerald-400" />
+                <h3 className="font-display text-sm font-semibold text-ink-primary">Histórico do Exame</h3>
+                <span className="text-xs text-ink-muted">({historicoExames.length} anteriores)</span>
+              </div>
+              <p className="text-xs text-ink-muted">Outras vezes que "{exame.nome}" foi realizado para {personName}:</p>
+
+              <div className="space-y-2 pt-1">
+                {historicoExames.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map((item: any) => (
+                  <button
+                    key={item.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${item.id}`); }}
+                    className="w-full flex items-center justify-between p-3 rounded-2xl bg-surface-raised/70 border border-surface-border/40 text-left hover:bg-surface-raised transition-colors"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-ink-primary">Realizado em {formatDate(item.data)}</p>
+                      {item.laboratorio && <p className="text-[10px] text-ink-muted">{item.laboratorio}</p>}
+                      {item.medico && <p className="text-[10px] text-ink-muted">Solicitante: {item.medico}</p>}
+                    </div>
+                    <span className="text-xs text-ice font-medium">Ver detalhes</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </section>
-
-        {/* MODAIS E BOTTOM SHEETS - mantidos */}
 
         <ConfirmationModal
           isOpen={showDeleteModal}
