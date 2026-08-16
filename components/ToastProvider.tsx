@@ -15,6 +15,7 @@ interface ToastData {
   type: ToastType;
   duration?: number;
   action?: ToastAction;
+  icon?: React.ElementType; // 🚀 Injeção recomendada pelo Claude
 }
 
 interface ToastContextType {
@@ -22,12 +23,13 @@ interface ToastContextType {
     message: string,
     type?: ToastType,
     duration?: number,
-    action?: ToastAction
+    action?: ToastAction,
+    icon?: React.ElementType
   ) => string;
-  showSuccess: (message: string, duration?: number, action?: ToastAction) => string;
-  showError: (message: string, duration?: number) => string;
-  showInfo: (message: string, duration?: number, action?: ToastAction) => string;
-  showLoading: (message: string) => string;
+  showSuccess: (message: string, duration?: number, action?: ToastAction, icon?: React.ElementType) => string;
+  showError: (message: string, duration?: number, icon?: React.ElementType) => string;
+  showInfo: (message: string, duration?: number, action?: ToastAction, icon?: React.ElementType) => string;
+  showLoading: (message: string, icon?: React.ElementType) => string;
   hideToast: (id: string) => void;
 }
 
@@ -53,7 +55,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       message: string,
       type: ToastType = "info",
       duration: number = 3000,
-      action?: ToastAction
+      action?: ToastAction,
+      icon?: React.ElementType
     ) => {
       const id =
         Date.now().toString() + Math.random().toString(36).slice(2, 8);
@@ -66,6 +69,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           type,
           duration,
           action,
+          icon,
         },
       ]);
 
@@ -75,29 +79,29 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   const showSuccess = useCallback(
-    (message: string, duration: number = 3000, action?: ToastAction) => {
-      return showToast(message, "success", duration, action);
+    (message: string, duration: number = 3000, action?: ToastAction, icon?: React.ElementType) => {
+      return showToast(message, "success", duration, action, icon);
     },
     [showToast]
   );
 
   const showError = useCallback(
-    (message: string, duration: number = 4000) => {
-      return showToast(message, "error", duration);
+    (message: string, duration: number = 4000, icon?: React.ElementType) => {
+      return showToast(message, "error", duration, undefined, icon);
     },
     [showToast]
   );
 
   const showInfo = useCallback(
-    (message: string, duration: number = 3000, action?: ToastAction) => {
-      return showToast(message, "info", duration, action);
+    (message: string, duration: number = 3000, action?: ToastAction, icon?: React.ElementType) => {
+      return showToast(message, "info", duration, action, icon);
     },
     [showToast]
   );
 
   const showLoading = useCallback(
-    (message: string) => {
-      return showToast(message, "loading", 0);
+    (message: string, icon?: React.ElementType) => {
+      return showToast(message, "loading", 0, undefined, icon);
     },
     [showToast]
   );
@@ -134,6 +138,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     duration={toast.duration}
                     onClose={() => hideToast(toast.id)}
                     action={toast.action}
+                    icon={toast.icon} // 🚀 Repassando a propriedade para o componente visual
                   />
                 </motion.div>
               ))}
