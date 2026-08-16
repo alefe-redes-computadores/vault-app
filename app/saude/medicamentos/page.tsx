@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Pill, Circle, Droplet, Syringe, StickyNote, Plus, ChevronRight, Activity, Calendar, AlertTriangle, Search, Check, Zap, EyeOff, Eye, Loader2, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Pill, Circle, Droplet, Syringe, StickyNote, ChevronRight, Activity, Calendar, AlertTriangle, Search, Check, Zap, EyeOff, Eye, Loader2, FileWarning } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { usePersons } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -15,6 +15,8 @@ import { ptBR } from "date-fns/locale";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { Input } from "@/components/ui/Input";
+// 🧠 Importação da Inteligência
+import { sugerirRenovacao } from "@/lib/health-insights";
 
 const FORMATOS = [
   { id: "comprimido", label: "Redondo", icon: Circle },
@@ -203,9 +205,7 @@ export default function MedicamentosListPage() {
               >
                 {showDescontinuados ? <Eye size={18} /> : <EyeOff size={18} />}
               </button>
-              <button onClick={() => { trigger("vibrate"); router.push("/saude/medicamentos/novo"); }} className="flex h-11 w-11 items-center justify-center rounded-full bg-ice text-void shadow-md shadow-ice/20 active:scale-95">
-                <Plus size={20} />
-              </button>
+              {/* Botão de Adicionar removido (Agora vive no BottomNav) */}
             </div>
           </div>
 
@@ -283,11 +283,13 @@ export default function MedicamentosListPage() {
             filteredAndSorted.map((med: any) => {
               const estoqueInfo = computeEstoqueInfo(med);
               const qtd = estoqueInfo?.quantidadeRestante ?? null;
-              const isEstoqueCritico = qtd !== null && qtd < 10;
               const person = med.person_id ? personMap.get(med.person_id) : null;
               const tIds = med.tratamento_ids || [];
               const isSuspenso = med.status === "descontinuado";
               const isControlado = med.tipo_receita === "amarela";
+              
+              // 🧠 Inteligência Injetada aqui
+              const insight = isSuspenso ? null : sugerirRenovacao(med);
               
               const SelectedFormatIcon = FORMATOS.find(f => f.id === med.formato)?.icon || Pill;
               const color1 = med.cores?.[0] || "#60A5FA";
@@ -329,9 +331,18 @@ export default function MedicamentosListPage() {
                         })}
                       </div>
 
+                      {/* Alerta Inteligente Injetado no Card */}
+                      {insight?.deveRenovar && (
+                        <div className={`mt-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold w-fit ${
+                          insight.urgencia === 'alta' ? 'bg-coral/10 text-coral border-coral/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20'
+                        }`}>
+                          <FileWarning size={12} /> {insight.mensagem}
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-surface-border/40">
                          <div className="flex items-center gap-2">
-                           <span className={`text-[11px] font-bold ${isEstoqueCritico ? "text-coral animate-pulse" : "text-emerald-400"}`}>
+                           <span className={`text-[11px] font-bold ${insight?.urgencia === 'alta' ? "text-coral animate-pulse" : "text-emerald-400"}`}>
                              {qtd !== null ? `${qtd} ${estoqueInfo?.unidade || 'doses'}` : 'Sem estoque'}
                            </span>
                            
