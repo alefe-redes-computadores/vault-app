@@ -23,8 +23,8 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Cirurgia, Medico, Hospital, Medicamento, Exame } from "@/lib/types";
-// ✅ NOVO: import do hook
 import { useCirurgias } from "@/hooks/useCirurgias";
+import { isReceitaVencidaSegura } from "@/lib/health-insights";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -50,7 +50,6 @@ function DetalhesCirurgiaContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // ✅ NOVO: useCirurgias
   const { getCirurgia, updateCirurgia, deleteCirurgia } = useCirurgias();
 
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
@@ -64,7 +63,6 @@ function DetalhesCirurgiaContent() {
 
     const fetchData = async () => {
       try {
-        // ✅ CORRIGIDO: usa getCirurgia do hook
         const cirData = await getCirurgia(id);
         if (cirData) {
           setCirurgia(cirData);
@@ -89,8 +87,11 @@ function DetalhesCirurgiaContent() {
     fetchData();
   }, [id, router, getCirurgia]);
 
-  // Nota: Associação por médico e data (aproximação, já que não temos cirurgia_id)
-  const medicamentosPosOperatorio = useMemo(() => {
+  const cirurgiaVencida = useMemo(() => {
+    return cirurgia?.data ? isReceitaVencidaSegura(cirurgia.data) : false;
+  }, [cirurgia]);
+
+  const medicamentosPosOperatorios = useMemo(() => {
     if (!cirurgia) return [];
     return medicamentos.filter((m: Medicamento) => {
       const matchMedico = cirurgia.medico_id && m.medico_id === cirurgia.medico_id;
@@ -111,7 +112,6 @@ function DetalhesCirurgiaContent() {
     trigger("vibrate");
     if (!id || !cirurgia) return;
     try {
-      // ✅ CORRIGIDO: usa updateCirurgia do hook
       await updateCirurgia(id, {
         status: novoStatus,
       });
@@ -127,7 +127,6 @@ function DetalhesCirurgiaContent() {
     trigger("vibrate");
     if (!id) return;
     try {
-      // ✅ CORRIGIDO: usa deleteCirurgia do hook
       await deleteCirurgia(id);
       trigger("success");
       router.replace("/saude/cirurgias");
@@ -179,6 +178,7 @@ function DetalhesCirurgiaContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4 relative overflow-hidden"
+            style={{ borderLeft: `6px solid ${cirurgiaVencida ? '#EF4444' : '#F97316'}` }}
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-coral/5 rounded-bl-full pointer-events-none" />
 
@@ -188,9 +188,12 @@ function DetalhesCirurgiaContent() {
                   <Activity size={24} />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Calendar size={14} className="text-coral" />
                     <span className="font-mono text-sm font-bold text-coral">{formatDateDisplay(cirurgia.data)}</span>
+                    {cirurgiaVencida ? (
+                      <span className="text-[8px] font-bold bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencida</span>
+                    ) : null}
                   </div>
                   <h2 className="font-display text-xl font-bold text-ink-primary mt-1">
                     {cirurgia.procedimento}
@@ -244,15 +247,15 @@ function DetalhesCirurgiaContent() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Pill size={16} className="text-coral" />
-                    <h4 className="text-sm font-semibold text-ink-primary">Prescrições Relacionadas ({medicamentosPosOperatorio.length})</h4>
+                    <h4 className="text-sm font-semibold text-ink-primary">Prescrições Relacionadas ({medicamentosPosOperatorios.length})</h4>
                   </div>
                 </div>
 
-                {medicamentosPosOperatorio.length === 0 ? (
+                {medicamentosPosOperatorios.length === 0 ? (
                   <p className="text-xs text-ink-muted py-2">Nenhum medicamento vinculado a esta data ou equipe médica.</p>
                 ) : (
                   <div className="space-y-2">
-                    {medicamentosPosOperatorio.map((m: Medicamento) => (
+                    {medicamentosPosOperatorios.map((m: Medicamento) => (
                       <div 
                         key={m.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${m.id}`); }}
