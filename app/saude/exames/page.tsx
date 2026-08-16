@@ -4,57 +4,61 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
-  ArrowLeft, FlaskConical, Search, Plus, Building2, 
-  ChevronRight, Calendar, Activity, Brain, Flame, HeartPulse, ShieldAlert 
+  ArrowLeft, FlaskConical, Search, Building2, 
+  ChevronRight, Calendar, Filter, X, AlertTriangle, CheckCircle2
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-// ✅ NOVO: import do hook
 import { useExames } from "@/hooks/useExames";
+import { isReceitaVencidaSegura } from "@/lib/health-insights";
 
-function getTratamentoIcon(nome: string) {
-  const n = nome.toLowerCase();
-  if (n.includes("tdah")) return Brain;
-  if (n.includes("dor") || n.includes("neuropática")) return Flame;
-  if (n.includes("depress")) return HeartPulse;
-  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
-  return Activity;
+function formatDateDisplay(isoStr: string): string {
+  if (!isoStr) return "";
+  const parts = isoStr.split("-");
+  if (parts.length !== 3) return isoStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
 export default function ExamesPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "vencido" | "valido">("todos");
 
-  // ✅ CORRIGIDO: usa o hook useExames
   const { exames } = useExames();
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  
-  // ✅ CORRIGIDO: A tabela exame_tratamentos é mantida para compatibilidade
-  const vinculos = useLiveQuery(() => db.exame_tratamentos.toArray(), []) || [];
   const persons = useLiveQuery(() => db.persons.toArray(), []) || [];
 
-  const tratamentoMap = useMemo(() => new Map(tratamentos.map(t => [t.id, t])), [tratamentos]);
   const personMap = useMemo(() => new Map(persons.map(p => [p.id, p.name])), [persons]);
-  
-  const vinculosMap = useMemo(() => {
-    const map = new Map<string, string[]>();
-    vinculos.forEach(v => {
-      if (!map.has(v.exame_id)) map.set(v.exame_id, []);
-      map.get(v.exame_id)!.push(v.tratamento_id);
-    });
-    return map;
-  }, [vinculos]);
 
-  const filteredExames = (exames || []).filter((exame: any) => 
-    exame.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    exame.laboratorio?.toLowerCase().includes(search.toLowerCase())
-  );
+  const examesComStatus = useMemo(() => {
+    return (exames || []).map((exame: any) => {
+      const vencido = exame.data_retorno ? isReceitaVencidaSegura(exame.data_retorno) : false;
+      return { ...exame, vencido };
+    });
+  }, [exames]);
+
+  const filteredExames = useMemo(() => {
+    let result = examesComStatus;
+
+    if (search) {
+      result = result.filter((exame: any) =>
+        exame.nome?.toLowerCase().includes(search.toLowerCase()) ||
+        exame.laboratorio?.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (filtroStatus === "vencido") {
+      result = result.filter((exame: any) => exame.vencido);
+    } else if (filtroStatus === "valido") {
+      result = result.filter((exame: any) => !exame.vencido);
+    }
+
+    return result.sort((a: any, b: any) => (b.data || "").localeCompare(a.data || ""));
+  }, [examesComStatus, search, filtroStatus]);
 
   if (!exames) return <LoadingSkeleton />;
 
@@ -71,9 +75,46 @@ export default function ExamesPage() {
               <h1 className="font-display text-xl font-semibold text-ink-primary truncate">Exames e Laudos</h1>
             </div>
           </div>
+
           <div className="relative mt-4">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
             <Input placeholder="Buscar exame ou laboratório..." value={search} onChange={(e) => setSearch(e.target.value)} className="border-surface-border/50 bg-surface-raised pl-9" />
+          </div>
+
+          {/* 🔧 FILTROS */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <Filter size={14} className="text-ink-muted" />
+            
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "vencido" ? "todos" : "vencido"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroStatus === "vencido"
+                  ? "border-coral bg-coral/20 text-coral"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Vencidos
+            </button>
+
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "valido" ? "todos" : "valido"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroStatus === "valido"
+                  ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Válidos
+            </button>
+
+            {filtroStatus !== "todos" && (
+              <button
+                onClick={() => { trigger("vibrate"); setFiltroStatus("todos"); }}
+                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
+              >
+                <X size={12} /> Limpar
+              </button>
+            )}
           </div>
         </header>
 
@@ -81,15 +122,13 @@ export default function ExamesPage() {
           {filteredExames.length === 0 ? (
             <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-12 text-center">
               <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><FlaskConical size={24} /></div>
-              <p className="text-sm font-medium text-ink-primary">Nenhum exame encontrado</p>
+              <p className="text-sm font-medium text-ink-primary">
+                {search || filtroStatus !== "todos" ? "Nenhum exame encontrado com esses filtros." : "Nenhum exame cadastrado ainda."}
+              </p>
             </div>
           ) : (
             filteredExames.map((exame: any) => {
               const personName = personMap.get(exame.person_id);
-              const tIds = vinculosMap.get(exame.id) || [];
-              const primeiroTratamento = tIds.length > 0 ? tratamentoMap.get(tIds[0]) : null;
-              const corTratamento = (primeiroTratamento as any)?.cor || "#10B981";
-
               return (
                 <motion.button
                   key={exame.id}
@@ -98,21 +137,31 @@ export default function ExamesPage() {
                   onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }}
                   className="flex w-full items-start gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
                 >
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: corTratamento }} />
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: exame.vencido ? '#EF4444' : '#10B981' }} />
 
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">
                     <FlaskConical size={20} className="text-emerald-400" />
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <p className="truncate text-sm font-semibold text-ink-primary">{exame.nome}</p>
                       {personName && <span className="shrink-0 rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[9px] font-semibold text-ink-muted uppercase tracking-wide">👤 {personName}</span>}
+                      {/* 🔧 Badge de vencimento */}
+                      {exame.vencido ? (
+                        <span className="flex items-center gap-1 text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">
+                          <AlertTriangle size={10} /> Vencido
+                        </span>
+                      ) : exame.data_retorno ? (
+                        <span className="flex items-center gap-1 text-[8px] font-bold uppercase bg-emerald-400/20 text-emerald-400 px-1.5 py-0.5 rounded-full">
+                          <CheckCircle2 size={10} /> Válido
+                        </span>
+                      ) : null}
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                       {exame.laboratorio && <span className="flex items-center gap-1 truncate"><Building2 size={12} className="text-ink-faint" /> {exame.laboratorio}</span>}
-                      {exame.data && <span className="flex items-center gap-1"><Calendar size={12} className="text-ink-faint" /> {exame.data}</span>}
+                      {exame.data && <span className="flex items-center gap-1"><Calendar size={12} className="text-ink-faint" /> {formatDateDisplay(exame.data)}</span>}
                     </div>
                   </div>
                   <ChevronRight size={16} className="mt-1 shrink-0 text-ink-faint" />
@@ -120,12 +169,6 @@ export default function ExamesPage() {
               );
             })
           )}
-
-          <div className="pt-4">
-            <Button variant="primary" fullWidth onClick={() => { trigger("vibrate"); router.push("/saude/exames/novo"); }} className="flex items-center justify-center gap-2 shadow-lg shadow-emerald-400/10">
-              <Plus size={16} /> Cadastrar Novo Exame
-            </Button>
-          </div>
         </section>
       </main>
     </PageTransition>
