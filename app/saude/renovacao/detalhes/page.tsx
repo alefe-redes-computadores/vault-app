@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, FileWarning, Calendar, DollarSign, ExternalLink, 
-  Trash2, Pill, FileText, Edit3 
+  Trash2, Pill, FileText, Edit3, AlertCircle, CheckCircle2, Clock,
+  History, ChevronRight
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import { getDaysUntil } from "@/lib/health-utils";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -25,6 +28,10 @@ function formatDateDisplay(isoStr: string): string {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+function formatCurrency(value: number): string {
+  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+}
+
 function DetalhesRenovacaoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,6 +42,7 @@ function DetalhesRenovacaoContent() {
   const [medicamento, setMedicamento] = useState<any>(null);
   const [medico, setMedico] = useState<any>(null);
   const [farmacia, setFarmacia] = useState<any>(null);
+  const [historicoRenovacoes, setHistoricoRenovacoes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -54,6 +62,20 @@ function DetalhesRenovacaoContent() {
           if (res.medicamento_id) {
             const med = await db.medicamentos.get(res.medicamento_id);
             setMedicamento(med);
+            
+            // 🔧 Buscar histórico de outras renovações do mesmo medicamento
+            const outrasRenovacoes = await db.renovacoes
+              .where('medicamento_id')
+              .equals(res.medicamento_id)
+              .toArray();
+            
+            // Filtrar a atual e ordenar por data
+            const historico = outrasRenovacoes
+              .filter(r => r.id !== res.id)
+              .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+              .slice(0, 5);
+            
+            setHistoricoRenovacoes(historico);
             
             if (res.medico_id) {
               const doc = await db.medicos.get(res.medico_id);
@@ -99,8 +121,11 @@ function DetalhesRenovacaoContent() {
   if (!renovacao) return null;
 
   const precoFormatado = renovacao.preco 
-    ? `R$ ${Number(renovacao.preco).toFixed(2).replace(".", ",")}` 
+    ? formatCurrency(renovacao.preco)
     : "SUS / Gratuito";
+
+  const vencida = isReceitaVencidaSegura(renovacao.data);
+  const diasRestantes = getDaysUntil(renovacao.data);
 
   return (
     <PageTransition>
@@ -143,15 +168,28 @@ function DetalhesRenovacaoContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
+            style={{ borderLeft: `6px solid ${vencida ? '#EF4444' : '#38BDF8'}` }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/20">
                 <FileWarning size={24} />
               </div>
               <div className="min-w-0 pt-1">
-                <h2 className="font-display text-xl font-bold text-ink-primary truncate">
-                  {medicamento?.nome || "Medicamento"}
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display text-xl font-bold text-ink-primary truncate">
+                    {medicamento?.nome || "Medicamento"}
+                  </h2>
+                  {/* 🔧 Badge de status */}
+                  {vencida ? (
+                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-coral/20 text-coral px-2 py-0.5 rounded-full border border-coral/30">
+                      <AlertCircle size={10} /> Vencida
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-400/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-400/30">
+                      <CheckCircle2 size={10} /> Válida
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm font-medium text-ice mt-0.5">
                   {medicamento?.dosagem || ""}
                 </p>
@@ -167,6 +205,25 @@ function DetalhesRenovacaoContent() {
                 )}
               </div>
             </div>
+
+            {/* 🔧 Dias restantes */}
+            {diasRestantes !== null && !vencida && (
+              <div className="pt-2 border-t border-surface-border/40">
+                <div className={`flex items-center gap-2 text-xs ${
+                  diasRestantes <= 7 ? 'text-amber-400' : 'text-ink-muted'
+                }`}>
+                  <Clock size={14} />
+                  <span>
+                    {diasRestantes <= 7 ? (
+                      <span className="font-medium text-amber-400">Atenção!</span>
+                    ) : (
+                      <span>Faltam</span>
+                    )}
+                    {' '}{diasRestantes} dias para o vencimento
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3 pt-4 border-t border-surface-border/40">
               <div className="rounded-2xl bg-surface-raised p-3">
@@ -201,8 +258,39 @@ function DetalhesRenovacaoContent() {
             )}
           </motion.div>
 
+          {/* 🔧 Histórico de outras renovações do mesmo medicamento */}
+          {historicoRenovacoes.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
+              <div className="flex items-center gap-2 pl-1">
+                <History size={16} className="text-amber-400" />
+                <h3 className="font-display text-base font-semibold text-ink-primary">Histórico de Renovações</h3>
+                <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">
+                  {historicoRenovacoes.length} anteriores
+                </span>
+              </div>
+              <div className="space-y-2">
+                {historicoRenovacoes.map((r: any) => (
+                  <div
+                    key={r.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }}
+                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-amber-400/30 transition-all active:scale-[0.98]"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-ink-primary">{formatDateDisplay(r.data)}</p>
+                      {r.preco && (
+                        <p className="text-xs text-emerald-400">{formatCurrency(r.preco)}</p>
+                      )}
+                    </div>
+                    <ChevronRight size={14} className="text-ink-faint" />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Rede de Apoio */}
           {(medico || farmacia) && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
               <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Rede de Apoio</h3>
               {medico && (
                 <div className="flex items-center gap-3">
