@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, FolderHeart, Activity, ChevronRight, X, Plus, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Plus, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { safeAddTratamento } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -24,13 +24,12 @@ export default function NovoTratamentoPage() {
   const { cids, addCid } = useCids();
 
   const [nome, setNome] = useState("");
-  const [condicao, setCondicao] = useState(""); // Legado
-  const [cidId, setCidId] = useState(""); // Novo Relacional
+  const [condicao, setCondicao] = useState("");
+  const [cidId, setCidId] = useState("");
   const [status, setStatus] = useState<"ativo" | "concluido" | "suspenso">("ativo");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Estados da Modal de CID
   const [showCidModal, setShowCidModal] = useState(false);
   const [buscaCid, setBuscaCid] = useState("");
   const [novoCidCodigo, setNovoCidCodigo] = useState("");
@@ -52,7 +51,7 @@ export default function NovoTratamentoPage() {
 
       await safeAddTratamento({
         user_id: user?.id || "",
-        person_id: "", // Preparado para o módulo de perfis depois
+        person_id: "", 
         nome: nome.trim(),
         condicao: condicaoTexto || undefined,
         cid_id: cidId || undefined,
@@ -150,7 +149,6 @@ export default function NovoTratamentoPage() {
               autoFocus
             />
 
-            {/* SELETOR DE CID */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">Condição / CID (opcional)</label>
               <button
@@ -214,7 +212,6 @@ export default function NovoTratamentoPage() {
           </Button>
         </div>
 
-        {/* MODAL DE SELEÇÃO E CRIAÇÃO DE CID */}
         <AnimatePresence>
           {showCidModal && (
             <motion.div
