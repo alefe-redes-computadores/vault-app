@@ -6,8 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   Activity, 
-  Plus, 
-  Calendar, 
   Pill, 
   Edit3,
   Brain,
@@ -19,11 +17,10 @@ import {
   FileText,
   Stethoscope,
   ArrowLeftRight,
-  DollarSign,
-  AlertCircle,
   Clock,
   TrendingDown,
-  TrendingUp
+  TrendingUp,
+  Sparkles
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -34,12 +31,13 @@ import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import type { Tratamento, Document } from "@/lib/types";
+import type { Tratamento, Document, Medicamento, Renovacao, Medico } from "@/lib/types";
 import { 
   isReceitaVencidaSegura, 
   calcularEconomia,
   sugerirRenovacao
 } from "@/lib/health-insights";
+import { getCidInsights } from "@/lib/health-insights";
 
 const listVariants = {
   hidden: { opacity: 0 },
@@ -86,7 +84,7 @@ const CORES_PADRAO = [
 ];
 
 function getTratamentoIcon(nome: string) {
-  const n = nome.toLowerCase();
+  const n = (nome || "").toLowerCase();
   if (n.includes("tdah")) return Brain;
   if (n.includes("dor") || n.includes("neuropática")) return Flame;
   if (n.includes("depress")) return HeartPulse;
@@ -137,19 +135,19 @@ function TratamentoContent() {
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
   const allRenovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
-  // Medicamentos vinculados via tratamento_ids
+  // Medicamentos vinculados via tratamento_ids (MultiEntry Index)
   const linkedMedicamentos = useMemo(() => {
     if (!id || !medicamentos) return [];
-    return medicamentos.filter((m: any) => {
+    return medicamentos.filter((m: Medicamento) => {
       return m.tratamento_ids && m.tratamento_ids.includes(id);
     });
   }, [medicamentos, id]);
 
-  // 🔧 Últimas renovações dos medicamentos vinculados
+  // Últimas renovações dos medicamentos vinculados
   const linkedRenovacoes = useMemo(() => {
-    const medIds = new Set(linkedMedicamentos.map((m: any) => m.id));
+    const medIds = new Set(linkedMedicamentos.map((m: Medicamento) => m.id).filter(Boolean));
     return allRenovacoes
-      .filter((r: any) => medIds.has(r.medicamento_id))
+      .filter((r: Renovacao) => r.medicamento_id && medIds.has(r.medicamento_id))
       .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   }, [linkedMedicamentos, allRenovacoes]);
 
@@ -161,10 +159,10 @@ function TratamentoContent() {
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [allDocuments, id]);
 
-  // Custo total
+  // Custo total acumulado
   const custoTotalTratamento = useMemo(() => {
     let total = 0;
-    linkedRenovacoes.forEach((r: any) => {
+    linkedRenovacoes.forEach((r: Renovacao) => {
       if (typeof r.preco === "number" && r.preco > 0) {
         total += r.preco;
       }
@@ -172,20 +170,20 @@ function TratamentoContent() {
     return total;
   }, [linkedRenovacoes]);
 
-  // 🔧 Economia (última compra vs média anterior)
+  // Economia (última compra vs média anterior)
   const economiaInfo = useMemo(() => {
     return calcularEconomia(linkedRenovacoes);
   }, [linkedRenovacoes]);
 
   // Médicos vinculados
   const linkedMedicos = useMemo(() => {
-    const medIds = new Set(linkedMedicamentos.map((m: any) => m.medico_id).filter(Boolean));
-    return medicos.filter(med => medIds.has(med.id));
+    const medIds = new Set(linkedMedicamentos.map((m: Medicamento) => m.medico_id).filter(Boolean));
+    return medicos.filter((med: Medico) => med.id && medIds.has(med.id));
   }, [linkedMedicamentos, medicos]);
 
-  // 🔧 Medicamentos com alertas (receita vencida, estoque crítico)
+  // Medicamentos com alertas (receita vencida, estoque crítico)
   const medicamentosComAlertas = useMemo(() => {
-    return linkedMedicamentos.map((med: any) => {
+    return linkedMedicamentos.map((med: Medicamento) => {
       const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
       const insight = sugerirRenovacao(med);
       return {
@@ -195,6 +193,12 @@ function TratamentoContent() {
       };
     });
   }, [linkedMedicamentos]);
+
+  // 🧠 Inteligência Baseada em CID (caso o tratamento possua uma condição ou CID vinculado)
+  const cidInsight = useMemo(() => {
+    if (!tratamento?.condicao) return null;
+    return getCidInsights(tratamento.condicao);
+  }, [tratamento]);
 
   const handleFavoriteToggle = async (docId: string) => {
     await favorite(docId);
@@ -207,8 +211,8 @@ function TratamentoContent() {
   const IconComp = getTratamentoIcon(tratamento.nome);
   const tratamentoCor = tratamento.cor || getCorPorIndex(tratamento.id ? parseInt(tratamento.id) : 0);
   
-  const medicamentosAtivos = medicamentosComAlertas.filter((m: any) => m.status !== "descontinuado");
-  const medicamentosDescontinuados = medicamentosComAlertas.filter((m: any) => m.status === "descontinuado");
+  const medicamentosAtivos = medicamentosComAlertas.filter((m: Medicamento & { status?: string }) => m.status !== "descontinuado");
+  const medicamentosDescontinuados = medicamentosComAlertas.filter((m: Medicamento & { status?: string }) => m.status === "descontinuado");
 
   return (
     <PageTransition>
@@ -237,7 +241,6 @@ function TratamentoContent() {
               >
                 <Edit3 size={16} />
               </button>
-              {/* 🔧 Botão "Adicionar documento" removido - será via menu inferior */}
             </div>
           </div>
         </header>
@@ -282,12 +285,18 @@ function TratamentoContent() {
             </div>
 
             {tratamento.condicao && (
-              <div className="relative z-10 mt-4 rounded-xl bg-surface-raised/50 border border-surface-border/40 p-3">
+              <div className="relative z-10 mt-4 rounded-xl bg-surface-raised/50 border border-surface-border/40 p-3 space-y-1">
                 <p className="text-xs text-ink-muted"><span className="font-medium text-ink-primary">CID / Condição:</span> {tratamento.condicao}</p>
+                {cidInsight && (
+                  <div className="flex items-start gap-1.5 pt-1 text-[11px] text-ice">
+                    <Sparkles size={13} className="shrink-0 mt-0.5" />
+                    <span><strong>Insight:</strong> {cidInsight.alertaClinico}</span>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* 🔧 Alertas de economia */}
+            {/* Alertas de economia */}
             {economiaInfo && (
               <div className="relative z-10 mt-3 pt-3 border-t border-surface-border/40">
                 <div className={`flex items-center gap-2 text-xs ${economiaInfo.economia > 0 ? 'text-emerald-400' : 'text-coral'}`}>
@@ -336,7 +345,7 @@ function TratamentoContent() {
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {linkedMedicos.map(m => (
+                {linkedMedicos.map((m: Medico) => (
                   <button 
                     key={m.id} 
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${m.id}`); }} 
@@ -349,7 +358,7 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          {/* 🔧 Últimas Renovações */}
+          {/* Últimas Renovações */}
           {linkedRenovacoes.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -357,8 +366,8 @@ function TratamentoContent() {
                 <h3 className="font-display text-base font-semibold text-ink-primary">Últimas Compras</h3>
               </div>
               <div className="space-y-2">
-                {linkedRenovacoes.slice(0, 5).map((ren: any) => {
-                  const med = linkedMedicamentos.find((m: any) => m.id === ren.medicamento_id);
+                {linkedRenovacoes.slice(0, 5).map((ren: Renovacao) => {
+                  const med = linkedMedicamentos.find((m: Medicamento) => m.id === ren.medicamento_id);
                   return (
                     <div key={ren.id} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm">
                       <div>
@@ -391,7 +400,7 @@ function TratamentoContent() {
               </div>
             ) : (
               <div className="space-y-3">
-                {medicamentosAtivos.map((med: any) => (
+                {medicamentosAtivos.map((med: Medicamento & { receitaVencida?: boolean; insight?: any }) => (
                   <div
                     key={med.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
@@ -436,7 +445,7 @@ function TratamentoContent() {
                 <h3 className="font-display text-base font-semibold text-ink-primary">Histórico (Descontinuados)</h3>
               </div>
               <div className="space-y-3 border-l-2 border-surface-border/50 ml-3 pl-4">
-                {medicamentosDescontinuados.map((med: any) => (
+                {medicamentosDescontinuados.map((med: Medicamento & { motivo_descontinuacao?: string; medicamento_substituto_nome?: string }) => (
                   <div key={med.id} onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }} className="relative rounded-2xl border border-coral/10 bg-surface-raised/60 p-3.5 cursor-pointer">
                     <div className="absolute -left-[23px] top-4 h-2.5 w-2.5 rounded-full bg-coral border-2 border-void ring-1 ring-surface-border/50"></div>
                     <div className="flex justify-between items-start mb-1">
