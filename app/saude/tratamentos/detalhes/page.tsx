@@ -20,7 +20,11 @@ import {
   Clock,
   TrendingDown,
   TrendingUp,
-  Sparkles
+  Sparkles,
+  Plus,
+  FolderHeart,
+  FileWarning,
+  X
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -31,7 +35,7 @@ import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import type { Tratamento, Document, Medicamento, Renovacao, Medico } from "@/lib/types";
+import type { Tratamento, Document, Medicamento, Renovacao, Medico, Cid } from "@/lib/types";
 import { 
   isReceitaVencidaSegura, 
   calcularEconomia,
@@ -108,6 +112,18 @@ function TratamentoContent() {
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 🔧 Menu flutuante para o botão +
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
+
+  // 🔧 Estado para controlar o fechamento do menu ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = () => setIsMenuFlutuanteOpen(false);
+    if (isMenuFlutuanteOpen) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [isMenuFlutuanteOpen]);
+
   useEffect(() => {
     if (!id) {
       router.push("/saude");
@@ -135,7 +151,13 @@ function TratamentoContent() {
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
   const allRenovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
-  // Medicamentos vinculados via tratamento_ids (MultiEntry Index)
+  // 🔧 Buscar CIDs vinculados (cid_ids)
+  const cidsVinculados = useLiveQuery(() => {
+    if (!tratamento?.cid_ids || tratamento.cid_ids.length === 0) return [];
+    return db.cids.where('id').anyOf(tratamento.cid_ids).toArray();
+  }, [tratamento?.cid_ids]) || [];
+
+  // Medicamentos vinculados via tratamento_ids
   const linkedMedicamentos = useMemo(() => {
     if (!id || !medicamentos) return [];
     return medicamentos.filter((m: Medicamento) => {
@@ -194,11 +216,16 @@ function TratamentoContent() {
     });
   }, [linkedMedicamentos]);
 
-  // 🧠 Inteligência Baseada em CID (caso o tratamento possua uma condição ou CID vinculado)
-  const cidInsight = useMemo(() => {
-    if (!tratamento?.condicao) return null;
-    return getCidInsights(tratamento.condicao);
-  }, [tratamento]);
+  // 🧠 Insights dos CIDs vinculados
+  const cidsInsights = useMemo(() => {
+    return cidsVinculados.map((cid: Cid) => {
+      const insight = getCidInsights(cid.codigo);
+      return {
+        ...cid,
+        insight,
+      };
+    });
+  }, [cidsVinculados]);
 
   const handleFavoriteToggle = async (docId: string) => {
     await favorite(docId);
@@ -213,6 +240,20 @@ function TratamentoContent() {
   
   const medicamentosAtivos = medicamentosComAlertas.filter((m: Medicamento & { status?: string }) => m.status !== "descontinuado");
   const medicamentosDescontinuados = medicamentosComAlertas.filter((m: Medicamento & { status?: string }) => m.status === "descontinuado");
+
+  // 🔧 Opções do menu flutuante
+  const menuOptions = [
+    { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?tratamento_id=${id}` },
+    { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?medicamento_id=...` },
+    { id: "adicionar-documento", label: "Adicionar Documento", icon: FileText, path: `/novo?tratamento_id=${id}` },
+    { id: "editar-tratamento", label: "Editar Tratamento", icon: Edit3, path: `/saude/tratamentos/editar?id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
 
   return (
     <PageTransition>
@@ -234,6 +275,61 @@ function TratamentoContent() {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* 🔧 BOTÃO + COM MENU FLUTUANTE */}
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                >
+                  <Plus size={18} />
+                </button>
+                <AnimatePresence>
+                  {isMenuFlutuanteOpen && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.16 }}
+                        onClick={() => setIsMenuFlutuanteOpen(false)}
+                        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                        className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="px-3 pb-2 pt-3.5">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                        </div>
+                        <div className="px-1.5 pb-2">
+                          {menuOptions.map((option) => {
+                            const Icon = option.icon;
+                            return (
+                              <button
+                                key={option.id}
+                                onClick={() => handleMenuOptionClick(option.path)}
+                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              >
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                  <Icon size={15} />
+                                </div>
+                                <span className="text-sm font-medium text-ink-primary">
+                                  {option.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <button
                 onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/editar?id=${tratamento.id}`); }}
                 aria-label="Editar tratamento"
@@ -284,13 +380,26 @@ function TratamentoContent() {
               </div>
             </div>
 
-            {tratamento.condicao && (
-              <div className="relative z-10 mt-4 rounded-xl bg-surface-raised/50 border border-surface-border/40 p-3 space-y-1">
-                <p className="text-xs text-ink-muted"><span className="font-medium text-ink-primary">CID / Condição:</span> {tratamento.condicao}</p>
-                {cidInsight && (
-                  <div className="flex items-start gap-1.5 pt-1 text-[11px] text-ice">
-                    <Sparkles size={13} className="shrink-0 mt-0.5" />
-                    <span><strong>Insight:</strong> {cidInsight.alertaClinico}</span>
+            {/* 🔧 Exibir múltiplos CIDs vinculados */}
+            {cidsVinculados.length > 0 && (
+              <div className="relative z-10 mt-4 rounded-xl bg-surface-raised/50 border border-surface-border/40 p-3 space-y-2">
+                <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5">
+                  <FolderHeart size={14} className="text-violet-400" /> Diagnósticos vinculados:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {cidsInsights.map((cid) => (
+                    <div key={cid.id} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-2.5 py-1">
+                      <span className="text-[10px] font-semibold text-violet-300">{cid.codigo}</span>
+                      <span className="text-[10px] text-ink-muted">- {cid.descricao}</span>
+                      {cid.insight && (
+                        <Sparkles size={12} className="text-ice" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {cidsInsights.some(c => c.insight) && (
+                  <div className="mt-1 text-[11px] text-ice bg-ice/10 p-2 rounded-lg">
+                    <strong>Insight:</strong> {cidsInsights.map(c => c.insight?.alertaClinico).filter(Boolean).join(' • ')}
                   </div>
                 )}
               </div>
