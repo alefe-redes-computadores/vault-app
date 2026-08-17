@@ -2,210 +2,347 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, CheckCircle2, AlertCircle, X, Trash2 } from "lucide-react";
-import { db } from "@/lib/db";
+import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  Save,
+  Loader2,
+  Stethoscope,
+  Building2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
+import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { PageTransition } from "@/components/PageTransition";
+import { TextArea } from "@/components/ui/TextArea";
+import { SelectionModal } from "@/components/SelectionModal";
+import { useCids } from "@/hooks/useCids";
+import { useMedicos } from "@/hooks/useMedicos";
+import { useHospitais } from "@/hooks/useHospitais";
+import { useToast } from "@/components/ToastProvider";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import type { Cid } from "@/lib/types";
+import { uploadFile } from "@/lib/supabase/storage";
+import { useAuth } from "@/hooks/useAuth";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-};
+function handleDateMask(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 8);
+  if (clean.length > 4) {
+    return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
+  }
+  if (clean.length > 2) {
+    return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  }
+  return clean;
+}
+
+function formatDateToDisplay(isoStr?: string): string {
+  if (!isoStr) return "";
+  const parts = isoStr.split("-");
+  if (parts.length !== 3) return "";
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
 
 function EditarCidContent() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { user } = useAuth();
+  const { getCid, updateCid } = useCids();
+  const { medicos } = useMedicos();
+  const { hospitais } = useHospitais();
 
+  const [cid, setCid] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [codigo, setCodigo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [dataDiagnostico, setDataDiagnostico] = useState("");
+  const [medicoId, setMedicoId] = useState("");
+  const [estabelecimentoId, setEstabelecimentoId] = useState("");
   const [observacoes, setObservacoes] = useState("");
-
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-
-  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
-    setToastMessage({ text, type });
-    setTimeout(() => setToastMessage(null), 3500);
-  };
+  const [anexoUrl, setAnexoUrl] = useState("");
+  const [localFile, setLocalFile] = useState<File | null>(null);
+  const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
+  const [isEstabelecimentoModalOpen, setIsEstabelecimentoModalOpen] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!id) {
       router.push("/saude/cids");
       return;
     }
-    db.cids.get(id).then((data) => {
+    const loadCid = async () => {
+      const data = await getCid(id);
       if (data) {
+        setCid(data);
         setCodigo(data.codigo || "");
         setDescricao(data.descricao || "");
-        // Se houver dados extras salvos no registro local
-        setObservacoes((data as any).observacoes || "");
-        setDataDiagnostico((data as any).data_diagnostico || "");
+        setDataDiagnostico(data.data_diagnostico ? formatDateToDisplay(data.data_diagnostico) : "");
+        setMedicoId(data.medico_id || "");
+        setEstabelecimentoId(data.estabelecimento_id || "");
+        setObservacoes(data.observacoes || "");
+        setAnexoUrl(data.anexo_url || "");
       } else {
         router.push("/saude/cids");
       }
       setIsLoading(false);
-    });
-  }, [id, router]);
+    };
+    loadCid();
+  }, [id, router, getCid]);
 
-  const handleDataChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "");
-    if (value.length > 8) value = value.slice(0, 8);
-    if (value.length > 4) {
-      value = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`;
-    } else if (value.length > 2) {
-      value = `${value.slice(0, 2)}/${value.slice(2)}`;
+  const selectedMedico = medicos.find((m) => m.id === medicoId);
+  const selectedEstabelecimento = hospitais.find((h) => h.id === estabelecimentoId);
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!codigo.trim()) newErrors.codigo = "Código é obrigatório";
+    if (!descricao.trim()) newErrors.descricao = "Descrição é obrigatória";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    trigger("vibrate");
+    setLocalFile(file);
+    if (user) {
+      const { url, error } = await uploadFile(user.id, file, "saude");
+      if (!error && url) {
+        setAnexoUrl(url);
+        showToast("Arquivo anexado", "success");
+      } else {
+        showToast("Erro ao fazer upload", "error");
+      }
     }
-    setDataDiagnostico(value);
+    e.target.value = "";
   };
 
   const handleSubmit = async () => {
     trigger("vibrate");
-    if (!descricao.trim()) {
-      setError("A descrição é obrigatória");
+    if (!validate()) {
       trigger("error");
-      showToast("Preencha a descrição da condição.", "error");
       return;
     }
-    if (!id) return;
-
-    setSaving(true);
+    setLoading(true);
     try {
-      await db.cids.update(id, {
-        codigo: codigo.trim().toUpperCase() || "N/A",
+      const dataISO = dataDiagnostico
+        ? dataDiagnostico.split("/").reverse().join("-")
+        : undefined;
+
+      await updateCid(id!, {
+        codigo: codigo.trim(),
         descricao: descricao.trim(),
-        updated_at: new Date().toISOString(),
-        // Salvando campos estendidos de forma segura
-        ...( { observacoes: observacoes.trim(), data_diagnostico: dataDiagnostico } as any )
+        data_diagnostico: dataISO,
+        medico_id: medicoId || undefined,
+        estabelecimento_id: estabelecimentoId || undefined,
+        observacoes: observacoes.trim() || undefined,
+        anexo_url: anexoUrl || undefined,
       });
 
       trigger("success");
-      showToast("Alterações salvas com sucesso.");
-      setTimeout(() => router.replace(`/saude/cids/detalhes?id=${id}`), 800);
-    } catch (err) {
-      console.error("Erro ao atualizar CID:", err);
+      showToast("CID atualizado com sucesso!", "success");
+      router.back();
+    } catch (error) {
+      console.error("Erro ao atualizar CID:", error);
       trigger("error");
-      showToast("Erro ao salvar alterações.", "error");
+      showToast("Erro ao atualizar CID", "error");
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
   if (isLoading) return <LoadingSkeleton />;
+  if (!cid) return null;
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top pt-6 backdrop-blur-xl flex items-center justify-between">
+      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Base de Saúde</p>
-              <h1 className="font-display text-lg font-semibold text-ink-primary">Editar Diagnóstico (CID)</h1>
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-violet-400">Vault</p>
+              <h1 className="font-display text-xl font-semibold text-ink-primary truncate">
+                Editar CID
+              </h1>
             </div>
           </div>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
+        <section className="px-5 pt-6 space-y-4">
           <motion.div
-            variants={fadeUp}
-            initial="initial"
-            animate="animate"
-            className="space-y-5 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4"
           >
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-1">
-                <Input
-                  label="Código CID"
-                  placeholder="Ex: F90.0"
-                  value={codigo}
-                  onChange={(e) => setCodigo(e.target.value)}
-                />
-              </div>
-              <div className="col-span-2">
-                <Input
-                  label="Data Diagnóstico"
-                  placeholder="DD/MM/AAAA"
-                  value={dataDiagnostico}
-                  onChange={handleDataChange}
-                  maxLength={10}
-                />
-              </div>
-            </div>
-
             <Input
-              label="Nome / Descrição da Condição"
-              placeholder="Ex: Transtorno de Déficit de Atenção com Hiperatividade"
+              label="Código CID <span class='text-coral'>*</span>"
+              placeholder="Ex: F90.0"
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+              error={errors.codigo}
+            />
+            <Input
+              label="Descrição <span class='text-coral'>*</span>"
+              placeholder="Ex: Transtorno de déficit de atenção / hiperatividade"
               value={descricao}
-              onChange={(e) => {
-                setDescricao(e.target.value);
-                if (error) setError("");
-              }}
-              error={error}
-              required
+              onChange={(e) => setDescricao(e.target.value)}
+              error={errors.descricao}
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.04 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Data do Diagnóstico</label>
+              <input
+                type="text"
+                placeholder="DD/MM/AAAA"
+                maxLength={10}
+                value={dataDiagnostico}
+                onChange={(e) => setDataDiagnostico(handleDateMask(e.target.value))}
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice"
+              />
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.06 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico que diagnosticou</label>
+            <button
+              onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
+              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <Stethoscope size={16} className="text-ice" />
+                {selectedMedico ? selectedMedico.nome : "Selecionar médico..."}
+              </span>
+              <span className="text-xs text-ice font-medium">Alterar</span>
+            </button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Local / Estabelecimento</label>
+            <button
+              onClick={() => { trigger("vibrate"); setIsEstabelecimentoModalOpen(true); }}
+              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <Building2 size={16} className="text-violet-400" />
+                {selectedEstabelecimento ? selectedEstabelecimento.nome : "Selecionar local..."}
+              </span>
+              <span className="text-xs text-ice font-medium">Alterar</span>
+            </button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3"
+          >
+            <TextArea
+              label="Observações"
+              placeholder="Sintomas, histórico familiar, etc."
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
             />
 
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Histórico e Observações Pessoais</label>
-              <textarea
-                rows={3}
-                placeholder="Ex: Diagnosticado pelo Dr. Carlos, acompanhamento no Hospital Sarah..."
-                value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-sm text-ink-primary outline-none focus:border-ice/50 resize-none"
-              />
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Laudo / Anexo</label>
+              {anexoUrl ? (
+                <div className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3">
+                  <span className="text-sm text-ink-primary truncate">{localFile?.name || "Arquivo anexado"}</span>
+                  <button
+                    onClick={() => { trigger("vibrate"); setAnexoUrl(""); setLocalFile(null); }}
+                    className="text-coral"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={() => document.getElementById("file-upload")?.click()}
+                    className="flex-1"
+                  >
+                    <Upload size={16} /> Anexar
+                  </Button>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={handleSubmit}
-            disabled={saving}
-            className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
-          >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Salvar Alterações
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading}>
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {loading ? "Salvando..." : "Salvar Alterações"}
           </Button>
         </div>
 
-        <AnimatePresence>
-          {toastMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.9 }}
-              className="fixed bottom-24 inset-x-5 z-50 mx-auto max-w-sm flex items-center gap-3 rounded-2xl border border-surface-border bg-surface p-4 shadow-2xl"
-            >
-              {toastMessage.type === 'success' ? (
-                <CheckCircle2 size={20} className="text-emerald-400 shrink-0" />
-              ) : (
-                <AlertCircle size={20} className="text-coral shrink-0" />
-              )}
-              <p className="text-xs font-medium text-ink-primary flex-1">{toastMessage.text}</p>
-              <button onClick={() => setToastMessage(null)} className="text-ink-muted hover:text-ink-primary">
-                <X size={16} />
-              </button>
-            </motion.div>
+        <SelectionModal
+          isOpen={isMedicoModalOpen}
+          onClose={() => setIsMedicoModalOpen(false)}
+          onSelect={(item: any) => { trigger("vibrate"); setMedicoId(item.id); }}
+          items={medicos}
+          title="Selecionar Médico"
+          renderItem={(item: any) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
+            </div>
           )}
-        </AnimatePresence>
+          getItemId={(item: any) => item.id!}
+          getItemLabel={(item: any) => item.nome}
+        />
+
+        <SelectionModal
+          isOpen={isEstabelecimentoModalOpen}
+          onClose={() => setIsEstabelecimentoModalOpen(false)}
+          onSelect={(item: any) => { trigger("vibrate"); setEstabelecimentoId(item.id); }}
+          items={hospitais}
+          title="Selecionar Local"
+          renderItem={(item: any) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
+            </div>
+          )}
+          getItemId={(item: any) => item.id!}
+          getItemLabel={(item: any) => item.nome}
+        />
       </main>
     </PageTransition>
   );
