@@ -11,6 +11,7 @@ export interface Person {
   phone?: string;
   avatar_url?: string;
   color: string;
+  isDefault?: boolean; // ✅ Novo: Define se esta é a pessoa padrão ao abrir o app
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -105,9 +106,8 @@ export interface Document {
   attachments: Attachment[];
   is_favorite: boolean;
   vault_id?: string;
-  // ✅ NOVOS CAMPOS PARA VÍNCULO RELACIONAL
-  hospital_id?: string;  // Vínculo com Hospital
-  medico_id?: string;    // Vínculo com Médico
+  hospital_id?: string;
+  medico_id?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -285,7 +285,7 @@ export interface Medicamento {
   medico_id?: string;
   farmacia_id?: string;
   estabelecimento_id?: string;
-  tratamento_ids?: string[]; // ✅ MultiEntry Index array
+  tratamento_ids?: string[];
   medico: string;
   farmacia?: string;
   data_receita: string;
@@ -372,7 +372,7 @@ export interface Exame {
   motivo?: string;
   observacoes?: string;
   anexo_url?: string;
-  tratamento_ids?: string[]; // ✅ MultiEntry Index array
+  tratamento_ids?: string[];
   synced?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -460,6 +460,7 @@ export interface Medico {
   crm?: string;
   telefone?: string;
   email?: string;
+  observacoes?: string; // ✅ Adicionado para blindar a página Medico Detalhes
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -471,6 +472,7 @@ export interface Farmacia {
   nome: string;
   endereco?: string;
   telefone?: string;
+  observacoes?: string; // ✅ Adicionado preventivamente
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -483,6 +485,7 @@ export interface Hospital {
   endereco?: string;
   telefone?: string;
   tipo?: string;
+  observacoes?: string; // ✅ Adicionado preventivamente
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -495,6 +498,7 @@ export interface LocalSaude {
   endereco?: string;
   telefone?: string;
   tipo?: string;
+  observacoes?: string; // ✅ Adicionado preventivamente
   created_at?: string;
   updated_at: string;
   synced?: boolean;
@@ -506,6 +510,7 @@ export interface Laboratorio {
   nome: string;
   endereco?: string;
   telefone?: string;
+  observacoes?: string; // ✅ Adicionado preventivamente
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -540,7 +545,8 @@ export interface Tratamento {
   condicao?: string;
   data_inicio?: string;
   status: 'ativo' | 'concluido' | 'suspenso';
-  cor?: string; // ✅ Identidade Visual
+  cor?: string;
+  observacoes?: string; // ✅ Adicionado preventivamente
   created_at: string;
   updated_at: string;
   synced: boolean;
