@@ -23,6 +23,7 @@ import {
   Activity,
   Copy,
   RotateCcw,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -64,109 +65,73 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
 ];
 
 // ============================================================
-// MÉDICOS
+// MÉDICOS (LISTAGEM APENAS)
 // ============================================================
 const MEDICOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-medico", label: "Novo Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
 ];
-const MEDICOS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "nova-consulta", label: "Nova Consulta", icon: Calendar, path: "/saude/consultas/nova" },
-  { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
-  { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
-  { id: "editar-medico", label: "Editar Médico", icon: Edit, path: "/saude/medicos/editar" },
-];
 
 // ============================================================
-// FARMÁCIAS
+// FARMÁCIAS (LISTAGEM APENAS)
 // ============================================================
 const FARMACIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-farmacia", label: "Nova Farmácia", icon: Building2, path: "/saude/farmacias/novo" },
 ];
-const FARMACIAS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
-  { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
-  { id: "editar-farmacia", label: "Editar Farmácia", icon: Edit, path: "/saude/farmacias/editar" },
-];
 
 // ============================================================
-// TRATAMENTOS
+// TRATAMENTOS (LISTAGEM APENAS)
 // ============================================================
 const TRATAMENTOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-tratamento", label: "Novo Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" },
 ];
-const TRATAMENTOS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
-  { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
-  { id: "adicionar-documento", label: "Adicionar Documento", icon: UploadCloud, path: "/novo" },
-  { id: "editar-tratamento", label: "Editar Tratamento", icon: Edit, path: "/saude/tratamentos/editar" },
-];
 
 // ============================================================
-// HOSPITAIS
+// HOSPITAIS (LISTAGEM APENAS)
 // ============================================================
 const HOSPITAIS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-hospital", label: "Novo Hospital", icon: Building2, path: "/saude/hospitais/novo" },
 ];
-const HOSPITAIS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
-  { id: "novo-exame", label: "Novo Exame", icon: FlaskConical, path: "/saude/exames/novo" },
-  { id: "nova-consulta", label: "Nova Consulta", icon: Calendar, path: "/saude/consultas/nova" },
-  { id: "editar-hospital", label: "Editar Hospital", icon: Edit, path: "/saude/hospitais/editar" },
-];
 
 // ============================================================
-// LOCAIS (CORRIGIDO: ComposerOption[] → ComposeOption[])
+// LOCAIS (LISTAGEM APENAS)
 // ============================================================
 const LOCAIS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-local", label: "Novo Local", icon: MapPin, path: "/saude/locais/novo" },
 ];
-const LOCAIS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
-  { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
-  { id: "editar-local", label: "Editar Local", icon: Edit, path: "/saude/locais/editar" },
-];
 
 // ============================================================
-// RENOVAÇÕES
+// RENOVAÇÕES (LISTAGEM APENAS)
 // ============================================================
 const RENOVACOES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
 ];
-const RENOVACOES_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "editar-renovacao", label: "Editar Renovação", icon: Edit, path: "/saude/renovacao/editar" },
-  { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
-];
 
 // ============================================================
-// EXAMES
+// EXAMES (LISTAGEM APENAS)
 // ============================================================
 const EXAMES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-exame", label: "Novo Exame", icon: FlaskConical, path: "/saude/exames/novo" },
 ];
-const EXAMES_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "editar-exame", label: "Editar Exame", icon: Edit, path: "/saude/exames/editar" },
-  { id: "duplicar-exame", label: "Solicitar Novamente", icon: Copy, path: "/saude/exames/novo" },
-];
 
 // ============================================================
-// CONSULTAS
+// CONSULTAS (LISTAGEM APENAS)
 // ============================================================
 const CONSULTAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-consulta", label: "Nova Consulta", icon: Calendar, path: "/saude/consultas/nova" },
 ];
-const CONSULTAS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "editar-consulta", label: "Editar Consulta", icon: Edit, path: "/saude/consultas/editar" },
-  { id: "reagendar-consulta", label: "Reagendar Consulta", icon: RotateCcw, path: "/saude/consultas/nova" },
-];
 
 // ============================================================
-// CIRURGIAS
+// CIRURGIAS (LISTAGEM APENAS)
 // ============================================================
 const CIRURGIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
 ];
-const CIRURGIAS_DETALHE_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "editar-cirurgia", label: "Editar Cirurgia", icon: Edit, path: "/saude/cirurgias/editar" },
+
+// ============================================================
+// CIDS (NOVO)
+// ============================================================
+const CIDS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "novo-cid", label: "Novo CID", icon: FileText, path: "/saude/cids/novo" },
 ];
 
 // ============================================================
@@ -182,6 +147,8 @@ function getRedeComposeOptions(tab: string | null): ComposeOption[] {
       return [{ id: "novo-hospital", label: "Novo Hospital", icon: Building2, path: "/saude/hospitais/novo" }];
     case "tratamentos":
       return [{ id: "novo-tratamento", label: "Novo Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" }];
+    case "cids":
+      return [{ id: "novo-cid", label: "Novo CID", icon: FileText, path: "/saude/cids/novo" }];
     case "visao-geral":
     default:
       return SAUDE_COMPOSE_OPTIONS;
@@ -217,52 +184,48 @@ function shouldHideNav(pathname: string): boolean {
   if (pathname.startsWith("/cartoes/") && pathname !== "/cartoes") {
     return true;
   }
-  // 🔧 REMOVIDA a regra que ocultava todas as subpáginas de saúde
-  // Agora o nav aparece em todas as páginas de saúde (listagens, detalhes, etc.)
+  // 🔧 OCULTAR MENU INFERIOR EM TODAS AS TELAS DE DETALHES
+  if (pathname.includes("/detalhes")) {
+    return true;
+  }
   return false;
 }
 
 // ============================================================
-// getComposeOptions (ATUALIZADO com suporte a Rede)
+// getComposeOptions (ATUALIZADO)
 // ============================================================
 function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
-  // MÉDICOS
+  // MÉDICOS (apenas listagem)
   if (pathname === "/saude/medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
-  if (pathname.startsWith("/saude/medicos/detalhes")) return MEDICOS_DETALHE_COMPOSE_OPTIONS;
   
-  // FARMÁCIAS
+  // FARMÁCIAS (apenas listagem)
   if (pathname === "/saude/farmacias") return FARMACIAS_LIST_COMPOSE_OPTIONS;
-  if (pathname.startsWith("/saude/farmacias/detalhes")) return FARMACIAS_DETALHE_COMPOSE_OPTIONS;
   
-  // TRATAMENTOS
+  // TRATAMENTOS (apenas listagem)
   if (pathname === "/saude/tratamentos") return TRATAMENTOS_LIST_COMPOSE_OPTIONS;
-  if (pathname.startsWith("/saude/tratamentos/detalhes")) return TRATAMENTOS_DETALHE_COMPOSE_OPTIONS;
   
-  // HOSPITAIS
+  // HOSPITAIS (apenas listagem)
   if (pathname === "/saude/hospitais") return HOSPITAIS_LIST_COMPOSE_OPTIONS;
-  if (pathname.startsWith("/saude/hospitais/detalhes")) return HOSPITAIS_DETALHE_COMPOSE_OPTIONS;
   
-  // LOCAIS
+  // LOCAIS (apenas listagem)
   if (pathname === "/saude/locais") return LOCAIS_LIST_COMPOSE_OPTIONS;
-  if (pathname.startsWith("/saude/locais/detalhes")) return LOCAIS_DETALHE_COMPOSE_OPTIONS;
   
-  // RENOVAÇÕES
+  // RENOVAÇÕES (apenas listagem)
   if (pathname === "/saude/renovacao") return RENOVACOES_LIST_COMPOSE_OPTIONS;
-  if (pathname.startsWith("/saude/renovacao/detalhes")) return RENOVACOES_DETALHE_COMPOSE_OPTIONS;
   
-  // EXAMES
+  // EXAMES (apenas listagem)
   if (pathname === "/saude/exames") return EXAMES_LIST_COMPOSE_OPTIONS;
-  if (pathname.startsWith("/saude/exames/detalhes")) return EXAMES_DETALHE_COMPOSE_OPTIONS;
   
-  // CONSULTAS
+  // CONSULTAS (apenas listagem)
   if (pathname === "/saude/consultas") return CONSULTAS_LIST_COMPOSE_OPTIONS;
-  if (pathname.startsWith("/saude/consultas/detalhes")) return CONSULTAS_DETALHE_COMPOSE_OPTIONS;
   
-  // CIRURGIAS
+  // CIRURGIAS (apenas listagem)
   if (pathname === "/saude/cirurgias") return CIRURGIAS_LIST_COMPOSE_OPTIONS;
-  if (pathname.startsWith("/saude/cirurgias/detalhes")) return CIRURGIAS_DETALHE_COMPOSE_OPTIONS;
   
-  // 🔧 REDE (NOVO)
+  // CIDS (apenas listagem)
+  if (pathname === "/saude/cids") return CIDS_LIST_COMPOSE_OPTIONS;
+  
+  // REDE
   if (pathname === "/saude/rede") {
     const tab = searchParams.get("tab");
     return getRedeComposeOptions(tab);
@@ -326,13 +289,13 @@ export function BottomNav() {
     router.push(path);
   };
 
+  // 🔧 Se o menu deve ser ocultado, não renderiza nada
   if (shouldHideNav(pathname) || isBiometricLocked) return null;
 
   const isActive = (path: string) => {
     return pathname === path || (path === "/" && pathname === "/");
   };
 
-  // 🔧 Passa searchParams para getComposeOptions
   const composeOptions = getComposeOptions(pathname, searchParams);
   const hasComposeMenu = composeOptions.length > 1;
 
@@ -352,6 +315,7 @@ export function BottomNav() {
 
     let path = option.path;
 
+    // 🔧 Apenas ações que precisam de ID para páginas de detalhes (mas como ocultamos, não devem ser chamadas)
     const isContextualAction = [
       "nova-consulta",
       "nova-cirurgia",
