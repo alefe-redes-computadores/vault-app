@@ -8,12 +8,28 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useHapticFeedback } from "@/lib/haptics";
-import { 
-  ArrowLeft, FileText, MapPin, Edit3, Trash2, Calendar, Pill, 
-  DollarSign, Clock, TrendingDown, TrendingUp
+import {
+  ArrowLeft,
+  FileText,
+  MapPin,
+  Edit3,
+  Trash2,
+  Calendar,
+  Pill,
+  DollarSign,
+  Clock,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { calcularEconomia, formatCurrency, formatDateDisplay } from "@/lib/health-insights";
+// 🔧 CORRIGIDO: formatDateDisplay vem de health-utils, não health-insights
+import { formatDateDisplay } from "@/lib/health-utils";
+import { calcularEconomia } from "@/lib/health-insights";
+
+// 🔧 Função local (não existe em health-utils)
+function formatCurrency(value: number): string {
+  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -39,8 +55,8 @@ function DetalhesLocalContent() {
 
   // 🔧 Análise completa do local
   const analiseLocal = useMemo(() => {
-    if (!id) return { 
-      totalGasto: 0, 
+    if (!id) return {
+      totalGasto: 0,
       precoMedio: 0,
       ultimaRenovacao: null,
       economia: null,
@@ -48,8 +64,8 @@ function DetalhesLocalContent() {
     };
 
     // Últimas renovações com nome do medicamento
-    const renovacoesComMed = renovacoes.map(r => {
-      const med = medicamentos.find(m => m.id === r.medicamento_id);
+    const renovacoesComMed = renovacoes.map((r) => {
+      const med = medicamentos.find((m) => m.id === r.medicamento_id);
       return { ...r, medicamento_nome: med?.nome || "Medicamento" };
     });
 
@@ -69,8 +85,8 @@ function DetalhesLocalContent() {
     const precos = renovacoes
       .filter((r: any) => typeof r.preco === "number" && r.preco > 0)
       .map((r: any) => r.preco);
-    const precoMedio = precos.length > 0 
-      ? precos.reduce((a, b) => a + b, 0) / precos.length 
+    const precoMedio = precos.length > 0
+      ? precos.reduce((a, b) => a + b, 0) / precos.length
       : 0;
 
     // Última renovação
@@ -80,7 +96,7 @@ function DetalhesLocalContent() {
     const economia = calcularEconomia(renovacoes);
 
     // Medicamentos únicos
-    const medIds = new Set(renovacoes.map(r => r.medicamento_id).filter(Boolean));
+    const medIds = new Set(renovacoes.map((r) => r.medicamento_id).filter(Boolean));
 
     return {
       totalGasto,
@@ -97,7 +113,7 @@ function DetalhesLocalContent() {
       router.push("/saude/locais");
       return;
     }
-    
+
     db.locais.get(id).then((res) => {
       if (res) {
         setLocal(res);
@@ -159,10 +175,10 @@ function DetalhesLocalContent() {
 
         <section className="px-5 pt-6 space-y-5">
           {/* Card Principal */}
-          <motion.div 
-            variants={fadeUp} 
-            initial="initial" 
-            animate="animate" 
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
             style={{ borderLeft: `6px solid ${analiseLocal.renovacoesComMed.length > 0 ? '#34D399' : '#6B7280'}` }}
           >
@@ -189,13 +205,13 @@ function DetalhesLocalContent() {
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Total Gasto</p>
                 <p className="mt-0.5 text-sm font-semibold text-emerald-400">
-                  {analiseLocal.totalGasto > 0 ? `R$ ${analiseLocal.totalGasto.toFixed(2).replace(".", ",")}` : "R$ 0,00"}
+                  {analiseLocal.totalGasto > 0 ? formatCurrency(analiseLocal.totalGasto) : "R$ 0,00"}
                 </p>
               </div>
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Preço Médio</p>
                 <p className="mt-0.5 text-sm font-semibold text-ink-primary">
-                  {analiseLocal.precoMedio > 0 ? `R$ ${analiseLocal.precoMedio.toFixed(2).replace(".", ",")}` : "—"}
+                  {analiseLocal.precoMedio > 0 ? formatCurrency(analiseLocal.precoMedio) : "—"}
                 </p>
               </div>
             </div>
@@ -208,7 +224,7 @@ function DetalhesLocalContent() {
                   <span>Última retirada: <span className="font-medium text-ink-primary">{formatDateDisplay(analiseLocal.ultimaRenovacao.data)}</span></span>
                   {analiseLocal.ultimaRenovacao.preco && (
                     <span className="font-medium text-emerald-400 ml-1">
-                      ({`R$ ${analiseLocal.ultimaRenovacao.preco.toFixed(2).replace(".", ",")}`})
+                      ({formatCurrency(analiseLocal.ultimaRenovacao.preco)})
                     </span>
                   )}
                 </div>
@@ -225,9 +241,9 @@ function DetalhesLocalContent() {
                     <TrendingUp size={14} />
                   )}
                   <span>
-                    {analiseLocal.economia.economia > 0 
-                      ? `Economia de R$ ${Math.abs(analiseLocal.economia.economia).toFixed(2).replace(".", ",")} (${Math.abs(analiseLocal.economia.percentual)}%) na última compra`
-                      : `Aumento de R$ ${Math.abs(analiseLocal.economia.economia).toFixed(2).replace(".", ",")} (${Math.abs(analiseLocal.economia.percentual)}%) na última compra`
+                    {analiseLocal.economia.economia > 0
+                      ? `Economia de ${formatCurrency(Math.abs(analiseLocal.economia.economia))} (${Math.abs(analiseLocal.economia.percentual)}%) na última compra`
+                      : `Aumento de ${formatCurrency(Math.abs(analiseLocal.economia.economia))} (${Math.abs(analiseLocal.economia.percentual)}%) na última compra`
                     }
                   </span>
                 </div>
@@ -246,14 +262,14 @@ function DetalhesLocalContent() {
                 <FileText size={16} className="text-amber-400" />
                 <h4 className="text-sm font-semibold text-ink-primary">Renovações e Retiradas</h4>
               </div>
-              
+
               {analiseLocal.renovacoesComMed.length === 0 ? (
                 <p className="text-xs text-ink-muted py-2">Nenhum registro de renovação ou retirada de medicamentos neste local.</p>
               ) : (
                 <div className="space-y-2">
                   {analiseLocal.renovacoesComMed.slice(0, 10).map((r: any) => (
-                    <div 
-                      key={r.id} 
+                    <div
+                      key={r.id}
                       onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }}
                       className="flex items-center justify-between rounded-xl bg-surface-raised p-3.5 border border-surface-border/40 cursor-pointer hover:border-amber-400/30 transition-colors"
                     >
@@ -269,7 +285,7 @@ function DetalhesLocalContent() {
                       <div className="flex items-center gap-2 shrink-0">
                         {r.preco && (
                           <span className="text-sm font-semibold text-emerald-400">
-                            R$ {Number(r.preco).toFixed(2).replace(".", ",")}
+                            {formatCurrency(r.preco)}
                           </span>
                         )}
                         <FileText size={16} className="text-ice/70 ml-1" />
@@ -287,12 +303,12 @@ function DetalhesLocalContent() {
           </motion.div>
         </section>
 
-        <ConfirmationModal 
-          isOpen={showDeleteModal} 
-          onClose={() => setShowDeleteModal(false)} 
-          onConfirm={handleDelete} 
-          title="Excluir Local" 
-          message="Tem certeza que deseja excluir este posto/clínica? Os registros de renovação não serão apagados, mas perderão a associação com este nome." 
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir Local"
+          message="Tem certeza que deseja excluir este posto/clínica? Os registros de renovação não serão apagados, mas perderão a associação com este nome."
         />
       </main>
     </PageTransition>
