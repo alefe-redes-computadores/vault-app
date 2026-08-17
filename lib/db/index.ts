@@ -72,7 +72,6 @@ class VaultDB extends Dexie {
   cirurgias!: Table<Cirurgia, string>;
   anexos_clinicos!: Table<any, string>;
 
-  // Mantidas para retrocompatibilidade em migrações antigas
   medicamento_tratamentos!: Table<any, string>;
   exame_tratamentos!: Table<any, string>;
 
@@ -96,7 +95,6 @@ class VaultDB extends Dexie {
     this.version(16).stores({ cids: 'id', exame_tratamentos: 'id' });
     this.version(17).stores({ locais: 'id', consultas: 'id', cirurgias: 'id' });
 
-    // VERSÃO 18: MultiEntry Indexes (*tratamento_ids) + índices relacionais
     this.version(18).stores({
       persons: 'id, user_id, name, synced, updated_at',
       documents: 'id, user_id, person_id, category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id',
@@ -119,7 +117,6 @@ class VaultDB extends Dexie {
       anexos_clinicos: 'id, user_id, synced, updated_at',
       syncQueue: 'id, table, operation, created_at, retry_count, failed',
     }).upgrade(async (tx) => {
-      // 1. Migrar medicamentos: ler medicamento_tratamentos e preencher tratamento_ids
       await tx.table('medicamentos').toCollection().modify(async (med) => {
         if (!med.tratamento_ids || med.tratamento_ids.length === 0) {
           const vinculos = await tx.table('medicamento_tratamentos')
@@ -135,8 +132,6 @@ class VaultDB extends Dexie {
           }
         }
       });
-
-      // 2. Migrar exames: ler exame_tratamentos e preencher tratamento_ids
       await tx.table('exames').toCollection().modify(async (exame) => {
         if (!exame.tratamento_ids || exame.tratamento_ids.length === 0) {
           const vinculos = await tx.table('exame_tratamentos')
@@ -148,6 +143,41 @@ class VaultDB extends Dexie {
             exame.tratamento_ids = ids;
           }
         }
+      });
+    });
+
+    // 🔧 NOVA VERSÃO 19: suporte a múltiplos CIDs em tratamentos
+    this.version(19).stores({
+      persons: 'id, user_id, name, synced, updated_at',
+      documents: 'id, user_id, person_id, category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id',
+      medicamentos: 'id, user_id, person_id, document_id, medico_id, farmacia_id, estabelecimento_id, status, synced, updated_at, *tratamento_ids',
+      renovacoes: 'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, local_id, synced, updated_at',
+      medicos: 'id, user_id, nome, especialidade, synced, updated_at',
+      farmacias: 'id, user_id, nome, synced, updated_at',
+      hospitais: 'id, user_id, nome, tipo, synced, updated_at',
+      locais: 'id, user_id, nome, synced, updated_at',
+      laboratorios: 'id, user_id, nome, synced, updated_at',
+      exames: 'id, user_id, person_id, medico_id, laboratorio_id, synced, updated_at, *tratamento_ids',
+      consultas: 'id, user_id, person_id, medico_id, hospital_id, status, synced, updated_at',
+      cirurgias: 'id, user_id, person_id, medico_id, hospital_id, status, synced, updated_at',
+      doseLogs: 'id, user_id, person_id, medicamento_id, data, horario, synced, updated_at',
+      credentials: 'id, user_id, vault_id, category, synced, updated_at',
+      cards: 'id, user_id, type, synced, updated_at',
+      instituicoes: 'id, user_id, nome, synced, updated_at',
+      tratamentos: 'id, user_id, person_id, nome, status, synced, updated_at, *cid_ids',
+      cids: 'id, user_id, codigo, synced, updated_at',
+      anexos_clinicos: 'id, user_id, synced, updated_at',
+      syncQueue: 'id, table, operation, created_at, retry_count, failed',
+    }).upgrade(async (tx) => {
+      // Migrar tratamentos: converter cid_id (singular) para cid_ids (array)
+      await tx.table('tratamentos').toCollection().modify(async (trat) => {
+        if (trat.cid_id && !trat.cid_ids) {
+          trat.cid_ids = [trat.cid_id];
+        } else if (!trat.cid_ids) {
+          trat.cid_ids = [];
+        }
+        // Remover campo antigo (opcional, mas mantido por segurança)
+        delete trat.cid_id;
       });
     });
   }
@@ -179,7 +209,7 @@ export async function syncMedicamentoTratamentos(medicamentoId: string, tratamen
 }
 
 // ============================================================
-// FUNÇÕES CRUD
+// FUNÇÕES CRUD (ATUALIZADAS)
 // ============================================================
 
 // ---------- PERSONS ----------
@@ -1305,9 +1335,54 @@ export async function safeUpdateTratamento(id: string, changes: Partial<Tratamen
 
 export async function safeDeleteTratamento(id: string): Promise<void> {
   const timestamp = nowIso();
-  await db.transaction('rw', db.tratamentos, db.syncQueue, async () => {
+  await db.transaction('rw', db.tratamentos, db.medicamentos, db.exames, db.syncQueue, async () => {
     const existing = await db.tratamentos.get(id);
     if (!existing) return;
+
+    // 🔧 LIMPEZA DE REFERÊNCIAS: remover este tratamento de todos os medicamentos
+    const medicamentos = await db.medicamentos.toArray();
+    for (const med of medicamentos) {
+      if (med.tratamento_ids && med.tratamento_ids.includes(id)) {
+        med.tratamento_ids = med.tratamento_ids.filter((tid: string) => tid !== id);
+        await db.medicamentos.update(med.id!, { tratamento_ids: med.tratamento_ids, updated_at: timestamp, synced: false });
+        // Adicionar à syncQueue para sincronizar a atualização
+        const updatedMed = await db.medicamentos.get(med.id!);
+        if (updatedMed) {
+          await db.syncQueue.add({
+            id: generateId(),
+            table: 'medicamentos',
+            operation: 'update',
+            payload: { ...updatedMed },
+            created_at: timestamp,
+            retry_count: 0,
+            failed: false
+          });
+        }
+      }
+    }
+
+    // 🔧 LIMPEZA DE REFERÊNCIAS: remover este tratamento de todos os exames
+    const exames = await db.exames.toArray();
+    for (const exame of exames) {
+      if (exame.tratamento_ids && exame.tratamento_ids.includes(id)) {
+        exame.tratamento_ids = exame.tratamento_ids.filter((tid: string) => tid !== id);
+        await db.exames.update(exame.id!, { tratamento_ids: exame.tratamento_ids, updated_at: timestamp, synced: false });
+        const updatedExame = await db.exames.get(exame.id!);
+        if (updatedExame) {
+          await db.syncQueue.add({
+            id: generateId(),
+            table: 'exames',
+            operation: 'update',
+            payload: { ...updatedExame },
+            created_at: timestamp,
+            retry_count: 0,
+            failed: false
+          });
+        }
+      }
+    }
+
+    // Deletar o tratamento
     await db.tratamentos.delete(id);
     await db.syncQueue.add({
       id: generateId(),
@@ -1343,10 +1418,36 @@ export async function safeUpdateCid(id: string, changes: Partial<Cid>): Promise<
 }
 
 export async function safeDeleteCid(id: string): Promise<void> {
-  await db.transaction('rw', db.cids, async () => {
+  const timestamp = nowIso();
+  await db.transaction('rw', db.cids, db.tratamentos, db.syncQueue, async () => {
     const existing = await db.cids.get(id);
     if (!existing) return;
+
+    // 🔧 LIMPEZA DE REFERÊNCIAS: remover este CID de todos os tratamentos
+    const tratamentos = await db.tratamentos.toArray();
+    for (const trat of tratamentos) {
+      if (trat.cid_ids && trat.cid_ids.includes(id)) {
+        trat.cid_ids = trat.cid_ids.filter((cidId: string) => cidId !== id);
+        await db.tratamentos.update(trat.id!, { cid_ids: trat.cid_ids, updated_at: timestamp, synced: false });
+        const updatedTrat = await db.tratamentos.get(trat.id!);
+        if (updatedTrat) {
+          await db.syncQueue.add({
+            id: generateId(),
+            table: 'tratamentos',
+            operation: 'update',
+            payload: { ...updatedTrat },
+            created_at: timestamp,
+            retry_count: 0,
+            failed: false
+          });
+        }
+      }
+    }
+
+    // Deletar o CID
     await db.cids.delete(id);
+    // Não precisamos adicionar à syncQueue para delete de CID, pois é uma entidade de domínio que não é sincronizada para Supabase (mas mantemos por consistência)
+    triggerSyncProcess();
   });
 }
 
