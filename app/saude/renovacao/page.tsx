@@ -43,8 +43,13 @@ export default function RenovacoesPage() {
   const renovacoesEnriquecidas = useMemo(() => {
     return renovacoes.map((r: any) => {
       const med = medicamentoMap.get(r.medicamento_id);
-      const vencida = isReceitaVencidaSegura(r.data); // usa data da renovação como referência
-      const diasRestantes = getDaysUntil(r.data);
+      
+      // 🐛 CORREÇÃO 1: Checar se a RECEITA DO MEDICAMENTO (e não a data da compra) venceu
+      const vencida = med?.proxima_renovacao ? isReceitaVencidaSegura(med.proxima_renovacao) : false;
+      
+      // 🐛 CORREÇÃO 2: Contar dias para a PRÓXIMA renovação (não o tempo desde a última compra)
+      const diasRestantes = med?.proxima_renovacao ? getDaysUntil(med.proxima_renovacao) : null;
+
       return {
         ...r,
         medicamentoNome: med?.nome || "Medicamento não encontrado",
@@ -66,7 +71,7 @@ export default function RenovacoesPage() {
       );
     }
 
-    // Filtro por período
+    // Filtro por período (Este sim olha para a data da compra 'r.data')
     if (filtroPeriodo === "30dias") {
       const trintaDiasAtras = new Date();
       trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
@@ -77,7 +82,7 @@ export default function RenovacoesPage() {
       result = result.filter((r: any) => new Date(r.data) >= sessentaDiasAtras);
     }
 
-    // Filtro por status
+    // Filtro por status (Olha para o status da receita do medicamento)
     if (filtroStatus === "vencida") {
       result = result.filter((r: any) => r.vencida);
     } else if (filtroStatus === "valida") {
@@ -97,7 +102,7 @@ export default function RenovacoesPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -152,8 +157,9 @@ export default function RenovacoesPage() {
                   ? "border-coral bg-coral/20 text-coral"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
+              title="Filtrar remédios com receita atualmente vencida"
             >
-              Vencidas
+              Receita Vencida
             </button>
 
             <button
@@ -163,14 +169,15 @@ export default function RenovacoesPage() {
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
+              title="Filtrar remédios com receita atualmente válida"
             >
-              Válidas
+              Receita Válida
             </button>
 
             {(filtroPeriodo !== "todos" || filtroStatus !== "todos") && (
               <button
                 onClick={() => { trigger("vibrate"); setFiltroPeriodo("todos"); setFiltroStatus("todos"); }}
-                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
+                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1 transition-all active:scale-95"
               >
                 <X size={12} /> Limpar
               </button>
@@ -220,25 +227,25 @@ export default function RenovacoesPage() {
                       <Calendar size={12} className="text-ice" /> {formatDateDisplay(renovacao.data)}
                     </span>
                     
-                    {/* 🔧 Badge de status */}
+                    {/* 🔧 Badge de status atual da receita do remédio */}
                     {renovacao.vencida ? (
                       <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-coral/20 text-coral px-2 py-0.5 rounded-full border border-coral/30">
-                        <AlertCircle size={10} /> Vencida
+                        <AlertCircle size={10} /> Rec. Vencida
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-400/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-400/30">
-                        <CheckCircle2 size={10} /> Válida
+                        <CheckCircle2 size={10} /> Rec. Válida
                       </span>
                     )}
 
-                    {/* 🔧 Dias restantes */}
-                    {renovacao.diasRestantes !== null && !renovacao.vencida && (
+                    {/* 🔧 Dias para a PRÓXIMA renovação */}
+                    {renovacao.diasRestantes !== null && !renovacao.vencida && renovacao.diasRestantes >= 0 && (
                       <span className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
                         renovacao.diasRestantes <= 7 
                           ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30' 
                           : 'bg-surface-raised text-ink-muted border border-surface-border/40'
                       }`}>
-                        <Clock size={10} /> {renovacao.diasRestantes} dias restantes
+                        <Clock size={10} /> Faltam {renovacao.diasRestantes} dias
                       </span>
                     )}
 
