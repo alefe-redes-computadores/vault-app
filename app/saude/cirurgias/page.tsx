@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, 
-  Calendar as CalendarIcon, 
   Building2, 
   ChevronRight,
   Activity,
@@ -49,7 +48,10 @@ export default function CirurgiasPage() {
     const hist: Cirurgia[] = [];
 
     (cirurgias || []).forEach((c) => {
-      const isPassada = c.data < hojeISO || c.status === "realizada" || c.status === "cancelada";
+      // 🐛 Blindagem contra datas vazias/nulas
+      const dataSegura = c.data || "";
+      const isPassada = dataSegura < hojeISO || c.status === "realizada" || c.status === "cancelada";
+      
       if (isPassada) {
         hist.push(c);
       } else {
@@ -57,8 +59,8 @@ export default function CirurgiasPage() {
       }
     });
 
-    prox.sort((a, b) => a.data.localeCompare(b.data));
-    hist.sort((a, b) => b.data.localeCompare(a.data));
+    prox.sort((a, b) => (a.data || "").localeCompare(b.data || ""));
+    hist.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
 
     return { proximas: prox, historico: hist };
   }, [cirurgias, hojeISO]);
