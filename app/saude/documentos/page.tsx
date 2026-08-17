@@ -32,12 +32,12 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   isReceitaVencidaSegura,
-  getDaysUntil,
   sugerirRenovacao,
 } from "@/lib/health-insights";
+// 🔧 CORRIGIDO: getDaysUntil vem de health-utils
+import { getDaysUntil } from "@/lib/health-utils";
 
 type TabType = "receitas" | "prontuarios" | "exames";
-// 🔧 CORRIGIDO: valores no SINGULAR para corresponder ao alerta.status
 type FiltroStatus = "todos" | "valida" | "vencida" | "proxima" | "renovada_historico";
 
 interface GroupData {
@@ -70,7 +70,6 @@ export default function DocumentsPage() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | "all">("all");
-  // 🔧 CORRIGIDO: usar valores no SINGULAR
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("todos");
   const currentMonthDefault = format(new Date(), "yyyy-MM");
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthDefault);
@@ -96,7 +95,6 @@ export default function DocumentsPage() {
     searchQuery: debouncedSearch,
   });
 
-  // Mapeamento de medicamentos e renovações
   const medicamentoMap = useMemo(() => {
     const map = new Map();
     medicamentos.forEach((m) => map.set(m.id, m));
@@ -112,7 +110,6 @@ export default function DocumentsPage() {
     return map;
   }, [renovacoes]);
 
-  // Filtragem base (por abas e mês)
   const filteredDocsBase = useMemo(() => {
     let result = paginatedDocs.filter((doc: any) => doc.category_id === "saude");
 
@@ -138,7 +135,6 @@ export default function DocumentsPage() {
     return result;
   }, [paginatedDocs, activeTab, selectedMonth]);
 
-  // Enriquecer documentos com alertas e informações relacionais
   const docsComAlertas = useMemo(() => {
     return filteredDocsBase.map((doc) => {
       const medId = doc.metadata?.medication_id;
@@ -185,7 +181,6 @@ export default function DocumentsPage() {
       }
 
       const person = persons.find((p) => p.id === doc.person_id);
-      // 🔧 CORRIGIDO: usar "color" em vez de "cor"
       const personColor = person?.color || "#6B7280";
 
       return {
@@ -200,13 +195,11 @@ export default function DocumentsPage() {
     });
   }, [filteredDocsBase, medicamentoMap, renovacoesPorMedicamento, persons]);
 
-  // 🔧 CORRIGIDO: filtro agora compara corretamente com alerta.status
   const filteredDocs = useMemo(() => {
     if (filtroStatus === "todos") return docsComAlertas;
     return docsComAlertas.filter((doc) => doc.alerta?.status === filtroStatus);
   }, [docsComAlertas, filtroStatus]);
 
-  // Ordenação
   const sortedDocs = useMemo(() => {
     return [...filteredDocs].sort((a, b) => {
       const dateA = new Date(
@@ -219,7 +212,6 @@ export default function DocumentsPage() {
     });
   }, [filteredDocs]);
 
-  // Agrupamento para receitas
   const groupedReceitas = useMemo((): GroupData[] => {
     if (activeTab !== "receitas") return [];
 
@@ -246,7 +238,6 @@ export default function DocumentsPage() {
     return Array.from(groups.values());
   }, [sortedDocs, activeTab]);
 
-  // Timeline para prontuários e exames
   const timelineGroups = useMemo(() => {
     if (activeTab === "receitas") return [];
     const groups: { [key: string]: any[] } = {};
