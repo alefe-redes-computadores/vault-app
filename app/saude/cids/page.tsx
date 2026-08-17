@@ -3,16 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, 
-  Plus, 
-  Search, 
-  Brain, 
-  ChevronRight, 
-  HeartPulse, 
-  Flame, 
-  Activity 
-} from "lucide-react";
+import { ArrowLeft, Search, Brain, ChevronRight } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -115,14 +106,6 @@ export default function CidsPage() {
             )}
           </motion.div>
         </section>
-
-        {/* Botão Flutuante de Novo */}
-        <button
-          onClick={() => { trigger("vibrate"); router.push("/saude/cids/novo"); }}
-          className="fixed bottom-8 right-5 h-14 w-14 rounded-full bg-ice text-void shadow-lg shadow-ice/20 flex items-center justify-center active:scale-95 transition-all"
-        >
-          <Plus size={24} />
-        </button>
       </main>
     </PageTransition>
   );
