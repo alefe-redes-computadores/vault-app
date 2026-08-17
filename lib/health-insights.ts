@@ -444,3 +444,49 @@ export function analisarReceitaArquivada(
   return { status: 'valida', label: 'Válida', color: '#10B981' };
 }
 
+// ============================================================
+// 13. INTELIGÊNCIA E INSIGHTS PARA CIDs (CID-10)
+// ============================================================
+export interface CidInsight {
+  categoria: string;
+  tratamentosSugeridos: string[];
+  alertaClinico: string;
+}
+
+export function getCidInsights(codigo: string): CidInsight {
+  const codigoLimpo = (codigo || "").trim().toUpperCase();
+  
+  // Transtornos Hipercinéticos / TDAH (Capítulo F90)
+  if (codigoLimpo.startsWith("F90")) {
+    return {
+      categoria: "Neurodesenvolvimento (TDAH)",
+      tratamentosSugeridos: ["Psicoestimulantes", "Terapia Cognitivo-Comportamental (TCC)", "Organização de Rotina e Tarefas"],
+      alertaClinico: "Monitorar padrões de apatia, foco e constância nas tomadas de medicação de longo prazo."
+    };
+  }
+
+  // Transtornos Depressivos (Capítulo F32 ou F33)
+  if (codigoLimpo.startsWith("F32") || codigoLimpo.startsWith("F33")) {
+    return {
+      categoria: "Transtorno do Humor (Depressão)",
+      tratamentosSugeridos: ["Antidepressivos (ISRS/IRSN)", "Psicoterapia de Apoio", "Acompanhamento Psiquiátrico Regular"],
+      alertaClinico: "Atenção redobrada a quedas de adesão ao tratamento e episódios de desânimo prolongado."
+    };
+  }
+
+  // Dor Crônica / Neuropática ou enxaquecas comuns
+  if (codigoLimpo.startsWith("G43") || codigoLimpo.startsWith("M54")) {
+    return {
+      categoria: "Dor Crônica / Neurológica",
+      tratamentosSugeridos: ["Analgésicos / Opiáceos de controle", "Fisioterapia", "Avaliação de Dor Neuropática"],
+      alertaClinico: "Vigiar o aumento no uso de medicamentos SOS para dor e garantir acompanhamento médico contínuo."
+    };
+  }
+
+  // Fallback padrão para outras CIDs
+  return {
+    categoria: "Condição Clínica Geral",
+    tratamentosSugeridos: ["Acompanhamento Médico Regular", "Manutenção de Prontuários e Laudos atualizados"],
+    alertaClinico: "Certifique-se de manter os exames e receitas associados a este CID salvos no cofre do paciente."
+  };
+}
