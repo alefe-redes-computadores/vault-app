@@ -134,7 +134,6 @@ export default function HojePage() {
         if (!horario) continue;
         const log = (doseLogs || []).find((l) => l.medicamento_id === med.id && l.horario === horario);
         const tomada = !!log?.tomado_em;
-        // 🔧 CORRIGIDO: usar ignorado_em
         const ignorada = !!log?.ignorado_em;
 
         list.push({
@@ -566,7 +565,8 @@ export default function HojePage() {
                               </div>
                               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px]">
                                 {item.estoqueRestante >= 0 && <span className="text-ink-muted">Estoque: {item.estoqueRestante} {item.unidadeMedida}</span>}
-                                {item.diasRestantes !== null && item.diasRestantes >= 0 && <span className="text-ink-muted">• {item.diasRestantes} dias restantes</span>}
+                                {/* 🐛 AQUI ESTAVA O BUG: A checagem corrigida do TypeScript */}
+                                {item.diasRestantes !== undefined && item.diasRestantes !== null && item.diasRestantes >= 0 && <span className="text-ink-muted">• {item.diasRestantes} dias restantes</span>}
                                 {item.insight?.deveRenovar && <span className="flex items-center gap-1 text-amber-400 font-semibold"><FileWarning size={12} /> Renovar</span>}
                                 {item.receitaVencida && <span className="flex items-center gap-1 text-coral font-semibold"><AlertOctagon size={12} /> Receita vencida</span>}
                               </div>
