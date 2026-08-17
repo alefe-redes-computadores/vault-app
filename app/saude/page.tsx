@@ -26,6 +26,7 @@ import {
   FileHeart,
   Plus,
   Users,
+  X, // 🛡️ CORREÇÃO DO ERRO DO VERCEL: O ícone 'X' foi importado de volta!
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -498,7 +499,7 @@ export default function SaudePage() {
               </div>
             ) : (
               <div className="space-y-2.5">
-                {tratamentos.map((tratamento) => {
+                {tratamentos.map((tratamento: any) => {
                   const IconComponent = getTratamentoIcon(tratamento.nome);
                   const cor = tratamento.cor || "#8B5CF6";
                   return (
@@ -541,7 +542,7 @@ export default function SaudePage() {
                 <h2 className="font-display text-sm font-semibold text-ink-primary">Alertas Inteligentes</h2>
               </div>
               <div className="space-y-2.5">
-                {otherAlerts.map((alert) => (
+                {otherAlerts.map((alert: any) => (
                   <AlertRow key={`${alert.kind}-${alert.id}`} alert={alert} />
                 ))}
               </div>
