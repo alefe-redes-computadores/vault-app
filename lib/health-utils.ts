@@ -1,13 +1,12 @@
-// ... (mantenha tudo que está ANTES da importação import type { Document, Medicamento, TipoReceita } do seu arquivo original)
+// lib/health-utils.ts
 
 import type { Document, Medicamento, TipoReceita } from "@/lib/types";
 
 export type AlertLevel = "vencido" | "urgente" | "atencao" | "ok";
 
-// 🛡️ A Interface Corrigida para bater com o SaudePage
 export interface HealthAlert {
   id: string;
-  kind: "medicamento" | "documento" | "consulta" | "estoque" | "exame" | "cirurgia";
+  kind: "medicamento" | "documento" | "consulta" | "estoque" | "exame" | "cirurgia" | "tratamento" | "renovacao";
   title: string;
   subtitle: string;
   date: string;
@@ -186,6 +185,31 @@ export function getDocumentAlerts(documents: Document[]): HealthAlert[] {
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
+export function getUpcomingAppointments(documents: Document[]): HealthAlert[] {
+  const relevantTypes = ["prontuario", "laudo", "encaminhamento"];
+  return documents
+    .filter(
+      (doc) =>
+        doc.category_id === "saude" && !!doc.id && relevantTypes.includes(doc.type)
+    )
+    .map((doc) => {
+      const date = doc.metadata?.date;
+      const daysUntil = getDaysUntil(date);
+      return {
+        id: doc.id!,
+        kind: "consulta" as const,
+        title: doc.title,
+        subtitle: doc.metadata?.specialty || doc.metadata?.hospital || doc.type,
+        date: date || "",
+        daysUntil: daysUntil ?? -999,
+        level: "ok" as AlertLevel,
+        href: `/detalhes?id=${doc.id}`,
+      };
+    })
+    .filter((a) => a.date && a.daysUntil >= 0 && a.daysUntil <= 30)
+    .sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
 export function getExameAlerts(exames: any[]): HealthAlert[] {
   return exames
     .filter((exame) => !!exame.id && !!exame.data_retorno)
@@ -208,14 +232,10 @@ export function getExameAlerts(exames: any[]): HealthAlert[] {
 
 export function alertLevelColor(level: AlertLevel): string {
   switch (level) {
-    case "vencido":
-      return "#F87171";
-    case "urgente":
-      return "#FB923C";
-    case "atencao":
-      return "#FBBF24";
-    default:
-      return "#7C9CB5";
+    case "vencido": return "#F87171";
+    case "urgente": return "#FB923C";
+    case "atencao": return "#FBBF24";
+    default: return "#7C9CB5";
   }
 }
 
