@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, FlaskConical, Search, Building2, 
-  ChevronRight, Calendar, Filter, X, AlertTriangle, CheckCircle2
+  ChevronRight, Calendar, Filter, X, AlertTriangle, CheckCircle2, Clock
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -15,6 +15,8 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Input } from "@/components/ui/Input";
 import { useExames } from "@/hooks/useExames";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
+// 🧠 Importado para o cálculo exato do status 'próximo'
+import { getDaysUntil } from "@/lib/health-utils";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -27,7 +29,7 @@ export default function ExamesPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [filtroStatus, setFiltroStatus] = useState<"todos" | "vencido" | "valido">("todos");
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "vencido" | "valido" | "proximo">("todos");
 
   const { exames } = useExames();
   const persons = useLiveQuery(() => db.persons.toArray(), []) || [];
@@ -36,8 +38,11 @@ export default function ExamesPage() {
 
   const examesComStatus = useMemo(() => {
     return (exames || []).map((exame: any) => {
+      const dias = exame.data_retorno ? getDaysUntil(exame.data_retorno) : null;
       const vencido = exame.data_retorno ? isReceitaVencidaSegura(exame.data_retorno) : false;
-      return { ...exame, vencido };
+      const proximo = dias !== null && dias >= 0 && dias <= 7 && !vencido;
+      
+      return { ...exame, vencido, proximo };
     });
   }, [exames]);
 
@@ -54,7 +59,9 @@ export default function ExamesPage() {
     if (filtroStatus === "vencido") {
       result = result.filter((exame: any) => exame.vencido);
     } else if (filtroStatus === "valido") {
-      result = result.filter((exame: any) => !exame.vencido);
+      result = result.filter((exame: any) => !exame.vencido && !exame.proximo);
+    } else if (filtroStatus === "proximo") {
+      result = result.filter((exame: any) => exame.proximo);
     }
 
     return result.sort((a: any, b: any) => (b.data || "").localeCompare(a.data || ""));
@@ -93,6 +100,17 @@ export default function ExamesPage() {
               }`}
             >
               Vencidos
+            </button>
+            
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "proximo" ? "todos" : "proximo"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroStatus === "proximo"
+                  ? "border-amber-400 bg-amber-400/20 text-amber-300"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Próximos
             </button>
 
             <button
@@ -136,7 +154,7 @@ export default function ExamesPage() {
                   onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }}
                   className="flex w-full items-start gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
                 >
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: exame.vencido ? '#EF4444' : '#10B981' }} />
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: exame.vencido ? '#EF4444' : exame.proximo ? '#F59E0B' : '#10B981' }} />
 
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">
                     <FlaskConical size={20} className="text-emerald-400" />
@@ -149,6 +167,10 @@ export default function ExamesPage() {
                       {exame.vencido ? (
                         <span className="flex items-center gap-1 text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">
                           <AlertTriangle size={10} /> Vencido
+                        </span>
+                      ) : exame.proximo ? (
+                        <span className="flex items-center gap-1 text-[8px] font-bold uppercase bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded-full">
+                          <Clock size={10} /> Próximo
                         </span>
                       ) : exame.data_retorno ? (
                         <span className="flex items-center gap-1 text-[8px] font-bold uppercase bg-emerald-400/20 text-emerald-400 px-1.5 py-0.5 rounded-full">
