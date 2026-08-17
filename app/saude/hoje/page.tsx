@@ -22,7 +22,8 @@ import {
   FileWarning,
   TrendingUp,
   AlertOctagon,
-  Info
+  Info,
+  Activity,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
@@ -40,7 +41,7 @@ import {
   sugerirRenovacao,
   isReceitaVencidaSegura,
   analisarComportamentoUso,
-  analisarRotinaDiaria, // 🧠 Nossa nova IA cruzada
+  analisarRotinaDiaria,
 } from "@/lib/health-insights";
 import { useToast } from "@/components/ToastProvider";
 
@@ -89,7 +90,8 @@ export default function HojePage() {
   const hoje = getLocalTodayISO();
 
   const { medicamentos } = useMedicamentos();
-  const { doseLogs, marcarComoTomada: marcarDose, ignorarDose } = useDoseLogs(hoje);
+  // 🔧 CORRIGIDO: o nome correto é marcarComoIgnorada
+  const { doseLogs, marcarComoTomada: marcarDose, marcarComoIgnorada } = useDoseLogs(hoje);
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
@@ -180,7 +182,6 @@ export default function HojePage() {
     return items;
   }, [consultas, cirurgias, examesDoDia, filtroCompromisso]);
 
-  // 🧠 CHAMA O ASSISTENTE DIÁRIO (Insight Cruzado)
   const assistenteDiario = useMemo(() => {
     return analisarRotinaDiaria(doses, compromissosFiltrados);
   }, [doses, compromissosFiltrados]);
@@ -269,7 +270,8 @@ export default function HojePage() {
     trigger("vibrate");
 
     try {
-      await ignorarDose(item.medicamentoId, hoje, item.horario);
+      // 🔧 CORRIGIDO: usar marcarComoIgnorada
+      await marcarComoIgnorada(item.medicamentoId, hoje, item.horario);
       showToast("Dose ignorada", "info");
     } catch (e) {
       console.error("Erro ao ignorar dose:", e);
@@ -406,7 +408,6 @@ export default function HojePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-6">
-          {/* 🧠 O ASSISTENTE APARECE AQUI NO TOPO */}
           {assistenteDiario && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
