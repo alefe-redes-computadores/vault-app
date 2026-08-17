@@ -101,12 +101,11 @@ function DetalhesMedicoContent() {
 
   const estabelecimentosIds = useMemo(() => {
     const ids = new Set<string>();
-    consultas.forEach(c => c.hospital_id && ids.add(c.hospital_id));
-    cirurgias.forEach(c => c.hospital_id && ids.add(c.hospital_id));
+    consultas.forEach((c: Consulta) => c.hospital_id && ids.add(c.hospital_id));
+    cirurgias.forEach((c: Cirurgia) => c.hospital_id && ids.add(c.hospital_id));
     return Array.from(ids);
   }, [consultas, cirurgias]);
 
-  // 🛡️ BLINDAGEM DO VERCEL: Promise.resolve([] as any[]) no return vazio
   const estabelecimentos = useLiveQuery(() => {
     if (estabelecimentosIds.length === 0) return Promise.resolve([] as any[]);
     return db.hospitais.where('id').anyOf(estabelecimentosIds).toArray();
@@ -114,33 +113,33 @@ function DetalhesMedicoContent() {
 
   const tratamentosIds = useMemo(() => {
     const ids = new Set<string>();
-    medicamentos.forEach(m => {
+    medicamentos.forEach((m: Medicamento) => {
       if (m.tratamento_ids && Array.isArray(m.tratamento_ids)) {
-        m.tratamento_ids.forEach(id => ids.add(id));
+        // 🛡️ CORREÇÃO DA LINHA 119: Tipagem explícita adicionada "(id: string)"
+        m.tratamento_ids.forEach((tid: string) => ids.add(tid));
       }
     });
     return Array.from(ids);
   }, [medicamentos]);
 
-  // 🛡️ BLINDAGEM DO VERCEL: Promise.resolve([] as any[]) no return vazio
   const tratamentos = useLiveQuery(() => {
     if (tratamentosIds.length === 0) return Promise.resolve([] as any[]);
     return db.tratamentos.where('id').anyOf(tratamentosIds).toArray();
   }, [tratamentosIds]) || [];
 
   const proximaConsulta = useMemo(() => {
-    const futuras = consultas.filter(c => isDateInFuture(c.data));
+    const futuras = consultas.filter((c: Consulta) => isDateInFuture(c.data));
     if (futuras.length === 0) return null;
-    return futuras.sort((a, b) => a.data.localeCompare(b.data))[0];
+    return futuras.sort((a: Consulta, b: Consulta) => a.data.localeCompare(b.data))[0];
   }, [consultas]);
 
   const ultimaConsulta = useMemo(() => {
     if (consultas.length === 0) return null;
-    return consultas.sort((a, b) => b.data.localeCompare(a.data))[0];
+    return [...consultas].sort((a: Consulta, b: Consulta) => b.data.localeCompare(a.data))[0];
   }, [consultas]);
 
   const alertasMedicamentos = useMemo(() => {
-    return medicamentos.map(med => {
+    return medicamentos.map((med: Medicamento) => {
       const insight = sugerirRenovacao(med);
       const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
       const comportamento = analisarComportamentoUso(med, doseLogs.filter(d => d.medicamento_id === med.id));
@@ -202,7 +201,7 @@ function DetalhesMedicoContent() {
   if (isLoading) return <LoadingSkeleton />;
   if (!medico) return null;
 
-  const medicamentosAtivos = medicamentos.filter(m => m.status === "ativo");
+  const medicamentosAtivos = medicamentos.filter((m: Medicamento) => m.status === "ativo");
 
   return (
     <PageTransition>
@@ -338,7 +337,7 @@ function DetalhesMedicoContent() {
               </div>
               
               <div className="space-y-2">
-                {alertasGerais.ativos.slice(0, 3).map((med) => (
+                {alertasGerais.ativos.slice(0, 3).map((med: any) => (
                   <div key={med.id} className="flex items-start gap-2 text-xs border-b border-amber-400/10 pb-2 last:border-0">
                     <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
                     <div>
@@ -348,7 +347,7 @@ function DetalhesMedicoContent() {
                   </div>
                 ))}
 
-                {alertasGerais.vencidos.slice(0, 3).map((med) => (
+                {alertasGerais.vencidos.slice(0, 3).map((med: any) => (
                   <div key={med.id} className="flex items-start gap-2 text-xs border-b border-coral/10 pb-2 last:border-0">
                     <AlertCircle size={14} className="text-coral shrink-0 mt-0.5" />
                     <div>
@@ -358,7 +357,7 @@ function DetalhesMedicoContent() {
                   </div>
                 ))}
 
-                {alertasGerais.comportamentos.slice(0, 3).map((med) => (
+                {alertasGerais.comportamentos.slice(0, 3).map((med: any) => (
                   <div key={med.id} className="flex items-start gap-2 text-xs border-b border-violet-400/10 pb-2 last:border-0">
                     <Activity size={14} className="text-violet-400 shrink-0 mt-0.5" />
                     <div>
@@ -440,7 +439,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhuma consulta registrada.</p>
                 ) : (
                   <div className="space-y-2">
-                    {consultas.sort((a, b) => b.data.localeCompare(a.data)).slice(0, 3).map((con: Consulta) => (
+                    {[...consultas].sort((a: Consulta, b: Consulta) => b.data.localeCompare(a.data)).slice(0, 3).map((con: Consulta) => (
                       <div 
                         key={con.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }}
@@ -469,7 +468,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhum procedimento registrado.</p>
                 ) : (
                   <div className="space-y-2">
-                    {cirurgias.sort((a, b) => b.data.localeCompare(a.data)).slice(0, 3).map((cir: Cirurgia) => (
+                    {[...cirurgias].sort((a: Cirurgia, b: Cirurgia) => b.data.localeCompare(a.data)).slice(0, 3).map((cir: Cirurgia) => (
                       <div 
                         key={cir.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
@@ -503,7 +502,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhum medicamento prescrito por este médico.</p>
                 ) : (
                   <div className="space-y-2">
-                    {alertasMedicamentos.slice(0, 3).map((med) => (
+                    {alertasMedicamentos.slice(0, 3).map((med: any) => (
                       <div 
                         key={med.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
