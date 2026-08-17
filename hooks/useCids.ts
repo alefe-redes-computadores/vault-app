@@ -20,12 +20,16 @@ export function useCids() {
     return cidsRepository.getById(id);
   }, []);
 
-  // 🔧 CORRIGIDO: Removido user_id explícito – o repositório já injeta
+  /**
+   * Adiciona um novo CID. O user_id é injetado automaticamente
+   * para manter a integridade da conta autenticada.
+   */
   const addCid = useCallback(
-    async (data: Omit<Cid, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return cidsRepository.create(data);
+    async (data: Omit<Cid, 'id' | 'created_at' | 'updated_at' | 'synced'>) => {
+      if (!user?.id) throw new Error("Usuário não autenticado");
+      return cidsRepository.create({ ...data, user_id: user.id });
     },
-    []
+    [user]
   );
 
   const updateCid = useCallback(async (id: string, data: Partial<Cid>) => {
@@ -36,7 +40,6 @@ export function useCids() {
     return cidsRepository.delete(id);
   }, []);
 
-  // ✅ Versão segura com cascade delete (limpa referências em tratamentos)
   const deleteCidSafe = useCallback(async (id: string) => {
     return cidsRepository.deleteSafe(id);
   }, []);
