@@ -373,7 +373,7 @@ export interface Tratamento {
   user_id: string;
   person_id?: string;
   nome: string;
-  cid_id?: string;
+  cid_ids?: string[]; // 🔧 MultiEntry Index para múltiplos CIDs
   condicao?: string;
   data_inicio?: string;
   status: 'ativo' | 'concluido' | 'suspenso';
