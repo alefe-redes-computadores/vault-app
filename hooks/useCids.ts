@@ -20,11 +20,12 @@ export function useCids() {
     return cidsRepository.getById(id);
   }, []);
 
+  // 🔧 CORRIGIDO: Removido user_id explícito – o repositório já injeta
   const addCid = useCallback(
     async (data: Omit<Cid, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return cidsRepository.create({ ...data, user_id: user?.id || "" });
+      return cidsRepository.create(data);
     },
-    [user]
+    []
   );
 
   const updateCid = useCallback(async (id: string, data: Partial<Cid>) => {
