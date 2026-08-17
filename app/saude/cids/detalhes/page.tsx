@@ -22,7 +22,8 @@ import {
   AlertCircle,
   X,
   Building2,
-  MapPin
+  MapPin,
+  Plus,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -30,6 +31,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document } from "@/lib/types";
 import { getCidInsights } from "@/lib/health-insights";
+import { SelectionModal } from "@/components/SelectionModal";
 
 const fadeUp = {
   initial: { opacity: 0, y: 15 },
@@ -60,6 +62,9 @@ function CidDetalhesContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // 🔧 Menu flutuante para o botão +
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   // Estados de dados cruzados completos
   const [tratamentos, setTratamentos] = useState<Tratamento[]>([]);
@@ -150,6 +155,18 @@ function CidDetalhesContent() {
     return getCidInsights(cid.codigo);
   }, [cid]);
 
+  // 🔧 Opções do menu flutuante
+  const menuOptions = [
+    { id: "novo-tratamento", label: "Novo Tratamento", icon: FolderHeart, path: `/saude/tratamentos/novo?cid_id=${id}` },
+    { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?cid_id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
+
   if (isLoading) return <LoadingSkeleton />;
   if (!cid) return null;
 
@@ -174,6 +191,60 @@ function CidDetalhesContent() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* 🔧 BOTÃO + COM MENU FLUTUANTE */}
+            <div className="relative">
+              <button
+                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+              >
+                <Plus size={18} />
+              </button>
+              <AnimatePresence>
+                {isMenuFlutuanteOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.16 }}
+                      onClick={() => setIsMenuFlutuanteOpen(false)}
+                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                    >
+                      <div className="px-3 pb-2 pt-3.5">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                      </div>
+                      <div className="px-1.5 pb-2">
+                        {menuOptions.map((option) => {
+                          const Icon = option.icon;
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => handleMenuOptionClick(option.path)}
+                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                <Icon size={15} />
+                              </div>
+                              <span className="text-sm font-medium text-ink-primary">
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/cids/editar?id=${cid.id}`); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
