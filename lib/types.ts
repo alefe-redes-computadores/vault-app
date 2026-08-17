@@ -11,7 +11,7 @@ export interface Person {
   phone?: string;
   avatar_url?: string;
   color: string;
-  isDefault?: boolean; // ✅ Novo: Define se esta é a pessoa padrão ao abrir o app
+  isDefault?: boolean; // ✅ Define se esta é a pessoa padrão ao abrir o app
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -285,7 +285,7 @@ export interface Medicamento {
   medico_id?: string;
   farmacia_id?: string;
   estabelecimento_id?: string;
-  tratamento_ids?: string[];
+  tratamento_ids?: string[]; // ✅ MultiEntry Index array
   medico: string;
   farmacia?: string;
   data_receita: string;
@@ -372,7 +372,7 @@ export interface Exame {
   motivo?: string;
   observacoes?: string;
   anexo_url?: string;
-  tratamento_ids?: string[];
+  tratamento_ids?: string[]; // ✅ MultiEntry Index array
   synced?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -450,17 +450,18 @@ export interface VaultDocument {
 }
 
 // ============================================================
-// 8. MÓDULO SAÚDE E ENTIDADES PAI
+// 8. MÓDULO SAÚDE E ENTIDADES PAI (Blindado com person_id)
 // ============================================================
 export interface Medico {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅
   nome: string;
   especialidade?: string;
   crm?: string;
   telefone?: string;
   email?: string;
-  observacoes?: string; // ✅ Adicionado para blindar a página Medico Detalhes
+  observacoes?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -469,10 +470,11 @@ export interface Medico {
 export interface Farmacia {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅
   nome: string;
   endereco?: string;
   telefone?: string;
-  observacoes?: string; // ✅ Adicionado preventivamente
+  observacoes?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -481,11 +483,12 @@ export interface Farmacia {
 export interface Hospital {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅
   nome: string;
   endereco?: string;
   telefone?: string;
   tipo?: string;
-  observacoes?: string; // ✅ Adicionado preventivamente
+  observacoes?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -494,11 +497,12 @@ export interface Hospital {
 export interface LocalSaude {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅
   nome: string;
   endereco?: string;
   telefone?: string;
   tipo?: string;
-  observacoes?: string; // ✅ Adicionado preventivamente
+  observacoes?: string;
   created_at?: string;
   updated_at: string;
   synced?: boolean;
@@ -507,10 +511,11 @@ export interface LocalSaude {
 export interface Laboratorio {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅
   nome: string;
   endereco?: string;
   telefone?: string;
-  observacoes?: string; // ✅ Adicionado preventivamente
+  observacoes?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -519,6 +524,7 @@ export interface Laboratorio {
 export interface InstituicaoEnsino {
   id?: string;
   user_id: string;
+  person_id?: string; // ✅
   nome: string;
   cnpj?: string;
   created_at: string;
@@ -539,14 +545,14 @@ export interface Cid {
 export interface Tratamento {
   id?: string;
   user_id: string;
-  person_id?: string;
+  person_id?: string; // ✅
   nome: string;
   cid_id?: string;
   condicao?: string;
   data_inicio?: string;
   status: 'ativo' | 'concluido' | 'suspenso';
-  cor?: string;
-  observacoes?: string; // ✅ Adicionado preventivamente
+  cor?: string; // ✅ Identidade Visual
+  observacoes?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
