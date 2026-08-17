@@ -49,10 +49,19 @@ import type {
   Consulta, 
   Exame, 
   Cirurgia, 
-  Renovacao 
+  Renovacao,
+  Person
 } from "@/lib/types";
 
 type TabType = "visao-geral" | "medicos" | "farmacias" | "hospitais" | "tratamentos";
+
+// 🛡️ Tipagem estrita para os alertas gerados na tela
+type AlertaRede = {
+  tipo: 'estoque' | 'receita' | 'consulta' | 'exame' | 'cirurgia';
+  mensagem: string;
+  urgencia: 'alta' | 'media' | 'baixa';
+  link: string;
+};
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -133,12 +142,12 @@ export default function RedeSaudePage() {
 
   const filteredRenovacoes = useMemo(() => {
     if (!selectedPersonId) return [];
-    const medsIds = new Set(filteredMedicamentos.map(m => m.id).filter(Boolean));
+    const medsIds = new Set(filteredMedicamentos.map(m => m.id).filter((id): id is string => Boolean(id)));
     return renovacoes.filter((r: Renovacao) => r.person_id === selectedPersonId || (r.medicamento_id && medsIds.has(r.medicamento_id)));
   }, [renovacoes, selectedPersonId, filteredMedicamentos]);
 
   // ============================================================
-  // INTELIGÊNCIA RELACIONAL Tipada
+  // INTELIGÊNCIA RELACIONAL (Grafo) - Tipada e sem "Any"
   // ============================================================
   const filteredMedicos = useMemo(() => {
     if (!selectedPersonId) return [];
@@ -146,7 +155,7 @@ export default function RedeSaudePage() {
       ...filteredConsultas.map(c => c.medico_id),
       ...filteredCirurgias.map(c => c.medico_id),
       ...filteredMedicamentos.map(m => m.medico_id)
-    ].filter(Boolean));
+    ].filter((id): id is string => Boolean(id)));
 
     return medicos.filter((m: Medico) => m.person_id === selectedPersonId || (m.id && linked.has(m.id)));
   }, [medicos, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
@@ -156,7 +165,7 @@ export default function RedeSaudePage() {
     const linked = new Set([
       ...filteredMedicamentos.map(m => m.farmacia_id),
       ...filteredRenovacoes.map(r => r.farmacia_id)
-    ].filter(Boolean));
+    ].filter((id): id is string => Boolean(id)));
 
     return farmacias.filter((f: Farmacia) => f.person_id === selectedPersonId || (f.id && linked.has(f.id)));
   }, [farmacias, selectedPersonId, filteredMedicamentos, filteredRenovacoes]);
@@ -167,7 +176,7 @@ export default function RedeSaudePage() {
       ...filteredConsultas.map(c => c.hospital_id),
       ...filteredCirurgias.map(c => c.hospital_id),
       ...filteredMedicamentos.map(m => m.estabelecimento_id)
-    ].filter(Boolean));
+    ].filter((id): id is string => Boolean(id)));
 
     return hospitais.filter((h: Hospital) => h.person_id === selectedPersonId || (h.id && linked.has(h.id)));
   }, [hospitais, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
@@ -178,13 +187,7 @@ export default function RedeSaudePage() {
   const alertas = useMemo(() => {
     if (!selectedPersonId) return [];
 
-    const alerts: { 
-      tipo: 'estoque' | 'receita' | 'consulta' | 'exame' | 'cirurgia'; 
-      mensagem: string; 
-      urgencia: 'alta' | 'media' | 'baixa'; 
-      entidade: any; 
-      link: string;
-    }[] = [];
+    const alerts: AlertaRede[] = [];
 
     filteredMedicamentos.forEach((med: Medicamento) => {
       const insight = sugerirRenovacao(med);
@@ -192,8 +195,7 @@ export default function RedeSaudePage() {
         alerts.push({
           tipo: 'estoque',
           mensagem: insight.mensagem,
-          urgencia: insight.urgencia as 'alta' | 'media' | 'baixa',
-          entidade: med,
+          urgencia: insight.urgencia === 'nenhuma' ? 'baixa' : insight.urgencia,
           link: `/saude/medicamentos/detalhes?id=${med.id}`,
         });
       }
@@ -203,7 +205,6 @@ export default function RedeSaudePage() {
           tipo: 'receita',
           mensagem: `Receita de ${med.nome} venceu em ${formatDateDisplay(med.proxima_renovacao)}`,
           urgencia: 'alta',
-          entidade: med,
           link: `/saude/medicamentos/detalhes?id=${med.id}`,
         });
       }
@@ -223,7 +224,6 @@ export default function RedeSaudePage() {
             tipo: 'consulta',
             mensagem: `Consulta com ${nomeMedico} em ${dias} dia${dias > 1 ? 's' : ''}`,
             urgencia: dias <= 2 ? 'alta' : 'media',
-            entidade: con,
             link: `/saude/consultas/detalhes?id=${con.id}`,
           });
         }
@@ -239,7 +239,6 @@ export default function RedeSaudePage() {
               tipo: 'exame',
               mensagem: `Exame "${exame.nome}" venceu há ${Math.abs(dias)} dia(s)`,
               urgencia: 'alta',
-              entidade: exame,
               link: `/saude/exames/detalhes?id=${exame.id}`,
             });
           } else if (dias <= 7) {
@@ -247,7 +246,6 @@ export default function RedeSaudePage() {
               tipo: 'exame',
               mensagem: `Apresentação de exame "${exame.nome}" em ${dias} dia(s)`,
               urgencia: dias <= 2 ? 'alta' : 'media',
-              entidade: exame,
               link: `/saude/exames/detalhes?id=${exame.id}`,
             });
           }
@@ -297,7 +295,7 @@ export default function RedeSaudePage() {
 
   if (!persons) return <LoadingSkeleton />;
 
-  const tabs: { id: TabType; label: string; icon: any }[] = [
+  const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
     { id: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
     { id: 'medicos', label: 'Médicos', icon: Stethoscope },
     { id: 'farmacias', label: 'Farmácias', icon: Pill },
@@ -329,7 +327,7 @@ export default function RedeSaudePage() {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <User size={16} className="text-ink-muted shrink-0" />
             <div className="flex flex-wrap gap-1.5">
-              {persons.map((p: any) => (
+              {persons.map((p: Person) => (
                 <button
                   key={p.id}
                   onClick={() => { trigger("vibrate"); setSelectedPersonId(p.id!); }}
@@ -476,14 +474,14 @@ export default function RedeSaudePage() {
             )}
 
             {activeTab === 'medicos' && (
-              <TabList
+              <TabList<Medico>
                 key="medicos"
                 items={filteredMedicosSearch}
                 icon={Stethoscope}
                 label="Médico"
-                emptyMessage="Nenhum médico vinculado a esta pessoa."
-                onItemClick={(item: Medico) => router.push(`/saude/medicos/detalhes?id=${item.id}`)}
-                renderItem={(item: Medico) => (
+                emptyMessage="Nenhum médico vinculado a esta pessoa (adicione uma consulta ou medicamento para vincular)."
+                onItemClick={(item) => router.push(`/saude/medicos/detalhes?id=${item.id}`)}
+                renderItem={(item) => (
                   <div>
                     <p className="truncate font-display text-sm font-semibold text-ink-primary">{item.nome}</p>
                     {item.especialidade && <p className="mt-0.5 text-xs text-ink-muted">{item.especialidade}</p>}
@@ -500,14 +498,14 @@ export default function RedeSaudePage() {
             )}
 
             {activeTab === 'farmacias' && (
-              <TabList
+              <TabList<Farmacia>
                 key="farmacias"
                 items={filteredFarmaciasSearch}
                 icon={Pill}
                 label="Farmácia"
-                emptyMessage="Nenhuma farmácia vinculada."
-                onItemClick={(item: Farmacia) => router.push(`/saude/farmacias/detalhes?id=${item.id}`)}
-                renderItem={(item: Farmacia) => (
+                emptyMessage="Nenhuma farmácia vinculada (adicione uma renovação de remédio para vincular)."
+                onItemClick={(item) => router.push(`/saude/farmacias/detalhes?id=${item.id}`)}
+                renderItem={(item) => (
                   <div>
                     <p className="truncate font-display text-sm font-semibold text-ink-primary">{item.nome}</p>
                     {item.endereco && (
@@ -522,14 +520,14 @@ export default function RedeSaudePage() {
             )}
 
             {activeTab === 'hospitais' && (
-              <TabList
+              <TabList<Hospital>
                 key="hospitais"
                 items={filteredHospitaisSearch}
                 icon={Building2}
                 label="Hospital"
-                emptyMessage="Nenhum hospital vinculado."
-                onItemClick={(item: Hospital) => router.push(`/saude/hospitais/detalhes?id=${item.id}`)}
-                renderItem={(item: Hospital) => (
+                emptyMessage="Nenhum hospital vinculado (adicione uma cirurgia ou consulta para vincular)."
+                onItemClick={(item) => router.push(`/saude/hospitais/detalhes?id=${item.id}`)}
+                renderItem={(item) => (
                   <div>
                     <p className="truncate font-display text-sm font-semibold text-ink-primary">{item.nome}</p>
                     {item.endereco && (
@@ -544,14 +542,14 @@ export default function RedeSaudePage() {
             )}
 
             {activeTab === 'tratamentos' && (
-              <TabList
+              <TabList<Tratamento>
                 key="tratamentos"
                 items={filteredTratamentosSearch}
                 icon={FolderHeart}
                 label="Tratamento"
                 emptyMessage="Nenhum tratamento cadastrado para esta pessoa."
-                onItemClick={(item: Tratamento) => router.push(`/saude/tratamentos/detalhes?id=${item.id}`)}
-                renderItem={(item: Tratamento) => {
+                onItemClick={(item) => router.push(`/saude/tratamentos/detalhes?id=${item.id}`)}
+                renderItem={(item) => {
                   const cor = item.cor || "#8B5CF6";
                   return (
                     <div>
@@ -582,7 +580,20 @@ export default function RedeSaudePage() {
   );
 }
 
-function ResumoCard({ icon: Icon, label, value, sub, color, onClick }: any) {
+// ============================================================
+// COMPONENTES AUXILIARES ESTRITAMENTE TIPADOS
+// ============================================================
+
+interface ResumoCardProps {
+  icon: React.ElementType;
+  label: string;
+  value: number | string;
+  sub: string;
+  color: string;
+  onClick: () => void;
+}
+
+function ResumoCard({ icon: Icon, label, value, sub, color, onClick }: ResumoCardProps) {
   return (
     <button
       onClick={onClick}
@@ -603,7 +614,16 @@ function ResumoCard({ icon: Icon, label, value, sub, color, onClick }: any) {
   );
 }
 
-function TabList({ items, icon: Icon, label, emptyMessage, onItemClick, renderItem }: any) {
+interface TabListProps<T> {
+  items: T[];
+  icon: React.ElementType;
+  label: string;
+  emptyMessage: string;
+  onItemClick: (item: T) => void;
+  renderItem: (item: T) => React.ReactNode;
+}
+
+function TabList<T extends { id?: string }>({ items, icon: Icon, emptyMessage, onItemClick, renderItem }: TabListProps<T>) {
   const { trigger } = useHapticFeedback();
 
   if (items.length === 0) {
@@ -629,7 +649,7 @@ function TabList({ items, icon: Icon, label, emptyMessage, onItemClick, renderIt
 
   return (
     <div className="space-y-3">
-      {items.map((item: any, index: number) => (
+      {items.map((item, index) => (
         <motion.button
           key={item.id}
           initial={{ opacity: 0, y: 10 }}
