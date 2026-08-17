@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Trash2, ChevronRight, X, Plus, Search, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, ChevronRight, X, Plus, Search, Check } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
@@ -56,7 +56,7 @@ function EditarTratamentoContent() {
         setCidId(data.cid_id || "");
         setStatus(data.status || "ativo");
         setDataInicio(data.created_at ? data.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
-        setCor((data as any).cor || "#8B5CF6");
+        setCor(data.cor || "#8B5CF6");
       }
       setIsLoading(false);
     });
@@ -71,7 +71,6 @@ function EditarTratamentoContent() {
       const cidSelecionado = cids?.find(c => c.id === cidId);
       const condicaoTexto = cidSelecionado ? cidSelecionado.descricao : condicao.trim();
 
-      // ✅ CORRIGIDO: removido as any (cor já está tipada em Tratamento)
       await db.tratamentos.update(id, {
         nome: nome.trim(),
         condicao: condicaoTexto || undefined,
