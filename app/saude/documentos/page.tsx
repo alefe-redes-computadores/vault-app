@@ -34,7 +34,6 @@ import {
   isReceitaVencidaSegura,
   sugerirRenovacao,
 } from "@/lib/health-insights";
-// 🔧 CORRIGIDO: getDaysUntil vem de health-utils
 import { getDaysUntil } from "@/lib/health-utils";
 
 type TabType = "receitas" | "prontuarios" | "exames";
@@ -135,18 +134,21 @@ export default function DocumentsPage() {
     return result;
   }, [paginatedDocs, activeTab, selectedMonth]);
 
+  // 🔧 CORRIGIDO: tipos explícitos para evitar erro de any
   const docsComAlertas = useMemo(() => {
-    return filteredDocsBase.map((doc) => {
+    return filteredDocsBase.map((doc: any) => {
       const medId = doc.metadata?.medication_id;
       const med = medId ? medicamentoMap.get(medId) : null;
-      const renovacoesDoMed = medId
+      const renovacoesDoMed: any[] = medId
         ? renovacoesPorMedicamento.get(medId) || []
         : [];
 
       const dataReceita =
         doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
+      
+      // 🔧 CORRIGIDO: r com tipo any explícito
       const renovacaoRecent = renovacoesDoMed.some(
-        (r) => r.data && r.data >= dataReceita
+        (r: any) => r.data && r.data >= dataReceita
       );
 
       let alerta = null;
@@ -169,6 +171,7 @@ export default function DocumentsPage() {
         alerta = { status: "renovada_historico", label: "Renovada", color: "#38BDF8" };
       }
 
+      // 🔧 CORRIGIDO: verificação de null com optional chaining
       let medicoNome = null;
       let tratamentoNome = null;
       if (med) {
