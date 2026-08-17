@@ -10,7 +10,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useHapticFeedback } from "@/lib/haptics";
 import {
   ArrowLeft, FileText, MapPin, Edit3, Trash2, 
-  Calendar, Pill, DollarSign, Clock, TrendingDown, TrendingUp,
+  Clock, TrendingDown, TrendingUp,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { formatDateDisplay } from "@/lib/health-utils";
@@ -36,8 +36,9 @@ function DetalhesLocalContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // 🛡️ A MÁGICA DO TYPESCRIPT AQUI: [] as any[] resolve o conflito do PromiseExtended vs never[]
   const renovacoes = useLiveQuery(
-    () => (id ? db.renovacoes.where("local_id").equals(id).toArray() : Promise.resolve([])),
+    () => (id ? db.renovacoes.where("local_id").equals(id).toArray() : Promise.resolve([] as any[])),
     [id]
   ) || [];
 
@@ -56,37 +57,42 @@ function DetalhesLocalContent() {
 
     if (!id || !renovacoes || !medicamentos) return safeData;
 
-    const renovacoesComMed = renovacoes.map((r) => {
-      const med = medicamentos.find((m) => m.id === r.medicamento_id);
-      return { ...r, medicamento_nome: med?.nome || "Medicamento" };
-    });
+    try {
+      const renovacoesComMed = renovacoes.map((r) => {
+        const med = medicamentos.find((m) => m.id === r.medicamento_id);
+        return { ...r, medicamento_nome: med?.nome || "Medicamento" };
+      });
 
-    const ordenadas = [...renovacoesComMed].sort(
-      (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()
-    );
+      const ordenadas = [...renovacoesComMed].sort(
+        (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()
+      );
 
-    let totalGasto = 0;
-    renovacoes.forEach((r: any) => {
-      if (typeof r.preco === "number" && r.preco > 0) totalGasto += r.preco;
-    });
+      let totalGasto = 0;
+      renovacoes.forEach((r: any) => {
+        if (typeof r.preco === "number" && r.preco > 0) totalGasto += r.preco;
+      });
 
-    const precos = renovacoes
-      .filter((r: any) => typeof r.preco === "number" && r.preco > 0)
-      .map((r: any) => r.preco);
-    
-    const precoMedio = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
-    const ultimaRenovacao = ordenadas.length > 0 ? ordenadas[0] : null;
-    const economia = calcularEconomia(renovacoes);
-    const medIds = new Set(renovacoes.map((r) => r.medicamento_id).filter(Boolean));
+      const precos = renovacoes
+        .filter((r: any) => typeof r.preco === "number" && r.preco > 0)
+        .map((r: any) => r.preco);
+      
+      const precoMedio = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
+      const ultimaRenovacao = ordenadas.length > 0 ? ordenadas[0] : null;
+      const economia = calcularEconomia(renovacoes);
+      const medIds = new Set(renovacoes.map((r) => r.medicamento_id).filter(Boolean));
 
-    return {
-      totalGasto,
-      precoMedio,
-      ultimaRenovacao,
-      economia,
-      medicamentosCount: medIds.size,
-      renovacoesComMed: ordenadas,
-    };
+      return {
+        totalGasto,
+        precoMedio,
+        ultimaRenovacao,
+        economia,
+        medicamentosCount: medIds.size,
+        renovacoesComMed: ordenadas || [],
+      };
+    } catch (e) {
+      console.error("Erro na análise do local:", e);
+      return safeData;
+    }
   }, [id, renovacoes, medicamentos]);
 
   useEffect(() => {
@@ -188,9 +194,14 @@ function DetalhesLocalContent() {
               ) : (
                 analiseLocal.renovacoesComMed.slice(0, 10).map((r: any) => (
                   <div key={r.id} onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }} className="flex items-center justify-between rounded-xl bg-surface-raised p-3.5 border border-surface-border/40 cursor-pointer">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-ink-primary truncate">{r.medicamento_nome}</p>
-                      <p className="text-[11px] text-ink-muted">{formatDateDisplay(r.data)}</p>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface border border-surface-border/40">
+                        <FileText size={14} className="text-ink-muted" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink-primary truncate">{r.medicamento_nome}</p>
+                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(r.data)}</p>
+                      </div>
                     </div>
                     <span className="text-sm font-semibold text-emerald-400">{formatCurrency(r.preco)}</span>
                   </div>
