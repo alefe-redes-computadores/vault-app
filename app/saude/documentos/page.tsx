@@ -157,7 +157,7 @@ export default function DocumentsPage() {
       }
 
       const person = persons.find((p) => p.id === doc.person_id);
-      const personColor = person?.cor || "#6B7280";
+      const personColor = person?.color || "#6B7280";
 
       return {
         ...doc,
