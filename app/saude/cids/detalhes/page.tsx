@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   Brain, 
@@ -17,15 +17,18 @@ import {
   FileText, 
   Sparkles, 
   ChevronRight, 
-  Calendar,
-  Trash2
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Building2,
+  MapPin
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
-import type { Cid, Tratamento, Medicamento, Medico, Document } from "@/lib/types";
+import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document } from "@/lib/types";
 import { getCidInsights } from "@/lib/health-insights";
 
 const fadeUp = {
@@ -56,12 +59,20 @@ function CidDetalhesContent() {
   const [cid, setCid] = useState<Cid | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Estados de dados cruzados
+  // Estados de dados cruzados completos
   const [tratamentos, setTratamentos] = useState<Tratamento[]>([]);
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
   const [medicos, setMedicos] = useState<Medico[]>([]);
+  const [hospitais, setHospitais] = useState<Hospital[]>([]);
+  const [farmacias, setFarmacias] = useState<Farmacia[]>([]);
   const [documentos, setDocumentos] = useState<Document[]>([]);
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   useEffect(() => {
     if (!id) {
@@ -78,13 +89,12 @@ function CidDetalhesContent() {
         }
         setCid(cidData);
 
-        // 1. Buscar Tratamentos vinculados a este CID
+        // 1. Tratamentos
         const tratData = await db.tratamentos.where("cid_id").equals(id).toArray();
         setTratamentos(tratData);
-
         const tratIds = new Set(tratData.map(t => t.id).filter(Boolean));
 
-        // 2. Buscar Medicamentos vinculados a esses tratamentos
+        // 2. Medicamentos
         const medsData = await db.medicamentos.toArray();
         const medsVinculados = medsData.filter(m => {
           if (m.tratamento_ids && m.tratamento_ids.some(tid => tratIds.has(tid))) return true;
@@ -92,12 +102,22 @@ function CidDetalhesContent() {
         });
         setMedicamentos(medsVinculados);
 
-        // 3. Buscar Médicos da rede vinculados aos medicamentos ou tratamentos
+        // 3. Médicos
         const medicoIds = new Set(medsVinculados.map(m => m.medico_id).filter(Boolean));
         const medsList = await db.medicos.toArray();
         setMedicos(medsList.filter(med => med.id && medicoIds.has(med.id)));
 
-        // 4. Documentos / Laudos vinculados
+        // 4. Locais / Hospitais (Acompanhamento)
+        const hospIds = new Set(medsVinculados.map(m => m.estabelecimento_id || m.farmacia_id).filter(Boolean));
+        const hospList = await db.hospitais.toArray();
+        setHospitais(hospList.filter(h => h.id && hospIds.has(h.id)));
+
+        // 5. Farmácias (Onde compra)
+        const farmaciaIds = new Set(medsVinculados.map(m => m.farmacia_id).filter(Boolean));
+        const farmList = await db.farmacias.toArray();
+        setFarmacias(farmList.filter(f => f.id && farmaciaIds.has(f.id)));
+
+        // 6. Laudos / Anexos
         const docsList = await db.documents.toArray();
         setDocumentos(docsList.filter(d => d.metadata?.cid_id === id || (d.metadata?.tratamento_id && tratIds.has(d.metadata.tratamento_id))));
 
@@ -117,9 +137,11 @@ function CidDetalhesContent() {
     try {
       await db.cids.delete(id);
       trigger("success");
-      router.replace("/saude/cids");
+      showToast("Diagnóstico removido com sucesso.");
+      setTimeout(() => router.replace("/saude/cids"), 800);
     } catch {
       trigger("error");
+      showToast("Erro ao excluir diagnóstico.", "error");
     }
   };
 
@@ -137,7 +159,6 @@ function CidDetalhesContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        {/* Header limpo sem botões flutuantes desnecessários */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between pt-6">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -169,8 +190,7 @@ function CidDetalhesContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          
-          {/* Card Principal Estilo Painel Clínico */}
+          {/* Card Principal */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -202,7 +222,6 @@ function CidDetalhesContent() {
               </div>
             </div>
 
-            {/* Card de Insight Inteligente */}
             {cidInsight && (
               <div className="relative z-10 mt-5 rounded-2xl bg-surface-raised/60 border border-surface-border/50 p-4 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: cidCor }}>
@@ -224,7 +243,6 @@ function CidDetalhesContent() {
               </div>
             )}
 
-            {/* Métricas Vinculadas */}
             <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5 text-center">
               <div className="flex flex-col">
                 <span className="text-xs font-medium text-ink-muted">Tratamentos</span>
@@ -235,13 +253,13 @@ function CidDetalhesContent() {
                 <span className="font-mono text-xl font-semibold text-ink-primary mt-0.5">{medicamentos.length}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-medium text-ink-muted">Documentos</span>
+                <span className="text-xs font-medium text-ink-muted">Laudos</span>
                 <span className="font-mono text-xl font-semibold text-ink-primary mt-0.5">{documentos.length}</span>
               </div>
             </div>
           </motion.div>
 
-          {/* Tratamentos Vinculados */}
+          {/* Tratamentos Relacionados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <FolderHeart size={16} className="text-violet-400" />
@@ -275,7 +293,7 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
-          {/* Medicamentos Vinculados */}
+          {/* Medicamentos em Uso */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
@@ -309,7 +327,7 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
-          {/* Equipe Clínica */}
+          {/* Equipe Médica Associada */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Stethoscope size={16} className="text-ice" />
@@ -334,15 +352,135 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
+          {/* Locais de Acompanhamento / Hospitais / Farmácias Cruzadas */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="space-y-3">
+            <div className="flex items-center gap-2 pl-1">
+              <Building2 size={16} className="text-amber-400" />
+              <h3 className="font-display text-base font-semibold text-ink-primary">Locais de Atendimento e Farmácias</h3>
+            </div>
+            {hospitais.length === 0 && farmacias.length === 0 ? (
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
+                <p className="text-xs text-ink-muted">Nenhum local ou farmácia cruzada para este CID.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {hospitais.map(h => (
+                  <div key={h.id} className="flex items-center justify-between p-3.5 rounded-2xl border border-surface-border/50 bg-surface text-left">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-amber-400/10 flex items-center justify-center text-amber-400">
+                        <Building2 size={16} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-ink-primary">{h.nome}</p>
+                        {h.endereco && <p className="text-xs text-ink-muted flex items-center gap-1 mt-0.5"><MapPin size={10} />{h.endereco}</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {farmacias.map(f => (
+                  <div key={f.id} className="flex items-center justify-between p-3.5 rounded-2xl border border-surface-border/50 bg-surface text-left">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-emerald-400/10 flex items-center justify-center text-emerald-400">
+                        <Pill size={16} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-ink-primary">{f.nome} (Farmácia)</p>
+                        {f.endereco && <p className="text-xs text-ink-muted flex items-center gap-1 mt-0.5"><MapPin size={10} />{f.endereco}</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Laudos e Documentos Anexados */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.25 }} className="space-y-3">
+            <div className="flex items-center gap-2 pl-1">
+              <FileText size={16} className="text-emerald-400" />
+              <h3 className="font-display text-base font-semibold text-ink-primary">Laudos e Relatórios Vinculados</h3>
+            </div>
+            {documentos.length === 0 ? (
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
+                <p className="text-xs text-ink-muted">Nenhum laudo ou relatório anexado a este CID.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {documentos.map(doc => (
+                  <div key={doc.id} className="p-4 rounded-2xl border border-surface-border/50 bg-surface flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-sm text-ink-primary">{doc.title}</p>
+                      <p className="text-xs text-ink-muted capitalize">{doc.type}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
         </section>
 
-        <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDelete}
-          title="Excluir CID"
-          message="Tem certeza que deseja remover este diagnóstico da base? Os tratamentos associados não serão apagados, mas perderão a referência de CID."
-        />
+        {/* MODAL DE EXCLUSÃO */}
+        <AnimatePresence>
+          {showDeleteModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.95 }} 
+                className="w-full max-w-sm rounded-[28px] border border-surface-border bg-surface p-6 shadow-xl space-y-4"
+              >
+                <div className="flex items-center gap-3 text-coral">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-coral/10">
+                    <Trash2 size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base font-bold text-ink-primary">Excluir CID</h3>
+                    <p className="text-xs text-ink-muted">Ação permanente</p>
+                  </div>
+                </div>
+                <p className="text-sm text-ink-muted leading-relaxed">
+                  Tem certeza que deseja remover este diagnóstico da base? Os tratamentos associados não serão apagados, mas perderão a referência de CID.
+                </p>
+                <div className="flex gap-2 pt-2">
+                  <button 
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={handleDelete}
+                    className="flex-1 rounded-2xl bg-coral py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-coral/20"
+                  >
+                    Sim, excluir
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* TOAST */}
+        <AnimatePresence>
+          {toastMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className="fixed bottom-6 inset-x-5 z-50 mx-auto max-w-sm flex items-center gap-3 rounded-2xl border border-surface-border bg-surface p-4 shadow-2xl"
+            >
+              {toastMessage.type === 'success' ? (
+                <CheckCircle2 size={20} className="text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle size={20} className="text-coral shrink-0" />
+              )}
+              <p className="text-xs font-medium text-ink-primary flex-1">{toastMessage.text}</p>
+              <button onClick={() => setToastMessage(null)} className="text-ink-muted hover:text-ink-primary">
+                <X size={16} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </PageTransition>
   );
