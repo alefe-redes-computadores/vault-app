@@ -31,7 +31,6 @@ import { useLiveQuery } from "dexie-react-hooks";
 import type { Medico, Consulta, Cirurgia, Medicamento, Renovacao, Tratamento } from "@/lib/types";
 import { sugerirRenovacao, isReceitaVencidaSegura, analisarComportamentoUso } from "@/lib/health-insights";
 
-// 🔧 Função de cores (temporária)
 function getTreatmentColor(nome: string): string {
   const colors: Record<string, string> = {
     "tdah": "#8B5CF6",
@@ -87,20 +86,19 @@ function DetalhesMedicoContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Buscas reativas
-  const consultas = useLiveQuery(() => db.consultas.where("medico_id").equals(id || "").toArray(), [id]) || [];
-  const cirurgias = useLiveQuery(() => db.cirurgias.where("medico_id").equals(id || "").toArray(), [id]) || [];
-  const medicamentos = useLiveQuery(() => db.medicamentos.where("medico_id").equals(id || "").toArray(), [id]) || [];
-  const renovacoes = useLiveQuery(() => 
-    db.renovacoes.where("medico_id").equals(id || "").reverse().limit(5).toArray(), [id]
-  ) || [];
+  // 🛡️ Buscas seguras blindadas contra IDs vazios
+  const consultas = useLiveQuery(() => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as any[])), [id]) || [];
+  const cirurgias = useLiveQuery(() => (id ? db.cirurgias.where("medico_id").equals(id).toArray() : Promise.resolve([] as any[])), [id]) || [];
+  const medicamentos = useLiveQuery(() => (id ? db.medicamentos.where("medico_id").equals(id).toArray() : Promise.resolve([] as any[])), [id]) || [];
+  const renovacoes = useLiveQuery(() => (id ? db.renovacoes.where("medico_id").equals(id).reverse().limit(5).toArray() : Promise.resolve([] as any[])), [id]) || [];
   
-  // Histórico de doses (para comportamento de uso)
-  const doseLogs = useLiveQuery(() => 
-    db.doseLogs.where('medicamento_id').anyOf(medicamentos.map(m => m.id)).toArray(), [medicamentos]
-  ) || [];
+  // 🛡️ CORREÇÃO DO ERRO DO VERCEL: Filtramos undefined via (filter(Boolean) as string[])
+  const doseLogs = useLiveQuery(() => {
+    const validMedIds = medicamentos.map(m => m.id).filter(Boolean) as string[];
+    if (validMedIds.length === 0) return Promise.resolve([] as any[]);
+    return db.doseLogs.where('medicamento_id').anyOf(validMedIds).toArray();
+  }, [medicamentos]) || [];
 
-  // Estabelecimentos onde atende
   const estabelecimentosIds = useMemo(() => {
     const ids = new Set<string>();
     consultas.forEach(c => c.hospital_id && ids.add(c.hospital_id));
@@ -108,12 +106,12 @@ function DetalhesMedicoContent() {
     return Array.from(ids);
   }, [consultas, cirurgias]);
 
+  // 🛡️ BLINDAGEM DO VERCEL: Promise.resolve([] as any[]) no return vazio
   const estabelecimentos = useLiveQuery(() => {
-    if (estabelecimentosIds.length === 0) return [];
+    if (estabelecimentosIds.length === 0) return Promise.resolve([] as any[]);
     return db.hospitais.where('id').anyOf(estabelecimentosIds).toArray();
   }, [estabelecimentosIds]) || [];
 
-  // Tratamentos relacionados via medicamentos
   const tratamentosIds = useMemo(() => {
     const ids = new Set<string>();
     medicamentos.forEach(m => {
@@ -124,25 +122,23 @@ function DetalhesMedicoContent() {
     return Array.from(ids);
   }, [medicamentos]);
 
+  // 🛡️ BLINDAGEM DO VERCEL: Promise.resolve([] as any[]) no return vazio
   const tratamentos = useLiveQuery(() => {
-    if (tratamentosIds.length === 0) return [];
+    if (tratamentosIds.length === 0) return Promise.resolve([] as any[]);
     return db.tratamentos.where('id').anyOf(tratamentosIds).toArray();
   }, [tratamentosIds]) || [];
 
-  // Próxima consulta
   const proximaConsulta = useMemo(() => {
     const futuras = consultas.filter(c => isDateInFuture(c.data));
     if (futuras.length === 0) return null;
     return futuras.sort((a, b) => a.data.localeCompare(b.data))[0];
   }, [consultas]);
 
-  // Última consulta
   const ultimaConsulta = useMemo(() => {
     if (consultas.length === 0) return null;
     return consultas.sort((a, b) => b.data.localeCompare(a.data))[0];
   }, [consultas]);
 
-  // 🔧 INSIGHTS: Alertas de renovação para medicamentos
   const alertasMedicamentos = useMemo(() => {
     return medicamentos.map(med => {
       const insight = sugerirRenovacao(med);
@@ -242,7 +238,6 @@ function DetalhesMedicoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          {/* Card Principal */}
           <motion.div 
             variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}
             initial="initial" 
@@ -289,7 +284,6 @@ function DetalhesMedicoContent() {
               </div>
             )}
 
-            {/* Próxima Consulta */}
             {proximaConsulta && (
               <div className="pt-4 border-t border-surface-border/40">
                 <div className="rounded-xl bg-emerald-400/10 border border-emerald-400/20 p-3 flex items-center gap-3">
@@ -305,7 +299,6 @@ function DetalhesMedicoContent() {
               </div>
             )}
 
-            {/* Observações */}
             {medico.observacoes && (
               <div className="pt-4 border-t border-surface-border/40">
                 <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5">
@@ -315,7 +308,6 @@ function DetalhesMedicoContent() {
               </div>
             )}
 
-            {/* Estabelecimentos */}
             {estabelecimentos.length > 0 && (
               <div className="pt-4 border-t border-surface-border/40">
                 <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
@@ -332,7 +324,6 @@ function DetalhesMedicoContent() {
             )}
           </motion.div>
 
-          {/* 🔧 Alertas Inteligentes (do health-insights) */}
           {(alertasGerais.ativos.length > 0 || alertasGerais.vencidos.length > 0 || alertasGerais.comportamentos.length > 0) && (
             <motion.div 
               variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} 
@@ -380,7 +371,6 @@ function DetalhesMedicoContent() {
             </motion.div>
           )}
 
-          {/* Tratamentos Relacionados */}
           {tratamentos.length > 0 && (
             <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
@@ -409,7 +399,6 @@ function DetalhesMedicoContent() {
             </motion.div>
           )}
 
-          {/* Últimas Renovações */}
           {renovacoes.length > 0 && (
             <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
@@ -433,12 +422,10 @@ function DetalhesMedicoContent() {
             </motion.div>
           )}
 
-          {/* Histórico Clínico Cruzado */}
           <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 pt-2">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">Histórico Clínico</h3>
 
             <div className="grid grid-cols-1 gap-3">
-              {/* Consultas */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                   <Calendar size={16} className="text-ice" />
@@ -473,7 +460,6 @@ function DetalhesMedicoContent() {
                 )}
               </div>
 
-              {/* Cirurgias */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                   <Activity size={16} className="text-coral" />
@@ -503,7 +489,6 @@ function DetalhesMedicoContent() {
                 )}
               </div>
 
-              {/* Medicamentos */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                   <Pill size={16} className="text-emerald-400" />
