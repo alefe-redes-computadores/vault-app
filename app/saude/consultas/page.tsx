@@ -49,7 +49,10 @@ export default function ConsultasPage() {
     const hist: Consulta[] = [];
 
     (consultas || []).forEach((c) => {
-      const isPassada = c.data < hojeISO || c.status === "realizada" || c.status === "cancelada";
+      // 🐛 Blindagem contra datas vazias/nulas
+      const dataSegura = c.data || "";
+      const isPassada = dataSegura < hojeISO || c.status === "realizada" || c.status === "cancelada";
+      
       if (isPassada) {
         hist.push(c);
       } else {
@@ -57,8 +60,8 @@ export default function ConsultasPage() {
       }
     });
 
-    prox.sort((a, b) => a.data.localeCompare(b.data));
-    hist.sort((a, b) => b.data.localeCompare(a.data));
+    prox.sort((a, b) => (a.data || "").localeCompare(b.data || ""));
+    hist.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
 
     return { proximas: prox, historico: hist };
   }, [consultas, hojeISO]);
