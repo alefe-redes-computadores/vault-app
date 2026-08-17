@@ -1,10 +1,13 @@
+// ... (mantenha tudo que está ANTES da importação import type { Document, Medicamento, TipoReceita } do seu arquivo original)
+
 import type { Document, Medicamento, TipoReceita } from "@/lib/types";
 
 export type AlertLevel = "vencido" | "urgente" | "atencao" | "ok";
 
+// 🛡️ A Interface Corrigida para bater com o SaudePage
 export interface HealthAlert {
   id: string;
-  kind: "medicamento" | "documento" | "consulta" | "estoque" | "exame";
+  kind: "medicamento" | "documento" | "consulta" | "estoque" | "exame" | "cirurgia";
   title: string;
   subtitle: string;
   date: string;
@@ -183,31 +186,6 @@ export function getDocumentAlerts(documents: Document[]): HealthAlert[] {
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
-export function getUpcomingAppointments(documents: Document[]): HealthAlert[] {
-  const relevantTypes = ["prontuario", "laudo", "encaminhamento"];
-  return documents
-    .filter(
-      (doc) =>
-        doc.category_id === "saude" && !!doc.id && relevantTypes.includes(doc.type)
-    )
-    .map((doc) => {
-      const date = doc.metadata?.date;
-      const daysUntil = getDaysUntil(date);
-      return {
-        id: doc.id!,
-        kind: "consulta" as const,
-        title: doc.title,
-        subtitle: doc.metadata?.specialty || doc.metadata?.hospital || doc.type,
-        date: date || "",
-        daysUntil: daysUntil ?? -999,
-        level: "ok" as AlertLevel,
-        href: `/detalhes?id=${doc.id}`,
-      };
-    })
-    .filter((a) => a.date && a.daysUntil >= 0 && a.daysUntil <= 30)
-    .sort((a, b) => a.daysUntil - b.daysUntil);
-}
-
 export function getExameAlerts(exames: any[]): HealthAlert[] {
   return exames
     .filter((exame) => !!exame.id && !!exame.data_retorno)
@@ -263,9 +241,6 @@ export function getLocalTodayISO(): string {
   return localDate.toISOString().split('T')[0];
 }
 
-// ============================================================
-// FORMATADOR DE DATA
-// ============================================================
 export function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
   const parts = isoStr.split("-");
