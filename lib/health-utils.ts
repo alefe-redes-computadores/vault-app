@@ -21,8 +21,6 @@ const ATENCAO_DIAS = 15;
 const URGENTE_DIAS_CONTROLADA = 7;
 const ATENCAO_DIAS_CONTROLADA = 18;
 
-// Estoque usa uma janela um pouco mais folgada que renovação, porque
-// dá tempo de ir na farmácia sem depender de consulta médica nova.
 const URGENTE_DIAS_ESTOQUE = 3;
 const ATENCAO_DIAS_ESTOQUE = 7;
 
@@ -76,11 +74,6 @@ export function suggestRenewalDate(dataReceita: string, tipo: TipoReceita): stri
   return date.toISOString().slice(0, 10);
 }
 
-// ============================================================
-// ESTOQUE — Atualizado para usar abatimento em tempo real
-// (A lógica de projeção no tempo foi removida para evitar
-// duplo abatimento, já que o banco agora debita na hora)
-// ============================================================
 export interface EstoqueInfo {
   consumoDiario: number;
   quantidadeInicial: number;
@@ -107,14 +100,12 @@ export function computeEstoqueInfo(med: Medicamento): EstoqueInfo | null {
   
   if (consumoDiario <= 0) return null;
 
-  // Como o app agora usa abatimento em tempo real pelo botão "Tomei",
-  // o valor armazenado em 'estoque_quantidade' JÁ É o restante real atualizado.
   const quantidadeRestante = med.estoque_quantidade!;
   const diasRestantes = Math.floor(quantidadeRestante / consumoDiario);
 
   return {
     consumoDiario,
-    quantidadeInicial: quantidadeRestante, // Alinhado ao valor atual para não quebrar a tipagem
+    quantidadeInicial: quantidadeRestante,
     quantidadeRestante,
     diasRestantes,
     unidade: med.estoque_unidade_medida || "unidade(s)",
@@ -149,9 +140,6 @@ export function getEstoqueAlerts(medicamentos: Medicamento[]): HealthAlert[] {
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
-/**
- * Alertas de medicamento — baseado em `proxima_renovacao`.
- */
 export function getMedicamentoAlerts(medicamentos: Medicamento[]): HealthAlert[] {
   return medicamentos
     .filter((med) => !!med.id)
@@ -220,9 +208,6 @@ export function getUpcomingAppointments(documents: Document[]): HealthAlert[] {
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
-/**
- * Alertas de exames — baseado em datas de retorno ou prazos importantes.
- */
 export function getExameAlerts(exames: any[]): HealthAlert[] {
   return exames
     .filter((exame) => !!exame.id && !!exame.data_retorno)
@@ -271,13 +256,19 @@ export function estoqueLevelLabel(level: AlertLevel, diasRestantes: number): str
   return `Acaba em ${diasRestantes} dia${diasRestantes !== 1 ? "s" : ""}`;
 }
 
-// ============================================================
-// DATA LOCAL — Garante strings de data no fuso horário do dispositivo
-// ============================================================
 export function getLocalTodayISO(): string {
   const d = new Date();
-  // Ajusta para o fuso horário local e formata como YYYY-MM-DD
   const offset = d.getTimezoneOffset();
   const localDate = new Date(d.getTime() - (offset * 60 * 1000));
   return localDate.toISOString().split('T')[0];
+}
+
+// ============================================================
+// FORMATADOR DE DATA
+// ============================================================
+export function formatDateDisplay(isoStr: string): string {
+  if (!isoStr) return "";
+  const parts = isoStr.split("-");
+  if (parts.length !== 3) return isoStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
