@@ -30,13 +30,15 @@ import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-// 🧠 Importando a nova inteligência centralizada
 import {
-  analisarReceitaArquivada,
+  isReceitaVencidaSegura,
+  getDaysUntil,
+  sugerirRenovacao,
 } from "@/lib/health-insights";
 
 type TabType = "receitas" | "prontuarios" | "exames";
-type FiltroStatus = "todos" | "validas" | "vencidas" | "proximas" | "renovadas_historico";
+// 🔧 CORRIGIDO: valores no SINGULAR para corresponder ao alerta.status
+type FiltroStatus = "todos" | "valida" | "vencida" | "proxima" | "renovada_historico";
 
 interface GroupData {
   groupKey: string;
@@ -68,6 +70,7 @@ export default function DocumentsPage() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | "all">("all");
+  // 🔧 CORRIGIDO: usar valores no SINGULAR
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("todos");
   const currentMonthDefault = format(new Date(), "yyyy-MM");
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthDefault);
@@ -93,7 +96,7 @@ export default function DocumentsPage() {
     searchQuery: debouncedSearch,
   });
 
-  // Mapeamento Otimizado
+  // Mapeamento de medicamentos e renovações
   const medicamentoMap = useMemo(() => {
     const map = new Map();
     medicamentos.forEach((m) => map.set(m.id, m));
@@ -109,7 +112,7 @@ export default function DocumentsPage() {
     return map;
   }, [renovacoes]);
 
-  // Filtragem Base
+  // Filtragem base (por abas e mês)
   const filteredDocsBase = useMemo(() => {
     let result = paginatedDocs.filter((doc: any) => doc.category_id === "saude");
 
@@ -135,28 +138,54 @@ export default function DocumentsPage() {
     return result;
   }, [paginatedDocs, activeTab, selectedMonth]);
 
-  // 🧠 Enriquecimento Inteligente (A Mágica acontece aqui)
+  // Enriquecer documentos com alertas e informações relacionais
   const docsComAlertas = useMemo(() => {
     return filteredDocsBase.map((doc) => {
       const medId = doc.metadata?.medication_id;
       const med = medId ? medicamentoMap.get(medId) : null;
-      const renovacoesDoMed = medId ? renovacoesPorMedicamento.get(medId) || [] : [];
-      
-      const dataReceita = doc.metadata?.expiration_date || doc.metadata?.renewal_date || doc.created_at;
+      const renovacoesDoMed = medId
+        ? renovacoesPorMedicamento.get(medId) || []
+        : [];
 
-      // Chama a função centralizada que evita o "Alert Fatigue"
-      const alerta = doc.type === "receita" 
-        ? analisarReceitaArquivada(dataReceita, med, renovacoesDoMed) 
-        : null;
+      const dataReceita =
+        doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
+      const renovacaoRecent = renovacoesDoMed.some(
+        (r) => r.data && r.data >= dataReceita
+      );
+
+      let alerta = null;
+      if (doc.type === "receita" && medId && !renovacaoRecent) {
+        const expDate = doc.metadata?.expiration_date || doc.metadata?.renewal_date;
+        const vencida = isReceitaVencidaSegura(expDate);
+        const dias = getDaysUntil(expDate);
+        if (vencida) {
+          alerta = { status: "vencida", label: "Vencida", color: "#EF4444" };
+        } else if (dias !== null && dias <= 7) {
+          alerta = {
+            status: "proxima",
+            label: "Próxima ao vencimento",
+            color: "#F59E0B",
+          };
+        } else {
+          alerta = { status: "valida", label: "Válida", color: "#10B981" };
+        }
+      } else if (doc.type === "receita" && medId && renovacaoRecent) {
+        alerta = { status: "renovada_historico", label: "Renovada", color: "#38BDF8" };
+      }
 
       let medicoNome = null;
       let tratamentoNome = null;
       if (med) {
-        if (med.medico_id) medicoNome = med.medico;
-        if (med.tratamento_ids && med.tratamento_ids.length > 0) tratamentoNome = "Tratamento vinculado";
+        if (med.medico_id) {
+          medicoNome = med.medico;
+        }
+        if (med.tratamento_ids && med.tratamento_ids.length > 0) {
+          tratamentoNome = "Tratamento vinculado";
+        }
       }
 
       const person = persons.find((p) => p.id === doc.person_id);
+      // 🔧 CORRIGIDO: usar "color" em vez de "cor"
       const personColor = person?.color || "#6B7280";
 
       return {
@@ -171,7 +200,7 @@ export default function DocumentsPage() {
     });
   }, [filteredDocsBase, medicamentoMap, renovacoesPorMedicamento, persons]);
 
-  // Aplicar filtro de status inteligente
+  // 🔧 CORRIGIDO: filtro agora compara corretamente com alerta.status
   const filteredDocs = useMemo(() => {
     if (filtroStatus === "todos") return docsComAlertas;
     return docsComAlertas.filter((doc) => doc.alerta?.status === filtroStatus);
@@ -190,7 +219,7 @@ export default function DocumentsPage() {
     });
   }, [filteredDocs]);
 
-  // Agrupamento de Receitas
+  // Agrupamento para receitas
   const groupedReceitas = useMemo((): GroupData[] => {
     if (activeTab !== "receitas") return [];
 
@@ -217,13 +246,14 @@ export default function DocumentsPage() {
     return Array.from(groups.values());
   }, [sortedDocs, activeTab]);
 
-  // Timeline
+  // Timeline para prontuários e exames
   const timelineGroups = useMemo(() => {
     if (activeTab === "receitas") return [];
     const groups: { [key: string]: any[] } = {};
 
     for (const doc of sortedDocs) {
-      const dateStr = doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at || "";
+      const dateStr =
+        doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at || "";
       let monthYearKey = "Geral";
 
       if (dateStr && typeof dateStr === "string") {
@@ -432,44 +462,69 @@ export default function DocumentsPage() {
                       Status
                     </span>
                     <button
-                      onClick={() => { trigger("vibrate"); setFiltroStatus("todos"); }}
+                      onClick={() => {
+                        trigger("vibrate");
+                        setFiltroStatus("todos");
+                      }}
                       className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "todos" ? "border-surface-border/50 bg-surface-raised text-ink-muted" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                        filtroStatus === "todos"
+                          ? "border-surface-border/50 bg-surface-raised text-ink-muted"
+                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                       }`}
                     >
                       Todos
                     </button>
                     <button
-                      onClick={() => { trigger("vibrate"); setFiltroStatus("validas"); }}
+                      onClick={() => {
+                        trigger("vibrate");
+                        setFiltroStatus("valida");
+                      }}
                       className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "validas" ? "border-emerald-400 bg-emerald-400/20 text-emerald-300" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                        filtroStatus === "valida"
+                          ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
+                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                       }`}
                     >
                       Válidas
                     </button>
                     <button
-                      onClick={() => { trigger("vibrate"); setFiltroStatus("proximas"); }}
+                      onClick={() => {
+                        trigger("vibrate");
+                        setFiltroStatus("proxima");
+                      }}
                       className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "proximas" ? "border-amber-400 bg-amber-400/20 text-amber-300" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                        filtroStatus === "proxima"
+                          ? "border-amber-400 bg-amber-400/20 text-amber-300"
+                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                       }`}
                     >
                       Próximas
                     </button>
                     <button
-                      onClick={() => { trigger("vibrate"); setFiltroStatus("vencidas"); }}
+                      onClick={() => {
+                        trigger("vibrate");
+                        setFiltroStatus("vencida");
+                      }}
                       className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "vencidas" ? "border-coral bg-coral/20 text-coral" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                        filtroStatus === "vencida"
+                          ? "border-coral bg-coral/20 text-coral"
+                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                       }`}
                     >
                       Vencidas
                     </button>
                     <button
-                      onClick={() => { trigger("vibrate"); setFiltroStatus("renovadas_historico"); }}
+                      onClick={() => {
+                        trigger("vibrate");
+                        setFiltroStatus("renovada_historico");
+                      }}
                       className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "renovadas_historico" ? "border-ice bg-ice/20 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                        filtroStatus === "renovada_historico"
+                          ? "border-ice bg-ice/20 text-ice"
+                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                       }`}
                     >
-                      Arquivadas (Renovadas)
+                      Renovadas
                     </button>
                   </div>
 
