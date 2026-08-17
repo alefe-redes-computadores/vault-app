@@ -25,7 +25,6 @@ import {
   CalendarCheck2,
   FileHeart,
   Plus,
-  X,
   Users,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -85,6 +84,8 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
         >
           {alert.kind === "exame" ? (
             <FlaskConical size={18} style={{ color }} />
+          ) : alert.kind === "consulta" ? (
+            <Stethoscope size={18} style={{ color }} />
           ) : (
             <FileWarning size={18} style={{ color }} />
           )}
@@ -139,26 +140,43 @@ export default function SaudePage() {
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
   const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
+  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
 
-  const consultasHoje = useLiveQuery(() => db.consultas.where("data").equals(hoje).toArray(), [hoje]) || [];
+  const consultasHoje = consultas.filter((c: any) => c.data === hoje);
   const cirurgiasHoje = useLiveQuery(() => db.cirurgias.where("data").equals(hoje).toArray(), [hoje]) || [];
-  const examesHoje = useLiveQuery(() => db.exames.where("data").equals(hoje).toArray(), [hoje]) || [];
+  const examesHoje = exames.filter((e: any) => e.data === hoje);
 
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
   const [isProcessandoTudo, setIsProcessandoTudo] = useState(false);
 
-  const totalGastoGeral = useMemo(() => {
-    let soma = 0;
+  const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  // 🧠 INTELIGÊNCIA FINANCEIRA: Cálculo do mês atual vs anterior
+  const metricasFinanceiras = useMemo(() => {
+    const dataAtual = new Date();
+    const mesAtual = dataAtual.getMonth();
+    const anoAtual = dataAtual.getFullYear();
+    const mesAnterior = mesAtual === 0 ? 11 : mesAtual - 1;
+    const anoDoMesAnterior = mesAtual === 0 ? anoAtual - 1 : anoAtual;
+
+    let gastoMesAtual = 0;
+    let gastoMesAnterior = 0;
+
     renovacoes.forEach((r: any) => {
-      if (typeof r.preco === "number" && r.preco > 0) {
-        soma += r.preco;
+      if (typeof r.preco === "number" && r.preco > 0 && r.data) {
+        const dataR = new Date(r.data);
+        if (dataR.getMonth() === mesAtual && dataR.getFullYear() === anoAtual) {
+          gastoMesAtual += r.preco;
+        } else if (dataR.getMonth() === mesAnterior && dataR.getFullYear() === anoDoMesAnterior) {
+          gastoMesAnterior += r.preco;
+        }
       }
     });
-    return soma;
-  }, [renovacoes]);
 
-  const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const diff = gastoMesAtual - gastoMesAnterior;
+    return { gastoMesAtual, gastoMesAnterior, diff };
+  }, [renovacoes]);
 
   const dosesPendentesAtrasadas = useMemo(() => {
     if (!medicamentos || !doseLogs) return [];
@@ -177,6 +195,7 @@ export default function SaudePage() {
     return lista;
   }, [medicamentos, doseLogs, horaAtual]);
 
+  // 🛡️ CORREÇÃO DO ERRO DO VERCEL: Garantindo que a data seja repassada no HealthAlert
   const alertasEstoque = useMemo(() => {
     if (!medicamentos) return [];
     return medicamentos
@@ -192,12 +211,44 @@ export default function SaudePage() {
             kind: "estoque" as const,
             href: `/saude/medicamentos/detalhes?id=${m.id}`,
             daysUntil: 0,
+            date: m.proxima_renovacao || hoje // 🛡️ A propriedade que faltava!
           };
         }
         return null;
       })
       .filter(Boolean) as HealthAlert[];
-  }, [medicamentos]);
+  }, [medicamentos, hoje]);
+
+  // 🧠 INTELIGÊNCIA CLÍNICA: Alerta de acompanhamento se não for ao médico há muito tempo
+  const alertasConsultas = useMemo(() => {
+    const medicosUnicos = new Set(consultas.map((c: any) => c.medico_id).filter(Boolean));
+    const alertas: HealthAlert[] = [];
+
+    medicosUnicos.forEach(medicoId => {
+      const consMedico = consultas.filter((c: any) => c.medico_id === medicoId);
+      const consFuturas = consMedico.filter((c: any) => c.data >= hoje);
+      
+      if (consFuturas.length === 0) {
+        const ultimaCons = [...consMedico].sort((a: any, b: any) => b.data.localeCompare(a.data))[0];
+        if (ultimaCons) {
+          const diffDias = Math.floor((new Date(hoje).getTime() - new Date(ultimaCons.data).getTime()) / (1000 * 3600 * 24));
+          if (diffDias > 180) { // +6 Meses sem retorno
+            alertas.push({
+              id: `cons-${medicoId}`,
+              title: `Dr(a). ${ultimaCons.medico}`,
+              subtitle: `Sem retorno médico há ${Math.floor(diffDias / 30)} meses`,
+              level: 2,
+              kind: "consulta" as const,
+              href: `/saude/medicos/detalhes?id=${medicoId}`,
+              daysUntil: -diffDias,
+              date: ultimaCons.data
+            });
+          }
+        }
+      }
+    });
+    return alertas;
+  }, [consultas, hoje]);
 
   const handleTomarDosePendente = async (d: { medicamentoId: string; nome: string; horario: string }) => {
     if (processandoDoseId) return;
@@ -244,11 +295,10 @@ export default function SaudePage() {
 
   const docAlerts = useMemo(() => getDocumentAlerts(documents || []).filter(a => a.daysUntil <= 5), [documents]);
   const exameAlerts = useMemo(() => getExameAlerts(exames || []).filter(a => a.daysUntil <= 5), [exames]);
-  const estoqueAlerts = useMemo(() => alertasEstoque, [alertasEstoque]);
 
   const otherAlerts = useMemo(
-    () => [...docAlerts, ...exameAlerts, ...estoqueAlerts].sort((a, b) => a.daysUntil - b.daysUntil),
-    [docAlerts, exameAlerts, estoqueAlerts]
+    () => [...docAlerts, ...exameAlerts, ...alertasEstoque, ...alertasConsultas].sort((a, b) => a.daysUntil - b.daysUntil),
+    [docAlerts, exameAlerts, alertasEstoque, alertasConsultas]
   );
 
   const isLoading = documents === undefined || medicamentos === undefined || exames === undefined;
@@ -336,7 +386,7 @@ export default function SaudePage() {
             <ChevronRight size={18} className="text-ice" />
           </motion.div>
 
-          {/* Financeiro / Renovações */}
+          {/* Financeiro Turbinado / Renovações */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -349,11 +399,15 @@ export default function SaudePage() {
                 <DollarSign size={22} />
               </div>
               <div>
-                <p className="text-xs uppercase font-mono text-ink-muted">Investimento em Saúde</p>
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Gastos com Saúde (Mês)</p>
                 <p className="font-mono text-lg font-bold text-ink-primary mt-0.5">
-                  R$ {totalGastoGeral.toFixed(2).replace(".", ",")}
+                  R$ {metricasFinanceiras.gastoMesAtual.toFixed(2).replace(".", ",")}
                 </p>
-                <p className="text-[10px] text-ink-faint">Total em {renovacoes.length} renovação(ões) registradas</p>
+                {metricasFinanceiras.diff !== 0 && (
+                  <p className={`text-[10px] mt-0.5 font-bold ${metricasFinanceiras.diff > 0 ? 'text-coral' : 'text-emerald-400'}`}>
+                    {metricasFinanceiras.diff > 0 ? '+' : '-'} R$ {Math.abs(metricasFinanceiras.diff).toFixed(2).replace(".", ",")} vs mês passado
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-1 text-xs font-semibold text-ice">
@@ -482,7 +536,7 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* Alertas Gerais */}
+          {/* Alertas Gerais (Agora com Consultas Atrasadas e Estoque corrigido) */}
           {otherAlerts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
