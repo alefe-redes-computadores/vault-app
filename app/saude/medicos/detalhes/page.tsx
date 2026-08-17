@@ -31,6 +31,9 @@ import { useLiveQuery } from "dexie-react-hooks";
 import type { Medico, Consulta, Cirurgia, Medicamento, Renovacao, Tratamento } from "@/lib/types";
 import { sugerirRenovacao, isReceitaVencidaSegura, analisarComportamentoUso } from "@/lib/health-insights";
 
+// 🛡️ TYPE SHIELD: Garante que o TypeScript aceite colunas extras do banco que não estão no types.ts
+type MedicoExt = Medico & Record<string, any>;
+
 function getTreatmentColor(nome: string): string {
   const colors: Record<string, string> = {
     "tdah": "#8B5CF6",
@@ -73,6 +76,7 @@ function formatDateDisplay(isoStr: string): string {
 }
 
 function isDateInFuture(dateStr: string): boolean {
+  if (!dateStr) return false;
   return new Date(dateStr) > new Date();
 }
 
@@ -82,27 +86,26 @@ function DetalhesMedicoContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
-  const [medico, setMedico] = useState<Medico | null>(null);
+  const [medico, setMedico] = useState<MedicoExt | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // 🛡️ Buscas seguras blindadas contra IDs vazios
+  // 🛡️ Buscas seguras blindadas contra IDs vazios e arrays implícitos
   const consultas = useLiveQuery(() => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as any[])), [id]) || [];
   const cirurgias = useLiveQuery(() => (id ? db.cirurgias.where("medico_id").equals(id).toArray() : Promise.resolve([] as any[])), [id]) || [];
   const medicamentos = useLiveQuery(() => (id ? db.medicamentos.where("medico_id").equals(id).toArray() : Promise.resolve([] as any[])), [id]) || [];
   const renovacoes = useLiveQuery(() => (id ? db.renovacoes.where("medico_id").equals(id).reverse().limit(5).toArray() : Promise.resolve([] as any[])), [id]) || [];
   
-  // 🛡️ CORREÇÃO DO ERRO DO VERCEL: Filtramos undefined via (filter(Boolean) as string[])
   const doseLogs = useLiveQuery(() => {
-    const validMedIds = medicamentos.map(m => m.id).filter(Boolean) as string[];
+    const validMedIds = medicamentos.map((m: any) => m.id).filter(Boolean) as string[];
     if (validMedIds.length === 0) return Promise.resolve([] as any[]);
     return db.doseLogs.where('medicamento_id').anyOf(validMedIds).toArray();
   }, [medicamentos]) || [];
 
   const estabelecimentosIds = useMemo(() => {
     const ids = new Set<string>();
-    consultas.forEach((c: Consulta) => c.hospital_id && ids.add(c.hospital_id));
-    cirurgias.forEach((c: Cirurgia) => c.hospital_id && ids.add(c.hospital_id));
+    consultas.forEach((c: any) => c.hospital_id && ids.add(c.hospital_id));
+    cirurgias.forEach((c: any) => c.hospital_id && ids.add(c.hospital_id));
     return Array.from(ids);
   }, [consultas, cirurgias]);
 
@@ -113,9 +116,8 @@ function DetalhesMedicoContent() {
 
   const tratamentosIds = useMemo(() => {
     const ids = new Set<string>();
-    medicamentos.forEach((m: Medicamento) => {
+    medicamentos.forEach((m: any) => {
       if (m.tratamento_ids && Array.isArray(m.tratamento_ids)) {
-        // 🛡️ CORREÇÃO DA LINHA 119: Tipagem explícita adicionada "(id: string)"
         m.tratamento_ids.forEach((tid: string) => ids.add(tid));
       }
     });
@@ -128,21 +130,36 @@ function DetalhesMedicoContent() {
   }, [tratamentosIds]) || [];
 
   const proximaConsulta = useMemo(() => {
-    const futuras = consultas.filter((c: Consulta) => isDateInFuture(c.data));
+    const futuras = consultas.filter((c: any) => isDateInFuture(c.data));
     if (futuras.length === 0) return null;
-    return futuras.sort((a: Consulta, b: Consulta) => a.data.localeCompare(b.data))[0];
+    return futuras.sort((a: any, b: any) => (a.data || "").localeCompare(b.data || ""))[0];
   }, [consultas]);
 
   const ultimaConsulta = useMemo(() => {
     if (consultas.length === 0) return null;
-    return [...consultas].sort((a: Consulta, b: Consulta) => b.data.localeCompare(a.data))[0];
+    return [...consultas].sort((a: any, b: any) => (b.data || "").localeCompare(a.data || ""))[0];
   }, [consultas]);
 
+  // 🧠 INSIGHT NOVO: Avaliação de tempo sem retorno médico
+  const alertaSemRetorno = useMemo(() => {
+    if (proximaConsulta || !ultimaConsulta || !ultimaConsulta.data) return null;
+    
+    const dataUltima = new Date(ultimaConsulta.data).getTime();
+    const hoje = new Date().getTime();
+    const diffDias = Math.floor((hoje - dataUltima) / (1000 * 3600 * 24));
+    
+    if (diffDias > 180) { // Se passou mais de 6 meses (180 dias)
+      const meses = Math.floor(diffDias / 30);
+      return `Faz ${meses} meses desde a sua última consulta. Avalie a necessidade de agendar um acompanhamento.`;
+    }
+    return null;
+  }, [ultimaConsulta, proximaConsulta]);
+
   const alertasMedicamentos = useMemo(() => {
-    return medicamentos.map((med: Medicamento) => {
+    return medicamentos.map((med: any) => {
       const insight = sugerirRenovacao(med);
       const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
-      const comportamento = analisarComportamentoUso(med, doseLogs.filter(d => d.medicamento_id === med.id));
+      const comportamento = analisarComportamentoUso(med, doseLogs.filter((d: any) => d.medicamento_id === med.id));
       
       return {
         ...med,
@@ -154,9 +171,9 @@ function DetalhesMedicoContent() {
   }, [medicamentos, doseLogs]);
 
   const alertasGerais = useMemo(() => {
-    const ativos = alertasMedicamentos.filter(m => m.insight?.deveRenovar);
-    const vencidos = alertasMedicamentos.filter(m => m.receitaVencida);
-    const comportamentos = alertasMedicamentos.filter(m => m.comportamento);
+    const ativos = alertasMedicamentos.filter((m: any) => m.insight?.deveRenovar);
+    const vencidos = alertasMedicamentos.filter((m: any) => m.receitaVencida);
+    const comportamentos = alertasMedicamentos.filter((m: any) => m.comportamento);
     
     return { ativos, vencidos, comportamentos };
   }, [alertasMedicamentos]);
@@ -171,7 +188,7 @@ function DetalhesMedicoContent() {
       try {
         const medData = await db.medicos.get(id);
         if (medData) {
-          setMedico(medData);
+          setMedico(medData as MedicoExt);
         } else {
           router.push("/saude/medicos");
         }
@@ -201,7 +218,7 @@ function DetalhesMedicoContent() {
   if (isLoading) return <LoadingSkeleton />;
   if (!medico) return null;
 
-  const medicamentosAtivos = medicamentos.filter((m: Medicamento) => m.status === "ativo");
+  const medicamentosAtivos = medicamentos.filter((m: any) => m.status === "ativo");
 
   return (
     <PageTransition>
@@ -323,7 +340,8 @@ function DetalhesMedicoContent() {
             )}
           </motion.div>
 
-          {(alertasGerais.ativos.length > 0 || alertasGerais.vencidos.length > 0 || alertasGerais.comportamentos.length > 0) && (
+          {/* 🧠 ALERTAS CLÍNICOS E INTELIGÊNCIA */}
+          {(alertasGerais.ativos.length > 0 || alertasGerais.vencidos.length > 0 || alertasGerais.comportamentos.length > 0 || alertaSemRetorno) && (
             <motion.div 
               variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} 
               initial="initial" 
@@ -337,6 +355,16 @@ function DetalhesMedicoContent() {
               </div>
               
               <div className="space-y-2">
+                {alertaSemRetorno && (
+                  <div className="flex items-start gap-2 text-xs border-b border-amber-400/10 pb-2 last:border-0">
+                    <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-ink-primary">Acompanhamento</p>
+                      <p className="text-ink-muted">{alertaSemRetorno}</p>
+                    </div>
+                  </div>
+                )}
+
                 {alertasGerais.ativos.slice(0, 3).map((med: any) => (
                   <div key={med.id} className="flex items-start gap-2 text-xs border-b border-amber-400/10 pb-2 last:border-0">
                     <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
@@ -378,7 +406,7 @@ function DetalhesMedicoContent() {
                 <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{tratamentos.length}</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {tratamentos.map((t: Tratamento) => {
+                {tratamentos.map((t: any) => {
                   const color = getTreatmentColor(t.nome);
                   return (
                     <span 
@@ -405,7 +433,7 @@ function DetalhesMedicoContent() {
                 <h4 className="text-sm font-semibold text-ink-primary">Últimas Renovações</h4>
               </div>
               <div className="space-y-2">
-                {renovacoes.slice(0, 3).map((ren: Renovacao) => (
+                {renovacoes.slice(0, 3).map((ren: any) => (
                   <div key={ren.id} className="flex items-center justify-between text-sm border-b border-surface-border/30 pb-2 last:border-0">
                     <div>
                       <p className="font-medium text-ink-primary">{ren.medicamento_nome || "Medicamento"}</p>
@@ -439,7 +467,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhuma consulta registrada.</p>
                 ) : (
                   <div className="space-y-2">
-                    {[...consultas].sort((a: Consulta, b: Consulta) => b.data.localeCompare(a.data)).slice(0, 3).map((con: Consulta) => (
+                    {[...consultas].sort((a: any, b: any) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((con: any) => (
                       <div 
                         key={con.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }}
@@ -468,7 +496,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhum procedimento registrado.</p>
                 ) : (
                   <div className="space-y-2">
-                    {[...cirurgias].sort((a: Cirurgia, b: Cirurgia) => b.data.localeCompare(a.data)).slice(0, 3).map((cir: Cirurgia) => (
+                    {[...cirurgias].sort((a: any, b: any) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((cir: any) => (
                       <div 
                         key={cir.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
