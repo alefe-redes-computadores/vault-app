@@ -90,7 +90,6 @@ export default function HojePage() {
   const hoje = getLocalTodayISO();
 
   const { medicamentos } = useMedicamentos();
-  // 🔧 CORRIGIDO: o nome correto é marcarComoIgnorada
   const { doseLogs, marcarComoTomada: marcarDose, marcarComoIgnorada } = useDoseLogs(hoje);
 
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
@@ -135,7 +134,8 @@ export default function HojePage() {
         if (!horario) continue;
         const log = (doseLogs || []).find((l) => l.medicamento_id === med.id && l.horario === horario);
         const tomada = !!log?.tomado_em;
-        const ignorada = !!log?.ignorado;
+        // 🔧 CORRIGIDO: usar ignorado_em
+        const ignorada = !!log?.ignorado_em;
 
         list.push({
           medicamentoId: med.id,
@@ -270,7 +270,6 @@ export default function HojePage() {
     trigger("vibrate");
 
     try {
-      // 🔧 CORRIGIDO: usar marcarComoIgnorada
       await marcarComoIgnorada(item.medicamentoId, hoje, item.horario);
       showToast("Dose ignorada", "info");
     } catch (e) {
