@@ -48,6 +48,7 @@ import {
   alertLevelLabel,
   getLocalTodayISO,
   type HealthAlert,
+  type AlertLevel,
 } from "@/lib/health-utils";
 import { sugerirRenovacao } from "@/lib/health-insights";
 
@@ -142,9 +143,9 @@ export default function SaudePage() {
   const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
 
-  const consultasHoje = consultas.filter((c: any) => c.data === hoje);
+  const consultasHoje = consultas.filter((c) => c.data === hoje);
   const cirurgiasHoje = useLiveQuery(() => db.cirurgias.where("data").equals(hoje).toArray(), [hoje]) || [];
-  const examesHoje = exames.filter((e: any) => e.data === hoje);
+  const examesHoje = exames.filter((e) => e.data === hoje);
 
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
@@ -152,7 +153,6 @@ export default function SaudePage() {
 
   const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
-  // 🧠 INTELIGÊNCIA FINANCEIRA: Cálculo do mês atual vs anterior
   const metricasFinanceiras = useMemo(() => {
     const dataAtual = new Date();
     const mesAtual = dataAtual.getMonth();
@@ -163,7 +163,7 @@ export default function SaudePage() {
     let gastoMesAtual = 0;
     let gastoMesAnterior = 0;
 
-    renovacoes.forEach((r: any) => {
+    renovacoes.forEach((r) => {
       if (typeof r.preco === "number" && r.preco > 0 && r.data) {
         const dataR = new Date(r.data);
         if (dataR.getMonth() === mesAtual && dataR.getFullYear() === anoAtual) {
@@ -195,50 +195,50 @@ export default function SaudePage() {
     return lista;
   }, [medicamentos, doseLogs, horaAtual]);
 
-  // 🛡️ CORREÇÃO DO ERRO DO VERCEL: Garantindo que a data seja repassada no HealthAlert
-  const alertasEstoque = useMemo(() => {
+  const alertasEstoque = useMemo<HealthAlert[]>(() => {
     if (!medicamentos) return [];
-    return medicamentos
-      .filter(m => m.status !== "descontinuado")
-      .map(m => {
-        const insight = sugerirRenovacao(m);
-        if (insight.deveRenovar) {
-          return {
-            id: m.id,
-            title: m.nome,
-            subtitle: insight.mensagem,
-            level: insight.urgencia === "alta" ? 2 : 1,
-            kind: "estoque" as const,
-            href: `/saude/medicamentos/detalhes?id=${m.id}`,
-            daysUntil: 0,
-            date: m.proxima_renovacao || hoje // 🛡️ A propriedade que faltava!
-          };
-        }
-        return null;
-      })
-      .filter(Boolean) as HealthAlert[];
+    const alerts: HealthAlert[] = [];
+    
+    medicamentos.forEach((m) => {
+      if (m.status === "descontinuado" || !m.id) return;
+      const insight = sugerirRenovacao(m);
+      if (insight.deveRenovar) {
+        const alertLvl: AlertLevel = insight.urgencia === "alta" ? "urgente" : "atencao";
+        alerts.push({
+          id: m.id,
+          title: m.nome,
+          subtitle: insight.mensagem,
+          level: alertLvl,
+          kind: "estoque",
+          href: `/saude/medicamentos/detalhes?id=${m.id}`,
+          daysUntil: 0,
+          date: m.proxima_renovacao || hoje
+        });
+      }
+    });
+    return alerts;
   }, [medicamentos, hoje]);
 
-  // 🧠 INTELIGÊNCIA CLÍNICA: Alerta de acompanhamento se não for ao médico há muito tempo
-  const alertasConsultas = useMemo(() => {
-    const medicosUnicos = new Set(consultas.map((c: any) => c.medico_id).filter(Boolean));
+  const alertasConsultas = useMemo<HealthAlert[]>(() => {
+    const medicosUnicosIds = Array.from(new Set(consultas.map((c) => c.medico_id).filter(Boolean)));
     const alertas: HealthAlert[] = [];
 
-    medicosUnicos.forEach(medicoId => {
-      const consMedico = consultas.filter((c: any) => c.medico_id === medicoId);
-      const consFuturas = consMedico.filter((c: any) => c.data >= hoje);
+    medicosUnicosIds.forEach((medicoId) => {
+      if (!medicoId) return;
+      const consMedico = consultas.filter((c) => c.medico_id === medicoId);
+      const consFuturas = consMedico.filter((c) => c.data >= hoje);
       
       if (consFuturas.length === 0) {
-        const ultimaCons = [...consMedico].sort((a: any, b: any) => b.data.localeCompare(a.data))[0];
+        const ultimaCons = [...consMedico].sort((a, b) => b.data.localeCompare(a.data))[0];
         if (ultimaCons) {
           const diffDias = Math.floor((new Date(hoje).getTime() - new Date(ultimaCons.data).getTime()) / (1000 * 3600 * 24));
-          if (diffDias > 180) { // +6 Meses sem retorno
+          if (diffDias > 180) { 
             alertas.push({
               id: `cons-${medicoId}`,
               title: `Dr(a). ${ultimaCons.medico}`,
               subtitle: `Sem retorno médico há ${Math.floor(diffDias / 30)} meses`,
-              level: 2,
-              kind: "consulta" as const,
+              level: "vencido",
+              kind: "consulta",
               href: `/saude/medicos/detalhes?id=${medicoId}`,
               daysUntil: -diffDias,
               date: ultimaCons.data
@@ -294,7 +294,7 @@ export default function SaudePage() {
   };
 
   const docAlerts = useMemo(() => getDocumentAlerts(documents || []).filter(a => a.daysUntil <= 5), [documents]);
-  const exameAlerts = useMemo(() => getExameAlerts(exames || []).filter(a => a.daysUntil <= 5), [exames]);
+  const exameAlerts = useMemo(() => getExameAlerts(exames || []).filter((a: any) => a.daysUntil <= 5), [exames]);
 
   const otherAlerts = useMemo(
     () => [...docAlerts, ...exameAlerts, ...alertasEstoque, ...alertasConsultas].sort((a, b) => a.daysUntil - b.daysUntil),
@@ -338,7 +338,6 @@ export default function SaudePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-5">
-          {/* Ações Rápidas */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -364,7 +363,6 @@ export default function SaudePage() {
             })}
           </motion.div>
 
-          {/* Rotina e Doses */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -386,7 +384,6 @@ export default function SaudePage() {
             <ChevronRight size={18} className="text-ice" />
           </motion.div>
 
-          {/* Financeiro Turbinado / Renovações */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -416,7 +413,6 @@ export default function SaudePage() {
             </div>
           </motion.div>
 
-          {/* Compromissos de Hoje */}
           {(consultasHoje.length > 0 || cirurgiasHoje.length > 0 || examesHoje.length > 0) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -451,7 +447,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* Doses Pendentes */}
           {dosesPendentesAtrasadas.length > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -486,7 +481,6 @@ export default function SaudePage() {
             <MedicamentosNotifications />
           </motion.div>
 
-          {/* Tratamentos Ativos */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -536,7 +530,6 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* Alertas Gerais (Agora com Consultas Atrasadas e Estoque corrigido) */}
           {otherAlerts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -555,7 +548,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* Grid de Categorias */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -615,7 +607,6 @@ export default function SaudePage() {
             </button>
           </motion.div>
 
-          {/* Entidades Relacionais (Médicos, Farmácias...) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -675,7 +666,6 @@ export default function SaudePage() {
             </div>
           </motion.div>
 
-          {/* Arquivo Clínico */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -703,7 +693,6 @@ export default function SaudePage() {
           </motion.div>
         </section>
 
-        {/* Modal de Pendências (Doses) */}
         <AnimatePresence>
           {modalPendenciasAberto && (
             <div
@@ -731,7 +720,7 @@ export default function SaudePage() {
                 </div>
 
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-                  {dosesPendentesAtrasadas.map((d, index) => {
+                  {dosesPendentesAtrasadas.map((d: any, index: number) => {
                     const isProcessingThisDose = processandoDoseId === `${d.medicamentoId}-${d.horario}`;
                     return (
                       <div key={`${d.medicamentoId}-${index}`} className={`flex items-center justify-between p-3.5 bg-surface-raised rounded-2xl border border-surface-border/50 ${isProcessingThisDose ? 'opacity-50 pointer-events-none' : ''}`}>
