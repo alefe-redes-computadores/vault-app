@@ -38,9 +38,19 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Input } from "@/components/ui/Input";
-// 🧠 Importação da Inteligência centralizada
 import { sugerirRenovacao, isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
+import type { 
+  Medico, 
+  Farmacia, 
+  Hospital, 
+  Medicamento, 
+  Tratamento, 
+  Consulta, 
+  Exame, 
+  Cirurgia, 
+  Renovacao 
+} from "@/lib/types";
 
 type TabType = "visao-geral" | "medicos" | "farmacias" | "hospitais" | "tratamentos";
 
@@ -56,7 +66,6 @@ export default function RedeSaudePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Hooks padronizados
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
@@ -68,15 +77,12 @@ export default function RedeSaudePage() {
   const { renovacoes } = useRenovacoes();
   const persons = usePersons();
 
-  // Estados locais
   const [selectedPersonId, setSelectedPersonId] = useState<string>("");
   const [search, setSearch] = useState("");
 
-  // Sincronização de abas via URL
   const tabFromUrl = searchParams.get("tab") as TabType | null;
   const [activeTab, setActiveTab] = useState<TabType>(tabFromUrl || "visao-geral");
 
-  // Selecionar primeira pessoa automaticamente
   useEffect(() => {
     if (persons.length > 0 && !selectedPersonId) {
       setSelectedPersonId(persons[0].id!);
@@ -95,53 +101,79 @@ export default function RedeSaudePage() {
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
     }
-  }, [tabFromUrl]);
+  }, [tabFromUrl, activeTab]);
 
   // ============================================================
-  // FILTRAGEM POR PESSOA (ARQUITETURA RELACIONAL)
+  // FILTRAGEM BASE ESTritamente Tipada
   // ============================================================
-  const filteredMedicos = useMemo(() => {
-    if (!selectedPersonId) return [];
-    return medicos.filter(m => m.person_id === selectedPersonId);
-  }, [medicos, selectedPersonId]);
-
-  const filteredFarmacias = useMemo(() => {
-    if (!selectedPersonId) return [];
-    return farmacias.filter(f => f.person_id === selectedPersonId);
-  }, [farmacias, selectedPersonId]);
-
-  const filteredHospitais = useMemo(() => {
-    if (!selectedPersonId) return [];
-    return hospitais.filter(h => h.person_id === selectedPersonId);
-  }, [hospitais, selectedPersonId]);
-
   const filteredMedicamentos = useMemo(() => {
     if (!selectedPersonId) return [];
-    return medicamentos.filter(m => m.person_id === selectedPersonId);
+    return medicamentos.filter((m: Medicamento) => m.person_id === selectedPersonId);
   }, [medicamentos, selectedPersonId]);
 
   const filteredTratamentos = useMemo(() => {
     if (!selectedPersonId) return [];
-    return tratamentos.filter(t => t.person_id === selectedPersonId);
+    return tratamentos.filter((t: Tratamento) => t.person_id === selectedPersonId);
   }, [tratamentos, selectedPersonId]);
 
   const filteredConsultas = useMemo(() => {
     if (!selectedPersonId) return [];
-    return consultas.filter(c => c.person_id === selectedPersonId);
+    return consultas.filter((c: Consulta) => c.person_id === selectedPersonId);
   }, [consultas, selectedPersonId]);
 
   const filteredExames = useMemo(() => {
     if (!selectedPersonId) return [];
-    return exames.filter(e => e.person_id === selectedPersonId);
+    return exames.filter((e: Exame) => e.person_id === selectedPersonId);
   }, [exames, selectedPersonId]);
 
   const filteredCirurgias = useMemo(() => {
     if (!selectedPersonId) return [];
-    return cirurgias.filter(c => c.person_id === selectedPersonId);
+    return cirurgias.filter((c: Cirurgia) => c.person_id === selectedPersonId);
   }, [cirurgias, selectedPersonId]);
 
+  const filteredRenovacoes = useMemo(() => {
+    if (!selectedPersonId) return [];
+    const medsIds = new Set(filteredMedicamentos.map(m => m.id).filter(Boolean));
+    return renovacoes.filter((r: Renovacao) => r.person_id === selectedPersonId || (r.medicamento_id && medsIds.has(r.medicamento_id)));
+  }, [renovacoes, selectedPersonId, filteredMedicamentos]);
+
   // ============================================================
-  // ALERTAS INTELIGENTES (INTEGRADOS COM health-insights.ts)
+  // INTELIGÊNCIA RELACIONAL Tipada
+  // ============================================================
+  const filteredMedicos = useMemo(() => {
+    if (!selectedPersonId) return [];
+    const linked = new Set([
+      ...filteredConsultas.map(c => c.medico_id),
+      ...filteredCirurgias.map(c => c.medico_id),
+      ...filteredMedicamentos.map(m => m.medico_id)
+    ].filter(Boolean));
+
+    return medicos.filter((m: Medico) => m.person_id === selectedPersonId || (m.id && linked.has(m.id)));
+  }, [medicos, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
+
+  const filteredFarmacias = useMemo(() => {
+    if (!selectedPersonId) return [];
+    const linked = new Set([
+      ...filteredMedicamentos.map(m => m.farmacia_id),
+      ...filteredRenovacoes.map(r => r.farmacia_id)
+    ].filter(Boolean));
+
+    return farmacias.filter((f: Farmacia) => f.person_id === selectedPersonId || (f.id && linked.has(f.id)));
+  }, [farmacias, selectedPersonId, filteredMedicamentos, filteredRenovacoes]);
+
+  const filteredHospitais = useMemo(() => {
+    if (!selectedPersonId) return [];
+    const linked = new Set([
+      ...filteredConsultas.map(c => c.hospital_id),
+      ...filteredCirurgias.map(c => c.hospital_id),
+      ...filteredMedicamentos.map(m => m.estabelecimento_id)
+    ].filter(Boolean));
+
+    return hospitais.filter((h: Hospital) => h.person_id === selectedPersonId || (h.id && linked.has(h.id)));
+  }, [hospitais, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
+
+  // ============================================================
+  // ALERTAS INTELIGENTES Tipados
   // ============================================================
   const alertas = useMemo(() => {
     if (!selectedPersonId) return [];
@@ -154,21 +186,19 @@ export default function RedeSaudePage() {
       link: string;
     }[] = [];
 
-    filteredMedicamentos.forEach(med => {
+    filteredMedicamentos.forEach((med: Medicamento) => {
       const insight = sugerirRenovacao(med);
-      if (insight.deveRenovar) {
+      if (insight.deveRenovar && med.id) {
         alerts.push({
           tipo: 'estoque',
           mensagem: insight.mensagem,
-          urgencia: insight.urgencia,
+          urgencia: insight.urgencia as 'alta' | 'media' | 'baixa',
           entidade: med,
           link: `/saude/medicamentos/detalhes?id=${med.id}`,
         });
       }
-    });
 
-    filteredMedicamentos.forEach(med => {
-      if (isReceitaVencidaSegura(med.proxima_renovacao)) {
+      if (med.proxima_renovacao && isReceitaVencidaSegura(med.proxima_renovacao) && med.id) {
         alerts.push({
           tipo: 'receita',
           mensagem: `Receita de ${med.nome} venceu em ${formatDateDisplay(med.proxima_renovacao)}`,
@@ -183,13 +213,12 @@ export default function RedeSaudePage() {
     const seteDias = new Date(hoje);
     seteDias.setDate(hoje.getDate() + 7);
     
-    filteredConsultas.forEach(con => {
-      if (con.status === 'agendada') {
+    filteredConsultas.forEach((con: Consulta) => {
+      if (con.status === 'agendada' && con.id) {
         const dataCon = new Date(con.data);
         if (dataCon >= hoje && dataCon <= seteDias) {
           const dias = Math.ceil((dataCon.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-          // 💡 Nome do médico dinâmico na consulta
-          const nomeMedico = con.medico || con.medico_nome || 'médico';
+          const nomeMedico = con.medico || 'médico';
           alerts.push({
             tipo: 'consulta',
             mensagem: `Consulta com ${nomeMedico} em ${dias} dia${dias > 1 ? 's' : ''}`,
@@ -201,11 +230,10 @@ export default function RedeSaudePage() {
       }
     });
 
-    filteredExames.forEach(exame => {
-      if (exame.data_retorno) {
+    filteredExames.forEach((exame: Exame) => {
+      if (exame.data_retorno && exame.id) {
         const dias = getDaysUntil(exame.data_retorno);
         if (dias !== null) {
-          // 💡 Alerta de exame vencido vs. a vencer
           if (dias < 0) {
             alerts.push({
               tipo: 'exame',
@@ -233,7 +261,6 @@ export default function RedeSaudePage() {
     });
   }, [filteredMedicamentos, filteredConsultas, filteredExames, selectedPersonId]);
 
-  // Estatísticas para a Visão Geral
   const stats = useMemo(() => ({
     medicamentos: filteredMedicamentos.length,
     medicamentosAtivos: filteredMedicamentos.filter(m => m.status === 'ativo').length,
@@ -248,7 +275,6 @@ export default function RedeSaudePage() {
     hospitais: filteredHospitais.length,
   }), [filteredMedicamentos, filteredTratamentos, filteredConsultas, filteredExames, filteredCirurgias, filteredMedicos, filteredFarmacias, filteredHospitais]);
 
-  // Buscas por aba
   const filteredMedicosSearch = useMemo(() => {
     if (!search) return filteredMedicos;
     return filteredMedicos.filter(m => m.nome.toLowerCase().includes(search.toLowerCase()));
@@ -300,7 +326,6 @@ export default function RedeSaudePage() {
             </div>
           </div>
 
-          {/* Seletor de Pessoa */}
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <User size={16} className="text-ink-muted shrink-0" />
             <div className="flex flex-wrap gap-1.5">
@@ -320,7 +345,6 @@ export default function RedeSaudePage() {
             </div>
           </div>
 
-          {/* Abas */}
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {tabs.map((t) => {
               const Icon = t.icon;
@@ -342,7 +366,6 @@ export default function RedeSaudePage() {
             })}
           </div>
 
-          {/* Input de Busca Contextual */}
           {activeTab !== 'visao-geral' && (
             <div className="relative mt-4">
               <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -358,9 +381,6 @@ export default function RedeSaudePage() {
 
         <section className="px-5 pt-5 space-y-4">
           <AnimatePresence mode="wait">
-            {/* ============================================================ */}
-            {/* VISÃO GERAL */}
-            {/* ============================================================ */}
             {activeTab === 'visao-geral' && (
               <motion.div
                 key="visao-geral"
@@ -403,7 +423,6 @@ export default function RedeSaudePage() {
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
-                  {/* 💡 Parametrizando as rotas de click com person_id */}
                   <ResumoCard
                     icon={Pill}
                     label="Medicamentos"
@@ -456,20 +475,18 @@ export default function RedeSaudePage() {
               </motion.div>
             )}
 
-            {/* ABAS ESPECÍFICAS DE LISTAGEM */}
             {activeTab === 'medicos' && (
               <TabList
                 key="medicos"
                 items={filteredMedicosSearch}
                 icon={Stethoscope}
                 label="Médico"
-                emptyMessage="Nenhum médico cadastrado para esta pessoa."
-                onItemClick={(item: any) => router.push(`/saude/medicos/detalhes?id=${item.id}`)}
-                renderItem={(item: any) => (
+                emptyMessage="Nenhum médico vinculado a esta pessoa."
+                onItemClick={(item: Medico) => router.push(`/saude/medicos/detalhes?id=${item.id}`)}
+                renderItem={(item: Medico) => (
                   <div>
                     <p className="truncate font-display text-sm font-semibold text-ink-primary">{item.nome}</p>
                     {item.especialidade && <p className="mt-0.5 text-xs text-ink-muted">{item.especialidade}</p>}
-                    {/* 💡 Restaurando CRM */}
                     {item.crm && <p className="mt-0.5 text-xs text-ink-faint">CRM {item.crm}</p>}
                     {item.telefone && (
                       <div className="mt-1 flex items-center gap-1 text-xs text-ink-muted">
@@ -488,9 +505,9 @@ export default function RedeSaudePage() {
                 items={filteredFarmaciasSearch}
                 icon={Pill}
                 label="Farmácia"
-                emptyMessage="Nenhuma farmácia cadastrada para esta pessoa."
-                onItemClick={(item: any) => router.push(`/saude/farmacias/detalhes?id=${item.id}`)}
-                renderItem={(item: any) => (
+                emptyMessage="Nenhuma farmácia vinculada."
+                onItemClick={(item: Farmacia) => router.push(`/saude/farmacias/detalhes?id=${item.id}`)}
+                renderItem={(item: Farmacia) => (
                   <div>
                     <p className="truncate font-display text-sm font-semibold text-ink-primary">{item.nome}</p>
                     {item.endereco && (
@@ -510,9 +527,9 @@ export default function RedeSaudePage() {
                 items={filteredHospitaisSearch}
                 icon={Building2}
                 label="Hospital"
-                emptyMessage="Nenhum hospital cadastrado para esta pessoa."
-                onItemClick={(item: any) => router.push(`/saude/hospitais/detalhes?id=${item.id}`)}
-                renderItem={(item: any) => (
+                emptyMessage="Nenhum hospital vinculado."
+                onItemClick={(item: Hospital) => router.push(`/saude/hospitais/detalhes?id=${item.id}`)}
+                renderItem={(item: Hospital) => (
                   <div>
                     <p className="truncate font-display text-sm font-semibold text-ink-primary">{item.nome}</p>
                     {item.endereco && (
@@ -533,9 +550,8 @@ export default function RedeSaudePage() {
                 icon={FolderHeart}
                 label="Tratamento"
                 emptyMessage="Nenhum tratamento cadastrado para esta pessoa."
-                onItemClick={(item: any) => router.push(`/saude/tratamentos/detalhes?id=${item.id}`)}
-                renderItem={(item: any) => {
-                  // 🎨 Uso exclusivo da cor real cadastrada no banco, com fallback padrão limpo
+                onItemClick={(item: Tratamento) => router.push(`/saude/tratamentos/detalhes?id=${item.id}`)}
+                renderItem={(item: Tratamento) => {
                   const cor = item.cor || "#8B5CF6";
                   return (
                     <div>
@@ -605,7 +621,7 @@ function TabList({ items, icon: Icon, label, emptyMessage, onItemClick, renderIt
           {emptyMessage}
         </h3>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-ink-muted">
-          Cadastre novos itens para exibi-los aqui.
+          Nenhum registro encontrado neste contexto.
         </p>
       </motion.div>
     );
