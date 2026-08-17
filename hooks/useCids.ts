@@ -36,7 +36,7 @@ export function useCids() {
     return cidsRepository.delete(id);
   }, []);
 
-  // ✅ Versão segura com cascade delete
+  // ✅ Versão segura com cascade delete (limpa referências em tratamentos)
   const deleteCidSafe = useCallback(async (id: string) => {
     return cidsRepository.deleteSafe(id);
   }, []);
