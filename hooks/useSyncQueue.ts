@@ -1334,73 +1334,74 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // CARTÕES
-  // ============================================================
+// CARTÕES (bankCards)
+// ============================================================
 
-  const syncCard = async (item: SyncQueueItem) => {
-    const client = requireSupabase();
-    const card = item.payload as unknown as BankCard;
+const syncCard = async (item: SyncQueueItem) => {
+  const client = requireSupabase();
+  const card = item.payload as unknown as BankCard;
 
-    switch (item.operation) {
-      case "add": {
-        const { error } = await client.from("cards").upsert(
-          {
-            id: card.id,
-            user_id: card.user_id,
-            title: card.title,
-            bank_name: card.bank_name,
-            type: card.type,
-            card_number_encrypted: card.card_number_encrypted || null,
-            card_holder: card.card_holder || null,
-            brand: card.brand || null,
-            expiry_date: card.expiry_date || null,
-            cvv_encrypted: card.cvv_encrypted || null,
-            agency: card.agency || null,
-            account: card.account || null,
-            notes: card.notes || null,
-            created_at: card.created_at,
-            updated_at: card.updated_at,
-          },
-          { onConflict: "id" }
-        );
-        if (error) throw new Error(`Cards insert error: ${error.message}`);
-        break;
-      }
-      case "update": {
-        const { error } = await client
-          .from("cards")
-          .update({
-            title: card.title,
-            bank_name: card.bank_name,
-            type: card.type,
-            card_number_encrypted: card.card_number_encrypted || null,
-            card_holder: card.card_holder || null,
-            brand: card.brand || null,
-            expiry_date: card.expiry_date || null,
-            cvv_encrypted: card.cvv_encrypted || null,
-            agency: card.agency || null,
-            account: card.account || null,
-            notes: card.notes || null,
-            updated_at: card.updated_at,
-          })
-          .eq("id", card.id);
-        if (error) throw new Error(`Cards update error: ${error.message}`);
-        break;
-      }
-      case "delete": {
-        const payload = item.payload as unknown as { id: string };
-        const { error } = await client.from("cards").delete().eq("id", payload.id);
-        if (error) throw new Error(`Cards delete error: ${error.message}`);
-        break;
-      }
-      default:
-        throw new Error(`Operação não suportada em cards: ${item.operation}`);
+  switch (item.operation) {
+    case "add": {
+      const { error } = await client.from("cards").upsert(
+        {
+          id: card.id,
+          user_id: card.user_id,
+          title: card.title,
+          bank_name: card.bank_name,
+          type: card.type,
+          card_number_encrypted: card.card_number_encrypted || null,
+          card_holder: card.card_holder || null,
+          brand: card.brand || null,
+          expiry_date: card.expiry_date || null,
+          cvv_encrypted: card.cvv_encrypted || null,
+          agency: card.agency || null,
+          account: card.account || null,
+          notes: card.notes || null,
+          created_at: card.created_at,
+          updated_at: card.updated_at,
+        },
+        { onConflict: "id" }
+      );
+      if (error) throw new Error(`Cards insert error: ${error.message}`);
+      break;
     }
-
-    if (item.operation !== "delete" && card.id) {
-      await db.cards.update(card.id, { synced: true });
+    case "update": {
+      const { error } = await client
+        .from("cards")
+        .update({
+          title: card.title,
+          bank_name: card.bank_name,
+          type: card.type,
+          card_number_encrypted: card.card_number_encrypted || null,
+          card_holder: card.card_holder || null,
+          brand: card.brand || null,
+          expiry_date: card.expiry_date || null,
+          cvv_encrypted: card.cvv_encrypted || null,
+          agency: card.agency || null,
+          account: card.account || null,
+          notes: card.notes || null,
+          updated_at: card.updated_at,
+        })
+        .eq("id", card.id);
+      if (error) throw new Error(`Cards update error: ${error.message}`);
+      break;
     }
-  };
+    case "delete": {
+      const payload = item.payload as unknown as { id: string };
+      const { error } = await client.from("cards").delete().eq("id", payload.id);
+      if (error) throw new Error(`Cards delete error: ${error.message}`);
+      break;
+    }
+    default:
+      throw new Error(`Operação não suportada em cards: ${item.operation}`);
+  }
+
+  // CORRIGIDO: db.bankCards em vez de db.cards
+  if (item.operation !== "delete" && card.id) {
+    await db.bankCards.update(card.id, { synced: true });
+  }
+};
 
   // ============================================================
   // SINCRONIZAÇÃO DAS JUNÇÕES N:N

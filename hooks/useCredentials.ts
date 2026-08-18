@@ -1,4 +1,5 @@
 // hooks/useCredentials.ts
+
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
@@ -12,7 +13,9 @@ type AddCredentialData = Omit<Credential, "id" | "created_at" | "updated_at" | "
   password_plain: string;
 };
 
-type UpdateCredentialData = Partial<Omit<Credential, "password_encrypted">> & {
+type UpdateCredentialData = Partial<
+  Omit<Credential, "id" | "user_id" | "created_at" | "updated_at" | "synced" | "password_encrypted">
+> & {
   password_plain?: string;
 };
 
@@ -25,33 +28,52 @@ export function useCredentials() {
     []
   );
 
-  const addCredential = async (data: AddCredentialData): Promise<string> => {
+  const addCredential = async (data: AddCredentialData) => {
+    if (!user) throw new Error("Usuário não autenticado");
     const { password_plain, ...rest } = data;
     const password_encrypted = encryptPassword(password_plain);
-    return credentialsRepository.create({ ...rest, user_id: user?.id || "", password_encrypted });
+    return credentialsRepository.create(
+      {
+        ...rest,
+        password_encrypted,
+      },
+      user.id
+    );
   };
 
-  const updateCredential = async (id: string, changes: UpdateCredentialData): Promise<void> => {
+  const updateCredential = async (id: string, changes: UpdateCredentialData) => {
+    if (!user) throw new Error("Usuário não autenticado");
     const { password_plain, ...rest } = changes;
-    const payload: Partial<Credential> = { ...rest };
+    const payload: Partial<Omit<Credential, "id" | "user_id" | "created_at" | "updated_at" | "synced" | "password_encrypted">> =
+      { ...rest };
     if (password_plain) {
       payload.password_encrypted = encryptPassword(password_plain);
     }
-    await credentialsRepository.update(id, payload);
+    return credentialsRepository.update(id, payload, user.id);
   };
 
-  const deleteCredential = async (id: string): Promise<void> => {
-    await credentialsRepository.delete(id);
+  const deleteCredential = async (id: string) => {
+    if (!user) throw new Error("Usuário não autenticado");
+    return credentialsRepository.delete(id, user.id);
   };
 
-  const credentialsByVault = (vaultId: string) => (credentials || []).filter((c) => c.vault_id === vaultId);
-  const credentialsPersonal = () => (credentials || []).filter((c) => !c.vault_id);
+  const getCredential = async (id: string) => {
+    if (!user) throw new Error("Usuário não autenticado");
+    return credentialsRepository.getById(id, user.id);
+  };
+
+  const credentialsByVault = (vaultId: string) =>
+    (credentials || []).filter((c) => c.vault_id === vaultId);
+
+  const credentialsPersonal = () =>
+    (credentials || []).filter((c) => !c.vault_id);
 
   return {
     credentials: credentials || [],
     addCredential,
     updateCredential,
     deleteCredential,
+    getCredential,
     credentialsByVault,
     credentialsPersonal,
   };

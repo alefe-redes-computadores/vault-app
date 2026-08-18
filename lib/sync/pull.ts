@@ -1,8 +1,10 @@
+// lib/sync/pull.ts
+
 import { supabase } from '@/lib/supabase/client';
 import { db } from '@/lib/db';
-import type { 
-  Person, Document, Medicamento, Renovacao, Vault, 
-  VaultMember, Medico, Farmacia, Hospital, Credential, BankCard 
+import type {
+  Person, Document, Medicamento, Renovacao, Vault,
+  VaultMember, Medico, Farmacia, Hospital, Credential, BankCard
 } from '@/lib/types';
 
 // Lock para evitar execução simultânea
@@ -142,13 +144,18 @@ export async function pullAllData(userId: string): Promise<void> {
       return await supabase.from('hospitais').select('*').eq('user_id', userId);
     });
 
+    // ---- Locais ----
+    await processTable('locais', db.locais, async () => {
+      return await supabase.from('locais').select('*').eq('user_id', userId);
+    });
+
     // ---- Credentials ----
     await processTable('credentials', db.credentials, async () => {
       return await supabase.from('credentials').select('*').eq('user_id', userId);
     });
 
-    // ---- Cards (Bancos & Cartões) ✅ NOVO ----
-    await processTable('cards', db.cards, async () => {
+    // ---- Cards (Bancos & Cartões) CORRIGIDO: bankCards ----
+    await processTable('cards', db.bankCards, async () => {
       return await supabase.from('cards').select('*').eq('user_id', userId);
     });
 

@@ -108,7 +108,7 @@ class VaultDB extends Dexie {
   doseLogs!: Table<DoseLog, string>;
 
   credentials!: Table<Credential, string>;
-  cards!: Table<BankCard, string>;
+  bankCards!: Table<BankCard, string>; // CORRIGIDO: bankCards em vez de cards
 
   instituicoes!: Table<InstituicaoEnsino, string>;
   tratamentos!: Table<Tratamento, string>;
@@ -214,7 +214,7 @@ class VaultDB extends Dexie {
     // ==========================================================
 
     this.version(11).stores({
-      cards: 'id',
+      bankCards: 'id', // CORRIGIDO: bankCards em vez de cards
     });
 
     // ==========================================================
@@ -323,7 +323,7 @@ class VaultDB extends Dexie {
         credentials:
           'id, user_id, vault_id, category, synced, updated_at',
 
-        cards:
+        bankCards: // CORRIGIDO: bankCards em vez de cards
           'id, user_id, type, synced, updated_at',
 
         instituicoes:
@@ -508,7 +508,7 @@ class VaultDB extends Dexie {
         credentials:
           'id, user_id, vault_id, category, synced, updated_at',
 
-        cards:
+        bankCards: // CORRIGIDO: bankCards em vez de cards
           'id, user_id, type, synced, updated_at',
 
         instituicoes:
@@ -609,7 +609,7 @@ class VaultDB extends Dexie {
         credentials:
           'id, user_id, vault_id, category, synced, updated_at',
 
-        cards:
+        bankCards: // CORRIGIDO: bankCards em vez de cards
           'id, user_id, type, synced, updated_at',
 
         instituicoes:
@@ -686,11 +686,69 @@ class VaultDB extends Dexie {
     //
     // Atualização dos índices de CIDs para incluir campos
     // clínicos (person_id, medico_id, hospital_id, local_id).
+    // Também adiciona índices para document_id em entidades
+    // que possuem essa relação.
     // ==========================================================
 
     this.version(21).stores({
+      persons:
+        'id, user_id, name, synced, updated_at',
+
+      documents:
+        'id, user_id, person_id, category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id',
+
+      medicamentos:
+        'id, user_id, person_id, document_id, medico_id, farmacia_id, hospital_id, local_id, status, synced, updated_at, *tratamento_ids',
+
+      renovacoes:
+        'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, synced, updated_at', // ADICIONADO: document_id
+
+      medicos:
+        'id, user_id, nome, especialidade, synced, updated_at',
+
+      farmacias:
+        'id, user_id, nome, synced, updated_at',
+
+      hospitais:
+        'id, user_id, nome, tipo, synced, updated_at',
+
+      locais:
+        'id, user_id, nome, synced, updated_at',
+
+      exames:
+        'id, user_id, person_id, medico_id, local_id, document_id, synced, updated_at, *tratamento_ids', // ADICIONADO: document_id
+
+      consultas:
+        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, synced, updated_at', // ADICIONADO: document_id
+
+      cirurgias:
+        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, synced, updated_at', // ADICIONADO: document_id
+
+      doseLogs:
+        'id, user_id, person_id, medicamento_id, data, horario, synced, updated_at',
+
+      credentials:
+        'id, user_id, vault_id, category, synced, updated_at',
+
+      bankCards: // CORRIGIDO: bankCards em vez de cards
+        'id, user_id, type, synced, updated_at',
+
+      instituicoes:
+        'id, user_id, nome, synced, updated_at',
+
+      tratamentos:
+        'id, user_id, person_id, nome, status, synced, updated_at, *cid_ids',
+
       cids:
-        'id, user_id, person_id, codigo, medico_id, hospital_id, local_id, synced, updated_at',
+        'id, user_id, person_id, codigo, medico_id, hospital_id, local_id, synced, updated_at', // ATUALIZADO: índices clínicos
+
+      anexos_clinicos:
+        'id, user_id, synced, updated_at',
+
+      syncQueue:
+        'id, table, operation, created_at, retry_count, failed',
+
+      laboratorios: null,
     });
   }
 }
@@ -974,6 +1032,12 @@ export async function safeUpdateRenovacao(
     updated_at: timestamp,
     synced: false,
   });
+}
+
+export async function safeDeleteRenovacao(
+  id: string
+): Promise<void> {
+  await db.renovacoes.delete(id);
 }
 
 // ============================================================
@@ -1569,10 +1633,10 @@ export async function safeDeleteCredential(
 }
 
 // ============================================================
-// CARTÕES
+// CARTÕES (bankCards)
 // ============================================================
 
-export async function safeAddCard(
+export async function safeAddBankCard(
   card: Omit<
     BankCard,
     'id' | 'created_at' | 'updated_at' | 'synced'
@@ -1589,19 +1653,19 @@ export async function safeAddCard(
     synced: false,
   };
 
-  await db.cards.add(full);
+  await db.bankCards.add(full);
 
   return id;
 }
 
-export async function safeUpdateCard(
+export async function safeUpdateBankCard(
   id: string,
   changes: Partial<BankCard>
 ): Promise<void> {
   const timestamp = nowIso();
 
   const existing =
-    await db.cards.get(id);
+    await db.bankCards.get(id);
 
   if (!existing) {
     throw new Error(
@@ -1609,17 +1673,17 @@ export async function safeUpdateCard(
     );
   }
 
-  await db.cards.update(id, {
+  await db.bankCards.update(id, {
     ...changes,
     updated_at: timestamp,
     synced: false,
   });
 }
 
-export async function safeDeleteCard(
+export async function safeDeleteBankCard(
   id: string
 ): Promise<void> {
-  await db.cards.delete(id);
+  await db.bankCards.delete(id);
 }
 
 // ============================================================
@@ -1831,7 +1895,7 @@ export async function safeAddCid(
     id,
     created_at: timestamp,
     updated_at: timestamp,
-    synced: false, // agora CIDs sincronizam
+    synced: false,
   };
 
   await db.cids.add(full);
@@ -1857,7 +1921,7 @@ export async function safeUpdateCid(
   await db.cids.update(id, {
     ...changes,
     updated_at: timestamp,
-    synced: false, // agora CIDs sincronizam
+    synced: false,
   });
 }
 
