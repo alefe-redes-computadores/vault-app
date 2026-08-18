@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -151,7 +151,7 @@ function DetalhesConsultaContent() {
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!consulta) return null;
 
   return (
@@ -399,5 +399,5 @@ function DetalhesConsultaContent() {
 }
 
 export default function DetalhesConsultaPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><DetalhesConsultaContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><DetalhesConsultaContent /></Suspense>;
 }

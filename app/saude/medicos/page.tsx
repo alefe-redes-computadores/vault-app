@@ -23,7 +23,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useMedicos } from "@/hooks/useMedicos";
@@ -194,7 +194,7 @@ export default function MedicosPage() {
     return Array.from(map.values());
   }, [medicosComMetadados]);
 
-  if (!medicos.length) return <LoadingSkeleton />;
+  if (!medicos.length) return <CardListSkeleton />;
 
   return (
     <PageTransition>

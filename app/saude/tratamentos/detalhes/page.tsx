@@ -24,10 +24,14 @@ import {
   Sparkles,
   Plus,
   FolderHeart,
+  X,
+  Receipt,
+  Users,
+  FileStack,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { DocumentCard } from "@/components/DocumentCard";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -123,6 +127,15 @@ function TratamentoContent() {
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
+
+  // Persistência de fechamento do alerta de economia
+  const [dismissEconomia, setDismissEconomia] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(`dismissEconomia_${id}`);
+      return stored === "true";
+    }
+    return false;
+  });
 
   useEffect(() => {
     const handleClickOutside = () => setIsMenuFlutuanteOpen(false);
@@ -225,6 +238,12 @@ function TratamentoContent() {
     trigger("vibrate");
   };
 
+  const handleDismissEconomia = () => {
+    localStorage.setItem(`dismissEconomia_${id}`, "true");
+    setDismissEconomia(true);
+    trigger("vibrate");
+  };
+
   const menuOptions = [
     { id: "adicionar-cid", label: "Adicionar CID", icon: FolderHeart, path: `/saude/cids?tratamento_id=${id}` },
     { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?tratamento_id=${id}` },
@@ -238,7 +257,7 @@ function TratamentoContent() {
     router.push(path);
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!tratamento) return null;
 
   const IconComp = getTratamentoIcon(tratamento.nome);
@@ -246,6 +265,9 @@ function TratamentoContent() {
   
   const medicamentosAtivos = medicamentosComAlertas.filter((m) => m.status !== "descontinuado");
   const medicamentosDescontinuados = medicamentosComAlertas.filter((m) => m.status === "descontinuado");
+
+  // Nomes de médicos extraídos dos medicamentos (fallback)
+  const medicosNomesDosMedicamentos = [...new Set(linkedMedicamentos.map(m => m.medico).filter(Boolean))];
 
   return (
     <PageTransition>
@@ -333,6 +355,7 @@ function TratamentoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
+          {/* Card principal do tratamento */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -369,6 +392,7 @@ function TratamentoContent() {
               </div>
             </div>
 
+            {/* Diagnósticos vinculados com insights estilizados */}
             {cidsVinculados.length > 0 && (
               <div className="relative z-10 mt-4 rounded-xl bg-surface-raised/50 border border-surface-border/40 p-3 space-y-2">
                 <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5">
@@ -386,42 +410,39 @@ function TratamentoContent() {
                   ))}
                 </div>
                 {cidsInsights.some(c => c.insight) && (
-                  <div className="mt-1 text-[11px] text-ice bg-ice/10 p-2 rounded-lg">
-                    <strong>Insight:</strong> {cidsInsights.map(c => c.insight?.alertaClinico).filter(Boolean).join(' • ')}
+                  <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-400/5 border border-amber-400/20 p-2.5">
+                    <Sparkles size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-ink-muted leading-relaxed">
+                      <span className="font-medium text-amber-400">Dica clínica:</span> {cidsInsights.map(c => c.insight?.alertaClinico).filter(Boolean).join(' • ')}
+                    </p>
                   </div>
                 )}
               </div>
             )}
 
-            {economiaInfo && (
-              <div className="relative z-10 mt-3 pt-3 border-t border-surface-border/40">
-                <div className={`flex items-center gap-2 text-xs ${economiaInfo.economia > 0 ? 'text-emerald-400' : 'text-coral'}`}>
-                  {economiaInfo.economia > 0 ? (
-                    <TrendingDown size={14} />
-                  ) : (
-                    <TrendingUp size={14} />
-                  )}
-                  <span>
-                    {economiaInfo.economia > 0 
-                      ? `Economia de ${formatCurrency(Math.abs(economiaInfo.economia))} (${Math.abs(economiaInfo.percentual)}%) na última compra`
-                      : `Aumento de ${formatCurrency(Math.abs(economiaInfo.economia))} (${Math.abs(economiaInfo.percentual)}%) na última compra`
-                    }
-                  </span>
-                </div>
-              </div>
-            )}
-
+            {/* Resumo financeiro */}
             <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5">
-              <div className="flex flex-col">
-                <span className="text-xs font-medium text-ink-muted">Medicamentos</span>
-                <span className="font-mono text-xl font-semibold text-ink-primary mt-0.5">{medicamentosAtivos.length} <span className="text-xs font-normal text-ink-faint">ativos</span></span>
+              <div className="flex flex-col items-center text-center">
+                <div className="flex items-center gap-1 text-ink-muted">
+                  <Pill size={14} />
+                  <span className="text-[10px] font-medium uppercase tracking-wider">Medicamentos</span>
+                </div>
+                <span className="font-mono text-xl font-semibold text-ink-primary mt-1">
+                  {medicamentosAtivos.length} <span className="text-xs font-normal text-ink-faint">ativos</span>
+                </span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-medium text-ink-muted">Laudos</span>
-                <span className="font-mono text-xl font-semibold text-ink-primary mt-0.5">{linkedDocuments.length}</span>
+              <div className="flex flex-col items-center text-center">
+                <div className="flex items-center gap-1 text-ink-muted">
+                  <FileStack size={14} />
+                  <span className="text-[10px] font-medium uppercase tracking-wider">Laudos</span>
+                </div>
+                <span className="font-mono text-xl font-semibold text-ink-primary mt-1">{linkedDocuments.length}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-medium text-ink-muted">Custo Total</span>
+              <div className="flex flex-col items-center text-center">
+                <div className="flex items-center gap-1 text-ink-muted">
+                  <Receipt size={14} />
+                  <span className="text-[10px] font-medium uppercase tracking-wider">Custo Total</span>
+                </div>
                 <span className="font-mono text-base font-semibold text-emerald-400 mt-1">
                   {custoTotalTratamento > 0 ? formatCurrency(custoTotalTratamento) : "R$ 0,00"}
                 </span>
@@ -429,14 +450,61 @@ function TratamentoContent() {
             </div>
           </motion.div>
 
+          {/* Alerta de economia (corrigido e estilizado) */}
+          {economiaInfo && isFinite(economiaInfo.percentual) && !dismissEconomia && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`rounded-2xl p-4 border flex items-center justify-between ${
+                economiaInfo.economia > 0 
+                  ? 'bg-emerald-500/10 border-emerald-500/30' 
+                  : 'bg-coral/10 border-coral/30'
+              }`}
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <div className={`p-2 rounded-full ${economiaInfo.economia > 0 ? 'bg-emerald-500/20' : 'bg-coral/20'}`}>
+                  {economiaInfo.economia > 0 ? (
+                    <TrendingDown size={20} className="text-emerald-400" />
+                  ) : (
+                    <TrendingUp size={20} className="text-coral" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink-primary">
+                    {economiaInfo.economia > 0 ? '💰 Economia na última compra' : '📈 Aumento de custo'}
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    {economiaInfo.economia > 0 
+                      ? `Você economizou ${formatCurrency(Math.abs(economiaInfo.economia))} (${Math.abs(economiaInfo.percentual).toFixed(1)}%) em relação à média anterior.`
+                      : `A última compra custou ${formatCurrency(Math.abs(economiaInfo.economia))} (${Math.abs(economiaInfo.percentual).toFixed(1)}%) a mais que a média.`
+                    }
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={handleDismissEconomia}
+                className="p-1.5 rounded-full hover:bg-void/20 transition-colors shrink-0 ml-2"
+                aria-label="Fechar alerta"
+              >
+                <X size={16} className="text-ink-muted" />
+              </button>
+            </motion.div>
+          )}
+
+          {/* Equipe Clínica */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
-              <Stethoscope size={16} className="text-ice" />
+              <Users size={16} className="text-ice" />
               <h3 className="font-display text-base font-semibold text-ink-primary">Equipe Clínica</h3>
             </div>
             {linkedMedicos.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
-                <p className="text-xs text-ink-muted">Nenhum médico vinculado aos medicamentos deste tratamento.</p>
+                <p className="text-xs text-ink-muted">
+                  {medicosNomesDosMedicamentos.length > 0 
+                    ? `Médico(s) mencionado(s): ${medicosNomesDosMedicamentos.join(', ')}`
+                    : 'Nenhum médico vinculado aos medicamentos deste tratamento.'
+                  }
+                </p>
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -453,6 +521,7 @@ function TratamentoContent() {
             )}
           </motion.div>
 
+          {/* Últimas Compras */}
           {linkedRenovacoes.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -481,6 +550,7 @@ function TratamentoContent() {
             </motion.div>
           )}
 
+          {/* Medicamentos Ativos */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
@@ -530,6 +600,7 @@ function TratamentoContent() {
             )}
           </motion.div>
 
+          {/* Medicamentos Descontinuados */}
           {medicamentosDescontinuados.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -559,6 +630,7 @@ function TratamentoContent() {
             </motion.div>
           )}
 
+          {/* Documentos */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
             <div className="flex items-center justify-between pl-1 pr-1">
               <div className="flex items-center gap-2">
@@ -589,5 +661,5 @@ function TratamentoContent() {
 }
 
 export default function TratamentoPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><TratamentoContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><TratamentoContent /></Suspense>;
 }

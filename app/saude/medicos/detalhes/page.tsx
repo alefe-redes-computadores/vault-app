@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -211,7 +211,7 @@ function DetalhesMedicoContent() {
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!medico) return null;
 
   const medicamentosAtivos = medicamentos.filter((m) => m.status === "ativo");
@@ -626,5 +626,5 @@ function DetalhesMedicoContent() {
 }
 
 export default function DetalhesMedicoPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><DetalhesMedicoContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><DetalhesMedicoContent /></Suspense>;
 }

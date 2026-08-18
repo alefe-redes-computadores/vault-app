@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
@@ -108,7 +108,7 @@ export default function RenovacoesPage() {
     return result.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   }, [renovacoesEnriquecidas, search, filtroPeriodo, filtroStatus]);
 
-  if (!renovacoes.length) return <LoadingSkeleton />;
+  if (!renovacoes.length) return <CardListSkeleton />;
 
   return (
     <PageTransition>

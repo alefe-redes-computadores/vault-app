@@ -15,7 +15,7 @@ import { useFarmacias } from "@/hooks/useFarmacias";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { calcularEconomia, isReceitaVencidaSegura } from "@/lib/health-insights";
 import type { Farmacia, Medicamento, Renovacao } from "@/lib/types";
@@ -159,7 +159,7 @@ function DetalhesFarmaciaContent() {
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!farmacia) return null;
 
   return (
@@ -425,5 +425,5 @@ function DetalhesFarmaciaContent() {
 }
 
 export default function DetalhesFarmaciaPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><DetalhesFarmaciaContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><DetalhesFarmaciaContent /></Suspense>;
 }

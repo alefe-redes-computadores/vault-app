@@ -34,7 +34,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useExames } from "@/hooks/useExames";
 import { useToast } from "@/components/ToastProvider";
@@ -143,7 +143,7 @@ function DetalhesExameContent() {
     router.push(path);
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!exame) return null;
 
   const medicoEncontrado = medico !== undefined;
@@ -700,5 +700,5 @@ function DetalhesExameContent() {
 }
 
 export default function DetalhesExamePage() {
-  return <Suspense fallback={<LoadingSkeleton />}><DetalhesExameContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><DetalhesExameContent /></Suspense>;
 }

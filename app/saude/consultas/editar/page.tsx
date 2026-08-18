@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { SelectionModal } from "@/components/SelectionModal";
 import type { Consulta } from "@/lib/types";
 import { useConsultas } from "@/hooks/useConsultas";
@@ -138,7 +138,7 @@ function EditarConsultaContent() {
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
 
   return (
     <PageTransition>
@@ -294,5 +294,5 @@ function EditarConsultaContent() {
 }
 
 export default function EditarConsultaPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><EditarConsultaContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><EditarConsultaContent /></Suspense>;
 }

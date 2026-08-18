@@ -25,7 +25,7 @@ import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { useToast } from "@/components/ToastProvider";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
 import type { Medico, Hospital, LocalSaude } from "@/lib/types";
@@ -166,7 +166,7 @@ function EditarCidContent() {
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!cid) return null;
 
   return (
@@ -394,5 +394,5 @@ function EditarCidContent() {
 }
 
 export default function EditarCidPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><EditarCidContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><EditarCidContent /></Suspense>;
 }

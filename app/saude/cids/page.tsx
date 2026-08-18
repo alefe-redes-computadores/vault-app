@@ -16,7 +16,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { useCids } from "@/hooks/useCids";
 import { getCidInsights } from "@/lib/health-insights";
@@ -45,7 +45,7 @@ export default function CidsPage() {
     return result.sort((a, b) => a.codigo.localeCompare(b.codigo));
   }, [cids, search]);
 
-  if (!cids) return <LoadingSkeleton />;
+  if (!cids) return <CardListSkeleton />;
 
   return (
     <PageTransition>

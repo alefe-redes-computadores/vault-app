@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { VaultCard } from "@/components/VaultCard";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { db } from "@/lib/db";
 
@@ -36,7 +36,7 @@ export default function VaultsPage() {
   }, [vaults]);
 
   if (vaults === undefined) {
-    return <LoadingSkeleton />;
+    return <CardListSkeleton />;
   }
 
   return (

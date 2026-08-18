@@ -14,7 +14,7 @@ import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import type { LocalSaude, Renovacao } from "@/lib/types";
 
@@ -144,7 +144,7 @@ function EditarLocalContent() {
   };
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <DetailSkeleton />;
   }
 
   if (notFound) {
@@ -343,7 +343,7 @@ function EditarLocalContent() {
 
 export default function EditarLocalPage() {
   return (
-    <Suspense fallback={<LoadingSkeleton />}>
+    <Suspense fallback={<DetailSkeleton />}>
       <EditarLocalContent />
     </Suspense>
   );

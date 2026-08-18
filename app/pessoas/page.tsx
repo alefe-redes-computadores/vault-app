@@ -18,7 +18,7 @@ import { usePersons } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -69,58 +69,58 @@ export default function PessoasPage() {
   };
 
   const confirmDelete = async () => {
-  if (!showDeleteModal) return;
+    if (!showDeleteModal) return;
 
-  const { id, name } = showDeleteModal;
+    const { id, name } = showDeleteModal;
 
-  trigger("vibrate");
-  setIsDeleting(id);
+    trigger("vibrate");
+    setIsDeleting(id);
 
-  try {
-    const timestamp = new Date().toISOString();
+    try {
+      const timestamp = new Date().toISOString();
 
-    await db.transaction(
-      "rw",
-      [db.persons, db.documents],
-      async () => {
-        const documents = await db.documents
-          .where("person_id")
-          .equals(id)
-          .toArray();
+      await db.transaction(
+        "rw",
+        [db.persons, db.documents],
+        async () => {
+          const documents = await db.documents
+            .where("person_id")
+            .equals(id)
+            .toArray();
 
-        for (const document of documents) {
-          if (document.id) {
-            await enfileirarOperacao("documents", "delete", { id: document.id });
+          for (const document of documents) {
+            if (document.id) {
+              await enfileirarOperacao("documents", "delete", { id: document.id });
+            }
           }
+
+          await db.documents.where("person_id").equals(id).delete();
+
+          await db.persons.delete(id);
+
+          await enfileirarOperacao("persons", "delete", { id });
         }
+      );
 
-        await db.documents.where("person_id").equals(id).delete();
-
-        await db.persons.delete(id);
-
-        await enfileirarOperacao("persons", "delete", { id });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("sync:process"));
       }
-    );
 
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("sync:process"));
+      trigger("success");
+      showToast(`"${name}" foi removido(a)`, "success");
+    } catch (error) {
+      console.error("Erro ao remover pessoa:", error);
+
+      trigger("error");
+      showToast("Não foi possível remover a pessoa", "error");
+    } finally {
+      setIsDeleting(null);
+      setShowDeleteModal(null);
     }
-
-    trigger("success");
-    showToast(`"${name}" foi removido(a)`, "success");
-  } catch (error) {
-    console.error("Erro ao remover pessoa:", error);
-
-    trigger("error");
-    showToast("Não foi possível remover a pessoa", "error");
-  } finally {
-    setIsDeleting(null);
-    setShowDeleteModal(null);
-  }
-};
+  };
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <CardListSkeleton />;
   }
 
   return (

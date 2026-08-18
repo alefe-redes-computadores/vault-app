@@ -1,4 +1,5 @@
 // lib/repositories/cards.ts
+
 import { db } from '../db';
 import { enfileirarOperacao } from '../sync/enfileirarOperacao';
 import { supabase } from '@/lib/supabase/client';
@@ -20,7 +21,7 @@ export const cardsRepository = {
       updated_at: now,
       synced: false,
     };
-    await db.cards.add(card);
+    await db.bankCards.add(card);
     await enfileirarOperacao('cards', 'add', card);
     return card;
   },
@@ -32,7 +33,7 @@ export const cardsRepository = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const existing = await db.cards.get(id);
+    const existing = await db.bankCards.get(id);
     if (!existing) throw new Error('Cartão não encontrado');
     if (existing.user_id !== user.id) throw new Error('Acesso negado');
 
@@ -43,7 +44,7 @@ export const cardsRepository = {
       updated_at: now,
       synced: false,
     };
-    await db.cards.put(updated);
+    await db.bankCards.put(updated);
     await enfileirarOperacao('cards', 'update', updated);
     return updated;
   },
@@ -52,23 +53,23 @@ export const cardsRepository = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const existing = await db.cards.get(id);
+    const existing = await db.bankCards.get(id);
     if (!existing) throw new Error('Cartão não encontrado');
     if (existing.user_id !== user.id) throw new Error('Acesso negado');
-    await db.cards.delete(id);
+    await db.bankCards.delete(id);
     await enfileirarOperacao('cards', 'delete', { id });
   },
 
   async getAll(): Promise<BankCard[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
-    return db.cards.where('user_id').equals(user.id).toArray();
+    return db.bankCards.where('user_id').equals(user.id).toArray();
   },
 
   async getById(id: string): Promise<BankCard | null> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const card = await db.cards.get(id);
+    const card = await db.bankCards.get(id);
     if (!card) return null;
     if (card.user_id !== user.id) return null;
     return card;

@@ -92,7 +92,6 @@ class VaultDB extends Dexie {
   persons!: Table<Person, string>;
   documents!: Table<Document, string>;
   syncQueue!: Table<SyncQueueItem, string>;
-  cards!: Table<BankCard, string>;
 
   medicamentos!: Table<Medicamento, string>;
   renovacoes!: Table<Renovacao, string>;
@@ -109,7 +108,7 @@ class VaultDB extends Dexie {
   doseLogs!: Table<DoseLog, string>;
 
   credentials!: Table<Credential, string>;
-  bankCards!: Table<BankCard, string>; // CORRIGIDO: bankCards em vez de cards
+  bankCards!: Table<BankCard, string>; // ✅ Única tabela de cartões
 
   instituicoes!: Table<InstituicaoEnsino, string>;
   tratamentos!: Table<Tratamento, string>;
@@ -215,7 +214,7 @@ class VaultDB extends Dexie {
     // ==========================================================
 
     this.version(11).stores({
-      bankCards: 'id', // CORRIGIDO: bankCards em vez de cards
+      bankCards: 'id',
     });
 
     // ==========================================================
@@ -275,9 +274,6 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 18
-    //
-    // Expansão dos índices para permitir consultas locais
-    // eficientes.
     // ==========================================================
 
     this.version(18)
@@ -324,7 +320,7 @@ class VaultDB extends Dexie {
         credentials:
           'id, user_id, vault_id, category, synced, updated_at',
 
-        bankCards: // CORRIGIDO: bankCards em vez de cards
+        bankCards:
           'id, user_id, type, synced, updated_at',
 
         instituicoes:
@@ -344,8 +340,7 @@ class VaultDB extends Dexie {
       })
       .upgrade(async (tx) => {
         // --------------------------------------------------------
-        // Medicamentos:
-        // relacionamento N:N legado -> tratamento_ids
+        // Medicamentos: relacionamento N:N legado -> tratamento_ids
         // --------------------------------------------------------
 
         const medicamentos = await tx
@@ -405,8 +400,7 @@ class VaultDB extends Dexie {
         }
 
         // --------------------------------------------------------
-        // Exames:
-        // relacionamento N:N legado -> tratamento_ids
+        // Exames: relacionamento N:N legado -> tratamento_ids
         // --------------------------------------------------------
 
         const exames = await tx
@@ -461,7 +455,6 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 19
-    //
     // Suporte a múltiplos CIDs por tratamento.
     // ==========================================================
 
@@ -509,7 +502,7 @@ class VaultDB extends Dexie {
         credentials:
           'id, user_id, vault_id, category, synced, updated_at',
 
-        bankCards: // CORRIGIDO: bankCards em vez de cards
+        bankCards:
           'id, user_id, type, synced, updated_at',
 
         instituicoes:
@@ -556,17 +549,6 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 20
-    //
-    // PADRÃO ATUAL
-    //
-    // - laboratório removido
-    // - estabelecimento_id removido de medicamentos
-    // - laboratorio_id removido de exames
-    // - medicamentos usam local_id
-    // - exames usam local_id
-    // - consultas usam hospital_id + local_id
-    // - cirurgias usam hospital_id + local_id
-    // - tratamentos continuam com múltiplos CIDs
     // ==========================================================
 
     this.version(20)
@@ -610,7 +592,7 @@ class VaultDB extends Dexie {
         credentials:
           'id, user_id, vault_id, category, synced, updated_at',
 
-        bankCards: // CORRIGIDO: bankCards em vez de cards
+        bankCards:
           'id, user_id, type, synced, updated_at',
 
         instituicoes:
@@ -628,13 +610,11 @@ class VaultDB extends Dexie {
         syncQueue:
           'id, table, operation, created_at, retry_count, failed',
 
-        // Laboratórios não fazem mais parte do modelo atual.
         laboratorios: null,
       })
       .upgrade(async (tx) => {
         // --------------------------------------------------------
-        // Medicamentos:
-        // estabelecimento_id -> local_id
+        // Medicamentos: estabelecimento_id -> local_id
         // --------------------------------------------------------
 
         const medicamentos = await tx
@@ -658,8 +638,7 @@ class VaultDB extends Dexie {
         }
 
         // --------------------------------------------------------
-        // Exames:
-        // laboratorio_id -> local_id
+        // Exames: laboratorio_id -> local_id
         // --------------------------------------------------------
 
         const exames = await tx
@@ -683,10 +662,27 @@ class VaultDB extends Dexie {
       });
 
     // ==========================================================
+    // VERSÃO 21 (PULADA - reservada para futuras migrações)
+    // ==========================================================
+
+    // ==========================================================
+    // VERSÃO 22
+    //
+    // Adiciona índices para os novos campos de renovação gratuita:
+    // tipo_aquisicao, data_proxima_retirada, exige_nova_receita
+    // ==========================================================
+
+    this.version(22).stores({
+      renovacoes:
+        'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, data, tipo_aquisicao, data_proxima_retirada, exige_nova_receita, synced, updated_at',
+    });
+
+    // ==========================================================
     // VERSÃO 23
     //
-    // - Correção definitiva: Adiciona o índice 'data' em exames e renovacoes
-    //   para evitar crash na tela de "Rotina Diária (Hoje)" e listagens
+    // Adiciona índice 'data' em exames, consultas, cirurgias e renovacoes
+    // para consultas por data (tela "Hoje", filtros).
+    // Também adiciona o índice 'chave' na syncQueue.
     // ==========================================================
 
     this.version(23).stores({
@@ -700,7 +696,7 @@ class VaultDB extends Dexie {
         'id, user_id, person_id, document_id, medico_id, farmacia_id, hospital_id, local_id, status, synced, updated_at, *tratamento_ids',
 
       renovacoes:
-        'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, data, synced, updated_at', // ADICIONADO: data
+        'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, data, tipo_aquisicao, data_proxima_retirada, exige_nova_receita, synced, updated_at',
 
       medicos:
         'id, user_id, nome, especialidade, synced, updated_at',
@@ -715,10 +711,10 @@ class VaultDB extends Dexie {
         'id, user_id, nome, synced, updated_at',
 
       exames:
-        'id, user_id, person_id, medico_id, local_id, document_id, data, synced, updated_at, *tratamento_ids', // ADICIONADO: data
+        'id, user_id, person_id, medico_id, local_id, document_id, data, synced, updated_at, *tratamento_ids',
 
       consultas:
-        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at', 
+        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at',
 
       cirurgias:
         'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at',
@@ -745,14 +741,12 @@ class VaultDB extends Dexie {
         'id, user_id, synced, updated_at',
 
       syncQueue:
-        'id, table, operation, created_at, retry_count, failed',
+        'id, chave, table, operation, created_at, retry_count, failed', // ✅ ADICIONADO: chave
 
       laboratorios: null,
     });
   }
 }
-
-
 
 // ============================================================
 // INSTÂNCIA ÚNICA
@@ -762,12 +756,6 @@ export const db = new VaultDB();
 
 // ============================================================
 // MEDICAMENTO ↔ TRATAMENTO
-//
-// O relacionamento atual fica diretamente em
-// Medicamento.tratamento_ids.
-//
-// Esta função NÃO sincroniza Supabase.
-// Ela apenas atualiza o IndexedDB local.
 // ============================================================
 
 export async function syncMedicamentoTratamentos(

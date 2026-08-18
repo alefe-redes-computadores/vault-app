@@ -23,7 +23,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -263,7 +263,7 @@ function EditarExameContent() {
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
 
   return (
     <PageTransition>
@@ -537,5 +537,5 @@ function EditarExameContent() {
 }
 
 export default function EditarExamePage() {
-  return <Suspense fallback={<LoadingSkeleton />}><EditarExameContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><EditarExameContent /></Suspense>;
 }

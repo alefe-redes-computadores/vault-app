@@ -1,3 +1,4 @@
+// app/saude/hoje/page.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -29,7 +30,7 @@ import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, safeAddRenovacao, safeUpdateMedicamento } from "@/lib/db";
 import {
@@ -44,6 +45,7 @@ import {
   analisarRotinaDiaria,
 } from "@/lib/health-insights";
 import { useToast } from "@/components/ToastProvider";
+import type { Tratamento } from "@/lib/types";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -54,6 +56,14 @@ function getPeriodoDoDia(horario: string) {
   if (h >= 5 && h < 12) return { key: "manha", label: "Manhã", sub: "Comece o dia com foco" };
   if (h >= 12 && h < 18) return { key: "tarde", label: "Tarde", sub: "Manutenção e constância" };
   return { key: "noite", label: "Noite", sub: "Encerramento e descanso" };
+}
+
+function getDiasRestantesEstilo(dias: number | null | undefined) {
+  if (dias === null || dias === undefined) return { cor: "text-ink-muted", bg: "bg-surface", label: "Indefinido", pulse: false };
+  if (dias <= 3) return { cor: "text-coral", bg: "bg-coral/10", label: "Urgente", pulse: true };
+  if (dias <= 7) return { cor: "text-amber-400", bg: "bg-amber-400/10", label: "Em breve", pulse: false };
+  if (dias <= 14) return { cor: "text-amber-300", bg: "bg-amber-300/5", label: "Atenção", pulse: false };
+  return { cor: "text-emerald-400", bg: "bg-emerald-400/10", label: "Tranquilo", pulse: false };
 }
 
 interface DoseItemExt {
@@ -72,6 +82,7 @@ interface DoseItemExt {
   medicoId?: string;
   tratamentoNome?: string;
   tratamentoId?: string;
+  tratamentoCor?: string;
   farmaciaNome?: string;
   farmaciaId?: string;
   estabelecimentoNome?: string;
@@ -152,6 +163,7 @@ export default function HojePage() {
           medicoId: medicoObj?.id,
           tratamentoNome: tratamentoObj?.nome,
           tratamentoId: tratamentoObj?.id,
+          tratamentoCor: tratamentoObj?.cor,
           farmaciaNome: farmaciaObj?.nome,
           farmaciaId: farmaciaObj?.id,
           estabelecimentoNome: estabelecimentoObj?.nome,
@@ -224,7 +236,7 @@ export default function HojePage() {
   const totalPendentes = doses.filter((d) => !d.tomada && !d.ignorada).length;
 
   const isLoading = medicamentos === undefined || doseLogs === undefined;
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <CardListSkeleton />;
 
   const handleToggle = async (item: DoseItemExt) => {
     if (processandoDoseId) return;
@@ -525,8 +537,10 @@ export default function HojePage() {
                     const isProximo = !item.tomada && !item.ignorada && item.horario >= horaAtual;
                     const isEstoqueCritico = item.estoqueRestante <= 3 && item.estoqueRestante > 0;
                     const isEstoqueZerado = item.estoqueRestante <= 0;
-                    const tratamentoCor = item.cor || "#8B5CF6";
+                    const tratamentoCor = item.tratamentoCor || item.cor || "#8B5CF6";
                     const isProcessando = processandoDoseId === `${item.medicamentoId}-${item.horario}`;
+
+                    const diasEstilo = getDiasRestantesEstilo(item.diasRestantes);
 
                     let statusBadge = null;
                     if (item.tomada) {
@@ -558,15 +572,34 @@ export default function HojePage() {
                                 <span className="text-xs font-medium text-ink-muted">{item.dosagem}</span>
                               </div>
                               <div className="mt-1 flex flex-wrap items-center gap-2">
-                                {item.tratamentoNome && <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-violet-400/10 text-violet-300">{item.tratamentoNome}</span>}
+                                {item.tratamentoNome && item.tratamentoId && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      trigger("vibrate");
+                                      router.push(`/saude/tratamentos/detalhes?id=${item.tratamentoId}`);
+                                    }}
+                                    className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md transition-colors hover:opacity-80"
+                                    style={{
+                                      backgroundColor: tratamentoCor ? `${tratamentoCor}20` : "#8B5CF620",
+                                      color: tratamentoCor || "#8B5CF6",
+                                    }}
+                                  >
+                                    {item.tratamentoNome}
+                                  </button>
+                                )}
                                 {item.medicoNome && <span className="text-[10px] text-ink-muted flex items-center gap-1"><Stethoscope size={10} /> Dr(a). {item.medicoNome}</span>}
                                 {item.farmaciaNome && <span className="text-[10px] text-ink-muted flex items-center gap-1"><Building2 size={10} /> {item.farmaciaNome}</span>}
                                 {item.estabelecimentoNome && <span className="text-[10px] text-ink-muted flex items-center gap-1"><MapPin size={10} /> {item.estabelecimentoNome}</span>}
                               </div>
                               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px]">
                                 {item.estoqueRestante >= 0 && <span className="text-ink-muted">Estoque: {item.estoqueRestante} {item.unidadeMedida}</span>}
-                                {/* 🐛 AQUI ESTAVA O BUG: A checagem corrigida do TypeScript */}
-                                {item.diasRestantes !== undefined && item.diasRestantes !== null && item.diasRestantes >= 0 && <span className="text-ink-muted">• {item.diasRestantes} dias restantes</span>}
+                                {item.diasRestantes !== undefined && item.diasRestantes !== null && item.diasRestantes >= 0 && (
+                                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono font-bold ${diasEstilo.cor} ${diasEstilo.bg} ${diasEstilo.pulse ? "animate-pulse" : ""}`}>
+                                    <Calendar size={12} />
+                                    {item.diasRestantes} dias {diasEstilo.label !== "Indefinido" && `· ${diasEstilo.label}`}
+                                  </span>
+                                )}
                                 {item.insight?.deveRenovar && <span className="flex items-center gap-1 text-amber-400 font-semibold"><FileWarning size={12} /> Renovar</span>}
                                 {item.receitaVencida && <span className="flex items-center gap-1 text-coral font-semibold"><AlertOctagon size={12} /> Receita vencida</span>}
                               </div>

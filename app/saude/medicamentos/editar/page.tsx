@@ -76,7 +76,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
 import { db } from "@/lib/db";
@@ -160,7 +160,6 @@ function EditarMedicamentoContent() {
   const [hasChanges, setHasChanges] = useState(false);
   const [showConfirmExitModal, setShowConfirmExitModal] = useState(false);
 
-  // Dados Básicos
   const [documentId, setDocumentId] = useState("");
   const [personId, setPersonId] = useState("");
   const [nome, setNome] = useState("");
@@ -169,12 +168,10 @@ function EditarMedicamentoContent() {
   const [cores, setCores] = useState<string[]>([]);
   const isGotas = formato === "gota";
 
-  // Smart Dosage
   const [tipoUso, setTipoUso] = useState<"continuo" | "esporadico" | "sos">("continuo");
   const [vezesAoDia, setVezesAoDia] = useState("1");
   const [primeiroHorario, setPrimeiroHorario] = useState("08:00");
 
-  // Rede & Emissão
   const [medicoNome, setMedicoNome] = useState("");
   const [medicoId, setMedicoId] = useState("");
   const [hospitalId, setHospitalId] = useState("");
@@ -190,21 +187,18 @@ function EditarMedicamentoContent() {
   const [renovacaoEditadaManualmente, setRenovacaoEditadaManualmente] = useState(false);
   const [observacoes, setObservacoes] = useState("");
 
-  // Evolução Clínica
   const [dosagemOriginal, setDosagemOriginal] = useState("");
   const [novaDosagem, setNovaDosagem] = useState("");
   const [medicoEvolucaoNome, setMedicoEvolucaoNome] = useState("");
   const [medicoEvolucaoId, setMedicoEvolucaoId] = useState("");
   const [historicoDosagens, setHistoricoDosagens] = useState<Array<{ dosagem_antiga: string; data_mudanca: string; medico_responsavel: string }>>([]);
 
-  // Suspensão
   const [statusAtivo, setStatusAtivo] = useState(true);
   const [motivoDescontinuacao, setMotivoDescontinuacao] = useState("");
   const [medicoDescontinuacaoId, setMedicoDescontinuacaoId] = useState("");
   const [medicoDescontinuacaoNome, setMedicoDescontinuacaoNome] = useState("");
   const [substituidoPorId, setSubstituidoPorId] = useState("");
 
-  // Modais e Estoque
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
@@ -238,7 +232,6 @@ function EditarMedicamentoContent() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Selecteds
   const selectedMedico = medicos.find((m) => m.id === medicoId) || medicos.find((m) => m.nome === medicoNome);
   const selectedMedicoDescontinuacao =
     medicos.find((m) => m.id === medicoDescontinuacaoId) || medicos.find((m) => m.nome === medicoDescontinuacaoNome);
@@ -252,9 +245,6 @@ function EditarMedicamentoContent() {
 
   const markChanged = () => setHasChanges(true);
 
-  // ============================================================
-  // CARREGAR DADOS DO MEDICAMENTO
-  // ============================================================
   useEffect(() => {
     if (!id) {
       setNotFound(true);
@@ -339,9 +329,6 @@ function EditarMedicamentoContent() {
       });
   }, [id]);
 
-  // ============================================================
-  // FUNÇÕES AUXILIARES
-  // ============================================================
   const toggleFormato = (novoFormato: string) => {
     trigger("vibrate");
     setFormato(novoFormato);
@@ -458,9 +445,6 @@ function EditarMedicamentoContent() {
     setTimeout(() => setShakeFields([]), 600);
   };
 
-  // ============================================================
-  // VALIDAÇÃO
-  // ============================================================
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     const shakeList: string[] = [];
@@ -513,9 +497,6 @@ function EditarMedicamentoContent() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ============================================================
-  // SALVAR
-  // ============================================================
   const handleSubmit = async () => {
     if (!validate()) return;
     setSaving(true);
@@ -530,7 +511,6 @@ function EditarMedicamentoContent() {
       let dosagemFinal = dosagem;
       let historicoFinal = [...historicoDosagens];
 
-      // Evolução Clínica
       if (editIntent === "evolucao" && novaDosagem.trim() !== dosagemOriginal) {
         historicoFinal.push({
           dosagem_antiga: dosagemOriginal,
@@ -540,7 +520,6 @@ function EditarMedicamentoContent() {
         dosagemFinal = novaDosagem.trim();
       }
 
-      // Documento
       let updatedDocId = documentId;
       if (!documentId && (dataReceitaISO || attachment)) {
         const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'> = {
@@ -581,7 +560,6 @@ function EditarMedicamentoContent() {
         }
       }
 
-      // Upload de imagem
       if (localFile && user && attachment && updatedDocId) {
         const { url, error } = await uploadFile(user.id, localFile, "saude");
         if (!error && url) {
@@ -591,7 +569,6 @@ function EditarMedicamentoContent() {
         }
       }
 
-      // Atualizar medicamento
       await updateMedicamento(id, {
         person_id: personId,
         nome: nome.trim(),
@@ -629,7 +606,6 @@ function EditarMedicamentoContent() {
         estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : undefined,
       });
 
-      // Notificações
       if (horariosOriginais.length > 0) {
         await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
       }
@@ -695,10 +671,7 @@ function EditarMedicamentoContent() {
     }
   };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (notFound)
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-void px-6 text-center">
@@ -760,7 +733,6 @@ function EditarMedicamentoContent() {
 
         <section className="px-5 pt-6 space-y-6">
           <AnimatePresence mode="wait">
-            {/* ================= MENU DE INTENÇÕES ================= */}
             {editIntent === "menu" && (
               <motion.div key="menu" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="grid grid-cols-1 gap-4">
                 <p className="text-sm text-ink-muted mb-2 font-medium">O que você deseja atualizar?</p>
@@ -815,7 +787,6 @@ function EditarMedicamentoContent() {
               </motion.div>
             )}
 
-            {/* ================= TELA: EVOLUÇÃO CLÍNICA ================= */}
             {editIntent === "evolucao" && (
               <motion.div key="evolucao" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
                 <div className="rounded-[28px] border border-ice/30 bg-ice/5 p-5 shadow-sm">
@@ -862,7 +833,6 @@ function EditarMedicamentoContent() {
               </motion.div>
             )}
 
-            {/* ================= TELA: COMPRA ================= */}
             {editIntent === "compra" && (
               <motion.div key="compra" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
@@ -962,7 +932,6 @@ function EditarMedicamentoContent() {
               </motion.div>
             )}
 
-            {/* ================= TELA: POSOLOGIA ================= */}
             {editIntent === "posologia" && (
               <motion.div key="posologia" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
@@ -1120,7 +1089,6 @@ function EditarMedicamentoContent() {
               </motion.div>
             )}
 
-            {/* ================= TELA: REDE ================= */}
             {editIntent === "rede" && (
               <motion.div key="rede" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
@@ -1250,7 +1218,6 @@ function EditarMedicamentoContent() {
               </motion.div>
             )}
 
-            {/* ================= TELA: SUSPENSÃO ================= */}
             {editIntent === "suspensao" && (
               <motion.div key="suspensao" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
@@ -1347,7 +1314,6 @@ function EditarMedicamentoContent() {
               </motion.div>
             )}
 
-            {/* ================= TELA: BÁSICO ================= */}
             {editIntent === "basico" && (
               <motion.div key="basico" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
@@ -1376,7 +1342,6 @@ function EditarMedicamentoContent() {
           </AnimatePresence>
         </section>
 
-        {/* ================= FOOTER / SAVE BUTTON ================= */}
         <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl">
           <AnimatePresence>
             {editIntent !== "menu" && hasChanges && (
@@ -1405,7 +1370,6 @@ function EditarMedicamentoContent() {
           {(editIntent === "menu" || !hasChanges) && <div className="h-10" />}
         </div>
 
-        {/* ================= MODAIS ================= */}
         <ConfirmationModal
           isOpen={showDesativarEstoqueModal}
           onClose={() => setShowDesativarEstoqueModal(false)}
@@ -1448,7 +1412,6 @@ function EditarMedicamentoContent() {
           type="danger"
         />
 
-        {/* Médico Prescritor */}
         <SelectionModal<Medico>
           isOpen={isDoctorModalOpen}
           onClose={() => setIsDoctorModalOpen(false)}
@@ -1475,7 +1438,6 @@ function EditarMedicamentoContent() {
           )}
         />
 
-        {/* Hospital */}
         <SelectionModal<Hospital>
           isOpen={isHospitalModalOpen}
           onClose={() => setIsHospitalModalOpen(false)}
@@ -1507,7 +1469,6 @@ function EditarMedicamentoContent() {
           )}
         />
 
-        {/* Local / Posto */}
         <SelectionModal<LocalSaude>
           isOpen={isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}
@@ -1539,7 +1500,6 @@ function EditarMedicamentoContent() {
           )}
         />
 
-        {/* Médico da Suspensão */}
         <SelectionModal<Medico>
           isOpen={isDoctorDescontinuacaoModalOpen}
           onClose={() => setIsDoctorDescontinuacaoModalOpen(false)}
@@ -1566,7 +1526,6 @@ function EditarMedicamentoContent() {
           )}
         />
 
-        {/* Médico da Evolução */}
         <SelectionModal<Medico>
           isOpen={isDoctorEvolucaoModalOpen}
           onClose={() => setIsDoctorEvolucaoModalOpen(false)}
@@ -1592,7 +1551,6 @@ function EditarMedicamentoContent() {
           )}
         />
 
-        {/* Farmácia */}
         <SelectionModal<Farmacia>
           isOpen={isPharmacyModalOpen}
           onClose={() => setIsPharmacyModalOpen(false)}
@@ -1619,7 +1577,6 @@ function EditarMedicamentoContent() {
           )}
         />
 
-        {/* Substituto */}
         <SelectionModal<Medicamento>
           isOpen={isSubstitutoModalOpen}
           onClose={() => setIsSubstitutoModalOpen(false)}
@@ -1645,7 +1602,6 @@ function EditarMedicamentoContent() {
           )}
         />
 
-        {/* Tratamentos */}
         <SeletorTratamentoModal
           isOpen={isTratamentoModalOpen}
           onClose={() => setIsTratamentoModalOpen(false)}
@@ -1663,7 +1619,7 @@ function EditarMedicamentoContent() {
 
 export default function EditarMedicamentoPage() {
   return (
-    <Suspense fallback={<LoadingSkeleton />}>
+    <Suspense fallback={<DetailSkeleton />}>
       <EditarMedicamentoContent />
     </Suspense>
   );

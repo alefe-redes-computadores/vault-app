@@ -1,3 +1,4 @@
+// app/saude/cirurgias/editar/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -18,7 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { SelectionModal } from "@/components/SelectionModal";
 // ✅ NOVO: import do hook
 import { useCirurgias } from "@/hooks/useCirurgias";
@@ -148,7 +149,7 @@ function EditarCirurgiaContent() {
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
 
   return (
     <PageTransition>
@@ -312,5 +313,5 @@ function EditarCirurgiaContent() {
 }
 
 export default function EditarCirurgiaPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><EditarCirurgiaContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><EditarCirurgiaContent /></Suspense>;
 }

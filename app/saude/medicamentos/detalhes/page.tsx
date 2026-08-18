@@ -10,14 +10,14 @@ import {
   FileText, Calendar, Activity, AlertTriangle, DollarSign,
   CheckCircle2, Building2, Info, MapPin, Zap, Clock, TrendingUp,
   LineChart, Check, ExternalLink, Share2, Phone, Copy, ChevronDown, ChevronUp,
-  Plus, FileWarning
+  Plus, FileWarning, Gift, AlertCircle
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { computeEstoqueInfo, TIPO_RECEITA_LABELS, VALIDADE_RECEITA_DIAS, getDaysUntil } from "@/lib/health-utils";
 import { sugerirRenovacao } from "@/lib/health-insights";
 import { format } from "date-fns";
@@ -150,7 +150,7 @@ function MedicamentoDetalhesContent() {
     }
   }, [med, updateMedicamento, trigger]);
 
-  if (med === undefined) return <LoadingSkeleton />;
+  if (med === undefined) return <DetailSkeleton />;
   if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
 
   const estoqueInfo = computeEstoqueInfo(med);
@@ -222,6 +222,10 @@ Estoque: ${qtd} doses`;
   const qtdeCompras = renovacoes.length + (med.preco ? 1 : 0);
   const precoMedio = qtdeCompras > 0 ? (custoTotalAcumulado / qtdeCompras) : 0;
 
+  // Verifica se a última renovação foi gratuita
+  const ultimaRenovacao = renovacoes.length > 0 ? renovacoes[0] : null;
+  const isUltimaRenovacaoGratuita = ultimaRenovacao?.tipo_aquisicao === 'gratuito';
+
   const outrosMedsDesteMedico = todosMedicamentosAtivos.filter((m: Medicamento) => m.medico_id === med.medico_id && m.id !== med.id);
   const displayedRenovacoes = showAllRenovacoes ? renovacoes : renovacoes.slice(0, 3);
 
@@ -265,6 +269,7 @@ Estoque: ${qtd} doses`;
               <Share2 size={18} />
             </button>
 
+            {/* Botão + com menu flutuante (mantido) */}
             <div className="relative">
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
@@ -395,7 +400,8 @@ Estoque: ${qtd} doses`;
                  </div>
 
                  <div className="mt-4 pt-4 border-t border-surface-border/50 flex justify-between items-center text-xs text-ink-muted">
-                   <span>Gasto por dose: <b>{med.estoque_unidade_por_dose || 1}</b></span>
+                   {/* ✅ CORRIGIDO: "Gasto por dose" → "Dosagem" */}
+                   <span>Dosagem: <b>{med.estoque_unidade_por_dose || 1} {med.estoque_unidade_medida || "unidade(s)"}</b></span>
                    <span>Última contagem: <b>{formatDate(med.estoque_data_referencia)}</b></span>
                  </div>
                </div>
@@ -496,6 +502,24 @@ Estoque: ${qtd} doses`;
                    </div>
                  </div>
                )}
+
+               {/* ✅ NOVO: Exibir se última renovação foi gratuita */}
+               {ultimaRenovacao && isUltimaRenovacaoGratuita && (
+                 <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl flex items-center gap-3">
+                   <Gift size={16} className="text-emerald-400" />
+                   <div className="flex-1 text-xs">
+                     <span className="font-medium text-emerald-400">Última renovação gratuita</span>
+                     {ultimaRenovacao.data_proxima_retirada && (
+                       <p className="text-ink-muted mt-0.5">Próxima retirada: {formatDate(ultimaRenovacao.data_proxima_retirada)}</p>
+                     )}
+                     {ultimaRenovacao.exige_nova_receita && (
+                       <p className="text-amber-400 flex items-center gap-1 mt-0.5">
+                         <AlertCircle size={12} /> Levar nova receita na próxima retirada
+                       </p>
+                     )}
+                   </div>
+                 </div>
+               )}
              </div>
           </div>
 
@@ -537,16 +561,56 @@ Estoque: ${qtd} doses`;
                  <AnimatePresence>
                    {displayedRenovacoes.map((r: Renovacao, index: number) => {
                      const farmaciaNome = r.farmacia_id ? farmaciasMap.get(r.farmacia_id) : null;
+                     const isGratuita = r.tipo_aquisicao === 'gratuito';
+
                      return (
-                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} key={r.id || index} className="bg-surface p-3.5 rounded-2xl border border-surface-border flex justify-between items-center shadow-sm">
-                         <div className="flex items-center gap-3">
-                           <div className="h-8 w-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted"><Calendar size={14}/></div>
-                           <div>
-                             <p className="text-xs font-bold text-ink-primary">{formatDate(r.data || r.created_at)}</p>
-                             {farmaciaNome && <p className="text-[10px] text-ink-muted">{farmaciaNome}</p>}
+                       <motion.div
+                         initial={{ opacity: 0, height: 0 }}
+                         animate={{ opacity: 1, height: "auto" }}
+                         exit={{ opacity: 0, height: 0 }}
+                         key={r.id || index}
+                         className={`bg-surface p-3.5 rounded-2xl border shadow-sm ${
+                           isGratuita ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-surface-border'
+                         }`}
+                       >
+                         <div className="flex justify-between items-center">
+                           <div className="flex items-center gap-3">
+                             <div className="h-8 w-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted">
+                               <Calendar size={14} />
+                             </div>
+                             <div>
+                               <p className="text-xs font-bold text-ink-primary">{formatDate(r.data || r.created_at)}</p>
+                               <div className="flex items-center gap-1.5 mt-0.5">
+                                 {farmaciaNome && <p className="text-[10px] text-ink-muted">{farmaciaNome}</p>}
+                                 {/* ✅ NOVO: Badge gratuito/comprado */}
+                                 {isGratuita ? (
+                                   <span className="text-[8px] font-bold uppercase bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                     <Gift size={10} /> Gratuito
+                                   </span>
+                                 ) : (
+                                   <span className="text-[8px] font-bold uppercase bg-ice/10 text-ice px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                     <DollarSign size={10} /> Comprado
+                                   </span>
+                                 )}
+                                 {/* ✅ NOVO: Alerta se exige nova receita */}
+                                 {isGratuita && r.exige_nova_receita && (
+                                   <span className="text-[8px] font-bold uppercase bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                     <AlertCircle size={10} /> Nova Receita
+                                   </span>
+                                 )}
+                                 {/* ✅ NOVO: Próxima retirada */}
+                                 {isGratuita && r.data_proxima_retirada && (
+                                   <span className="text-[8px] font-bold uppercase bg-ice/10 text-ice px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                     <Calendar size={10} /> Retirada: {formatDate(r.data_proxima_retirada)}
+                                   </span>
+                                 )}
+                               </div>
+                             </div>
                            </div>
+                           <p className="text-xs text-emerald-400 font-mono font-bold bg-emerald-400/10 px-2 py-1 rounded-lg">
+                             {isGratuita ? 'R$ 0,00' : `R$ ${Number(r.preco || 0).toFixed(2)}`}
+                           </p>
                          </div>
-                         <p className="text-xs text-emerald-400 font-mono font-bold bg-emerald-400/10 px-2 py-1 rounded-lg">R$ {Number(r.preco || 0).toFixed(2)}</p>
                        </motion.div>
                      );
                    })}
@@ -574,5 +638,5 @@ Estoque: ${qtd} doses`;
 }
 
 export default function DetalhesPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><MedicamentoDetalhesContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><MedicamentoDetalhesContent /></Suspense>;
 }

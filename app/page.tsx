@@ -20,7 +20,7 @@ import { PersonCard } from "@/components/PersonCard";
 import { CategorySection } from "@/components/CategorySection";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { SimpleSpinner } from "@/components/loading/SimpleSpinner";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useToast } from "@/components/ToastProvider";
@@ -150,7 +150,7 @@ export default function HomePage() {
   const visiblePersons = sortedPersonsForDisplay.slice(0, MAX_VISIBLE_PERSONS);
   const hasMorePersons = sortedPersonsForDisplay.length > MAX_VISIBLE_PERSONS;
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <SimpleSpinner />;
 
   return (
     <PageTransition>

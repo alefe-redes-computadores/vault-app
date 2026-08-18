@@ -42,7 +42,7 @@ import { useLocais } from "@/hooks/useLocais";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, safeUpdateMedicamento } from "@/lib/db";
 import { HealthNotifications } from "@/components/HealthNotifications";
@@ -223,8 +223,13 @@ function gerarAlertasDashboard(
   });
 
   // Ordenar por urgência
-  const ordem = { alta: 0, media: 1, baixa: 2, nenhuma: 3 };
-  return alertas.sort((a, b) => ordem[a.urgencia] - ordem[b.urgencia]);
+  const ordem: Record<string, number> = {
+  alta: 0,
+  media: 1,
+  baixa: 2,
+  nenhuma: 3,
+};
+return alertas.sort((a, b) => ordem[a.urgencia] - ordem[b.urgencia]);
 }
 
 // ============================================================
@@ -375,7 +380,7 @@ export default function SaudePage() {
   );
 
   const isLoading = documents === undefined || medicamentos === undefined || exames === undefined;
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <CardListSkeleton />;
 
   // Ações rápidas para cards (navegação para LISTAGENS)
   const quickActions = [

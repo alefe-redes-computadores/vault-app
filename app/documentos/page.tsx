@@ -17,7 +17,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { DocumentCard } from "@/components/DocumentCard";
 import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
 import { Input } from "@/components/ui/Input";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { ExportCardButton } from "@/components/ExportCardButton";
@@ -160,7 +160,7 @@ export default function DocumentsPage() {
   };
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <CardListSkeleton />;
   }
 
   return (

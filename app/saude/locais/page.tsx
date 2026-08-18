@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocais } from "@/hooks/useLocais";
@@ -96,7 +96,7 @@ export default function LocaisPage() {
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [locaisEnriquecidos, search, filtroStatus]);
 
-  if (!locais || !renovacoes) return <LoadingSkeleton />;
+  if (!locais || !renovacoes) return <CardListSkeleton />;
 
   return (
     <PageTransition>

@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -153,7 +153,7 @@ function DetalhesCirurgiaContent() {
     router.push(path);
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!cirurgia) return null;
 
   return (
@@ -393,5 +393,5 @@ function DetalhesCirurgiaContent() {
 }
 
 export default function DetalhesCirurgiaPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><DetalhesCirurgiaContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><DetalhesCirurgiaContent /></Suspense>;
 }

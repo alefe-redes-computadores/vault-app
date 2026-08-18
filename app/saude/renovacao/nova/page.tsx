@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Building2,
   MapPin,
+  Check,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -146,6 +147,10 @@ function NovaRenovacaoContent() {
   const [quantidadeAdicionar, setQuantidadeAdicionar] = useState("30");
   const [lote, setLote] = useState("");
   const [validadeProduto, setValidadeProduto] = useState("");
+
+  const [tipoAquisicao, setTipoAquisicao] = useState<"comprado" | "gratuito">("comprado");
+  const [dataProximaRetirada, setDataProximaRetirada] = useState("");
+  const [exigeNovaReceita, setExigeNovaReceita] = useState(false);
 
   const [modalAlertaAberto, setModalAlertaAberto] = useState(false);
   const [mensagemAlertaRegulatorio, setMensagemAlertaRegulatorio] = useState("");
@@ -304,6 +309,9 @@ function NovaRenovacaoContent() {
         farmacia_id: farmaciaId || undefined,
         hospital_id: hospitalId || undefined,
         local_id: localId || undefined,
+        tipo_aquisicao: tipoAquisicao,
+        data_proxima_retirada: tipoAquisicao === "gratuito" ? dataProximaRetirada : undefined,
+        exige_nova_receita: tipoAquisicao === "gratuito" ? exigeNovaReceita : undefined,
         quantidade: quantidadeNum,
         preco: precoNumerico,
         lote: lote.trim() || undefined,
@@ -513,8 +521,311 @@ function NovaRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Data e validade, seção de compra, notas, foto, botões e modais */}
-          {/* ... (conteúdo completo idêntico ao restante do original, com os campos novos já aplicados) */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.05 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Data da Renovação *</label>
+                <div className="relative">
+                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+                  <input
+                    type="text"
+                    placeholder="DD/MM/AAAA"
+                    value={dataDisplay}
+                    onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
+                    maxLength={10}
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50"
+                  />
+                </div>
+                {errors.data && <p className="mt-1 text-xs text-coral">{errors.data}</p>}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Próxima Validade</label>
+                <div className="relative">
+                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+                  <input
+                    type="text"
+                    placeholder="DD/MM/AAAA"
+                    value={proximaDisplay}
+                    onChange={(e) => setProximaDisplay(handleDateMask(e.target.value))}
+                    maxLength={10}
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50"
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.06 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <p className="mb-3 text-sm font-medium text-ink-primary">Forma de Aquisição</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setTipoAquisicao("comprado");
+                  setRegistrarCompra(true);
+                }}
+                className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
+                  tipoAquisicao === "comprado"
+                    ? "border-ice bg-ice/12 text-ice"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                }`}
+              >
+                Comprado
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setTipoAquisicao("gratuito");
+                  setRegistrarCompra(false);
+                }}
+                className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
+                  tipoAquisicao === "gratuito"
+                    ? "border-emerald-500 bg-emerald-500/12 text-emerald-400"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                }`}
+              >
+                Gratuito (SUS)
+              </button>
+            </div>
+          </motion.div>
+
+          {tipoAquisicao === "comprado" ? (
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.07 }}
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <Store size={16} className="text-ice" />
+                <h3 className="text-sm font-semibold text-ink-primary">Dados da Compra</h3>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia</label>
+                <button
+                  type="button"
+                  onClick={() => setIsPharmacyModalOpen(true)}
+                  className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left"
+                >
+                  <span className="truncate font-medium text-ink-primary">
+                    {selectedFarmacia ? selectedFarmacia.nome : farmaciaNome || "Onde comprou?"}
+                  </span>
+                  <span className="text-xs font-bold text-ice">Selecionar</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Preço (R$)</label>
+                <div className="relative">
+                  <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                  <input
+                    type="text"
+                    placeholder="0,00"
+                    value={preco}
+                    onChange={(e) => {
+                      const masked = handleCurrencyMask(e.target.value);
+                      setPreco(masked);
+                    }}
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                  />
+                </div>
+                {analisePreco && (
+                  <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+                    {analisePreco.diff > 0 ? (
+                      <>
+                        <TrendingDown size={14} className="text-emerald-400" />
+                        <span className="text-emerald-400">
+                          {analisePreco.farmaciaAnteriorName
+                            ? `R$ ${analisePreco.diff.toFixed(2).replace(".", ",")} mais barato que em ${analisePreco.farmaciaAnteriorName}`
+                            : `R$ ${analisePreco.diff.toFixed(2).replace(".", ",")} mais barato que a média`
+                          }
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <TrendingUp size={14} className="text-coral" />
+                        <span className="text-coral">
+                          {analisePreco.farmaciaAnteriorName
+                            ? `R$ ${Math.abs(analisePreco.diff).toFixed(2).replace(".", ",")} mais caro que em ${analisePreco.farmaciaAnteriorName}`
+                            : `R$ ${Math.abs(analisePreco.diff).toFixed(2).replace(".", ",")} acima da média`
+                          }
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2">
+                  <PackagePlus size={16} className="text-ink-muted" />
+                  Quantidade adicionada ao estoque
+                </label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  value={quantidadeAdicionar}
+                  onChange={(e) => setQuantidadeAdicionar(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Lote (opcional)"
+                  value={lote}
+                  onChange={(e) => setLote(e.target.value)}
+                  placeholder="Lote..."
+                />
+                <Input
+                  label="Validade (opcional)"
+                  value={validadeProduto}
+                  onChange={(e) => setValidadeProduto(handleDateMask(e.target.value))}
+                  placeholder="DD/MM/AAAA"
+                  maxLength={10}
+                />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.07 }}
+              className="rounded-[28px] border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-sm space-y-4"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                  <Check size={16} />
+                </div>
+                <h3 className="text-sm font-semibold text-emerald-400">Retirada Gratuita</h3>
+                <span className="ml-auto text-xs text-emerald-400/60">Sem custo registrado</span>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia / Posto de Retirada</label>
+                <button
+                  type="button"
+                  onClick={() => setIsPharmacyModalOpen(true)}
+                  className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left"
+                >
+                  <span className="truncate font-medium text-ink-primary">
+                    {selectedFarmacia ? selectedFarmacia.nome : farmaciaNome || "Onde retirou?"}
+                  </span>
+                  <span className="text-xs font-bold text-ice">Selecionar</span>
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Data agendada para próxima retirada</label>
+                <div className="relative">
+                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="DD/MM/AAAA"
+                    value={dataProximaRetirada}
+                    onChange={(e) => setDataProximaRetirada(handleDateMask(e.target.value))}
+                    maxLength={10}
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="exigeNovaReceita"
+                  checked={exigeNovaReceita}
+                  onChange={(e) => setExigeNovaReceita(e.target.checked)}
+                  className="h-4 w-4 rounded border-surface-border/50 bg-surface-raised text-ice focus:ring-ice/20"
+                />
+                <label htmlFor="exigeNovaReceita" className="text-sm text-ink-primary cursor-pointer">
+                  Levar nova receita na próxima retirada?
+                </label>
+              </div>
+            </motion.div>
+          )}
+
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.08 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <TextArea
+              label="Observações (opcional)"
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
+              placeholder="Ex: Retirada mensal, farmácia de confiança..."
+            />
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.09 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <label className="mb-3 block text-sm font-medium text-ink-primary">Foto da Receita (opcional)</label>
+            {!attachment ? (
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"
+                >
+                  <Upload size={18} />
+                  <span className="text-xs font-semibold">Anexar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"
+                >
+                  <Camera size={18} />
+                  <span className="text-xs font-semibold">Foto</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised p-3">
+                <div className="flex h-11 w-11 overflow-hidden rounded-xl bg-surface">
+                  {attachment.type === "image" ? (
+                    <img src={attachment.url} className="h-full w-full object-cover" />
+                  ) : (
+                    <FileWarning size={20} className="text-coral m-auto" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-ink-primary">{attachment.name}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeAttachment}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-coral/10 text-coral"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </motion.div>
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">

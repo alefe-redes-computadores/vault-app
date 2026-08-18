@@ -12,7 +12,7 @@ import {
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
@@ -131,7 +131,7 @@ function DetalhesRenovacaoContent() {
     router.push(path);
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!renovacao) return null;
 
   const precoFormatado = renovacao.preco 
@@ -395,5 +395,5 @@ function DetalhesRenovacaoContent() {
 }
 
 export default function DetalhesRenovacaoPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><DetalhesRenovacaoContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><DetalhesRenovacaoContent /></Suspense>;
 }

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -92,7 +92,7 @@ function TratamentoListContent() {
   }, [listaEnriquecida, filtroStatus]);
 
   if (!tratamentos.length && !medicamentos.length && !renovacoes.length) {
-    return <LoadingSkeleton />;
+    return <CardListSkeleton />;
   }
 
   return (
@@ -230,5 +230,5 @@ function TratamentoListContent() {
 }
 
 export default function TratamentosPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><TratamentoListContent /></Suspense>;
+  return <Suspense fallback={<CardListSkeleton />}><TratamentoListContent /></Suspense>;
 }

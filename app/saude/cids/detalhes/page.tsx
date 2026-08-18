@@ -29,7 +29,7 @@ import {
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useToast } from "@/components/ToastProvider";
 import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document } from "@/lib/types";
@@ -167,7 +167,7 @@ function CidDetalhesContent() {
     router.push(path);
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!cid) return null;
 
   const theme = getCidTheme(cid.codigo, cid.descricao);
@@ -489,5 +489,5 @@ function CidDetalhesContent() {
 }
 
 export default function CidDetalhesPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><CidDetalhesContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><CidDetalhesContent /></Suspense>;
 }

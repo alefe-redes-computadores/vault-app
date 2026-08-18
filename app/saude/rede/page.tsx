@@ -1,3 +1,4 @@
+// app/saude/rede/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -36,7 +37,7 @@ import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { usePersons } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { sugerirRenovacao, isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
@@ -55,7 +56,6 @@ import type {
 
 type TabType = "visao-geral" | "medicos" | "farmacias" | "hospitais" | "tratamentos";
 
-// 🛡️ Tipagem estrita para os alertas gerados na tela
 type AlertaRede = {
   tipo: 'estoque' | 'receita' | 'consulta' | 'exame' | 'cirurgia';
   mensagem: string;
@@ -112,9 +112,6 @@ export default function RedeSaudePage() {
     }
   }, [tabFromUrl, activeTab]);
 
-  // ============================================================
-  // FILTRAGEM BASE ESTritamente Tipada
-  // ============================================================
   const filteredMedicamentos = useMemo(() => {
     if (!selectedPersonId) return [];
     return medicamentos.filter((m: Medicamento) => m.person_id === selectedPersonId);
@@ -146,9 +143,6 @@ export default function RedeSaudePage() {
     return renovacoes.filter((r: Renovacao) => r.person_id === selectedPersonId || (r.medicamento_id && medsIds.has(r.medicamento_id)));
   }, [renovacoes, selectedPersonId, filteredMedicamentos]);
 
-  // ============================================================
-  // INTELIGÊNCIA RELACIONAL (Grafo) - Tipada e sem "Any"
-  // ============================================================
   const filteredMedicos = useMemo(() => {
     if (!selectedPersonId) return [];
     const linked = new Set([
@@ -181,9 +175,6 @@ export default function RedeSaudePage() {
     return hospitais.filter((h: Hospital) => h.id && linked.has(h.id));
   }, [hospitais, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
 
-  // ============================================================
-  // ALERTAS INTELIGENTES Tipados
-  // ============================================================
   const alertas = useMemo(() => {
     if (!selectedPersonId) return [];
 
@@ -293,7 +284,7 @@ export default function RedeSaudePage() {
     return filteredTratamentos.filter(t => t.nome.toLowerCase().includes(search.toLowerCase()));
   }, [filteredTratamentos, search]);
 
-  if (!persons) return <LoadingSkeleton />;
+  if (!persons) return <CardListSkeleton />;
 
   const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
     { id: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
@@ -478,7 +469,6 @@ export default function RedeSaudePage() {
                 key="medicos"
                 items={filteredMedicosSearch}
                 icon={Stethoscope}
-                label="Médico"
                 emptyMessage="Nenhum médico vinculado a esta pessoa (adicione uma consulta ou medicamento para vincular)."
                 onItemClick={(item) => router.push(`/saude/medicos/detalhes?id=${item.id}`)}
                 renderItem={(item) => (
@@ -502,7 +492,6 @@ export default function RedeSaudePage() {
                 key="farmacias"
                 items={filteredFarmaciasSearch}
                 icon={Pill}
-                label="Farmácia"
                 emptyMessage="Nenhuma farmácia vinculada (adicione uma renovação de remédio para vincular)."
                 onItemClick={(item) => router.push(`/saude/farmacias/detalhes?id=${item.id}`)}
                 renderItem={(item) => (
@@ -524,7 +513,6 @@ export default function RedeSaudePage() {
                 key="hospitais"
                 items={filteredHospitaisSearch}
                 icon={Building2}
-                label="Hospital"
                 emptyMessage="Nenhum hospital vinculado (adicione uma cirurgia ou consulta para vincular)."
                 onItemClick={(item) => router.push(`/saude/hospitais/detalhes?id=${item.id}`)}
                 renderItem={(item) => (
@@ -546,7 +534,6 @@ export default function RedeSaudePage() {
                 key="tratamentos"
                 items={filteredTratamentosSearch}
                 icon={FolderHeart}
-                label="Tratamento"
                 emptyMessage="Nenhum tratamento cadastrado para esta pessoa."
                 onItemClick={(item) => router.push(`/saude/tratamentos/detalhes?id=${item.id}`)}
                 renderItem={(item) => {
@@ -579,10 +566,6 @@ export default function RedeSaudePage() {
     </PageTransition>
   );
 }
-
-// ============================================================
-// COMPONENTES AUXILIARES ESTRITAMENTE TIPADOS
-// ============================================================
 
 interface ResumoCardProps {
   icon: React.ElementType;
@@ -617,7 +600,6 @@ function ResumoCard({ icon: Icon, label, value, sub, color, onClick }: ResumoCar
 interface TabListProps<T> {
   items: T[];
   icon: React.ElementType;
-  label: string;
   emptyMessage: string;
   onItemClick: (item: T) => void;
   renderItem: (item: T) => React.ReactNode;

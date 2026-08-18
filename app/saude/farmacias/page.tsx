@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useFarmacias } from "@/hooks/useFarmacias";
@@ -39,10 +39,8 @@ function formatDateDisplay(isoStr: string): string {
 
 type RankingFarmacia = {
   farmacia_id: string;
-  media: number;
+  media_preco: number;
   total_compras: number;
-  economia_estimada?: number;
-  percentual_economia?: number;
 };
 
 type FarmaciaComAnalise = Farmacia & {
@@ -65,13 +63,13 @@ export default function FarmaciasPage() {
   const { renovacoes = [] } = useRenovacoes();
 
   const rankingFarmacias = useMemo<RankingFarmacia[]>(() => {
-  const resultado = analisarMelhorFarmacia(renovacoes);
-  return resultado.map((item) => ({
-    farmacia_id: item.farmacia_id,
-    media: item.media,
-    total_compras: item.total_compras,
-  }));
-}, [renovacoes]);
+    const resultado = analisarMelhorFarmacia(renovacoes);
+return resultado.map((item) => ({
+  farmacia_id: item.farmacia_id,
+  media_preco: item.media_preco,
+  total_compras: item.total_compras,
+}));
+  }, [renovacoes]);
 
   const rankingMap = useMemo(() => {
     const map = new Map<string, RankingFarmacia & { posicao: number }>();
@@ -146,7 +144,7 @@ export default function FarmaciasPage() {
   }, [farmaciasComAnalise, search, filtroStatus]);
 
   if (!farmacias.length && !medicamentos.length && !renovacoes.length) {
-    return <LoadingSkeleton />;
+    return <CardListSkeleton />;
   }
 
   return (

@@ -22,7 +22,7 @@ import {
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
 import { usePersons } from "@/hooks/usePersons";
@@ -207,7 +207,7 @@ function EditarRenovacaoContent() {
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!renovacao) return null;
 
   return (
@@ -612,5 +612,5 @@ function EditarRenovacaoContent() {
 }
 
 export default function EditarRenovacaoPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><EditarRenovacaoContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><EditarRenovacaoContent /></Suspense>;
 }

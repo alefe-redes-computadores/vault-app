@@ -15,7 +15,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -45,7 +45,7 @@ function VaultDetailContent() {
   const documents = useLiveQuery(() => db.documents.where("vault_id").equals(id).toArray(), [id], []);
 
   if (vault === undefined) {
-    return <LoadingSkeleton />;
+    return <DetailSkeleton />;
   }
 
   if (!vault) {
@@ -222,7 +222,7 @@ function VaultDetailContent() {
 
 export default function VaultDetailPage() {
   return (
-    <Suspense fallback={<LoadingSkeleton />}>
+    <Suspense fallback={<DetailSkeleton />}>
       <VaultDetailContent />
     </Suspense>
   );

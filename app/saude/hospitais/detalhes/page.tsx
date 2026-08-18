@@ -14,7 +14,7 @@ import { db } from "@/lib/db";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import type { Hospital, Document, Exame, Consulta, Medico, Cirurgia } from "@/lib/types";
 
@@ -125,7 +125,7 @@ function DetalhesHospitalContent() {
     router.push(path);
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!hospital) return null;
 
   const cor = hospital.tipo === 'clinica' ? '#34D399' : '#38BDF8';
@@ -386,5 +386,5 @@ function DetalhesHospitalContent() {
 }
 
 export default function DetalhesHospitalPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><DetalhesHospitalContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><DetalhesHospitalContent /></Suspense>;
 }

@@ -113,7 +113,7 @@ export default function MaisPage() {
         db.cirurgias.clear(),
         db.doseLogs.clear(),
         db.credentials.clear(),
-        db.cards.clear(),
+        db.bankCards.clear(),
         db.instituicoes.clear(),
         db.tratamentos.clear(),
         db.cids.clear(),

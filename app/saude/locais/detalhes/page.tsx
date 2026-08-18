@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "@/lib/db";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useHapticFeedback } from "@/lib/haptics";
 import {
@@ -137,7 +137,7 @@ function DetalhesLocalContent() {
     router.push(path);
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!local) return null;
 
   const hasHistory = Array.isArray(analiseLocal.renovacoesComMed) && analiseLocal.renovacoesComMed.length > 0;
@@ -292,5 +292,5 @@ function DetalhesLocalContent() {
 }
 
 export default function DetalhesLocalPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><DetalhesLocalContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><DetalhesLocalContent /></Suspense>;
 }

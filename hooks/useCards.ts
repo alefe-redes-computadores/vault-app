@@ -10,16 +10,13 @@ import type { BankCard } from "@/lib/types";
 export function useCards() {
   const { user } = useAuth();
 
-  // ✅ CORRIGIDO: db.cards em vez de db.bankCards
   const cards = useLiveQuery(
-    () => db.cards.where("user_id").equals(user?.id || "").toArray(),
+    () => db.bankCards.where("user_id").equals(user?.id || "").toArray(),
     [user?.id],
     []
   );
 
-  const addCard = async (
-    data: Omit<BankCard, "id" | "user_id" | "created_at" | "updated_at" | "synced">
-  ) => {
+  const addCard = async (data: Omit<BankCard, "id" | "user_id" | "created_at" | "updated_at" | "synced">) => {
     if (!user) throw new Error("Usuário não autenticado");
     return cardsRepository.create(data);
   };

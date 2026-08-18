@@ -1,3 +1,4 @@
+// app/saude/documentos/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -23,7 +24,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { DocumentCard } from "@/components/DocumentCard";
 import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
 import { Input } from "@/components/ui/Input";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { ExportCardButton } from "@/components/ExportCardButton";
@@ -134,7 +135,6 @@ export default function DocumentsPage() {
     return result;
   }, [paginatedDocs, activeTab, selectedMonth]);
 
-  // 🔧 CORRIGIDO: tipos explícitos para evitar erro de any
   const docsComAlertas = useMemo(() => {
     return filteredDocsBase.map((doc: any) => {
       const medId = doc.metadata?.medication_id;
@@ -146,7 +146,6 @@ export default function DocumentsPage() {
       const dataReceita =
         doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
       
-      // 🔧 CORRIGIDO: r com tipo any explícito
       const renovacaoRecent = renovacoesDoMed.some(
         (r: any) => r.data && r.data >= dataReceita
       );
@@ -171,7 +170,6 @@ export default function DocumentsPage() {
         alerta = { status: "renovada_historico", label: "Renovada", color: "#38BDF8" };
       }
 
-      // 🔧 CORRIGIDO: verificação de null com optional chaining
       let medicoNome = null;
       let tratamentoNome = null;
       if (med) {
@@ -328,7 +326,7 @@ export default function DocumentsPage() {
   }, [selectedMonth]);
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <CardListSkeleton />;
   }
 
   return (

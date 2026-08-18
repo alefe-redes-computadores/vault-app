@@ -22,7 +22,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useExames } from "@/hooks/useExames";
@@ -83,7 +83,7 @@ export default function ExamesPage() {
     return result.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
   }, [examesComStatus, search, filtroStatus]);
 
-  if (!exames) return <LoadingSkeleton />;
+  if (!exames) return <CardListSkeleton />;
 
   return (
     <PageTransition>

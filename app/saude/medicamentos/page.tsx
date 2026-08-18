@@ -29,7 +29,7 @@ import { useTratamentos } from "@/hooks/useTratamentos";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { computeEstoqueInfo, getDaysUntil } from "@/lib/health-utils";
@@ -200,7 +200,7 @@ export default function MedicamentosListPage() {
     });
   }, [medicamentos, selectedPersonId, searchQuery, showDescontinuados, sortBy]);
 
-  if (medicamentos === undefined) return <LoadingSkeleton />;
+  if (medicamentos === undefined) return <CardListSkeleton />;
 
   return (
     <PageTransition>
@@ -431,12 +431,13 @@ export default function MedicamentosListPage() {
                         })}
                       </div>
 
+                      {/* ✅ ALERTA DE ESTOQUE COM CONTRASTE MELHORADO */}
                       {insight?.deveRenovar && (
                         <div
                           className={`mt-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold w-fit ${
                             insight.urgencia === "alta"
-                              ? "bg-coral/10 text-coral border-coral/20"
-                              : "bg-amber-400/10 text-amber-400 border-amber-400/20"
+                              ? "bg-coral/20 text-coral-200 border-coral/30"
+                              : "bg-amber-400/20 text-amber-200 border-amber-400/30"
                           }`}
                         >
                           <FileWarning size={12} /> {insight.mensagem}
@@ -490,9 +491,11 @@ export default function MedicamentosListPage() {
                           )}
                         </div>
 
-                        <span className="text-[11px] font-mono font-semibold text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg">
-                          Renova: {formatDate(med.proxima_renovacao) || "—"}
-                        </span>
+                        {/* ✅ RENOVA: TEXTO SIMPLES COM ÍCONE */}
+                        <div className="flex items-center gap-1 text-[11px] text-ink-muted font-mono">
+                          <Calendar size={12} className="text-ink-faint" />
+                          <span>Renova: {formatDate(med.proxima_renovacao) || "—"}</span>
+                        </div>
                       </div>
                     </div>
                   </div>

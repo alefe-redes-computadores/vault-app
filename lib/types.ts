@@ -651,10 +651,8 @@ export interface Renovacao {
   document_id?: string;
   medico_id?: string;
   farmacia_id?: string;
-
   hospital_id?: string;
   local_id?: string;
-
   quantidade?: number;
   preco?: number;
   lote?: string;
@@ -662,6 +660,12 @@ export interface Renovacao {
   data: string;
   anexo_url?: string;
   observacoes?: string;
+
+  // 🔹 NOVOS CAMPOS (RENOVAÇÃO GRATUITA)
+  tipo_aquisicao?: 'comprado' | 'gratuito';
+  data_proxima_retirada?: string;
+  exige_nova_receita?: boolean;
+
   created_at?: string;
   updated_at?: string;
   synced?: boolean;

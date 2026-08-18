@@ -12,7 +12,7 @@ import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import type { Farmacia, Medicamento } from "@/lib/types";
 
@@ -124,7 +124,7 @@ function EditarFarmaciaContent() {
   };
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <DetailSkeleton />;
   }
 
   if (notFound) {
@@ -296,5 +296,5 @@ function EditarFarmaciaContent() {
 }
 
 export default function EditarFarmaciaPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><EditarFarmaciaContent /></Suspense>;
+  return <Suspense fallback={<DetailSkeleton />}><EditarFarmaciaContent /></Suspense>;
 }

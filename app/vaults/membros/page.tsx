@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { motion } from "framer-motion";
 
 const PERMISSION_OPTIONS = [
@@ -41,7 +41,7 @@ function VaultMembersContent() {
   const members = useLiveQuery(() => db.vaultMembers.where("vault_id").equals(vaultId).toArray(), [vaultId], []);
 
   if (vault === undefined) {
-    return <LoadingSkeleton />;
+    return <CardListSkeleton />;
   }
 
   if (!vault) {
@@ -269,7 +269,7 @@ function VaultMembersContent() {
 
 export default function VaultMembersPage() {
   return (
-    <Suspense fallback={<LoadingSkeleton />}>
+    <Suspense fallback={<CardListSkeleton />}>
       <VaultMembersContent />
     </Suspense>
   );

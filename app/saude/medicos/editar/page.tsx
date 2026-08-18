@@ -11,7 +11,7 @@ import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 const fadeUp = {
@@ -122,7 +122,7 @@ function EditarMedicoContent() {
   };
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <DetailSkeleton />;
   }
 
   if (notFound) {
@@ -263,7 +263,7 @@ function EditarMedicoContent() {
 
 export default function EditarMedicoPage() {
   return (
-    <Suspense fallback={<LoadingSkeleton />}>
+    <Suspense fallback={<DetailSkeleton />}>
       <EditarMedicoContent />
     </Suspense>
   );

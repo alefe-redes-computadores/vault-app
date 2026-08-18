@@ -16,7 +16,7 @@ import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import type { Hospital, Cirurgia, Exame, Consulta } from "@/lib/types";
 
@@ -148,7 +148,7 @@ function EditarHospitalContent() {
   };
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <DetailSkeleton />;
   }
 
   if (notFound) {
@@ -398,7 +398,7 @@ function EditarHospitalContent() {
 
 export default function EditarHospitalPage() {
   return (
-    <Suspense fallback={<LoadingSkeleton />}>
+    <Suspense fallback={<DetailSkeleton />}>
       <EditarHospitalContent />
     </Suspense>
   );

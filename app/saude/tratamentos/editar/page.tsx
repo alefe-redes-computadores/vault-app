@@ -9,7 +9,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
 import { useTratamentos } from "@/hooks/useTratamentos";
@@ -160,7 +160,7 @@ function EditarTratamentoContent() {
 
   const selectedCids = cids?.filter((c: Cid) => c.id && cidIds.includes(c.id)) || [];
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
   if (!tratamento) return null;
 
   return (
@@ -356,7 +356,7 @@ function EditarTratamentoContent() {
 
 export default function EditarTratamentoPage() {
   return (
-    <Suspense fallback={<LoadingSkeleton />}>
+    <Suspense fallback={<DetailSkeleton />}>
       <EditarTratamentoContent />
     </Suspense>
   );
