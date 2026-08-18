@@ -92,6 +92,7 @@ class VaultDB extends Dexie {
   persons!: Table<Person, string>;
   documents!: Table<Document, string>;
   syncQueue!: Table<SyncQueueItem, string>;
+  cards!: Table<BankCard, string>;
 
   medicamentos!: Table<Medicamento, string>;
   renovacoes!: Table<Renovacao, string>;
