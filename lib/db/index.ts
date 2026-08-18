@@ -682,16 +682,15 @@ class VaultDB extends Dexie {
         }
       });
 
-    // ==========================================================
-    // VERSÃO 21
+    //     // ==========================================================
+    // VERSÃO 22
     //
-    // Atualização dos índices de CIDs para incluir campos
-    // clínicos (person_id, medico_id, hospital_id, local_id).
-    // Também adiciona índices para document_id em entidades
-    // que possuem essa relação.
+    // - Adiciona o índice 'data' em cirurgias e consultas
+    // - Atualização dos índices de CIDs para incluir campos clínicos
+    // - Adiciona índices para document_id
     // ==========================================================
 
-    this.version(21).stores({
+    this.version(22).stores({
       persons:
         'id, user_id, name, synced, updated_at',
 
@@ -702,7 +701,7 @@ class VaultDB extends Dexie {
         'id, user_id, person_id, document_id, medico_id, farmacia_id, hospital_id, local_id, status, synced, updated_at, *tratamento_ids',
 
       renovacoes:
-        'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, synced, updated_at', // ADICIONADO: document_id
+        'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, synced, updated_at',
 
       medicos:
         'id, user_id, nome, especialidade, synced, updated_at',
@@ -717,13 +716,13 @@ class VaultDB extends Dexie {
         'id, user_id, nome, synced, updated_at',
 
       exames:
-        'id, user_id, person_id, medico_id, local_id, document_id, synced, updated_at, *tratamento_ids', // ADICIONADO: document_id
+        'id, user_id, person_id, medico_id, local_id, document_id, synced, updated_at, *tratamento_ids',
 
       consultas:
-        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, synced, updated_at', // ADICIONADO: document_id
+        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at', // ADICIONADO: data
 
       cirurgias:
-        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, synced, updated_at', // ADICIONADO: document_id
+        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at', // ADICIONADO: data
 
       doseLogs:
         'id, user_id, person_id, medicamento_id, data, horario, synced, updated_at',
@@ -731,7 +730,7 @@ class VaultDB extends Dexie {
       credentials:
         'id, user_id, vault_id, category, synced, updated_at',
 
-      bankCards: // CORRIGIDO: bankCards em vez de cards
+      bankCards:
         'id, user_id, type, synced, updated_at',
 
       instituicoes:
@@ -741,7 +740,7 @@ class VaultDB extends Dexie {
         'id, user_id, person_id, nome, status, synced, updated_at, *cid_ids',
 
       cids:
-        'id, user_id, person_id, codigo, medico_id, hospital_id, local_id, synced, updated_at', // ATUALIZADO: índices clínicos
+        'id, user_id, person_id, codigo, medico_id, hospital_id, local_id, synced, updated_at',
 
       anexos_clinicos:
         'id, user_id, synced, updated_at',
@@ -753,6 +752,7 @@ class VaultDB extends Dexie {
     });
   }
 }
+
 
 // ============================================================
 // INSTÂNCIA ÚNICA
