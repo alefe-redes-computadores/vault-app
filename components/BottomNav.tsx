@@ -1,3 +1,4 @@
+// components/BottomNav.tsx
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -24,6 +25,7 @@ import {
   Copy,
   RotateCcw,
   FileText,
+  Lock,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -61,88 +63,76 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "tratamento", label: "Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" },
   { id: "renovacao", label: "Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
   { id: "medico", label: "Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
-  { id: "local", label: "Farmácia/Hospital", icon: Building2, path: "/saude/locais/novo" },
+  { id: "farmacia", label: "Nova Farmácia", icon: Building2, path: "/saude/farmacias/novo" },
+  { id: "hospital", label: "Novo Hospital", icon: Building2, path: "/saude/hospitais/novo" },
 ];
 
-// ============================================================
-// MÉDICOS (LISTAGEM APENAS)
-// ============================================================
 const MEDICOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-medico", label: "Novo Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
 ];
 
-// ============================================================
-// FARMÁCIAS (LISTAGEM APENAS)
-// ============================================================
+const MEDICAMENTOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
+];
+
 const FARMACIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-farmacia", label: "Nova Farmácia", icon: Building2, path: "/saude/farmacias/novo" },
 ];
 
-// ============================================================
-// TRATAMENTOS (LISTAGEM APENAS)
-// ============================================================
 const TRATAMENTOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-tratamento", label: "Novo Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" },
 ];
 
-// ============================================================
-// HOSPITAIS (LISTAGEM APENAS)
-// ============================================================
 const HOSPITAIS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-hospital", label: "Novo Hospital", icon: Building2, path: "/saude/hospitais/novo" },
 ];
 
-// ============================================================
-// LOCAIS (LISTAGEM APENAS)
-// ============================================================
 const LOCAIS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-local", label: "Novo Local", icon: MapPin, path: "/saude/locais/novo" },
 ];
 
-// ============================================================
-// RENOVAÇÕES (LISTAGEM APENAS)
-// ============================================================
 const RENOVACOES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
 ];
 
-// ============================================================
-// EXAMES (LISTAGEM APENAS)
-// ============================================================
 const EXAMES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-exame", label: "Novo Exame", icon: FlaskConical, path: "/saude/exames/novo" },
 ];
 
-// ============================================================
-// CONSULTAS (LISTAGEM APENAS)
-// ============================================================
 const CONSULTAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-consulta", label: "Nova Consulta", icon: Calendar, path: "/saude/consultas/nova" },
 ];
 
-// ============================================================
-// CIRURGIAS (LISTAGEM APENAS)
-// ============================================================
 const CIRURGIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
 ];
 
-// ============================================================
-// CIDS (NOVO)
-// ============================================================
 const CIDS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-cid", label: "Novo CID", icon: FileText, path: "/saude/cids/novo" },
 ];
 
-// ============================================================
-// REDE (NOVO)
-// ============================================================
+const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "cartao", label: "Novo cartão", icon: CreditCard, path: "/cartoes/novo" },
+];
+
+const CONTAS_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "conta", label: "Nova conta bancária", icon: Landmark, path: "/contas/novo" },
+];
+
+const VAULTS_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "novo-cofre", label: "Novo cofre", icon: Lock, path: "/vaults/novo" },
+];
+
+const GALERIA_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "upload-galeria", label: "Adicionar à Galeria", icon: UploadCloud, path: "/galeria?upload=true" },
+];
+
 function getRedeComposeOptions(tab: string | null): ComposeOption[] {
   switch (tab) {
     case "medicos":
       return [{ id: "novo-medico", label: "Novo Médico", icon: Stethoscope, path: "/saude/medicos/novo" }];
     case "farmacias":
-      return [{ id: "nova-farmacia", label: "Nova Farmácia", icon: Pill, path: "/saude/farmacias/novo" }];
+      return [{ id: "nova-farmacia", label: "Nova Farmácia", icon: Building2, path: "/saude/farmacias/novo" }];
     case "hospitais":
       return [{ id: "novo-hospital", label: "Novo Hospital", icon: Building2, path: "/saude/hospitais/novo" }];
     case "tratamentos":
@@ -155,86 +145,61 @@ function getRedeComposeOptions(tab: string | null): ComposeOption[] {
   }
 }
 
-// ============================================================
-// CARTÕES E GALERIA
-// ============================================================
-const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "cartao", label: "Novo cartão", icon: CreditCard, path: "/cartoes/novo" },
-  { id: "conta", label: "Nova conta bancária", icon: Landmark, path: "/contas/novo" },
-];
-const GALERIA_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "upload-galeria", label: "Adicionar à Galeria", icon: UploadCloud, path: "/galeria?upload=true" },
-];
-
-const HIDDEN_ON_PATHS = ["/novo", "/login", "/auth/callback", "/cartoes/novo", "/contas/novo"];
-
-// ============================================================
-// shouldHideNav (CORRIGIDO)
-// ============================================================
-function shouldHideNav(pathname: string): boolean {
-  if (HIDDEN_ON_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    return true;
-  }
-  if (pathname.includes("/editar")) {
-    return true;
-  }
-  if (pathname === "/senhas" || pathname.startsWith("/senhas/")) {
-    return true;
-  }
-  if (pathname.startsWith("/cartoes/") && pathname !== "/cartoes") {
-    return true;
-  }
-  // 🔧 OCULTAR MENU INFERIOR EM TODAS AS TELAS DE DETALHES
-  if (pathname.includes("/detalhes")) {
-    return true;
-  }
-  return false;
-}
-
-// ============================================================
-// getComposeOptions (ATUALIZADO)
-// ============================================================
 function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
-  // MÉDICOS (apenas listagem)
+  if (pathname === "/") return DEFAULT_COMPOSE_OPTIONS;
+  if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
+  if (pathname === "/galeria") return GALERIA_COMPOSE_OPTIONS;
+  if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
+  if (pathname === "/contas") return CONTAS_COMPOSE_OPTIONS;
+  if (pathname === "/vaults") return VAULTS_COMPOSE_OPTIONS;
+
   if (pathname === "/saude/medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
-  
-  // FARMÁCIAS (apenas listagem)
+  if (pathname === "/saude/medicamentos") return MEDICAMENTOS_LIST_COMPOSE_OPTIONS;
   if (pathname === "/saude/farmacias") return FARMACIAS_LIST_COMPOSE_OPTIONS;
-  
-  // TRATAMENTOS (apenas listagem)
   if (pathname === "/saude/tratamentos") return TRATAMENTOS_LIST_COMPOSE_OPTIONS;
-  
-  // HOSPITAIS (apenas listagem)
   if (pathname === "/saude/hospitais") return HOSPITAIS_LIST_COMPOSE_OPTIONS;
-  
-  // LOCAIS (apenas listagem)
   if (pathname === "/saude/locais") return LOCAIS_LIST_COMPOSE_OPTIONS;
-  
-  // RENOVAÇÕES (apenas listagem)
   if (pathname === "/saude/renovacao") return RENOVACOES_LIST_COMPOSE_OPTIONS;
-  
-  // EXAMES (apenas listagem)
   if (pathname === "/saude/exames") return EXAMES_LIST_COMPOSE_OPTIONS;
-  
-  // CONSULTAS (apenas listagem)
   if (pathname === "/saude/consultas") return CONSULTAS_LIST_COMPOSE_OPTIONS;
-  
-  // CIRURGIAS (apenas listagem)
   if (pathname === "/saude/cirurgias") return CIRURGIAS_LIST_COMPOSE_OPTIONS;
-  
-  // CIDS (apenas listagem)
   if (pathname === "/saude/cids") return CIDS_LIST_COMPOSE_OPTIONS;
-  
-  // REDE
+
   if (pathname === "/saude/rede") {
     const tab = searchParams.get("tab");
     return getRedeComposeOptions(tab);
   }
-  
-  if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
-  if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
-  if (pathname === "/galeria") return GALERIA_COMPOSE_OPTIONS;
-  return DEFAULT_COMPOSE_OPTIONS;
+
+  return [];
+}
+
+const ALLOWED_NAV_PATHS = [
+  "/",
+  "/saude",
+  "/galeria",
+  "/mais",
+  "/cartoes",
+  "/contas",
+  "/vaults",
+  "/favoritos",
+  "/saude/medicamentos",
+  "/saude/medicos",
+  "/saude/farmacias",
+  "/saude/tratamentos",
+  "/saude/hospitais",
+  "/saude/locais",
+  "/saude/renovacao",
+  "/saude/exames",
+  "/saude/consultas",
+  "/saude/cirurgias",
+  "/saude/cids",
+  "/saude/rede",
+];
+
+function shouldShowNav(pathname: string): boolean {
+  return ALLOWED_NAV_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}?`)
+  );
 }
 
 export function BottomNav() {
@@ -245,11 +210,6 @@ export function BottomNav() {
   const { isEnabled: isBiometricEnabled } = useBiometricPreference();
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
-
-  const getEntityIdFromPath = (): string | null => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("id");
-  };
 
   useEffect(() => {
     const checkLock = () => {
@@ -289,18 +249,18 @@ export function BottomNav() {
     router.push(path);
   };
 
-  // 🔧 Se o menu deve ser ocultado, não renderiza nada
-  if (shouldHideNav(pathname) || isBiometricLocked) return null;
-
   const isActive = (path: string) => {
     return pathname === path || (path === "/" && pathname === "/");
   };
 
   const composeOptions = getComposeOptions(pathname, searchParams);
-  const hasComposeMenu = composeOptions.length > 1;
+  const showCompose = composeOptions.length > 0;
+
+  if (!shouldShowNav(pathname) || isBiometricLocked) return null;
 
   const handleComposePress = () => {
-    if (!hasComposeMenu) {
+    if (!showCompose) return;
+    if (composeOptions.length === 1) {
       trigger("success");
       router.push(composeOptions[0].path);
       return;
@@ -312,75 +272,24 @@ export function BottomNav() {
   const handleComposeOptionPress = (option: ComposeOption) => {
     trigger("success");
     setIsComposeMenuOpen(false);
-
-    let path = option.path;
-
-    // 🔧 Apenas ações que precisam de ID para páginas de detalhes (mas como ocultamos, não devem ser chamadas)
-    const isContextualAction = [
-      "nova-consulta",
-      "nova-cirurgia",
-      "novo-medicamento",
-      "editar-medico",
-      "nova-renovacao",
-      "editar-farmacia",
-      "editar-tratamento",
-      "adicionar-documento",
-      "novo-exame",
-      "editar-hospital",
-      "editar-local",
-      "editar-renovacao",
-      "editar-exame",
-      "duplicar-exame",
-      "editar-consulta",
-      "reagendar-consulta",
-      "editar-cirurgia",
-    ].includes(option.id);
-
-    if (isContextualAction) {
-      const entityId = getEntityIdFromPath();
-      if (entityId) {
-        const separator = path.includes('?') ? '&' : '?';
-        let paramName = 'id';
-        if (pathname.includes('/medicos/detalhes')) paramName = 'medico_id';
-        else if (pathname.includes('/farmacias/detalhes')) paramName = 'farmacia_id';
-        else if (pathname.includes('/tratamentos/detalhes')) paramName = 'tratamento_id';
-        else if (pathname.includes('/hospitais/detalhes')) paramName = 'hospital_id';
-        else if (pathname.includes('/locais/detalhes')) paramName = 'local_id';
-        else if (pathname.includes('/renovacao/detalhes')) paramName = 'renovacao_id';
-        else if (pathname.includes('/exames/detalhes')) paramName = 'exame_id';
-        else if (pathname.includes('/consultas/detalhes')) paramName = 'consulta_id';
-        else if (pathname.includes('/cirurgias/detalhes')) paramName = 'cirurgia_id';
-        
-        if (option.id === "reagendar-consulta") {
-          path = `${path}${separator}reagendar=true&consulta_id=${entityId}`;
-        } else if (option.id === "duplicar-exame") {
-          path = `${path}${separator}duplicar=${entityId}`;
-        } else {
-          path = `${path}${separator}${paramName}=${entityId}`;
-        }
-      } else {
-        // Fallback: vai para a página principal correspondente
-        if (pathname.includes('/medicos')) router.push("/saude/medicos");
-        else if (pathname.includes('/farmacias')) router.push("/saude/farmacias");
-        else if (pathname.includes('/tratamentos')) router.push("/saude/tratamentos");
-        else if (pathname.includes('/hospitais')) router.push("/saude/hospitais");
-        else if (pathname.includes('/locais')) router.push("/saude/locais");
-        else if (pathname.includes('/renovacao')) router.push("/saude/renovacao");
-        else if (pathname.includes('/exames')) router.push("/saude/exames");
-        else if (pathname.includes('/consultas')) router.push("/saude/consultas");
-        else if (pathname.includes('/cirurgias')) router.push("/saude/cirurgias");
-        else router.push("/saude");
-        return;
-      }
-    }
-
-    router.push(path);
+    router.push(option.path);
   };
+
+  const gridClass = showCompose ? "grid-cols-5" : "grid-cols-4";
+
+  const colMap = showCompose
+    ? {
+        home: "col-start-1",
+        saude: "col-start-2",
+        galeria: "col-start-4",
+        mais: "col-start-5",
+      }
+    : {};
 
   return (
     <>
       <AnimatePresence>
-        {isComposeMenuOpen && (
+        {isComposeMenuOpen && showCompose && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -429,17 +338,10 @@ export function BottomNav() {
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 pb-safe">
         <div className="border-t border-surface-border/40 bg-surface/92 px-4 pb-5 pt-2 backdrop-blur-2xl">
-          <div className="relative mx-auto grid max-w-md grid-cols-5 items-end justify-items-center">
+          <div className={`relative mx-auto grid max-w-md ${gridClass} items-end justify-items-center`}>
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
-
-              const colMap: Record<string, string> = {
-                home: "col-start-1",
-                saude: "col-start-2",
-                galeria: "col-start-4",
-                mais: "col-start-5",
-              };
 
               return (
                 <button
@@ -473,19 +375,27 @@ export function BottomNav() {
               );
             })}
 
-            <button
-              onClick={handleComposePress}
-              aria-label={hasComposeMenu ? "Adicionar" : composeOptions[0].label}
-              aria-expanded={hasComposeMenu ? isComposeMenuOpen : undefined}
-              className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(47,227,201,0.28)] transition-all duration-200 active:scale-95"
-            >
-              <motion.div
-                animate={{ rotate: isComposeMenuOpen ? 45 : 0 }}
-                transition={{ duration: 0.2 }}
+            {showCompose && (
+              <button
+                onClick={handleComposePress}
+                aria-label={
+                  composeOptions.length > 1
+                    ? "Adicionar"
+                    : composeOptions[0].label
+                }
+                aria-expanded={
+                  composeOptions.length > 1 ? isComposeMenuOpen : undefined
+                }
+                className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(47,227,201,0.28)] transition-all duration-200 active:scale-95"
               >
-                <Plus size={24} strokeWidth={2.6} />
-              </motion.div>
-            </button>
+                <motion.div
+                  animate={{ rotate: isComposeMenuOpen ? 45 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Plus size={24} strokeWidth={2.6} />
+                </motion.div>
+              </button>
+            )}
           </div>
         </div>
       </nav>

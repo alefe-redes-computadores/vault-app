@@ -1,14 +1,16 @@
+// app/saude/medicamentos/detalhes/page.tsx
 "use client";
 
 import { Suspense, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, Pill, Circle, Droplet, Syringe, StickyNote, 
+import {
+  ArrowLeft, Pill, Circle, Droplet, Syringe, StickyNote,
   ChevronRight, Edit3, Package, Stethoscope, Store,
-  FileText, Calendar, Activity, AlertTriangle, DollarSign, 
+  FileText, Calendar, Activity, AlertTriangle, DollarSign,
   CheckCircle2, Building2, Info, MapPin, Zap, Clock, TrendingUp,
-  LineChart, Check, ExternalLink, Share2, Phone, Copy, ChevronDown, ChevronUp
+  LineChart, Check, ExternalLink, Share2, Phone, Copy, ChevronDown, ChevronUp,
+  Plus, FileWarning
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -21,7 +23,7 @@ import { sugerirRenovacao } from "@/lib/health-insights";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import type { Medicamento, Tratamento, Renovacao } from "@/lib/types";
+import type { Medicamento, Tratamento, Renovacao, Medico, Farmacia, Hospital } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
 
@@ -52,11 +54,12 @@ function MedicamentoDetalhesContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { trigger } = useHapticFeedback();
-  const { updateMedicamento } = useMedicamentos();
-  
+  const { updateMedicamento, deleteMedicamento } = useMedicamentos();
+
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [showAllRenovacoes, setShowAllRenovacoes] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' | 'loading' } | null>(null);
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   // ============================================================
   // CONSULTAS DEXIE (REATIVAS)
@@ -64,24 +67,36 @@ function MedicamentoDetalhesContent() {
 
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);
   const medico = useLiveQuery(() => med?.medico_id ? db.medicos.get(med.medico_id) : undefined, [med?.medico_id]);
-  const estabelecimento = useLiveQuery(() => med?.estabelecimento_id ? db.hospitais.get(med.estabelecimento_id) : undefined, [med?.estabelecimento_id]);
+  const hospital = useLiveQuery(() => med?.hospital_id ? db.hospitais.get(med.hospital_id) : undefined, [med?.hospital_id]);
+  const local = useLiveQuery(() => med?.local_id ? db.locais.get(med.local_id) : undefined, [med?.local_id]);
   const farmacia = useLiveQuery(() => med?.farmacia_id ? db.farmacias.get(med.farmacia_id) : undefined, [med?.farmacia_id]);
   const renovacoes = useLiveQuery(() => db.renovacoes.where("medicamento_id").equals(id || "").reverse().sortBy('data'), [id]) || [];
   const documento = useLiveQuery(() => med?.document_id ? db.documents.get(med.document_id) : undefined, [med?.document_id]);
-  
+
   const ultimaDose = useLiveQuery(() => db.doseLogs.where('medicamento_id').equals(id || '').reverse().first(), [id]);
   const todosMedicamentosAtivos = useLiveQuery(() => db.medicamentos.where("status").notEqual("descontinuado").toArray(), []) || [];
-  
+
   const tratamentos = useLiveQuery(() => {
     if (!med?.tratamento_ids || med.tratamento_ids.length === 0) return [];
     return db.tratamentos.where('id').anyOf(med.tratamento_ids).toArray();
   }, [med?.tratamento_ids]) || [];
 
-  // ✅ CORREÇÃO: Busca todas as farmácias para resolver os nomes nas renovações
-  const farmaciasMap = useLiveQuery(() => 
-    db.farmacias.toArray().then(f => new Map(f.map(item => [item.id, item.nome]))), 
+  const farmaciasMap = useLiveQuery(() =>
+    db.farmacias.toArray().then(f => new Map(f.map(item => [item.id, item.nome]))),
     []
   ) || new Map<string, string>();
+
+  const menuOptions = [
+    { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?medicamento_id=${id}` },
+    { id: "duplicar-medicamento", label: "Duplicar Medicamento", icon: Copy, path: `/saude/medicamentos/novo?duplicar=${id}` },
+    { id: "editar-medicamento", label: "Editar Medicamento", icon: Edit3, path: `/saude/medicamentos/editar?id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
 
   // ============================================================
   // AÇÃO: TOMAR DOSE
@@ -107,20 +122,25 @@ function MedicamentoDetalhesContent() {
 
     try {
       const now = new Date();
+      const hojeISO = now.toISOString().slice(0, 10);
+      const horario = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
       await updateMedicamento(med.id, {
         estoque_quantidade: novoEstoque,
-        estoque_data_referencia: now.toISOString().slice(0, 10),
-      });
-      await db.doseLogs.add({
-        user_id: med.user_id,
-        medicamento_id: med.id,
-        data: now.toISOString().slice(0, 10),
-        horario: now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-        quantidade: doseGasta,
-        created_at: now.toISOString()
+        estoque_data_referencia: hojeISO,
       });
 
-      setToastMessage({ text: `1 dose registrada às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}!`, type: 'success' });
+      await db.doseLogs.add({
+        user_id: med.user_id,
+        person_id: med.person_id,
+        medicamento_id: med.id,
+        data: hojeISO,
+        horario,
+        quantidade: doseGasta,
+        created_at: now.toISOString(),
+      });
+
+      setToastMessage({ text: `1 dose registrada às ${horario}!`, type: 'success' });
       setTimeout(() => setToastMessage(null), 3000);
     } catch (error) {
       console.error('Erro ao registrar dose:', error);
@@ -136,9 +156,9 @@ function MedicamentoDetalhesContent() {
   const estoqueInfo = computeEstoqueInfo(med);
   const qtd = estoqueInfo?.quantidadeRestante ?? 0;
   const isVencida = isReceitaVencida(med.proxima_renovacao);
-  const alertaInteligente = sugerirRenovacao(med); 
+  const alertaInteligente = sugerirRenovacao(med);
   const diasRestantes = getDaysUntil(med.proxima_renovacao);
-  
+
   const getEstoqueStyle = () => {
     if (qtd <= 9) return { color: "text-coral animate-pulse font-bold", icon: AlertTriangle, label: "CRÍTICO", bg: "bg-coral/10", border: "border-coral/20" };
     if (qtd <= 14) return { color: "text-amber-400 font-semibold", icon: AlertTriangle, label: "BAIXO", bg: "bg-amber-400/10", border: "border-amber-400/20" };
@@ -211,7 +231,7 @@ Estoque: ${qtd} doses`;
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28 relative">
-        
+
         <AnimatePresence>
           {toastMessage && (
             <motion.div
@@ -244,6 +264,60 @@ Estoque: ${qtd} doses`;
             <button onClick={compartilharWhatsApp} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-emerald-400">
               <Share2 size={18} />
             </button>
+
+            <div className="relative">
+              <button
+                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                className="h-10 w-10 flex items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+              >
+                <Plus size={18} />
+              </button>
+              <AnimatePresence>
+                {isMenuFlutuanteOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.16 }}
+                      onClick={() => setIsMenuFlutuanteOpen(false)}
+                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                    >
+                      <div className="px-3 pb-2 pt-3.5">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                      </div>
+                      <div className="px-1.5 pb-2">
+                        {menuOptions.map((option) => {
+                          const Icon = option.icon;
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => handleMenuOptionClick(option.path)}
+                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                <Icon size={15} />
+                              </div>
+                              <span className="text-sm font-medium text-ink-primary">
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <button onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${id}`); }} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ice">
               <Edit3 size={18} />
             </button>
@@ -251,7 +325,7 @@ Estoque: ${qtd} doses`;
         </header>
 
         <div className="px-5 mt-6 space-y-6">
-          
+
           <AnimatePresence>
             {alertaInteligente.deveRenovar && med.status !== 'descontinuado' && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
@@ -276,7 +350,7 @@ Estoque: ${qtd} doses`;
 
           <div className="rounded-[32px] bg-surface p-6 border border-surface-border shadow-lg relative overflow-hidden">
             <div className={`absolute left-0 top-0 bottom-0 w-2 ${med.status === 'descontinuado' ? 'bg-coral' : med.tipo_receita === 'amarela' ? 'bg-amber-400' : med.tipo_receita === 'azul' ? 'bg-blue-400' : 'bg-ice/50'}`} />
-            
+
             <div className="flex items-center gap-4 ml-2">
               <div className="h-16 w-16 rounded-2xl flex items-center justify-center border border-surface-border shadow-inner" style={{ backgroundColor: color1 + '15' }}>
                  <SelectedFormatIcon size={32} stroke={color1} strokeWidth={2} fill={color1 + '44'} />
@@ -319,7 +393,7 @@ Estoque: ${qtd} doses`;
                      </button>
                    )}
                  </div>
-                 
+
                  <div className="mt-4 pt-4 border-t border-surface-border/50 flex justify-between items-center text-xs text-ink-muted">
                    <span>Gasto por dose: <b>{med.estoque_unidade_por_dose || 1}</b></span>
                    <span>Última contagem: <b>{formatDate(med.estoque_data_referencia)}</b></span>
@@ -332,7 +406,7 @@ Estoque: ${qtd} doses`;
             <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
                <div className="flex items-center gap-2"><TrendingUp size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Evolução Clínica</h3></div>
                <div className="relative border-l-2 border-surface-border ml-3 space-y-5 pb-2">
-                 
+
                  <div className="relative pl-5">
                    <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-surface border-2 border-ice flex items-center justify-center"><div className="h-1.5 w-1.5 rounded-full bg-ice" /></div>
                    <p className="text-sm font-bold text-ice">{med.dosagem} <span className="text-[10px] font-normal text-ink-muted ml-1 uppercase">(Atual)</span></p>
@@ -368,7 +442,7 @@ Estoque: ${qtd} doses`;
           <div className="space-y-3">
              <h3 className="text-sm font-semibold text-ink-primary">Rede de Prescrição & Aquisição</h3>
              <div className="space-y-2">
-               
+
                <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-start gap-4">
                  <div className="h-10 w-10 rounded-xl bg-ice/10 flex items-center justify-center text-ice shrink-0"><Stethoscope size={20} /></div>
                  <div className="flex-1 min-w-0">
@@ -380,18 +454,18 @@ Estoque: ${qtd} doses`;
                  </div>
                </div>
 
-               {estabelecimento && (
+               {(hospital || local) && (
                  <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-center justify-between gap-4">
                    <div className="flex items-center gap-4 min-w-0">
                      <div className="h-10 w-10 rounded-xl bg-violet-400/10 flex items-center justify-center text-violet-400 shrink-0"><Building2 size={20} /></div>
                      <div className="min-w-0">
                        <p className="text-[10px] uppercase text-ink-muted font-bold tracking-wider mb-0.5">Unidade / Hospital Emissor</p>
-                       <p className="text-sm font-bold text-ink-primary truncate">{estabelecimento.nome}</p>
-                       {estabelecimento.endereco && <p className="text-[11px] text-ink-muted truncate mt-0.5">{estabelecimento.endereco}</p>}
+                       <p className="text-sm font-bold text-ink-primary truncate">{hospital?.nome || local?.nome || "Não informado"}</p>
+                       {(hospital?.endereco || local?.endereco) && <p className="text-[11px] text-ink-muted truncate mt-0.5">{hospital?.endereco || local?.endereco}</p>}
                      </div>
                    </div>
-                   {estabelecimento.endereco && (
-                     <button onClick={() => abrirNoMapa(estabelecimento.endereco)} className="p-2.5 rounded-xl bg-violet-400/10 text-violet-400 hover:bg-violet-400/20 active:scale-95 transition-all shrink-0 flex items-center justify-center">
+                   {(hospital?.endereco || local?.endereco) && (
+                     <button onClick={() => abrirNoMapa(hospital?.endereco || local?.endereco)} className="p-2.5 rounded-xl bg-violet-400/10 text-violet-400 hover:bg-violet-400/20 active:scale-95 transition-all shrink-0 flex items-center justify-center">
                        <MapPin size={18} />
                      </button>
                    )}
@@ -430,13 +504,13 @@ Estoque: ${qtd} doses`;
                <h3 className="text-sm font-semibold text-ink-primary">Status da Receita</h3>
                <button onClick={() => { trigger("vibrate"); setInfoModalOpen(true); }} className="text-[10px] font-bold uppercase text-ink-muted flex items-center gap-1 bg-surface-raised px-2 py-1 rounded-full"><Info size={12}/> Regras</button>
              </div>
-             
+
              <div className={`p-4 rounded-2xl border flex flex-col gap-3 ${getReceitaBadgeStyle()}`}>
                <div className="flex justify-between items-center">
                  <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5"><FileText size={14}/> {tipoReceitaLabel}</span>
                  {isVencida ? <span className="text-[10px] bg-coral text-void px-2 py-0.5 rounded-full font-bold uppercase">Vencida</span> : <span className="text-[10px] bg-emerald-500 text-void px-2 py-0.5 rounded-full font-bold uppercase">No Prazo</span>}
                </div>
-               
+
                <div className="flex items-center justify-between border-t border-current/10 pt-3">
                  <div>
                    <p className="text-[10px] uppercase font-bold opacity-70">Válida até</p>
@@ -449,7 +523,7 @@ Estoque: ${qtd} doses`;
                  )}
                </div>
              </div>
-             
+
              {renovacoes.length > 0 && (
                <div className="space-y-2 mt-4">
                  <div className="flex items-center justify-between ml-1 mb-2">
@@ -462,7 +536,6 @@ Estoque: ${qtd} doses`;
                  </div>
                  <AnimatePresence>
                    {displayedRenovacoes.map((r: Renovacao, index: number) => {
-                     // ✅ CORREÇÃO: Busca o nome da farmácia a partir do ID
                      const farmaciaNome = r.farmacia_id ? farmaciasMap.get(r.farmacia_id) : null;
                      return (
                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} key={r.id || index} className="bg-surface p-3.5 rounded-2xl border border-surface-border flex justify-between items-center shadow-sm">

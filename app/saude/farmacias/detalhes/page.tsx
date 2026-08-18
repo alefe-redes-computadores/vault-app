@@ -1,12 +1,13 @@
+// app/saude/farmacias/detalhes/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2, 
-  Pill, DollarSign, ExternalLink, Clock, TrendingDown, TrendingUp,
-  AlertCircle
+  Pill, ExternalLink, Clock, TrendingDown, TrendingUp,
+  Plus, FileWarning,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -17,6 +18,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { calcularEconomia, isReceitaVencidaSegura } from "@/lib/health-insights";
+import type { Farmacia, Medicamento, Renovacao } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -42,10 +44,11 @@ function DetalhesFarmaciaContent() {
   const { getFarmacia, deleteFarmacia } = useFarmacias();
   const { medicamentos } = useMedicamentos();
 
-  const [farmacia, setFarmacia] = useState<any>(null);
+  const [farmacia, setFarmacia] = useState<Farmacia | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
@@ -64,51 +67,45 @@ function DetalhesFarmaciaContent() {
     });
   }, [id, getFarmacia, router]);
 
-  // 🔧 Análise completa da farmácia
   const analiseFarmacia = useMemo(() => {
     if (!farmacia || !medicamentos) {
       return { 
-        medicamentosVinculados: [], 
+        medicamentosVinculados: [] as Medicamento[], 
         totalGasto: 0, 
         precoMedio: 0,
-        ultimaCompra: null,
-        ultimasRenovacoes: [],
+        ultimaCompra: null as Renovacao | null,
+        ultimasRenovacoes: [] as Array<Renovacao & { medicamento_nome: string; dosagem?: string }>,
         economia: null,
       };
     }
 
-    // Medicamentos vinculados via farmacia_id
     const medicamentosVinculados = medicamentos.filter(
-      (m: any) => m.farmacia_id === farmacia.id
+      (m) => m.farmacia_id === farmacia.id
     );
 
-    const medIds = new Set(medicamentosVinculados.map((m: any) => m.id));
+    // Agora filtra diretamente pela farmácia, usando o campo farmacia_id
     const renovacoesDaFarmacia = renovacoes
-      .filter((r: any) => medIds.has(r.medicamento_id))
+      .filter((r) => r.farmacia_id === id)
       .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
-    // Total gasto
     let totalGasto = 0;
-    renovacoesDaFarmacia.forEach((r: any) => {
+    renovacoesDaFarmacia.forEach((r) => {
       if (typeof r.preco === "number" && r.preco > 0) {
         totalGasto += r.preco;
       }
     });
 
-    // Preço médio
     const precos = renovacoesDaFarmacia
-      .filter((r: any) => typeof r.preco === "number" && r.preco > 0)
-      .map((r: any) => r.preco);
+      .filter((r) => typeof r.preco === "number" && r.preco > 0)
+      .map((r) => r.preco as number);
     const precoMedio = precos.length > 0 
       ? precos.reduce((a, b) => a + b, 0) / precos.length 
       : 0;
 
-    // Última compra
     const ultimaCompra = renovacoesDaFarmacia.length > 0 ? renovacoesDaFarmacia[0] : null;
 
-    // Últimas 5 renovações (com nome do medicamento)
-    const ultimasRenovacoes = renovacoesDaFarmacia.slice(0, 5).map((r: any) => {
-      const med = medicamentosVinculados.find((m: any) => m.id === r.medicamento_id);
+    const ultimasRenovacoes = renovacoesDaFarmacia.slice(0, 5).map((r) => {
+      const med = medicamentosVinculados.find((m) => m.id === r.medicamento_id);
       return {
         ...r,
         medicamento_nome: med?.nome || "Medicamento",
@@ -116,7 +113,6 @@ function DetalhesFarmaciaContent() {
       };
     });
 
-    // 🔧 Economia (via health-insights)
     const economia = calcularEconomia(renovacoesDaFarmacia);
 
     return {
@@ -127,15 +123,26 @@ function DetalhesFarmaciaContent() {
       ultimasRenovacoes,
       economia,
     };
-  }, [farmacia, medicamentos, renovacoes]);
+  }, [farmacia, medicamentos, renovacoes, id]);
 
-  // 🔧 Medicamentos com badge de receita vencida
   const medicamentosComBadge = useMemo(() => {
-    return analiseFarmacia.medicamentosVinculados.map((med: any) => ({
+    return analiseFarmacia.medicamentosVinculados.map((med) => ({
       ...med,
       receitaVencida: isReceitaVencidaSegura(med.proxima_renovacao),
     }));
   }, [analiseFarmacia.medicamentosVinculados]);
+
+  const menuOptions = [
+    { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?farmacia_id=${id}` },
+    { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?farmacia_id=${id}` },
+    { id: "editar-farmacia", label: "Editar Farmácia", icon: Edit3, path: `/saude/farmacias/editar?id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -169,11 +176,64 @@ function DetalhesFarmaciaContent() {
             </button>
             <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber-400">Hub de Farmácia</p>
-              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Detalhes do Local</h1>
+              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Detalhes da Farmácia</h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+              >
+                <Plus size={18} />
+              </button>
+              <AnimatePresence>
+                {isMenuFlutuanteOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.16 }}
+                      onClick={() => setIsMenuFlutuanteOpen(false)}
+                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                    >
+                      <div className="px-3 pb-2 pt-3.5">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                      </div>
+                      <div className="px-1.5 pb-2">
+                        {menuOptions.map((option) => {
+                          const Icon = option.icon;
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => handleMenuOptionClick(option.path)}
+                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                <Icon size={15} />
+                              </div>
+                              <span className="text-sm font-medium text-ink-primary">
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/farmacias/editar?id=${farmacia.id}`); }}
               aria-label="Editar farmácia"
@@ -192,7 +252,6 @@ function DetalhesFarmaciaContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          {/* Card Principal */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -221,7 +280,6 @@ function DetalhesFarmaciaContent() {
               </div>
             </div>
 
-            {/* 🔧 Última compra */}
             {analiseFarmacia.ultimaCompra && (
               <div className="pt-2 border-t border-surface-border/40">
                 <div className="flex items-center gap-2 text-xs text-ink-muted">
@@ -236,7 +294,6 @@ function DetalhesFarmaciaContent() {
               </div>
             )}
 
-            {/* Bloco Analítico */}
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-surface-border/40">
               <div className="rounded-2xl bg-surface-raised p-3">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Vinculados</p>
@@ -258,7 +315,6 @@ function DetalhesFarmaciaContent() {
               </div>
             </div>
 
-            {/* 🔧 Economia (health-insights) */}
             {analiseFarmacia.economia && (
               <div className="pt-2 border-t border-surface-border/40">
                 <div className={`flex items-center gap-2 text-xs ${analiseFarmacia.economia.economia > 0 ? 'text-emerald-400' : 'text-coral'}`}>
@@ -278,14 +334,13 @@ function DetalhesFarmaciaContent() {
             )}
           </motion.div>
 
-          {/* 🔧 Últimas Renovações */}
           {analiseFarmacia.ultimasRenovacoes.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
               <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
                 <Clock size={16} className="text-amber-400" /> Últimas Compras
               </h3>
               <div className="space-y-2">
-                {analiseFarmacia.ultimasRenovacoes.map((ren: any) => (
+                {analiseFarmacia.ultimasRenovacoes.map((ren) => (
                   <div
                     key={ren.id}
                     className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm"
@@ -312,7 +367,6 @@ function DetalhesFarmaciaContent() {
             </motion.div>
           )}
 
-          {/* Medicamentos Vinculados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
               <Pill size={16} className="text-amber-400" /> Medicamentos Retirados ({medicamentosComBadge.length})
@@ -324,7 +378,7 @@ function DetalhesFarmaciaContent() {
               </div>
             ) : (
               <div className="space-y-2">
-                {medicamentosComBadge.map((med: any) => (
+                {medicamentosComBadge.map((med) => (
                   <div
                     key={med.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}

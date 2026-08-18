@@ -1,8 +1,9 @@
+// app/saude/medicos/detalhes/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   Stethoscope, 
@@ -20,7 +21,8 @@ import {
   FolderHeart,
   AlertCircle,
   AlertTriangle,
-  CheckCircle2
+  Plus,
+  Syringe,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -28,11 +30,9 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import type { Medico, Consulta, Cirurgia, Medicamento, Renovacao, Tratamento } from "@/lib/types";
+import type { Medico, Consulta, Cirurgia, Medicamento, Renovacao, Tratamento, Hospital, DoseLog } from "@/lib/types";
+import { useMedicos } from "@/hooks/useMedicos";
 import { sugerirRenovacao, isReceitaVencidaSegura, analisarComportamentoUso } from "@/lib/health-insights";
-
-// 🛡️ TYPE SHIELD: Garante que o TypeScript aceite colunas extras do banco que não estão no types.ts
-type MedicoExt = Medico & Record<string, any>;
 
 function getTreatmentColor(nome: string): string {
   const colors: Record<string, string> = {
@@ -86,69 +86,68 @@ function DetalhesMedicoContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
-  const [medico, setMedico] = useState<MedicoExt | null>(null);
+  const [medico, setMedico] = useState<Medico | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
-  // 🛡️ Buscas seguras blindadas contra IDs vazios e arrays implícitos
-  const consultas = useLiveQuery(() => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as any[])), [id]) || [];
-  const cirurgias = useLiveQuery(() => (id ? db.cirurgias.where("medico_id").equals(id).toArray() : Promise.resolve([] as any[])), [id]) || [];
-  const medicamentos = useLiveQuery(() => (id ? db.medicamentos.where("medico_id").equals(id).toArray() : Promise.resolve([] as any[])), [id]) || [];
-  const renovacoes = useLiveQuery(() => (id ? db.renovacoes.where("medico_id").equals(id).reverse().limit(5).toArray() : Promise.resolve([] as any[])), [id]) || [];
-  
+  const { deleteMedico } = useMedicos();
+
+  const consultas = useLiveQuery(() => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as Consulta[])), [id]) || [];
+  const cirurgias = useLiveQuery(() => (id ? db.cirurgias.where("medico_id").equals(id).toArray() : Promise.resolve([] as Cirurgia[])), [id]) || [];
+  const medicamentos = useLiveQuery(() => (id ? db.medicamentos.where("medico_id").equals(id).toArray() : Promise.resolve([] as Medicamento[])), [id]) || [];
+  const renovacoes = useLiveQuery(() => (id ? db.renovacoes.where("medico_id").equals(id).reverse().limit(5).toArray() : Promise.resolve([] as Renovacao[])), [id]) || [];
+
   const doseLogs = useLiveQuery(() => {
-    const validMedIds = medicamentos.map((m: any) => m.id).filter(Boolean) as string[];
-    if (validMedIds.length === 0) return Promise.resolve([] as any[]);
+    const validMedIds = medicamentos.map((m) => m.id).filter(Boolean) as string[];
+    if (validMedIds.length === 0) return Promise.resolve([] as DoseLog[]);
     return db.doseLogs.where('medicamento_id').anyOf(validMedIds).toArray();
   }, [medicamentos]) || [];
 
   const estabelecimentosIds = useMemo(() => {
     const ids = new Set<string>();
-    consultas.forEach((c: any) => c.hospital_id && ids.add(c.hospital_id));
-    cirurgias.forEach((c: any) => c.hospital_id && ids.add(c.hospital_id));
+    consultas.forEach((c) => c.hospital_id && ids.add(c.hospital_id));
+    cirurgias.forEach((c) => c.hospital_id && ids.add(c.hospital_id));
     return Array.from(ids);
   }, [consultas, cirurgias]);
 
   const estabelecimentos = useLiveQuery(() => {
-    if (estabelecimentosIds.length === 0) return Promise.resolve([] as any[]);
+    if (estabelecimentosIds.length === 0) return Promise.resolve([] as Hospital[]);
     return db.hospitais.where('id').anyOf(estabelecimentosIds).toArray();
   }, [estabelecimentosIds]) || [];
 
   const tratamentosIds = useMemo(() => {
     const ids = new Set<string>();
-    medicamentos.forEach((m: any) => {
+    medicamentos.forEach((m) => {
       if (m.tratamento_ids && Array.isArray(m.tratamento_ids)) {
-        m.tratamento_ids.forEach((tid: string) => ids.add(tid));
+        m.tratamento_ids.forEach((tid) => ids.add(tid));
       }
     });
     return Array.from(ids);
   }, [medicamentos]);
 
   const tratamentos = useLiveQuery(() => {
-    if (tratamentosIds.length === 0) return Promise.resolve([] as any[]);
+    if (tratamentosIds.length === 0) return Promise.resolve([] as Tratamento[]);
     return db.tratamentos.where('id').anyOf(tratamentosIds).toArray();
   }, [tratamentosIds]) || [];
 
   const proximaConsulta = useMemo(() => {
-    const futuras = consultas.filter((c: any) => isDateInFuture(c.data));
+    const futuras = consultas.filter((c) => isDateInFuture(c.data));
     if (futuras.length === 0) return null;
-    return futuras.sort((a: any, b: any) => (a.data || "").localeCompare(b.data || ""))[0];
+    return futuras.sort((a, b) => (a.data || "").localeCompare(b.data || ""))[0];
   }, [consultas]);
 
   const ultimaConsulta = useMemo(() => {
     if (consultas.length === 0) return null;
-    return [...consultas].sort((a: any, b: any) => (b.data || "").localeCompare(a.data || ""))[0];
+    return [...consultas].sort((a, b) => (b.data || "").localeCompare(a.data || ""))[0];
   }, [consultas]);
 
-  // 🧠 INSIGHT NOVO: Avaliação de tempo sem retorno médico
   const alertaSemRetorno = useMemo(() => {
     if (proximaConsulta || !ultimaConsulta || !ultimaConsulta.data) return null;
-    
     const dataUltima = new Date(ultimaConsulta.data).getTime();
     const hoje = new Date().getTime();
     const diffDias = Math.floor((hoje - dataUltima) / (1000 * 3600 * 24));
-    
-    if (diffDias > 180) { // Se passou mais de 6 meses (180 dias)
+    if (diffDias > 180) {
       const meses = Math.floor(diffDias / 30);
       return `Faz ${meses} meses desde a sua última consulta. Avalie a necessidade de agendar um acompanhamento.`;
     }
@@ -156,57 +155,54 @@ function DetalhesMedicoContent() {
   }, [ultimaConsulta, proximaConsulta]);
 
   const alertasMedicamentos = useMemo(() => {
-    return medicamentos.map((med: any) => {
+    return medicamentos.map((med) => {
       const insight = sugerirRenovacao(med);
       const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
-      const comportamento = analisarComportamentoUso(med, doseLogs.filter((d: any) => d.medicamento_id === med.id));
-      
-      return {
-        ...med,
-        insight,
-        receitaVencida,
-        comportamento,
-      };
+      const comportamento = analisarComportamentoUso(med, doseLogs.filter((d) => d.medicamento_id === med.id));
+      return { ...med, insight, receitaVencida, comportamento };
     });
   }, [medicamentos, doseLogs]);
 
   const alertasGerais = useMemo(() => {
-    const ativos = alertasMedicamentos.filter((m: any) => m.insight?.deveRenovar);
-    const vencidos = alertasMedicamentos.filter((m: any) => m.receitaVencida);
-    const comportamentos = alertasMedicamentos.filter((m: any) => m.comportamento);
-    
+    const ativos = alertasMedicamentos.filter((m) => m.insight?.deveRenovar);
+    const vencidos = alertasMedicamentos.filter((m) => m.receitaVencida);
+    const comportamentos = alertasMedicamentos.filter((m) => m.comportamento);
     return { ativos, vencidos, comportamentos };
   }, [alertasMedicamentos]);
+
+  const menuOptions = [
+    { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?medico_id=${id}` },
+    { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: `/saude/cirurgias/nova?medico_id=${id}` },
+    { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?medico_id=${id}` },
+    { id: "editar-medico", label: "Editar Médico", icon: Edit3, path: `/saude/medicos/editar?id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
 
   useEffect(() => {
     if (!id) {
       router.push("/saude/medicos");
       return;
     }
-
-    const fetchData = async () => {
-      try {
-        const medData = await db.medicos.get(id);
-        if (medData) {
-          setMedico(medData as MedicoExt);
-        } else {
-          router.push("/saude/medicos");
-        }
-      } catch (error) {
-        console.error("Erro ao buscar médico:", error);
-      } finally {
-        setIsLoading(false);
+    db.medicos.get(id).then((medData) => {
+      if (medData) {
+        setMedico(medData);
+      } else {
+        router.push("/saude/medicos");
       }
-    };
-
-    fetchData();
+      setIsLoading(false);
+    });
   }, [id, router]);
 
   const handleDelete = async () => {
     trigger("vibrate");
     if (!id) return;
     try {
-      await db.medicos.delete(id);
+      await deleteMedico(id);
       trigger("success");
       router.replace("/saude/medicos");
     } catch (error) {
@@ -218,7 +214,7 @@ function DetalhesMedicoContent() {
   if (isLoading) return <LoadingSkeleton />;
   if (!medico) return null;
 
-  const medicamentosAtivos = medicamentos.filter((m: any) => m.status === "ativo");
+  const medicamentosAtivos = medicamentos.filter((m) => m.status === "ativo");
 
   return (
     <PageTransition>
@@ -238,6 +234,59 @@ function DetalhesMedicoContent() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+              >
+                <Plus size={18} />
+              </button>
+              <AnimatePresence>
+                {isMenuFlutuanteOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.16 }}
+                      onClick={() => setIsMenuFlutuanteOpen(false)}
+                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                    >
+                      <div className="px-3 pb-2 pt-3.5">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                      </div>
+                      <div className="px-1.5 pb-2">
+                        {menuOptions.map((option) => {
+                          const Icon = option.icon;
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => handleMenuOptionClick(option.path)}
+                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                <Icon size={15} />
+                              </div>
+                              <span className="text-sm font-medium text-ink-primary">
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/editar?id=${medico.id}`); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95 hover:text-ice hover:border-ice/30"
@@ -330,7 +379,7 @@ function DetalhesMedicoContent() {
                   <Building2 size={14} className="text-ice" /> Atende em:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {estabelecimentos.map((h: any) => (
+                  {estabelecimentos.map((h) => (
                     <span key={h.id} className="text-xs bg-surface-raised border border-surface-border/40 px-3 py-1.5 rounded-full text-ink-primary">
                       {h.nome}
                     </span>
@@ -340,7 +389,6 @@ function DetalhesMedicoContent() {
             )}
           </motion.div>
 
-          {/* 🧠 ALERTAS CLÍNICOS E INTELIGÊNCIA */}
           {(alertasGerais.ativos.length > 0 || alertasGerais.vencidos.length > 0 || alertasGerais.comportamentos.length > 0 || alertaSemRetorno) && (
             <motion.div 
               variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} 
@@ -365,7 +413,7 @@ function DetalhesMedicoContent() {
                   </div>
                 )}
 
-                {alertasGerais.ativos.slice(0, 3).map((med: any) => (
+                {alertasGerais.ativos.slice(0, 3).map((med) => (
                   <div key={med.id} className="flex items-start gap-2 text-xs border-b border-amber-400/10 pb-2 last:border-0">
                     <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
                     <div>
@@ -375,7 +423,7 @@ function DetalhesMedicoContent() {
                   </div>
                 ))}
 
-                {alertasGerais.vencidos.slice(0, 3).map((med: any) => (
+                {alertasGerais.vencidos.slice(0, 3).map((med) => (
                   <div key={med.id} className="flex items-start gap-2 text-xs border-b border-coral/10 pb-2 last:border-0">
                     <AlertCircle size={14} className="text-coral shrink-0 mt-0.5" />
                     <div>
@@ -385,7 +433,7 @@ function DetalhesMedicoContent() {
                   </div>
                 ))}
 
-                {alertasGerais.comportamentos.slice(0, 3).map((med: any) => (
+                {alertasGerais.comportamentos.slice(0, 3).map((med) => (
                   <div key={med.id} className="flex items-start gap-2 text-xs border-b border-violet-400/10 pb-2 last:border-0">
                     <Activity size={14} className="text-violet-400 shrink-0 mt-0.5" />
                     <div>
@@ -406,7 +454,7 @@ function DetalhesMedicoContent() {
                 <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{tratamentos.length}</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {tratamentos.map((t: any) => {
+                {tratamentos.map((t) => {
                   const color = getTreatmentColor(t.nome);
                   return (
                     <span 
@@ -433,10 +481,10 @@ function DetalhesMedicoContent() {
                 <h4 className="text-sm font-semibold text-ink-primary">Últimas Renovações</h4>
               </div>
               <div className="space-y-2">
-                {renovacoes.slice(0, 3).map((ren: any) => (
+                {renovacoes.slice(0, 3).map((ren) => (
                   <div key={ren.id} className="flex items-center justify-between text-sm border-b border-surface-border/30 pb-2 last:border-0">
                     <div>
-                      <p className="font-medium text-ink-primary">{ren.medicamento_nome || "Medicamento"}</p>
+                      <p className="font-medium text-ink-primary">Medicamento</p>
                       <p className="text-xs text-ink-muted">{formatDateDisplay(ren.data)}</p>
                     </div>
                     <ChevronRight size={14} className="text-ink-faint" />
@@ -467,7 +515,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhuma consulta registrada.</p>
                 ) : (
                   <div className="space-y-2">
-                    {[...consultas].sort((a: any, b: any) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((con: any) => (
+                    {[...consultas].sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((con) => (
                       <div 
                         key={con.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }}
@@ -496,7 +544,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhum procedimento registrado.</p>
                 ) : (
                   <div className="space-y-2">
-                    {[...cirurgias].sort((a: any, b: any) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((cir: any) => (
+                    {[...cirurgias].sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((cir) => (
                       <div 
                         key={cir.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
@@ -530,7 +578,7 @@ function DetalhesMedicoContent() {
                   <p className="text-xs text-ink-muted py-1">Nenhum medicamento prescrito por este médico.</p>
                 ) : (
                   <div className="space-y-2">
-                    {alertasMedicamentos.slice(0, 3).map((med: any) => (
+                    {alertasMedicamentos.slice(0, 3).map((med) => (
                       <div 
                         key={med.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}

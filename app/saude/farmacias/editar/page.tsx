@@ -1,30 +1,42 @@
+// app/saude/farmacias/editar/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Building2, Trash2, Pill, ExternalLink } from "lucide-react";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import type { Farmacia, Medicamento } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
 };
 
-export default function EditarFarmaciaPage() {
+function formatPhone(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 11);
+  if (clean.length <= 2) return clean;
+  if (clean.length <= 6) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
+  if (clean.length <= 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+  return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+}
+
+function EditarFarmaciaContent() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
-  const { getFarmacia, updateFarmacia, deleteFarmacia } = useFarmacias();
-  const { medicamentos } = useMedicamentos();
+  const { getFarmacia, updateFarmacia, deleteFarmaciaSafe } = useFarmacias();
+  const { medicamentos = [] } = useMedicamentos();
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -42,26 +54,26 @@ export default function EditarFarmaciaPage() {
       setIsLoading(false);
       return;
     }
-    getFarmacia(id).then((item) => {
-      if (!item) {
-        setNotFound(true);
-      } else {
-        setNome(item.nome || "");
-        setEndereco(item.endereco || "");
-        setTelefone(item.telefone || "");
-      }
-      setIsLoading(false);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
 
-  // Cruzamento relacional: Medicamentos vinculados a esta farmácia
+    getFarmacia(id)
+      .then((item) => {
+        if (!item) {
+          setNotFound(true);
+        } else {
+          setNome(item.nome || "");
+          setEndereco(item.endereco || "");
+          setTelefone(item.telefone || "");
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [id, getFarmacia]);
+
   const medicamentosVinculados = useMemo(() => {
-    if (!medicamentos || !id) return [];
-    return medicamentos.filter(
-      (m: any) => m.farmacia_id === id || m.farmacia?.toLowerCase() === nome.toLowerCase()
-    );
-  }, [medicamentos, id, nome]);
+    if (!medicamentos.length || !id) return [];
+    return medicamentos.filter((m: Medicamento) => m.farmacia_id === id);
+  }, [medicamentos, id]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -85,10 +97,11 @@ export default function EditarFarmaciaPage() {
         telefone: telefone.trim() || undefined,
       });
       trigger("success");
+      showToast("Farmácia atualizada com sucesso", "success");
       router.back();
     } catch (error) {
-      console.error("Erro ao atualizar farmácia:", error);
       trigger("error");
+      showToast("Erro ao atualizar farmácia", "error");
     } finally {
       setSaving(false);
     }
@@ -97,12 +110,13 @@ export default function EditarFarmaciaPage() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await deleteFarmacia(id);
+      await deleteFarmaciaSafe(id);
       trigger("success");
-      router.push("/saude/rede");
+      showToast("Farmácia excluída com sucesso", "success");
+      router.replace("/saude/farmacias");
     } catch (error) {
-      console.error("Erro ao excluir farmácia:", error);
       trigger("error");
+      showToast("Erro ao excluir farmácia", "error");
     } finally {
       setDeleting(false);
       setShowDeleteModal(false);
@@ -137,10 +151,7 @@ export default function EditarFarmaciaPage() {
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
+              onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               aria-label="Voltar"
             >
@@ -160,10 +171,7 @@ export default function EditarFarmaciaPage() {
             </div>
 
             <button
-              onClick={() => {
-                trigger("vibrate");
-                setShowDeleteModal(true);
-              }}
+              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               aria-label="Excluir farmácia"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
             >
@@ -173,7 +181,6 @@ export default function EditarFarmaciaPage() {
         </header>
 
         <section className="space-y-5 px-5 pt-6">
-          {/* Formulário de Edição */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -183,7 +190,7 @@ export default function EditarFarmaciaPage() {
           >
             <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Informações do Local</h2>
             <Input
-              label="Nome"
+              label="Nome *"
               placeholder="Ex: Farmácia Popular, Drogasil..."
               value={nome}
               onChange={(e) => setNome(e.target.value)}
@@ -200,11 +207,10 @@ export default function EditarFarmaciaPage() {
               label="Telefone"
               placeholder="(00) 00000-0000"
               value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
+              onChange={(e) => setTelefone(formatPhone(e.target.value))}
             />
           </motion.div>
 
-          {/* Seção Relacional: Medicamentos Retirados/Comprados Aqui */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -224,7 +230,7 @@ export default function EditarFarmaciaPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {medicamentosVinculados.map((med: any) => (
+                {medicamentosVinculados.map((med: Medicamento) => (
                   <div
                     key={med.id}
                     onClick={() => {
@@ -287,4 +293,8 @@ export default function EditarFarmaciaPage() {
       </main>
     </PageTransition>
   );
+}
+
+export default function EditarFarmaciaPage() {
+  return <Suspense fallback={<LoadingSkeleton />}><EditarFarmaciaContent /></Suspense>;
 }

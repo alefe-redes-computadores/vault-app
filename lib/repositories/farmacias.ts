@@ -1,4 +1,14 @@
-import { db, safeAddFarmacia, safeUpdateFarmacia, safeDeleteFarmacia, safeUpdateMedicamento, safeUpdateRenovacao } from "@/lib/db";
+// lib/repositories/farmacias.ts
+
+import {
+  db,
+  safeAddFarmacia,
+  safeUpdateFarmacia,
+  safeDeleteFarmacia,
+  safeUpdateMedicamento,
+  safeUpdateRenovacao,
+} from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { Farmacia } from "@/lib/types";
 
 export const farmaciasRepository = {
@@ -11,32 +21,42 @@ export const farmaciasRepository = {
   },
 
   async create(data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
-    return safeAddFarmacia(data);
+    const id = await safeAddFarmacia(data);
+    await enfileirarOperacao("farmacias", "add", { id, ...data });
+    return id;
   },
 
   async update(id: string, data: Partial<Farmacia>) {
-    return safeUpdateFarmacia(id, data);
+    await safeUpdateFarmacia(id, data);
+    await enfileirarOperacao("farmacias", "update", { id, ...data });
+    return id;
   },
 
   /**
-   * Exclusão Segura com Sincronização (Cascade Delete)
+   * Exclusão Segura com Sincronização
    * Remove a farmácia e limpa o ID dela de medicamentos e renovações.
-   * TODAS as operações usam safe... para manter sync com a nuvem.
    */
   async deleteSafe(id: string) {
-    // 1. Deleta a farmácia (já coloca na fila de sync)
+    // 1. Exclui a farmácia
     await safeDeleteFarmacia(id);
+    await enfileirarOperacao("farmacias", "delete", { id });
 
-    // 2. Limpa medicamentos (usando safeUpdate)
+    // 2. Limpa medicamentos
     const medicamentosAfetados = await db.medicamentos.where('farmacia_id').equals(id).toArray();
     for (const med of medicamentosAfetados) {
-      if (med.id) await safeUpdateMedicamento(med.id, { farmacia_id: undefined });
+      if (med.id) {
+        await safeUpdateMedicamento(med.id, { farmacia_id: undefined });
+        await enfileirarOperacao("medicamentos", "update", { id: med.id, farmacia_id: undefined });
+      }
     }
 
-    // 3. Limpa renovações (usando safeUpdate)
+    // 3. Limpa renovações
     const renovacoesAfetadas = await db.renovacoes.where('farmacia_id').equals(id).toArray();
     for (const ren of renovacoesAfetadas) {
-      if (ren.id) await safeUpdateRenovacao(ren.id, { farmacia_id: undefined });
+      if (ren.id) {
+        await safeUpdateRenovacao(ren.id, { farmacia_id: undefined });
+        await enfileirarOperacao("renovacoes", "update", { id: ren.id, farmacia_id: undefined });
+      }
     }
-  }
+  },
 };

@@ -1,8 +1,9 @@
+// app/saude/cirurgias/detalhes/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   Activity, 
@@ -14,7 +15,11 @@ import {
   CheckCircle2, 
   Pill,
   FileText,
-  Syringe
+  Syringe,
+  Plus,
+  Stethoscope,
+  FlaskConical,
+  X
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -49,6 +54,7 @@ function DetalhesCirurgiaContent() {
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   const { getCirurgia, updateCirurgia, deleteCirurgia } = useCirurgias();
 
@@ -112,9 +118,7 @@ function DetalhesCirurgiaContent() {
     trigger("vibrate");
     if (!id || !cirurgia) return;
     try {
-      await updateCirurgia(id, {
-        status: novoStatus,
-      });
+      await updateCirurgia(id, { status: novoStatus });
       setCirurgia({ ...cirurgia, status: novoStatus });
       trigger("success");
     } catch (error) {
@@ -134,6 +138,19 @@ function DetalhesCirurgiaContent() {
       console.error("Erro ao excluir cirurgia:", error);
       trigger("error");
     }
+  };
+
+  const menuOptions = [
+    { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?medico_id=${cirurgia?.medico_id || ''}&hospital_id=${cirurgia?.hospital_id || ''}` },
+    { id: "novo-exame", label: "Novo Exame", icon: FlaskConical, path: `/saude/exames/novo?medico_id=${cirurgia?.medico_id || ''}&hospital_id=${cirurgia?.hospital_id || ''}` },
+    { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?medico_id=${cirurgia?.medico_id || ''}` },
+    { id: "editar-cirurgia", label: "Editar Cirurgia", icon: Edit3, path: `/saude/cirurgias/editar?id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
   };
 
   if (isLoading) return <LoadingSkeleton />;
@@ -157,6 +174,59 @@ function DetalhesCirurgiaContent() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+              >
+                <Plus size={18} />
+              </button>
+              <AnimatePresence>
+                {isMenuFlutuanteOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.16 }}
+                      onClick={() => setIsMenuFlutuanteOpen(false)}
+                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                    >
+                      <div className="px-3 pb-2 pt-3.5">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                      </div>
+                      <div className="px-1.5 pb-2">
+                        {menuOptions.map((option) => {
+                          const Icon = option.icon;
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => handleMenuOptionClick(option.path)}
+                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                <Icon size={15} />
+                              </div>
+                              <span className="text-sm font-medium text-ink-primary">
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/editar?id=${cirurgia.id}`); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95 hover:text-coral hover:border-coral/30"

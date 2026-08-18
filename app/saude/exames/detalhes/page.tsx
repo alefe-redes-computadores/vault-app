@@ -1,8 +1,9 @@
+// app/saude/exames/detalhes/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   FlaskConical, 
@@ -24,7 +25,10 @@ import {
   History,
   AlertOctagon,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Plus,
+  Copy,
+  X
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -39,6 +43,7 @@ import { safeAddMedico, safeAddHospital } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import type { Exame, Medico, Hospital, Tratamento } from "@/lib/types";
 
 function getTratamentoIcon(nome: string) {
   const n = nome.toLowerCase();
@@ -65,21 +70,22 @@ function DetalhesExameContent() {
 
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [exame, setExame] = useState<any>(null);
+  const [exame, setExame] = useState<Exame | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
-  const [isLaboratorioModalOpen, setIsLaboratorioModalOpen] = useState(false);
+  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [isCreatingMedico, setIsCreatingMedico] = useState(false);
   const [newMedicoNome, setNewMedicoNome] = useState("");
   const [newMedicoEspecialidade, setNewMedicoEspecialidade] = useState("");
-  const [isCreatingLaboratorio, setIsCreatingLaboratorio] = useState(false);
-  const [newLaboratorioNome, setNewLaboratorioNome] = useState("");
+  const [isCreatingLocal, setIsCreatingLocal] = useState(false);
+  const [newLocalNome, setNewLocalNome] = useState("");
 
   const { getExame, deleteExame, updateExame } = useExames();
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
-  const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
+  const locais = useLiveQuery(() => db.locais.toArray(), []) || [];
   const persons = useLiveQuery(() => db.persons.toArray(), []) || [];
 
   useEffect(() => {
@@ -105,7 +111,7 @@ function DetalhesExameContent() {
 
   const person = useLiveQuery(() => exame?.person_id ? db.persons.get(exame.person_id) : undefined, [exame?.person_id]);
   const medico = useLiveQuery(() => exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined, [exame?.medico_id]);
-  const laboratorio = useLiveQuery(() => exame?.laboratorio_id ? db.hospitais.get(exame.laboratorio_id) : undefined, [exame?.laboratorio_id]);
+  const local = useLiveQuery(() => exame?.local_id ? db.locais.get(exame.local_id) : undefined, [exame?.local_id]);
 
   const tratamentos = useLiveQuery(() => {
     if (!exame?.tratamento_ids || exame.tratamento_ids.length === 0) return [];
@@ -125,14 +131,26 @@ function DetalhesExameContent() {
     return exame?.data_retorno ? isReceitaVencidaSegura(exame.data_retorno) : false;
   }, [exame]);
 
+  // 🔧 Opções do menu flutuante
+  const menuOptions = [
+    { id: "duplicar-exame", label: "Solicitar Novamente", icon: Copy, path: `/saude/exames/novo?duplicar=${id}` },
+    { id: "editar-exame", label: "Editar Exame", icon: Edit3, path: `/saude/exames/editar?id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
+
   if (isLoading) return <LoadingSkeleton />;
   if (!exame) return null;
 
   const medicoEncontrado = medico !== undefined;
-  const laboratorioEncontrado = laboratorio !== undefined;
+  const localEncontrado = local !== undefined;
 
   const medicoValido = medicoEncontrado && medico?.nome;
-  const laboratorioValido = laboratorioEncontrado && laboratorio?.nome;
+  const localValido = localEncontrado && local?.nome;
 
   const exameId = typeof id === 'string' ? id : undefined;
 
@@ -165,9 +183,9 @@ function DetalhesExameContent() {
     }
   };
 
-  const handleCreateLaboratorio = async () => {
-    if (!newLaboratorioNome.trim()) {
-      showToast("Nome do laboratório é obrigatório", "error");
+  const handleCreateLocal = async () => {
+    if (!newLocalNome.trim()) {
+      showToast("Nome do local é obrigatório", "error");
       return;
     }
     if (!exameId) {
@@ -176,20 +194,21 @@ function DetalhesExameContent() {
     }
     trigger("vibrate");
     try {
-      const newId = await safeAddHospital({
+      // Agora usamos safeAddLocal em vez de safeAddHospital, pois o exame aponta para locais
+      const newId = await safeAddLocal({
         user_id: user?.id || "",
-        nome: newLaboratorioNome.trim(),
+        nome: newLocalNome.trim(),
         tipo: "laboratorio",
       });
-      await updateExame(exameId, { laboratorio_id: newId });
-      showToast("Laboratório vinculado com sucesso!", "success");
-      setIsCreatingLaboratorio(false);
-      setNewLaboratorioNome("");
+      await updateExame(exameId, { local_id: newId });
+      showToast("Local vinculado com sucesso!", "success");
+      setIsCreatingLocal(false);
+      setNewLocalNome("");
       const updated = await getExame(exameId);
       if (updated) setExame(updated);
     } catch (error) {
-      console.error("Erro ao criar laboratório:", error);
-      showToast("Erro ao criar laboratório", "error");
+      console.error("Erro ao criar local:", error);
+      showToast("Erro ao criar local", "error");
     }
   };
 
@@ -210,7 +229,7 @@ function DetalhesExameContent() {
     }
   };
 
-  const handleSelectMedico = async (item: any) => {
+  const handleSelectMedico = async (item: Medico) => {
     if (!exameId) {
       showToast("Erro: ID do exame não encontrado", "error");
       return;
@@ -228,21 +247,21 @@ function DetalhesExameContent() {
     }
   };
 
-  const handleSelectLaboratorio = async (item: any) => {
+  const handleSelectLocal = async (item: any) => {
     if (!exameId) {
       showToast("Erro: ID do exame não encontrado", "error");
       return;
     }
     trigger("vibrate");
     try {
-      await updateExame(exameId, { laboratorio_id: item.id });
-      showToast("Laboratório atualizado com sucesso!", "success");
+      await updateExame(exameId, { local_id: item.id });
+      showToast("Local atualizado com sucesso!", "success");
       const updated = await getExame(exameId);
       if (updated) setExame(updated);
-      setIsLaboratorioModalOpen(false);
+      setIsLocalModalOpen(false);
     } catch (error) {
-      console.error("Erro ao atualizar laboratório:", error);
-      showToast("Erro ao atualizar laboratório", "error");
+      console.error("Erro ao atualizar local:", error);
+      showToast("Erro ao atualizar local", "error");
     }
   };
 
@@ -281,6 +300,60 @@ function DetalhesExameContent() {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* BOTÃO + COM MENU FLUTUANTE */}
+              <div className="relative">
+                <button
+                  onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                >
+                  <Plus size={18} />
+                </button>
+                <AnimatePresence>
+                  {isMenuFlutuanteOpen && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.16 }}
+                        onClick={() => setIsMenuFlutuanteOpen(false)}
+                        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                        className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                      >
+                        <div className="px-3 pb-2 pt-3.5">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                        </div>
+                        <div className="px-1.5 pb-2">
+                          {menuOptions.map((option) => {
+                            const Icon = option.icon;
+                            return (
+                              <button
+                                key={option.id}
+                                onClick={() => handleMenuOptionClick(option.path)}
+                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              >
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                  <Icon size={15} />
+                                </div>
+                                <span className="text-sm font-medium text-ink-primary">
+                                  {option.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <button
                 onClick={() => { trigger("vibrate"); router.push(`/saude/exames/editar?id=${exame.id}`); }}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice active:scale-95"
@@ -387,12 +460,12 @@ function DetalhesExameContent() {
                 <Building2 size={16} className="text-emerald-400 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-wider text-ink-faint">Local / Laboratório</p>
-                  {laboratorioValido ? (
+                  {localValido ? (
                     <button
-                      onClick={() => { trigger("vibrate"); router.push(`/saude/hospitais/detalhes?id=${laboratorio.id}`); }}
+                      onClick={() => { trigger("vibrate"); router.push(`/saude/locais/detalhes?id=${local.id}`); }}
                       className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
                     >
-                      {laboratorio.nome}
+                      {local.nome}
                       <ChevronRight size={14} className="text-ink-faint" />
                     </button>
                   ) : exame.laboratorio ? (
@@ -407,9 +480,9 @@ function DetalhesExameContent() {
                   )}
                 </div>
               </div>
-              {!laboratorioValido && exame.laboratorio && (
+              {!localValido && exame.laboratorio && (
                 <button
-                  onClick={() => { trigger("vibrate"); setIsLaboratorioModalOpen(true); }}
+                  onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
                   className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
                 >
                   Corrigir
@@ -423,7 +496,7 @@ function DetalhesExameContent() {
                   <Activity size={14} className="text-violet-400" /> Motivo da Solicitação
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {tratamentos.map(t => {
+                  {tratamentos.map((t: Tratamento) => {
                     const Icon = getTratamentoIcon(t.nome);
                     return (
                       <button
@@ -484,7 +557,7 @@ function DetalhesExameContent() {
               <p className="text-xs text-ink-muted">Outras vezes que "{exame.nome}" foi realizado para {personName}:</p>
 
               <div className="space-y-2 pt-1">
-                {historicoExames.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map((item: any) => (
+                {[...historicoExames].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map((item: Exame) => (
                   <button
                     key={item.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${item.id}`); }}
@@ -522,25 +595,25 @@ function DetalhesExameContent() {
           items={medicos}
           title="Selecionar Médico"
           placeholder="Buscar médico..."
-          renderItem={(item: any) => (
+          renderItem={(item: Medico) => (
             <div>
               <p className="font-medium text-ink-primary">{item.nome}</p>
               {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
             </div>
           )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
+          getItemId={(item: Medico) => item.id!}
+          getItemLabel={(item: Medico) => item.nome}
           onCreateNew={() => { setIsMedicoModalOpen(false); setIsCreatingMedico(true); }}
           createNewLabel="Cadastrar Novo Médico"
         />
 
         <SelectionModal
-          isOpen={isLaboratorioModalOpen}
-          onClose={() => setIsLaboratorioModalOpen(false)}
-          onSelect={handleSelectLaboratorio}
-          items={hospitais.filter(h => h.tipo === 'laboratorio')}
-          title="Selecionar Laboratório"
-          placeholder="Buscar laboratório..."
+          isOpen={isLocalModalOpen}
+          onClose={() => setIsLocalModalOpen(false)}
+          onSelect={handleSelectLocal}
+          items={locais.filter(l => l.tipo === 'laboratorio')}
+          title="Selecionar Local / Laboratório"
+          placeholder="Buscar local..."
           renderItem={(item: any) => (
             <div>
               <p className="font-medium text-ink-primary">{item.nome}</p>
@@ -549,8 +622,8 @@ function DetalhesExameContent() {
           )}
           getItemId={(item: any) => item.id!}
           getItemLabel={(item: any) => item.nome}
-          onCreateNew={() => { setIsLaboratorioModalOpen(false); setIsCreatingLaboratorio(true); }}
-          createNewLabel="Cadastrar Novo Laboratório"
+          onCreateNew={() => { setIsLocalModalOpen(false); setIsCreatingLocal(true); }}
+          createNewLabel="Cadastrar Novo Local"
         />
 
         {isCreatingMedico && (
@@ -591,7 +664,7 @@ function DetalhesExameContent() {
           </div>
         )}
 
-        {isCreatingLaboratorio && (
+        {isCreatingLocal && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-4 backdrop-blur-md">
             <motion.div
               initial={{ y: "100%" }}
@@ -600,20 +673,20 @@ function DetalhesExameContent() {
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-surface p-6 shadow-vault"
             >
-              <h3 className="font-display text-lg font-bold text-ink-primary mb-4">Novo Laboratório</h3>
+              <h3 className="font-display text-lg font-bold text-ink-primary mb-4">Novo Local / Laboratório</h3>
               <div className="space-y-4">
                 <input
                   type="text"
-                  placeholder="Nome do laboratório"
-                  value={newLaboratorioNome}
-                  onChange={(e) => setNewLaboratorioNome(e.target.value)}
+                  placeholder="Nome do local"
+                  value={newLocalNome}
+                  onChange={(e) => setNewLocalNome(e.target.value)}
                   className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice"
                 />
                 <div className="flex gap-3 pt-2">
-                  <Button variant="secondary" fullWidth onClick={() => { setIsCreatingLaboratorio(false); setNewLaboratorioNome(""); }}>
+                  <Button variant="secondary" fullWidth onClick={() => { setIsCreatingLocal(false); setNewLocalNome(""); }}>
                     Cancelar
                   </Button>
-                  <Button variant="primary" fullWidth onClick={handleCreateLaboratorio}>
+                  <Button variant="primary" fullWidth onClick={handleCreateLocal}>
                     Salvar e Vincular
                   </Button>
                 </div>

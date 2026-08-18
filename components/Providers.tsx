@@ -1,3 +1,4 @@
+// components/Providers.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,6 +12,7 @@ import { useDoseNotificationActions } from "@/hooks/useDoseNotificationActions";
 import { BottomNav } from "./BottomNav";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
+import { RouteProgress } from "./RouteProgress";
 import { pullAllData } from "@/lib/sync/pull";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
@@ -213,6 +215,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ToastProvider>
       <ErrorBoundary>
         <div className="min-h-screen pb-24">
+          <RouteProgress />
           {children}
           <BottomNav />
         </div>

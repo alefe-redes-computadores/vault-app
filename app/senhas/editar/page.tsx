@@ -1,9 +1,12 @@
+// app/senhas/editar/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Save, Loader2, Eye, EyeOff, RefreshCw, ShieldCheck, Wand2, X, History, Copy } from "lucide-react";
+import {
+  ArrowLeft, Save, Loader2, Eye, EyeOff, ShieldCheck, Wand2, X, History, Copy,
+} from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { useCredentials } from "@/hooks/useCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
@@ -22,7 +25,6 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-// Medidor de Força
 const calculateStrength = (password: string) => {
   let score = 0;
   if (!password) return score;
@@ -48,7 +50,7 @@ function EditPasswordContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { updateCredential } = useCredentials();
-  
+
   const { authenticate } = useBiometric({
     title: "Editar Senha",
     subtitle: "Confirme sua identidade para editar esta credencial.",
@@ -61,15 +63,12 @@ function EditPasswordContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasAuthenticated, setHasAuthenticated] = useState(false);
 
-  // Estados Originais para Lógica de Histórico
-  const [originalItem, setOriginalItem] = useState<any>(null);
+  const [originalItem, setOriginalItem] = useState<Credential | null>(null);
   const [originalPlainPass, setOriginalPlainPass] = useState("");
-  
-  // Histórico local visível
-  const [historyItems, setHistoryItems] = useState<{encrypted: string, date: string}[]>([]);
+
+  const [historyItems, setHistoryItems] = useState<{ encrypted: string; date: string }[]>([]);
   const [visibleHistoryPass, setVisibleHistoryPass] = useState<Record<number, boolean>>({});
 
-  // Estados do Gerador
   const [showGenerator, setShowGenerator] = useState(false);
   const [genLength, setGenLength] = useState(16);
   const [genOptions, setGenOptions] = useState({ uppercase: true, lowercase: true, numbers: true, symbols: true });
@@ -96,14 +95,14 @@ function EditPasswordContent() {
             router.back();
             return;
           }
-          
+
           setHasAuthenticated(true);
           const plainText = decryptPassword(item.password_encrypted) || "";
-          
+
           setOriginalItem(item);
           setOriginalPlainPass(plainText);
-          setHistoryItems((item as any).password_history || []);
-          
+          setHistoryItems((item as Credential & { password_history?: { encrypted: string; date: string }[] }).password_history || []);
+
           setFormData({
             title: item.title,
             username: item.username || "",
@@ -122,7 +121,7 @@ function EditPasswordContent() {
     loadCredential();
   }, [id, authenticate, router]);
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
@@ -144,14 +143,14 @@ function EditPasswordContent() {
     if (genOptions.numbers) charset += "0123456789";
     if (genOptions.symbols) charset += "!@#$%^&*()_+~|-=";
     if (!charset) charset = "abcdefghijklmnopqrstuvwxyz";
-    
+
     let newPass = "";
     const randomValues = new Uint32Array(genLength);
     window.crypto.getRandomValues(randomValues);
     for (let i = 0; i < genLength; i++) {
       newPass += charset[randomValues[i] % charset.length];
     }
-    
+
     setFormData((prev) => ({ ...prev, password_plain: newPass }));
     setShowPassword(true);
     setShowGenerator(false);
@@ -168,7 +167,7 @@ function EditPasswordContent() {
         await Clipboard.write({ string: plainText });
         showToast("Senha antiga copiada!", "success");
       }
-    } catch (e) {
+    } catch {
       trigger("error");
     }
   };
@@ -179,7 +178,7 @@ function EditPasswordContent() {
       if (!isAuth) return;
     }
     trigger("vibrate");
-    setVisibleHistoryPass(prev => ({ ...prev, [index]: !prev[index] }));
+    setVisibleHistoryPass((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
   const handleSubmit = async () => {
@@ -189,7 +188,7 @@ function EditPasswordContent() {
     const newErrors: Record<string, string> = {};
     if (!formData.title.trim()) newErrors.title = "O título é obrigatório";
     if (!formData.password_plain.trim()) newErrors.password_plain = "A senha não pode estar vazia";
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       trigger("error");
@@ -198,7 +197,7 @@ function EditPasswordContent() {
 
     setSaving(true);
     try {
-      const payload: any = {
+      const payload: Partial<Credential> & { password_plain: string; password_history?: { encrypted: string; date: string }[] } = {
         title: formData.title.trim(),
         username: formData.username.trim(),
         password_plain: formData.password_plain,
@@ -207,22 +206,23 @@ function EditPasswordContent() {
         category: formData.category,
       };
 
-      // ✅ Lógica do Histórico: Se a senha mudou, joga a antiga (criptografada) pro histórico
       if (formData.password_plain !== originalPlainPass) {
         const newHistory = [...historyItems];
         newHistory.push({
           encrypted: originalItem.password_encrypted,
-          date: new Date().toISOString()
+          date: new Date().toISOString(),
         });
         payload.password_history = newHistory;
       }
 
       await updateCredential(id, payload);
       trigger("success");
+      showToast("Senha atualizada", "success");
       router.back();
     } catch (error) {
       console.error("Erro ao salvar:", error);
       trigger("error");
+      showToast("Erro ao salvar", "error");
     } finally {
       setSaving(false);
     }
@@ -279,7 +279,6 @@ function EditPasswordContent() {
                 </div>
               </div>
 
-              {/* Barra de Força da Senha */}
               <div className="flex gap-1 h-1 w-full mt-2">
                 {[1, 2, 3, 4].map((level) => (
                   <div key={level} className={`flex-1 rounded-full transition-colors duration-500 ${strengthScore >= level ? getStrengthColor(strengthScore) : "bg-surface-border/40"}`} />
@@ -310,7 +309,6 @@ function EditPasswordContent() {
             <TextArea label="Notas (opcional)" value={formData.notes} onChange={(e) => handleChange("notes", e.target.value)} />
           </motion.div>
 
-          {/* ✅ Seção de Histórico de Senhas (Aparece apenas se houver histórico) */}
           {historyItems.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
               <h3 className="mb-3 text-sm font-medium text-ink-primary flex items-center gap-2">
@@ -321,7 +319,7 @@ function EditPasswordContent() {
                   const dataFormatada = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(hist.date));
                   return (
                     <div key={idx} className="flex items-center justify-between rounded-2xl bg-surface-raised p-3 border border-surface-border/40">
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-xs text-ink-muted mb-1">Trocada em: {dataFormatada}</p>
                         <p className="font-mono text-sm text-ink-primary">
                           {visibleHistoryPass[idx] ? decryptPassword(hist.encrypted) : "••••••••••••"}
@@ -337,13 +335,12 @@ function EditPasswordContent() {
                       </div>
                     </div>
                   );
-                }).reverse()} {/* Inverte para mostrar as mais recentes primeiro */}
+                }).reverse()}
               </div>
             </motion.div>
           )}
         </section>
 
-        {/* Gerador de Senhas Bottom Sheet */}
         <AnimatePresence>
           {showGenerator && (
             <>

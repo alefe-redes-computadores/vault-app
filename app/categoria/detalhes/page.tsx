@@ -1,3 +1,4 @@
+// app/detalhes/editar/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -8,7 +9,8 @@ import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
+import { useToast } from "@/components/ToastProvider";
+import { CATEGORIES, type CategoryId, type DocumentType, type Attachment } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -16,7 +18,6 @@ import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 
 const getFieldsForType = (type: DocumentType) => {
-  // AQUI ESTÁ A CORREÇÃO DA VERCEL: Todos os tipos novos foram adicionados
   const fieldMap: Record<DocumentType, Array<{ key: string; label: string; type: string }>> = {
     rg: [
       { key: "modelo", label: "Modelo (C.I.N ou RG Antigo)", type: "text" },
@@ -114,7 +115,6 @@ const getFieldsForType = (type: DocumentType) => {
   return fieldMap[type] || [];
 };
 
-// Array estruturado para o Modal de Seleção
 const DOCUMENT_TYPES = [
   { id: "rg", label: "C.I.N / RG" },
   { id: "cpf", label: "CPF" },
@@ -141,6 +141,7 @@ const sectionMotion = {
 
 export default function EditarDetalhePage() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
@@ -152,15 +153,15 @@ export default function EditarDetalhePage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     person_id: "",
     category_id: "pessoal" as CategoryId,
     type: "rg" as DocumentType,
     title: "",
     description: "",
-    metadata: {} as Record<string, any>,
-    attachments: [] as any[],
+    metadata: {} as Record<string, string>,
+    attachments: [] as Attachment[],
   });
 
   useEffect(() => {
@@ -179,7 +180,7 @@ export default function EditarDetalhePage() {
 
   const fields = useMemo(() => getFieldsForType(formData.type), [formData.type]);
 
-  const handleChange = (field: keyof typeof formData, value: any) => {
+  const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -215,10 +216,11 @@ export default function EditarDetalhePage() {
         attachments: formData.attachments,
       });
       trigger("success");
+      showToast("Documento atualizado", "success");
       router.push(`/detalhes?id=${id}`);
     } catch (error) {
-      console.error("Erro ao atualizar:", error);
       trigger("error");
+      showToast("Erro ao atualizar documento", "error");
     } finally {
       setLoading(false);
     }
@@ -239,7 +241,7 @@ export default function EditarDetalhePage() {
     );
   }
 
-  const selectedTypeLabel = DOCUMENT_TYPES.find(t => t.id === formData.type)?.label || "Selecione o tipo";
+  const selectedTypeLabel = DOCUMENT_TYPES.find((t) => t.id === formData.type)?.label || "Selecione o tipo";
 
   return (
     <PageTransition>
@@ -297,7 +299,7 @@ export default function EditarDetalhePage() {
           >
             <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa</p>
             <div className="flex flex-wrap gap-2">
-              {persons.map((person: any) => (
+              {persons.map((person) => (
                 <button
                   key={person.id}
                   onClick={() => handleChange("person_id", person.id!)}
@@ -320,7 +322,7 @@ export default function EditarDetalhePage() {
           >
             <p className="mb-3 text-sm font-medium text-ink-primary">Categoria</p>
             <div className="flex flex-wrap gap-2">
-              {Object.values(CATEGORIES).map((cat: any) => (
+              {Object.values(CATEGORIES).map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => handleChange("category_id", cat.id)}
@@ -346,7 +348,6 @@ export default function EditarDetalhePage() {
             className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
           >
             <label className="mb-2 block text-sm font-medium text-ink-primary">Tipo</label>
-            {/* O SELECT FEIO MORREU AQUI! Substituído por um botão que abre o Modal Elegante */}
             <button
               onClick={() => {
                 trigger("vibrate");
@@ -374,7 +375,7 @@ export default function EditarDetalhePage() {
               error={errors.title}
             />
 
-            {fields.map((field: any) => (
+            {fields.map((field) => (
               <Input
                 key={field.key}
                 label={field.label}
@@ -418,23 +419,22 @@ export default function EditarDetalhePage() {
           </motion.div>
         </section>
 
-        {/* O MODAL ELEGANTE QUE SUBSTITUIU O SELECT */}
         <SelectionModal
           isOpen={isTypeModalOpen}
           onClose={() => setIsTypeModalOpen(false)}
-          onSelect={(item: any) => {
+          onSelect={(item) => {
             trigger("vibrate");
-            handleChange("type", item.id);
+            handleChange("type", item.id as DocumentType);
             setIsTypeModalOpen(false);
           }}
           items={DOCUMENT_TYPES}
           title="Tipo de Documento"
           placeholder="Buscar tipo..."
-          renderItem={(item: any) => (
+          renderItem={(item) => (
             <p className="font-medium text-ink-primary">{item.label}</p>
           )}
-          getItemId={(item: any) => item.id}
-          getItemLabel={(item: any) => item.label}
+          getItemId={(item) => item.id}
+          getItemLabel={(item) => item.label}
         />
       </main>
     </PageTransition>

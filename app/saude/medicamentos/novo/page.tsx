@@ -1,12 +1,13 @@
+// app/saude/medicamentos/novo/page.tsx
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Loader2, Save, Pill, Upload, Camera, X, FileText, Package, Plus, Trash2, Clock,
-  Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, ArrowRight, Info, Store,
-  Building2, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, TrendingUp, Sparkles
+  Loader2, Save, Pill, Upload, Camera, X, FileText, Package, Plus, Clock,
+  Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, Store,
+  Building2, MapPin, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, TrendingUp, Sparkles,
 } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,14 +15,14 @@ import { useSafeDb } from "@/hooks/useSafeDb";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
+import { useHospitais } from "@/hooks/useHospitais";
+import { useLocais } from "@/hooks/useLocais";
+import { useTratamentos } from "@/hooks/useTratamentos";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 import { uploadFile } from "@/lib/supabase/storage";
-import { suggestRenewalDate, VALIDADE_RECEITA_DIAS, TIPO_RECEITA_LABELS, getLocalTodayISO } from "@/lib/health-utils";
+import { suggestRenewalDate, VALIDADE_RECEITA_DIAS, getLocalTodayISO } from "@/lib/health-utils";
 import { scheduleDoseNotifications, requestNotificationPermission } from "@/lib/dose-notifications";
-import { db } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
-import type { Attachment, Document, TipoReceita } from "@/lib/types";
-
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -32,6 +33,7 @@ import { SeletorReceita } from "@/components/saude/SeletorReceita";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
 import { sugerirHorarios } from "@/lib/health-insights";
+import type { Attachment, Document, TipoReceita, Person, Medico, Farmacia, Hospital, LocalSaude, Medicamento } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 } };
 
@@ -49,7 +51,7 @@ function brParaIso(br: string) {
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
-const SplitPillIcon = ({ size, fill = "currentColor" }: any) => (
+const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10" fill={fill} />
     <line x1="12" y1="2" x2="12" y2="22" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
@@ -67,16 +69,17 @@ const CORES_DISPONIVEIS = ["#FFFFFF", "#FCA5A5", "#F87171", "#FBBF24", "#34D399"
 
 export default function NovoMedicamentoPage() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
-  const persons = usePersons();
-  const { addDocument } = useSafeDb();
-  const { addMedicamento } = useMedicamentos();
-  const { medicos } = useMedicos();
-  const { farmacias } = useFarmacias();
-
-  const hospitaisLocais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
-  const medicamentosQuery = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
+  const persons = usePersons() as Person[];
+  const { addDocument, updateDocument } = useSafeDb();
+  const { addMedicamento, medicamentos: medicamentosList } = useMedicamentos();
+  const { medicos, addMedico } = useMedicos();
+  const { farmacias, addFarmacia } = useFarmacias();
+  const { hospitais, addHospital } = useHospitais();
+  const { locais, addLocal } = useLocais();
+  const { tratamentos } = useTratamentos();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -95,7 +98,7 @@ export default function NovoMedicamentoPage() {
   const [primeiroHorario, setPrimeiroHorario] = useState("08:00");
   const [horarios, setHorarios] = useState<string[]>(["08:00"]);
   const [estoqueUnidadePorDose, setEstoqueUnidadePorDose] = useState("1");
-  
+
   const isGotas = formato === "gota";
   const [mlTotal, setMlTotal] = useState("");
   const [gotasPorMl, setGotasPorMl] = useState("20");
@@ -104,8 +107,10 @@ export default function NovoMedicamentoPage() {
   // Etapa 2
   const [medicoId, setMedicoId] = useState<string>("");
   const [medicoNome, setMedicoNome] = useState("");
-  const [estabelecimentoId, setEstabelecimentoId] = useState<string>("");
-  const [estabelecimentoNome, setEstabelecimentoNome] = useState("");
+  const [hospitalId, setHospitalId] = useState<string>("");
+  const [hospitalNome, setHospitalNome] = useState("");
+  const [localId, setLocalId] = useState<string>("");
+  const [localNome, setLocalNome] = useState("");
   const [farmaciaId, setFarmaciaId] = useState<string>("");
   const [farmaciaNome, setFarmaciaNome] = useState("");
   const [preco, setPreco] = useState("");
@@ -129,8 +134,8 @@ export default function NovoMedicamentoPage() {
   // Modais de Seleção
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
-  const [isEstabelecimentoModalOpen, setIsEstabelecimentoModalOpen] = useState(false);
-  const [activeEstabelecimentoTab, setActiveEstabelecimentoTab] = useState("hospital");
+  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
+  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [showDesativarEstoqueModal, setShowDesativarEstoqueModal] = useState(false);
 
@@ -138,7 +143,7 @@ export default function NovoMedicamentoPage() {
   const [isTypingName, setIsTypingName] = useState(false);
   const [isRecognized, setIsRecognized] = useState(false);
   const [showDuplicateActionModal, setShowDuplicateActionModal] = useState(false);
-  const [selectedDuplicate, setSelectedDuplicate] = useState<any | null>(null);
+  const [selectedDuplicate, setSelectedDuplicate] = useState<Medicamento | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeFields, setShakeFields] = useState<string[]>([]);
@@ -150,13 +155,13 @@ export default function NovoMedicamentoPage() {
 
   const suggestions = useMemo(() => {
     if (nome.length < 2 || !isTypingName) return [];
-    return medicamentosQuery.filter((m: any) => 
-      m.nome.toLowerCase().includes(nome.toLowerCase()) && 
+    return medicamentosList.filter((m: Medicamento) =>
+      m.nome.toLowerCase().includes(nome.toLowerCase()) &&
       m.status !== "descontinuado"
     ).slice(0, 4);
-  }, [nome, medicamentosQuery, isTypingName]);
+  }, [nome, medicamentosList, isTypingName]);
 
-  const handleSuggestionClick = (med: any) => {
+  const handleSuggestionClick = (med: Medicamento) => {
     trigger("vibrate");
     setNome(med.nome);
     setIsTypingName(false);
@@ -169,7 +174,7 @@ export default function NovoMedicamentoPage() {
       const novosHorarios = sugerirHorarios(primeiroHorario, Number(vezesAoDia));
       setHorarios(novosHorarios.length > 0 ? novosHorarios : [primeiroHorario]);
     } else if (tipoUso !== "continuo") {
-      setHorarios([]); 
+      setHorarios([]);
     }
   }, [vezesAoDia, primeiroHorario, tipoUso]);
 
@@ -232,24 +237,24 @@ export default function NovoMedicamentoPage() {
       if (!nome.trim()) { newErrors.nome = "Obrigatório"; shakeList.push("nome"); }
       if (!dosagem.trim()) { newErrors.dosagem = "Obrigatório"; shakeList.push("dosagem"); }
       if (tipoUso === 'continuo' && (!vezesAoDia || Number(vezesAoDia) <= 0)) { newErrors.vezesAoDia = "Obrigatório"; shakeList.push("vezesAoDia"); }
-      
-      const exactDuplicate = medicamentosQuery.find((m: any) => 
-         m.nome.toLowerCase() === nome.toLowerCase().trim() && 
-         m.dosagem.toLowerCase() === dosagem.toLowerCase().trim() && 
-         m.person_id === personId && 
-         m.status !== "descontinuado"
+
+      const exactDuplicate = medicamentosList.find((m: Medicamento) =>
+        m.nome.toLowerCase() === nome.toLowerCase().trim() &&
+        m.dosagem.toLowerCase() === dosagem.toLowerCase().trim() &&
+        m.person_id === personId &&
+        m.status !== "descontinuado"
       );
       if (exactDuplicate) {
-         newErrors.nome = "Remédio exato já cadastrado";
-         shakeList.push("nome");
-         trigger("error");
+        newErrors.nome = "Remédio exato já cadastrado";
+        shakeList.push("nome");
+        trigger("error");
       }
     }
     if (step === 3) {
       if (dataReceitaTexto && dataReceitaTexto.length < 10) { newErrors.dataReceitaTexto = "Data inválida"; shakeList.push("dataReceitaTexto"); }
       if (proximaRenovacaoTexto && proximaRenovacaoTexto.length < 10) { newErrors.proximaRenovacaoTexto = "Data inválida"; shakeList.push("proximaRenovacaoTexto"); }
       if (estoqueAtivo) {
-          if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) { newErrors.estoqueQuantidade = "Faltou quantidade"; shakeList.push("estoqueQuantidade"); }
+        if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) { newErrors.estoqueQuantidade = "Faltou quantidade"; shakeList.push("estoqueQuantidade"); }
       }
     }
 
@@ -320,7 +325,7 @@ export default function NovoMedicamentoPage() {
         if (localFile && user && attachment) {
           const { url, error } = await uploadFile(user.id, localFile, "saude");
           if (!error && url) {
-            await db.documents.update(docId, { attachments: [{ ...attachment, url }], updated_at: new Date().toISOString(), synced: false });
+            await updateDocument(docId, { attachments: [{ ...attachment, url }] });
             setUploadProgress(100);
           }
         }
@@ -336,7 +341,8 @@ export default function NovoMedicamentoPage() {
         tipo_uso: tipoUso,
         medico: medicoNome?.trim() || "",
         medico_id: medicoId || undefined,
-        estabelecimento_id: estabelecimentoId || undefined,
+        hospital_id: hospitalId || undefined,
+        local_id: localId || undefined,
         farmacia: farmaciaNome?.trim() || "",
         farmacia_id: farmaciaId || undefined,
         preco: preco ? Number(preco.replace(',', '.')) : undefined,
@@ -355,18 +361,25 @@ export default function NovoMedicamentoPage() {
 
       if (estoqueAtivo && tipoUso === 'continuo' && horariosFiltrados.length > 0) {
         const granted = await requestNotificationPermission();
-        if (granted) await scheduleDoseNotifications({ id: medicamentoId, nome: nome.trim(), dosagem: dosagem.trim(), estoque_horarios: horariosFiltrados } as any);
+        if (granted) await scheduleDoseNotifications({ id: medicamentoId, nome: nome.trim(), dosagem: dosagem.trim(), estoque_horarios: horariosFiltrados });
       }
 
       trigger("success");
-      router.replace("/saude");
-    } catch (error) { trigger("error"); } finally { setLoading(false); setUploadProgress(0); }
+      showToast("Medicamento cadastrado com sucesso", "success");
+      router.back();
+    } catch (error) {
+      trigger("error");
+      showToast("Erro ao cadastrar medicamento", "error");
+    } finally {
+      setLoading(false);
+      setUploadProgress(0);
+    }
   };
 
   const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || Pill;
   const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido");
   const gradientId = `split-novo`;
-  const getPersonName = (pId: string) => persons.find((p: any) => p.id === pId)?.name || "Alguém";
+  const getPersonName = (pId: string) => persons.find((p: Person) => p.id === pId)?.name || "Alguém";
 
   return (
     <PageTransition>
@@ -391,15 +404,15 @@ export default function NovoMedicamentoPage() {
 
         <section className="px-5 pt-6 space-y-6">
           <AnimatePresence mode="wait">
-            
+
             {/* ================= ETAPA 1 ================= */}
             {currentStep === 1 && (
               <motion.div key="step1" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
-                
+
                 <div className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all ${shakeFields.includes('personId') ? 'animate-shake border-coral/80' : 'border-surface-border/50'}`}>
                   <p className="mb-3 text-sm font-medium text-ink-primary">Para quem é? <span className="text-coral">*</span></p>
                   <div className="flex flex-wrap gap-2">
-                    {persons.map((p: any) => (
+                    {persons.map((p: Person) => (
                       <button type="button" key={p.id} onClick={() => { trigger("vibrate"); setPersonId(p.id!); }} className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${personId === p.id ? "border-ice bg-ice/12 text-ice shadow-sm" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{p.name}</button>
                     ))}
                   </div>
@@ -407,15 +420,15 @@ export default function NovoMedicamentoPage() {
 
                 <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
                   <div className={`relative transition-all ${shakeFields.includes('nome') ? 'animate-shake' : ''}`}>
-                    <Input 
-                      label="Medicamento" 
-                      placeholder="Ex: Sertralina" 
-                      value={nome} 
-                      onChange={(e) => { setNome(e.target.value); setIsTypingName(true); setIsRecognized(false); }} 
+                    <Input
+                      label="Medicamento"
+                      placeholder="Ex: Sertralina"
+                      value={nome}
+                      onChange={(e) => { setNome(e.target.value); setIsTypingName(true); setIsRecognized(false); }}
                       onFocus={() => setIsTypingName(true)}
-                      error={errors.nome} 
+                      error={errors.nome}
                     />
-                    
+
                     <AnimatePresence>
                       {isRecognized && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
@@ -423,24 +436,24 @@ export default function NovoMedicamentoPage() {
                         </motion.div>
                       )}
                     </AnimatePresence>
-                    
+
                     <AnimatePresence>
                       {suggestions.length > 0 && isTypingName && (
                         <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} className="absolute z-10 w-full mt-2 rounded-2xl border border-surface-border/60 bg-surface shadow-xl overflow-hidden backdrop-blur-xl">
                           <div className="p-2 bg-surface-raised/50 border-b border-surface-border/40">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted ml-2">Já Cadastrados</span>
                           </div>
-                          {suggestions.map((med: any) => (
+                          {suggestions.map((med: Medicamento) => (
                             <button key={med.id} type="button" onClick={() => handleSuggestionClick(med)} className="flex items-center gap-3 w-full p-3 text-left border-b border-surface-border/40 last:border-0 hover:bg-surface-raised transition-colors">
                               <div className="h-8 w-8 rounded-full bg-ice/10 flex items-center justify-center text-ice shrink-0"><Pill size={14}/></div>
-                              <div><p className="font-semibold text-ink-primary text-sm leading-tight">{med.nome}</p><p className="text-xs text-ink-muted mt-0.5">{med.dosagem} • {getPersonName(med.person_id)}</p></div>
+                              <div><p className="font-semibold text-ink-primary text-sm leading-tight">{med.nome}</p><p className="text-xs text-ink-muted mt-0.5">{med.dosagem} • {getPersonName(med.person_id || "")}</p></div>
                             </button>
                           ))}
                         </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
-                  
+
                   <div className={`transition-all ${shakeFields.includes('dosagem') ? 'animate-shake' : ''}`}>
                     <Input label={isGotas ? "Dosagem (ex: 20 gotas/ml)" : "Dosagem (ex: 50mg)"} value={dosagem} onChange={(e) => setDosagem(e.target.value)} error={errors.dosagem} />
                   </div>
@@ -498,7 +511,7 @@ export default function NovoMedicamentoPage() {
                     </div>
                   )}
                   {tipoUso !== "continuo" && (
-                     <p className="text-xs text-ink-muted text-center p-3 bg-surface-raised rounded-xl">O app não emitirá alarmes diários, mas você poderá registrar doses avulsas para abater do estoque quando usar.</p>
+                    <p className="text-xs text-ink-muted text-center p-3 bg-surface-raised rounded-xl">O app não emitirá alarmes diários, mas você poderá registrar doses avulsas para abater do estoque quando usar.</p>
                   )}
                 </div>
               </motion.div>
@@ -530,9 +543,23 @@ export default function NovoMedicamentoPage() {
                     </button>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Hospital / Clínica</label>
-                    <button type="button" onClick={() => setIsEstabelecimentoModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left">
-                      <span className="truncate font-medium text-ink-primary">{estabelecimentoNome || "Vincular local..."}</span><span className="text-xs font-bold text-ice">Alterar</span>
+                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Hospital</label>
+                    <button type="button" onClick={() => setIsHospitalModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <Building2 size={16} className="text-violet-400 shrink-0" />
+                        <span className="truncate font-medium text-ink-primary">{hospitalNome || "Vincular hospital..."}</span>
+                      </span>
+                      <span className="text-xs font-bold text-ice">Alterar</span>
+                    </button>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Local / Posto</label>
+                    <button type="button" onClick={() => setIsLocalModalOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <MapPin size={16} className="text-emerald-400 shrink-0" />
+                        <span className="truncate font-medium text-ink-primary">{localNome || "Vincular local..."}</span>
+                      </span>
+                      <span className="text-xs font-bold text-ice">Alterar</span>
                     </button>
                   </div>
                 </div>
@@ -552,17 +579,17 @@ export default function NovoMedicamentoPage() {
                     </button>
                   </div>
                   <AnimatePresence>
-                  {estoqueAtivo && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className={`transition-all ${shakeFields.includes('estoqueQuantidade') ? 'animate-shake' : ''}`}>
-                          <Input label="Qtd Comprada" type="number" inputMode="numeric" placeholder="Ex: 30" value={estoqueQuantidade} onChange={(e) => setEstoqueQuantidade(e.target.value)} />
+                    {estoqueAtivo && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className={`transition-all ${shakeFields.includes('estoqueQuantidade') ? 'animate-shake' : ''}`}>
+                            <Input label="Qtd Comprada" type="number" inputMode="numeric" placeholder="Ex: 30" value={estoqueQuantidade} onChange={(e) => setEstoqueQuantidade(e.target.value)} />
+                          </div>
+                          <Input label="Dose gasta (ex: 1)" type="number" inputMode="decimal" step="0.5" value={estoqueUnidadePorDose} onChange={(e) => setEstoqueUnidadePorDose(e.target.value)} />
                         </div>
-                        <Input label="Dose gasta (ex: 1)" type="number" inputMode="decimal" step="0.5" value={estoqueUnidadePorDose} onChange={(e) => setEstoqueUnidadePorDose(e.target.value)} />
-                      </div>
-                      <Input label="Data da Compra" value={estoqueDataReferenciaTexto} onChange={(e) => setEstoqueDataReferenciaTexto(mascaraData(e.target.value))} maxLength={10} inputMode="numeric" />
-                    </motion.div>
-                  )}
+                        <Input label="Data da Compra" value={estoqueDataReferenciaTexto} onChange={(e) => setEstoqueDataReferenciaTexto(mascaraData(e.target.value))} maxLength={10} inputMode="numeric" />
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                 </div>
 
@@ -586,13 +613,13 @@ export default function NovoMedicamentoPage() {
                       <button type="button" onClick={removeAttachment} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-coral/10 text-coral"><X size={16} /></button>
                     </div>
                   )}
-                  
+
                   <div className="mt-6 pt-5 border-t border-surface-border/40">
                     <button type="button" onClick={() => setIsTratamentoModalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-surface-border bg-surface-raised py-3 text-sm font-bold text-ink-primary transition-colors hover:border-ice/50">
                       <Activity size={16} className="text-violet-400"/> {tratamentosSelecionados.length > 0 ? `${tratamentosSelecionados.length} Quadro(s) vinculado(s)` : "Vincular Tratamento/CID"}
                     </button>
                   </div>
-                  
+
                   <div className="mt-4">
                     <TextArea label="Anotações" placeholder="Posologia complexa, dicas..." value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
                   </div>
@@ -636,32 +663,32 @@ export default function NovoMedicamentoPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-4 backdrop-blur-md" onClick={() => setShowDuplicateActionModal(false)}>
               <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-surface p-6 shadow-vault">
                 <div className="flex justify-between items-start mb-5">
-                   <div>
-                     <div className="flex items-center gap-2 text-amber-400 mb-1"><AlertTriangle size={16} /><span className="text-xs font-bold uppercase tracking-widest">Aviso Inteligente</span></div>
-                     <h2 className="text-xl font-display font-bold text-ink-primary">Você já possui {selectedDuplicate.nome}</h2>
-                     <p className="text-sm text-ink-muted mt-1">Este medicamento ({selectedDuplicate.dosagem}) já está vinculado a {getPersonName(selectedDuplicate.person_id)}. O que deseja fazer?</p>
-                   </div>
-                   <button onClick={() => setShowDuplicateActionModal(false)} className="h-8 w-8 bg-surface-raised rounded-full flex items-center justify-center text-ink-muted"><X size={16}/></button>
+                  <div>
+                    <div className="flex items-center gap-2 text-amber-400 mb-1"><AlertTriangle size={16} /><span className="text-xs font-bold uppercase tracking-widest">Aviso Inteligente</span></div>
+                    <h2 className="text-xl font-display font-bold text-ink-primary">Você já possui {selectedDuplicate.nome}</h2>
+                    <p className="text-sm text-ink-muted mt-1">Este medicamento ({selectedDuplicate.dosagem}) já está vinculado a {getPersonName(selectedDuplicate.person_id || "")}. O que deseja fazer?</p>
+                  </div>
+                  <button onClick={() => setShowDuplicateActionModal(false)} className="h-8 w-8 bg-surface-raised rounded-full flex items-center justify-center text-ink-muted"><X size={16}/></button>
                 </div>
-                
+
                 <div className="space-y-3">
                   <button onClick={() => router.push(`/saude/medicamentos/editar?id=${selectedDuplicate.id}&intent=evolucao`)} className="w-full flex items-center justify-between p-4 rounded-2xl bg-ice/10 border border-ice/20 active:scale-95 transition-all">
-                     <div className="flex items-center gap-3 text-left">
-                       <div className="h-10 w-10 bg-ice/20 text-ice rounded-xl flex items-center justify-center"><TrendingUp size={20}/></div>
-                       <div><p className="font-bold text-ice">Aumento/Redução de Dose</p><p className="text-xs text-ink-muted">Manter histórico e alterar dosagem</p></div>
-                     </div><ChevronRight size={18} className="text-ice opacity-50"/>
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="h-10 w-10 bg-ice/20 text-ice rounded-xl flex items-center justify-center"><TrendingUp size={20}/></div>
+                      <div><p className="font-bold text-ice">Aumento/Redução de Dose</p><p className="text-xs text-ink-muted">Manter histórico e alterar dosagem</p></div>
+                    </div><ChevronRight size={18} className="text-ice opacity-50"/>
                   </button>
                   <button onClick={() => router.push(`/saude/medicamentos/editar?id=${selectedDuplicate.id}&intent=compra`)} className="w-full flex items-center justify-between p-4 rounded-2xl bg-emerald-400/10 border border-emerald-400/20 active:scale-95 transition-all">
-                     <div className="flex items-center gap-3 text-left">
-                       <div className="h-10 w-10 bg-emerald-400/20 text-emerald-400 rounded-xl flex items-center justify-center"><Package size={20}/></div>
-                       <div><p className="font-bold text-emerald-400">Nova Compra / Estoque</p><p className="text-xs text-ink-muted">Atualizar caixas e renovação</p></div>
-                     </div><ChevronRight size={18} className="text-emerald-400 opacity-50"/>
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="h-10 w-10 bg-emerald-400/20 text-emerald-400 rounded-xl flex items-center justify-center"><Package size={20}/></div>
+                      <div><p className="font-bold text-emerald-400">Nova Compra / Estoque</p><p className="text-xs text-ink-muted">Atualizar caixas e renovação</p></div>
+                    </div><ChevronRight size={18} className="text-emerald-400 opacity-50"/>
                   </button>
                   <button onClick={() => { setShowDuplicateActionModal(false); setIsRecognized(true); }} className="w-full flex items-center justify-between p-4 rounded-2xl bg-surface-raised border border-surface-border active:scale-95 transition-all">
-                     <div className="flex items-center gap-3 text-left">
-                       <div className="h-10 w-10 bg-void border border-surface-border text-ink-muted rounded-xl flex items-center justify-center"><Plus size={20}/></div>
-                       <div><p className="font-bold text-ink-primary">Continuar novo cadastro</p><p className="text-xs text-ink-muted">Cadastrar variação separada</p></div>
-                     </div><ChevronRight size={18} className="text-ink-muted opacity-50"/>
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="h-10 w-10 bg-void border border-surface-border text-ink-muted rounded-xl flex items-center justify-center"><Plus size={20}/></div>
+                      <div><p className="font-bold text-ink-primary">Continuar novo cadastro</p><p className="text-xs text-ink-muted">Cadastrar variação separada</p></div>
+                    </div><ChevronRight size={18} className="text-ink-muted opacity-50"/>
                   </button>
                 </div>
               </motion.div>
@@ -669,117 +696,112 @@ export default function NovoMedicamentoPage() {
           )}
         </AnimatePresence>
 
-        <SelectionModal 
-          isOpen={isPharmacyModalOpen} 
-          onClose={() => setIsPharmacyModalOpen(false)} 
-          title="Selecionar Farmácia" 
-          items={farmacias} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          enableQuickCreate 
-          onQuickCreate={async (name) => { 
-            const id = await db.farmacias.add({ 
-              user_id: user?.id || "", 
-              nome: name, 
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              synced: false 
-            }); 
-            return { id, nome: name }; 
-          }} 
-          onSelect={(item: any) => { 
-            setFarmaciaId(item.id); 
-            setFarmaciaNome(item.nome); 
-            setIsPharmacyModalOpen(false); 
-          }} 
-          renderItem={(item: any) => ( 
+        <SelectionModal<Farmacia>
+          isOpen={isPharmacyModalOpen}
+          onClose={() => setIsPharmacyModalOpen(false)}
+          title="Selecionar Farmácia"
+          items={farmacias}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          enableQuickCreate
+          onQuickCreate={async (name) => {
+            const id = await addFarmacia({ nome: name });
+            return { id, nome: name } as Farmacia;
+          }}
+          onSelect={(item) => {
+            setFarmaciaId(item.id!);
+            setFarmaciaNome(item.nome);
+            setIsPharmacyModalOpen(false);
+          }}
+          renderItem={(item) => (
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0"><Store size={18} /></div>
               <div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div>
-            </div> 
-          )} 
+            </div>
+          )}
         />
 
-        <SelectionModal 
-          isOpen={isDoctorModalOpen} 
-          onClose={() => setIsDoctorModalOpen(false)} 
-          title="Médico Prescritor" 
-          items={medicos} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          enableQuickCreate 
-          onQuickCreate={async (name) => { 
-            const id = await db.medicos.add({ 
-              user_id: user?.id || "", 
-              nome: name, 
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              synced: false 
-            }); 
-            return { id, nome: name }; 
-          }} 
-          onSelect={(item: any) => { 
-            setMedicoId(item.id); 
-            setMedicoNome(item.nome); 
-            setIsDoctorModalOpen(false); 
-          }} 
-          renderItem={(item: any) => ( 
+        <SelectionModal<Medico>
+          isOpen={isDoctorModalOpen}
+          onClose={() => setIsDoctorModalOpen(false)}
+          title="Médico Prescritor"
+          items={medicos}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          enableQuickCreate
+          onQuickCreate={async (name) => {
+            const id = await addMedico({ nome: name });
+            return { id, nome: name } as Medico;
+          }}
+          onSelect={(item) => {
+            setMedicoId(item.id!);
+            setMedicoNome(item.nome);
+            setIsDoctorModalOpen(false);
+          }}
+          renderItem={(item) => (
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0"><Stethoscope size={18} /></div>
               <div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p></div>
-            </div> 
-          )} 
+            </div>
+          )}
         />
 
-        <SelectionModal 
-          isOpen={isEstabelecimentoModalOpen} 
-          onClose={() => setIsEstabelecimentoModalOpen(false)} 
-          title="Selecionar Local" 
-          activeTab={activeEstabelecimentoTab} 
-          onTabChange={setActiveEstabelecimentoTab} 
-          tabs={[ 
-            { id: 'hospital', label: 'Hospitais', activeColor: 'bg-coral text-void border-transparent' }, 
-            { id: 'clinica', label: 'Postos/Clínicas', activeColor: 'bg-emerald-400 text-void border-transparent' } 
-          ]} 
-          items={hospitaisLocais.filter(h => activeEstabelecimentoTab === 'hospital' ? h.tipo === 'hospital' : h.tipo !== 'hospital')} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          enableQuickCreate 
-          onQuickCreate={async (name, tabId) => { 
-            const id = await db.hospitais.add({ 
-              user_id: user?.id || "", 
-              nome: name, 
-              tipo: tabId, 
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              synced: false 
-            }); 
-            return { id, nome: name, tipo: tabId }; 
-          }} 
-          onSelect={(item: any) => { 
-            setEstabelecimentoId(item.id); 
-            setEstabelecimentoNome(item.nome); 
-            setIsEstabelecimentoModalOpen(false); 
-          }} 
-          renderItem={(item: any) => ( 
-            <div className="flex items-center gap-3"> 
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${item.tipo === 'hospital' ? 'bg-coral/10 text-coral' : 'bg-emerald-400/10 text-emerald-400'}`}> 
-                <Building2 size={18} /> 
-              </div> 
-              <div className="text-left"> 
-                <p className="font-semibold text-ink-primary">{item.nome}</p> 
-                <p className="text-xs text-ink-muted uppercase">{item.tipo === 'hospital' ? 'Hospital' : 'Clínica/Posto'}</p> 
-              </div> 
-            </div> 
-          )} 
+        <SelectionModal<Hospital>
+          isOpen={isHospitalModalOpen}
+          onClose={() => setIsHospitalModalOpen(false)}
+          title="Selecionar Hospital"
+          items={hospitais}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          enableQuickCreate
+          onQuickCreate={async (name) => {
+            const id = await addHospital({ nome: name, tipo: "hospital" });
+            return { id, nome: name, tipo: "hospital" } as Hospital;
+          }}
+          onSelect={(item) => {
+            setHospitalId(item.id!);
+            setHospitalNome(item.nome);
+            setIsHospitalModalOpen(false);
+          }}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-coral/10 text-coral shrink-0"><Building2 size={18} /></div>
+              <div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p><p className="text-xs text-ink-muted">Hospital</p></div>
+            </div>
+          )}
         />
 
-        <SeletorTratamentoModal 
-          isOpen={isTratamentoModalOpen} 
-          onClose={() => setIsTratamentoModalOpen(false)} 
-          selectedIds={tratamentosSelecionados} 
-          onChange={setTratamentosSelecionados} 
-          personId={personId} 
+        <SelectionModal<LocalSaude>
+          isOpen={isLocalModalOpen}
+          onClose={() => setIsLocalModalOpen(false)}
+          title="Selecionar Local / Posto"
+          items={locais}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          enableQuickCreate
+          onQuickCreate={async (name) => {
+            const id = await addLocal({ nome: name, tipo: "outro" });
+            return { id, nome: name, tipo: "outro" } as LocalSaude;
+          }}
+          onSelect={(item) => {
+            setLocalId(item.id!);
+            setLocalNome(item.nome);
+            setIsLocalModalOpen(false);
+          }}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400 shrink-0"><MapPin size={18} /></div>
+              <div className="text-left"><p className="font-semibold text-ink-primary">{item.nome}</p><p className="text-xs text-ink-muted">{item.tipo || "Local"}</p></div>
+            </div>
+          )}
+        />
+
+        <SeletorTratamentoModal
+          isOpen={isTratamentoModalOpen}
+          onClose={() => setIsTratamentoModalOpen(false)}
+          selectedIds={tratamentosSelecionados}
+          onChange={setTratamentosSelecionados}
+          personId={personId}
         />
       </main>
     </PageTransition>

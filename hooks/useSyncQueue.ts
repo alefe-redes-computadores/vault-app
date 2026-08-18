@@ -1,13 +1,16 @@
+// hooks/useSyncQueue.ts
 "use client";
 
 import { db } from "@/lib/db";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase/client";
+
 import type {
   Document,
   Vault,
   VaultMember,
   Medico,
+  Farmacia,
   Hospital,
   DoseLog,
   Credential,
@@ -16,58 +19,74 @@ import type {
   Tratamento,
   Consulta,
   Cirurgia,
-  Laboratorio,
   Exame,
+  Cid,
+  Medicamento,
+  Renovacao,
+  Person,
   InstituicaoEnsino,
+  SyncQueueItem,
 } from "@/lib/types";
 
 const MAX_RETRIES = 5;
 const MAX_BACKOFF_MS = 60000;
+
+type SyncLogType = "info" | "success" | "error";
+
+interface SyncLog {
+  time: string;
+  message: string;
+  type: SyncLogType;
+}
+
+interface AnexoClinico {
+  id?: string;
+  user_id?: string;
+  person_id?: string;
+  tratamento_id?: string;
+  medicamento_id?: string;
+  tipo?: string;
+  url?: string;
+  thumbnail_url?: string;
+  tags?: string[];
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
+}
 
 export function useSyncQueue() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== "undefined" ? navigator.onLine : false
   );
-
-  const [syncLogs, setSyncLogs] = useState<
-    {
-      time: string;
-      message: string;
-      type: "info" | "success" | "error";
-    }[]
-  >([]);
+  const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
 
   const processingRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const addLog = useCallback(
-    (
-      message: string,
-      type: "info" | "success" | "error" = "info"
-    ) => {
-      const time = new Date().toLocaleTimeString();
+  // ============================================================
+  // LOGS
+  // ============================================================
 
-      setSyncLogs((prev) => {
-        const newLogs = [{ time, message, type }, ...prev];
-        return newLogs.slice(0, 50);
-      });
-    },
-    []
-  );
+  const addLog = useCallback((message: string, type: SyncLogType = "info") => {
+    const time = new Date().toLocaleTimeString();
+    setSyncLogs((prev) => {
+      const next = [{ time, message, type }, ...prev];
+      return next.slice(0, 50);
+    });
+  }, []);
 
   const clearLogs = useCallback(() => {
     setSyncLogs([]);
   }, []);
 
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-    };
+  // ============================================================
+  // ONLINE / OFFLINE
+  // ============================================================
 
-    const handleOffline = () => {
-      setIsOnline(false);
-    };
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -75,7 +94,6 @@ export function useSyncQueue() {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
@@ -83,18 +101,14 @@ export function useSyncQueue() {
     };
   }, []);
 
-  /**
-   * Garante que o cliente Supabase está disponível.
-   *
-   * É importante não simplesmente retornar quando o Supabase
-   * não estiver disponível, pois o processQueue poderia interpretar
-   * a função como concluída e remover o item da fila.
-   */
+  // ============================================================
+  // SUPABASE
+  // ============================================================
+
   const requireSupabase = () => {
     if (!supabase) {
       throw new Error("Cliente Supabase indisponível");
     }
-
     return supabase;
   };
 
@@ -102,9 +116,9 @@ export function useSyncQueue() {
   // PERSONS
   // ============================================================
 
-  const syncPerson = async (item: any) => {
+  const syncPerson = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const person = item.payload as any;
+    const person = item.payload as unknown as Person;
 
     switch (item.operation) {
       case "add": {
@@ -116,19 +130,16 @@ export function useSyncQueue() {
             email: person.email || null,
             phone: person.phone || null,
             avatar_url: person.avatar_url || null,
+            color: person.color || "#60A5FA",
+            is_default: person.isDefault || false,
             created_at: person.created_at,
             updated_at: person.updated_at,
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Persons insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Persons insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("persons")
@@ -137,30 +148,20 @@ export function useSyncQueue() {
             email: person.email || null,
             phone: person.phone || null,
             avatar_url: person.avatar_url || null,
+            color: person.color || "#60A5FA",
+            is_default: person.isDefault || false,
             updated_at: person.updated_at,
           })
           .eq("id", person.id);
-
-        if (error) {
-          throw new Error(`Persons update error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Persons update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("persons")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Persons delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("persons").delete().eq("id", payload.id);
+        if (error) throw new Error(`Persons delete error: ${error.message}`);
         break;
       }
-
       default:
         throw new Error(`Operação não suportada em persons: ${item.operation}`);
     }
@@ -174,9 +175,9 @@ export function useSyncQueue() {
   // MÉDICOS
   // ============================================================
 
-  const syncMedico = async (item: any) => {
+  const syncMedico = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const medico = item.payload as Medico;
+    const medico = item.payload as unknown as Medico;
 
     switch (item.operation) {
       case "add": {
@@ -189,19 +190,15 @@ export function useSyncQueue() {
             crm: medico.crm || null,
             telefone: medico.telefone || null,
             email: medico.email || null,
+            observacoes: medico.observacoes || null,
             created_at: medico.created_at,
             updated_at: medico.updated_at,
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Medicos insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Medicos insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("medicos")
@@ -211,30 +208,19 @@ export function useSyncQueue() {
             crm: medico.crm || null,
             telefone: medico.telefone || null,
             email: medico.email || null,
+            observacoes: medico.observacoes || null,
             updated_at: medico.updated_at,
           })
           .eq("id", medico.id);
-
-        if (error) {
-          throw new Error(`Medicos update error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Medicos update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("medicos")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Medicos delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("medicos").delete().eq("id", payload.id);
+        if (error) throw new Error(`Medicos delete error: ${error.message}`);
         break;
       }
-
       default:
         throw new Error(`Operação não suportada em medicos: ${item.operation}`);
     }
@@ -245,12 +231,67 @@ export function useSyncQueue() {
   };
 
   // ============================================================
+  // FARMÁCIAS
+  // ============================================================
+
+  const syncFarmacia = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const farmacia = item.payload as unknown as Farmacia;
+
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("farmacias").upsert(
+          {
+            id: farmacia.id,
+            user_id: farmacia.user_id,
+            nome: farmacia.nome,
+            endereco: farmacia.endereco || null,
+            telefone: farmacia.telefone || null,
+            observacoes: farmacia.observacoes || null,
+            created_at: farmacia.created_at,
+            updated_at: farmacia.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Farmacias insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("farmacias")
+          .update({
+            nome: farmacia.nome,
+            endereco: farmacia.endereco || null,
+            telefone: farmacia.telefone || null,
+            observacoes: farmacia.observacoes || null,
+            updated_at: farmacia.updated_at,
+          })
+          .eq("id", farmacia.id);
+        if (error) throw new Error(`Farmacias update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("farmacias").delete().eq("id", payload.id);
+        if (error) throw new Error(`Farmacias delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em farmacias: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && farmacia.id) {
+      await db.farmacias.update(farmacia.id, { synced: true });
+    }
+  };
+
+  // ============================================================
   // HOSPITAIS
   // ============================================================
 
-  const syncHospital = async (item: any) => {
+  const syncHospital = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const hospital = item.payload as Hospital;
+    const hospital = item.payload as unknown as Hospital;
 
     switch (item.operation) {
       case "add": {
@@ -261,19 +302,16 @@ export function useSyncQueue() {
             nome: hospital.nome,
             endereco: hospital.endereco || null,
             telefone: hospital.telefone || null,
+            tipo: hospital.tipo || null,
+            observacoes: hospital.observacoes || null,
             created_at: hospital.created_at,
             updated_at: hospital.updated_at,
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Hospitais insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Hospitais insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("hospitais")
@@ -281,34 +319,22 @@ export function useSyncQueue() {
             nome: hospital.nome,
             endereco: hospital.endereco || null,
             telefone: hospital.telefone || null,
+            tipo: hospital.tipo || null,
+            observacoes: hospital.observacoes || null,
             updated_at: hospital.updated_at,
           })
           .eq("id", hospital.id);
-
-        if (error) {
-          throw new Error(`Hospitais update error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Hospitais update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("hospitais")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Hospitais delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("hospitais").delete().eq("id", payload.id);
+        if (error) throw new Error(`Hospitais delete error: ${error.message}`);
         break;
       }
-
       default:
-        throw new Error(
-          `Operação não suportada em hospitais: ${item.operation}`
-        );
+        throw new Error(`Operação não suportada em hospitais: ${item.operation}`);
     }
 
     if (item.operation !== "delete" && hospital.id) {
@@ -317,12 +343,12 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // LOCAIS
+  // LOCAIS DE SAÚDE
   // ============================================================
 
-  const syncLocal = async (item: any) => {
+  const syncLocal = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const local = item.payload as LocalSaude;
+    const local = item.payload as unknown as LocalSaude;
 
     switch (item.operation) {
       case "add": {
@@ -334,19 +360,15 @@ export function useSyncQueue() {
             endereco: local.endereco || null,
             telefone: local.telefone || null,
             tipo: local.tipo || null,
+            observacoes: local.observacoes || null,
             created_at: local.created_at,
             updated_at: local.updated_at,
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Locais insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Locais insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("locais")
@@ -355,30 +377,19 @@ export function useSyncQueue() {
             endereco: local.endereco || null,
             telefone: local.telefone || null,
             tipo: local.tipo || null,
+            observacoes: local.observacoes || null,
             updated_at: local.updated_at,
           })
           .eq("id", local.id);
-
-        if (error) {
-          throw new Error(`Locais update error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Locais update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("locais")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Locais delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("locais").delete().eq("id", payload.id);
+        if (error) throw new Error(`Locais delete error: ${error.message}`);
         break;
       }
-
       default:
         throw new Error(`Operação não suportada em locais: ${item.operation}`);
     }
@@ -389,144 +400,118 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // LABORATÓRIOS
+  // INSTITUIÇÕES DE ENSINO
   // ============================================================
 
-  const syncLaboratorio = async (item: any) => {
+  const syncInstituicao = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const lab = item.payload as Laboratorio;
-
-    switch (item.operation) {
-      case "add": {
-        const { error } = await client.from("laboratorios").upsert(
-          {
-            id: lab.id,
-            user_id: lab.user_id,
-            nome: lab.nome,
-            endereco: lab.endereco || null,
-            telefone: lab.telefone || null,
-            created_at: lab.created_at,
-            updated_at: lab.updated_at,
-          },
-          { onConflict: "id" }
-        );
-
-        if (error) {
-          throw new Error(`Laboratorios insert error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "update": {
-        const { error } = await client
-          .from("laboratorios")
-          .update({
-            nome: lab.nome,
-            endereco: lab.endereco || null,
-            telefone: lab.telefone || null,
-            updated_at: lab.updated_at,
-          })
-          .eq("id", lab.id);
-
-        if (error) {
-          throw new Error(`Laboratorios update error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "delete": {
-        const { error } = await client
-          .from("laboratorios")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Laboratorios delete error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      default:
-        throw new Error(
-          `Operação não suportada em laboratorios: ${item.operation}`
-        );
-    }
-
-    if (item.operation !== "delete" && lab.id) {
-      await db.laboratorios.update(lab.id, { synced: true });
-    }
-  };
-
-  // ============================================================
-  // INSTITUIÇÕES
-  // ============================================================
-
-  const syncInstituicao = async (item: any) => {
-    const client = requireSupabase();
-    const inst = item.payload as InstituicaoEnsino;
+    const instituicao = item.payload as unknown as InstituicaoEnsino;
 
     switch (item.operation) {
       case "add": {
         const { error } = await client.from("instituicoes").upsert(
           {
-            id: inst.id,
-            user_id: inst.user_id,
-            nome: inst.nome,
-            cnpj: inst.cnpj || null,
-            created_at: inst.created_at,
-            updated_at: inst.updated_at,
+            id: instituicao.id,
+            user_id: instituicao.user_id,
+            nome: instituicao.nome,
+            cnpj: instituicao.cnpj || null,
+            created_at: instituicao.created_at,
+            updated_at: instituicao.updated_at,
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Instituicoes insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Instituicoes insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("instituicoes")
           .update({
-            nome: inst.nome,
-            cnpj: inst.cnpj || null,
-            updated_at: inst.updated_at,
+            nome: instituicao.nome,
+            cnpj: instituicao.cnpj || null,
+            updated_at: instituicao.updated_at,
           })
-          .eq("id", inst.id);
-
-        if (error) {
-          throw new Error(`Instituicoes update error: ${error.message}`);
-        }
-
+          .eq("id", instituicao.id);
+        if (error) throw new Error(`Instituicoes update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("instituicoes")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Instituicoes delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("instituicoes").delete().eq("id", payload.id);
+        if (error) throw new Error(`Instituicoes delete error: ${error.message}`);
         break;
       }
-
       default:
-        throw new Error(
-          `Operação não suportada em instituicoes: ${item.operation}`
-        );
+        throw new Error(`Operação não suportada em instituicoes: ${item.operation}`);
     }
 
-    if (item.operation !== "delete" && inst.id) {
-      await db.instituicoes.update(inst.id, { synced: true });
+    if (item.operation !== "delete" && instituicao.id) {
+      await db.instituicoes.update(instituicao.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // CIDs
+  // ============================================================
+
+  const syncCid = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const cid = item.payload as unknown as Cid;
+
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("cids").upsert(
+          {
+            id: cid.id,
+            user_id: cid.user_id,
+            codigo: cid.codigo,
+            descricao: cid.descricao,
+            person_id: cid.person_id || null,
+            data_diagnostico: cid.data_diagnostico || null,
+            medico_id: cid.medico_id || null,
+            hospital_id: cid.hospital_id || null,
+            local_id: cid.local_id || null,
+            observacoes: cid.observacoes || null,
+            anexo_url: cid.anexo_url || null,
+            created_at: cid.created_at,
+            updated_at: cid.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Cids insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("cids")
+          .update({
+            codigo: cid.codigo,
+            descricao: cid.descricao,
+            person_id: cid.person_id || null,
+            data_diagnostico: cid.data_diagnostico || null,
+            medico_id: cid.medico_id || null,
+            hospital_id: cid.hospital_id || null,
+            local_id: cid.local_id || null,
+            observacoes: cid.observacoes || null,
+            anexo_url: cid.anexo_url || null,
+            updated_at: cid.updated_at,
+          })
+          .eq("id", cid.id);
+        if (error) throw new Error(`Cids update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("cids").delete().eq("id", payload.id);
+        if (error) throw new Error(`Cids delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em cids: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && cid.id) {
+      await db.cids.update(cid.id, { synced: true });
     }
   };
 
@@ -534,395 +519,57 @@ export function useSyncQueue() {
   // TRATAMENTOS
   // ============================================================
 
-  const syncTratamento = async (item: any) => {
+  const syncTratamento = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const trat = item.payload as Tratamento;
+    const tratamento = item.payload as unknown as Tratamento;
 
     switch (item.operation) {
       case "add": {
         const { error } = await client.from("tratamentos").upsert(
           {
-            id: trat.id,
-            user_id: trat.user_id,
-            person_id: trat.person_id || null,
-            nome: trat.nome,
-            cid_id: trat.cid_id || null,
-            condicao: trat.condicao || null,
-            status: trat.status,
-            created_at: trat.created_at,
-            updated_at: trat.updated_at,
+            id: tratamento.id,
+            user_id: tratamento.user_id,
+            person_id: tratamento.person_id || null,
+            nome: tratamento.nome,
+            status: tratamento.status,
+            cor: tratamento.cor || "#8B5CF6",
+            observacoes: tratamento.observacoes || null,
+            created_at: tratamento.created_at,
+            updated_at: tratamento.updated_at,
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Tratamentos insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Tratamentos insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("tratamentos")
           .update({
-            nome: trat.nome,
-            cid_id: trat.cid_id || null,
-            condicao: trat.condicao || null,
-            status: trat.status,
-            updated_at: trat.updated_at,
+            person_id: tratamento.person_id || null,
+            nome: tratamento.nome,
+            status: tratamento.status,
+            cor: tratamento.cor || "#8B5CF6",
+            observacoes: tratamento.observacoes || null,
+            updated_at: tratamento.updated_at,
           })
-          .eq("id", trat.id);
-
-        if (error) {
-          throw new Error(`Tratamentos update error: ${error.message}`);
-        }
-
+          .eq("id", tratamento.id);
+        if (error) throw new Error(`Tratamentos update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("tratamentos")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Tratamentos delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("tratamentos").delete().eq("id", payload.id);
+        if (error) throw new Error(`Tratamentos delete error: ${error.message}`);
         break;
       }
-
       default:
-        throw new Error(
-          `Operação não suportada em tratamentos: ${item.operation}`
-        );
+        throw new Error(`Operação não suportada em tratamentos: ${item.operation}`);
     }
 
-    if (item.operation !== "delete" && trat.id) {
-      await db.tratamentos.update(trat.id, { synced: true });
-    }
-  };
-
-  // ============================================================
-  // CONSULTAS
-  // ============================================================
-
-  const syncConsulta = async (item: any) => {
-    const client = requireSupabase();
-    const con = item.payload as Consulta;
-
-    switch (item.operation) {
-      case "add": {
-        const { error } = await client.from("consultas").upsert(
-          {
-            id: con.id,
-            user_id: con.user_id,
-            person_id: con.person_id || null,
-            medico_id: con.medico_id || null,
-            hospital_id: con.hospital_id || null,
-            data: con.data,
-            status: con.status,
-            motivo: con.motivo || null,
-            observacoes: con.observacoes || null,
-            created_at: con.created_at,
-            updated_at: con.updated_at,
-          },
-          { onConflict: "id" }
-        );
-
-        if (error) {
-          throw new Error(`Consultas insert error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "update": {
-        const { error } = await client
-          .from("consultas")
-          .update({
-            medico_id: con.medico_id || null,
-            hospital_id: con.hospital_id || null,
-            data: con.data,
-            status: con.status,
-            motivo: con.motivo || null,
-            observacoes: con.observacoes || null,
-            updated_at: con.updated_at,
-          })
-          .eq("id", con.id);
-
-        if (error) {
-          throw new Error(`Consultas update error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "delete": {
-        const { error } = await client
-          .from("consultas")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Consultas delete error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      default:
-        throw new Error(
-          `Operação não suportada em consultas: ${item.operation}`
-        );
-    }
-
-    if (item.operation !== "delete" && con.id) {
-      await db.consultas.update(con.id, { synced: true });
-    }
-  };
-
-  // ============================================================
-  // CIRURGIAS
-  // ============================================================
-
-  const syncCirurgia = async (item: any) => {
-    const client = requireSupabase();
-    const cir = item.payload as Cirurgia;
-
-    switch (item.operation) {
-      case "add": {
-        const { error } = await client.from("cirurgias").upsert(
-          {
-            id: cir.id,
-            user_id: cir.user_id,
-            person_id: cir.person_id || null,
-            medico_id: cir.medico_id || null,
-            hospital_id: cir.hospital_id || null,
-            data: cir.data,
-            status: cir.status,
-            procedimento: cir.procedimento,
-            observacoes: cir.observacoes || null,
-            created_at: cir.created_at,
-            updated_at: cir.updated_at,
-          },
-          { onConflict: "id" }
-        );
-
-        if (error) {
-          throw new Error(`Cirurgias insert error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "update": {
-        const { error } = await client
-          .from("cirurgias")
-          .update({
-            medico_id: cir.medico_id || null,
-            hospital_id: cir.hospital_id || null,
-            data: cir.data,
-            status: cir.status,
-            procedimento: cir.procedimento,
-            observacoes: cir.observacoes || null,
-            updated_at: cir.updated_at,
-          })
-          .eq("id", cir.id);
-
-        if (error) {
-          throw new Error(`Cirurgias update error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "delete": {
-        const { error } = await client
-          .from("cirurgias")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Cirurgias delete error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      default:
-        throw new Error(
-          `Operação não suportada em cirurgias: ${item.operation}`
-        );
-    }
-
-    if (item.operation !== "delete" && cir.id) {
-      await db.cirurgias.update(cir.id, { synced: true });
-    }
-  };
-
-  // ============================================================
-  // EXAMES
-  // ============================================================
-
-  const syncExame = async (item: any) => {
-    const client = requireSupabase();
-    const exame = item.payload as Exame;
-
-    switch (item.operation) {
-      case "add": {
-        const { error } = await client.from("exames").upsert(
-          {
-            id: exame.id,
-            user_id: exame.user_id,
-            person_id: exame.person_id || null,
-            nome: exame.nome,
-            laboratorio_id: exame.laboratorio_id || null,
-            medico_id: exame.medico_id || null,
-            data: exame.data,
-            data_retorno: exame.data_retorno || null,
-            motivo: exame.motivo || null,
-            observacoes: exame.observacoes || null,
-            anexo_url: exame.anexo_url || null,
-            created_at: exame.created_at,
-            updated_at: exame.updated_at,
-          },
-          { onConflict: "id" }
-        );
-
-        if (error) {
-          throw new Error(`Exames insert error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "update": {
-        const { error } = await client
-          .from("exames")
-          .update({
-            nome: exame.nome,
-            laboratorio_id: exame.laboratorio_id || null,
-            medico_id: exame.medico_id || null,
-            data: exame.data,
-            data_retorno: exame.data_retorno || null,
-            motivo: exame.motivo || null,
-            observacoes: exame.observacoes || null,
-            anexo_url: exame.anexo_url || null,
-            updated_at: exame.updated_at,
-          })
-          .eq("id", exame.id);
-
-        if (error) {
-          throw new Error(`Exames update error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "delete": {
-        const { error } = await client
-          .from("exames")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Exames delete error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      default:
-        throw new Error(
-          `Operação não suportada em exames: ${item.operation}`
-        );
-    }
-
-    if (item.operation !== "delete" && exame.id) {
-      await db.exames.update(exame.id, { synced: true });
-    }
-  };
-
-  // ============================================================
-  // ANEXOS CLÍNICOS
-  // ============================================================
-
-  const syncAnexoClinico = async (item: any) => {
-    const client = requireSupabase();
-    const anexo = item.payload as any;
-
-    switch (item.operation) {
-      case "add": {
-        const { error } = await client.from("anexos_clinicos").upsert(
-          {
-            id: anexo.id,
-            user_id: anexo.user_id,
-            person_id: anexo.person_id || null,
-            tratamento_id: anexo.tratamento_id || null,
-            medicamento_id: anexo.medicamento_id || null,
-            tipo: anexo.tipo,
-            url: anexo.url,
-            thumbnail_url: anexo.thumbnail_url || null,
-            tags: anexo.tags || [],
-            created_at: anexo.created_at,
-            updated_at: anexo.updated_at,
-          },
-          { onConflict: "id" }
-        );
-
-        if (error) {
-          throw new Error(`Anexos clinicos insert error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "update": {
-        const { error } = await client
-          .from("anexos_clinicos")
-          .update({
-            person_id: anexo.person_id || null,
-            tratamento_id: anexo.tratamento_id || null,
-            medicamento_id: anexo.medicamento_id || null,
-            tipo: anexo.tipo,
-            url: anexo.url,
-            thumbnail_url: anexo.thumbnail_url || null,
-            tags: anexo.tags || [],
-            updated_at: anexo.updated_at,
-          })
-          .eq("id", anexo.id);
-
-        if (error) {
-          throw new Error(`Anexos clinicos update error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "delete": {
-        const { error } = await client
-          .from("anexos_clinicos")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Anexos clinicos delete error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      default:
-        throw new Error(
-          `Operação não suportada em anexos_clinicos: ${item.operation}`
-        );
-    }
-
-    if (item.operation !== "delete" && anexo.id) {
-      await db.anexos_clinicos.update(anexo.id, { synced: true });
+    if (item.operation !== "delete" && tratamento.id) {
+      await syncTratamentoCids(tratamento.id, tratamento.cid_ids || []);
+      await db.tratamentos.update(tratamento.id, { synced: true });
     }
   };
 
@@ -930,233 +577,117 @@ export function useSyncQueue() {
   // MEDICAMENTOS
   // ============================================================
 
-  const syncMedicamento = async (item: any) => {
+  const syncMedicamento = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const med = item.payload as any;
+    const med = item.payload as unknown as Medicamento;
 
     switch (item.operation) {
       case "add": {
         const { error } = await client.from("medicamentos").upsert(
           {
             id: med.id,
-            document_id: med.document_id || null,
             user_id: med.user_id,
+            person_id: med.person_id || null,
+            document_id: med.document_id || null,
+            medico_id: med.medico_id || null,
+            farmacia_id: med.farmacia_id || null,
+            hospital_id: med.hospital_id || null,
+            local_id: med.local_id || null,
             nome: med.nome,
             dosagem: med.dosagem,
-            medico: med.medico,
+            medico: med.medico || "",
             farmacia: med.farmacia || null,
             data_receita: med.data_receita,
             proxima_renovacao: med.proxima_renovacao,
             observacoes: med.observacoes || null,
             tipo_receita: med.tipo_receita || "comum",
+            tipo_uso: med.tipo_uso || "continuo",
+            forma_farmaceutica: med.forma_farmaceutica || null,
+            cor_principal: med.cor_principal || null,
+            cor_secundaria: med.cor_secundaria || null,
+            status: med.status || "ativo",
+            estoque_quantidade: med.estoque_quantidade || 0,
+            estoque_data_referencia: med.estoque_data_referencia || null,
+            estoque_horarios: med.estoque_horarios || [],
+            estoque_unidade_por_dose: med.estoque_unidade_por_dose || null,
+            estoque_unidade_medida: med.estoque_unidade_medida || null,
+            estoque_ml_total: med.estoque_ml_total || null,
+            estoque_gotas_por_ml: med.estoque_gotas_por_ml || null,
+            formato: med.formato || null,
+            cores: med.cores || [],
+            preco: med.preco || null,
+            motivo_descontinuacao: med.motivo_descontinuacao || null,
+            medico_descontinuacao_id: med.medico_descontinuacao_id || null,
+            medico_descontinuacao_nome: med.medico_descontinuacao_nome || null,
+            substituido_por_id: med.substituido_por_id || null,
+            data_descontinuacao: med.data_descontinuacao || null,
+            historico_dosagens: med.historico_dosagens || [],
             created_at: med.created_at,
             updated_at: med.updated_at,
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Medicamentos insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Medicamentos insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("medicamentos")
           .update({
+            person_id: med.person_id || null,
             document_id: med.document_id || null,
+            medico_id: med.medico_id || null,
+            farmacia_id: med.farmacia_id || null,
+            hospital_id: med.hospital_id || null,
+            local_id: med.local_id || null,
             nome: med.nome,
             dosagem: med.dosagem,
-            medico: med.medico,
+            medico: med.medico || "",
             farmacia: med.farmacia || null,
             data_receita: med.data_receita,
             proxima_renovacao: med.proxima_renovacao,
             observacoes: med.observacoes || null,
             tipo_receita: med.tipo_receita || "comum",
+            tipo_uso: med.tipo_uso || "continuo",
+            forma_farmaceutica: med.forma_farmaceutica || null,
+            cor_principal: med.cor_principal || null,
+            cor_secundaria: med.cor_secundaria || null,
+            status: med.status || "ativo",
+            estoque_quantidade: med.estoque_quantidade || 0,
+            estoque_data_referencia: med.estoque_data_referencia || null,
+            estoque_horarios: med.estoque_horarios || [],
+            estoque_unidade_por_dose: med.estoque_unidade_por_dose || null,
+            estoque_unidade_medida: med.estoque_unidade_medida || null,
+            estoque_ml_total: med.estoque_ml_total || null,
+            estoque_gotas_por_ml: med.estoque_gotas_por_ml || null,
+            formato: med.formato || null,
+            cores: med.cores || [],
+            preco: med.preco || null,
+            motivo_descontinuacao: med.motivo_descontinuacao || null,
+            medico_descontinuacao_id: med.medico_descontinuacao_id || null,
+            medico_descontinuacao_nome: med.medico_descontinuacao_nome || null,
+            substituido_por_id: med.substituido_por_id || null,
+            data_descontinuacao: med.data_descontinuacao || null,
+            historico_dosagens: med.historico_dosagens || [],
             updated_at: med.updated_at,
           })
           .eq("id", med.id);
-
-        if (error) {
-          throw new Error(`Medicamentos update error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Medicamentos update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("medicamentos")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Medicamentos delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("medicamentos").delete().eq("id", payload.id);
+        if (error) throw new Error(`Medicamentos delete error: ${error.message}`);
         break;
       }
-
       default:
-        throw new Error(
-          `Operação não suportada em medicamentos: ${item.operation}`
-        );
+        throw new Error(`Operação não suportada em medicamentos: ${item.operation}`);
     }
 
     if (item.operation !== "delete" && med.id) {
+      await syncMedicamentoTratamentos(med.id, med.tratamento_ids || []);
       await db.medicamentos.update(med.id, { synced: true });
-    }
-  };
-
-  // ============================================================
-  // RENOVAÇÕES
-  // ============================================================
-
-  const syncRenovacao = async (item: any) => {
-    const client = requireSupabase();
-    const ren = item.payload as any;
-
-    switch (item.operation) {
-      case "add": {
-        const { error } = await client.from("renovacoes").upsert(
-          {
-            id: ren.id,
-            medicamento_id: ren.medicamento_id,
-            user_id: ren.user_id,
-            data: ren.data,
-            anexo_url: ren.anexo_url || null,
-            observacoes: ren.observacoes || null,
-            created_at: ren.created_at,
-            updated_at: ren.updated_at,
-          },
-          { onConflict: "id" }
-        );
-
-        if (error) {
-          throw new Error(`Renovacoes insert error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "update": {
-        const { error } = await client
-          .from("renovacoes")
-          .update({
-            medicamento_id: ren.medicamento_id,
-            data: ren.data,
-            anexo_url: ren.anexo_url || null,
-            observacoes: ren.observacoes || null,
-            updated_at: ren.updated_at,
-          })
-          .eq("id", ren.id);
-
-        if (error) {
-          throw new Error(`Renovacoes update error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "delete": {
-        const { error } = await client
-          .from("renovacoes")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Renovacoes delete error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      default:
-        throw new Error(
-          `Operação não suportada em renovacoes: ${item.operation}`
-        );
-    }
-
-    if (item.operation !== "delete" && ren.id) {
-      await db.renovacoes.update(ren.id, { synced: true });
-    }
-  };
-
-  // ============================================================
-  // DOSE LOGS
-  //
-  // CORREÇÃO PRINCIPAL:
-  // ignorado_em é enviado tanto no INSERT quanto no UPDATE.
-  // ============================================================
-
-  const syncDoseLog = async (item: any) => {
-    const client = requireSupabase();
-    const log = item.payload as DoseLog;
-
-    switch (item.operation) {
-      case "add": {
-        const { error } = await client.from("dose_logs").upsert(
-          {
-            id: log.id,
-            user_id: log.user_id,
-            medicamento_id: log.medicamento_id,
-            data: log.data,
-            horario: log.horario,
-            tomado_em: log.tomado_em || null,
-            ignorado_em: log.ignorado_em || null,
-            created_at: log.created_at,
-            updated_at: log.updated_at,
-          },
-          { onConflict: "id" }
-        );
-
-        if (error) {
-          throw new Error(`Dose_logs insert error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "update": {
-        const { error } = await client
-          .from("dose_logs")
-          .update({
-            tomado_em: log.tomado_em || null,
-            ignorado_em: log.ignorado_em || null,
-            updated_at: log.updated_at,
-          })
-          .eq("id", log.id);
-
-        if (error) {
-          throw new Error(`Dose_logs update error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "delete": {
-        const { error } = await client
-          .from("dose_logs")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Dose_logs delete error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      default:
-        throw new Error(
-          `Operação não suportada em doseLogs: ${item.operation}`
-        );
-    }
-
-    if (item.operation !== "delete" && log.id) {
-      await db.doseLogs.update(log.id, { synced: true });
     }
   };
 
@@ -1164,9 +695,9 @@ export function useSyncQueue() {
   // DOCUMENTOS
   // ============================================================
 
-  const syncDocument = async (item: any) => {
+  const syncDocument = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const doc = item.payload as Document;
+    const doc = item.payload as unknown as Document;
 
     switch (item.operation) {
       case "add": {
@@ -1178,24 +709,21 @@ export function useSyncQueue() {
             category_id: doc.category_id,
             type: doc.type,
             title: doc.title,
-            description: doc.description,
-            metadata: doc.metadata,
-            attachments: doc.attachments,
+            description: doc.description || null,
+            metadata: doc.metadata || {},
+            attachments: doc.attachments || [],
             is_favorite: doc.is_favorite,
             vault_id: doc.vault_id || null,
+            hospital_id: doc.hospital_id || null,
+            medico_id: doc.medico_id || null,
             created_at: doc.created_at,
             updated_at: doc.updated_at,
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Documents insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Documents insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("documents")
@@ -1204,39 +732,27 @@ export function useSyncQueue() {
             category_id: doc.category_id,
             type: doc.type,
             title: doc.title,
-            description: doc.description,
-            metadata: doc.metadata,
-            attachments: doc.attachments,
+            description: doc.description || null,
+            metadata: doc.metadata || {},
+            attachments: doc.attachments || [],
             is_favorite: doc.is_favorite,
             vault_id: doc.vault_id || null,
+            hospital_id: doc.hospital_id || null,
+            medico_id: doc.medico_id || null,
             updated_at: doc.updated_at,
           })
           .eq("id", doc.id);
-
-        if (error) {
-          throw new Error(`Documents update error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Documents update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("documents")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Documents delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("documents").delete().eq("id", payload.id);
+        if (error) throw new Error(`Documents delete error: ${error.message}`);
         break;
       }
-
       default:
-        throw new Error(
-          `Operação não suportada em documents: ${item.operation}`
-        );
+        throw new Error(`Operação não suportada em documents: ${item.operation}`);
     }
 
     if (item.operation !== "delete" && doc.id) {
@@ -1245,12 +761,410 @@ export function useSyncQueue() {
   };
 
   // ============================================================
+  // EXAMES
+  // ============================================================
+
+  const syncExame = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const exame = item.payload as unknown as Exame;
+
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("exames").upsert(
+          {
+            id: exame.id,
+            user_id: exame.user_id || null,
+            person_id: exame.person_id || null,
+            document_id: exame.document_id || null,
+            medico_id: exame.medico_id || null,
+            local_id: exame.local_id || null,
+            laboratorio: exame.laboratorio || null,
+            medico: exame.medico || null,
+            nome: exame.nome,
+            data: exame.data,
+            data_retorno: exame.data_retorno || null,
+            motivo: exame.motivo || null,
+            observacoes: exame.observacoes || null,
+            anexo_url: exame.anexo_url || null,
+            created_at: exame.created_at,
+            updated_at: exame.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Exames insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("exames")
+          .update({
+            person_id: exame.person_id || null,
+            document_id: exame.document_id || null,
+            medico_id: exame.medico_id || null,
+            local_id: exame.local_id || null,
+            laboratorio: exame.laboratorio || null,
+            medico: exame.medico || null,
+            nome: exame.nome,
+            data: exame.data,
+            data_retorno: exame.data_retorno || null,
+            motivo: exame.motivo || null,
+            observacoes: exame.observacoes || null,
+            anexo_url: exame.anexo_url || null,
+            updated_at: exame.updated_at,
+          })
+          .eq("id", exame.id);
+        if (error) throw new Error(`Exames update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("exames").delete().eq("id", payload.id);
+        if (error) throw new Error(`Exames delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em exames: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && exame.id) {
+      await syncExameTratamentos(exame.id, exame.tratamento_ids || []);
+      await db.exames.update(exame.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // CONSULTAS
+  // ============================================================
+
+  const syncConsulta = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const consulta = item.payload as unknown as Consulta;
+
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("consultas").upsert(
+          {
+            id: consulta.id,
+            user_id: consulta.user_id,
+            person_id: consulta.person_id || null,
+            medico_id: consulta.medico_id || null,
+            hospital_id: consulta.hospital_id || null,
+            document_id: consulta.document_id || null,
+            especialidade: consulta.especialidade,
+            medico: consulta.medico || "",
+            data: consulta.data,
+            horario: consulta.horario || null,
+            status: consulta.status,
+            motivo: consulta.motivo || null,
+            observacoes: consulta.observacoes || null,
+            created_at: consulta.created_at,
+            updated_at: consulta.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Consultas insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("consultas")
+          .update({
+            person_id: consulta.person_id || null,
+            medico_id: consulta.medico_id || null,
+            hospital_id: consulta.hospital_id || null,
+            document_id: consulta.document_id || null,
+            especialidade: consulta.especialidade,
+            medico: consulta.medico || "",
+            data: consulta.data,
+            horario: consulta.horario || null,
+            status: consulta.status,
+            motivo: consulta.motivo || null,
+            observacoes: consulta.observacoes || null,
+            updated_at: consulta.updated_at,
+          })
+          .eq("id", consulta.id);
+        if (error) throw new Error(`Consultas update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("consultas").delete().eq("id", payload.id);
+        if (error) throw new Error(`Consultas delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em consultas: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && consulta.id) {
+      await db.consultas.update(consulta.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // CIRURGIAS
+  // ============================================================
+
+  const syncCirurgia = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const cirurgia = item.payload as unknown as Cirurgia;
+
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("cirurgias").upsert(
+          {
+            id: cirurgia.id,
+            user_id: cirurgia.user_id,
+            person_id: cirurgia.person_id || null,
+            procedimento: cirurgia.procedimento,
+            data: cirurgia.data,
+            medico_id: cirurgia.medico_id || null,
+            hospital_id: cirurgia.hospital_id || null,
+            document_id: cirurgia.document_id || null,
+            status: cirurgia.status,
+            observacoes: cirurgia.observacoes || null,
+            created_at: cirurgia.created_at,
+            updated_at: cirurgia.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Cirurgias insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("cirurgias")
+          .update({
+            person_id: cirurgia.person_id || null,
+            procedimento: cirurgia.procedimento,
+            data: cirurgia.data,
+            medico_id: cirurgia.medico_id || null,
+            hospital_id: cirurgia.hospital_id || null,
+            document_id: cirurgia.document_id || null,
+            status: cirurgia.status,
+            observacoes: cirurgia.observacoes || null,
+            updated_at: cirurgia.updated_at,
+          })
+          .eq("id", cirurgia.id);
+        if (error) throw new Error(`Cirurgias update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("cirurgias").delete().eq("id", payload.id);
+        if (error) throw new Error(`Cirurgias delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em cirurgias: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && cirurgia.id) {
+      await db.cirurgias.update(cirurgia.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // RENOVAÇÕES
+  // ============================================================
+
+  const syncRenovacao = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const renovacao = item.payload as unknown as Renovacao;
+
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("renovacoes").upsert(
+          {
+            id: renovacao.id,
+            user_id: renovacao.user_id,
+            person_id: renovacao.person_id || null,
+            medicamento_id: renovacao.medicamento_id,
+            medico_id: renovacao.medico_id || null,
+            farmacia_id: renovacao.farmacia_id || null,
+            hospital_id: renovacao.hospital_id || null,
+            local_id: renovacao.local_id || null,
+            document_id: renovacao.document_id || null,
+            quantidade: renovacao.quantidade || null,
+            preco: renovacao.preco || null,
+            lote: renovacao.lote || null,
+            validade_produto: renovacao.validade_produto || null,
+            data: renovacao.data,
+            anexo_url: renovacao.anexo_url || null,
+            observacoes: renovacao.observacoes || null,
+            created_at: renovacao.created_at,
+            updated_at: renovacao.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Renovacoes insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("renovacoes")
+          .update({
+            person_id: renovacao.person_id || null,
+            medicamento_id: renovacao.medicamento_id,
+            medico_id: renovacao.medico_id || null,
+            farmacia_id: renovacao.farmacia_id || null,
+            hospital_id: renovacao.hospital_id || null,
+            local_id: renovacao.local_id || null,
+            document_id: renovacao.document_id || null,
+            quantidade: renovacao.quantidade || null,
+            preco: renovacao.preco || null,
+            lote: renovacao.lote || null,
+            validade_produto: renovacao.validade_produto || null,
+            data: renovacao.data,
+            anexo_url: renovacao.anexo_url || null,
+            observacoes: renovacao.observacoes || null,
+            updated_at: renovacao.updated_at,
+          })
+          .eq("id", renovacao.id);
+        if (error) throw new Error(`Renovacoes update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("renovacoes").delete().eq("id", payload.id);
+        if (error) throw new Error(`Renovacoes delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em renovacoes: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && renovacao.id) {
+      await db.renovacoes.update(renovacao.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // DOSE LOGS
+  // ============================================================
+
+  const syncDoseLog = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const log = item.payload as unknown as DoseLog;
+
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("dose_logs").upsert(
+          {
+            id: log.id,
+            user_id: log.user_id,
+            person_id: log.person_id || null,
+            medicamento_id: log.medicamento_id,
+            data: log.data,
+            horario: log.horario,
+            tomado_em: log.tomado_em || null,
+            ignorado_em: log.ignorado_em || null,
+            quantidade: log.quantidade || null,
+            created_at: log.created_at,
+            updated_at: log.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Dose_logs insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("dose_logs")
+          .update({
+            person_id: log.person_id || null,
+            tomado_em: log.tomado_em || null,
+            ignorado_em: log.ignorado_em || null,
+            quantidade: log.quantidade || null,
+            updated_at: log.updated_at,
+          })
+          .eq("id", log.id);
+        if (error) throw new Error(`Dose_logs update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("dose_logs").delete().eq("id", payload.id);
+        if (error) throw new Error(`Dose_logs delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em doseLogs: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && log.id) {
+      await db.doseLogs.update(log.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // ANEXOS CLÍNICOS
+  // ============================================================
+
+  const syncAnexoClinico = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const anexo = item.payload as unknown as AnexoClinico;
+
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("anexos_clinicos").upsert(
+          {
+            id: anexo.id,
+            user_id: anexo.user_id || null,
+            person_id: anexo.person_id || null,
+            tratamento_id: anexo.tratamento_id || null,
+            medicamento_id: anexo.medicamento_id || null,
+            tipo: anexo.tipo || null,
+            url: anexo.url || null,
+            thumbnail_url: anexo.thumbnail_url || null,
+            tags: anexo.tags || [],
+            created_at: anexo.created_at,
+            updated_at: anexo.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Anexos_clinicos insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("anexos_clinicos")
+          .update({
+            person_id: anexo.person_id || null,
+            tratamento_id: anexo.tratamento_id || null,
+            medicamento_id: anexo.medicamento_id || null,
+            tipo: anexo.tipo || null,
+            url: anexo.url || null,
+            thumbnail_url: anexo.thumbnail_url || null,
+            tags: anexo.tags || [],
+            updated_at: anexo.updated_at,
+          })
+          .eq("id", anexo.id);
+        if (error) throw new Error(`Anexos_clinicos update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("anexos_clinicos").delete().eq("id", payload.id);
+        if (error) throw new Error(`Anexos_clinicos delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em anexos_clinicos: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && anexo.id) {
+      await db.anexos_clinicos.update(anexo.id, { synced: true });
+    }
+  };
+
+  // ============================================================
   // VAULTS
   // ============================================================
 
-  const syncVault = async (item: any) => {
+  const syncVault = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const vault = item.payload as Vault;
+    const vault = item.payload as unknown as Vault;
 
     switch (item.operation) {
       case "add": {
@@ -1267,14 +1181,9 @@ export function useSyncQueue() {
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Vaults insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Vaults insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("vaults")
@@ -1286,27 +1195,15 @@ export function useSyncQueue() {
             updated_at: vault.updated_at,
           })
           .eq("id", vault.id);
-
-        if (error) {
-          throw new Error(`Vaults update error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Vaults update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("vaults")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Vaults delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("vaults").delete().eq("id", payload.id);
+        if (error) throw new Error(`Vaults delete error: ${error.message}`);
         break;
       }
-
       default:
         throw new Error(`Operação não suportada em vaults: ${item.operation}`);
     }
@@ -1320,9 +1217,9 @@ export function useSyncQueue() {
   // VAULT MEMBERS
   // ============================================================
 
-  const syncVaultMember = async (item: any) => {
+  const syncVaultMember = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const member = item.payload as VaultMember;
+    const member = item.payload as unknown as VaultMember;
 
     switch (item.operation) {
       case "add": {
@@ -1341,14 +1238,9 @@ export function useSyncQueue() {
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Vault_members insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Vault_members insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("vault_members")
@@ -1360,31 +1252,17 @@ export function useSyncQueue() {
             updated_at: member.updated_at,
           })
           .eq("id", member.id);
-
-        if (error) {
-          throw new Error(`Vault_members update error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Vault_members update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("vault_members")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Vault_members delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("vault_members").delete().eq("id", payload.id);
+        if (error) throw new Error(`Vault_members delete error: ${error.message}`);
         break;
       }
-
       default:
-        throw new Error(
-          `Operação não suportada em vaultMembers: ${item.operation}`
-        );
+        throw new Error(`Operação não suportada em vaultMembers: ${item.operation}`);
     }
 
     if (item.operation !== "delete" && member.id) {
@@ -1396,81 +1274,62 @@ export function useSyncQueue() {
   // CREDENTIALS
   // ============================================================
 
-  const syncCredential = async (item: any) => {
+  const syncCredential = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const cred = item.payload as Credential;
+    const credential = item.payload as unknown as Credential;
 
     switch (item.operation) {
       case "add": {
         const { error } = await client.from("credentials").upsert(
           {
-            id: cred.id,
-            user_id: cred.user_id,
-            vault_id: cred.vault_id || null,
-            title: cred.title,
-            username: cred.username || null,
-            password_encrypted: cred.password_encrypted,
-            url: cred.url || null,
-            notes: cred.notes || null,
-            category: cred.category,
-            password_history: cred.password_history || null,
-            created_at: cred.created_at,
-            updated_at: cred.updated_at,
+            id: credential.id,
+            user_id: credential.user_id,
+            vault_id: credential.vault_id || null,
+            title: credential.title,
+            username: credential.username || null,
+            password_encrypted: credential.password_encrypted,
+            url: credential.url || null,
+            notes: credential.notes || null,
+            category: credential.category,
+            password_history: credential.password_history || null,
+            created_at: credential.created_at,
+            updated_at: credential.updated_at,
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Credentials insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Credentials insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("credentials")
           .update({
-            vault_id: cred.vault_id || null,
-            title: cred.title,
-            username: cred.username || null,
-            password_encrypted: cred.password_encrypted,
-            url: cred.url || null,
-            notes: cred.notes || null,
-            category: cred.category,
-            password_history: cred.password_history || null,
-            updated_at: cred.updated_at,
+            vault_id: credential.vault_id || null,
+            title: credential.title,
+            username: credential.username || null,
+            password_encrypted: credential.password_encrypted,
+            url: credential.url || null,
+            notes: credential.notes || null,
+            category: credential.category,
+            password_history: credential.password_history || null,
+            updated_at: credential.updated_at,
           })
-          .eq("id", cred.id);
-
-        if (error) {
-          throw new Error(`Credentials update error: ${error.message}`);
-        }
-
+          .eq("id", credential.id);
+        if (error) throw new Error(`Credentials update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("credentials")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Credentials delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("credentials").delete().eq("id", payload.id);
+        if (error) throw new Error(`Credentials delete error: ${error.message}`);
         break;
       }
-
       default:
-        throw new Error(
-          `Operação não suportada em credentials: ${item.operation}`
-        );
+        throw new Error(`Operação não suportada em credentials: ${item.operation}`);
     }
 
-    if (item.operation !== "delete" && cred.id) {
-      await db.credentials.update(cred.id, { synced: true });
+    if (item.operation !== "delete" && credential.id) {
+      await db.credentials.update(credential.id, { synced: true });
     }
   };
 
@@ -1478,9 +1337,9 @@ export function useSyncQueue() {
   // CARTÕES
   // ============================================================
 
-  const syncCard = async (item: any) => {
+  const syncCard = async (item: SyncQueueItem) => {
     const client = requireSupabase();
-    const card = item.payload as BankCard;
+    const card = item.payload as unknown as BankCard;
 
     switch (item.operation) {
       case "add": {
@@ -1504,14 +1363,9 @@ export function useSyncQueue() {
           },
           { onConflict: "id" }
         );
-
-        if (error) {
-          throw new Error(`Cards insert error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Cards insert error: ${error.message}`);
         break;
       }
-
       case "update": {
         const { error } = await client
           .from("cards")
@@ -1530,27 +1384,15 @@ export function useSyncQueue() {
             updated_at: card.updated_at,
           })
           .eq("id", card.id);
-
-        if (error) {
-          throw new Error(`Cards update error: ${error.message}`);
-        }
-
+        if (error) throw new Error(`Cards update error: ${error.message}`);
         break;
       }
-
       case "delete": {
-        const { error } = await client
-          .from("cards")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Cards delete error: ${error.message}`);
-        }
-
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("cards").delete().eq("id", payload.id);
+        if (error) throw new Error(`Cards delete error: ${error.message}`);
         break;
       }
-
       default:
         throw new Error(`Operação não suportada em cards: ${item.operation}`);
     }
@@ -1561,70 +1403,63 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // MEDICAMENTO ↔ TRATAMENTO
+  // SINCRONIZAÇÃO DAS JUNÇÕES N:N
   // ============================================================
 
-  const syncMedicamentoTratamento = async (item: any) => {
+  const syncMedicamentoTratamentos = async (medicamentoId: string, tratamentoIds: string[]) => {
     const client = requireSupabase();
-    const link = item.payload as any;
 
-    switch (item.operation) {
-      case "add": {
-        const { error } = await client
-          .from("medicamento_tratamentos")
-          .upsert(
-            {
-              id: link.id,
-              medicamento_id: link.medicamento_id,
-              tratamento_id: link.tratamento_id,
-            },
-            { onConflict: "id" }
-          );
+    const { error: deleteError } = await client
+      .from("medicamento_tratamentos")
+      .delete()
+      .eq("medicamento_id", medicamentoId);
+    if (deleteError) throw new Error(`medicamento_tratamentos delete error: ${deleteError.message}`);
 
-        if (error) {
-          throw new Error(`Link insert error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "update": {
-        const { error } = await client
-          .from("medicamento_tratamentos")
-          .update({
-            medicamento_id: link.medicamento_id,
-            tratamento_id: link.tratamento_id,
-          })
-          .eq("id", link.id);
-
-        if (error) {
-          throw new Error(`Link update error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      case "delete": {
-        const { error } = await client
-          .from("medicamento_tratamentos")
-          .delete()
-          .eq("id", item.payload.id);
-
-        if (error) {
-          throw new Error(`Link delete error: ${error.message}`);
-        }
-
-        break;
-      }
-
-      default:
-        throw new Error(
-          `Operação não suportada em medicamento_tratamentos: ${item.operation}`
-        );
+    if (tratamentoIds.length > 0) {
+      const rows = tratamentoIds.map((tratamentoId) => ({
+        medicamento_id: medicamentoId,
+        tratamento_id: tratamentoId,
+      }));
+      const { error: insertError } = await client.from("medicamento_tratamentos").insert(rows);
+      if (insertError) throw new Error(`medicamento_tratamentos insert error: ${insertError.message}`);
     }
+  };
 
-    if (item.operation !== "delete" && link.id) {
-      await db.medicamento_tratamentos.update(link.id, { synced: true });
+  const syncTratamentoCids = async (tratamentoId: string, cidIds: string[]) => {
+    const client = requireSupabase();
+
+    const { error: deleteError } = await client
+      .from("tratamento_cids")
+      .delete()
+      .eq("tratamento_id", tratamentoId);
+    if (deleteError) throw new Error(`tratamento_cids delete error: ${deleteError.message}`);
+
+    if (cidIds.length > 0) {
+      const rows = cidIds.map((cidId) => ({
+        tratamento_id: tratamentoId,
+        cid_id: cidId,
+      }));
+      const { error: insertError } = await client.from("tratamento_cids").insert(rows);
+      if (insertError) throw new Error(`tratamento_cids insert error: ${insertError.message}`);
+    }
+  };
+
+  const syncExameTratamentos = async (exameId: string, tratamentoIds: string[]) => {
+    const client = requireSupabase();
+
+    const { error: deleteError } = await client
+      .from("exame_tratamentos")
+      .delete()
+      .eq("exame_id", exameId);
+    if (deleteError) throw new Error(`exame_tratamentos delete error: ${deleteError.message}`);
+
+    if (tratamentoIds.length > 0) {
+      const rows = tratamentoIds.map((tratamentoId) => ({
+        exame_id: exameId,
+        tratamento_id: tratamentoId,
+      }));
+      const { error: insertError } = await client.from("exame_tratamentos").insert(rows);
+      if (insertError) throw new Error(`exame_tratamentos insert error: ${insertError.message}`);
     }
   };
 
@@ -1637,50 +1472,37 @@ export function useSyncQueue() {
       return;
     }
 
-    const count = await db.syncQueue.count();
-
-    if (count === 0) {
-      return;
-    }
-
     processingRef.current = true;
     setIsProcessing(true);
-
-    addLog(`🟢 Iniciando sync: ${count} itens na fila`, "info");
 
     try {
       const queue = await db.syncQueue
         .toCollection()
-        .filter(
-          (item) =>
-            item.failed !== true &&
-            (item.retry_count || 0) < MAX_RETRIES
-        )
+        .filter((item) => item.failed !== true && (item.retry_count || 0) < MAX_RETRIES)
         .toArray();
 
       if (queue.length === 0) {
         return;
       }
 
-      /**
-       * Ordem importante para respeitar dependências de chave estrangeira.
-       */
-      const priorityOrder = [
+      addLog(`🟢 Iniciando sync: ${queue.length} itens na fila`, "info");
+
+      const priorityOrder: SyncQueueItem["table"][] = [
         "persons",
         "medicos",
+        "farmacias",
         "hospitais",
         "locais",
-        "laboratorios",
         "instituicoes",
+        "cids",
+        "documents",
         "tratamentos",
         "medicamentos",
-        "medicamento_tratamentos",
-        "documents",
         "exames",
-        "renovacoes",
-        "doseLogs",
         "consultas",
         "cirurgias",
+        "renovacoes",
+        "doseLogs",
         "anexos_clinicos",
         "vaults",
         "vaultMembers",
@@ -1691,30 +1513,18 @@ export function useSyncQueue() {
       queue.sort((a, b) => {
         const aIndex = priorityOrder.indexOf(a.table);
         const bIndex = priorityOrder.indexOf(b.table);
-
-        return (
-          (aIndex === -1 ? 999 : aIndex) -
-          (bIndex === -1 ? 999 : bIndex)
-        );
+        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
       });
 
       let successCount = 0;
-      let maxRetryInQueue = 0;
+      let highestRetry = 0;
 
       for (const item of queue) {
-        if ((item.retry_count || 0) > maxRetryInQueue) {
-          maxRetryInQueue = item.retry_count || 0;
-        }
+        const retryCount = item.retry_count || 0;
+        highestRetry = Math.max(highestRetry, retryCount);
 
-        /**
-         * Se o usuário ficou offline durante o processamento,
-         * interrompe o restante da fila sem apagar os itens.
-         */
         if (!navigator.onLine) {
-          addLog(
-            "📴 Conexão perdida durante a sincronização. Fila preservada.",
-            "info"
-          );
+          addLog("📴 Conexão perdida durante a sincronização. Fila preservada.", "info");
           break;
         }
 
@@ -1723,143 +1533,96 @@ export function useSyncQueue() {
             case "persons":
               await syncPerson(item);
               break;
-
             case "medicos":
               await syncMedico(item);
               break;
-
+            case "farmacias":
+              await syncFarmacia(item);
+              break;
             case "hospitais":
               await syncHospital(item);
               break;
-
             case "locais":
               await syncLocal(item);
               break;
-
-            case "laboratorios":
-              await syncLaboratorio(item);
-              break;
-
             case "instituicoes":
               await syncInstituicao(item);
               break;
-
-            case "tratamentos":
-              await syncTratamento(item);
+            case "cids":
+              await syncCid(item);
               break;
-
-            case "medicamentos":
-              await syncMedicamento(item);
-              break;
-
-            case "medicamento_tratamentos":
-              await syncMedicamentoTratamento(item);
-              break;
-
             case "documents":
               await syncDocument(item);
               break;
-
+            case "tratamentos":
+              await syncTratamento(item);
+              break;
+            case "medicamentos":
+              await syncMedicamento(item);
+              break;
             case "exames":
               await syncExame(item);
               break;
-
-            case "renovacoes":
-              await syncRenovacao(item);
-              break;
-
-            case "doseLogs":
-              await syncDoseLog(item);
-              break;
-
             case "consultas":
               await syncConsulta(item);
               break;
-
             case "cirurgias":
               await syncCirurgia(item);
               break;
-
+            case "renovacoes":
+              await syncRenovacao(item);
+              break;
+            case "doseLogs":
+              await syncDoseLog(item);
+              break;
             case "anexos_clinicos":
               await syncAnexoClinico(item);
               break;
-
             case "vaults":
               await syncVault(item);
               break;
-
             case "vaultMembers":
               await syncVaultMember(item);
               break;
-
             case "credentials":
               await syncCredential(item);
               break;
-
             case "cards":
               await syncCard(item);
               break;
-
             default:
-              throw new Error(
-                `Tabela não suportada no sync: ${item.table}`
-              );
+              throw new Error(`Tabela não suportada no sync: ${item.table}`);
           }
 
-          /**
-           * Só remove da fila depois que a função de sincronização
-           * realmente terminou sem lançar erro.
-           */
           await db.syncQueue.delete(item.id!);
-
           successCount++;
+          addLog(`✅ ${item.table} sincronizado`, "success");
+        } catch (error: unknown) {
+          const nextRetryCount = retryCount + 1;
+          const failed = nextRetryCount >= MAX_RETRIES;
 
-          addLog(
-            `✅ ${item.table} sincronizado`,
-            "success"
-          );
-        } catch (error: any) {
-          const retryCount = (item.retry_count || 0) + 1;
-          const failed = retryCount >= MAX_RETRIES;
-
-          const errorMessage =
-            error?.message ||
-            error?.toString() ||
-            "Erro desconhecido";
+          const errorMessage = error instanceof Error ? error.message : String(error);
 
           await db.syncQueue.update(item.id!, {
-            retry_count: retryCount,
+            retry_count: nextRetryCount,
             failed,
           });
 
           if (failed) {
-            addLog(
-              `✖️ Falha permanente em ${item.table}: ${errorMessage}`,
-              "error"
-            );
+            addLog(`✖️ Falha permanente em ${item.table}: ${errorMessage}`, "error");
           } else {
-            addLog(
-              `⚠️ Erro em ${item.table} (tentativa ${retryCount}/${MAX_RETRIES}): ${errorMessage}`,
-              "error"
-            );
+            addLog(`⚠️ Erro em ${item.table} (tentativa ${nextRetryCount}/${MAX_RETRIES}): ${errorMessage}`, "error");
           }
         }
       }
 
       if (successCount > 0) {
-        addLog(
-          `✅ ${successCount} itens sincronizados com sucesso!`,
-          "success"
-        );
+        addLog(`✅ ${successCount} itens sincronizados com sucesso!`, "success");
       }
 
       const remaining = await db.syncQueue
         .toCollection()
-        .filter(
-          (item) =>
-            item.failed !== true &&
-            (item.retry_count || 0) < MAX_RETRIES
-        )
+        .filter((item) => item.failed !== true && (item.retry_count || 0) < MAX_RETRIES)
         .count();
 
       if (remaining > 0 && navigator.onLine) {
@@ -1867,23 +1630,17 @@ export function useSyncQueue() {
           clearTimeout(timeoutRef.current);
         }
 
-        const delay = Math.min(
-          5000 * Math.pow(2, maxRetryInQueue),
-          MAX_BACKOFF_MS
-        );
-
+        const delay = Math.min(5000 * Math.pow(2, highestRetry), MAX_BACKOFF_MS);
         timeoutRef.current = setTimeout(() => {
           timeoutRef.current = null;
-          processQueue();
+          if (!processingRef.current) {
+            processQueue();
+          }
         }, delay);
       }
-    } catch (error: any) {
-      addLog(
-        `❌ Erro ao processar fila: ${
-          error?.message || error
-        }`,
-        "error"
-      );
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog(`❌ Erro ao processar fila: ${errorMessage}`, "error");
     } finally {
       processingRef.current = false;
       setIsProcessing(false);
@@ -1891,7 +1648,7 @@ export function useSyncQueue() {
   }, [isOnline, addLog]);
 
   // ============================================================
-  // RESETAR ITENS COM FALHA PERMANENTE
+  // RESETAR FALHAS PERMANENTES
   // ============================================================
 
   const resetFailedItems = useCallback(async () => {
@@ -1911,16 +1668,12 @@ export function useSyncQueue() {
       });
     }
 
-    addLog(
-      `✅ ${failedItems.length} itens redefinidos para reenvio`,
-      "success"
-    );
-
+    addLog(`✅ ${failedItems.length} itens redefinidos para reenvio`, "success");
     await processQueue();
   }, [processQueue, addLog]);
 
   // ============================================================
-  // EVENTO MANUAL DE PROCESSAMENTO
+  // EVENTO MANUAL
   // ============================================================
 
   useEffect(() => {
@@ -1938,7 +1691,7 @@ export function useSyncQueue() {
   }, [isOnline, processQueue]);
 
   // ============================================================
-  // PROCESSAMENTO AUTOMÁTICO QUANDO VOLTAR ONLINE
+  // PROCESSAMENTO AO VOLTAR ONLINE
   // ============================================================
 
   useEffect(() => {
@@ -1946,6 +1699,10 @@ export function useSyncQueue() {
       processQueue();
     }
   }, [isOnline, processQueue]);
+
+  // ============================================================
+  // RETORNO
+  // ============================================================
 
   return {
     processQueue,

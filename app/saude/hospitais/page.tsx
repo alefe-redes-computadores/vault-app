@@ -1,18 +1,31 @@
+// app/saude/hospitais/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { 
-  ArrowLeft, Building2, Search, ChevronRight, 
-  MapPin, Phone, Edit3, Filter, X, Calendar
+import {
+  ArrowLeft,
+  Building2,
+  Search,
+  ChevronRight,
+  MapPin,
+  Phone,
+  Edit3,
+  Filter,
+  X,
+  Calendar,
 } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/EmptyState";
+import { useHospitais } from "@/hooks/useHospitais";
+import { useConsultas } from "@/hooks/useConsultas";
+import { useCirurgias } from "@/hooks/useCirurgias";
+import { useExames } from "@/hooks/useExames";
+import { useMedicos } from "@/hooks/useMedicos";
+import type { Hospital, Consulta, Cirurgia, Exame, Medico } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -21,59 +34,69 @@ function formatDateDisplay(isoStr: string): string {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+type HospitalComCruzamento = Hospital & {
+  cirurgiasCount: number;
+  consultasCount: number;
+  examesCount: number;
+  medicosCount: number;
+  ultimoAtendimento: Consulta | null;
+};
+
 export default function HospitaisPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<"todos" | "hospital" | "clinica">("todos");
 
-  const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
-  const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
-  const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
-  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
-  const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
-  // 🐛 AQUI ESTAVA O BUG: Faltava puxar a tabela de cirurgias correta!
-  const cirurgias = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
+  const { hospitais = [] } = useHospitais();
+  const { consultas = [] } = useConsultas();
+  const { cirurgias = [] } = useCirurgias();
+  const { exames = [] } = useExames();
+  const { medicos = [] } = useMedicos();
 
-  const hospitaisComCruzamento = useMemo(() => {
+  const hospitaisComCruzamento = useMemo<HospitalComCruzamento[]>(() => {
     return hospitais.map((hospital) => {
-      const docsDoHospital = documentos.filter((d: any) => d.hospital_id === hospital.id);
-      const docsConsultas = docsDoHospital.filter((d: any) => d.type === 'consulta' || d.type === 'prontuario');
-      
-      // 🐛 Correção: Puxando da tabela certa
-      const cirurgiasDoHospital = cirurgias.filter((c: any) => c.hospital_id === hospital.id);
-      
-      const examesDoHospital = exames.filter((e: any) => 
-        e.hospital_id === hospital.id || e.laboratorio_id === hospital.id
+      const cirurgiasDoHospital = cirurgias.filter(
+        (c: Cirurgia) => c.hospital_id === hospital.id
       );
 
-      const consultasDoHospital = consultas.filter((c: any) => c.hospital_id === hospital.id);
+      const consultasDoHospital = consultas.filter(
+        (c: Consulta) => c.hospital_id === hospital.id
+      );
 
-      const medicoIds = new Set(consultasDoHospital.map(c => c.medico_id).filter(Boolean));
-      const medicosDoHospital = medicos.filter(m => medicoIds.has(m.id));
+      const examesDoHospital = exames.filter(
+        (e: Exame) => e.hospital_id === hospital.id || e.laboratorio_id === hospital.id
+      );
+
+      const medicoIds = new Set(
+        consultasDoHospital.map((c) => c.medico_id).filter((id): id is string => Boolean(id))
+      );
+      const medicosDoHospital = medicos.filter((m: Medico) => m.id && medicoIds.has(m.id));
 
       const ultimoAtendimento = consultasDoHospital.length > 0
-        ? consultasDoHospital.sort((a, b) => b.data.localeCompare(a.data))[0]
+        ? [...consultasDoHospital].sort((a, b) => (b.data || "").localeCompare(a.data || ""))[0]
         : null;
 
       return {
         ...hospital,
-        cirurgiasCount: cirurgiasDoHospital.length, // Agora sim vai contar certo!
-        consultasCount: docsConsultas.length + consultasDoHospital.length,
+        cirurgiasCount: cirurgiasDoHospital.length,
+        consultasCount: consultasDoHospital.length,
         examesCount: examesDoHospital.length,
         medicosCount: medicosDoHospital.length,
         ultimoAtendimento,
       };
     });
-  }, [hospitais, documentos, exames, consultas, medicos, cirurgias]);
+  }, [hospitais, cirurgias, consultas, exames, medicos]);
 
   const filteredHospitais = useMemo(() => {
     let result = hospitaisComCruzamento;
 
     if (search) {
-      result = result.filter((h) =>
-        h.nome.toLowerCase().includes(search.toLowerCase()) ||
-        (h.endereco && h.endereco.toLowerCase().includes(search.toLowerCase()))
+      const term = search.toLowerCase();
+      result = result.filter(
+        (h) =>
+          h.nome.toLowerCase().includes(term) ||
+          (h.endereco && h.endereco.toLowerCase().includes(term))
       );
     }
 
@@ -84,8 +107,6 @@ export default function HospitaisPage() {
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [hospitaisComCruzamento, search, filtroTipo]);
 
-  if (!hospitais) return <LoadingSkeleton />;
-
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
@@ -94,6 +115,7 @@ export default function HospitaisPage() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -115,7 +137,7 @@ export default function HospitaisPage() {
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
-            
+
             <button
               onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "hospital" ? "todos" : "hospital"); }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
@@ -151,18 +173,20 @@ export default function HospitaisPage() {
 
         <section className="px-5 pt-5 space-y-3.5">
           {filteredHospitais.length === 0 ? (
-            <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-12 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-ice/10 text-ice">
-                <Building2 size={24} />
-              </div>
-              <p className="text-sm font-medium text-ink-primary">Nenhum hospital encontrado</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                {search || filtroTipo !== "todos" ? "Tente ajustar os filtros aplicados." : "Cadastre unidades para centralizar cirurgias, exames e prontuários."}
-              </p>
-            </div>
+            <EmptyState
+              icon={Building2}
+              title="Nenhum hospital encontrado"
+              description={
+                search || filtroTipo !== "todos"
+                  ? "Tente ajustar os filtros aplicados."
+                  : "Cadastre unidades para centralizar cirurgias, exames e prontuários."
+              }
+              actionLabel="Novo Hospital"
+              onAction={() => router.push("/saude/hospitais/novo")}
+            />
           ) : (
             filteredHospitais.map((hospital) => {
-              const cor = hospital.tipo === 'clinica' ? '#34D399' : '#38BDF8';
+              const cor = hospital.tipo === "clinica" ? "#34D399" : "#38BDF8";
               return (
                 <motion.div
                   key={hospital.id}
@@ -182,11 +206,11 @@ export default function HospitaisPage() {
                           <p className="truncate text-base font-semibold text-ink-primary">{hospital.nome}</p>
                           {hospital.tipo && (
                             <span className={`shrink-0 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-                              hospital.tipo === 'clinica' 
-                                ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-400'
-                                : 'border-ice/30 bg-ice/10 text-ice'
+                              hospital.tipo === "clinica"
+                                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
+                                : "border-ice/30 bg-ice/10 text-ice"
                             }`}>
-                              {hospital.tipo === 'clinica' ? 'Clínica' : 'Hospital'}
+                              {hospital.tipo === "clinica" ? "Clínica" : "Hospital"}
                             </span>
                           )}
                         </div>
@@ -212,6 +236,7 @@ export default function HospitaisPage() {
                           router.push(`/saude/hospitais/editar?id=${hospital.id}`);
                         }}
                         className="h-8 w-8 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted hover:text-ice transition-colors"
+                        aria-label="Editar hospital"
                       >
                         <Edit3 size={14} />
                       </button>

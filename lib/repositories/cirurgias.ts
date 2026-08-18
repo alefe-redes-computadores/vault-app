@@ -1,4 +1,7 @@
+// lib/repositories/cirurgias.ts
+
 import { db, safeAddCirurgia, safeUpdateCirurgia, safeDeleteCirurgia } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { Cirurgia } from "@/lib/types";
 
 export const cirurgiasRepository = {
@@ -11,14 +14,20 @@ export const cirurgiasRepository = {
   },
 
   async create(data: Omit<Cirurgia, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
-    return safeAddCirurgia(data);
+    const id = await safeAddCirurgia(data);
+    await enfileirarOperacao("cirurgias", "add", { id, ...data });
+    return id;
   },
 
   async update(id: string, data: Partial<Cirurgia>) {
-    return safeUpdateCirurgia(id, data);
+    await safeUpdateCirurgia(id, data);
+    await enfileirarOperacao("cirurgias", "update", { id, ...data });
+    return id;
   },
 
   async delete(id: string) {
-    return safeDeleteCirurgia(id);
-  }
+    await safeDeleteCirurgia(id);
+    await enfileirarOperacao("cirurgias", "delete", { id });
+    return id;
+  },
 };

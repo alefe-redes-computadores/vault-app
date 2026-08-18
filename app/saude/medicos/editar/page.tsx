@@ -1,11 +1,13 @@
+// app/saude/medicos/editar/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Stethoscope, Trash2 } from "lucide-react";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
@@ -17,12 +19,21 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-export default function EditarMedicoPage() {
+function formatPhone(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 11);
+  if (clean.length <= 2) return clean;
+  if (clean.length <= 6) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
+  if (clean.length <= 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+  return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+}
+
+function EditarMedicoContent() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
-  const { getMedico, updateMedico, deleteMedico } = useMedicos();
+  const { getMedico, updateMedico, deleteMedicoSafe } = useMedicos();
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -42,20 +53,23 @@ export default function EditarMedicoPage() {
       setIsLoading(false);
       return;
     }
-    getMedico(id).then((item) => {
-      if (!item) {
-        setNotFound(true);
-      } else {
-        setNome(item.nome || "");
-        setEspecialidade(item.especialidade || "");
-        setCrm(item.crm || "");
-        setTelefone(item.telefone || "");
-        setEmail(item.email || "");
-      }
-      setIsLoading(false);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+
+    getMedico(id)
+      .then((item) => {
+        if (!item) {
+          setNotFound(true);
+        } else {
+          setNome(item.nome || "");
+          setEspecialidade(item.especialidade || "");
+          setCrm(item.crm || "");
+          setTelefone(item.telefone || "");
+          setEmail(item.email || "");
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [id, getMedico]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -81,10 +95,11 @@ export default function EditarMedicoPage() {
         email: email.trim() || undefined,
       });
       trigger("success");
+      showToast("Médico atualizado com sucesso", "success");
       router.back();
     } catch (error) {
-      console.error("Erro ao atualizar médico:", error);
       trigger("error");
+      showToast("Erro ao atualizar médico", "error");
     } finally {
       setSaving(false);
     }
@@ -93,12 +108,13 @@ export default function EditarMedicoPage() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await deleteMedico(id);
+      await deleteMedicoSafe(id);
       trigger("success");
-      router.push("/saude/rede");
+      showToast("Médico excluído com sucesso", "success");
+      router.replace("/saude/medicos");
     } catch (error) {
-      console.error("Erro ao excluir médico:", error);
       trigger("error");
+      showToast("Erro ao excluir médico", "error");
     } finally {
       setDeleting(false);
       setShowDeleteModal(false);
@@ -133,10 +149,7 @@ export default function EditarMedicoPage() {
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
+              onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               aria-label="Voltar"
             >
@@ -156,10 +169,7 @@ export default function EditarMedicoPage() {
             </div>
 
             <button
-              onClick={() => {
-                trigger("vibrate");
-                setShowDeleteModal(true);
-              }}
+              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               aria-label="Excluir médico"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
             >
@@ -177,7 +187,7 @@ export default function EditarMedicoPage() {
             className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <Input
-              label="Nome"
+              label="Nome *"
               placeholder="Dr(a). Nome completo"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
@@ -200,7 +210,7 @@ export default function EditarMedicoPage() {
               label="Telefone"
               placeholder="(00) 00000-0000"
               value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
+              onChange={(e) => setTelefone(formatPhone(e.target.value))}
             />
             <Input
               label="E-mail"
@@ -248,5 +258,13 @@ export default function EditarMedicoPage() {
         />
       </main>
     </PageTransition>
+  );
+}
+
+export default function EditarMedicoPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <EditarMedicoContent />
+    </Suspense>
   );
 }

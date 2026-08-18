@@ -1,3 +1,4 @@
+// app/mais/page.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -24,7 +25,7 @@ import {
   CreditCard,
   ShieldAlert,
   Bell,
-  Star, // ✅ Ícone de Favoritos importado
+  Star,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -40,6 +41,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { pullAllData } from "@/lib/sync/pull";
 import { useLiveQuery } from "dexie-react-hooks";
+import type { Medicamento } from "@/lib/types";
 
 const APP_VERSION = "1.0.0";
 
@@ -70,11 +72,13 @@ export default function MaisPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [logsContent, setLogsContent] = useState("");
 
   const pendingQueueCount = useLiveQuery(() => db.syncQueue.count(), []) ?? 0;
-  const allMedicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
+  const allMedicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) as Medicamento[];
 
   const handleLogout = async () => {
     setIsLoading(true);
@@ -194,12 +198,10 @@ export default function MaisPage() {
   const handleNotificationsToggle = async () => {
     trigger("vibrate");
     if (isNotificationsEnabled) {
-      // Desativar: Cancela as notificações agendadas e atualiza preferência
       await cancelAllDoseNotifications(allMedicamentos as any);
       disableNotifications();
       showToast("Lembretes desativados", "info");
     } else {
-      // Ativar: Pede permissão e atualiza preferência se concedida
       const granted = await requestNotificationPermission();
       if (granted) {
         enableNotifications();
@@ -216,17 +218,16 @@ export default function MaisPage() {
     user?.email?.split("@")[0] ||
     "Usuário";
 
-  const showLogsAlert = useCallback(() => {
+  const handleShowLogs = useCallback(() => {
     if (syncLogs.length === 0) {
       showToast("Nenhum log disponível", "info");
       return;
     }
-
     const logText = syncLogs.map(l => 
       `[${l.time}] ${l.type.toUpperCase()}: ${l.message}`
     ).join('\n');
-
-    alert(`📋 LOGS DE SINCRONIZAÇÃO\n\n${logText}\n\nTotal: ${syncLogs.length} eventos`);
+    setLogsContent(logText);
+    setShowLogsModal(true);
   }, [syncLogs, showToast]);
 
   const menuSections: MenuSection[] = [
@@ -333,7 +334,7 @@ export default function MaisPage() {
           icon: Terminal,
           label: "Ver logs de sincronização",
           description: syncLogs.length > 0 ? `${syncLogs.length} eventos registrados` : "Nenhum log disponível",
-          onClick: () => { trigger("vibrate"); showLogsAlert(); },
+          onClick: handleShowLogs,
           disabled: syncLogs.length === 0,
         },
         {
@@ -647,6 +648,17 @@ export default function MaisPage() {
           cancelLabel="Cancelar"
           isLoading={isLoading}
           type="warning"
+        />
+
+        <ConfirmationModal
+          isOpen={showLogsModal}
+          onClose={() => setShowLogsModal(false)}
+          onConfirm={() => setShowLogsModal(false)}
+          title="Logs de sincronização"
+          message={logsContent}
+          confirmLabel="Fechar"
+          cancelLabel=""
+          type="info"
         />
       </main>
     </PageTransition>

@@ -1,3 +1,4 @@
+// app/saude/tratamentos/detalhes/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo, Suspense } from "react";
@@ -23,8 +24,6 @@ import {
   Sparkles,
   Plus,
   FolderHeart,
-  FileWarning,
-  X
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -77,14 +76,14 @@ function formatCurrency(value: number): string {
 }
 
 const CORES_PADRAO = [
-  "#8B5CF6", // Roxo
-  "#EC4899", // Rosa
-  "#3B82F6", // Azul
-  "#F59E0B", // Amarelo
-  "#10B981", // Verde
-  "#EF4444", // Vermelho
-  "#F97316", // Laranja
-  "#06B6D4", // Ciano
+  "#8B5CF6",
+  "#EC4899",
+  "#3B82F6",
+  "#F59E0B",
+  "#10B981",
+  "#EF4444",
+  "#F97316",
+  "#06B6D4",
 ];
 
 function getTratamentoIcon(nome: string) {
@@ -97,7 +96,19 @@ function getTratamentoIcon(nome: string) {
 }
 
 function getCorPorIndex(index: number): string {
+  if (!Number.isFinite(index) || index < 0) return CORES_PADRAO[0];
   return CORES_PADRAO[index % CORES_PADRAO.length];
+}
+
+interface MedicamentoComAlertas extends Medicamento {
+  receitaVencida?: boolean;
+  insight?: ReturnType<typeof sugerirRenovacao>;
+}
+
+interface DocumentMetadata {
+  tratamento_id?: string;
+  cid_id?: string;
+  [key: string]: unknown;
 }
 
 function TratamentoContent() {
@@ -111,11 +122,8 @@ function TratamentoContent() {
 
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // 🔧 Menu flutuante para o botão +
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
-  // 🔧 Estado para controlar o fechamento do menu ao clicar fora
   useEffect(() => {
     const handleClickOutside = () => setIsMenuFlutuanteOpen(false);
     if (isMenuFlutuanteOpen) {
@@ -151,13 +159,11 @@ function TratamentoContent() {
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
   const allRenovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
-  // 🔧 Buscar CIDs vinculados (cid_ids)
   const cidsVinculados = useLiveQuery(() => {
     if (!tratamento?.cid_ids || tratamento.cid_ids.length === 0) return [];
     return db.cids.where('id').anyOf(tratamento.cid_ids).toArray();
   }, [tratamento?.cid_ids]) || [];
 
-  // Medicamentos vinculados via tratamento_ids
   const linkedMedicamentos = useMemo(() => {
     if (!id || !medicamentos) return [];
     return medicamentos.filter((m: Medicamento) => {
@@ -165,7 +171,6 @@ function TratamentoContent() {
     });
   }, [medicamentos, id]);
 
-  // Últimas renovações dos medicamentos vinculados
   const linkedRenovacoes = useMemo(() => {
     const medIds = new Set(linkedMedicamentos.map((m: Medicamento) => m.id).filter(Boolean));
     return allRenovacoes
@@ -173,15 +178,14 @@ function TratamentoContent() {
       .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   }, [linkedMedicamentos, allRenovacoes]);
 
-  // Documentos vinculados
   const linkedDocuments = useMemo(() => {
     if (!id) return [];
     return allDocuments.filter((doc: Document) => {
-      return doc.metadata?.tratamento_id === id;
+      const meta = doc.metadata as DocumentMetadata;
+      return meta.tratamento_id === id;
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [allDocuments, id]);
 
-  // Custo total acumulado
   const custoTotalTratamento = useMemo(() => {
     let total = 0;
     linkedRenovacoes.forEach((r: Renovacao) => {
@@ -192,38 +196,27 @@ function TratamentoContent() {
     return total;
   }, [linkedRenovacoes]);
 
-  // Economia (última compra vs média anterior)
   const economiaInfo = useMemo(() => {
     return calcularEconomia(linkedRenovacoes);
   }, [linkedRenovacoes]);
 
-  // Médicos vinculados
   const linkedMedicos = useMemo(() => {
     const medIds = new Set(linkedMedicamentos.map((m: Medicamento) => m.medico_id).filter(Boolean));
     return medicos.filter((med: Medico) => med.id && medIds.has(med.id));
   }, [linkedMedicamentos, medicos]);
 
-  // Medicamentos com alertas (receita vencida, estoque crítico)
   const medicamentosComAlertas = useMemo(() => {
-    return linkedMedicamentos.map((med: Medicamento) => {
+    return linkedMedicamentos.map((med: Medicamento): MedicamentoComAlertas => {
       const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
       const insight = sugerirRenovacao(med);
-      return {
-        ...med,
-        receitaVencida,
-        insight,
-      };
+      return { ...med, receitaVencida, insight };
     });
   }, [linkedMedicamentos]);
 
-  // 🧠 Insights dos CIDs vinculados
   const cidsInsights = useMemo(() => {
     return cidsVinculados.map((cid: Cid) => {
       const insight = getCidInsights(cid.codigo);
-      return {
-        ...cid,
-        insight,
-      };
+      return { ...cid, insight };
     });
   }, [cidsVinculados]);
 
@@ -232,19 +225,9 @@ function TratamentoContent() {
     trigger("vibrate");
   };
 
-  if (isLoading) return <LoadingSkeleton />;
-  if (!tratamento) return null;
-
-  const IconComp = getTratamentoIcon(tratamento.nome);
-  const tratamentoCor = tratamento.cor || getCorPorIndex(tratamento.id ? parseInt(tratamento.id) : 0);
-  
-  const medicamentosAtivos = medicamentosComAlertas.filter((m: Medicamento & { status?: string }) => m.status !== "descontinuado");
-  const medicamentosDescontinuados = medicamentosComAlertas.filter((m: Medicamento & { status?: string }) => m.status === "descontinuado");
-
-  // 🔧 Opções do menu flutuante
   const menuOptions = [
+    { id: "adicionar-cid", label: "Adicionar CID", icon: FolderHeart, path: `/saude/cids?tratamento_id=${id}` },
     { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?tratamento_id=${id}` },
-    { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?medicamento_id=...` },
     { id: "adicionar-documento", label: "Adicionar Documento", icon: FileText, path: `/novo?tratamento_id=${id}` },
     { id: "editar-tratamento", label: "Editar Tratamento", icon: Edit3, path: `/saude/tratamentos/editar?id=${id}` },
   ];
@@ -254,6 +237,15 @@ function TratamentoContent() {
     setIsMenuFlutuanteOpen(false);
     router.push(path);
   };
+
+  if (isLoading) return <LoadingSkeleton />;
+  if (!tratamento) return null;
+
+  const IconComp = getTratamentoIcon(tratamento.nome);
+  const tratamentoCor = tratamento.cor || getCorPorIndex(0);
+  
+  const medicamentosAtivos = medicamentosComAlertas.filter((m) => m.status !== "descontinuado");
+  const medicamentosDescontinuados = medicamentosComAlertas.filter((m) => m.status === "descontinuado");
 
   return (
     <PageTransition>
@@ -275,7 +267,6 @@ function TratamentoContent() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* 🔧 BOTÃO + COM MENU FLUTUANTE */}
               <div className="relative">
                 <button
                   onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
@@ -342,8 +333,6 @@ function TratamentoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          
-          {/* Card Principal */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -380,7 +369,6 @@ function TratamentoContent() {
               </div>
             </div>
 
-            {/* 🔧 Exibir múltiplos CIDs vinculados */}
             {cidsVinculados.length > 0 && (
               <div className="relative z-10 mt-4 rounded-xl bg-surface-raised/50 border border-surface-border/40 p-3 space-y-2">
                 <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5">
@@ -405,7 +393,6 @@ function TratamentoContent() {
               </div>
             )}
 
-            {/* Alertas de economia */}
             {economiaInfo && (
               <div className="relative z-10 mt-3 pt-3 border-t border-surface-border/40">
                 <div className={`flex items-center gap-2 text-xs ${economiaInfo.economia > 0 ? 'text-emerald-400' : 'text-coral'}`}>
@@ -442,7 +429,6 @@ function TratamentoContent() {
             </div>
           </motion.div>
 
-          {/* Equipe Clínica */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Stethoscope size={16} className="text-ice" />
@@ -467,7 +453,6 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          {/* Últimas Renovações */}
           {linkedRenovacoes.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -496,7 +481,6 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          {/* Medicamentos Ativos */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
@@ -509,7 +493,7 @@ function TratamentoContent() {
               </div>
             ) : (
               <div className="space-y-3">
-                {medicamentosAtivos.map((med: Medicamento & { receitaVencida?: boolean; insight?: any }) => (
+                {medicamentosAtivos.map((med) => (
                   <div
                     key={med.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
@@ -546,7 +530,6 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          {/* Medicamentos Descontinuados */}
           {medicamentosDescontinuados.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -554,7 +537,7 @@ function TratamentoContent() {
                 <h3 className="font-display text-base font-semibold text-ink-primary">Histórico (Descontinuados)</h3>
               </div>
               <div className="space-y-3 border-l-2 border-surface-border/50 ml-3 pl-4">
-                {medicamentosDescontinuados.map((med: Medicamento & { motivo_descontinuacao?: string; medicamento_substituto_nome?: string }) => (
+                {medicamentosDescontinuados.map((med) => (
                   <div key={med.id} onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }} className="relative rounded-2xl border border-coral/10 bg-surface-raised/60 p-3.5 cursor-pointer">
                     <div className="absolute -left-[23px] top-4 h-2.5 w-2.5 rounded-full bg-coral border-2 border-void ring-1 ring-surface-border/50"></div>
                     <div className="flex justify-between items-start mb-1">
@@ -564,10 +547,10 @@ function TratamentoContent() {
                     {med.motivo_descontinuacao && (
                       <p className="text-xs text-ink-muted italic mb-2">"{med.motivo_descontinuacao}"</p>
                     )}
-                    {med.medicamento_substituto_nome && (
+                    {med.substituido_por_id && (
                       <div className="flex items-center gap-1.5 text-[11px] font-medium text-ice mt-2 bg-ice/10 w-fit px-2 py-1 rounded-md border border-ice/10">
                         <ArrowLeftRight size={10} />
-                        Substituído por: {med.medicamento_substituto_nome}
+                        Substituído por outro medicamento
                       </div>
                     )}
                   </div>
@@ -576,7 +559,6 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          {/* Documentos Vinculados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
             <div className="flex items-center justify-between pl-1 pr-1">
               <div className="flex items-center gap-2">

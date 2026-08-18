@@ -1,3 +1,4 @@
+// app/contas/novo/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -6,6 +7,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
 import { useCards } from "@/hooks/useCards";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 import { getBankLogoUrl } from "@/lib/utils/card-helper";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -20,6 +22,7 @@ const fadeUp = {
 
 export default function NewAccountPage() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const { addCard } = useCards();
 
@@ -69,10 +72,12 @@ export default function NewAccountPage() {
       });
 
       trigger("success");
+      showToast("Conta salva com sucesso", "success");
       router.back();
     } catch (error) {
       console.error("Erro ao salvar conta:", error);
       trigger("error");
+      showToast("Erro ao salvar conta", "error");
     } finally {
       setSaving(false);
     }
@@ -81,7 +86,6 @@ export default function NewAccountPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-44">
-        {/* Header Fixo */}
         <header className="header-safe-top sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <button 
             onClick={() => { trigger("vibrate"); router.back(); }} 
@@ -97,7 +101,6 @@ export default function NewAccountPage() {
           </div>
         </header>
 
-        {/* Ícone Dinâmico no Topo */}
         <div className="flex flex-col items-center pt-6 px-5">
           <div className="relative flex h-20 w-20 items-center justify-center rounded-[28px] border border-surface-border/60 bg-surface shadow-md overflow-hidden">
             {logoUrl ? (
@@ -109,7 +112,6 @@ export default function NewAccountPage() {
         </div>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* Informações Básicas */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <Input 
               label="Título (ex: Conta Corrente Principal, Salário Itaú)" 
@@ -127,7 +129,6 @@ export default function NewAccountPage() {
             />
           </motion.div>
 
-          {/* Seletor Focado em Contas */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Tipo de Conta</p>
             <div className="grid grid-cols-3 gap-2">
@@ -151,7 +152,6 @@ export default function NewAccountPage() {
             </div>
           </motion.div>
 
-          {/* Dados da Conta */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <Input 
               label="Agência" 
@@ -171,7 +171,6 @@ export default function NewAccountPage() {
             />
           </motion.div>
 
-          {/* Notas */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <TextArea 
               label="Observações (opcional)" 
@@ -182,7 +181,6 @@ export default function NewAccountPage() {
           </motion.div>
         </section>
 
-        {/* Botão Salvar Fixo */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/90 px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl">
           <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}

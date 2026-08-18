@@ -1,3 +1,4 @@
+// app/saude/cids/detalhes/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo, Suspense } from "react";
@@ -29,31 +30,38 @@ import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { useToast } from "@/components/ToastProvider";
 import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document } from "@/lib/types";
 import { getCidInsights } from "@/lib/health-insights";
-import { SelectionModal } from "@/components/SelectionModal";
 
 const fadeUp = {
   initial: { opacity: 0, y: 15 },
   animate: { opacity: 1, y: 0 },
 };
 
-function getCidIcon(codigo: string, descricao: string) {
+function getCidTheme(codigo: string, descricao: string) {
   const text = `${codigo} ${descricao}`.toLowerCase();
-  if (text.includes("f9") || text.includes("f3") || text.includes("neuro") || text.includes("transtorno")) return Brain;
-  if (text.includes("dor") || text.includes("inflama") || text.includes("m5")) return Flame;
-  if (text.includes("cardio") || text.includes("corac") || text.includes("i10")) return HeartPulse;
-  if (text.includes("ansied") || text.includes("f4")) return ShieldAlert;
-  return Activity;
-}
-
-const CORES_CID = ["#8B5CF6", "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#EC4899", "#06B6D4"];
-function getCorPorIndex(index: number): string {
-  return CORES_CID[index % CORES_CID.length];
+  
+  if (text.includes("f9") || text.includes("f3") || text.includes("neuro") || text.includes("transtorno") || text.includes("psi")) {
+    return { icon: Brain, text: "text-violet-400", bg: "bg-violet-400/10", border: "border-violet-400/30", borderLeft: "border-l-[6px] border-l-violet-400", tag: "bg-violet-400/10 border-violet-400/20 text-violet-400" };
+  }
+  if (text.includes("dor") || text.includes("inflama") || text.includes("m5") || text.includes("plexo") || text.includes("g5")) {
+    return { icon: Flame, text: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/30", borderLeft: "border-l-[6px] border-l-amber-400", tag: "bg-amber-400/10 border-amber-400/20 text-amber-400" };
+  }
+  if (text.includes("cardio") || text.includes("corac") || text.includes("i10") || text.includes("pressao")) {
+    return { icon: HeartPulse, text: "text-coral", bg: "bg-coral/10", border: "border-coral/30", borderLeft: "border-l-[6px] border-l-coral", tag: "bg-coral/10 border-coral/20 text-coral" };
+  }
+  if (text.includes("ansied") || text.includes("f4") || text.includes("panico")) {
+    return { icon: ShieldAlert, text: "text-ice", bg: "bg-ice/10", border: "border-ice/30", borderLeft: "border-l-[6px] border-l-ice", tag: "bg-ice/10 border-ice/20 text-ice" };
+  }
+  
+  return { icon: Activity, text: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/30", borderLeft: "border-l-[6px] border-l-emerald-400", tag: "bg-emerald-400/10 border-emerald-400/20 text-emerald-400" };
 }
 
 function CidDetalhesContent() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -61,23 +69,14 @@ function CidDetalhesContent() {
   const [cid, setCid] = useState<Cid | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-
-  // 🔧 Menu flutuante para o botão +
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
-  // Estados de dados cruzados completos
   const [tratamentos, setTratamentos] = useState<Tratamento[]>([]);
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
   const [medicos, setMedicos] = useState<Medico[]>([]);
   const [hospitais, setHospitais] = useState<Hospital[]>([]);
   const [farmacias, setFarmacias] = useState<Farmacia[]>([]);
   const [documentos, setDocumentos] = useState<Document[]>([]);
-
-  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
-    setToastMessage({ text, type });
-    setTimeout(() => setToastMessage(null), 3500);
-  };
 
   useEffect(() => {
     if (!id) {
@@ -95,16 +94,14 @@ function CidDetalhesContent() {
         setCid(cidData);
 
         // 1. Tratamentos
-        const tratData = await db.tratamentos.where("cid_id").equals(id).toArray();
-        setTratamentos(tratData);
-        const tratIds = new Set(tratData.map(t => t.id).filter(Boolean));
+        const tratData = await db.tratamentos.toArray();
+        const tratsVinculados = tratData.filter(t => t.cid_ids?.includes(id));
+        setTratamentos(tratsVinculados);
+        const tratIds = new Set(tratsVinculados.map(t => t.id).filter(Boolean));
 
         // 2. Medicamentos
         const medsData = await db.medicamentos.toArray();
-        const medsVinculados = medsData.filter(m => {
-          if (m.tratamento_ids && m.tratamento_ids.some(tid => tratIds.has(tid))) return true;
-          return false;
-        });
+        const medsVinculados = medsData.filter(m => m.tratamento_ids && m.tratamento_ids.some(tid => tratIds.has(tid)));
         setMedicamentos(medsVinculados);
 
         // 3. Médicos
@@ -113,7 +110,7 @@ function CidDetalhesContent() {
         setMedicos(medsList.filter(med => med.id && medicoIds.has(med.id)));
 
         // 4. Locais / Hospitais (Acompanhamento)
-        const hospIds = new Set(medsVinculados.map(m => m.estabelecimento_id || m.farmacia_id).filter(Boolean));
+        const hospIds = new Set(medsVinculados.map(m => m.hospital_id || m.local_id || m.farmacia_id).filter(Boolean));
         const hospList = await db.hospitais.toArray();
         setHospitais(hospList.filter(h => h.id && hospIds.has(h.id)));
 
@@ -124,7 +121,10 @@ function CidDetalhesContent() {
 
         // 6. Laudos / Anexos
         const docsList = await db.documents.toArray();
-        setDocumentos(docsList.filter(d => d.metadata?.cid_id === id || (d.metadata?.tratamento_id && tratIds.has(d.metadata.tratamento_id))));
+        setDocumentos(docsList.filter(d => {
+          const meta = d.metadata as { cid_id?: string; tratamento_id?: string };
+          return meta?.cid_id === id || (meta?.tratamento_id && tratIds.has(meta.tratamento_id));
+        }));
 
       } catch (err) {
         console.error("Erro ao carregar detalhes do CID:", err);
@@ -155,10 +155,10 @@ function CidDetalhesContent() {
     return getCidInsights(cid.codigo);
   }, [cid]);
 
-  // 🔧 Opções do menu flutuante
   const menuOptions = [
     { id: "novo-tratamento", label: "Novo Tratamento", icon: FolderHeart, path: `/saude/tratamentos/novo?cid_id=${id}` },
     { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?cid_id=${id}` },
+    { id: "novo-laudo", label: "Anexar Laudo", icon: FileText, path: `/saude/documentos/novo?type=laudo&cid_id=${id}` },
   ];
 
   const handleMenuOptionClick = (path: string) => {
@@ -170,12 +170,12 @@ function CidDetalhesContent() {
   if (isLoading) return <LoadingSkeleton />;
   if (!cid) return null;
 
-  const IconComp = getCidIcon(cid.codigo, cid.descricao);
-  const cidCor = getCorPorIndex(cid.id ? parseInt(cid.id, 36) : 0);
+  const theme = getCidTheme(cid.codigo, cid.descricao);
+  const IconComp = theme.icon;
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-screen bg-void pb-32">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between pt-6">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -185,13 +185,12 @@ function CidDetalhesContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em]" style={{ color: cidCor }}>Diagnóstico CID-10</p>
+              <p className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.text}`}>Diagnóstico CID-10</p>
               <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">Detalhes da Condição</h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 🔧 BOTÃO + COM MENU FLUTUANTE */}
             <div className="relative">
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
@@ -261,31 +260,23 @@ function CidDetalhesContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          {/* Card Principal */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
             animate="animate" 
-            className="relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm"
-            style={{ 
-              borderColor: `${cidCor}40`,
-              borderLeft: `6px solid ${cidCor}` 
-            }}
+            className={`relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm ${theme.border} ${theme.borderLeft}`}
           >
-            <div className="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+            <div className={`absolute -right-4 -top-4 opacity-5 pointer-events-none ${theme.text}`}>
               <IconComp size={140} />
             </div>
 
             <div className="relative z-10 flex items-start gap-4">
-              <div 
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-sm border"
-                style={{ backgroundColor: `${cidCor}15`, borderColor: `${cidCor}30`, color: cidCor }}
-              >
+              <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-sm border ${theme.bg} ${theme.border} ${theme.text}`}>
                 <IconComp size={28} />
               </div>
               <div className="min-w-0 pt-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-surface-raised border border-surface-border" style={{ color: cidCor }}>
+                  <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md border ${theme.tag}`}>
                     {cid.codigo}
                   </span>
                 </div>
@@ -295,7 +286,7 @@ function CidDetalhesContent() {
 
             {cidInsight && (
               <div className="relative z-10 mt-5 rounded-2xl bg-surface-raised/60 border border-surface-border/50 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: cidCor }}>
+                <div className={`flex items-center gap-2 text-xs font-semibold ${theme.text}`}>
                   <Sparkles size={14} />
                   <span>Categoria: {cidInsight.categoria}</span>
                 </div>
@@ -330,7 +321,6 @@ function CidDetalhesContent() {
             </div>
           </motion.div>
 
-          {/* Tratamentos Relacionados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <FolderHeart size={16} className="text-violet-400" />
@@ -364,7 +354,6 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
-          {/* Medicamentos em Uso */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
@@ -398,7 +387,6 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
-          {/* Equipe Médica Associada */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Stethoscope size={16} className="text-ice" />
@@ -423,7 +411,6 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
-          {/* Locais de Acompanhamento / Hospitais / Farmácias Cruzadas */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Building2 size={16} className="text-amber-400" />
@@ -465,7 +452,6 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
-          {/* Laudos e Documentos Anexados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.25 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <FileText size={16} className="text-emerald-400" />
@@ -490,68 +476,13 @@ function CidDetalhesContent() {
           </motion.div>
         </section>
 
-        {/* MODAL DE EXCLUSÃO */}
-        <AnimatePresence>
-          {showDeleteModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }} 
-                animate={{ opacity: 1, scale: 1 }} 
-                exit={{ opacity: 0, scale: 0.95 }} 
-                className="w-full max-w-sm rounded-[28px] border border-surface-border bg-surface p-6 shadow-xl space-y-4"
-              >
-                <div className="flex items-center gap-3 text-coral">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-coral/10">
-                    <Trash2 size={22} />
-                  </div>
-                  <div>
-                    <h3 className="font-display text-base font-bold text-ink-primary">Excluir CID</h3>
-                    <p className="text-xs text-ink-muted">Ação permanente</p>
-                  </div>
-                </div>
-                <p className="text-sm text-ink-muted leading-relaxed">
-                  Tem certeza que deseja remover este diagnóstico da base? Os tratamentos associados não serão apagados, mas perderão a referência de CID.
-                </p>
-                <div className="flex gap-2 pt-2">
-                  <button 
-                    onClick={() => setShowDeleteModal(false)}
-                    className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={handleDelete}
-                    className="flex-1 rounded-2xl bg-coral py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-coral/20"
-                  >
-                    Sim, excluir
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* TOAST */}
-        <AnimatePresence>
-          {toastMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.9 }}
-              className="fixed bottom-6 inset-x-5 z-50 mx-auto max-w-sm flex items-center gap-3 rounded-2xl border border-surface-border bg-surface p-4 shadow-2xl"
-            >
-              {toastMessage.type === 'success' ? (
-                <CheckCircle2 size={20} className="text-emerald-400 shrink-0" />
-              ) : (
-                <AlertCircle size={20} className="text-coral shrink-0" />
-              )}
-              <p className="text-xs font-medium text-ink-primary flex-1">{toastMessage.text}</p>
-              <button onClick={() => setToastMessage(null)} className="text-ink-muted hover:text-ink-primary">
-                <X size={16} />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <ConfirmationModal 
+          isOpen={showDeleteModal} 
+          onClose={() => setShowDeleteModal(false)} 
+          onConfirm={handleDelete} 
+          title="Excluir CID" 
+          message="Tem certeza que deseja remover este diagnóstico da base? Os tratamentos associados não serão apagados, mas perderão a referência de CID." 
+        />
       </main>
     </PageTransition>
   );

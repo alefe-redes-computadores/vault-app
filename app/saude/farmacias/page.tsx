@@ -1,19 +1,34 @@
+// app/saude/farmacias/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { 
-  ArrowLeft, Building2, Search, ChevronRight, 
-  MapPin, Phone, Pill, DollarSign, Edit3, Filter, X, Award, Clock
+import {
+  ArrowLeft,
+  Building2,
+  Search,
+  ChevronRight,
+  MapPin,
+  Phone,
+  Pill,
+  DollarSign,
+  Edit3,
+  Filter,
+  X,
+  Award,
+  Clock,
 } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/EmptyState";
+import { useFarmacias } from "@/hooks/useFarmacias";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { analisarMelhorFarmacia } from "@/lib/health-insights";
+import type { Farmacia, Medicamento, Renovacao } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -22,58 +37,73 @@ function formatDateDisplay(isoStr: string): string {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+type RankingFarmacia = {
+  farmacia_id: string;
+  media_preco: number;
+  economia_estimada?: number;
+  percentual_economia?: number;
+};
+
+type FarmaciaComAnalise = Farmacia & {
+  medicamentosCount: number;
+  totalGasto: number;
+  estatisticaEconomia: RankingFarmacia | null;
+  isMaisEconomica: boolean;
+  ultimaCompra: Renovacao | null;
+  ultimosMedicamentos: string[];
+};
+
 export default function FarmaciasPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "com_medicamentos" | "mais_economica">("todos");
 
-  const farmacias = useLiveQuery(() => db.farmacias.toArray(), []) || [];
-  const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
-  const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
+  const { farmacias = [] } = useFarmacias();
+  const { medicamentos = [] } = useMedicamentos();
+  const { renovacoes = [] } = useRenovacoes();
 
-  const rankingFarmacias = useMemo(() => {
-    return analisarMelhorFarmacia(renovacoes);
+  const rankingFarmacias = useMemo<RankingFarmacia[]>(() => {
+    return analisarMelhorFarmacia(renovacoes) as RankingFarmacia[];
   }, [renovacoes]);
 
   const rankingMap = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, { posicao: number; farmacia_id: string }>();
     rankingFarmacias.forEach((r, index) => {
       map.set(r.farmacia_id, { ...r, posicao: index + 1 });
     });
     return map;
   }, [rankingFarmacias]);
 
-  const farmaciasComAnalise = useMemo(() => {
+  const farmaciasComAnalise = useMemo<FarmaciaComAnalise[]>(() => {
     return farmacias.map((farmacia) => {
-      const medsDaFarmacia = medicamentos.filter((m: any) => m.farmacia_id === farmacia.id);
-      const medIds = new Set(medsDaFarmacia.map((m: any) => m.id));
-      
-      const renovacoesDaFarmacia = renovacoes.filter((r: any) => medIds.has(r.medicamento_id));
-      
-      // 🔧 Última compra (data mais recente)
+      const medsDaFarmacia = medicamentos.filter((m: Medicamento) => m.farmacia_id === farmacia.id);
+      const medIds = new Set(medsDaFarmacia.map((m) => m.id));
+
+      const renovacoesDaFarmacia = renovacoes.filter((r: Renovacao) => medIds.has(r.medicamento_id));
+
       const ultimaCompra = renovacoesDaFarmacia.length > 0
-        ? renovacoesDaFarmacia.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())[0]
+        ? [...renovacoesDaFarmacia].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())[0]
         : null;
 
-      // 🔧 Últimos 3 medicamentos comprados (para tags)
       const ultimosMedicamentos = renovacoesDaFarmacia
+        .slice()
         .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
         .slice(0, 3)
-        .map(r => {
-          const med = medicamentos.find(m => m.id === r.medicamento_id);
+        .map((r) => {
+          const med = medicamentos.find((m) => m.id === r.medicamento_id);
           return med ? med.nome : null;
         })
-        .filter(Boolean);
+        .filter((nome): nome is string => Boolean(nome));
 
-      let totalGasto = 0;
-      renovacoesDaFarmacia.forEach((r: any) => {
+      const totalGasto = renovacoesDaFarmacia.reduce((acc, r) => {
         if (typeof r.preco === "number" && r.preco > 0) {
-          totalGasto += r.preco;
+          return acc + r.preco;
         }
-      });
+        return acc;
+      }, 0);
 
-      const estatisticaEconomia = rankingMap.get(farmacia.id) || null;
+      const estatisticaEconomia = rankingMap.get(farmacia.id!) || null;
       const isMaisEconomica = estatisticaEconomia?.posicao === 1;
 
       return {
@@ -92,9 +122,11 @@ export default function FarmaciasPage() {
     let result = farmaciasComAnalise;
 
     if (search) {
-      result = result.filter((f) =>
-        f.nome.toLowerCase().includes(search.toLowerCase()) ||
-        (f.endereco && f.endereco.toLowerCase().includes(search.toLowerCase()))
+      const term = search.toLowerCase();
+      result = result.filter(
+        (f) =>
+          f.nome.toLowerCase().includes(term) ||
+          (f.endereco && f.endereco.toLowerCase().includes(term))
       );
     }
 
@@ -107,7 +139,9 @@ export default function FarmaciasPage() {
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [farmaciasComAnalise, search, filtroStatus]);
 
-  if (!farmacias) return <LoadingSkeleton />;
+  if (!farmacias.length && !medicamentos.length && !renovacoes.length) {
+    return <LoadingSkeleton />;
+  }
 
   return (
     <PageTransition>
@@ -139,7 +173,7 @@ export default function FarmaciasPage() {
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
-            
+
             <button
               onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "com_medicamentos" ? "todos" : "com_medicamentos"); }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
@@ -175,17 +209,18 @@ export default function FarmaciasPage() {
 
         <section className="px-5 pt-5 space-y-3.5">
           {filteredFarmacias.length === 0 ? (
-            <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-12 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-400/10 text-amber-400">
-                <Building2 size={24} />
-              </div>
-              <p className="text-sm font-medium text-ink-primary">Nenhuma farmácia encontrada</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                {search || filtroStatus !== "todos" ? "Tente ajustar os filtros aplicados." : "Cadastre farmácias para acompanhar histórico de preços e renovações."}
-              </p>
-            </div>
+            <EmptyState
+              icon={Building2}
+              title="Nenhuma farmácia encontrada"
+              description={
+                search || filtroStatus !== "todos"
+                  ? "Tente ajustar os filtros aplicados."
+                  : "Cadastre farmácias para acompanhar histórico de preços e renovações."
+              }
+              actionLabel="Nova Farmácia"
+              onAction={() => router.push("/saude/farmacias/novo")}
+            />
           ) : (
-            // 🔧 CORREÇÃO: removido `.main =` – agora é apenas `filteredFarmacias.map`
             filteredFarmacias.map((farmacia) => (
               <motion.div
                 key={farmacia.id}
@@ -200,8 +235,8 @@ export default function FarmaciasPage() {
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400 relative">
                       <Building2 size={20} />
                       {farmacia.isMaisEconomica && (
-                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-400 text-[9px] text-void font-bold shadow">
-                          $
+                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-400 text-void shadow">
+                          <DollarSign size={9} strokeWidth={3} />
                         </span>
                       )}
                     </div>
@@ -244,7 +279,6 @@ export default function FarmaciasPage() {
                   </div>
                 </div>
 
-                {/* 🔧 NOVO: Últimos medicamentos comprados */}
                 {farmacia.ultimosMedicamentos.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-[10px] font-medium text-ink-muted uppercase tracking-wide">Últimas compras:</span>
@@ -276,7 +310,6 @@ export default function FarmaciasPage() {
                   </div>
                 </div>
 
-                {/* 🔧 NOVO: Data da última compra */}
                 {farmacia.ultimaCompra && (
                   <div className="flex items-center gap-1.5 text-[10px] text-ink-muted pt-1 border-t border-surface-border/30">
                     <Clock size={12} className="text-ink-faint" />

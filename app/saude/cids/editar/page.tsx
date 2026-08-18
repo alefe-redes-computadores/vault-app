@@ -1,3 +1,4 @@
+// app/saude/cids/editar/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -9,6 +10,7 @@ import {
   Loader2,
   Stethoscope,
   Building2,
+  MapPin,
   Upload,
   X,
 } from "lucide-react";
@@ -21,10 +23,12 @@ import { SelectionModal } from "@/components/SelectionModal";
 import { useCids } from "@/hooks/useCids";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
+import { useLocais } from "@/hooks/useLocais";
 import { useToast } from "@/components/ToastProvider";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
+import type { Medico, Hospital, LocalSaude } from "@/lib/types";
 
 function handleDateMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 8);
@@ -54,6 +58,7 @@ function EditarCidContent() {
   const { getCid, updateCid } = useCids();
   const { medicos } = useMedicos();
   const { hospitais } = useHospitais();
+  const { locais } = useLocais();
 
   const [cid, setCid] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,12 +66,14 @@ function EditarCidContent() {
   const [descricao, setDescricao] = useState("");
   const [dataDiagnostico, setDataDiagnostico] = useState("");
   const [medicoId, setMedicoId] = useState("");
-  const [estabelecimentoId, setEstabelecimentoId] = useState("");
+  const [hospitalId, setHospitalId] = useState("");
+  const [localId, setLocalId] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
   const [localFile, setLocalFile] = useState<File | null>(null);
   const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
-  const [isEstabelecimentoModalOpen, setIsEstabelecimentoModalOpen] = useState(false);
+  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
+  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -83,7 +90,8 @@ function EditarCidContent() {
         setDescricao(data.descricao || "");
         setDataDiagnostico(data.data_diagnostico ? formatDateToDisplay(data.data_diagnostico) : "");
         setMedicoId(data.medico_id || "");
-        setEstabelecimentoId(data.estabelecimento_id || "");
+        setHospitalId(data.hospital_id || "");
+        setLocalId(data.local_id || "");
         setObservacoes(data.observacoes || "");
         setAnexoUrl(data.anexo_url || "");
       } else {
@@ -95,7 +103,8 @@ function EditarCidContent() {
   }, [id, router, getCid]);
 
   const selectedMedico = medicos.find((m) => m.id === medicoId);
-  const selectedEstabelecimento = hospitais.find((h) => h.id === estabelecimentoId);
+  const selectedHospital = hospitais.find((h) => h.id === hospitalId);
+  const selectedLocal = locais.find((l) => l.id === localId);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -139,7 +148,8 @@ function EditarCidContent() {
         descricao: descricao.trim(),
         data_diagnostico: dataISO,
         medico_id: medicoId || undefined,
-        estabelecimento_id: estabelecimentoId || undefined,
+        hospital_id: hospitalId || undefined,
+        local_id: localId || undefined,
         observacoes: observacoes.trim() || undefined,
         anexo_url: anexoUrl || undefined,
       });
@@ -186,14 +196,14 @@ function EditarCidContent() {
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4"
           >
             <Input
-              label="Código CID <span class='text-coral'>*</span>"
+              label="Código CID *"
               placeholder="Ex: F90.0"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
               error={errors.codigo}
             />
             <Input
-              label="Descrição <span class='text-coral'>*</span>"
+              label="Descrição *"
               placeholder="Ex: Transtorno de déficit de atenção / hiperatividade"
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
@@ -245,14 +255,14 @@ function EditarCidContent() {
             transition={{ delay: 0.08 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Local / Estabelecimento</label>
+            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital</label>
             <button
-              onClick={() => { trigger("vibrate"); setIsEstabelecimentoModalOpen(true); }}
+              onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
             >
               <span className="flex items-center gap-2">
                 <Building2 size={16} className="text-violet-400" />
-                {selectedEstabelecimento ? selectedEstabelecimento.nome : "Selecionar local..."}
+                {selectedHospital ? selectedHospital.nome : "Selecionar hospital..."}
               </span>
               <span className="text-xs text-ice font-medium">Alterar</span>
             </button>
@@ -262,6 +272,25 @@ function EditarCidContent() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Local / Posto</label>
+            <button
+              onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
+              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <MapPin size={16} className="text-emerald-400" />
+                {selectedLocal ? selectedLocal.nome : "Selecionar local..."}
+              </span>
+              <span className="text-xs text-ice font-medium">Alterar</span>
+            </button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3"
           >
             <TextArea
@@ -312,36 +341,52 @@ function EditarCidContent() {
           </Button>
         </div>
 
-        <SelectionModal
+        <SelectionModal<Medico>
           isOpen={isMedicoModalOpen}
           onClose={() => setIsMedicoModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setMedicoId(item.id); }}
+          onSelect={(item) => { trigger("vibrate"); setMedicoId(item.id!); }}
           items={medicos}
           title="Selecionar Médico"
-          renderItem={(item: any) => (
+          renderItem={(item) => (
             <div>
               <p className="font-medium text-ink-primary">{item.nome}</p>
               {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
             </div>
           )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
         />
 
-        <SelectionModal
-          isOpen={isEstabelecimentoModalOpen}
-          onClose={() => setIsEstabelecimentoModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setEstabelecimentoId(item.id); }}
+        <SelectionModal<Hospital>
+          isOpen={isHospitalModalOpen}
+          onClose={() => setIsHospitalModalOpen(false)}
+          onSelect={(item) => { trigger("vibrate"); setHospitalId(item.id!); }}
           items={hospitais}
-          title="Selecionar Local"
-          renderItem={(item: any) => (
+          title="Selecionar Hospital"
+          renderItem={(item) => (
             <div>
               <p className="font-medium text-ink-primary">{item.nome}</p>
               {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
             </div>
           )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+        />
+
+        <SelectionModal<LocalSaude>
+          isOpen={isLocalModalOpen}
+          onClose={() => setIsLocalModalOpen(false)}
+          onSelect={(item) => { trigger("vibrate"); setLocalId(item.id!); }}
+          items={locais}
+          title="Selecionar Local"
+          renderItem={(item) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
+            </div>
+          )}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
         />
       </main>
     </PageTransition>

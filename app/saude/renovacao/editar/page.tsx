@@ -1,3 +1,4 @@
+// app/saude/renovacao/editar/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -16,22 +17,33 @@ import {
   Stethoscope,
   Store,
   Building2,
+  MapPin,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
-import { db } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { TextArea } from "@/components/ui/TextArea";
+import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
-import { useAuth } from "@/hooks/useAuth";
+import { usePersons } from "@/hooks/usePersons";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
+import { useHospitais } from "@/hooks/useHospitais";
+import { useLocais } from "@/hooks/useLocais";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { TextArea } from "@/components/ui/TextArea";
+import type {
+  Renovacao,
+  Person,
+  Medicamento,
+  Medico,
+  Farmacia,
+  Hospital,
+  LocalSaude,
+} from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -65,45 +77,49 @@ function handleDateMask(value: string): string {
   return clean;
 }
 
-function formatCurrency(value?: number): string {
-  if (!value) return "R$ 0,00";
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
-}
-
 function EditarRenovacaoContent() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { user } = useAuth();
-  const { updateRenovacao, deleteRenovacao } = useRenovacoes();
+
+  const { getRenovacao, updateRenovacao, deleteRenovacao } = useRenovacoes();
   const { medicamentos } = useMedicamentos();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
+  const { hospitais } = useHospitais();
+  const { locais } = useLocais();
+  const persons = usePersons() as Person[];
 
   const [isLoading, setIsLoading] = useState(true);
-  const [renovacao, setRenovacao] = useState<any>(null);
+  const [renovacao, setRenovacao] = useState<Renovacao | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Form fields
+  const [personId, setPersonId] = useState("");
   const [medicamentoId, setMedicamentoId] = useState("");
   const [medicoId, setMedicoId] = useState("");
   const [farmaciaId, setFarmaciaId] = useState("");
+  const [hospitalId, setHospitalId] = useState("");
+  const [localId, setLocalId] = useState("");
   const [dataDisplay, setDataDisplay] = useState("");
   const [preco, setPreco] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
 
-  // Modals
   const [isMedModalOpen, setIsMedModalOpen] = useState(false);
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
+  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
+  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
-  const selectedMedicamento = medicamentos.find((m: any) => m.id === medicamentoId);
-  const selectedMedico = medicos.find((m: any) => m.id === medicoId);
-  const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId);
+  const selectedMedicamento = medicamentos.find((m) => m.id === medicamentoId);
+  const selectedMedico = medicos.find((m) => m.id === medicoId);
+  const selectedFarmacia = farmacias.find((f) => f.id === farmaciaId);
+  const selectedHospital = hospitais.find((h) => h.id === hospitalId);
+  const selectedLocal = locais.find((l) => l.id === localId);
 
   useEffect(() => {
     if (!id) {
@@ -113,12 +129,15 @@ function EditarRenovacaoContent() {
 
     const loadData = async () => {
       try {
-        const data = await db.renovacoes.get(id);
+        const data = await getRenovacao(id);
         if (data) {
           setRenovacao(data);
+          setPersonId(data.person_id || persons[0]?.id || "");
           setMedicamentoId(data.medicamento_id || "");
           setMedicoId(data.medico_id || "");
           setFarmaciaId(data.farmacia_id || "");
+          setHospitalId(data.hospital_id || "");
+          setLocalId(data.local_id || "");
           setDataDisplay(formatDateToDisplay(data.data));
           setPreco(data.preco ? String(data.preco).replace(".", ",") : "");
           setObservacoes(data.observacoes || "");
@@ -127,7 +146,6 @@ function EditarRenovacaoContent() {
           router.push("/saude/renovacao");
         }
       } catch (error) {
-        console.error("Erro ao carregar renovação:", error);
         router.push("/saude/renovacao");
       } finally {
         setIsLoading(false);
@@ -135,7 +153,7 @@ function EditarRenovacaoContent() {
     };
 
     loadData();
-  }, [id, router]);
+  }, [id, router, getRenovacao, persons]);
 
   const handleSubmit = async () => {
     trigger("vibrate");
@@ -144,25 +162,29 @@ function EditarRenovacaoContent() {
     setSaving(true);
     try {
       const dataISO = parseDateToISO(dataDisplay);
-      const precoNum = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
+      const precoNum = preco
+        ? parseFloat(preco.replace(/\./g, "").replace(",", "."))
+        : undefined;
 
       await updateRenovacao(id, {
+        person_id: personId || undefined,
         medicamento_id: medicamentoId || undefined,
         medico_id: medicoId || undefined,
         farmacia_id: farmaciaId || undefined,
-        data: dataISO || renovacao.data,
+        hospital_id: hospitalId || undefined,
+        local_id: localId || undefined,
+        data: dataISO || renovacao?.data,
         preco: precoNum,
         observacoes: observacoes.trim() || undefined,
         anexo_url: anexoUrl.trim() || undefined,
-        updated_at: new Date().toISOString(),
-        synced: false,
       });
 
       trigger("success");
+      showToast("Renovação atualizada com sucesso", "success");
       router.replace(`/saude/renovacao/detalhes?id=${id}`);
     } catch (error) {
-      console.error("Erro ao atualizar renovação:", error);
       trigger("error");
+      showToast("Erro ao atualizar renovação", "error");
     } finally {
       setSaving(false);
     }
@@ -174,10 +196,11 @@ function EditarRenovacaoContent() {
     try {
       await deleteRenovacao(id!);
       trigger("success");
+      showToast("Renovação excluída com sucesso", "success");
       router.replace("/saude/renovacao");
     } catch (error) {
-      console.error("Erro ao excluir renovação:", error);
       trigger("error");
+      showToast("Erro ao excluir renovação", "error");
     } finally {
       setDeleting(false);
       setShowDeleteModal(false);
@@ -193,19 +216,27 @@ function EditarRenovacaoContent() {
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
+              onClick={() => {
+                trigger("vibrate");
+                router.back();
+              }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Vault</p>
-              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Editar Renovação</h1>
+              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
+                Editar Renovação
+              </h1>
             </div>
           </div>
 
           <button
-            onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
+            onClick={() => {
+              trigger("vibrate");
+              setShowDeleteModal(true);
+            }}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
           >
             <Trash2 size={16} />
@@ -213,26 +244,79 @@ function EditarRenovacaoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
+          {persons.length > 0 && (
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            >
+              <p className="mb-3 text-sm font-medium text-ink-primary">
+                Para quem? <span className="text-coral">*</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {persons.map((person) => {
+                  const active = personId === person.id;
+                  return (
+                    <button
+                      key={person.id}
+                      onClick={() => {
+                        trigger("vibrate");
+                        setPersonId(person.id!);
+                      }}
+                      className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
+                        active
+                          ? "border-ice bg-ice/12 text-ice"
+                          : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                      }`}
+                    >
+                      {person.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
           {/* Medicamento */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Medicamento</label>
             <button
-              onClick={() => { trigger("vibrate"); setIsMedModalOpen(true); }}
+              onClick={() => {
+                trigger("vibrate");
+                setIsMedModalOpen(true);
+              }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
             >
               <span className="flex items-center gap-2">
                 <Pill size={16} className="text-ice" />
-                {selectedMedicamento ? `${selectedMedicamento.nome} · ${selectedMedicamento.dosagem}` : "Selecionar medicamento..."}
+                {selectedMedicamento
+                  ? `${selectedMedicamento.nome} · ${selectedMedicamento.dosagem}`
+                  : "Selecionar medicamento..."}
               </span>
               <span className="text-xs text-ice font-medium">Alterar</span>
             </button>
           </motion.div>
 
           {/* Médico */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.02 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico Prescritor</label>
             <button
-              onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }}
+              onClick={() => {
+                trigger("vibrate");
+                setIsDoctorModalOpen(true);
+              }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
             >
               <span className="flex items-center gap-2">
@@ -244,10 +328,19 @@ function EditarRenovacaoContent() {
           </motion.div>
 
           {/* Farmácia */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.03 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia</label>
             <button
-              onClick={() => { trigger("vibrate"); setIsPharmacyModalOpen(true); }}
+              onClick={() => {
+                trigger("vibrate");
+                setIsPharmacyModalOpen(true);
+              }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
             >
               <span className="flex items-center gap-2">
@@ -258,8 +351,62 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Data e Preço */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="grid grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          {/* Hospital */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.04 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital</label>
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                setIsHospitalModalOpen(true);
+              }}
+              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <Building2 size={16} className="text-violet-400" />
+                {selectedHospital ? selectedHospital.nome : "Selecionar hospital..."}
+              </span>
+              <span className="text-xs text-ice font-medium">Alterar</span>
+            </button>
+          </motion.div>
+
+          {/* Local / Posto */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.05 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Local / Posto</label>
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                setIsLocalModalOpen(true);
+              }}
+              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <MapPin size={16} className="text-emerald-400" />
+                {selectedLocal ? selectedLocal.nome : "Selecionar local..."}
+              </span>
+              <span className="text-xs text-ice font-medium">Alterar</span>
+            </button>
+          </motion.div>
+
+          {/* Data e Custo */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.06 }}
+            className="grid grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink-primary">Data da Receita</label>
               <div className="relative">
@@ -290,7 +437,13 @@ function EditarRenovacaoContent() {
           </motion.div>
 
           {/* Observações */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.07 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <TextArea
               label="Observações"
               value={observacoes}
@@ -301,7 +454,13 @@ function EditarRenovacaoContent() {
 
           {/* Anexo */}
           {anexoUrl && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.08 }}
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            >
               <label className="mb-1.5 block text-sm font-medium text-ink-primary">Anexo</label>
               <a
                 href={anexoUrl}
@@ -333,57 +492,108 @@ function EditarRenovacaoContent() {
           </Button>
         </div>
 
-        {/* Modais */}
-        <SelectionModal
+        {/* Modais de seleção */}
+        <SelectionModal<Medicamento>
           isOpen={isMedModalOpen}
           onClose={() => setIsMedModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setMedicamentoId(item.id); }}
+          onSelect={(item) => {
+            trigger("vibrate");
+            setMedicamentoId(item.id!);
+          }}
           items={medicamentos}
           title="Selecionar Medicamento"
-          renderItem={(item: any) => (
+          renderItem={(item) => (
             <div>
               <p className="font-medium text-ink-primary">{item.nome}</p>
               <p className="text-xs text-ink-muted">{item.dosagem}</p>
             </div>
           )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
           onCreateNew={() => {}}
           createNewLabel=""
         />
 
-        <SelectionModal
+        <SelectionModal<Medico>
           isOpen={isDoctorModalOpen}
           onClose={() => setIsDoctorModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setMedicoId(item.id); }}
+          onSelect={(item) => {
+            trigger("vibrate");
+            setMedicoId(item.id!);
+          }}
           items={medicos}
           title="Selecionar Médico"
-          renderItem={(item: any) => (
+          renderItem={(item) => (
             <div>
               <p className="font-medium text-ink-primary">Dr(a). {item.nome}</p>
               {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
             </div>
           )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
           onCreateNew={() => {}}
           createNewLabel=""
         />
 
-        <SelectionModal
+        <SelectionModal<Farmacia>
           isOpen={isPharmacyModalOpen}
           onClose={() => setIsPharmacyModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setFarmaciaId(item.id); }}
+          onSelect={(item) => {
+            trigger("vibrate");
+            setFarmaciaId(item.id!);
+          }}
           items={farmacias}
           title="Selecionar Farmácia"
-          renderItem={(item: any) => (
+          renderItem={(item) => (
             <div>
               <p className="font-medium text-ink-primary">{item.nome}</p>
               {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
             </div>
           )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          onCreateNew={() => {}}
+          createNewLabel=""
+        />
+
+        <SelectionModal<Hospital>
+          isOpen={isHospitalModalOpen}
+          onClose={() => setIsHospitalModalOpen(false)}
+          onSelect={(item) => {
+            trigger("vibrate");
+            setHospitalId(item.id!);
+          }}
+          items={hospitais}
+          title="Selecionar Hospital"
+          renderItem={(item) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
+            </div>
+          )}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          onCreateNew={() => {}}
+          createNewLabel=""
+        />
+
+        <SelectionModal<LocalSaude>
+          isOpen={isLocalModalOpen}
+          onClose={() => setIsLocalModalOpen(false)}
+          onSelect={(item) => {
+            trigger("vibrate");
+            setLocalId(item.id!);
+          }}
+          items={locais}
+          title="Selecionar Local / Posto"
+          renderItem={(item) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
+            </div>
+          )}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
           onCreateNew={() => {}}
           createNewLabel=""
         />

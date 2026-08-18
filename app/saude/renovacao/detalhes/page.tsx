@@ -1,12 +1,13 @@
+// app/saude/renovacao/detalhes/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, FileWarning, Calendar, DollarSign, ExternalLink, 
   Trash2, Pill, FileText, Edit3, AlertCircle, CheckCircle2, Clock,
-  History, ChevronRight
+  History, ChevronRight, Plus,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -15,6 +16,8 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
+import type { Renovacao, Medicamento, Medico, Farmacia } from "@/lib/types";
+import { useRenovacoes } from "@/hooks/useRenovacoes";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -37,15 +40,17 @@ function DetalhesRenovacaoContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { trigger } = useHapticFeedback();
+  const { deleteRenovacao } = useRenovacoes();
 
-  const [renovacao, setRenovacao] = useState<any>(null);
-  const [medicamento, setMedicamento] = useState<any>(null);
-  const [medico, setMedico] = useState<any>(null);
-  const [farmacia, setFarmacia] = useState<any>(null);
-  const [historicoRenovacoes, setHistoricoRenovacoes] = useState<any[]>([]);
+  const [renovacao, setRenovacao] = useState<Renovacao | null>(null);
+  const [medicamento, setMedicamento] = useState<Medicamento | null>(null);
+  const [medico, setMedico] = useState<Medico | null>(null);
+  const [farmacia, setFarmacia] = useState<Farmacia | null>(null);
+  const [historicoRenovacoes, setHistoricoRenovacoes] = useState<Renovacao[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -61,15 +66,13 @@ function DetalhesRenovacaoContent() {
           
           if (res.medicamento_id) {
             const med = await db.medicamentos.get(res.medicamento_id);
-            setMedicamento(med);
+            setMedicamento(med || null);
             
-            // 🔧 Buscar histórico de outras renovações do mesmo medicamento
             const outrasRenovacoes = await db.renovacoes
               .where('medicamento_id')
               .equals(res.medicamento_id)
               .toArray();
             
-            // Filtrar a atual e ordenar por data
             const historico = outrasRenovacoes
               .filter(r => r.id !== res.id)
               .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
@@ -79,12 +82,12 @@ function DetalhesRenovacaoContent() {
             
             if (res.medico_id) {
               const doc = await db.medicos.get(res.medico_id);
-              setMedico(doc);
+              setMedico(doc || null);
             }
             
             if (res.farmacia_id) {
               const farm = await db.farmacias.get(res.farmacia_id);
-              setFarmacia(farm);
+              setFarmacia(farm || null);
             }
           }
         } else {
@@ -105,7 +108,7 @@ function DetalhesRenovacaoContent() {
     setDeleting(true);
     trigger("vibrate");
     try {
-      await db.renovacoes.delete(id!);
+      await deleteRenovacao(id!);
       trigger("success");
       router.replace("/saude/renovacao");
     } catch (error) {
@@ -117,6 +120,17 @@ function DetalhesRenovacaoContent() {
     }
   };
 
+  const menuOptions = [
+    { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?medicamento_id=${medicamento?.id || ''}` },
+    { id: "editar-renovacao", label: "Editar Renovação", icon: Edit3, path: `/saude/renovacao/editar?id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
+
   if (isLoading) return <LoadingSkeleton />;
   if (!renovacao) return null;
 
@@ -124,8 +138,9 @@ function DetalhesRenovacaoContent() {
     ? formatCurrency(renovacao.preco)
     : "SUS / Gratuito";
 
-  const vencida = isReceitaVencidaSegura(renovacao.data);
-  const diasRestantes = getDaysUntil(renovacao.data);
+  // A validade da receita está associada ao medicamento, não à renovação.
+  const vencida = medicamento ? isReceitaVencidaSegura(medicamento.proxima_renovacao) : isReceitaVencidaSegura(renovacao.data);
+  const diasRestantes = getDaysUntil(medicamento?.proxima_renovacao || renovacao.data);
 
   return (
     <PageTransition>
@@ -145,6 +160,59 @@ function DetalhesRenovacaoContent() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+              >
+                <Plus size={18} />
+              </button>
+              <AnimatePresence>
+                {isMenuFlutuanteOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.16 }}
+                      onClick={() => setIsMenuFlutuanteOpen(false)}
+                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                    >
+                      <div className="px-3 pb-2 pt-3.5">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                      </div>
+                      <div className="px-1.5 pb-2">
+                        {menuOptions.map((option) => {
+                          const Icon = option.icon;
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => handleMenuOptionClick(option.path)}
+                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                <Icon size={15} />
+                              </div>
+                              <span className="text-sm font-medium text-ink-primary">
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/editar?id=${id}`); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ice transition-all active:scale-95 hover:bg-ice/10"
@@ -162,7 +230,6 @@ function DetalhesRenovacaoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          {/* Card Principal */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -179,7 +246,6 @@ function DetalhesRenovacaoContent() {
                   <h2 className="font-display text-xl font-bold text-ink-primary truncate">
                     {medicamento?.nome || "Medicamento"}
                   </h2>
-                  {/* 🔧 Badge de status */}
                   {vencida ? (
                     <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-coral/20 text-coral px-2 py-0.5 rounded-full border border-coral/30">
                       <AlertCircle size={10} /> Vencida
@@ -206,7 +272,6 @@ function DetalhesRenovacaoContent() {
               </div>
             </div>
 
-            {/* 🔧 Dias restantes */}
             {diasRestantes !== null && !vencida && (
               <div className="pt-2 border-t border-surface-border/40">
                 <div className={`flex items-center gap-2 text-xs ${
@@ -219,7 +284,7 @@ function DetalhesRenovacaoContent() {
                     ) : (
                       <span>Faltam</span>
                     )}
-                    {' '}{diasRestantes} dias para o vencimento
+                    {' '}{diasRestantes} dias para o vencimento da receita
                   </span>
                 </div>
               </div>
@@ -258,7 +323,6 @@ function DetalhesRenovacaoContent() {
             )}
           </motion.div>
 
-          {/* 🔧 Histórico de outras renovações do mesmo medicamento */}
           {historicoRenovacoes.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -269,7 +333,7 @@ function DetalhesRenovacaoContent() {
                 </span>
               </div>
               <div className="space-y-2">
-                {historicoRenovacoes.map((r: any) => (
+                {historicoRenovacoes.map((r) => (
                   <div
                     key={r.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }}
@@ -288,7 +352,6 @@ function DetalhesRenovacaoContent() {
             </motion.div>
           )}
 
-          {/* Rede de Apoio */}
           {(medico || farmacia) && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
               <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Rede de Apoio</h3>

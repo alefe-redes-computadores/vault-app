@@ -1,4 +1,7 @@
+// lib/repositories/exames.ts
+
 import { db, safeAddExame, safeUpdateExame, safeDeleteExame } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { Exame } from "@/lib/types";
 
 export const examesRepository = {
@@ -14,17 +17,25 @@ export const examesRepository = {
     if (data.tratamento_ids) {
       data.tratamento_ids = Array.from(new Set(data.tratamento_ids));
     }
-    return safeAddExame(data);
+
+    const id = await safeAddExame(data);
+    await enfileirarOperacao("exames", "add", { id, ...data });
+    return id;
   },
 
   async update(id: string, data: Partial<Exame>) {
     if (data.tratamento_ids) {
       data.tratamento_ids = Array.from(new Set(data.tratamento_ids));
     }
-    return safeUpdateExame(id, data);
+
+    await safeUpdateExame(id, data);
+    await enfileirarOperacao("exames", "update", { id, ...data });
+    return id;
   },
 
   async delete(id: string) {
-    return safeDeleteExame(id);
-  }
+    await safeDeleteExame(id);
+    await enfileirarOperacao("exames", "delete", { id });
+    return id;
+  },
 };

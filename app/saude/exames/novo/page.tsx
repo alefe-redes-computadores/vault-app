@@ -1,26 +1,39 @@
+// app/saude/exames/novo/page.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, Save, Loader2, FlaskConical, Building2, 
-  Stethoscope, Calendar, Plus, Trash2, Paperclip, Activity, Brain, Flame, HeartPulse, ShieldAlert, X
+import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  Save,
+  Loader2,
+  FlaskConical,
+  Building2,
+  Stethoscope,
+  Calendar,
+  Plus,
+  X,
+  Brain,
+  Flame,
+  HeartPulse,
+  ShieldAlert,
+  Activity,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
-import { db, safeAddMedico, safeAddHospital, safeAddTratamento } from "@/lib/db";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
+import { useTratamentos } from "@/hooks/useTratamentos";
 import { usePersons } from "@/hooks/usePersons";
 import { useExames } from "@/hooks/useExames";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { useAuth } from "@/hooks/useAuth";
-import { useLiveQuery } from "dexie-react-hooks";
+import type { Medico, Hospital, Tratamento, Person } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -29,6 +42,33 @@ const fadeUp = {
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function formatDateToDisplay(isoStr: string): string {
+  if (!isoStr) return "";
+  const parts = isoStr.split("-");
+  if (parts.length !== 3) return isoStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function parseDateToISO(displayStr: string): string {
+  const clean = displayStr.replace(/\D/g, "");
+  if (clean.length !== 8) return todayISO();
+  const day = clean.slice(0, 2);
+  const month = clean.slice(2, 4);
+  const year = clean.slice(4, 8);
+  return `${year}-${month}-${day}`;
+}
+
+function handleDateMask(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 8);
+  if (clean.length > 4) {
+    return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
+  }
+  if (clean.length > 2) {
+    return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  }
+  return clean;
 }
 
 function getTratamentoIcon(nome: string) {
@@ -42,32 +82,33 @@ function getTratamentoIcon(nome: string) {
 
 export default function NovoExamePage() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
-  const { user } = useAuth();
-  
-  const { medicos } = useMedicos();
-  const { hospitais } = useHospitais();
-  const persons = usePersons();
+
+  const { medicos, addMedico } = useMedicos();
+  const { hospitais, addHospital } = useHospitais();
+  const { addTratamento } = useTratamentos();
+  const persons = usePersons() as Person[];
   const { addExame } = useExames();
 
   const [personId, setPersonId] = useState<string>(persons[0]?.id || "");
-  const [nomesExames, setNomesExames] = useState(""); 
-  
+  const [nomesExames, setNomesExames] = useState("");
+
   const [localRealizacao, setLocalRealizacao] = useState("");
   const [laboratorioId, setLaboratorioId] = useState("");
-  
+
   const [medicoSolicitante, setMedicoSolicitante] = useState("");
   const [medicoId, setMedicoId] = useState("");
-  
-  const [dataSolicitacao, setDataSolicitacao] = useState(todayISO());
-  const [dataRetorno, setDataRetorno] = useState("");
+
+  const [dataSolicitacaoDisplay, setDataSolicitacaoDisplay] = useState(formatDateToDisplay(todayISO()));
+  const [dataRetornoDisplay, setDataRetornoDisplay] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
 
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
-  
+
   const [isCreatingDoctor, setIsCreatingDoctor] = useState(false);
   const [newDocName, setNewDocName] = useState("");
   const [newDocEspecialidade, setNewDocEspecialidade] = useState("");
@@ -89,8 +130,7 @@ export default function NovoExamePage() {
     if (!newDocName.trim()) return;
     trigger("vibrate");
     try {
-      const newId = await safeAddMedico({
-        user_id: user?.id || "default_user",
+      const newId = await addMedico({
         nome: newDocName.trim(),
         especialidade: newDocEspecialidade.trim() || "Geral",
       });
@@ -100,9 +140,10 @@ export default function NovoExamePage() {
       setNewDocName("");
       setNewDocEspecialidade("");
       trigger("success");
-    } catch (e) {
-      console.error(e);
+      showToast("Médico cadastrado", "success");
+    } catch (error) {
       trigger("error");
+      showToast("Erro ao cadastrar médico", "error");
     }
   };
 
@@ -110,8 +151,7 @@ export default function NovoExamePage() {
     if (!newLocalName.trim()) return;
     trigger("vibrate");
     try {
-      const newId = await safeAddHospital({
-        user_id: user?.id || "default_user",
+      const newId = await addHospital({
         nome: newLocalName.trim(),
       });
       setLaboratorioId(newId);
@@ -119,9 +159,10 @@ export default function NovoExamePage() {
       setIsCreatingLocal(false);
       setNewLocalName("");
       trigger("success");
-    } catch (e) {
-      console.error(e);
+      showToast("Local cadastrado", "success");
+    } catch (error) {
       trigger("error");
+      showToast("Erro ao cadastrar local", "error");
     }
   };
 
@@ -130,18 +171,19 @@ export default function NovoExamePage() {
     setIsSavingTratamento(true);
     trigger("vibrate");
     try {
-      const newId = await safeAddTratamento({
-        user_id: user?.id || "",
+      const newId = await addTratamento({
         person_id: personId,
         nome: newTratamentoName.trim(),
         status: "ativo",
       });
-      setTratamentosSelecionados(prev => [...prev, newId]);
+      setTratamentosSelecionados((prev) => [...prev, newId]);
       trigger("success");
+      showToast("Tratamento cadastrado", "success");
       setIsCreatingTratamento(false);
       setNewTratamentoName("");
     } catch (error) {
       trigger("error");
+      showToast("Erro ao cadastrar tratamento", "error");
     } finally {
       setIsSavingTratamento(false);
     }
@@ -164,10 +206,11 @@ export default function NovoExamePage() {
 
     setSaving(true);
     try {
-      const listaExames = nomesExames.split(/,|\n/).map(item => item.trim()).filter(Boolean);
+      const listaExames = nomesExames.split(/,|\n/).map((item) => item.trim()).filter(Boolean);
+      const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
+      const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
 
       for (const nomeExame of listaExames) {
-        // ✅ CORRIGIDO: user_id removido (hook injeta internamente)
         await addExame({
           person_id: personId,
           nome: nomeExame,
@@ -175,20 +218,21 @@ export default function NovoExamePage() {
           laboratorio_id: laboratorioId || undefined,
           medico: medicoSolicitante.trim() || undefined,
           medico_id: medicoId || undefined,
-          data: dataSolicitacao,
-          data_retorno: dataRetorno || undefined,
+          data: dataSolicitacaoISO,
+          data_retorno: dataRetornoISO,
           motivo: motivo.trim() || undefined,
           observacoes: observacoes.trim() || undefined,
-          anexo_url: anexoUrl || undefined,
+          anexo_url: anexoUrl.trim() || undefined,
           tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
         });
       }
 
       trigger("success");
-      router.push("/saude/exames");
+      showToast("Exame(s) cadastrado(s)", "success");
+      router.back();
     } catch (error) {
-      console.error("Erro ao salvar exames:", error);
       trigger("error");
+      showToast("Erro ao salvar exame(s)", "error");
     } finally {
       setSaving(false);
     }
@@ -199,8 +243,8 @@ export default function NovoExamePage() {
       <main className="min-h-screen bg-void pb-32">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => { trigger("vibrate"); router.back(); }} 
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
@@ -213,11 +257,10 @@ export default function NovoExamePage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Para quem é o exame? <span className="text-coral">*</span></p>
             <div className="flex flex-wrap gap-2">
-              {persons.map((person: any) => {
+              {persons.map((person) => {
                 const active = personId === person.id;
                 return (
                   <button
@@ -242,19 +285,19 @@ export default function NovoExamePage() {
                 <label className="text-sm font-semibold text-ink-primary">Motivo / Tratamento (Opcional)</label>
               </div>
             </div>
-            
+
             {tratamentosSelecionados.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
-                {tratamentosSelecionados.map(id => {
-                  const t = tratamentos.find((x: any) => x.id === id);
+                {tratamentosSelecionados.map((id) => {
+                  const t = tratamentos.find((x: Tratamento) => x.id === id);
                   if (!t) return null;
                   const IconComp = getTratamentoIcon(t.nome);
                   return (
                     <div key={id} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
                       <IconComp size={14} className="text-violet-400" />
                       <span className="text-xs font-medium text-violet-300">{t.nome}</span>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados(prev => prev.filter(item => item !== id)); }}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== id)); }}
                         className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
                       >
                         <X size={14} />
@@ -271,14 +314,14 @@ export default function NovoExamePage() {
             </button>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <div>
               <TextArea
-                label="Nome do(s) Exame(s)"
+                label="Nome do(s) Exame(s) *"
                 placeholder="Ex: Hemograma, Glicemia (Separe por vírgula para cadastrar vários)"
                 value={nomesExames}
                 onChange={(e) => setNomesExames(e.target.value)}
@@ -312,12 +355,32 @@ export default function NovoExamePage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Data da Solicitação</label>
-                <input type="date" value={dataSolicitacao} onChange={(e) => setDataSolicitacao(e.target.value)} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-xs text-ink-primary outline-none focus:border-ice/50" />
+                <div className="relative">
+                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="DD/MM/AAAA"
+                    maxLength={10}
+                    value={dataSolicitacaoDisplay}
+                    onChange={(e) => setDataSolicitacaoDisplay(handleDateMask(e.target.value))}
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Data Apresentação <span className="text-[10px] text-ink-faint">(Alerta)</span></label>
-                <input type="date" value={dataRetorno} onChange={(e) => setDataRetorno(e.target.value)} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-xs text-ink-primary outline-none focus:border-ice/50" />
+                <div className="relative">
+                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="DD/MM/AAAA"
+                    maxLength={10}
+                    value={dataRetornoDisplay}
+                    onChange={(e) => setDataRetornoDisplay(handleDateMask(e.target.value))}
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                  />
+                </div>
               </div>
             </div>
 
@@ -333,13 +396,93 @@ export default function NovoExamePage() {
           </Button>
         </div>
 
-        <SelectionModal isOpen={isLocalModalOpen} onClose={() => setIsLocalModalOpen(false)} onSelect={(item: any) => { trigger("vibrate"); setLaboratorioId(item.id); setLocalRealizacao(item.nome); }} items={hospitais} title="Selecionar Hospital / Laboratório" placeholder="Buscar local..." renderItem={(item: any) => <p className="font-medium text-ink-primary">{item.nome}</p>} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsLocalModalOpen(false); trigger("vibrate"); setIsCreatingLocal(true); }} createNewLabel="Cadastrar Novo Local" />
-        <SelectionModal isOpen={isDoctorModalOpen} onClose={() => setIsDoctorModalOpen(false)} onSelect={(item: any) => { trigger("vibrate"); setMedicoId(item.id); setMedicoSolicitante(item.nome); }} items={medicos} title="Selecionar Médico" placeholder="Buscar médico..." renderItem={(item: any) => (<div><p className="font-medium text-ink-primary">{item.nome}</p>{item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}</div>)} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsDoctorModalOpen(false); trigger("vibrate"); setIsCreatingDoctor(true); }} createNewLabel="Cadastrar Novo Médico" />
-        <SelectionModal isOpen={isTratamentoModalOpen} onClose={() => setIsTratamentoModalOpen(false)} onSelect={(item: any) => { trigger("vibrate"); if (!tratamentosSelecionados.includes(item.id!)) setTratamentosSelecionados(prev => [...prev, item.id!]); }} items={tratamentos} title="Vincular a Tratamento" placeholder="Buscar tratamento..." renderItem={(item: any) => { const IconComp = getTratamentoIcon(item.nome); return (<div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400"><IconComp size={18} /></div><div><p className="font-medium text-ink-primary">{item.nome}</p></div></div>); }} getItemId={(item: any) => item.id!} getItemLabel={(item: any) => item.nome} onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }} createNewLabel="Novo Tratamento" />
+        <SelectionModal<Hospital>
+          isOpen={isLocalModalOpen}
+          onClose={() => setIsLocalModalOpen(false)}
+          onSelect={(item) => { trigger("vibrate"); setLaboratorioId(item.id!); setLocalRealizacao(item.nome); }}
+          items={hospitais}
+          title="Selecionar Hospital / Laboratório"
+          placeholder="Buscar local..."
+          renderItem={(item) => <p className="font-medium text-ink-primary">{item.nome}</p>}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsLocalModalOpen(false); trigger("vibrate"); setIsCreatingLocal(true); }}
+          createNewLabel="Cadastrar Novo Local"
+        />
 
-        <BottomSheet isOpen={isCreatingDoctor} onClose={() => setIsCreatingDoctor(false)} title="Novo Médico"><div className="space-y-4 px-1 pb-2"><Input label="Nome do Médico" placeholder="Ex: Dr. João" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} autoFocus /><Input label="Especialidade" placeholder="Ex: Cardiologista" value={newDocEspecialidade} onChange={(e) => setNewDocEspecialidade(e.target.value)} /><Button variant="primary" fullWidth onClick={handleCreateDoctor} disabled={!newDocName.trim()}>Salvar e Selecionar</Button></div></BottomSheet>
-        <BottomSheet isOpen={isCreatingLocal} onClose={() => setIsCreatingLocal(false)} title="Novo Local / Hospital"><div className="space-y-4 px-1 pb-2"><Input label="Nome do Hospital ou Laboratório" placeholder="Ex: Sabin, Hospital das Clínicas..." value={newLocalName} onChange={(e) => setNewLocalName(e.target.value)} autoFocus /><Button variant="primary" fullWidth onClick={handleCreateLocal} disabled={!newLocalName.trim()}>Salvar e Selecionar</Button></div></BottomSheet>
-        <BottomSheet isOpen={isCreatingTratamento} onClose={() => { setIsCreatingTratamento(false); setNewTratamentoName(""); }} title="Cadastrar Tratamento" ><div className="space-y-4 px-1 pb-2"><Input label="Nome" placeholder="Ex: TDAH, Dor Crônica..." value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus /><Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={isSavingTratamento || !newTratamentoName.trim()} className="flex items-center justify-center gap-2">{isSavingTratamento ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Salvar e selecionar</Button></div></BottomSheet>
+        <SelectionModal<Medico>
+          isOpen={isDoctorModalOpen}
+          onClose={() => setIsDoctorModalOpen(false)}
+          onSelect={(item) => { trigger("vibrate"); setMedicoId(item.id!); setMedicoSolicitante(item.nome); }}
+          items={medicos}
+          title="Selecionar Médico"
+          placeholder="Buscar médico..."
+          renderItem={(item) => (
+            <div>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
+              {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
+            </div>
+          )}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsDoctorModalOpen(false); trigger("vibrate"); setIsCreatingDoctor(true); }}
+          createNewLabel="Cadastrar Novo Médico"
+        />
+
+        <SelectionModal<Tratamento>
+          isOpen={isTratamentoModalOpen}
+          onClose={() => setIsTratamentoModalOpen(false)}
+          onSelect={(item) => {
+            trigger("vibrate");
+            if (!tratamentosSelecionados.includes(item.id!)) {
+              setTratamentosSelecionados((prev) => [...prev, item.id!]);
+            }
+          }}
+          items={tratamentos}
+          title="Vincular a Tratamento"
+          placeholder="Buscar tratamento..."
+          renderItem={(item) => {
+            const IconComp = getTratamentoIcon(item.nome);
+            return (
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                  <IconComp size={18} />
+                </div>
+                <div>
+                  <p className="font-medium text-ink-primary">{item.nome}</p>
+                </div>
+              </div>
+            );
+          }}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }}
+          createNewLabel="Novo Tratamento"
+        />
+
+        <BottomSheet isOpen={isCreatingDoctor} onClose={() => setIsCreatingDoctor(false)} title="Novo Médico">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Nome do Médico" placeholder="Ex: Dr. João" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} autoFocus />
+            <Input label="Especialidade" placeholder="Ex: Cardiologista" value={newDocEspecialidade} onChange={(e) => setNewDocEspecialidade(e.target.value)} />
+            <Button variant="primary" fullWidth onClick={handleCreateDoctor} disabled={!newDocName.trim()}>Salvar e Selecionar</Button>
+          </div>
+        </BottomSheet>
+
+        <BottomSheet isOpen={isCreatingLocal} onClose={() => setIsCreatingLocal(false)} title="Novo Local / Hospital">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Nome do Hospital ou Laboratório" placeholder="Ex: Sabin, Hospital das Clínicas..." value={newLocalName} onChange={(e) => setNewLocalName(e.target.value)} autoFocus />
+            <Button variant="primary" fullWidth onClick={handleCreateLocal} disabled={!newLocalName.trim()}>Salvar e Selecionar</Button>
+          </div>
+        </BottomSheet>
+
+        <BottomSheet isOpen={isCreatingTratamento} onClose={() => { setIsCreatingTratamento(false); setNewTratamentoName(""); }} title="Cadastrar Tratamento">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Nome" placeholder="Ex: TDAH, Dor Crônica..." value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus />
+            <Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={isSavingTratamento || !newTratamentoName.trim()} className="flex items-center justify-center gap-2">
+              {isSavingTratamento ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Salvar e selecionar
+            </Button>
+          </div>
+        </BottomSheet>
       </main>
     </PageTransition>
   );

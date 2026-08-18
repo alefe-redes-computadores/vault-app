@@ -1,4 +1,7 @@
+// lib/repositories/consultas.ts
+
 import { db, safeAddConsulta, safeUpdateConsulta, safeDeleteConsulta } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { Consulta } from "@/lib/types";
 
 export const consultasRepository = {
@@ -11,14 +14,20 @@ export const consultasRepository = {
   },
 
   async create(data: Omit<Consulta, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
-    return safeAddConsulta(data);
+    const id = await safeAddConsulta(data);
+    await enfileirarOperacao("consultas", "add", { id, ...data });
+    return id;
   },
 
   async update(id: string, data: Partial<Consulta>) {
-    return safeUpdateConsulta(id, data);
+    await safeUpdateConsulta(id, data);
+    await enfileirarOperacao("consultas", "update", { id, ...data });
+    return id;
   },
 
   async delete(id: string) {
-    return safeDeleteConsulta(id);
-  }
+    await safeDeleteConsulta(id);
+    await enfileirarOperacao("consultas", "delete", { id });
+    return id;
+  },
 };

@@ -1,12 +1,13 @@
+// app/saude/hospitais/detalhes/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2, 
   Activity, FlaskConical, ExternalLink, Stethoscope, Calendar,
-  Clock
+  Clock, Plus,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -15,6 +16,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import type { Hospital, Document, Exame, Consulta, Medico, Cirurgia } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -35,15 +37,17 @@ function DetalhesHospitalContent() {
   const { trigger } = useHapticFeedback();
   const { getHospital, deleteHospital } = useHospitais();
 
-  const [hospital, setHospital] = useState<any>(null);
+  const [hospital, setHospital] = useState<Hospital | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
+  const cirurgias = useLiveQuery(() => (id ? db.cirurgias.where("hospital_id").equals(id).toArray() : Promise.resolve([] as Cirurgia[])), [id]) || [];
 
   useEffect(() => {
     if (!id) {
@@ -60,30 +64,28 @@ function DetalhesHospitalContent() {
     });
   }, [id, getHospital, router]);
 
-  // 🔧 Análise completa do hospital
   const analiseHospital = useMemo(() => {
-    if (!id) return { 
-      cirurgias: [], 
-      exames: [], 
-      consultas: [], 
-      medicos: [],
-      ultimaConsulta: null,
-    };
-    
-    const docsDoHospital = documentos.filter((d: any) => d.hospital_id === id);
-    const cirurgias = docsDoHospital.filter((d: any) => d.type === 'cirurgia');
-    
-    const examesDoHospital = exames.filter((e: any) => 
-      e.hospital_id === id || e.laboratorio_id === id
+    if (!id) {
+      return { 
+        cirurgias: [] as Cirurgia[], 
+        exames: [] as Exame[], 
+        consultas: [] as Consulta[], 
+        medicos: [] as Medico[],
+        ultimaConsulta: null as Consulta | null,
+      };
+    }
+
+    const examesDoHospital = exames.filter((e) => 
+      e.hospital_id === id || e.local_id === id
     );
 
-    const consultasDoHospital = consultas.filter((c: any) => c.hospital_id === id);
+    const consultasDoHospital = consultas.filter((c) => c.hospital_id === id);
 
-    const medicoIds = new Set(consultasDoHospital.map(c => c.medico_id).filter(Boolean));
-    const medicosDoHospital = medicos.filter(m => medicoIds.has(m.id));
+    const medicoIds = new Set(consultasDoHospital.map((c) => c.medico_id).filter(Boolean));
+    const medicosDoHospital = medicos.filter((m) => m.id && medicoIds.has(m.id));
 
     const ultimaConsulta = consultasDoHospital.length > 0
-      ? consultasDoHospital.sort((a, b) => b.data.localeCompare(a.data))[0]
+      ? [...consultasDoHospital].sort((a, b) => b.data.localeCompare(a.data))[0]
       : null;
 
     return { 
@@ -93,7 +95,7 @@ function DetalhesHospitalContent() {
       medicos: medicosDoHospital,
       ultimaConsulta,
     };
-  }, [id, documentos, exames, consultas, medicos]);
+  }, [id, exames, consultas, medicos, cirurgias]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -108,6 +110,19 @@ function DetalhesHospitalContent() {
       setDeleting(false);
       setShowDeleteModal(false);
     }
+  };
+
+  const menuOptions = [
+    { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Activity, path: `/saude/cirurgias/nova?hospital_id=${id}` },
+    { id: "novo-exame", label: "Novo Exame", icon: FlaskConical, path: `/saude/exames/novo?hospital_id=${id}` },
+    { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?hospital_id=${id}` },
+    { id: "editar-hospital", label: "Editar Hospital", icon: Edit3, path: `/saude/hospitais/editar?id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
   };
 
   if (isLoading) return <LoadingSkeleton />;
@@ -134,6 +149,59 @@ function DetalhesHospitalContent() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+              >
+                <Plus size={18} />
+              </button>
+              <AnimatePresence>
+                {isMenuFlutuanteOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.16 }}
+                      onClick={() => setIsMenuFlutuanteOpen(false)}
+                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                    >
+                      <div className="px-3 pb-2 pt-3.5">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                      </div>
+                      <div className="px-1.5 pb-2">
+                        {menuOptions.map((option) => {
+                          const Icon = option.icon;
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => handleMenuOptionClick(option.path)}
+                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                <Icon size={15} />
+                              </div>
+                              <span className="text-sm font-medium text-ink-primary">
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/hospitais/editar?id=${hospital.id}`); }}
               aria-label="Editar hospital"
@@ -152,7 +220,6 @@ function DetalhesHospitalContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          {/* Card Principal */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -190,7 +257,6 @@ function DetalhesHospitalContent() {
               </div>
             </div>
 
-            {/* 🔧 Última consulta */}
             {analiseHospital.ultimaConsulta && (
               <div className="pt-2 border-t border-surface-border/40">
                 <div className="flex items-center gap-2 text-xs text-ink-muted">
@@ -216,7 +282,6 @@ function DetalhesHospitalContent() {
             </div>
           </motion.div>
 
-          {/* 🔧 Médicos que atendem no hospital */}
           {analiseHospital.medicos.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -224,7 +289,7 @@ function DetalhesHospitalContent() {
                 <h3 className="font-display text-base font-semibold text-ink-primary">Médicos que atendem aqui</h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                {analiseHospital.medicos.map(m => (
+                {analiseHospital.medicos.map((m) => (
                   <button 
                     key={m.id} 
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${m.id}`); }} 
@@ -237,7 +302,6 @@ function DetalhesHospitalContent() {
             </motion.div>
           )}
 
-          {/* Histórico Relacional: Cirurgias */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
               <Activity size={16} className="text-ice" /> Cirurgias ({analiseHospital.cirurgias.length})
@@ -249,10 +313,10 @@ function DetalhesHospitalContent() {
               </div>
             ) : (
               <div className="space-y-2">
-                {analiseHospital.cirurgias.map((doc: any) => (
+                {analiseHospital.cirurgias.map((cir) => (
                   <div
-                    key={doc.id}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/documentos`); }}
+                    key={cir.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
                     className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 transition-all active:scale-[0.98] hover:border-ice/30 cursor-pointer shadow-sm"
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -260,8 +324,8 @@ function DetalhesHospitalContent() {
                         <Activity size={16} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ink-primary truncate">{doc.title}</p>
-                        <p className="text-[11px] text-ink-muted">{doc.metadata?.date ? formatDateDisplay(doc.metadata.date) : "Data não informada"}</p>
+                        <p className="text-sm font-semibold text-ink-primary truncate">{cir.procedimento}</p>
+                        <p className="text-[11px] text-ink-muted">{cir.data ? formatDateDisplay(cir.data) : "Data não informada"}</p>
                       </div>
                     </div>
                     <ExternalLink size={15} className="text-ink-faint shrink-0" />
@@ -271,7 +335,6 @@ function DetalhesHospitalContent() {
             )}
           </motion.div>
 
-          {/* Histórico Relacional: Exames */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
               <FlaskConical size={16} className="text-violet-400" /> Exames Realizados ({analiseHospital.exames.length})
@@ -283,7 +346,7 @@ function DetalhesHospitalContent() {
               </div>
             ) : (
               <div className="space-y-2">
-                {analiseHospital.exames.map((exame: any) => (
+                {analiseHospital.exames.map((exame) => (
                   <div
                     key={exame.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }}

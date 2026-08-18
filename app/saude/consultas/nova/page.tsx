@@ -1,3 +1,4 @@
+// app/saude/consultas/nova/page.tsx
 "use client";
 
 import { useState, useRef } from "react";
@@ -174,7 +175,7 @@ export default function NovaConsultaPage() {
       });
 
       trigger("success");
-      router.push("/saude/consultas");
+      router.back();
     } catch (error) {
       console.error("Erro ao salvar consulta:", error);
       trigger("error");

@@ -1,3 +1,4 @@
+// app/saude/medicamentos/editar/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense, useRef } from "react";
@@ -26,6 +27,7 @@ import {
   Circle,
   ChevronRight,
   Building2,
+  MapPin,
   DollarSign,
   Ban,
   Settings2,
@@ -39,9 +41,13 @@ import { usePersons } from "@/hooks/usePersons";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
+import { useHospitais } from "@/hooks/useHospitais";
+import { useLocais } from "@/hooks/useLocais";
+import { useTratamentos } from "@/hooks/useTratamentos";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 import { uploadFile } from "@/lib/supabase/storage";
 import {
   suggestRenewalDate,
@@ -54,7 +60,18 @@ import {
   requestNotificationPermission,
 } from "@/lib/dose-notifications";
 import { sugerirHorarios } from "@/lib/health-insights";
-import type { TipoReceita, Attachment, Document } from "@/lib/types";
+import type {
+  TipoReceita,
+  Attachment,
+  Document,
+  Person,
+  Medico,
+  Farmacia,
+  Hospital,
+  LocalSaude,
+  Medicamento,
+  Tratamento,
+} from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -62,12 +79,10 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
-import { db, safeAddHospital } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal, getTratamentoIcon } from "@/components/saude/SeletorTratamentoModal";
 import { SeletorReceita } from "@/components/saude/SeletorReceita";
-import { useToast } from "@/components/ToastProvider";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -15 } };
 
@@ -85,7 +100,7 @@ function brParaIso(br: string) {
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
-const SplitPillIcon = ({ size, fill = "currentColor" }: any) => (
+const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
   <svg
     width={size}
     height={size}
@@ -113,10 +128,11 @@ const FORMATOS = [
 const CORES_DISPONIVEIS = ["#FFFFFF", "#FCA5A5", "#F87171", "#FBBF24", "#34D399", "#60A5FA", "#818CF8", "#A78BFA", "#F472B6", "#9CA3AF"];
 
 type EditIntent = "menu" | "compra" | "posologia" | "rede" | "suspensao" | "basico" | "evolucao";
+type DoseNotificationPayload = { id: string; nome: string; dosagem: string; estoque_horarios: string[] };
 
 function EditarMedicamentoContent() {
   const { trigger } = useHapticFeedback();
-  const { showError } = useToast();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
@@ -125,16 +141,16 @@ function EditarMedicamentoContent() {
   const [editIntent, setEditIntent] = useState<EditIntent>(intentParam || "menu");
 
   const { user } = useAuth();
-  const persons = usePersons();
-  const { getMedicamento, updateMedicamento, deleteMedicamento } = useMedicamentos();
-  const { addDocument } = useSafeDb();
+  const persons = usePersons() as Person[];
+  const { getMedicamento, updateMedicamento, deleteMedicamento, medicamentos: medicamentosList } = useMedicamentos();
+  const { addDocument, updateDocument } = useSafeDb();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
+  const { hospitais: hospitaisLocais, addHospital } = useHospitais();
+  const { locais, addLocal } = useLocais();
+  const { tratamentos } = useTratamentos();
 
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const medicamentosQuery = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
-  const hospitaisLocais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
-  const medicamentosAtivos = medicamentosQuery.filter((m: any) => m.id !== id && m.status !== "descontinuado");
+  const medicamentosAtivos = medicamentosList.filter((m) => m.id !== id && m.status !== "descontinuado");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -161,8 +177,10 @@ function EditarMedicamentoContent() {
   // Rede & Emissão
   const [medicoNome, setMedicoNome] = useState("");
   const [medicoId, setMedicoId] = useState("");
-  const [estabelecimentoId, setEstabelecimentoId] = useState("");
-  const [estabelecimentoNome, setEstabelecimentoNome] = useState("");
+  const [hospitalId, setHospitalId] = useState("");
+  const [hospitalNome, setHospitalNome] = useState("");
+  const [localId, setLocalId] = useState("");
+  const [localNome, setLocalNome] = useState("");
   const [farmaciaNome, setFarmaciaNome] = useState("");
   const [farmaciaId, setFarmaciaId] = useState("");
   const [preco, setPreco] = useState("");
@@ -177,7 +195,7 @@ function EditarMedicamentoContent() {
   const [novaDosagem, setNovaDosagem] = useState("");
   const [medicoEvolucaoNome, setMedicoEvolucaoNome] = useState("");
   const [medicoEvolucaoId, setMedicoEvolucaoId] = useState("");
-  const [historicoDosagens, setHistoricoDosagens] = useState<any[]>([]);
+  const [historicoDosagens, setHistoricoDosagens] = useState<Array<{ dosagem_antiga: string; data_mudanca: string; medico_responsavel: string }>>([]);
 
   // Suspensão
   const [statusAtivo, setStatusAtivo] = useState(true);
@@ -190,8 +208,8 @@ function EditarMedicamentoContent() {
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
-  const [isEstabelecimentoModalOpen, setIsEstabelecimentoModalOpen] = useState(false);
-  const [activeEstabelecimentoTab, setActiveEstabelecimentoTab] = useState("hospital");
+  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
+  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [isDoctorDescontinuacaoModalOpen, setIsDoctorDescontinuacaoModalOpen] = useState(false);
   const [isDoctorEvolucaoModalOpen, setIsDoctorEvolucaoModalOpen] = useState(false);
   const [isSubstitutoModalOpen, setIsSubstitutoModalOpen] = useState(false);
@@ -221,15 +239,16 @@ function EditarMedicamentoContent() {
   const [deleting, setDeleting] = useState(false);
 
   // Selecteds
-  const selectedMedico = medicos.find((m: any) => m.id === medicoId) || medicos.find((m: any) => m.nome === medicoNome);
+  const selectedMedico = medicos.find((m) => m.id === medicoId) || medicos.find((m) => m.nome === medicoNome);
   const selectedMedicoDescontinuacao =
-    medicos.find((m: any) => m.id === medicoDescontinuacaoId) || medicos.find((m: any) => m.nome === medicoDescontinuacaoNome);
+    medicos.find((m) => m.id === medicoDescontinuacaoId) || medicos.find((m) => m.nome === medicoDescontinuacaoNome);
   const selectedMedicoEvolucao =
-    medicos.find((m: any) => m.id === medicoEvolucaoId) || medicos.find((m: any) => m.nome === medicoEvolucaoNome);
-  const selectedFarmacia = farmacias.find((f: any) => f.id === farmaciaId) || farmacias.find((f: any) => f.nome === farmaciaNome);
-  const selectedSubstituto = medicamentosQuery.find((m: any) => m.id === substituidoPorId);
-  const selectedTratamentos = tratamentos.filter((t: any) => tratamentosSelecionados.includes(t.id));
-  const selectedEstabelecimento = hospitaisLocais.find((h: any) => h.id === estabelecimentoId);
+    medicos.find((m) => m.id === medicoEvolucaoId) || medicos.find((m) => m.nome === medicoEvolucaoNome);
+  const selectedFarmacia = farmacias.find((f) => f.id === farmaciaId) || farmacias.find((f) => f.nome === farmaciaNome);
+  const selectedSubstituto = medicamentosList.find((m) => m.id === substituidoPorId);
+  const selectedTratamentos = tratamentos.filter((t) => tratamentosSelecionados.includes(t.id || ""));
+  const selectedHospital = hospitaisLocais.find((h) => h.id === hospitalId);
+  const selectedLocal = locais.find((l) => l.id === localId);
 
   const markChanged = () => setHasChanges(true);
 
@@ -243,7 +262,7 @@ function EditarMedicamentoContent() {
       return;
     }
     getMedicamento(id)
-      .then(async (item: any) => {
+      .then(async (item?: Medicamento) => {
         if (!item) {
           setNotFound(true);
           setIsLoading(false);
@@ -262,7 +281,8 @@ function EditarMedicamentoContent() {
         setTipoUso(item.tipo_uso || "continuo");
         setMedicoNome(item.medico || "");
         setMedicoId(item.medico_id || "");
-        setEstabelecimentoId(item.estabelecimento_id || "");
+        setHospitalId(item.hospital_id || "");
+        setLocalId(item.local_id || "");
         setFarmaciaNome(item.farmacia || "");
         setFarmaciaId(item.farmacia_id || "");
         setPreco(item.preco ? String(item.preco) : "");
@@ -288,9 +308,14 @@ function EditarMedicamentoContent() {
           setGotasPorMl(String(item.estoque_gotas_por_ml || 20));
         }
 
-        if (item.estabelecimento_id) {
-          const est = await db.hospitais.get(item.estabelecimento_id);
-          if (est) setEstabelecimentoNome(est.nome);
+        if (item.hospital_id) {
+          const hospital = await db.hospitais.get(item.hospital_id);
+          if (hospital) setHospitalNome(hospital.nome);
+        }
+
+        if (item.local_id) {
+          const local = await db.locais.get(item.local_id);
+          if (local) setLocalNome(local.nome);
         }
 
         setTratamentosSelecionados(item.tratamento_ids || []);
@@ -371,7 +396,7 @@ function EditarMedicamentoContent() {
     }
   };
 
-  const handleDateChange = (setter: any, isRenovacao = false) => (e: any) => {
+  const handleDateChange = (setter: (val: string) => void, isRenovacao = false) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setter(mascaraData(e.target.value));
     if (isRenovacao) setRenovacaoEditadaManualmente(true);
     markChanged();
@@ -541,38 +566,32 @@ function EditarMedicamentoContent() {
         updatedDocId = await addDocument(docData);
         setDocumentId(updatedDocId);
       } else if (documentId) {
-        try {
-          const doc = await db.documents.get(documentId);
-          if (doc && doc.id) {
-            const updatedAttachments = attachment ? [attachment] : [];
-            await db.documents.update(doc.id, {
-              attachments: updatedAttachments,
-              metadata: {
-                ...doc.metadata,
-                dosage: dosagemFinal,
-                tratamento_ids: tratamentosSelecionados,
-                renewal_date: proximaRenovacaoISO,
-              },
-              updated_at: new Date().toISOString(),
-              synced: false,
-            });
-          }
-        } catch {}
+        const doc = await db.documents.get(documentId);
+        if (doc && doc.id) {
+          const updatedAttachments = attachment ? [attachment] : [];
+          await updateDocument(doc.id, {
+            attachments: updatedAttachments,
+            metadata: {
+              ...doc.metadata,
+              dosage: dosagemFinal,
+              tratamento_ids: tratamentosSelecionados,
+              renewal_date: proximaRenovacaoISO,
+            },
+          });
+        }
       }
 
       // Upload de imagem
       if (localFile && user && attachment && updatedDocId) {
         const { url, error } = await uploadFile(user.id, localFile, "saude");
         if (!error && url) {
-          await db.documents.update(updatedDocId, {
+          await updateDocument(updatedDocId, {
             attachments: [{ ...attachment, url }],
-            updated_at: new Date().toISOString(),
-            synced: false,
           });
         }
       }
 
-      // Atualizar medicamento (sem `as any`)
+      // Atualizar medicamento
       await updateMedicamento(id, {
         person_id: personId,
         nome: nome.trim(),
@@ -583,7 +602,8 @@ function EditarMedicamentoContent() {
         historico_dosagens: historicoFinal,
         medico: selectedMedico?.nome || medicoNome.trim(),
         medico_id: medicoId || undefined,
-        estabelecimento_id: estabelecimentoId || undefined,
+        hospital_id: hospitalId || undefined,
+        local_id: localId || undefined,
         farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
         farmacia_id: farmaciaId || undefined,
         preco: preco ? Number(preco.replace(",", ".")) : undefined,
@@ -610,20 +630,24 @@ function EditarMedicamentoContent() {
       });
 
       // Notificações
-      if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as any);
+      if (horariosOriginais.length > 0) {
+        await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
+      }
       if (estoqueAtivo && tipoUso === "continuo" && horariosFiltrados.length > 0 && statusAtivo) {
         const granted = await requestNotificationPermission();
-        if (granted)
+        if (granted) {
           await scheduleDoseNotifications({
             id,
             nome: nome.trim(),
             dosagem: dosagemFinal,
             estoque_horarios: horariosFiltrados,
-          } as any);
+          } as DoseNotificationPayload);
+        }
       }
 
       setHasChanges(false);
       trigger("success");
+      showToast("Alterações salvas com sucesso", "success");
 
       if (editIntent !== "menu") {
         setEditIntent("menu");
@@ -633,8 +657,8 @@ function EditarMedicamentoContent() {
       }
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      showError("Erro ao salvar alterações. Tente novamente.");
       trigger("error");
+      showToast("Erro ao salvar alterações", "error");
     } finally {
       setSaving(false);
     }
@@ -643,12 +667,16 @@ function EditarMedicamentoContent() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as any);
+      if (horariosOriginais.length > 0) {
+        await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
+      }
       await deleteMedicamento(id);
       trigger("success");
-      router.replace("/saude");
+      showToast("Medicamento excluído com sucesso", "success");
+      router.back();
     } catch (error) {
       trigger("error");
+      showToast("Erro ao excluir medicamento", "error");
     } finally {
       setDeleting(false);
       setShowDeleteModal(false);
@@ -737,116 +765,50 @@ function EditarMedicamentoContent() {
               <motion.div key="menu" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="grid grid-cols-1 gap-4">
                 <p className="text-sm text-ink-muted mb-2 font-medium">O que você deseja atualizar?</p>
 
-                <button
-                  onClick={() => {
-                    trigger("vibrate");
-                    setEditIntent("compra");
-                  }}
-                  className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all"
-                >
+                <button onClick={() => { trigger("vibrate"); setEditIntent("compra"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
-                      <Package size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-ink-primary">Estoque & Compra</h3>
-                      <p className="text-xs text-ink-muted mt-0.5">Caixas e valores</p>
-                    </div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400"><Package size={24} /></div>
+                    <div><h3 className="font-semibold text-ink-primary">Estoque & Compra</h3><p className="text-xs text-ink-muted mt-0.5">Caixas e valores</p></div>
                   </div>
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button
-                  onClick={() => {
-                    trigger("vibrate");
-                    setEditIntent("evolucao");
-                  }}
-                  className="flex items-center justify-between rounded-[24px] border border-ice/30 bg-ice/5 p-5 text-left shadow-sm active:scale-95 transition-all"
-                >
+                <button onClick={() => { trigger("vibrate"); setEditIntent("evolucao"); }} className="flex items-center justify-between rounded-[24px] border border-ice/30 bg-ice/5 p-5 text-left shadow-sm active:scale-95 transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ice/20 text-ice">
-                      <TrendingUp size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-ice">Evolução de Dose</h3>
-                      <p className="text-xs text-ink-muted mt-0.5">Aumento ou redução de mg/ml</p>
-                    </div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ice/20 text-ice"><TrendingUp size={24} /></div>
+                    <div><h3 className="font-semibold text-ice">Evolução de Dose</h3><p className="text-xs text-ink-muted mt-0.5">Aumento ou redução de mg/ml</p></div>
                   </div>
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button
-                  onClick={() => {
-                    trigger("vibrate");
-                    setEditIntent("posologia");
-                  }}
-                  className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all"
-                >
+                <button onClick={() => { trigger("vibrate"); setEditIntent("posologia"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-400/10 text-blue-400">
-                      <Clock size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-ink-primary">Posologia & Formato</h3>
-                      <p className="text-xs text-ink-muted mt-0.5">Horários e aparência</p>
-                    </div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-400/10 text-blue-400"><Clock size={24} /></div>
+                    <div><h3 className="font-semibold text-ink-primary">Posologia & Formato</h3><p className="text-xs text-ink-muted mt-0.5">Horários e aparência</p></div>
                   </div>
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button
-                  onClick={() => {
-                    trigger("vibrate");
-                    setEditIntent("rede");
-                  }}
-                  className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all"
-                >
+                <button onClick={() => { trigger("vibrate"); setEditIntent("rede"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
-                      <Stethoscope size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-ink-primary">Rede & Receita</h3>
-                      <p className="text-xs text-ink-muted mt-0.5">Médico, local e anexos</p>
-                    </div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400"><Stethoscope size={24} /></div>
+                    <div><h3 className="font-semibold text-ink-primary">Rede & Receita</h3><p className="text-xs text-ink-muted mt-0.5">Médico, local e anexos</p></div>
                   </div>
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button
-                  onClick={() => {
-                    trigger("vibrate");
-                    setEditIntent("suspensao");
-                  }}
-                  className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all"
-                >
+                <button onClick={() => { trigger("vibrate"); setEditIntent("suspensao"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
                   <div className="flex items-center gap-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${statusAtivo ? "bg-amber-400/10 text-amber-400" : "bg-coral/10 text-coral"}`}>
-                      <Ban size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-ink-primary">{statusAtivo ? "Suspender Tratamento" : "Retomar Tratamento"}</h3>
-                      <p className="text-xs text-ink-muted mt-0.5">Status e pausas</p>
-                    </div>
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${statusAtivo ? "bg-amber-400/10 text-amber-400" : "bg-coral/10 text-coral"}`}><Ban size={24} /></div>
+                    <div><h3 className="font-semibold text-ink-primary">{statusAtivo ? "Suspender Tratamento" : "Retomar Tratamento"}</h3><p className="text-xs text-ink-muted mt-0.5">Status e pausas</p></div>
                   </div>
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button
-                  onClick={() => {
-                    trigger("vibrate");
-                    setEditIntent("basico");
-                  }}
-                  className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all"
-                >
+                <button onClick={() => { trigger("vibrate"); setEditIntent("basico"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-400/10 text-zinc-400">
-                      <Settings2 size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-ink-primary">Informações Básicas</h3>
-                      <p className="text-xs text-ink-muted mt-0.5">Nome e CIDs</p>
-                    </div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-400/10 text-zinc-400"><Settings2 size={24} /></div>
+                    <div><h3 className="font-semibold text-ink-primary">Informações Básicas</h3><p className="text-xs text-ink-muted mt-0.5">Nome e CIDs</p></div>
                   </div>
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
@@ -1178,13 +1140,30 @@ function EditarMedicamentoContent() {
                     </button>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Hospital / Clínica Emissora</label>
+                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Hospital</label>
                     <button
                       type="button"
-                      onClick={() => setIsEstabelecimentoModalOpen(true)}
+                      onClick={() => setIsHospitalModalOpen(true)}
                       className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left"
                     >
-                      <span className="truncate font-medium text-ink-primary">{estabelecimentoNome || "Vincular local..."}</span>
+                      <span className="flex items-center gap-2 min-w-0">
+                        <Building2 size={16} className="text-violet-400 shrink-0" />
+                        <span className="truncate font-medium text-ink-primary">{hospitalNome || "Vincular hospital..."}</span>
+                      </span>
+                      <span className="text-xs font-bold text-ice">Alterar</span>
+                    </button>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Local / Posto</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsLocalModalOpen(true)}
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left"
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <MapPin size={16} className="text-emerald-400 shrink-0" />
+                        <span className="truncate font-medium text-ink-primary">{localNome || "Vincular local..."}</span>
+                      </span>
                       <span className="text-xs font-bold text-ice">Alterar</span>
                     </button>
                   </div>
@@ -1470,20 +1449,20 @@ function EditarMedicamentoContent() {
         />
 
         {/* Médico Prescritor */}
-        <SelectionModal
+        <SelectionModal<Medico>
           isOpen={isDoctorModalOpen}
           onClose={() => setIsDoctorModalOpen(false)}
-          onSelect={(item: any) => {
+          onSelect={(item) => {
             setMedicoNome(item.nome);
-            setMedicoId(item.id);
+            setMedicoId(item.id!);
             setIsDoctorModalOpen(false);
             markChanged();
           }}
           items={medicos}
           title="Médico Prescritor"
-          getItemId={(i: any) => i.id!}
-          getItemLabel={(i: any) => i.nome}
-          renderItem={(item: any) => (
+          getItemId={(i) => i.id!}
+          getItemLabel={(i) => i.nome}
+          renderItem={(item) => (
             <div className="flex items-center gap-3 w-full">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0">
                 <Stethoscope size={18} />
@@ -1496,70 +1475,85 @@ function EditarMedicamentoContent() {
           )}
         />
 
-        {/* Estabelecimento com Abas */}
-        <SelectionModal
-          isOpen={isEstabelecimentoModalOpen}
-          onClose={() => setIsEstabelecimentoModalOpen(false)}
-          title="Selecionar Local"
-          activeTab={activeEstabelecimentoTab}
-          onTabChange={setActiveEstabelecimentoTab}
-          tabs={[
-            { id: "hospital", label: "Hospitais", activeColor: "bg-coral text-void border-transparent" },
-            { id: "clinica", label: "Postos/Clínicas", activeColor: "bg-emerald-400 text-void border-transparent" },
-          ]}
-          items={hospitaisLocais.filter((h: any) =>
-            activeEstabelecimentoTab === "hospital" ? h.tipo === "hospital" : h.tipo !== "hospital"
-          )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
+        {/* Hospital */}
+        <SelectionModal<Hospital>
+          isOpen={isHospitalModalOpen}
+          onClose={() => setIsHospitalModalOpen(false)}
+          title="Selecionar Hospital"
+          items={hospitaisLocais}
+          getItemId={(i) => i.id!}
+          getItemLabel={(i) => i.nome}
           enableQuickCreate
-          onQuickCreate={async (name, tabId) => {
-            // ✅ CORRIGIDO: user_id com fallback e usando safeAddHospital
-            const id = await safeAddHospital({
-              user_id: user?.id || "",
-              nome: name,
-              tipo: tabId,
-            });
-            return { id, nome: name, tipo: tabId };
+          onQuickCreate={async (name) => {
+            const newId = await addHospital({ nome: name, tipo: "hospital" });
+            return { id: newId, nome: name, tipo: "hospital" } as Hospital;
           }}
-          onSelect={(item: any) => {
-            setEstabelecimentoId(item.id);
-            setEstabelecimentoNome(item.nome);
-            setIsEstabelecimentoModalOpen(false);
+          onSelect={(item) => {
+            setHospitalId(item.id!);
+            setHospitalNome(item.nome);
+            setIsHospitalModalOpen(false);
             markChanged();
           }}
-          renderItem={(item: any) => (
+          renderItem={(item) => (
             <div className="flex items-center gap-3">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${
-                  item.tipo === "hospital" ? "bg-coral/10 text-coral" : "bg-emerald-400/10 text-emerald-400"
-                }`}
-              >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-coral/10 text-coral shrink-0">
                 <Building2 size={18} />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-ink-primary">{item.nome}</p>
-                <p className="text-xs text-ink-muted uppercase">{item.tipo === "hospital" ? "Hospital" : "Clínica/Posto"}</p>
+                {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
+              </div>
+            </div>
+          )}
+        />
+
+        {/* Local / Posto */}
+        <SelectionModal<LocalSaude>
+          isOpen={isLocalModalOpen}
+          onClose={() => setIsLocalModalOpen(false)}
+          title="Selecionar Local / Posto"
+          items={locais}
+          getItemId={(i) => i.id!}
+          getItemLabel={(i) => i.nome}
+          enableQuickCreate
+          onQuickCreate={async (name) => {
+            const newId = await addLocal({ nome: name, tipo: "outro" });
+            return { id: newId, nome: name, tipo: "outro" } as LocalSaude;
+          }}
+          onSelect={(item) => {
+            setLocalId(item.id!);
+            setLocalNome(item.nome);
+            setIsLocalModalOpen(false);
+            markChanged();
+          }}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400 shrink-0">
+                <MapPin size={18} />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-ink-primary">{item.nome}</p>
+                {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
               </div>
             </div>
           )}
         />
 
         {/* Médico da Suspensão */}
-        <SelectionModal
+        <SelectionModal<Medico>
           isOpen={isDoctorDescontinuacaoModalOpen}
           onClose={() => setIsDoctorDescontinuacaoModalOpen(false)}
-          onSelect={(item: any) => {
+          onSelect={(item) => {
             setMedicoDescontinuacaoNome(item.nome);
-            setMedicoDescontinuacaoId(item.id);
+            setMedicoDescontinuacaoId(item.id!);
             setIsDoctorDescontinuacaoModalOpen(false);
             markChanged();
           }}
           items={medicos}
           title="Médico da Suspensão"
-          getItemId={(i: any) => i.id!}
-          getItemLabel={(i: any) => i.nome}
-          renderItem={(item: any) => (
+          getItemId={(i) => i.id!}
+          getItemLabel={(i) => i.nome}
+          renderItem={(item) => (
             <div className="flex items-center gap-3 w-full">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-coral/10 text-coral shrink-0">
                 <Stethoscope size={18} />
@@ -1573,20 +1567,20 @@ function EditarMedicamentoContent() {
         />
 
         {/* Médico da Evolução */}
-        <SelectionModal
+        <SelectionModal<Medico>
           isOpen={isDoctorEvolucaoModalOpen}
           onClose={() => setIsDoctorEvolucaoModalOpen(false)}
-          onSelect={(item: any) => {
+          onSelect={(item) => {
             setMedicoEvolucaoNome(item.nome);
-            setMedicoEvolucaoId(item.id);
+            setMedicoEvolucaoId(item.id!);
             setIsDoctorEvolucaoModalOpen(false);
             markChanged();
           }}
           items={medicos}
           title="Médico Responsável"
-          getItemId={(i: any) => i.id!}
-          getItemLabel={(i: any) => i.nome}
-          renderItem={(item: any) => (
+          getItemId={(i) => i.id!}
+          getItemLabel={(i) => i.nome}
+          renderItem={(item) => (
             <div className="flex items-center gap-3 w-full">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice shrink-0">
                 <Stethoscope size={18} />
@@ -1599,20 +1593,20 @@ function EditarMedicamentoContent() {
         />
 
         {/* Farmácia */}
-        <SelectionModal
+        <SelectionModal<Farmacia>
           isOpen={isPharmacyModalOpen}
           onClose={() => setIsPharmacyModalOpen(false)}
-          onSelect={(item: any) => {
+          onSelect={(item) => {
             setFarmaciaNome(item.nome);
-            setFarmaciaId(item.id);
+            setFarmaciaId(item.id!);
             setIsPharmacyModalOpen(false);
             markChanged();
           }}
           items={farmacias}
           title="Farmácia Habitual"
-          getItemId={(i: any) => i.id!}
-          getItemLabel={(i: any) => i.nome}
-          renderItem={(item: any) => (
+          getItemId={(i) => i.id!}
+          getItemLabel={(i) => i.nome}
+          renderItem={(item) => (
             <div className="flex items-center gap-3 w-full">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/10 text-amber-400 shrink-0">
                 <Store size={18} />
@@ -1626,19 +1620,19 @@ function EditarMedicamentoContent() {
         />
 
         {/* Substituto */}
-        <SelectionModal
+        <SelectionModal<Medicamento>
           isOpen={isSubstitutoModalOpen}
           onClose={() => setIsSubstitutoModalOpen(false)}
-          onSelect={(item: any) => {
-            setSubstituidoPorId(item.id);
+          onSelect={(item) => {
+            setSubstituidoPorId(item.id!);
             setIsSubstitutoModalOpen(false);
             markChanged();
           }}
           items={medicamentosAtivos}
           title="Qual remédio substituiu?"
-          getItemId={(i: any) => i.id!}
-          getItemLabel={(i: any) => `${i.nome} ${i.dosagem || ""}`}
-          renderItem={(item: any) => (
+          getItemId={(i) => i.id!}
+          getItemLabel={(i) => `${i.nome} ${i.dosagem || ""}`}
+          renderItem={(item) => (
             <div className="flex items-center gap-3 w-full">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400 shrink-0">
                 <ArrowRightLeft size={18} />

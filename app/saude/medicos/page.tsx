@@ -1,106 +1,139 @@
+// app/saude/medicos/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, Stethoscope, Search, Plus, ChevronRight, 
-  Pill, Activity, Calendar, FileText, Building2, X,
-  Filter, Hospital, AlertTriangle
+import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  Stethoscope,
+  Search,
+  ChevronRight,
+  Pill,
+  Activity,
+  Calendar,
+  FileText,
+  Building2,
+  X,
+  Filter,
+  Hospital,
+  Phone,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-// 🧠 Importação da Inteligência para validações cruzadas
+import { EmptyState } from "@/components/EmptyState";
+import { useMedicos } from "@/hooks/useMedicos";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { useTratamentos } from "@/hooks/useTratamentos";
+import { useConsultas } from "@/hooks/useConsultas";
+import { useCirurgias } from "@/hooks/useCirurgias";
+import { useHospitais } from "@/hooks/useHospitais";
 import { sugerirRenovacao } from "@/lib/health-insights";
+import type {
+  Medico,
+  Medicamento,
+  Tratamento,
+  Document,
+  Consulta,
+  Cirurgia,
+  Hospital,
+} from "@/lib/types";
+
+function formatDateDisplay(isoStr: string): string {
+  if (!isoStr) return "";
+  const parts = isoStr.split("-");
+  if (parts.length !== 3) return isoStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+type MedicoComMetadados = Medico & {
+  medicamentosCount: number;
+  consultasCount: number;
+  cirurgiasCount: number;
+  documentosCount: number;
+  tratamentos: Array<Tratamento & { color: string }>;
+  hospitais: Hospital[];
+  ultimaConsulta: Consulta | null;
+  ultimoHospital: Hospital | null;
+  temAlertaUrgente: boolean;
+};
 
 export default function MedicosPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const [search, setSearch] = useState("");
-  
-  // 🔧 FILTROS
+
   const [filtroTratamento, setFiltroTratamento] = useState<string | null>(null);
   const [filtroHospital, setFiltroHospital] = useState<string | null>(null);
 
-  // Buscas relacionais via Hooks / Dexie
-  const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
-  const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
-  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
-  const cirurgias = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
-  const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
+  const { medicos = [] } = useMedicos();
+  const { medicamentos = [] } = useMedicamentos();
+  const { tratamentos = [] } = useTratamentos();
+  const { consultas = [] } = useConsultas();
+  const { cirurgias = [] } = useCirurgias();
+  const { hospitais = [] } = useHospitais();
+  const documentos = useLiveQuery(() => db.documents.toArray(), []) as Document[];
 
-  const tratamentoMap = useMemo(() => new Map(tratamentos.map(t => [t.id, t])), [tratamentos]);
-  const hospitalMap = useMemo(() => new Map(hospitais.map(h => [h.id, h])), [hospitais]);
+  const tratamentoMap = useMemo(() => new Map(tratamentos.map((t) => [t.id, t])), [tratamentos]);
+  const hospitalMap = useMemo(() => new Map(hospitais.map((h) => [h.id, h])), [hospitais]);
 
-  const medicosComMetadados = useMemo(() => {
+  const medicosComMetadados = useMemo<MedicoComMetadados[]>(() => {
     return medicos.map((medico) => {
-      // Medicamentos prescritos por este médico
       const medsDoMedico = medicamentos.filter(
         (m) => m.medico_id === medico.id || m.medico === medico.nome
       );
-      
-      // 🧠 Inteligência: Verificar se há algum medicamento deste médico com alerta crítico de renovação/estoque
-      const temAlertaUrgente = medsDoMedico.some(m => {
+
+      const temAlertaUrgente = medsDoMedico.some((m) => {
         const statusRenovacao = sugerirRenovacao(m);
-        return statusRenovacao.urgencia === 'alta';
+        return statusRenovacao.urgencia === "alta";
       });
 
-      // Tratamentos via medicamentos do médico
       const tratamentoIdsSet = new Set<string>();
-      medsDoMedico.forEach(m => {
+      medsDoMedico.forEach((m) => {
         if (m.tratamento_ids && Array.isArray(m.tratamento_ids)) {
-          m.tratamento_ids.forEach(id => tratamentoIdsSet.add(id));
+          m.tratamento_ids.forEach((id) => tratamentoIdsSet.add(id));
         }
       });
 
-      // Consultas e Cirurgias
       const consultasDoMedico = consultas.filter((c) => c.medico_id === medico.id);
       const cirurgiasDoMedico = cirurgias.filter((c) => c.medico_id === medico.id);
-      
-      // Documentos
-      const docsDoMedico = documentos.filter((d: any) => 
-        d.metadata?.doctor_id === medico.id || 
-        d.metadata?.doctor?.toLowerCase() === medico.nome.toLowerCase()
+
+      const docsDoMedico = documentos.filter(
+        (d) =>
+          d.metadata?.doctor_id === medico.id ||
+          d.metadata?.doctor?.toLowerCase() === medico.nome.toLowerCase()
       );
 
-      // Hospitais únicos (via consultas e cirurgias)
       const hospitalIdsSet = new Set<string>();
-      consultasDoMedico.forEach(c => {
+      consultasDoMedico.forEach((c) => {
         if (c.hospital_id) hospitalIdsSet.add(c.hospital_id);
       });
-      cirurgiasDoMedico.forEach(c => {
+      cirurgiasDoMedico.forEach((c) => {
         if (c.hospital_id) hospitalIdsSet.add(c.hospital_id);
       });
-      
+
       const hospitaisRelacionados = Array.from(hospitalIdsSet)
-        .map(id => hospitalMap.get(id))
-        .filter((h): h is NonNullable<typeof h> => h !== undefined);
+        .map((id) => hospitalMap.get(id))
+        .filter((h): h is Hospital => h !== undefined);
 
-      // Última consulta
-      const ultimaConsulta = consultasDoMedico.length > 0 
-        ? consultasDoMedico.reduce((a, b) => a.data > b.data ? a : b) 
+      const ultimaConsulta = consultasDoMedico.length > 0
+        ? consultasDoMedico.reduce((a, b) => (a.data > b.data ? a : b))
         : null;
 
-      // Último hospital
-      const ultimoHospital = ultimaConsulta?.hospital_id 
-        ? hospitalMap.get(ultimaConsulta.hospital_id) 
+      const ultimoHospital = ultimaConsulta?.hospital_id
+        ? hospitalMap.get(ultimaConsulta.hospital_id) || null
         : null;
 
-      // 🎨 Mapeamento seguro usando a COR REAL DO BANCO (t.cor) com fallback elegante
       const tratamentosRelacionados = Array.from(tratamentoIdsSet)
-        .map(id => tratamentoMap.get(id))
-        .filter((t): t is NonNullable<typeof t> => t !== undefined)
-        .map(t => ({
+        .map((id) => tratamentoMap.get(id))
+        .filter((t): t is Tratamento => t !== undefined)
+        .map((t) => ({
           ...t,
-          // Usa a cor cadastrada no banco, se não houver, usa um tom padrão corporativo/saúde
-          color: t.cor || "#38BDF8" 
+          color: t.cor || "#38BDF8",
         }));
 
       return {
@@ -113,55 +146,55 @@ export default function MedicosPage() {
         hospitais: hospitaisRelacionados,
         ultimaConsulta,
         ultimoHospital,
-        temAlertaUrgente, // 🧠 Dado inteligente injetado no card
+        temAlertaUrgente,
       };
     });
   }, [medicos, medicamentos, documentos, consultas, cirurgias, tratamentoMap, hospitalMap]);
 
-  // 🔧 FILTROS CRUZADOS
   const filteredMedicos = useMemo(() => {
     let result = medicosComMetadados;
 
     if (search) {
-      result = result.filter((med) =>
-        med.nome.toLowerCase().includes(search.toLowerCase()) ||
-        (med.especialidade && med.especialidade.toLowerCase().includes(search.toLowerCase()))
+      const term = search.toLowerCase();
+      result = result.filter(
+        (med) =>
+          med.nome.toLowerCase().includes(term) ||
+          (med.especialidade && med.especialidade.toLowerCase().includes(term))
       );
     }
 
     if (filtroTratamento) {
       result = result.filter((med) =>
-        med.tratamentos.some(t => t.id === filtroTratamento)
+        med.tratamentos.some((t) => t.id === filtroTratamento)
       );
     }
 
     if (filtroHospital) {
       result = result.filter((med) =>
-        med.hospitais.some(h => h.id === filtroHospital)
+        med.hospitais.some((h) => h.id === filtroHospital)
       );
     }
 
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [medicosComMetadados, search, filtroTratamento, filtroHospital]);
 
-  // Listas para os filtros rápidos
   const tratamentosUnicos = useMemo(() => {
-    const map = new Map();
-    medicosComMetadados.forEach(med => {
-      med.tratamentos.forEach(t => map.set(t.id, t));
+    const map = new Map<string, Tratamento & { color: string }>();
+    medicosComMetadados.forEach((med) => {
+      med.tratamentos.forEach((t) => map.set(t.id!, t));
     });
     return Array.from(map.values());
   }, [medicosComMetadados]);
 
   const hospitaisUnicos = useMemo(() => {
-    const map = new Map();
-    medicosComMetadados.forEach(med => {
-      med.hospitais.forEach(h => map.set(h.id, h));
+    const map = new Map<string, Hospital>();
+    medicosComMetadados.forEach((med) => {
+      med.hospitais.forEach((h) => map.set(h.id!, h));
     });
     return Array.from(map.values());
   }, [medicosComMetadados]);
 
-  if (!medicos) return <LoadingSkeleton />;
+  if (!medicos.length) return <LoadingSkeleton />;
 
   return (
     <PageTransition>
@@ -190,18 +223,17 @@ export default function MedicosPage() {
             />
           </div>
 
-          {/* 🔧 FILTROS RÁPIDOS DINÂMICOS */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
-            
+
             {tratamentosUnicos.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {tratamentosUnicos.slice(0, 4).map((t: any) => (
+                {tratamentosUnicos.slice(0, 4).map((t) => (
                   <button
                     key={t.id}
                     onClick={() => {
                       trigger("vibrate");
-                      setFiltroTratamento(filtroTratamento === t.id ? null : t.id);
+                      setFiltroTratamento(filtroTratamento === t.id ? null : t.id!);
                     }}
                     className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all ${
                       filtroTratamento === t.id
@@ -222,12 +254,12 @@ export default function MedicosPage() {
 
             {hospitaisUnicos.length > 0 && (
               <div className="flex flex-wrap gap-1.5 ml-1">
-                {hospitaisUnicos.slice(0, 2).map((h: any) => (
+                {hospitaisUnicos.slice(0, 2).map((h) => (
                   <button
                     key={h.id}
                     onClick={() => {
                       trigger("vibrate");
-                      setFiltroHospital(filtroHospital === h.id ? null : h.id);
+                      setFiltroHospital(filtroHospital === h.id ? null : h.id!);
                     }}
                     className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all ${
                       filtroHospital === h.id
@@ -259,27 +291,27 @@ export default function MedicosPage() {
 
         <section className="px-5 pt-5 space-y-3">
           {filteredMedicos.length === 0 ? (
-            <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-12 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-ice/10 text-ice">
-                <Stethoscope size={24} />
-              </div>
-              <p className="text-sm font-medium text-ink-primary">
-                {search || filtroTratamento || filtroHospital
-                  ? "Nenhum médico encontrado com esses filtros"
-                  : "Nenhum médico cadastrado"}
-              </p>
-              <p className="mt-1 text-xs text-ink-muted">
-                {search || filtroTratamento || filtroHospital
-                  ? "Tente ajustar os filtros ou a busca"
-                  : "Cadastre profissionais para gerenciar suas prescrições e atendimentos."}
-              </p>
-            </div>
+            <EmptyState
+              icon={Stethoscope}
+              title={
+                search || filtroTratamento || filtroHospital
+                  ? "Nenhum médico encontrado"
+                  : "Nenhum médico cadastrado"
+              }
+              description={
+                search || filtroTratamento || filtroHospital
+                  ? "Tente ajustar os filtros ou a busca."
+                  : "Cadastre profissionais para gerenciar suas prescrições e atendimentos."
+              }
+              actionLabel="Novo Médico"
+              onAction={() => router.push("/saude/medicos/novo")}
+            />
           ) : (
             filteredMedicos.map((medico) => {
-              // Cor da borda lateral baseada no primeiro tratamento associado (usando a cor real do banco)
-              const primaryColor = medico.tratamentos.length > 0 
-                ? medico.tratamentos[0].color 
-                : "#38BDF8";
+              const primaryColor =
+                medico.tratamentos.length > 0
+                  ? medico.tratamentos[0].color
+                  : "#38BDF8";
 
               return (
                 <motion.button
@@ -292,7 +324,6 @@ export default function MedicosPage() {
                 >
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1 relative">
                     <Stethoscope size={22} className="text-ice" />
-                    {/* 🧠 Alerta visual inteligente se houver receita/estoque crítico nos remédios dele */}
                     {medico.temAlertaUrgente && (
                       <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-coral text-[9px] text-white shadow" title="Alerta de estoque/receita pendente">
                         !
@@ -311,8 +342,13 @@ export default function MedicosPage() {
                     </div>
 
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-                      {medico.telefone && <span>📞 {medico.telefone}</span>}
-                      
+                      {medico.telefone && (
+                        <span className="flex items-center gap-1">
+                          <Phone size={11} className="text-ink-faint" />
+                          {medico.telefone}
+                        </span>
+                      )}
+
                       {medico.ultimoHospital && (
                         <span className="flex items-center gap-1 text-[10px] font-medium bg-coral/10 text-coral px-2 py-0.5 rounded-full">
                           <Building2 size={11} />
@@ -323,16 +359,15 @@ export default function MedicosPage() {
                       {medico.ultimaConsulta && (
                         <span className="flex items-center gap-1">
                           <Calendar size={11} className="text-ice" />
-                          Última: {new Date(medico.ultimaConsulta.data).toLocaleDateString("pt-BR")}
+                          Última: {formatDateDisplay(medico.ultimaConsulta.data)}
                         </span>
                       )}
                     </div>
 
-                    {/* 🎨 Etiquetas dinâmicas usando a COR REAL DO BANCO (t.cor) */}
                     <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                      {medico.tratamentos.map((t: any) => (
-                        <span 
-                          key={t.id} 
+                      {medico.tratamentos.map((t) => (
+                        <span
+                          key={t.id}
                           className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md border"
                           style={{
                             backgroundColor: `${t.color}15`,
@@ -375,18 +410,6 @@ export default function MedicosPage() {
               );
             })
           )}
-
-          <div className="pt-4">
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={() => { trigger("vibrate"); router.push("/saude/medicos/novo"); }}
-              className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
-            >
-              <Plus size={16} /> Cadastrar Novo Médico
-            </Button>
-          </div>
         </section>
       </main>
     </PageTransition>

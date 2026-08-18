@@ -1,313 +1,130 @@
-# Vault — Seus documentos, sempre à mão
+# Vault
 
-**Vault** é um aplicativo local‑first de gestão de documentos pessoais e familiares, organizado por **pessoas** e **categorias** (Saúde, Pessoal, Empresa, Outros). Ele centraliza documentos como RG, CPF, CNH, receitas médicas, prontuários, laudos, certificados, medicamentos e renovações, funcionando **100% offline** (IndexedDB) e sincronizando com Supabase quando online. A interface é orientada a **cards** com cores por categoria, favoritos, busca, anexos e um módulo completo de saúde.
+Aplicativo pessoal de gestão de saúde e documentos, construído como PWA/Capacitor para Android. Centraliza medicamentos, médicos, farmácias, hospitais, tratamentos, consultas, cirurgias, exames, renovações de receita e documentos (RG, CPF, CNH, certidões etc.), com um motor de inteligência que cruza esses dados para gerar alertas e sugestões proativas.
 
-> 🔗 **Link de produção:**
+## Stack
 
- [https://vault-app-ebon.vercel.app/]
+- **Framework:** Next.js (App Router)
+- **Banco local:** Dexie (IndexedDB) — offline-first
+- **Backend/Sync:** Supabase
+- **Mobile:** Capacitor (build Android)
+- **Notificações locais:** `@capacitor/local-notifications`
+- **Desenvolvimento:** Termux + Acode (mobile-first, sem IDE desktop)
+- **Deploy:** GitHub → Vercel
 
----
-## 📦 Índice
+## Arquitetura
 
-- [📸 Screenshots](#-screenshots)
-- [✨ Funcionalidades](#-funcionalidades)
-- [🛠️ Stack Tecnológica](#️-stack-tecnológica)
-- [📂 Estrutura de Dados](#-estrutura-de-dados)
-- [📱 Telas Principais](#-telas-principais)
-- [🏗️ Arquitetura Local‑First](#️-arquitetura-localfirst)
-- [🔐 Autenticação](#-autenticação)
-- [📦 Instalação e Configuração](#-instalação-e-configuração)
-- [🚀 Deploy](#-deploy)
-- [📲 PWA e APK (Capacitor)](#-pwa-e-apk-capacitor)
-- [📋 Roadmap e Melhorias Futuras](#-roadmap-e-melhorias-futuras)
-- [🤝 Contribuição](#-contribuição)
-- [📄 Licença](#-licença)
+### Padrão de acesso a dados
 
----
+```
+components/páginas → hooks (useMedicamentos, useMedicos, ...) → repositories (lib/repositories/) → Dexie
+```
 
-## 📸 Screenshots
+- **Repository Pattern:** todo acesso a dados passa por `lib/repositories/`, um arquivo por entidade (`medicamentos.ts`, `medicos.ts`, `farmacias.ts`, `tratamentos.ts`, `hospitais.ts`, `locais.ts`, `renovacoes.ts`, `exames.ts`, `consultas.ts`, `cirurgias.ts`, `documents.ts`, `persons.ts`, `cids.ts`).
+- **Hooks:** nenhum componente acessa `db` diretamente — sempre via hook (`useMedicamentos`, `useMedicos`, `useDoseLogs`, `useConsultas`, `useCirurgias`, `useRenovacoes`, `usePersons`, `useAuth`, `useSafeDb`, `useHapticFeedback`, `useRenovacaoInteligente`, etc.). Os hooks já injetam `user_id` internamente — nunca passar explicitamente nas chamadas.
+- **Relacionamentos por ID:** todas as entidades se relacionam via IDs (`medico_id`, `farmacia_id`, `hospital_id`, `local_id`, `estabelecimento_id`, `person_id`, `tratamento_ids`). Não há mais texto livre para relacionamentos.
+- **`tratamento_ids`:** relação medicamento↔tratamento é um array com índice MultiEntry no Dexie (`*tratamento_ids`), não uma tabela de junção. Ao excluir um tratamento, é necessário varrer `medicamentos` que o referenciam e remover o ID do array, gerando evento de sync por medicamento afetado.
+- **`db.table()` eliminado:** todo acesso usa `db.[entidade]` diretamente.
+- **Tipagem estrita:** zero `as any`. CRUD usa `Partial<T>` / `Omit<T, ...>`.
 
-| Login | Home | Documentos | Detalhes |
-|-------|------|-----------|----------|
-| ![Login](https://vault-app.vercel.app/icon-512x512.png) | ![Home](https://vault-app.vercel.app/icon-512x512.png) | ![Documentos](https://vault-app.vercel.app/icon-512x512.png) | ![Detalhes](https://vault-app.vercel.app/icon-512x512.png) |
+### Contexto por pessoa
 
-> **Nota:** As imagens acima são ilustrativas. Substitua pelos prints reais do seu app.
+Todas as entidades de saúde carregam `person_id?: string` (opcional, para compatibilidade com dados legados). Um `PersonContext` global expõe a pessoa ativa (`activePerson`) e aplica a cor associada via CSS custom property (`--person-accent`) no elemento raiz, evitando prop-drilling de cor pelos componentes. A pessoa padrão fica registrada numa tabela `settings` (chave-valor, espelhada no Supabase), não na tabela `persons`.
 
----
+### Sync
 
-## ✨ Funcionalidades
+Fila de sync (`syncQueue`) local no Dexie propaga alterações para o Supabase. Pontos de atenção conhecidos:
+- Alterações em campos aninhados (ex.: estoque, `tipo_receita`) precisam ser explicitamente incluídas na fila — já houve gap nesse ponto e foi corrigido.
+- Deleções em cascata (ex.: excluir tratamento) devem gerar evento de sync para cada entidade relacionada afetada, não apenas para a entidade excluída.
+- CIDs são dado de referência estático, não devem ser tratados como registro sincronizado por usuário.
 
-### 🔐 Autenticação
-- Login com e-mail/senha (Supabase Auth)
-- Login com Google OAuth via **popup** (não redireciona a página)
-- Página de callback que fecha a janela e atualiza o estado automaticamente
-- Proteção de rotas
+## Estrutura de rotas (`app/`)
 
-### 👥 Pessoas
-- Cadastro com nome, e-mail, telefone e foto (avatar do Google)
-- Autopreenchimento com dados do Google
-- Lista horizontal de pessoas na home com filtro por pessoa em todas as telas
+```
+app/
+├── (app)/
+│   ├── page.tsx              → Home / Dashboard (rotina + inteligência do dia)
+│   ├── documentos/           → Acervo de documentos (RG, CPF, receitas, prontuários, exames)
+│   └── saude/
+│       ├── page.tsx          → Painel de saúde (seção secundária)
+│       ├── hoje/             → Checklist diário de doses
+│       ├── rede/             → Hub relacional por pessoa (médicos, farmácias, hospitais, tratamentos)
+│       ├── medicamentos/
+│       ├── medicos/
+│       ├── farmacias/
+│       ├── tratamentos/
+│       ├── hospitais/
+│       ├── locais/
+│       ├── renovacao/
+│       ├── exames/
+│       ├── consultas/
+│       └── cirurgias/
+```
 
-### 📄 Documentos (Cards)
-- Cada documento é um **card** com informações resumidas
-- **Cores por categoria**: Saúde (rosa), Pessoal (azul), Empresa (amarelo), Outros (cinza)
-- Na tela inicial: **até 3 cards por categoria** da pessoa selecionada
-- Botão **"Ver mais"** expande a categoria
-- **Favoritos** em destaque
-- Badge de anexo e badge de sincronização
+Cada entidade de saúde segue o mesmo padrão de subrotas: `page.tsx` (listagem), `detalhes/`, `novo|nova/`, `editar/`.
 
-### 🗂️ Tipos de Documentos
-| Tipo | Campos obrigatórios |
-|------|---------------------|
-| **RG** | número, data emissão, validade, órgão emissor |
-| **CPF** | número |
-| **CNH** | número, categoria, data emissão, validade |
-| **Certificado** | instituição, curso, duração |
-| **Receita** | medicamento, dosagem, médico, próxima renovação |
-| **Prontuário** | hospital, médico, data, especialidade |
-| **Laudo** | médico, especialidade, hospital, data |
-| **Encaminhamento** | quem encaminhou, motivo |
+A rota raiz (`/`) é a Dashboard; `/saude` permanece como painel secundário (não como redirect quebrado) para não invalidar links salvos.
 
-### 📎 Anexos
-- Upload via **câmera** ou **galeria**
-- Armazenamento no Supabase Storage
-- **Modal de visualização**: miniatura ampliada, nome editável, download
+## Motor de inteligência (`lib/health-insights.ts` + `lib/health-utils.ts`)
 
-### 💊 Módulo Saúde
-- Lista de medicamentos com alerta de renovação (dias restantes)
-- Cadastro de medicamentos com dosagem, médico, próxima renovação
-- Histórico de renovações por medicamento
-- Anexo de receitas e comprovantes
+Funções puras (sem JSX) que cruzam dados para gerar alertas e sugestões:
 
-### 🔄 Sincronização Local‑First
-- Fila de sincronização (`syncQueue`) para todas as operações
-- Processamento em background quando online
-- Detecção de conectividade
+| Função | Propósito |
+|---|---|
+| `validarVinculoMedicoLocal` | Valida vínculo médico ↔ estabelecimento |
+| `sugerirRenovacao` | Sugere renovação com base em estoque e receita |
+| `analisarMelhorFarmacia` | Ranking de farmácias por preço médio |
+| `calcularEconomia` | Economia na última compra |
+| `sugerirHorarios` | Sugestão de horários para medicamentos |
+| `isReceitaVencidaSegura` | Validação segura de receita vencida |
+| `analisarComportamentoUso` | Alertas de adesão (uso de SOS, doses perdidas) |
+| `analisarMedico` | Vigilância de retorno médico (ex.: +6 meses sem consulta) |
+| `analisarFarmaciaDetalhada` | Insights de gasto e preço por farmácia |
+| `gerarAlertasVisaoGeral` | Motor de alertas cruzados (estoque, receita, consulta, exame, cirurgia) |
+| `analisarRotinaDiaria` | Assistente diário (jejum para exame/cirurgia, aproveitamento de consulta) |
+| `analisarReceitaArquivada` | Evita alertas falsos de receitas já renovadas |
 
-### 🎨 UI e Experiência
-- Splash Screen personalizada
-- Loading Skeletons em todas as listas
-- Page Transitions (animações entre páginas)
-- Toasts com animações
-- Haptic feedback em todas as interações
-- Design escuro com glassmorphism e cantos arredondados
+`health-utils.ts` contém os auxiliares (`getDaysUntil`, `computeEstoqueInfo`, `formatDateDisplay`, `getLocalTodayISO`, etc.) — atenção: são importados daqui, não de `health-insights.ts`.
 
-### 📱 PWA e APK
-- PWA com manifest, service worker e meta tags
-- APK Android via Capacitor e GitHub Actions
+## Identidade visual
 
-## 🛠️ Stack Tecnológica
+Paleta teal/violeta (substituiu o sky-blue original). Sem emojis na UI — ícones via Lucide React. Cards com bordas arredondadas, modais fecham ao clicar fora do backdrop, feedback tátil (`trigger("vibrate")`) em ações relevantes.
 
-| Camada | Tecnologia |
-|--------|------------|
-| **Frontend** | Next.js 14 (App Router) + TypeScript |
-| **Estilização** | TailwindCSS + design system próprio |
-| **Banco local** | Dexie.js (IndexedDB) |
-| **Backend/Cloud** | Supabase (Auth, Database, Storage) |
-| **PWA** | Manifest + service worker |
-| **Mobile** | Capacitor (Android) + GitHub Actions |
-| **Animações** | Framer Motion |
-| **Ícones** | Lucide React |
-| **Datas** | date-fns |
+## Decisões e convenções fixadas
 
----
+- Botão "Cadastrar" não aparece em listagens/detalhes — cadastro é centralizado no menu inferior contextual (`BottomNav.tsx`).
+- Listagens sempre ordenadas alfabeticamente por nome (ou por data, quando fizer mais sentido), com filtros por status/período/tipo e botão "Limpar".
+- Loading: spinner flutuante (`FloatingSpinner.tsx`, Framer Motion) no lugar de skeletons pesados; Suspense boundary no nível de layout (`app/(app)/layout.tsx`), não por página.
+- OCR de receitas: abordagem client-side com Tesseract.js (offline, sem custo, sem latência de rede), resultado sempre tratado como sugestão pré-preenchida que o usuário confirma — não como dado definitivo.
 
-## 📂 Estrutura de Dados
+## Riscos conhecidos / pontos de atenção ativos
 
-### Dexie (IndexedDB) — Tabelas principais
+- Garantir que todo `useLiveQuery` usa `.where('index').equals()` indexado, e não full table scan via `.toArray().filter()`.
+- Integridade referencial de `tratamento_ids` sem tabela de junção — depende da rotina de limpeza ao excluir um tratamento.
+- Migração de registros legados sem `person_id`: tratada via função que roda no boot atribuindo ao `default_person_id`, não via script manual no Supabase.
+- Consolidar queries compostas da Home (consultas + medicamentos + doses + exames do dia) em um único provider de contexto, evitando `useLiveQuery` redundante por componente.
 
-```ts
-// PESSOAS
-interface Person {
-  id?: number;
-  user_id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  avatar_url?: string;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
-}
+## Roadmap
 
-// DOCUMENTOS
-interface Document {
-  id?: number;
-  person_id: number;
-  category_id: 'saude' | 'pessoal' | 'empresa' | 'outros';
-  type: 'rg' | 'cpf' | 'cnh' | 'certificado' | 'receita' | 'prontuario' | 'laudo' | 'encaminhamento' | 'outro';
-  title: string;
-  description?: string;
-  metadata: Record<string, any>;
-  attachments: Attachment[];
-  is_favorite: boolean;
-  created_at: string;
-  updated_at: string;
-  synced: boolean;
-}
+- [ ] Pessoa padrão + cor dinâmica aplicada globalmente via `PersonContext`
+- [ ] Reorganização da página "Mais" (Documentos, Configurações, Exportar, Ajuda)
+- [ ] Notificações nativas (push) via Supabase Edge Function + `notification_preferences`
+- [ ] OCR de receitas (Tesseract.js client-side, com fallback futuro para Vision API se a precisão for insuficiente)
+- [ ] Exportação de documentos (PDF) e miniaturas confiáveis
+- [ ] Otimização geral de performance de carregamento
 
-// MEDICAMENTOS
-interface Medicamento {
-  id?: number;
-  document_id: number;
-  nome: string;
-  dosagem: string;
-  medico: string;
-  farmacia?: string;
-  data_receita: string;
-  proxima_renovacao: string;
-  observacoes?: string;
-}
+## Desenvolvimento
 
-// FILA DE SINCRONIZAÇÃO
-interface SyncQueueItem {
-  id?: number;
-  table: 'persons' | 'documents' | 'medicamentos' | 'renovacoes';
-  operation: 'add' | 'update' | 'delete';
-  payload: Record<string, unknown>;
-  created_at: string;
-}
+Ambiente mobile-first via Termux + Acode. Deploy contínuo via GitHub → Vercel; build Android via Capacitor.
 
-## 📱 Telas Principais
-
-| Rota | Descrição |
-|------|-----------|
-| `/` | Dashboard com pessoas + cards por categoria |
-| `/login` | Tela de login (e-mail/senha + Google) |
-| `/auth/callback` | Callback para autenticação OAuth (popup) |
-| `/documentos` | Lista completa de documentos com busca |
-| `/favoritos` | Lista de documentos favoritados |
-| `/novo` | Cadastro de documento (campos dinâmicos) |
-| `/[id]` | Detalhes do documento com modal de anexos |
-| `/[id]/editar` | Edição de documento |
-| `/categoria/[id]` | "Ver mais" por categoria |
-| `/pessoas/novo` | Cadastro de pessoa |
-| `/perfil` | Perfil do usuário (logout, limpar dados) |
-| `/saude/medicamentos` | Lista de medicamentos |
-| `/saude/medicamentos/novo` | Cadastro de medicamento |
-| `/saude/medicamentos/[id]` | Detalhes do medicamento com renovações |
-
-## 📱 Telas Principais
-
-| Rota | Descrição |
-|------|-----------|
-| `/` | Dashboard com pessoas + cards por categoria |
-| `/login` | Tela de login (e-mail/senha + Google) |
-| `/auth/callback` | Callback para autenticação OAuth (popup) |
-| `/documentos` | Lista completa de documentos com busca |
-| `/favoritos` | Lista de documentos favoritados |
-| `/novo` | Cadastro de documento (campos dinâmicos) |
-| `/[id]` | Detalhes do documento com modal de anexos |
-| `/[id]/editar` | Edição de documento |
-| `/categoria/[id]` | "Ver mais" por categoria |
-| `/pessoas/novo` | Cadastro de pessoa |
-| `/perfil` | Perfil do usuário (logout, limpar dados) |
-| `/saude/medicamentos` | Lista de medicamentos |
-| `/saude/medicamentos/novo` | Cadastro de medicamento |
-| `/saude/medicamentos/[id]` | Detalhes do medicamento com renovações |
-
-## 🚀 Deploy
-
-### Deploy na Vercel (gratuito)
-
-1. Faça o push do código para o GitHub.
-2. Acesse [vercel.com](https://vercel.com) e importe o repositório.
-3. Adicione as variáveis de ambiente (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
-4. Clique em **Deploy**.
-
-O deploy é automático a cada push na branch `main`.
-
----
-
-## 📲 PWA e APK (Capacitor)
-
-### PWA
-- O app é um PWA instalável no celular.
-- O navegador exibirá um banner "Instalar aplicativo" ou "Adicionar à tela inicial".
-- Funciona offline (cache do service worker).
-
-### APK Android (via GitHub Actions)
-
-1. O workflow `.github/workflows/build-android.yml` é acionado a cada push na `main`.
-2. Ele builda o Next.js com `output: "export"` (usando `next.config.export.js`).
-3. Sincroniza com o Capacitor e compila o APK.
-4. O APK fica disponível em **Actions → Artifacts → Vault-App**.
-
-#### Comandos manuais (opcional)
 ```bash
-# Build com export
-npm run build:export
+npm install
+npm run dev
+```
 
-# Sincronizar Capacitor
+Para build Android:
+
+```bash
 npx cap sync android
-
-# Gerar APK (via Gradle)
-cd android && ./gradlew assembleDebug
-
-## 🤝 Contribuição
-
-Contribuições são bem‑vindas! Siga os passos:
-
-1. Fork o projeto.
-2. Crie uma branch para sua feature (`git checkout -b feat/nova-feature`).
-3. Commit suas mudanças (`git commit -m 'feat: adiciona nova feature'`).
-4. Push para a branch (`git push origin feat/nova-feature`).
-5. Abra um Pull Request.
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
-
----
-
-**Feito com ❤️ por Alefe Gomes e contribuidores.**
-
----
-
-## 📎 Links Úteis
-
-- [App em produção](https://vault-app.vercel.app)
-- [Repositório GitHub](https://github.com/alefe-redes-computadores/vault-app)
-- [Supabase Dashboard](https://app.supabase.com)
-- [Vercel Dashboard](https://vercel.com)
-- [Capacitor Docs](https://capacitorjs.com/docs)
-
----
-
-*Última atualização: 17 de julho de 2026*
-
-## 🤝 Contribuição
-
-Contribuições são bem‑vindas! Siga os passos:
-
-1. Fork o projeto.
-2. Crie uma branch para sua feature (`git checkout -b feat/nova-feature`).
-3. Commit suas mudanças (`git commit -m 'feat: adiciona nova feature'`).
-4. Push para a branch (`git push origin feat/nova-feature`).
-5. Abra um Pull Request.
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
-
----
-
-**Feito com ❤️ por Alefe Gomes e contribuidores.**
-
----
-
-## 📎 Links Úteis
-
-- [App em produção](https://vault-app.vercel.app)
-- [Repositório GitHub](https://github.com/alefe-redes-computadores/vault-app)
-- [Supabase Dashboard](https://app.supabase.com)
-- [Vercel Dashboard](https://vercel.com)
-- [Capacitor Docs](https://capacitorjs.com/docs)
-
----
-
-*Última atualização: 17 de julho de 2026*
+npx cap open android
+```

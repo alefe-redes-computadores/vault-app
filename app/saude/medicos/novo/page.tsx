@@ -1,3 +1,4 @@
+// app/saude/medicos/novo/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -6,6 +7,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Stethoscope } from "lucide-react";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
@@ -15,8 +17,17 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+function formatPhone(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 11);
+  if (clean.length <= 2) return clean;
+  if (clean.length <= 6) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
+  if (clean.length <= 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+  return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+}
+
 export default function NovoMedicoPage() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const { addMedico } = useMedicos();
 
@@ -52,10 +63,11 @@ export default function NovoMedicoPage() {
         email: email.trim() || undefined,
       });
       trigger("success");
+      showToast("Médico cadastrado com sucesso", "success");
       router.back();
     } catch (error) {
-      console.error("Erro ao salvar médico:", error);
       trigger("error");
+      showToast("Erro ao cadastrar médico", "error");
     } finally {
       setLoading(false);
     }
@@ -67,10 +79,7 @@ export default function NovoMedicoPage() {
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
+              onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               aria-label="Voltar"
             >
@@ -103,7 +112,7 @@ export default function NovoMedicoPage() {
             className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <Input
-              label="Nome"
+              label="Nome *"
               placeholder="Dr(a). Nome completo"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
@@ -126,7 +135,7 @@ export default function NovoMedicoPage() {
               label="Telefone"
               placeholder="(00) 00000-0000"
               value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
+              onChange={(e) => setTelefone(formatPhone(e.target.value))}
             />
             <Input
               label="E-mail"

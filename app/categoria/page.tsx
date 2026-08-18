@@ -1,3 +1,4 @@
+// app/categorias/page.tsx
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -8,19 +9,18 @@ import { usePersons } from "@/hooks/usePersons";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, type CategoryId } from "@/lib/types";
+import { CATEGORIES, type CategoryId, type Document, type Person } from "@/lib/types";
 import { DocumentCard } from "@/components/DocumentCard";
 import { PageTransition } from "@/components/PageTransition";
-import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function CategoryPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const categoryId = searchParams.get("nome") as CategoryId;
-  const [isLoading, setIsLoading] = useState(true);
 
-  const persons = usePersons();
+  const persons = usePersons() as Person[];
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,17 +32,12 @@ export default function CategoryPage() {
   const allDocs = useDocuments(selectedPersonId || undefined);
 
   const documents = useMemo(
-    () => allDocs.filter((doc: any) => doc.category_id === categoryId),
+    () => (allDocs || []).filter((doc: Document) => doc.category_id === categoryId),
     [allDocs, categoryId]
   );
 
   const { favorite } = useSafeDb();
   const category = CATEGORIES[categoryId];
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 420);
-    return () => clearTimeout(timer);
-  }, []);
 
   const handleFavoriteToggle = useCallback(
     async (id: string) => {
@@ -51,10 +46,6 @@ export default function CategoryPage() {
     },
     [favorite, trigger]
   );
-
-  if (isLoading) {
-    return <LoadingSkeleton />;
-  }
 
   if (!category) {
     return (
@@ -69,7 +60,6 @@ export default function CategoryPage() {
   }
 
   const totalDocs = documents?.length || 0;
-  const hasDocs = totalDocs > 0;
 
   return (
     <PageTransition>
@@ -109,7 +99,6 @@ export default function CategoryPage() {
                 </div>
               </div>
 
-              {/* CORREÇÃO DO NOME ESMAGADO: Adicionado shrink-0 nos botões */}
               <div className="mt-4 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
                 <button
                   onClick={() => {
@@ -125,7 +114,7 @@ export default function CategoryPage() {
                   Todos
                 </button>
 
-                {persons.map((person: any) => (
+                {persons.map((person) => (
                   <button
                     key={person.id}
                     onClick={() => {
@@ -156,49 +145,17 @@ export default function CategoryPage() {
         </header>
 
         <section className="px-5 pt-5">
-          {!hasDocs ? (
-            <motion.div
-              initial={{ opacity: 0, y: 12, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-              className="flex flex-col items-center justify-center rounded-[30px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
-            >
-              <div
-                className="mb-5 flex h-24 w-24 items-center justify-center rounded-full border"
-                style={{
-                  backgroundColor: `${category.color}14`,
-                  borderColor: `${category.color}28`,
-                }}
-              >
-                <FolderOpen size={34} style={{ color: category.color }} />
-              </div>
-
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-ink-muted">
-                <Sparkles size={12} />
-                Organize melhor
-              </div>
-
-              <h3 className="font-display text-xl font-semibold text-ink-primary">
-                Nenhum documento em {category.name}
-              </h3>
-              <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
-                Comece adicionando documentos nesta categoria para deixar tudo centralizado e fácil de encontrar.
-              </p>
-
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-                  router.push("/novo");
-                }}
-                className="mt-6 rounded-full bg-ice px-6 py-3 text-sm font-medium text-void transition-all active:scale-95"
-              >
-                Adicionar documento
-              </button>
-            </motion.div>
+          {!documents?.length ? (
+            <EmptyState
+              icon={FolderOpen}
+              title={`Nenhum documento em ${category.name}`}
+              description="Comece adicionando documentos nesta categoria para deixar tudo centralizado e fácil de encontrar."
+              actionLabel="Adicionar documento"
+              onAction={() => router.push("/documentos/novo")}
+            />
           ) : (
-            /* CORREÇÃO DA LISTA PRETA: Removido stagger global e adicionado animação inline segura */
             <div className="space-y-4">
-              {documents.map((doc: any, index: number) => (
+              {documents.map((doc, index) => (
                 <motion.div 
                   key={doc.id}
                   initial={{ opacity: 0, y: 10 }}

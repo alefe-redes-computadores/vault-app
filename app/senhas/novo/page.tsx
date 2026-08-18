@@ -1,3 +1,4 @@
+// app/senhas/novo/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -7,19 +8,19 @@ import { ArrowLeft, Save, Loader2, Eye, EyeOff, ShieldCheck, KeyRound, Wand2, X 
 import { useCredentials } from "@/hooks/useCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useAuth } from "@/hooks/useAuth";
 import { guessWebsiteFromTitle, getFaviconUrl } from "@/lib/utils/credential-helper";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
+import { useToast } from "@/components/ToastProvider";
+import type { Credential } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
 };
 
-// Medidor de força da senha (0 a 4)
 const calculateStrength = (password: string) => {
   let score = 0;
   if (!password) return score;
@@ -41,9 +42,9 @@ const getStrengthColor = (score: number) => {
 export default function NewPasswordPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { user } = useAuth();
+  const { showToast } = useToast();
   const { addCredential } = useCredentials();
-  
+
   const { authenticate } = useBiometric({
     title: "Visualizar Senha",
     subtitle: "Por segurança, confirme sua identidade.",
@@ -54,7 +55,6 @@ export default function NewPasswordPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [faviconError, setFaviconError] = useState(false);
 
-  // Estados do Gerador de Senhas
   const [showGenerator, setShowGenerator] = useState(false);
   const [genLength, setGenLength] = useState(16);
   const [genOptions, setGenOptions] = useState({ uppercase: true, lowercase: true, numbers: true, symbols: true });
@@ -65,7 +65,7 @@ export default function NewPasswordPage() {
     password_plain: "",
     url: "",
     notes: "",
-    category: "outros" as const,
+    category: "outros" as Credential["category"],
   });
 
   const strengthScore = calculateStrength(formData.password_plain);
@@ -100,17 +100,15 @@ export default function NewPasswordPage() {
     if (genOptions.uppercase) charset += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     if (genOptions.numbers) charset += "0123456789";
     if (genOptions.symbols) charset += "!@#$%^&*()_+~|-=";
-    
-    if (!charset) charset = "abcdefghijklmnopqrstuvwxyz"; // fallback
-    
+    if (!charset) charset = "abcdefghijklmnopqrstuvwxyz";
+
     let newPass = "";
     const randomValues = new Uint32Array(genLength);
     window.crypto.getRandomValues(randomValues);
-    
     for (let i = 0; i < genLength; i++) {
       newPass += charset[randomValues[i] % charset.length];
     }
-    
+
     setFormData((prev) => ({ ...prev, password_plain: newPass }));
     setShowPassword(true);
     setShowGenerator(false);
@@ -122,7 +120,7 @@ export default function NewPasswordPage() {
     const newErrors: Record<string, string> = {};
     if (!formData.title.trim()) newErrors.title = "O título é obrigatório";
     if (!formData.password_plain.trim()) newErrors.password_plain = "A senha não pode estar vazia";
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       trigger("error");
@@ -132,7 +130,6 @@ export default function NewPasswordPage() {
     setLoading(true);
     try {
       await addCredential({
-        user_id: user?.id || "",
         title: formData.title.trim(),
         username: formData.username.trim(),
         password_plain: formData.password_plain,
@@ -142,10 +139,12 @@ export default function NewPasswordPage() {
       });
 
       trigger("success");
+      showToast("Senha salva com sucesso", "success");
       router.back();
     } catch (error) {
       console.error("Erro ao salvar senha:", error);
       trigger("error");
+      showToast("Erro ao salvar senha", "error");
     } finally {
       setLoading(false);
     }
@@ -213,14 +212,13 @@ export default function NewPasswordPage() {
                   </button>
                 </div>
               </div>
-              
-              {/* Barra de Força da Senha */}
+
               <div className="flex gap-1 h-1 w-full mt-2">
                 {[1, 2, 3, 4].map((level) => (
                   <div key={level} className={`flex-1 rounded-full transition-colors duration-500 ${strengthScore >= level ? getStrengthColor(strengthScore) : "bg-surface-border/40"}`} />
                 ))}
               </div>
-              
+
               {errors.password_plain && <p className="text-xs text-coral mt-1">{errors.password_plain}</p>}
             </div>
           </motion.div>
@@ -228,10 +226,10 @@ export default function NewPasswordPage() {
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Categoria</p>
             <div className="flex flex-wrap gap-2">
-              {["banco", "social", "trabalho", "outros"].map((cat) => (
+              {(["banco", "social", "trabalho", "outros"] as const).map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => { trigger("vibrate"); handleChange("category", cat as any); }}
+                  onClick={() => { trigger("vibrate"); handleChange("category", cat); }}
                   className={`capitalize rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
                     formData.category === cat ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
                   }`}
@@ -248,7 +246,6 @@ export default function NewPasswordPage() {
           </motion.div>
         </section>
 
-        {/* Gerador de Senhas Bottom Sheet */}
         <AnimatePresence>
           {showGenerator && (
             <>
@@ -263,7 +260,7 @@ export default function NewPasswordPage() {
                   </h3>
                   <button onClick={() => setShowGenerator(false)} className="rounded-full p-2 bg-surface-raised text-ink-muted active:scale-95"><X size={16}/></button>
                 </div>
-                
+
                 <div className="space-y-6">
                   <div>
                     <div className="flex justify-between text-sm mb-2">

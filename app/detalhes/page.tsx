@@ -1,3 +1,4 @@
+// app/detalhes/page.tsx
 "use client";
 
 import { useState, useRef, useCallback } from "react";
@@ -36,7 +37,6 @@ import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
-import { db } from "@/lib/db";
 
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
@@ -45,7 +45,6 @@ const CATEGORY_ICONS: Record<string, typeof Heart> = {
   outros: FolderOpen,
 };
 
-// Formatação limpa para a data de criação do rodapé
 const formatCreationDate = (dateString?: string): string => {
   if (!dateString) return "";
   try {
@@ -57,7 +56,6 @@ const formatCreationDate = (dateString?: string): string => {
   }
 };
 
-// Formatação inteligente para datas
 const formatDate = (dateString?: string): string => {
   if (!dateString || dateString.trim() === "") return "Data inválida";
   try {
@@ -77,7 +75,6 @@ const formatDate = (dateString?: string): string => {
   }
 };
 
-// Formatação automática para CPF
 const formatCPF = (value: string): string => {
   const digits = value.replace(/\D/g, "");
   if (digits.length === 11) {
@@ -116,7 +113,7 @@ export default function DocumentDetailPage() {
   const { showToast, showSuccess } = useToast();
 
   const doc = useDocument(id || "");
-  const { deleteDocument, favorite } = useSafeDb();
+  const { deleteDocument, favorite, updateDocument } = useSafeDb();
 
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -235,10 +232,8 @@ export default function DocumentDetailPage() {
       );
 
       try {
-        await db.documents.update(doc.id, {
+        await updateDocument(doc.id, {
           attachments: updatedAttachments,
-          updated_at: new Date().toISOString(),
-          synced: false,
         });
 
         setSelectedAttachment({ ...selectedAttachment, name: newFullName });
@@ -251,7 +246,7 @@ export default function DocumentDetailPage() {
         showToast("Erro ao renomear anexo", "error");
       }
     },
-    [selectedAttachment, doc, trigger, showToast]
+    [selectedAttachment, doc, updateDocument, trigger, showToast]
   );
 
   if (!doc) {
@@ -412,7 +407,6 @@ export default function DocumentDetailPage() {
 
                     let displayValue: string = String(value);
 
-                    // Formata CPFs automaticamente e limpa duplicidades
                     if (key === 'cpf' || key === 'number') {
                       displayValue = formatCPF(displayValue);
                     }
@@ -516,7 +510,7 @@ export default function DocumentDetailPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                {doc.attachments.map((attachment: any) => {
+                {doc.attachments.map((attachment: Attachment) => {
                   const Icon = getFileIcon(attachment.type);
                   const isImage = attachment.type === "image";
 
@@ -737,7 +731,7 @@ export default function DocumentDetailPage() {
                     <div className="flex w-full flex-col items-center gap-4 text-ink-muted">
                       <FileText size={64} className="text-ice/30" />
                       <p className="text-sm text-ink-primary">
-                        📄 {selectedAttachment.name}
+                        {selectedAttachment.name}
                       </p>
                       <div className="flex gap-4 text-xs text-ink-muted/60">
                         <span>Clique em "Baixar" para visualizar</span>

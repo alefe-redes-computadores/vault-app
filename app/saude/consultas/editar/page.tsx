@@ -1,3 +1,4 @@
+// app/saude/consultas/editar/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -21,7 +22,6 @@ import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { SelectionModal } from "@/components/SelectionModal";
 import type { Consulta } from "@/lib/types";
-// ✅ NOVO: import do hook
 import { useConsultas } from "@/hooks/useConsultas";
 
 const fadeUp = {
@@ -65,7 +65,6 @@ function EditarConsultaContent() {
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
-  // ✅ NOVO: useConsultas
   const { getConsulta, updateConsulta } = useConsultas();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -88,7 +87,6 @@ function EditarConsultaContent() {
       return;
     }
     const loadConsulta = async () => {
-      // ✅ CORRIGIDO: usa getConsulta do hook
       const data = await getConsulta(id);
       if (data) {
         setMedicoId(data.medico_id || "");
@@ -121,7 +119,6 @@ function EditarConsultaContent() {
     try {
       const dataISO = parseDateToISO(dataDisplay);
 
-      // ✅ CORRIGIDO: usa updateConsulta do hook
       await updateConsulta(id, {
         medico_id: medicoId,
         hospital_id: hospitalId || undefined,

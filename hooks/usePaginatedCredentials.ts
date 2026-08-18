@@ -1,15 +1,16 @@
+// hooks/usePaginatedCredentials.ts
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, safeAddCredential, safeUpdateCredential, safeDeleteCredential } from "@/lib/db";
+import { db } from "@/lib/db";
+import { credentialsRepository } from "@/lib/repositories/credentials";
 import { useAuth } from "./useAuth";
 import { decryptPassword } from "@/lib/crypto";
 import type { Credential } from "@/lib/types";
 
 const PAGE_SIZE = 20;
 
-// Função auxiliar para calcular a força da senha
 const calculateStrength = (password: string) => {
   let score = 0;
   if (!password) return score;
@@ -39,26 +40,29 @@ export function usePaginatedCredentials({
   const totalCount = useLiveQuery(
     async () => {
       if (!user) return 0;
-      let allCreds = await db.credentials.where('user_id').equals(user.id).toArray();
+      let allCreds = await db.credentials.where("user_id").equals(user.id).toArray();
 
       if (category === "fracas") {
-        allCreds = allCreds.filter((item: Credential) => {
+        allCreds = allCreds.filter((item) => {
           const plain = decryptPassword(item.password_encrypted) || "";
           return calculateStrength(plain) <= 2;
         });
       } else if (category === "recentes") {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        allCreds = allCreds.filter((item: Credential) => new Date(item.created_at) >= sevenDaysAgo);
+        allCreds = allCreds.filter(
+          (item) => new Date(item.created_at) >= sevenDaysAgo
+        );
       } else if (category !== "all") {
-        allCreds = allCreds.filter((item: Credential) => item.category === category);
+        allCreds = allCreds.filter((item) => item.category === category);
       }
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        allCreds = allCreds.filter((item: Credential) =>
-          item.title.toLowerCase().includes(q) ||
-          item.username?.toLowerCase().includes(q)
+        allCreds = allCreds.filter(
+          (item) =>
+            item.title.toLowerCase().includes(q) ||
+            item.username?.toLowerCase().includes(q)
         );
       }
       return allCreds.length;
@@ -70,39 +74,40 @@ export function usePaginatedCredentials({
   const credentials = useLiveQuery(
     async () => {
       if (!user) return [];
-      let allCreds = await db.credentials.where('user_id').equals(user.id).toArray();
+      let allCreds = await db.credentials.where("user_id").equals(user.id).toArray();
 
       if (category === "fracas") {
-        allCreds = allCreds.filter((item: Credential) => {
+        allCreds = allCreds.filter((item) => {
           const plain = decryptPassword(item.password_encrypted) || "";
           return calculateStrength(plain) <= 2;
         });
       } else if (category === "recentes") {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        allCreds = allCreds.filter((item: Credential) => new Date(item.created_at) >= sevenDaysAgo);
+        allCreds = allCreds.filter(
+          (item) => new Date(item.created_at) >= sevenDaysAgo
+        );
       } else if (category !== "all") {
-        allCreds = allCreds.filter((item: Credential) => item.category === category);
+        allCreds = allCreds.filter((item) => item.category === category);
       }
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        allCreds = allCreds.filter((item: Credential) =>
-          item.title.toLowerCase().includes(q) ||
-          item.username?.toLowerCase().includes(q)
+        allCreds = allCreds.filter(
+          (item) =>
+            item.title.toLowerCase().includes(q) ||
+            item.username?.toLowerCase().includes(q)
         );
       }
 
-      allCreds.sort((a: Credential, b: Credential) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      allCreds.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
       const end = page * PAGE_SIZE;
       const paginated = allCreds.slice(0, end);
 
-      if (paginated.length >= allCreds.length) {
-        setAllLoaded(true);
-      } else {
-        setAllLoaded(false);
-      }
+      setAllLoaded(paginated.length >= allCreds.length);
 
       return paginated;
     },
@@ -114,9 +119,12 @@ export function usePaginatedCredentials({
     if (!allLoaded && !isLoadingMore) {
       setIsLoadingMore(true);
       setPage((prev) => prev + 1);
-      setTimeout(() => setIsLoadingMore(false), 100);
     }
   }, [allLoaded, isLoadingMore]);
+
+  useEffect(() => {
+    setIsLoadingMore(false);
+  }, [credentials]);
 
   const reset = useCallback(() => {
     setPage(1);
@@ -127,17 +135,19 @@ export function usePaginatedCredentials({
     reset();
   }, [searchQuery, category, reset]);
 
-  const addCredential = async (credData: Omit<Credential, "id" | "user_id" | "created_at" | "updated_at" | "synced">) => {
+  const addCredential = async (
+    data: Omit<Credential, "id" | "user_id" | "created_at" | "updated_at" | "synced">
+  ) => {
     if (!user) throw new Error("Usuário não autenticado");
-    return await safeAddCredential({ ...credData, user_id: user.id });
+    return credentialsRepository.create({ ...data, user_id: user.id });
   };
 
   const updateCredential = async (id: string, changes: Partial<Credential>) => {
-    await safeUpdateCredential(id, changes);
+    await credentialsRepository.update(id, changes);
   };
 
   const deleteCredential = async (id: string) => {
-    await safeDeleteCredential(id);
+    await credentialsRepository.delete(id);
   };
 
   const hasMore = !allLoaded && (credentials?.length || 0) < (totalCount || 0);

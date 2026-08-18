@@ -1,9 +1,11 @@
+// hooks/useTratamentos.ts
 "use client";
 
 import { useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { tratamentosRepository } from "@/lib/repositories/tratamentos";
+import { medicamentosRepository } from "@/lib/repositories/medicamentos";
 import { useAuth } from "./useAuth";
 import type { Tratamento } from "@/lib/types";
 import { cancelDoseNotifications } from "@/lib/dose-notifications";
@@ -30,12 +32,11 @@ export function useTratamentos() {
 
   const updateTratamento = useCallback(
     async (id: string, data: Partial<Tratamento>) => {
-      // 1. Atualiza os dados do Tratamento (via repositório)
+      // 1. Atualiza os dados do Tratamento (via repositório, já enfileira)
       await tratamentosRepository.update(id, data);
 
-      // 2. O "Efeito Dominó" (lógica de negócio, permanece aqui)
+      // 2. O "Efeito Dominó" (lógica de negócio)
       if (data.status === 'concluido' || data.status === 'suspenso') {
-        // Busca medicamentos vinculados via MultiEntry Index
         const medicamentosAfetados = await db.medicamentos
           .where('tratamento_ids')
           .equals(id)
@@ -43,7 +44,8 @@ export function useTratamentos() {
 
         for (const med of medicamentosAfetados) {
           if (med.id && med.status !== 'descontinuado') {
-            await db.medicamentos.update(med.id, {
+            // Usa o repositório para enfileirar a atualização do medicamento
+            await medicamentosRepository.update(med.id, {
               status: 'descontinuado',
               motivo_descontinuacao: `Tratamento original marcado como ${data.status}`
             });
@@ -52,7 +54,7 @@ export function useTratamentos() {
               await cancelDoseNotifications({
                 id: med.id,
                 estoque_horarios: med.estoque_horarios
-              } as any);
+              } as any); // TODO: tipar DoseNotificationPayload
             }
           }
         }
@@ -65,7 +67,6 @@ export function useTratamentos() {
     return tratamentosRepository.delete(id);
   }, []);
 
-  // ✅ Versão com cascade delete (limpa referências em medicamentos/exames)
   const deleteTratamentoSafe = useCallback(async (id: string) => {
     return tratamentosRepository.deleteSafe(id);
   }, []);

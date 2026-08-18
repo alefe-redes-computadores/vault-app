@@ -1,9 +1,10 @@
+// app/saude/tratamentos/editar/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Trash2, ChevronRight, X, Plus, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, ChevronRight, X, Check, FolderHeart } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -15,9 +16,20 @@ import { useTratamentos } from "@/hooks/useTratamentos";
 import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
 import { useToast } from "@/components/ToastProvider";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import type { Tratamento, Cid, Person } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
-const CORES_TRATAMENTO = ["#8B5CF6", "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#EC4899", "#6366F1"];
+
+const CORES_TRATAMENTO = [
+  { label: "Roxo", hex: "#8B5CF6" },
+  { label: "Azul", hex: "#3B82F6" },
+  { label: "Esmeralda", hex: "#10B981" },
+  { label: "Amarelo", hex: "#F59E0B" },
+  { label: "Coral", hex: "#EF4444" },
+  { label: "Rosa", hex: "#EC4899" },
+  { label: "Ciano", hex: "#06B6D4" },
+];
 
 function EditarTratamentoContent() {
   const { trigger } = useHapticFeedback();
@@ -28,9 +40,9 @@ function EditarTratamentoContent() {
 
   const { getTratamento, updateTratamento, deleteTratamentoSafe } = useTratamentos();
   const { cids } = useCids();
-  const persons = usePersons();
+  const persons = usePersons() as Person[];
 
-  const [tratamento, setTratamento] = useState<any>(null);
+  const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [personId, setPersonId] = useState<string>("");
   const [nome, setNome] = useState("");
@@ -63,8 +75,8 @@ function EditarTratamentoContent() {
         } else {
           router.push("/saude");
         }
-      } catch (error) {
-        console.error("Erro ao carregar tratamento:", error);
+      } catch (err) {
+        console.error("Erro ao carregar tratamento:", err);
       } finally {
         setIsLoading(false);
       }
@@ -88,19 +100,25 @@ function EditarTratamentoContent() {
 
     setSaving(true);
     try {
-      await updateTratamento(id, {
+      const patch = {
         person_id: personId,
         nome: nome.trim(),
         cid_ids: cidIds.length > 0 ? cidIds : undefined,
         cor,
         status,
         observacoes: observacoes.trim() || undefined,
-      });
+      };
+
+      // 1. Atualiza no Dexie (UI otimista)
+      await updateTratamento(id, patch);
+
+      // 2. Enfileira para o Supabase (fonte de verdade)
+      await enfileirarOperacao("tratamentos", "update", { id, ...patch });
+
       trigger("success");
       showToast("Tratamento atualizado com sucesso!", "success");
       router.back();
-    } catch (error) {
-      console.error("Erro ao atualizar tratamento:", error);
+    } catch (err) {
       trigger("error");
       showToast("Erro ao atualizar tratamento", "error");
     } finally {
@@ -113,11 +131,14 @@ function EditarTratamentoContent() {
     if (!id) return;
     try {
       await deleteTratamentoSafe(id);
+
+      // Enfileira a exclusão para o Supabase
+      await enfileirarOperacao("tratamentos", "delete", { id });
+
       trigger("success");
       showToast("Tratamento excluído com sucesso!", "success");
       router.replace("/saude");
-    } catch (error) {
-      console.error("Erro ao excluir tratamento:", error);
+    } catch (err) {
       trigger("error");
       showToast("Erro ao excluir tratamento", "error");
     }
@@ -134,10 +155,10 @@ function EditarTratamentoContent() {
 
   const handleRemoveCid = (cidId: string) => {
     trigger("vibrate");
-    setCidIds(cidIds.filter(id => id !== cidId));
+    setCidIds(cidIds.filter((item) => item !== cidId));
   };
 
-  const selectedCids = cids?.filter(c => c.id && cidIds.includes(c.id)) || [];
+  const selectedCids = cids?.filter((c: Cid) => c.id && cidIds.includes(c.id)) || [];
 
   if (isLoading) return <LoadingSkeleton />;
   if (!tratamento) return null;
@@ -170,14 +191,12 @@ function EditarTratamentoContent() {
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Para quem? <span className="text-coral">*</span></p>
             <div className="flex flex-wrap gap-2">
-              {persons.map((p: any) => (
+              {persons.map((p: Person) => (
                 <button
                   key={p.id}
                   onClick={() => { trigger("vibrate"); setPersonId(p.id!); }}
                   className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                    personId === p.id
-                      ? "border-ice bg-ice/12 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                    personId === p.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
                   }`}
                 >
                   {p.name}
@@ -192,10 +211,7 @@ function EditarTratamentoContent() {
               label="Nome do Tratamento"
               placeholder="Ex: TDAH, Dor Crônica, Depressão..."
               value={nome}
-              onChange={(e) => {
-                setNome(e.target.value);
-                if (error) setError("");
-              }}
+              onChange={(e) => { setNome(e.target.value); if (error) setError(""); }}
               error={error}
               required
             />
@@ -204,18 +220,12 @@ function EditarTratamentoContent() {
               <label className="block text-sm font-medium text-ink-primary">Diagnósticos (CIDs)</label>
               {selectedCids.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {selectedCids.map((c) => (
-                    <div
-                      key={c.id}
-                      className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5"
-                    >
+                  {selectedCids.map((c: Cid) => (
+                    <div key={c.id} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
                       <span className="text-xs font-medium text-violet-300">
                         {c.codigo !== "N/A" ? `${c.codigo} - ` : ""}{c.descricao}
                       </span>
-                      <button
-                        onClick={() => handleRemoveCid(c.id!)}
-                        className="text-violet-400/60 hover:text-coral transition-colors"
-                      >
+                      <button onClick={() => handleRemoveCid(c.id!)} className="text-violet-400/60 hover:text-coral transition-colors">
                         <X size={14} />
                       </button>
                     </div>
@@ -235,19 +245,18 @@ function EditarTratamentoContent() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-ink-primary">Cor de Identificação</label>
+              <label className="block text-sm font-medium text-ink-primary">Cor de Identificação Dinâmica</label>
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                {CORES_TRATAMENTO.map((c) => (
+                {CORES_TRATAMENTO.map((item) => (
                   <button
-                    key={c}
+                    key={item.hex}
                     type="button"
-                    onClick={() => { trigger("vibrate"); setCor(c); }}
-                    className={`relative h-10 w-10 shrink-0 rounded-full border-2 transition-all active:scale-95 ${
-                      cor === c ? 'border-ice scale-110 shadow-md' : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: c }}
+                    onClick={() => { trigger("vibrate"); setCor(item.hex); }}
+                    className={`relative h-10 w-10 shrink-0 rounded-full border-2 transition-all active:scale-95 ${cor === item.hex ? "border-ice scale-110 shadow-md" : "border-transparent"}`}
+                    style={{ backgroundColor: item.hex }}
+                    title={item.label}
                   >
-                    {cor === c && <Check size={16} className="absolute inset-0 m-auto text-void" strokeWidth={3} />}
+                    {cor === item.hex && <Check size={16} className="absolute inset-0 m-auto text-void" strokeWidth={3} />}
                   </button>
                 ))}
               </div>
@@ -260,11 +269,7 @@ function EditarTratamentoContent() {
                   <button
                     key={s}
                     onClick={() => { trigger("vibrate"); setStatus(s); }}
-                    className={`rounded-2xl border px-1 py-2.5 text-xs font-medium capitalize transition-all active:scale-95 text-center ${
-                      status === s
-                        ? "border-violet-400 bg-violet-400/12 text-violet-300"
-                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                    }`}
+                    className={`rounded-2xl border px-1 py-2.5 text-xs font-medium capitalize transition-all active:scale-95 text-center ${status === s ? "border-violet-400 bg-violet-400/12 text-violet-300" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"}`}
                   >
                     {s === "ativo" ? "Em andamento" : s === "concluido" ? "Concluído" : "Suspenso"}
                   </button>
@@ -299,37 +304,28 @@ function EditarTratamentoContent() {
           message="Tem certeza que deseja excluir este tratamento? O histórico de medicamentos associados não será apagado, mas perderão este vínculo."
         />
 
-        <SelectionModal
+        <SelectionModal<Cid>
           isOpen={isCidModalOpen}
           onClose={() => setIsCidModalOpen(false)}
-          onSelect={handleAddCid}
+          onSelect={(item) => handleAddCid(item.id!)}
           items={cids || []}
           title="Adicionar Diagnóstico (CID)"
           placeholder="Buscar por código ou descrição..."
-          renderItem={(item: any) => (
+          renderItem={(item: Cid) => (
             <div>
               <p className="font-medium text-ink-primary">{item.descricao}</p>
-              {item.codigo && item.codigo !== "N/A" && (
-                <p className="text-xs text-ink-muted">CID: {item.codigo}</p>
-              )}
+              {item.codigo && item.codigo !== "N/A" && <p className="text-xs text-ink-muted">CID: {item.codigo}</p>}
             </div>
           )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.descricao}
-          onCreateNew={() => {
-            setIsCidModalOpen(false);
-            router.push("/saude/cids/novo");
-          }}
+          getItemId={(item: Cid) => item.id!}
+          getItemLabel={(item: Cid) => item.descricao}
+          onCreateNew={() => { setIsCidModalOpen(false); router.push("/saude/cids/novo"); }}
           createNewLabel="Cadastrar Novo CID"
-          multiSelect
         />
 
         <AnimatePresence>
           {showAddCidPrompt && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm"
-              onClick={() => setShowAddCidPrompt(false)}
-            >
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm" onClick={() => setShowAddCidPrompt(false)}>
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -338,30 +334,16 @@ function EditarTratamentoContent() {
                 className="w-full max-w-sm rounded-[28px] border border-surface-border bg-surface p-6 shadow-xl space-y-4"
               >
                 <div className="flex items-center gap-3 text-violet-400">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/10">
-                    <FolderHeart size={22} />
-                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/10"><FolderHeart size={22} /></div>
                   <div>
                     <h3 className="font-display text-base font-bold text-ink-primary">Adicionar outro CID?</h3>
                     <p className="text-xs text-ink-muted">Você pode vincular múltiplos diagnósticos</p>
                   </div>
                 </div>
-                <p className="text-sm text-ink-muted leading-relaxed">
-                  Deseja adicionar outro CID a este tratamento?
-                </p>
+                <p className="text-xs text-ink-muted leading-relaxed">Deseja adicionar outro CID a este tratamento?</p>
                 <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); }}
-                    className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all"
-                  >
-                    Não, finalizar
-                  </button>
-                  <button
-                    onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); setIsCidModalOpen(true); }}
-                    className="flex-1 rounded-2xl bg-violet-400 py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-violet-400/20"
-                  >
-                    Sim, adicionar
-                  </button>
+                  <button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); }} className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all">Não, finalizar</button>
+                  <button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); setIsCidModalOpen(true); }} className="flex-1 rounded-2xl bg-violet-400 py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-violet-400/20">Sim, adicionar</button>
                 </div>
               </motion.div>
             </div>
@@ -373,5 +355,9 @@ function EditarTratamentoContent() {
 }
 
 export default function EditarTratamentoPage() {
-  return <Suspense fallback={<LoadingSkeleton />}><EditarTratamentoContent /></Suspense>;
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <EditarTratamentoContent />
+    </Suspense>
+  );
 }

@@ -1,21 +1,34 @@
+// app/saude/renovacao/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { 
-  ArrowLeft, Search, ChevronRight, Calendar, 
-  DollarSign, FileWarning, Pill, Filter, X, Clock,
-  AlertCircle, CheckCircle2
+import {
+  ArrowLeft,
+  Search,
+  ChevronRight,
+  Calendar,
+  DollarSign,
+  FileWarning,
+  Pill,
+  Filter,
+  X,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  MessageCircle,
 } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/EmptyState";
+import { useRenovacoes } from "@/hooks/useRenovacoes";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
+import type { Renovacao, Medicamento } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -28,6 +41,13 @@ function formatCurrency(value: number): string {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
 
+type RenovacaoEnriquecida = Renovacao & {
+  medicamentoNome: string;
+  medicamentoDosagem: string;
+  vencida: boolean;
+  diasRestantes: number | null;
+};
+
 export default function RenovacoesPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -35,19 +55,16 @@ export default function RenovacoesPage() {
   const [filtroPeriodo, setFiltroPeriodo] = useState<"todos" | "30dias" | "60dias">("todos");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "vencida" | "valida">("todos");
 
-  const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
-  const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
+  const { renovacoes = [] } = useRenovacoes();
+  const { medicamentos = [] } = useMedicamentos();
 
-  const medicamentoMap = useMemo(() => new Map(medicamentos.map((m: any) => [m.id, m])), [medicamentos]);
+  const medicamentoMap = useMemo(() => new Map(medicamentos.map((m) => [m.id, m])), [medicamentos]);
 
-  const renovacoesEnriquecidas = useMemo(() => {
-    return renovacoes.map((r: any) => {
+  const renovacoesEnriquecidas = useMemo<RenovacaoEnriquecida[]>(() => {
+    return renovacoes.map((r) => {
       const med = medicamentoMap.get(r.medicamento_id);
-      
-      // 🐛 CORREÇÃO 1: Checar se a RECEITA DO MEDICAMENTO (e não a data da compra) venceu
+
       const vencida = med?.proxima_renovacao ? isReceitaVencidaSegura(med.proxima_renovacao) : false;
-      
-      // 🐛 CORREÇÃO 2: Contar dias para a PRÓXIMA renovação (não o tempo desde a última compra)
       const diasRestantes = med?.proxima_renovacao ? getDaysUntil(med.proxima_renovacao) : null;
 
       return {
@@ -63,37 +80,35 @@ export default function RenovacoesPage() {
   const filteredRenovacoes = useMemo(() => {
     let result = renovacoesEnriquecidas;
 
-    // Busca
     if (search) {
-      result = result.filter((r: any) =>
-        r.medicamentoNome.toLowerCase().includes(search.toLowerCase()) ||
-        (r.observacoes && r.observacoes.toLowerCase().includes(search.toLowerCase()))
+      const term = search.toLowerCase();
+      result = result.filter(
+        (r) =>
+          r.medicamentoNome.toLowerCase().includes(term) ||
+          (r.observacoes && r.observacoes.toLowerCase().includes(term))
       );
     }
 
-    // Filtro por período (Este sim olha para a data da compra 'r.data')
     if (filtroPeriodo === "30dias") {
       const trintaDiasAtras = new Date();
       trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-      result = result.filter((r: any) => new Date(r.data) >= trintaDiasAtras);
+      result = result.filter((r) => new Date(r.data) >= trintaDiasAtras);
     } else if (filtroPeriodo === "60dias") {
       const sessentaDiasAtras = new Date();
       sessentaDiasAtras.setDate(sessentaDiasAtras.getDate() - 60);
-      result = result.filter((r: any) => new Date(r.data) >= sessentaDiasAtras);
+      result = result.filter((r) => new Date(r.data) >= sessentaDiasAtras);
     }
 
-    // Filtro por status (Olha para o status da receita do medicamento)
     if (filtroStatus === "vencida") {
-      result = result.filter((r: any) => r.vencida);
+      result = result.filter((r) => r.vencida);
     } else if (filtroStatus === "valida") {
-      result = result.filter((r: any) => !r.vencida);
+      result = result.filter((r) => !r.vencida);
     }
 
-    // Ordenação (mais recente primeiro)
-    return result.sort((a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    return result.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   }, [renovacoesEnriquecidas, search, filtroPeriodo, filtroStatus]);
 
-  if (!renovacoes) return <LoadingSkeleton />;
+  if (!renovacoes.length) return <LoadingSkeleton />;
 
   return (
     <PageTransition>
@@ -122,10 +137,9 @@ export default function RenovacoesPage() {
             />
           </div>
 
-          {/* 🔧 FILTROS */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
-            
+
             <button
               onClick={() => { trigger("vibrate"); setFiltroPeriodo(filtroPeriodo === "30dias" ? "todos" : "30dias"); }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
@@ -187,29 +201,29 @@ export default function RenovacoesPage() {
 
         <section className="px-5 pt-5 space-y-3">
           {filteredRenovacoes.length === 0 ? (
-            <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-12 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-ice/10 text-ice">
-                <FileWarning size={24} />
-              </div>
-              <p className="text-sm font-medium text-ink-primary">Nenhuma renovação encontrada</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                {search || filtroPeriodo !== "todos" || filtroStatus !== "todos" 
-                  ? "Tente ajustar os filtros aplicados." 
-                  : "Registre receitas renovadas para acompanhar custos e validades."}
-              </p>
-            </div>
+            <EmptyState
+              icon={FileWarning}
+              title="Nenhuma renovação encontrada"
+              description={
+                search || filtroPeriodo !== "todos" || filtroStatus !== "todos"
+                  ? "Tente ajustar os filtros aplicados."
+                  : "Registre receitas renovadas para acompanhar custos e validades."
+              }
+              actionLabel="Nova Renovação"
+              onAction={() => router.push("/saude/renovacao/nova")}
+            />
           ) : (
-            filteredRenovacoes.map((renovacao: any) => (
+            filteredRenovacoes.map((renovacao) => (
               <motion.div
                 key={renovacao.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${renovacao.id}`); }}
                 className="flex w-full items-start gap-3.5 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden cursor-pointer"
-                style={{ borderLeft: `6px solid ${renovacao.vencida ? '#EF4444' : '#38BDF8'}` }}
+                style={{ borderLeft: `6px solid ${renovacao.vencida ? "#EF4444" : "#38BDF8"}` }}
               >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">
-                  <Pill size={22} className={renovacao.vencida ? 'text-coral' : 'text-ice'} />
+                  <Pill size={22} className={renovacao.vencida ? "text-coral" : "text-ice"} />
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -226,8 +240,7 @@ export default function RenovacoesPage() {
                     <span className="flex items-center gap-1 font-mono">
                       <Calendar size={12} className="text-ice" /> {formatDateDisplay(renovacao.data)}
                     </span>
-                    
-                    {/* 🔧 Badge de status atual da receita do remédio */}
+
                     {renovacao.vencida ? (
                       <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-coral/20 text-coral px-2 py-0.5 rounded-full border border-coral/30">
                         <AlertCircle size={10} /> Rec. Vencida
@@ -238,20 +251,22 @@ export default function RenovacoesPage() {
                       </span>
                     )}
 
-                    {/* 🔧 Dias para a PRÓXIMA renovação */}
                     {renovacao.diasRestantes !== null && !renovacao.vencida && renovacao.diasRestantes >= 0 && (
-                      <span className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                        renovacao.diasRestantes <= 7 
-                          ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30' 
-                          : 'bg-surface-raised text-ink-muted border border-surface-border/40'
-                      }`}>
+                      <span
+                        className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                          renovacao.diasRestantes <= 7
+                            ? "bg-amber-400/20 text-amber-400 border border-amber-400/30"
+                            : "bg-surface-raised text-ink-muted border border-surface-border/40"
+                        }`}
+                      >
                         <Clock size={10} /> Faltam {renovacao.diasRestantes} dias
                       </span>
                     )}
 
                     {renovacao.observacoes && (
-                      <span className="truncate max-w-[150px] text-ink-muted">
-                        💬 {renovacao.observacoes}
+                      <span className="truncate max-w-[150px] text-ink-muted flex items-center gap-1">
+                        <MessageCircle size={11} className="shrink-0" />
+                        {renovacao.observacoes}
                       </span>
                     )}
                   </div>

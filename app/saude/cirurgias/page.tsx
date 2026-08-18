@@ -1,3 +1,4 @@
+// app/saude/cirurgias/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -17,6 +18,7 @@ import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Cirurgia } from "@/lib/types";
 import { useCirurgias } from "@/hooks/useCirurgias";
+import { EmptyState } from "@/components/EmptyState";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -48,7 +50,6 @@ export default function CirurgiasPage() {
     const hist: Cirurgia[] = [];
 
     (cirurgias || []).forEach((c) => {
-      // 🐛 Blindagem contra datas vazias/nulas
       const dataSegura = c.data || "";
       const isPassada = dataSegura < hojeISO || c.status === "realizada" || c.status === "cancelada";
       
@@ -178,22 +179,21 @@ export default function CirurgiasPage() {
 
         <section className="px-5 pt-6 space-y-4">
           {listaExibida.length === 0 ? (
-            <motion.div 
-              variants={fadeUp} 
-              initial="initial" 
-              animate="animate" 
-              className="rounded-[28px] border border-surface-border/50 bg-surface p-8 text-center shadow-sm"
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-coral/10 text-coral border border-coral/10 mb-3">
-                <Activity size={24} />
-              </div>
-              <h3 className="font-display text-base font-semibold text-ink-primary">Nenhum registro encontrado</h3>
-              <p className="mt-1 text-xs text-ink-muted max-w-xs mx-auto">
-                {abaAtiva === "proximas" 
-                  ? "Você não possui cirurgias ou procedimentos agendados." 
-                  : "Não há registros de procedimentos passados no histórico."}
-              </p>
-            </motion.div>
+            <EmptyState
+              icon={Activity}
+              title={
+                abaAtiva === "proximas"
+                  ? "Nenhuma cirurgia agendada"
+                  : "Nenhum procedimento no histórico"
+              }
+              description={
+                abaAtiva === "proximas"
+                  ? "Toque no botão + para cadastrar uma nova cirurgia."
+                  : "As cirurgias realizadas ou canceladas aparecerão aqui."
+              }
+              actionLabel="Nova Cirurgia"
+              onAction={() => router.push("/saude/cirurgias/nova")}
+            />
           ) : (
             <div className="space-y-3">
               {listaExibida.map((cir, index) => {

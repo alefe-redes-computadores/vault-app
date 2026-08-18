@@ -1,3 +1,4 @@
+// app/saude/cids/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -19,6 +20,7 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Input } from "@/components/ui/Input";
 import { useCids } from "@/hooks/useCids";
 import { getCidInsights } from "@/lib/health-insights";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function CidsPage() {
   const { trigger } = useHapticFeedback();
@@ -78,17 +80,17 @@ export default function CidsPage() {
 
         <section className="px-5 pt-5 space-y-3">
           {filteredCids.length === 0 ? (
-            <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-12 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-violet-400/10 text-violet-400">
-                <FileText size={24} />
-              </div>
-              <p className="text-sm font-medium text-ink-primary">
-                {search ? "Nenhum CID encontrado" : "Nenhum CID cadastrado"}
-              </p>
-              <p className="mt-1 text-xs text-ink-muted">
-                {search ? "Tente ajustar a busca." : "Cadastre seus diagnósticos para acompanhar tratamentos."}
-              </p>
-            </div>
+            <EmptyState
+              icon={FileText}
+              title={search ? "Nenhum CID encontrado" : "Nenhum CID cadastrado"}
+              description={
+                search
+                  ? "Tente ajustar a busca."
+                  : "Cadastre seus diagnósticos para acompanhar tratamentos."
+              }
+              actionLabel="Novo CID"
+              onAction={() => router.push("/saude/cids/novo")}
+            />
           ) : (
             filteredCids.map((cid) => {
               const insight = getCidInsights(cid.codigo);

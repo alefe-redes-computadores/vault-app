@@ -1,4 +1,7 @@
+// lib/repositories/cids.ts
+
 import { db, safeAddCid, safeUpdateCid, safeDeleteCid, safeUpdateTratamento } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { Cid } from "@/lib/types";
 
 export const cidsRepository = {
@@ -11,30 +14,36 @@ export const cidsRepository = {
   },
 
   async create(data: Omit<Cid, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) {
-    return safeAddCid(data);
+    const id = await safeAddCid(data);
+    await enfileirarOperacao("cids", "add", { id, ...data });
+    return id;
   },
 
   async update(id: string, data: Partial<Cid>) {
-    return safeUpdateCid(id, data);
+    await safeUpdateCid(id, data);
+    await enfileirarOperacao("cids", "update", { id, ...data });
+    return id;
   },
 
   /**
-   * Exclusão Segura com Sincronização (Cascade Delete)
-   * Remove o CID e limpa a referência cid_id nos tratamentos vinculados.
-   * TODAS as operações usam safe... para manter sync com a nuvem.
+   * Exclusão Segura com Sincronização
+   * Remove o CID e limpa a referência dele nos tratamentos (cid_ids).
    */
   async deleteSafe(id: string) {
-    // 1. Deleta o CID (já coloca na fila de sync, se houver)
+    // 1. Exclui o CID
     await safeDeleteCid(id);
+    await enfileirarOperacao("cids", "delete", { id });
 
     // 2. Busca tratamentos que usam este CID
-    const tratamentosAfetados = await db.tratamentos.where('cid_id').equals(id).toArray();
+    const tratamentosAfetados = await db.tratamentos.where('cid_ids').equals(id).toArray();
 
-    // 3. Remove a referência de cada tratamento (usando safeUpdate)
+    // 3. Remove a referência de cada tratamento
     for (const tratamento of tratamentosAfetados) {
-      if (tratamento.id) {
-        await safeUpdateTratamento(tratamento.id, { cid_id: undefined });
+      if (tratamento.id && tratamento.cid_ids) {
+        const novosIds = Array.from(new Set(tratamento.cid_ids.filter(cidId => cidId !== id)));
+        await safeUpdateTratamento(tratamento.id, { cid_ids: novosIds });
+        await enfileirarOperacao("tratamentos", "update", { id: tratamento.id, cid_ids: novosIds });
       }
     }
-  }
+  },
 };

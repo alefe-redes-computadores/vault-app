@@ -1,6 +1,7 @@
 // lib/repositories/renovacoes.ts
 
 import { db, safeAddRenovacao, safeUpdateRenovacao } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { Renovacao } from "@/lib/types";
 
 export const renovacoesRepository = {
@@ -13,14 +14,20 @@ export const renovacoesRepository = {
   },
 
   async create(data: Omit<Renovacao, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
-    return safeAddRenovacao(data);
+    const id = await safeAddRenovacao(data);
+    await enfileirarOperacao("renovacoes", "add", { id, ...data });
+    return id;
   },
 
   async update(id: string, data: Partial<Renovacao>) {
-    return safeUpdateRenovacao(id, data);
+    await safeUpdateRenovacao(id, data);
+    await enfileirarOperacao("renovacoes", "update", { id, ...data });
+    return id;
   },
 
   async delete(id: string) {
-    return db.renovacoes.delete(id);
-  }
+    await db.renovacoes.delete(id);
+    await enfileirarOperacao("renovacoes", "delete", { id });
+    return id;
+  },
 };

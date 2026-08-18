@@ -1,17 +1,31 @@
+// app/saude/tratamentos/page.tsx
 "use client";
 
 import { useMemo, Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { 
-  ArrowLeft, ChevronRight, Activity, Brain, Flame, HeartPulse, 
-  ShieldAlert, Pill, Filter, X, DollarSign, AlertTriangle
+import {
+  ArrowLeft,
+  ChevronRight,
+  Activity,
+  Brain,
+  Flame,
+  HeartPulse,
+  ShieldAlert,
+  Pill,
+  Filter,
+  X,
+  DollarSign,
+  AlertTriangle,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { db } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { EmptyState } from "@/components/EmptyState";
+import { useTratamentos } from "@/hooks/useTratamentos";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { useRenovacoes } from "@/hooks/useRenovacoes";
+import type { Tratamento, Medicamento, Renovacao } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
 
@@ -28,38 +42,43 @@ function formatCurrency(value: number): string {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
 
+type TratamentoEnriquecido = Tratamento & {
+  medicamentosCount: number;
+  totalGasto: number;
+  alertaSemMedicamento: boolean;
+};
+
 function TratamentoListContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "ativo" | "concluido" | "suspenso">("todos");
-  
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
-  const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
-  const listaEnriquecida = useMemo(() => {
-    return tratamentos.map(t => {
-      const meds = medicamentos.filter(m => {
+  const { tratamentos = [] } = useTratamentos();
+  const { medicamentos = [] } = useMedicamentos();
+  const { renovacoes = [] } = useRenovacoes();
+
+  const listaEnriquecida = useMemo<TratamentoEnriquecido[]>(() => {
+    return tratamentos.map((t) => {
+      const meds = medicamentos.filter((m: Medicamento) => {
         if (!t.id) return false;
         return m.tratamento_ids && m.tratamento_ids.includes(t.id);
       });
-      
-      const medIds = new Set(meds.map(m => m.id));
+
+      const medIds = new Set(meds.map((m) => m.id).filter(Boolean));
       let totalGasto = 0;
-      renovacoes.forEach(r => {
+      renovacoes.forEach((r: Renovacao) => {
         if (medIds.has(r.medicamento_id) && typeof r.preco === "number" && r.preco > 0) {
           totalGasto += r.preco;
         }
       });
 
-      // 🧠 Insight: Tratamento Ativo mas sem medicamentos vinculados
-      const alertaSemMedicamento = t.status === 'ativo' && meds.length === 0;
+      const alertaSemMedicamento = t.status === "ativo" && meds.length === 0;
 
-      return { 
-        ...t, 
+      return {
+        ...t,
         medicamentosCount: meds.length,
         totalGasto,
-        alertaSemMedicamento
+        alertaSemMedicamento,
       };
     });
   }, [tratamentos, medicamentos, renovacoes]);
@@ -67,19 +86,24 @@ function TratamentoListContent() {
   const filteredList = useMemo(() => {
     let result = listaEnriquecida;
     if (filtroStatus !== "todos") {
-      result = result.filter(t => t.status === filtroStatus);
+      result = result.filter((t) => t.status === filtroStatus);
     }
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [listaEnriquecida, filtroStatus]);
 
-  if (tratamentos === undefined) return <LoadingSkeleton />;
+  if (!tratamentos.length && !medicamentos.length && !renovacoes.length) {
+    return <LoadingSkeleton />;
+  }
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95">
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+            >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
@@ -90,7 +114,7 @@ function TratamentoListContent() {
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <Filter size={14} className="text-ink-muted" />
-            
+
             <button
               onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "ativo" ? "todos" : "ativo"); }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
@@ -137,15 +161,23 @@ function TratamentoListContent() {
 
         <section className="px-5 pt-6 space-y-3">
           {filteredList.length === 0 ? (
-            <div className="rounded-[24px] border border-dashed border-surface-border p-10 text-center">
-              <p className="text-sm text-ink-muted">
-                {filtroStatus !== "todos" 
-                  ? "Nenhum tratamento com esse status." 
-                  : "Nenhum tratamento cadastrado ainda."}
-              </p>
-            </div>
+            <EmptyState
+              icon={Activity}
+              title={
+                filtroStatus !== "todos"
+                  ? "Nenhum tratamento com esse status"
+                  : "Nenhum tratamento cadastrado"
+              }
+              description={
+                filtroStatus !== "todos"
+                  ? "Tente ajustar os filtros."
+                  : "Cadastre tratamentos para acompanhar medicamentos, gastos e receitas."
+              }
+              actionLabel="Novo Tratamento"
+              onAction={() => router.push("/saude/tratamentos/novo")}
+            />
           ) : (
-            filteredList.map((t: any) => {
+            filteredList.map((t) => {
               const IconComp = getTratamentoIcon(t.nome);
               const cor = t.cor || "#8B5CF6";
               return (
@@ -180,7 +212,6 @@ function TratamentoListContent() {
                         {t.status === "ativo" ? "Ativo" : t.status === "concluido" ? "Concluído" : "Suspenso"}
                       </span>
                     </div>
-                    {/* 🧠 Aviso de Tratamento sem Medicação */}
                     {t.alertaSemMedicamento && (
                       <p className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 mt-2 bg-amber-400/10 w-fit px-2 py-0.5 rounded-md border border-amber-400/20">
                         <AlertTriangle size={10} /> Nenhum medicamento vinculado

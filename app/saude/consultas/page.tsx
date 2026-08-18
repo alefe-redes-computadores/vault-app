@@ -1,3 +1,4 @@
+// app/saude/consultas/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -18,6 +19,7 @@ import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Consulta } from "@/lib/types";
 import { useConsultas } from "@/hooks/useConsultas";
+import { EmptyState } from "@/components/EmptyState";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -49,7 +51,6 @@ export default function ConsultasPage() {
     const hist: Consulta[] = [];
 
     (consultas || []).forEach((c) => {
-      // 🐛 Blindagem contra datas vazias/nulas
       const dataSegura = c.data || "";
       const isPassada = dataSegura < hojeISO || c.status === "realizada" || c.status === "cancelada";
       
@@ -179,22 +180,21 @@ export default function ConsultasPage() {
 
         <section className="px-5 pt-6 space-y-4">
           {listaExibida.length === 0 ? (
-            <motion.div 
-              variants={fadeUp} 
-              initial="initial" 
-              animate="animate" 
-              className="rounded-[28px] border border-surface-border/50 bg-surface p-8 text-center shadow-sm"
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/10 mb-3">
-                <CalendarIcon size={24} />
-              </div>
-              <h3 className="font-display text-base font-semibold text-ink-primary">Nenhuma consulta encontrada</h3>
-              <p className="mt-1 text-xs text-ink-muted max-w-xs mx-auto">
-                {abaAtiva === "proximas" 
-                  ? "Você não possui consultas agendadas." 
-                  : "Não há registros passados no histórico de consultas."}
-              </p>
-            </motion.div>
+            <EmptyState
+              icon={Stethoscope}
+              title={
+                abaAtiva === "proximas"
+                  ? "Nenhuma consulta agendada"
+                  : "Nenhuma consulta no histórico"
+              }
+              description={
+                abaAtiva === "proximas"
+                  ? "Toque no botão + para agendar uma nova consulta."
+                  : "As consultas realizadas ou canceladas aparecerão aqui."
+              }
+              actionLabel="Nova Consulta"
+              onAction={() => router.push("/saude/consultas/nova")}
+            />
           ) : (
             <div className="space-y-3">
               {listaExibida.map((con, index) => {
