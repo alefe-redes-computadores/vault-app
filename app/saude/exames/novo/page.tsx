@@ -27,13 +27,13 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { useMedicos } from "@/hooks/useMedicos";
-import { useHospitais } from "@/hooks/useHospitais";
+import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { usePersons } from "@/hooks/usePersons";
 import { useExames } from "@/hooks/useExames";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import type { Medico, Hospital, Tratamento, Person } from "@/lib/types";
+import type { Medico, LocalSaude, Tratamento, Person } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -86,7 +86,7 @@ export default function NovoExamePage() {
   const router = useRouter();
 
   const { medicos, addMedico } = useMedicos();
-  const { hospitais, addHospital } = useHospitais();
+  const { locais, addLocal } = useLocais();
   const { addTratamento } = useTratamentos();
   const persons = usePersons() as Person[];
   const { addExame } = useExames();
@@ -95,7 +95,7 @@ export default function NovoExamePage() {
   const [nomesExames, setNomesExames] = useState("");
 
   const [localRealizacao, setLocalRealizacao] = useState("");
-  const [laboratorioId, setLaboratorioId] = useState("");
+  const [localId, setLocalId] = useState("");
 
   const [medicoSolicitante, setMedicoSolicitante] = useState("");
   const [medicoId, setMedicoId] = useState("");
@@ -151,10 +151,11 @@ export default function NovoExamePage() {
     if (!newLocalName.trim()) return;
     trigger("vibrate");
     try {
-      const newId = await addHospital({
+      const newId = await addLocal({
         nome: newLocalName.trim(),
+        tipo: "laboratorio",
       });
-      setLaboratorioId(newId);
+      setLocalId(newId);
       setLocalRealizacao(newLocalName.trim());
       setIsCreatingLocal(false);
       setNewLocalName("");
@@ -215,7 +216,7 @@ export default function NovoExamePage() {
           person_id: personId,
           nome: nomeExame,
           laboratorio: localRealizacao.trim() || undefined,
-          laboratorio_id: laboratorioId || undefined,
+          local_id: localId || undefined,
           medico: medicoSolicitante.trim() || undefined,
           medico_id: medicoId || undefined,
           data: dataSolicitacaoISO,
@@ -257,6 +258,7 @@ export default function NovoExamePage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
+          {/* Seletor de Pessoa */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Para quem é o exame? <span className="text-coral">*</span></p>
             <div className="flex flex-wrap gap-2">
@@ -278,6 +280,7 @@ export default function NovoExamePage() {
             {errors.personId && <p className="mt-2 text-xs text-coral">{errors.personId}</p>}
           </motion.div>
 
+          {/* Tratamentos Vinculados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -314,6 +317,7 @@ export default function NovoExamePage() {
             </button>
           </motion.div>
 
+          {/* Formulário */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -396,11 +400,11 @@ export default function NovoExamePage() {
           </Button>
         </div>
 
-        <SelectionModal<Hospital>
+        <SelectionModal<LocalSaude>
           isOpen={isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}
-          onSelect={(item) => { trigger("vibrate"); setLaboratorioId(item.id!); setLocalRealizacao(item.nome); }}
-          items={hospitais}
+          onSelect={(item) => { trigger("vibrate"); setLocalId(item.id!); setLocalRealizacao(item.nome); }}
+          items={locais}
           title="Selecionar Hospital / Laboratório"
           placeholder="Buscar local..."
           renderItem={(item) => <p className="font-medium text-ink-primary">{item.nome}</p>}

@@ -30,12 +30,12 @@ import { TextArea } from "@/components/ui/TextArea";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useMedicos } from "@/hooks/useMedicos";
-import { useHospitais } from "@/hooks/useHospitais";
+import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { usePersons } from "@/hooks/usePersons";
 import { useExames } from "@/hooks/useExames";
 import { db } from "@/lib/db";
-import type { Medico, Hospital, Tratamento, Person } from "@/lib/types";
+import type { Medico, LocalSaude, Tratamento, Person } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -90,7 +90,7 @@ function EditarExameContent() {
   const id = searchParams.get("id");
 
   const { medicos, addMedico } = useMedicos();
-  const { hospitais, addHospital } = useHospitais();
+  const { locais, addLocal } = useLocais();
   const { addTratamento } = useTratamentos();
   const persons = usePersons() as Person[];
   const { getExame, updateExame } = useExames();
@@ -101,7 +101,7 @@ function EditarExameContent() {
   const [nome, setNome] = useState("");
 
   const [laboratorio, setLaboratorio] = useState("");
-  const [laboratorioId, setLaboratorioId] = useState("");
+  const [localId, setLocalId] = useState("");
 
   const [medico, setMedico] = useState("");
   const [medicoId, setMedicoId] = useState("");
@@ -144,7 +144,7 @@ function EditarExameContent() {
         setPersonId(data.person_id || "");
         setNome(data.nome || "");
         setLaboratorio(data.laboratorio || "");
-        setLaboratorioId(data.laboratorio_id || "");
+        setLocalId(data.local_id || "");
         setMedico(data.medico || "");
         setMedicoId(data.medico_id || "");
         setDataSolicitacaoDisplay(formatDateToDisplay(data.data || ""));
@@ -187,10 +187,11 @@ function EditarExameContent() {
     if (!newLocalName.trim()) return;
     trigger("vibrate");
     try {
-      const newId = await addHospital({
+      const newId = await addLocal({
         nome: newLocalName.trim(),
+        tipo: "laboratorio",
       });
-      setLaboratorioId(newId);
+      setLocalId(newId);
       setLaboratorio(newLocalName.trim());
       setIsCreatingLocal(false);
       setNewLocalName("");
@@ -240,7 +241,7 @@ function EditarExameContent() {
         person_id: personId || undefined,
         nome: nome.trim(),
         laboratorio: laboratorio.trim() || undefined,
-        laboratorio_id: laboratorioId || undefined,
+        local_id: localId || undefined,
         medico: medico.trim() || undefined,
         medico_id: medicoId || undefined,
         data: parseDateToISO(dataSolicitacaoDisplay),
@@ -443,11 +444,11 @@ function EditarExameContent() {
           </Button>
         </div>
 
-        <SelectionModal<Hospital>
+        <SelectionModal<LocalSaude>
           isOpen={isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}
-          onSelect={(item) => { trigger("vibrate"); setLaboratorioId(item.id!); setLaboratorio(item.nome); }}
-          items={hospitais}
+          onSelect={(item) => { trigger("vibrate"); setLocalId(item.id!); setLaboratorio(item.nome); }}
+          items={locais}
           title="Selecionar Hospital / Laboratório"
           placeholder="Buscar local..."
           renderItem={(item) => <p className="font-medium text-ink-primary">{item.nome}</p>}
