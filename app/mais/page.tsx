@@ -97,18 +97,29 @@ export default function MaisPage() {
   const clearLocalData = async () => {
     setIsLoading(true);
     try {
-      await db.persons.clear();
-      await db.documents.clear();
-      await db.medicamentos.clear();
-      await db.renovacoes.clear();
-      await db.vaults.clear();
-      await db.vaultMembers.clear();
-      await db.medicos.clear();
-      await db.farmacias.clear();
-      await db.hospitais.clear();
-      await db.syncQueue.clear();
-      await db.credentials.clear();
-      await db.cards.clear();
+      await Promise.all([
+        db.persons.clear(),
+        db.documents.clear(),
+        db.medicamentos.clear(),
+        db.renovacoes.clear(),
+        db.vaults.clear(),
+        db.vaultMembers.clear(),
+        db.medicos.clear(),
+        db.farmacias.clear(),
+        db.hospitais.clear(),
+        db.locais.clear(),
+        db.exames.clear(),
+        db.consultas.clear(),
+        db.cirurgias.clear(),
+        db.doseLogs.clear(),
+        db.credentials.clear(),
+        db.cards.clear(),
+        db.instituicoes.clear(),
+        db.tratamentos.clear(),
+        db.cids.clear(),
+        db.anexos_clinicos.clear(),
+        db.syncQueue.clear(),
+      ]);
 
       trigger("success");
       showToast("Dados locais limpos com sucesso!", "success");
@@ -198,7 +209,7 @@ export default function MaisPage() {
   const handleNotificationsToggle = async () => {
     trigger("vibrate");
     if (isNotificationsEnabled) {
-      await cancelAllDoseNotifications(allMedicamentos as any);
+      await cancelAllDoseNotifications(allMedicamentos);
       disableNotifications();
       showToast("Lembretes desativados", "info");
     } else {

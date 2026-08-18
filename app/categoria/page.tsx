@@ -4,7 +4,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, User, FolderOpen, Sparkles } from "lucide-react";
+import { ArrowLeft, User, FolderOpen } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -18,7 +18,7 @@ export default function CategoryPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const categoryId = searchParams.get("nome") as CategoryId;
+  const categoryId = searchParams.get("nome") as CategoryId | null;
 
   const persons = usePersons() as Person[];
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export default function CategoryPage() {
   );
 
   const { favorite } = useSafeDb();
-  const category = CATEGORIES[categoryId];
+  const category = categoryId ? CATEGORIES[categoryId] : undefined;
 
   const handleFavoriteToggle = useCallback(
     async (id: string) => {

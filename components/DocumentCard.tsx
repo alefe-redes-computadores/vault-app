@@ -1,3 +1,4 @@
+// components/DocumentCard.tsx
 "use client";
 
 import { memo, useState, useCallback } from "react";
@@ -28,13 +29,11 @@ import { ptBR } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ToastProvider";
 
-// 🔧 INTERFACE ATUALIZADA COM SUPORTE PARA AS NOVAS PROPS
 interface DocumentCardProps {
   document: Document;
   personName?: string;
   onFavoriteToggle?: (id: string) => void;
   compact?: boolean;
-  // 🔧 NOVAS PROPS
   alerta?: { status: string; label: string; color: string } | null;
   personColor?: string;
   medicamento?: any;
@@ -115,7 +114,6 @@ function DocumentCardComponent({
   compact = false,
   alerta,
   personColor,
-  medicamento,
 }: DocumentCardProps) {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -124,6 +122,7 @@ function DocumentCardComponent({
   const [showSyncTooltip, setShowSyncTooltip] = useState(false);
   const [isFavoriteAnimating, setIsFavoriteAnimating] = useState(false);
 
+  const metadata = document.metadata as Record<string, string | undefined>;
   const category = CATEGORIES[document.category_id];
   const color = personColor || category?.color || "#6B7280";
   const TypeIcon = TYPE_ICONS[document.type] || FileText;
@@ -152,7 +151,7 @@ function DocumentCardComponent({
   const hasAttachments = document.attachments && document.attachments.length > 0;
   const hasImageAttachment = document.attachments?.some((a) => a.type === "image");
 
-  const metadataKeys = Object.keys(document.metadata || {}).filter(
+  const metadataKeys = Object.keys(metadata).filter(
     (key) =>
       ![
         "issue_date",
@@ -171,7 +170,7 @@ function DocumentCardComponent({
       ].includes(key)
   );
 
-  const rawFirstMeta = metadataKeys.length > 0 ? document.metadata[metadataKeys[0]] : null;
+  const rawFirstMeta = metadataKeys.length > 0 ? metadata[metadataKeys[0]] : null;
 
   const firstMetadata = (() => {
     if (!rawFirstMeta) return null;
@@ -186,19 +185,18 @@ function DocumentCardComponent({
   })();
 
   const rawIssueDate =
-    document.metadata?.issue_date ||
-    document.metadata?.data_nascimento ||
-    document.metadata?.data_exame ||
-    document.metadata?.date;
+    metadata?.issue_date ||
+    metadata?.data_nascimento ||
+    metadata?.data_exame ||
+    metadata?.date;
   const rawExpiryDate =
-    document.metadata?.expiry_date || document.metadata?.renewal_date || document.metadata?.validade;
+    metadata?.expiry_date || metadata?.renewal_date || metadata?.validade;
 
-  const formattedIssue = formatDate(rawIssueDate);
-  const formattedExpiry = formatDate(rawExpiryDate);
+  const formattedIssue = rawIssueDate ? formatDate(String(rawIssueDate)) : null;
+  const formattedExpiry = rawExpiryDate ? formatDate(String(rawExpiryDate)) : null;
 
-  const isExpiring =
-    rawExpiryDate && new Date(rawExpiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const isExpired = rawExpiryDate && new Date(rawExpiryDate) < new Date();
+  const isExpiring = rawExpiryDate && new Date(String(rawExpiryDate)) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const isExpired = rawExpiryDate && new Date(String(rawExpiryDate)) < new Date();
 
   const handleSyncIconClick = useCallback(
     (e: React.MouseEvent) => {
@@ -253,7 +251,6 @@ function DocumentCardComponent({
                     </span>
                   )}
 
-                  {/* 🔧 BADGE DE STATUS DA RECEITA */}
                   {alerta && (
                     <span
                       className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full"

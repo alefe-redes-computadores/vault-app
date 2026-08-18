@@ -1,3 +1,4 @@
+// app/novo/page.tsx
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -99,6 +100,25 @@ const TYPE_DESCRIPTIONS: Record<DocumentType, string> = {
   outro: "Outros documentos",
 };
 
+const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  rg: "C.I.N / Identidade",
+  cpf: "CPF",
+  cnh: "CNH",
+  certidao_nascimento: "Certidão de Nascimento",
+  titulo_eleitor: "Título de Eleitor",
+  certificado: "Certificado",
+  receita: "Receita médica",
+  prontuario: "Prontuário",
+  laudo: "Laudo",
+  encaminhamento: "Encaminhamento",
+  consulta: "Consulta",
+  cirurgia: "Cirurgia",
+  exame_sangue: "Exame de Sangue",
+  exame_imagem: "Exame de Imagem (Raio-X, RM)",
+  credencial: "Credencial / Carteirinha",
+  outro: "Outro",
+};
+
 const applyMask = (value: string, type: string): string => {
   const digits = value.replace(/\D/g, "");
 
@@ -168,25 +188,6 @@ type SelectionConfig = {
   createNewLabel?: string;
 };
 
-const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
-  rg: "C.I.N / Identidade",
-  cpf: "CPF",
-  cnh: "CNH",
-  certidao_nascimento: "Certidão de Nascimento",
-  titulo_eleitor: "Título de Eleitor",
-  certificado: "Certificado",
-  receita: "Receita médica",
-  prontuario: "Prontuário",
-  laudo: "Laudo",
-  encaminhamento: "Encaminhamento",
-  consulta: "Consulta",
-  cirurgia: "Cirurgia",
-  exame_sangue: "Exame de Sangue",
-  exame_imagem: "Exame de Imagem (Raio-X, RM)",
-  credencial: "Credencial / Carteirinha",
-  outro: "Outro",
-};
-
 const slideVariants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 50 : -50,
@@ -218,12 +219,16 @@ export default function NewDocumentPage() {
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
 
-  const laboratorios =
-    useLiveQuery(
-      () => db.laboratorios.where("user_id").equals(user?.id || "").toArray(),
-      [user?.id],
-      [],
-    ) || [];
+  const laboratorios = useLiveQuery(
+    () =>
+      db.locais
+        .where("user_id")
+        .equals(user?.id || "")
+        .and((local) => local.tipo === "laboratorio")
+        .toArray(),
+    [user?.id],
+    []
+  ) || [];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -347,17 +352,13 @@ export default function NewDocumentPage() {
     trigger("vibrate");
 
     try {
-      if (isCreatingParent.type === "pessoa") {
-        // 🔧 CORREÇÃO: adicionamos a propriedade color (exigida pelo TypeScript)
-        const id = await safeAddPerson({
-          user_id: user.id,
-          name: newParentName.trim(),
-          color: DEFAULT_PERSON_COLOR, // <-- ESSA É A CORREÇÃO
-        });
+      const id = await safeAddPerson({
+        user_id: user.id,
+        name: newParentName.trim(),
+        color: DEFAULT_PERSON_COLOR,
+      });
 
-        handleChange("person_id", id);
-      }
-
+      handleChange("person_id", id);
       trigger("success");
       setIsCreatingParent({ type: null });
       setNewParentName("");
@@ -376,7 +377,6 @@ export default function NewDocumentPage() {
 
     if (file) {
       trigger("vibrate");
-
       setLocalFiles((prev) => [...prev, file]);
 
       const newAttachment: Attachment = {
@@ -403,7 +403,6 @@ export default function NewDocumentPage() {
 
     if (file) {
       trigger("vibrate");
-
       setLocalFiles((prev) => [...prev, file]);
 
       const newAttachment: Attachment = {
@@ -499,7 +498,6 @@ export default function NewDocumentPage() {
     }
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 

@@ -160,7 +160,7 @@ export default function EditarDetalhePage() {
     type: "rg" as DocumentType,
     title: "",
     description: "",
-    metadata: {} as Record<string, string>,
+    metadata: {} as Record<string, unknown>,
     attachments: [] as Attachment[],
   });
 
@@ -187,7 +187,7 @@ export default function EditarDetalhePage() {
   const handleMetadataChange = (key: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
-      metadata: { ...prev.metadata, [key]: value },
+      metadata: { ...prev.metadata, [key]: value } as Record<string, unknown>,
     }));
   };
 
@@ -380,7 +380,7 @@ export default function EditarDetalhePage() {
                 key={field.key}
                 label={field.label}
                 type={field.type === "date" ? "date" : "text"}
-                value={formData.metadata[field.key] || ""}
+                value={String(formData.metadata[field.key] ?? "")}
                 onChange={(e) => handleMetadataChange(field.key, e.target.value)}
               />
             ))}
