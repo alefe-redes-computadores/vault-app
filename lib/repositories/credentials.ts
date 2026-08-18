@@ -1,19 +1,21 @@
 // lib/repositories/credentials.ts
-
 import { db } from '../db';
 import { enfileirarOperacao } from '../sync/enfileirarOperacao';
+import { supabase } from '@/lib/supabase/client';
 import type { Credential } from '../types';
 
 export const credentialsRepository = {
   async create(
-    data: Omit<Credential, 'id' | 'created_at' | 'updated_at' | 'synced'>,
-    userId: string
+    data: Omit<Credential, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>
   ): Promise<Credential> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
     const now = new Date().toISOString();
     const credential: Credential = {
       ...data,
       id: crypto.randomUUID?.() ?? Date.now().toString(36) + Math.random().toString(36).substring(2),
-      user_id: userId,
+      user_id: user.id,
       created_at: now,
       updated_at: now,
       synced: false,
@@ -25,12 +27,14 @@ export const credentialsRepository = {
 
   async update(
     id: string,
-    data: Partial<Omit<Credential, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>>,
-    userId: string
+    data: Partial<Omit<Credential, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>>
   ): Promise<Credential> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
     const existing = await db.credentials.get(id);
     if (!existing) throw new Error('Credencial não encontrada');
-    if (existing.user_id !== userId) throw new Error('Acesso negado');
+    if (existing.user_id !== user.id) throw new Error('Acesso negado');
 
     const now = new Date().toISOString();
     const updated: Credential = {
@@ -39,27 +43,34 @@ export const credentialsRepository = {
       updated_at: now,
       synced: false,
     };
-    await db.credentials.update(id, updated);
+    await db.credentials.put(updated);
     await enfileirarOperacao('credentials', 'update', updated);
     return updated;
   },
 
-  async delete(id: string, userId: string): Promise<void> {
+  async delete(id: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
     const existing = await db.credentials.get(id);
     if (!existing) throw new Error('Credencial não encontrada');
-    if (existing.user_id !== userId) throw new Error('Acesso negado');
+    if (existing.user_id !== user.id) throw new Error('Acesso negado');
     await db.credentials.delete(id);
     await enfileirarOperacao('credentials', 'delete', { id });
   },
 
-  async getAll(userId: string): Promise<Credential[]> {
-    return db.credentials.where('user_id').equals(userId).toArray();
+  async getAll(): Promise<Credential[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    return db.credentials.where('user_id').equals(user.id).toArray();
   },
 
-  async getById(id: string, userId: string): Promise<Credential | null> {
+  async getById(id: string): Promise<Credential | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
     const cred = await db.credentials.get(id);
     if (!cred) return null;
-    if (cred.user_id !== userId) return null;
+    if (cred.user_id !== user.id) return null;
     return cred;
   },
 };

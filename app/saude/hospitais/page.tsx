@@ -65,7 +65,7 @@ export default function HospitaisPage() {
       );
 
       const examesDoHospital = exames.filter(
-        (e: Exame) => e.hospital_id === hospital.id || e.laboratorio_id === hospital.id
+        (e: Exame) => e.local_id === hospital.id
       );
 
       const medicoIds = new Set(

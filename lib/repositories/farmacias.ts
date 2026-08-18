@@ -1,5 +1,4 @@
 // lib/repositories/farmacias.ts
-
 import {
   db,
   safeAddFarmacia,
@@ -32,16 +31,14 @@ export const farmaciasRepository = {
     return id;
   },
 
-  /**
-   * Exclusão Segura com Sincronização
-   * Remove a farmácia e limpa o ID dela de medicamentos e renovações.
-   */
+  async delete(id: string) {
+    return this.deleteSafe(id);
+  },
+
   async deleteSafe(id: string) {
-    // 1. Exclui a farmácia
     await safeDeleteFarmacia(id);
     await enfileirarOperacao("farmacias", "delete", { id });
 
-    // 2. Limpa medicamentos
     const medicamentosAfetados = await db.medicamentos.where('farmacia_id').equals(id).toArray();
     for (const med of medicamentosAfetados) {
       if (med.id) {
@@ -50,7 +47,6 @@ export const farmaciasRepository = {
       }
     }
 
-    // 3. Limpa renovações
     const renovacoesAfetadas = await db.renovacoes.where('farmacia_id').equals(id).toArray();
     for (const ren of renovacoesAfetadas) {
       if (ren.id) {

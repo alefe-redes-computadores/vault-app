@@ -27,6 +27,7 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLiveQuery } from "dexie-react-hooks";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
 const applyMask = (value: string, type: string): string => {
   const digits = value.replace(/\D/g, "");
@@ -301,28 +302,21 @@ export default function EditarDetalhePage() {
   };
 
   const handleDelete = async () => {
-    if (!id) return;
-    setDeleting(true);
-    try {
-      await db.documents.delete(id);
-      await db.syncQueue.add({
-        id: crypto.randomUUID(),
-        table: 'documents',
-        operation: 'delete',
-        payload: { id },
-        created_at: new Date().toISOString()
-      });
-      trigger("success");
-      // CORREÇÃO: Usando replace para não criar histórico em cascata
-      router.replace("/"); 
-    } catch (error) {
-      console.error("Erro ao excluir:", error);
-      trigger("error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
-  };
+  if (!id) return;
+  setDeleting(true);
+  try {
+    await db.documents.delete(id);
+    await enfileirarOperacao("documents", "delete", { id });
+    trigger("success");
+    router.replace("/");
+  } catch (error) {
+    console.error("Erro ao excluir:", error);
+    trigger("error");
+  } finally {
+    setDeleting(false);
+    setShowDeleteModal(false);
+  }
+};
 
   if (!doc) {
     return (

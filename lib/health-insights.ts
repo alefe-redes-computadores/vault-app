@@ -245,7 +245,7 @@ export function analisarFarmaciaDetalhada(farmaciaContexto: {
 export interface AlertaVisaoGeral {
   tipo: 'estoque' | 'receita' | 'consulta' | 'exame' | 'cirurgia';
   mensagem: string;
-  urgencia: 'alta' | 'media' | 'baixa';
+  urgencia: 'alta' | 'media' | 'baixa' | 'nenhuma';
   link: string;
 }
 
@@ -345,7 +345,12 @@ export function gerarAlertasVisaoGeral(contexto: {
 
   // Ordenar por urgência
   return alerts.sort((a, b) => {
-    const ordem = { alta: 0, media: 1, baixa: 2 };
+  const ordem = {
+    alta: 0,
+    media: 1,
+    baixa: 2,
+    nenhuma: 3,
+  };
     return ordem[a.urgencia] - ordem[b.urgencia];
   });
 }

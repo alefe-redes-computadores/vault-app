@@ -39,7 +39,7 @@ function formatDateDisplay(isoStr: string): string {
 
 type RankingFarmacia = {
   farmacia_id: string;
-  media_preco: number;
+  media: number;
   total_compras: number;
   economia_estimada?: number;
   percentual_economia?: number;
@@ -65,16 +65,16 @@ export default function FarmaciasPage() {
   const { renovacoes = [] } = useRenovacoes();
 
   const rankingFarmacias = useMemo<RankingFarmacia[]>(() => {
-    const resultado = analisarMelhorFarmacia(renovacoes);
-    return resultado.map((item) => ({
-      farmacia_id: item.farmacia_id,
-      media_preco: item.media,
-      total_compras: item.total_compras,
-    }));
-  }, [renovacoes]);
+  const resultado = analisarMelhorFarmacia(renovacoes);
+  return resultado.map((item) => ({
+    farmacia_id: item.farmacia_id,
+    media: item.media,
+    total_compras: item.total_compras,
+  }));
+}, [renovacoes]);
 
   const rankingMap = useMemo(() => {
-    const map = new Map<string, { posicao: number; farmacia_id: string; media_preco?: number }>();
+    const map = new Map<string, RankingFarmacia & { posicao: number }>();
     rankingFarmacias.forEach((r, index) => {
       map.set(r.farmacia_id, { ...r, posicao: index + 1 });
     });

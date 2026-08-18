@@ -209,7 +209,14 @@ export default function MaisPage() {
   const handleNotificationsToggle = async () => {
     trigger("vibrate");
     if (isNotificationsEnabled) {
-      await cancelAllDoseNotifications(allMedicamentos);
+      await cancelAllDoseNotifications(
+  allMedicamentos.map((med) => ({
+    id: med.id!,
+    nome: med.nome,
+    dosagem: med.dosagem,
+    estoque_horarios: med.estoque_horarios || [],
+  }))
+);
       disableNotifications();
       showToast("Lembretes desativados", "info");
     } else {

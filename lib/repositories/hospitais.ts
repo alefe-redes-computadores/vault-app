@@ -1,5 +1,4 @@
 // lib/repositories/hospitais.ts
-
 import {
   db,
   safeAddHospital,
@@ -35,16 +34,14 @@ export const hospitaisRepository = {
     return id;
   },
 
-  /**
-   * Exclusão Segura com Sincronização
-   * Remove o hospital e limpa o ID dele de documentos, consultas, cirurgias, medicamentos e renovações.
-   */
+  async delete(id: string) {
+    return this.deleteSafe(id);
+  },
+
   async deleteSafe(id: string) {
-    // 1. Exclui o hospital
     await safeDeleteHospital(id);
     await enfileirarOperacao("hospitais", "delete", { id });
 
-    // 2. Limpa documentos
     const documentosAfetados = await db.documents.where('hospital_id').equals(id).toArray();
     for (const doc of documentosAfetados) {
       if (doc.id) {
@@ -53,7 +50,6 @@ export const hospitaisRepository = {
       }
     }
 
-    // 3. Limpa consultas
     const consultasAfetadas = await db.consultas.where('hospital_id').equals(id).toArray();
     for (const con of consultasAfetadas) {
       if (con.id) {
@@ -62,7 +58,6 @@ export const hospitaisRepository = {
       }
     }
 
-    // 4. Limpa cirurgias
     const cirurgiasAfetadas = await db.cirurgias.where('hospital_id').equals(id).toArray();
     for (const cir of cirurgiasAfetadas) {
       if (cir.id) {
@@ -71,7 +66,6 @@ export const hospitaisRepository = {
       }
     }
 
-    // 5. Limpa medicamentos
     const medicamentosAfetados = await db.medicamentos.where('hospital_id').equals(id).toArray();
     for (const med of medicamentosAfetados) {
       if (med.id) {
@@ -80,7 +74,6 @@ export const hospitaisRepository = {
       }
     }
 
-    // 6. Limpa renovações
     const renovacoesAfetadas = await db.renovacoes.where('hospital_id').equals(id).toArray();
     for (const ren of renovacoesAfetadas) {
       if (ren.id) {

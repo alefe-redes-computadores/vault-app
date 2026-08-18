@@ -124,7 +124,7 @@ export default function HojePage() {
       const medicoObj = medicos.find((m) => m.id === med.medico_id);
       const tratamentoObj = tratamentos.find((t) => t.id === (med.tratamento_ids || [])[0]);
       const farmaciaObj = farmacias.find((f) => f.id === med.farmacia_id);
-      const estabelecimentoObj = hospitais.find((h) => h.id === med.estabelecimento_id);
+      const estabelecimentoObj = hospitais.find((h) => h.id === med.local_id);
 
       const insight = sugerirRenovacao(med);
       const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);

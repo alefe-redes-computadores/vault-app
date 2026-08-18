@@ -157,7 +157,7 @@ export default function RedeSaudePage() {
       ...filteredMedicamentos.map(m => m.medico_id)
     ].filter((id): id is string => Boolean(id)));
 
-    return medicos.filter((m: Medico) => m.person_id === selectedPersonId || (m.id && linked.has(m.id)));
+    return medicos.filter((m: Medico) => m.id && linked.has(m.id));
   }, [medicos, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
 
   const filteredFarmacias = useMemo(() => {
@@ -167,7 +167,7 @@ export default function RedeSaudePage() {
       ...filteredRenovacoes.map(r => r.farmacia_id)
     ].filter((id): id is string => Boolean(id)));
 
-    return farmacias.filter((f: Farmacia) => f.person_id === selectedPersonId || (f.id && linked.has(f.id)));
+    return farmacias.filter((f: Farmacia) => f.id && linked.has(f.id));
   }, [farmacias, selectedPersonId, filteredMedicamentos, filteredRenovacoes]);
 
   const filteredHospitais = useMemo(() => {
@@ -175,10 +175,10 @@ export default function RedeSaudePage() {
     const linked = new Set([
       ...filteredConsultas.map(c => c.hospital_id),
       ...filteredCirurgias.map(c => c.hospital_id),
-      ...filteredMedicamentos.map(m => m.estabelecimento_id)
+      ...filteredMedicamentos.map(m => m.local_id)
     ].filter((id): id is string => Boolean(id)));
 
-    return hospitais.filter((h: Hospital) => h.person_id === selectedPersonId || (h.id && linked.has(h.id)));
+    return hospitais.filter((h: Hospital) => h.id && linked.has(h.id));
   }, [hospitais, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
 
   // ============================================================

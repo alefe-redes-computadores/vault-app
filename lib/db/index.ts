@@ -1984,6 +1984,7 @@ export async function safeAddAnexoClinico(
   const full: AnexoClinico = {
     ...data,
     id,
+    user_id: String(data.user_id || ""),
     created_at: timestamp,
     updated_at: timestamp,
     synced: false,

@@ -106,7 +106,7 @@ export function usePaginatedCards({
 
   const addCard = async (cardData: Omit<BankCard, "id" | "user_id" | "created_at" | "updated_at" | "synced">) => {
     if (!user) throw new Error("Usuário não autenticado");
-    return cardsRepository.create({ ...cardData, user_id: user.id });
+    return cardsRepository.create(cardData);
   };
 
   const updateCard = async (id: string, changes: Partial<BankCard>) => {

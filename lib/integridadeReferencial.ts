@@ -14,15 +14,12 @@ export async function validarIntegridadeReferencial(): Promise<void> {
   const LAST_RUN_KEY = 'vault_integrity_check_date';
   const today = new Date().toISOString().slice(0, 10);
 
-  // Verifica se já rodou hoje
   if (localStorage.getItem(LAST_RUN_KEY) === today) {
     return;
   }
 
-  // Marca como executado agora (será mantido mesmo se falhar)
   localStorage.setItem(LAST_RUN_KEY, today);
 
-  // Carrega todos os IDs existentes das tabelas de referência (uma vez)
   const [
     persons,
     medicos,
@@ -71,7 +68,6 @@ export async function validarIntegridadeReferencial(): Promise<void> {
   for (const med of medicamentos) {
     let changed = false;
 
-    // tratamento_ids array
     if (med.tratamento_ids && med.tratamento_ids.length > 0) {
       const validTratamentos = med.tratamento_ids.filter((id) =>
         tratamentoIds.has(id)
@@ -82,34 +78,29 @@ export async function validarIntegridadeReferencial(): Promise<void> {
       }
     }
 
-    // FK person_id
     if (med.person_id && !personIds.has(med.person_id)) {
       med.person_id = undefined;
       changed = true;
     }
-    // FK medico_id
     if (med.medico_id && !medicoIds.has(med.medico_id)) {
       med.medico_id = undefined;
       changed = true;
     }
-    // FK farmacia_id
     if (med.farmacia_id && !farmaciaIds.has(med.farmacia_id)) {
       med.farmacia_id = undefined;
       changed = true;
     }
-    // FK hospital_id
     if (med.hospital_id && !hospitalIds.has(med.hospital_id)) {
       med.hospital_id = undefined;
       changed = true;
     }
-    // FK local_id
     if (med.local_id && !localIds.has(med.local_id)) {
       med.local_id = undefined;
       changed = true;
     }
 
     if (changed) {
-      await db.medicamentos.update(med.id!, med);
+      await db.medicamentos.put(med);
       await enfileirarOperacao('medicamentos', 'update', med);
     }
   }
@@ -118,7 +109,6 @@ export async function validarIntegridadeReferencial(): Promise<void> {
   for (const ex of exames) {
     let changed = false;
 
-    // tratamento_ids array
     if (ex.tratamento_ids && ex.tratamento_ids.length > 0) {
       const validTratamentos = ex.tratamento_ids.filter((id) =>
         tratamentoIds.has(id)
@@ -129,24 +119,21 @@ export async function validarIntegridadeReferencial(): Promise<void> {
       }
     }
 
-    // FK person_id
     if (ex.person_id && !personIds.has(ex.person_id)) {
       ex.person_id = undefined;
       changed = true;
     }
-    // FK medico_id
     if (ex.medico_id && !medicoIds.has(ex.medico_id)) {
       ex.medico_id = undefined;
       changed = true;
     }
-    // FK local_id
     if (ex.local_id && !localIds.has(ex.local_id)) {
       ex.local_id = undefined;
       changed = true;
     }
 
     if (changed) {
-      await db.exames.update(ex.id!, ex);
+      await db.exames.put(ex);
       await enfileirarOperacao('exames', 'update', ex);
     }
   }
@@ -155,7 +142,6 @@ export async function validarIntegridadeReferencial(): Promise<void> {
   for (const trat of tratamentos) {
     let changed = false;
 
-    // cid_ids array
     if (trat.cid_ids && trat.cid_ids.length > 0) {
       const validCids = trat.cid_ids.filter((id) => cidIds.has(id));
       if (validCids.length !== trat.cid_ids.length) {
@@ -164,14 +150,13 @@ export async function validarIntegridadeReferencial(): Promise<void> {
       }
     }
 
-    // FK person_id
     if (trat.person_id && !personIds.has(trat.person_id)) {
       trat.person_id = undefined;
       changed = true;
     }
 
     if (changed) {
-      await db.tratamentos.update(trat.id!, trat);
+      await db.tratamentos.put(trat);
       await enfileirarOperacao('tratamentos', 'update', trat);
     }
   }
@@ -202,7 +187,7 @@ export async function validarIntegridadeReferencial(): Promise<void> {
     }
 
     if (changed) {
-      await db.consultas.update(cons.id!, cons);
+      await db.consultas.put(cons);
       await enfileirarOperacao('consultas', 'update', cons);
     }
   }
@@ -233,7 +218,7 @@ export async function validarIntegridadeReferencial(): Promise<void> {
     }
 
     if (changed) {
-      await db.cirurgias.update(cir.id!, cir);
+      await db.cirurgias.put(cir);
       await enfileirarOperacao('cirurgias', 'update', cir);
     }
   }
@@ -247,9 +232,6 @@ export async function validarIntegridadeReferencial(): Promise<void> {
       changed = true;
     }
     if (ren.medicamento_id && !medicamentoIds.has(ren.medicamento_id)) {
-      // Se o medicamento não existe, não faz sentido manter a renovação? 
-      // Decisão: manter, mas sem medicamento_id seria quebrar a integridade. 
-      // Melhor excluir a renovação? Por ora, apenas logamos e removemos a referência.
       ren.medicamento_id = '';
       changed = true;
     }
@@ -275,7 +257,7 @@ export async function validarIntegridadeReferencial(): Promise<void> {
     }
 
     if (changed) {
-      await db.renovacoes.update(ren.id!, ren);
+      await db.renovacoes.put(ren);
       await enfileirarOperacao('renovacoes', 'update', ren);
     }
   }
@@ -302,7 +284,7 @@ export async function validarIntegridadeReferencial(): Promise<void> {
     }
 
     if (changed) {
-      await db.cids.update(cid.id!, cid);
+      await db.cids.put(cid);
       await enfileirarOperacao('cids', 'update', cid);
     }
   }
@@ -325,7 +307,7 @@ export async function validarIntegridadeReferencial(): Promise<void> {
     }
 
     if (changed) {
-      await db.documents.update(doc.id!, doc);
+      await db.documents.put(doc);
       await enfileirarOperacao('documents', 'update', doc);
     }
   }
@@ -340,14 +322,13 @@ export async function validarIntegridadeReferencial(): Promise<void> {
       changed = true;
     }
     if (!medicamentoIds.has(log.medicamento_id)) {
-      // Excluir dose log se medicamento não existe
       await db.doseLogs.delete(log.id!);
       await enfileirarOperacao('doseLogs', 'delete', { id: log.id! });
       continue;
     }
 
     if (changed) {
-      await db.doseLogs.update(log.id!, log);
+      await db.doseLogs.put(log);
       await enfileirarOperacao('doseLogs', 'update', log);
     }
   }

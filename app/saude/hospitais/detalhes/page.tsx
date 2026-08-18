@@ -76,7 +76,7 @@ function DetalhesHospitalContent() {
     }
 
     const examesDoHospital = exames.filter((e) => 
-      e.hospital_id === id || e.local_id === id
+      e.local_id === id
     );
 
     const consultasDoHospital = consultas.filter((c) => c.hospital_id === id);

@@ -277,14 +277,14 @@ export function BottomNav() {
 
   const gridClass = showCompose ? "grid-cols-5" : "grid-cols-4";
 
-  const colMap = showCompose
-    ? {
-        home: "col-start-1",
-        saude: "col-start-2",
-        galeria: "col-start-4",
-        mais: "col-start-5",
-      }
-    : {};
+  const colMap: Record<string, string> = showCompose
+  ? {
+      home: "col-start-1",
+      saude: "col-start-2",
+      galeria: "col-start-4",
+      mais: "col-start-5",
+    }
+  : {};
 
   return (
     <>

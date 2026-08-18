@@ -1,5 +1,4 @@
 // lib/repositories/tratamentos.ts
-
 import { db, safeAddTratamento, safeUpdateTratamento, safeDeleteTratamento } from "@/lib/db";
 import { safeUpdateMedicamento } from "@/lib/db";
 import { safeUpdateExame } from "@/lib/db";
@@ -16,36 +15,25 @@ export const tratamentosRepository = {
   },
 
   async create(data: Omit<Tratamento, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
-    // 1. Grava localmente
     const id = await safeAddTratamento(data);
-
-    // 2. Enfileira para o Supabase (fonte de verdade)
     await enfileirarOperacao("tratamentos", "add", { id, ...data });
-
     return id;
   },
 
   async update(id: string, data: Partial<Tratamento>) {
-    // 1. Atualiza localmente
     await safeUpdateTratamento(id, data);
-
-    // 2. Enfileira para o Supabase
     await enfileirarOperacao("tratamentos", "update", { id, ...data });
-
     return id;
   },
 
-  /**
-   * Exclusão Segura com Sincronização (Cascade Delete Manual)
-   * Remove o tratamento e limpa o ID dele de medicamentos e exames.
-   * Todas as operações usam safe... e enfileirarOperacao para a nuvem.
-   */
+  async delete(id: string) {
+    return this.deleteSafe(id);
+  },
+
   async deleteSafe(id: string) {
-    // 1. Exclui o tratamento e enfileira
     await safeDeleteTratamento(id);
     await enfileirarOperacao("tratamentos", "delete", { id });
 
-    // 2. Limpa medicamentos vinculados
     const medicamentosAfetados = await db.medicamentos
       .where('tratamento_ids')
       .equals(id)
@@ -59,7 +47,6 @@ export const tratamentosRepository = {
       }
     }
 
-    // 3. Limpa exames vinculados
     const examesAfetados = await db.exames
       .where('tratamento_ids')
       .equals(id)

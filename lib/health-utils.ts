@@ -1,5 +1,3 @@
-// lib/health-utils.ts
-
 import type { Document, Medicamento, TipoReceita } from "@/lib/types";
 
 export type AlertLevel = "vencido" | "urgente" | "atencao" | "ok";
@@ -168,14 +166,14 @@ export function getDocumentAlerts(documents: Document[]): HealthAlert[] {
   return documents
     .filter((doc) => doc.category_id === "saude" && !!doc.id)
     .map((doc) => {
-      const expiry = doc.metadata?.expiry_date || doc.metadata?.renewal_date;
+      const expiry = String(doc.metadata?.expiry_date || doc.metadata?.renewal_date || '');
       const daysUntil = getDaysUntil(expiry);
       return {
         id: doc.id!,
         kind: "documento" as const,
         title: doc.title,
         subtitle: doc.type === "receita" ? "Receita" : doc.type,
-        date: expiry || "",
+        date: expiry,
         daysUntil: daysUntil ?? 999,
         level: getAlertLevel(daysUntil),
         href: `/detalhes?id=${doc.id}`,
@@ -193,14 +191,15 @@ export function getUpcomingAppointments(documents: Document[]): HealthAlert[] {
         doc.category_id === "saude" && !!doc.id && relevantTypes.includes(doc.type)
     )
     .map((doc) => {
-      const date = doc.metadata?.date;
+      const date = String(doc.metadata?.date || '');
+      const subtitle = String(doc.metadata?.specialty || doc.metadata?.hospital || doc.type);
       const daysUntil = getDaysUntil(date);
       return {
         id: doc.id!,
         kind: "consulta" as const,
         title: doc.title,
-        subtitle: doc.metadata?.specialty || doc.metadata?.hospital || doc.type,
-        date: date || "",
+        subtitle,
+        date,
         daysUntil: daysUntil ?? -999,
         level: "ok" as AlertLevel,
         href: `/detalhes?id=${doc.id}`,

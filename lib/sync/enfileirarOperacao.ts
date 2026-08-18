@@ -1,41 +1,37 @@
 // lib/sync/enfileirarOperacao.ts
-
 import { db } from "@/lib/db";
+import type { SyncQueueItem } from "@/lib/types";
 
 type Operacao = "add" | "update" | "delete";
 
 export async function enfileirarOperacao(
-  tabela: string,
+  tabela: SyncQueueItem["table"],
   operacao: Operacao,
-  dados: Record<string, any>
+  dados: unknown
 ) {
-  const chave = `${tabela}:${dados.id}`;
+  const dadosObj = dados as { id?: string };
+  const chave = `${tabela}:${dadosObj.id ?? ""}`;
   const agora = new Date().toISOString();
+  const payload = dados as Record<string, unknown>;
 
-  // Deduplicação: substitui se já existir uma operação pendente para este registro
   const existente = await db.syncQueue.where("chave").equals(chave).first();
 
+  const atualizacao = {
+    table: tabela,
+    operation: operacao,
+    payload,
+    updated_at: agora,
+    retry_count: 0,
+    failed: false,
+  };
+
   if (existente) {
-    // Atualiza o item existente com os novos dados
-    await db.syncQueue.update(existente.id!, {
-      table: tabela,
-      operation: operacao,
-      payload: dados,
-      updated_at: agora,
-      retry_count: 0, // reset ao atualizar
-      failed: false,
-    });
+    await db.syncQueue.update(existente.id!, atualizacao);
   } else {
-    // Cria novo item
     await db.syncQueue.add({
       chave,
-      table: tabela,
-      operation: operacao,
-      payload: dados,
+      ...atualizacao,
       created_at: agora,
-      updated_at: agora,
-      retry_count: 0,
-      failed: false,
     });
   }
 }

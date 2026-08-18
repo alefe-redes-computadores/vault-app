@@ -553,6 +553,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
 
 export interface SyncQueueItem {
   id?: string;
+  chave: string;
   table:
     | 'persons'
     | 'documents'
@@ -577,8 +578,10 @@ export interface SyncQueueItem {
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
+  updated_at: string;
   retry_count?: number;
   failed?: boolean;
+  next_retry_at?: string | null;
 }
 
 export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
@@ -645,6 +648,7 @@ export interface Renovacao {
   user_id: string;
   person_id?: string;
   medicamento_id: string;
+  document_id?: string;
   medico_id?: string;
   farmacia_id?: string;
 

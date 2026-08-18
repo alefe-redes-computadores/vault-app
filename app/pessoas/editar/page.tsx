@@ -21,6 +21,7 @@ import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
 const PERSON_COLORS = [
   { name: "Azul", value: "#38BDF8" },
@@ -200,15 +201,7 @@ export default function EditarPessoaPage() {
         throw new Error("Pessoa não encontrada após atualização");
       }
 
-      await db.syncQueue.add({
-        id: crypto.randomUUID(),
-        table: "persons",
-        operation: "update",
-        payload: { ...updatedPerson },
-        created_at: new Date().toISOString(),
-        retry_count: 0,
-        failed: false,
-      });
+      await enfileirarOperacao("persons", "update", updatedPerson);
 
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("sync:process"));

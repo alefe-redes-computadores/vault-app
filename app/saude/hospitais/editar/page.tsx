@@ -91,7 +91,7 @@ function EditarHospitalContent() {
 
   const examesVinculados = useMemo(() => {
     if (!id) return [];
-    return exames.filter((e: Exame) => e.hospital_id === id || e.local_id === id);
+    return exames.filter((e: Exame) => e.local_id === id);
   }, [exames, id]);
 
   const consultasVinculadas = useMemo(() => {

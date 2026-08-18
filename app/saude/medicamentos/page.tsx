@@ -117,7 +117,7 @@ export default function MedicamentosListPage() {
     async (e: React.MouseEvent, med: Medicamento) => {
       e.stopPropagation();
       trigger("success");
-      setTomandoDoseId(med.id);
+      setTomandoDoseId(med.id!);
 
       const estoqueInfo = computeEstoqueInfo(med);
       const atual = estoqueInfo?.quantidadeRestante ?? 0;
@@ -133,7 +133,7 @@ export default function MedicamentosListPage() {
       const novoEstoque = Math.max(0, atual - doseGasta);
 
       try {
-        await updateMedicamento(med.id, {
+        await updateMedicamento(med.id!, {
           estoque_quantidade: novoEstoque,
           estoque_data_referencia: new Date().toISOString().slice(0, 10),
         });

@@ -1,7 +1,7 @@
 // lib/repositories/cids.ts
-
 import { db, safeAddCid, safeUpdateCid, safeDeleteCid, safeUpdateTratamento } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { supabase } from '@/lib/supabase/client';
 import type { Cid } from "@/lib/types";
 
 export const cidsRepository = {
@@ -13,9 +13,15 @@ export const cidsRepository = {
     return db.cids.get(id);
   },
 
-  async create(data: Omit<Cid, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) {
-    const id = await safeAddCid(data);
-    await enfileirarOperacao("cids", "add", { id, ...data });
+  async create(data: Omit<Cid, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const id = await safeAddCid({
+      ...data,
+      user_id: user.id,
+    });
+    await enfileirarOperacao("cids", "add", { id, ...data, user_id: user.id });
     return id;
   },
 
@@ -25,19 +31,16 @@ export const cidsRepository = {
     return id;
   },
 
-  /**
-   * Exclusão Segura com Sincronização
-   * Remove o CID e limpa a referência dele nos tratamentos (cid_ids).
-   */
+  async delete(id: string) {
+    return this.deleteSafe(id);
+  },
+
   async deleteSafe(id: string) {
-    // 1. Exclui o CID
     await safeDeleteCid(id);
     await enfileirarOperacao("cids", "delete", { id });
 
-    // 2. Busca tratamentos que usam este CID
     const tratamentosAfetados = await db.tratamentos.where('cid_ids').equals(id).toArray();
 
-    // 3. Remove a referência de cada tratamento
     for (const tratamento of tratamentosAfetados) {
       if (tratamento.id && tratamento.cid_ids) {
         const novosIds = Array.from(new Set(tratamento.cid_ids.filter(cidId => cidId !== id)));

@@ -12,6 +12,7 @@ import { VaultCard } from "@/components/VaultCard";
 import { PageTransition } from "@/components/PageTransition";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { db } from "@/lib/db";
 
 export default function VaultsPage() {
   const { trigger } = useHapticFeedback();

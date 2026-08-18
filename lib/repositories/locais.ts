@@ -1,5 +1,4 @@
 // lib/repositories/locais.ts
-
 import {
   db,
   safeAddLocal,
@@ -35,16 +34,14 @@ export const locaisRepository = {
     return id;
   },
 
-  /**
-   * Exclusão Segura com Sincronização
-   * Remove o local e limpa o ID dele de renovações, medicamentos, exames, consultas e cirurgias.
-   */
+  async delete(id: string) {
+    return this.deleteSafe(id);
+  },
+
   async deleteSafe(id: string) {
-    // 1. Exclui o local
     await safeDeleteLocal(id);
     await enfileirarOperacao("locais", "delete", { id });
 
-    // 2. Limpa renovações
     const renovacoesAfetadas = await db.renovacoes.where('local_id').equals(id).toArray();
     for (const ren of renovacoesAfetadas) {
       if (ren.id) {
@@ -53,7 +50,6 @@ export const locaisRepository = {
       }
     }
 
-    // 3. Limpa medicamentos
     const medicamentosAfetados = await db.medicamentos.where('local_id').equals(id).toArray();
     for (const med of medicamentosAfetados) {
       if (med.id) {
@@ -62,7 +58,6 @@ export const locaisRepository = {
       }
     }
 
-    // 4. Limpa exames
     const examesAfetados = await db.exames.where('local_id').equals(id).toArray();
     for (const exame of examesAfetados) {
       if (exame.id) {
@@ -71,7 +66,6 @@ export const locaisRepository = {
       }
     }
 
-    // 5. Limpa consultas
     const consultasAfetadas = await db.consultas.where('local_id').equals(id).toArray();
     for (const con of consultasAfetadas) {
       if (con.id) {
@@ -80,7 +74,6 @@ export const locaisRepository = {
       }
     }
 
-    // 6. Limpa cirurgias
     const cirurgiasAfetadas = await db.cirurgias.where('local_id').equals(id).toArray();
     for (const cir of cirurgiasAfetadas) {
       if (cir.id) {

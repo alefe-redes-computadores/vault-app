@@ -16,9 +16,9 @@ import {
   Building2,
   X,
   Filter,
-  Hospital,
   Phone,
 } from "lucide-react";
+import { Hospital as HospitalIcon } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -105,7 +105,7 @@ export default function MedicosPage() {
       const docsDoMedico = documentos.filter(
         (d) =>
           d.metadata?.doctor_id === medico.id ||
-          d.metadata?.doctor?.toLowerCase() === medico.nome.toLowerCase()
+          String(d.metadata?.doctor || "").toLowerCase() === medico.nome.toLowerCase()
       );
 
       const hospitalIdsSet = new Set<string>();
@@ -267,7 +267,7 @@ export default function MedicosPage() {
                         : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                     }`}
                   >
-                    <Hospital size={10} className="inline mr-1" />
+                    <HospitalIcon size={10} className="inline mr-1" />
                     {h.nome.length > 12 ? h.nome.slice(0, 12) + "…" : h.nome}
                   </button>
                 ))}

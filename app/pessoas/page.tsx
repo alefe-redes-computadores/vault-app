@@ -23,6 +23,7 @@ import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
 export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
@@ -68,71 +69,55 @@ export default function PessoasPage() {
   };
 
   const confirmDelete = async () => {
-    if (!showDeleteModal) return;
+  if (!showDeleteModal) return;
 
-    const { id, name } = showDeleteModal;
+  const { id, name } = showDeleteModal;
 
-    trigger("vibrate");
-    setIsDeleting(id);
+  trigger("vibrate");
+  setIsDeleting(id);
 
-    try {
-      const timestamp = new Date().toISOString();
+  try {
+    const timestamp = new Date().toISOString();
 
-      await db.transaction(
-        "rw",
-        [db.persons, db.documents, db.syncQueue],
-        async () => {
-          const documents = await db.documents
-            .where("person_id")
-            .equals(id)
-            .toArray();
+    await db.transaction(
+      "rw",
+      [db.persons, db.documents],
+      async () => {
+        const documents = await db.documents
+          .where("person_id")
+          .equals(id)
+          .toArray();
 
-          for (const document of documents) {
-            if (document.id) {
-              await db.syncQueue.add({
-                id: crypto.randomUUID(),
-                table: "documents",
-                operation: "delete",
-                payload: { id: document.id },
-                created_at: timestamp,
-                retry_count: 0,
-                failed: false,
-              });
-            }
+        for (const document of documents) {
+          if (document.id) {
+            await enfileirarOperacao("documents", "delete", { id: document.id });
           }
-
-          await db.documents.where("person_id").equals(id).delete();
-
-          await db.persons.delete(id);
-
-          await db.syncQueue.add({
-            id: crypto.randomUUID(),
-            table: "persons",
-            operation: "delete",
-            payload: { id },
-            created_at: timestamp,
-            retry_count: 0,
-            failed: false,
-          });
         }
-      );
 
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("sync:process"));
+        await db.documents.where("person_id").equals(id).delete();
+
+        await db.persons.delete(id);
+
+        await enfileirarOperacao("persons", "delete", { id });
       }
+    );
 
-      trigger("success");
-      showToast(`"${name}" foi removido(a)`, "success");
-    } catch (error) {
-      console.error("Erro ao remover pessoa:", error);
-
-      trigger("error");
-      showToast("Não foi possível remover a pessoa", "error");
-    } finally {
-      setIsDeleting(null);
-      setShowDeleteModal(null);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("sync:process"));
     }
-  };
+
+    trigger("success");
+    showToast(`"${name}" foi removido(a)`, "success");
+  } catch (error) {
+    console.error("Erro ao remover pessoa:", error);
+
+    trigger("error");
+    showToast("Não foi possível remover a pessoa", "error");
+  } finally {
+    setIsDeleting(null);
+    setShowDeleteModal(null);
+  }
+};
 
   if (isLoading) {
     return <LoadingSkeleton />;

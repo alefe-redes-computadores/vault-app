@@ -1,5 +1,4 @@
 // lib/repositories/medicos.ts
-
 import {
   db,
   safeAddMedico,
@@ -33,17 +32,14 @@ export const medicosRepository = {
     return id;
   },
 
-  /**
-   * Exclusão Segura com Sincronização
-   * Remove o médico e limpa o ID dele de medicamentos, consultas e cirurgias.
-   * Todas as operações usam safe... e enfileirarOperacao.
-   */
+  async delete(id: string) {
+    return this.deleteSafe(id);
+  },
+
   async deleteSafe(id: string) {
-    // 1. Exclui o médico
     await safeDeleteMedico(id);
     await enfileirarOperacao("medicos", "delete", { id });
 
-    // 2. Limpa medicamentos
     const medicamentosAfetados = await db.medicamentos.where('medico_id').equals(id).toArray();
     for (const med of medicamentosAfetados) {
       if (med.id) {
@@ -52,7 +48,6 @@ export const medicosRepository = {
       }
     }
 
-    // 3. Limpa consultas
     const consultasAfetadas = await db.consultas.where('medico_id').equals(id).toArray();
     for (const con of consultasAfetadas) {
       if (con.id) {
@@ -61,7 +56,6 @@ export const medicosRepository = {
       }
     }
 
-    // 4. Limpa cirurgias
     const cirurgiasAfetadas = await db.cirurgias.where('medico_id').equals(id).toArray();
     for (const cir of cirurgiasAfetadas) {
       if (cir.id) {

@@ -1,12 +1,13 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
-import type { Medicamento } from '@/lib/types';
 
-/**
- * Registra os tipos de ação para que o sistema nativo (Android/iOS)
- * mostre os botões "Tomei" e "Ignorar" embaixo da notificação push.
- * Chame isso uma vez, de preferência junto com a checagem de permissão.
- */
+export type DoseNotificationPayload = {
+  id: string;
+  nome: string;
+  dosagem: string;
+  estoque_horarios: string[];
+};
+
 async function registerNotificationActions() {
   if (!Capacitor.isNativePlatform()) return;
   try {
@@ -18,13 +19,13 @@ async function registerNotificationActions() {
             {
               id: 'TOMEI',
               title: 'Tomei',
-              foreground: false // Permite ação em background sem abrir o app
+              foreground: false
             },
             {
               id: 'IGNORAR',
               title: 'Ignorar',
               foreground: false,
-              destructive: true // Geralmente fica vermelho no iOS
+              destructive: true
             }
           ]
         }
@@ -35,12 +36,6 @@ async function registerNotificationActions() {
   }
 }
 
-/**
- * O plugin de notificação nativa exige IDs numéricos (int32), mas os
- * nossos IDs são UUID (string). Essa função gera um número estável a
- * partir de "medicamentoId-horario", então o mesmo medicamento+horário
- * sempre cai no mesmo ID — importante pra poder cancelar/recriar depois.
- */
 function hashToId(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -50,11 +45,6 @@ function hashToId(str: string): number {
   return Math.abs(hash) % 2147483647;
 }
 
-/**
- * Pede permissão de notificação ao usuário. Chame isso uma vez, de
- * preferência quando o usuário ativa "Acompanhar estoque" pela primeira
- * vez (não precisa pedir toda hora — o plugin já lembra a resposta).
- */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) return false;
   try {
@@ -70,19 +60,12 @@ export async function requestNotificationPermission(): Promise<boolean> {
   }
 }
 
-/**
- * Agenda um lembrete diário e repetitivo pra cada horário de dose do
- * medicamento. Cancela e recria os agendamentos antigos desse
- * medicamento antes, então pode chamar de novo sempre que o usuário
- * editar os horários — não duplica notificação.
- */
-export async function scheduleDoseNotifications(medicamento: Medicamento): Promise<void> {
+export async function scheduleDoseNotifications(medicamento: DoseNotificationPayload): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   if (!medicamento.id || !medicamento.estoque_horarios || medicamento.estoque_horarios.length === 0) {
     return;
   }
 
-  // Registra as ações caso ainda não tenham sido (segurança extra)
   await registerNotificationActions();
   await cancelDoseNotifications(medicamento);
 
@@ -98,7 +81,7 @@ export async function scheduleDoseNotifications(medicamento: Medicamento): Promi
         id,
         title: `Hora do ${medicamento.nome}`,
         body: `${medicamento.dosagem} — toque pra marcar como tomado`,
-        actionTypeId: 'DOSE_REMINDER_ACTIONS', // ✅ VINCULA OS BOTÕES CRIADOS ACIMA
+        actionTypeId: 'DOSE_REMINDER_ACTIONS',
         schedule: {
           on: { hour, minute },
           repeats: true,
@@ -121,11 +104,7 @@ export async function scheduleDoseNotifications(medicamento: Medicamento): Promi
   }
 }
 
-/**
- * Cancela todos os lembretes agendados desse medicamento — chame antes
- * de excluir o medicamento, ou antes de desativar "Acompanhar estoque".
- */
-export async function cancelDoseNotifications(medicamento: Medicamento): Promise<void> {
+export async function cancelDoseNotifications(medicamento: DoseNotificationPayload): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   if (!medicamento.id || !medicamento.estoque_horarios) return;
 
@@ -142,11 +121,7 @@ export async function cancelDoseNotifications(medicamento: Medicamento): Promise
   }
 }
 
-/**
- * Cancela as notificações de TODOS os medicamentos. Útil para quando
- * o usuário desativa a chave global de notificações em Configurações.
- */
-export async function cancelAllDoseNotifications(medicamentos: Medicamento[]): Promise<void> {
+export async function cancelAllDoseNotifications(medicamentos: DoseNotificationPayload[]): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   
   const allIds: { id: number }[] = [];

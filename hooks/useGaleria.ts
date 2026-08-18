@@ -78,7 +78,7 @@ export function useGaleria(personIdFilter?: string) {
         category: "saude", // Anexos clínicos são sempre saúde
         person_id: anexo.person_id || "",
         title: anexo.tipo || "Anexo Clínico",
-        subtitle: anexo.tags?.join(", ") || "Arquivo de saúde",
+        subtitle: (anexo.tags as string[] || []).join(", ") || "Arquivo de saúde",
         date: String(anexo.created_at || ""),
       });
     });

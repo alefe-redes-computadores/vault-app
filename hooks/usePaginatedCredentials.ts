@@ -139,7 +139,7 @@ export function usePaginatedCredentials({
     data: Omit<Credential, "id" | "user_id" | "created_at" | "updated_at" | "synced">
   ) => {
     if (!user) throw new Error("Usuário não autenticado");
-    return credentialsRepository.create({ ...data, user_id: user.id });
+    return credentialsRepository.create(data);
   };
 
   const updateCredential = async (id: string, changes: Partial<Credential>) => {
