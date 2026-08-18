@@ -1,6 +1,3 @@
-// lib/types.ts corrigido
-
-```ts
 // lib/types.ts
 
 export const PERSON_COLORS = [
@@ -921,16 +918,3 @@ export interface BankCard {
   updated_at: string;
   synced: boolean;
 }
-```
-
----
-
-✅ Alterações feitas
-
-· Removida a interface Laboratorio.
-· Person.color agora é string (mantive PERSON_COLORS para uso futuro).
-· Cid atualizado: removido estabelecimento_id, adicionados hospital_id e local_id.
-· Exame, Consulta e Cirurgia agora têm document_id?.
-· SyncQueueItem.table removido 'laboratorios'.
-
-O arquivo está completo e pronto para substituir. Pode aplicar e depois me avisar para seguirmos com o lib/db/index.ts. 👍
