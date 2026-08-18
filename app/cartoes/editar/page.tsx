@@ -51,7 +51,8 @@ function EditCardContent() {
     async function loadCard() {
       if (!id) return;
       try {
-        const item = await db.cards.get(id);
+        // CORRIGIDO: db.bankCards em vez de db.cards
+        const item = await db.bankCards.get(id);
         if (item) {
           setFormData({
             title: item.title || "",

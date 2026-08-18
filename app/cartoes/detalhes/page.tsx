@@ -1,4 +1,3 @@
-// app/cartoes/detalhes/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -66,7 +65,8 @@ function CardDetailsContent() {
     async function loadCard() {
       if (!id) return;
       try {
-        const item = await db.cards.get(id);
+        // CORRIGIDO: db.bankCards em vez de db.cards
+        const item = await db.bankCards.get(id);
         if (item) setCard(item);
       } catch (error) {
         console.error("Erro ao carregar detalhes:", error);

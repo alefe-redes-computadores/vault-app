@@ -1,4 +1,5 @@
 // hooks/usePaginatedCards.ts
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -32,7 +33,8 @@ export function usePaginatedCards({
   const totalCount = useLiveQuery(
     async () => {
       if (!user) return 0;
-      let allCards = await db.cards.where("user_id").equals(user.id).toArray();
+      // CORRIGIDO: db.bankCards em vez de db.cards
+      let allCards = await db.bankCards.where("user_id").equals(user.id).toArray();
 
       allCards = applyTypeFilter(allCards, selectedType);
 
@@ -53,7 +55,8 @@ export function usePaginatedCards({
   const cards = useLiveQuery(
     async () => {
       if (!user) return [];
-      let allCards = await db.cards.where("user_id").equals(user.id).toArray();
+      // CORRIGIDO: db.bankCards em vez de db.cards
+      let allCards = await db.bankCards.where("user_id").equals(user.id).toArray();
 
       allCards = applyTypeFilter(allCards, selectedType);
 

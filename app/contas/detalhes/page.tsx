@@ -54,7 +54,8 @@ function AccountDetailsContent() {
     async function loadAccount() {
       if (!id) return;
       try {
-        const item = await db.cards.get(id);
+        // CORRIGIDO: db.bankCards em vez de db.cards
+        const item = await db.bankCards.get(id);
         if (item) setAccount(item);
       } catch (error) {
         console.error("Erro ao carregar detalhes da conta:", error);
@@ -193,7 +194,6 @@ function AccountDetailsContent() {
           </div>
         </header>
 
-        {/* Conteúdo restante permanece o mesmo */}
         <section className="px-5 pt-6">
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="relative w-full">
             <div className={`absolute -inset-1 blur-2xl opacity-20 bg-gradient-to-br ${accountStyle}`} />
