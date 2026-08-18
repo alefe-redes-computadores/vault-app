@@ -39,7 +39,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useExames } from "@/hooks/useExames";
 import { useToast } from "@/components/ToastProvider";
 import { SelectionModal } from "@/components/SelectionModal";
-import { safeAddMedico, safeAddHospital } from "@/lib/db";
+import { safeAddMedico, safeAddLocal } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
