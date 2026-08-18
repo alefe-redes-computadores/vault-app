@@ -26,6 +26,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
+import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
