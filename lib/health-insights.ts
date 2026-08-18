@@ -1,18 +1,18 @@
 // lib/health-insights.ts
 
 import { computeEstoqueInfo, getDaysUntil } from "./health-utils";
-import type { Medicamento, Renovacao } from "./types";
+import type { Medicamento, Renovacao, Consulta, Exame, Cirurgia, Tratamento, Cid } from "./types";
 
 // ============================================================
-// 1. VALIDAR VÍNCULO MÉDICO ↔ ESTABELECIMENTO
+// 1. VALIDAR VÍNCULO MÉDICO ↔ LOCAL (estabelecimento_id -> local_id)
 // ============================================================
 export function validarVinculoMedicoLocal(
-  medico: any,
-  estabelecimentoId: string
+  medico: { estabelecimentos?: string[] } | null | undefined,
+  localId: string
 ): boolean {
-  if (!medico || !estabelecimentoId) return true;
+  if (!medico || !localId) return true;
   if (medico.estabelecimentos && Array.isArray(medico.estabelecimentos)) {
-    return medico.estabelecimentos.includes(estabelecimentoId);
+    return medico.estabelecimentos.includes(localId);
   }
   return true;
 }
@@ -65,6 +65,7 @@ export function sugerirRenovacao(medicamento: Medicamento) {
 
 // ============================================================
 // 3. ANALISAR MELHOR FARMÁCIA (INSIGHT DE ECONOMIA)
+//    RETORNA media_preco (para compatibilidade com a tela de farmácias)
 // ============================================================
 export function analisarMelhorFarmacia(renovacoes: Renovacao[]) {
   const farmaciasPrecos: Record<string, number[]> = {};
@@ -79,10 +80,10 @@ export function analisarMelhorFarmacia(renovacoes: Renovacao[]) {
   return Object.entries(farmaciasPrecos)
     .map(([id, precos]) => ({
       farmacia_id: id,
-      media: precos.reduce((a, b) => a + b, 0) / precos.length,
+      media_preco: precos.reduce((a, b) => a + b, 0) / precos.length, // ALTERADO: media → media_preco
       total_compras: precos.length,
     }))
-    .sort((a, b) => a.media - b.media);
+    .sort((a, b) => a.media_preco - b.media_preco);
 }
 
 // ============================================================
@@ -146,13 +147,23 @@ export function isReceitaVencidaSegura(dataRenovacao?: string): boolean {
 // ============================================================
 // 7. COMPORTAMENTO DE USO (ALERTAS INTELIGENTES)
 // ============================================================
-export function analisarComportamentoUso(medicamento: any, historicoDoses: any[]) {
+export interface ComportamentoInsight {
+  tipo: 'padrao_esporadico' | 'alerta_adesao';
+  titulo: string;
+  mensagem: string;
+  acaoSugerida: string;
+}
+
+export function analisarComportamentoUso(
+  medicamento: Medicamento,
+  historicoDoses: Array<{ timestamp?: string; data?: string; status?: string }>
+): ComportamentoInsight | null {
   if (!historicoDoses || historicoDoses.length === 0) return null;
 
   const umaSemanaAtras = new Date();
   umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7);
   
-  const dosesRecentes = historicoDoses.filter(d => new Date(d.timestamp || d.data) >= umaSemanaAtras);
+  const dosesRecentes = historicoDoses.filter(d => new Date(d.timestamp || d.data || '') >= umaSemanaAtras);
   const isEsporadico = medicamento.tipo_uso === 'esporadico' || medicamento.tipo_uso === 'sos';
 
   // SOS usado com alta frequência
@@ -188,13 +199,12 @@ export interface MedicoInsight {
   tipo: 'estoque' | 'adesao' | 'frequencia' | 'nenhum';
 }
 
-export function analisarMedico(medicoContexto: { 
-  medicamentos: any[], 
-  consultasCount: number, 
-  ultimaConsulta: any 
+export function analisarMedico(medicoContexto: {
+  medicamentos: Medicamento[];
+  consultasCount: number;
+  ultimaConsulta: Consulta | null;
 }): MedicoInsight | null {
-  
-  const mesesDesdeUltimaConsulta = medicoContexto.ultimaConsulta 
+  const mesesDesdeUltimaConsulta = medicoContexto.ultimaConsulta
     ? (new Date().getTime() - new Date(medicoContexto.ultimaConsulta.data).getTime()) / (1000 * 60 * 60 * 24 * 30)
     : 12;
 
@@ -210,7 +220,7 @@ export function analisarMedico(medicoContexto: {
 }
 
 // ============================================================
-// 9. VIGILÂNCIA DE FARMÁCIA (CONTEXTO DE ESTABELECIMENTOS)
+// 9. VIGILÂNCIA DE FARMÁCIA (CONTEXTO DE LOCAIS)
 // ============================================================
 export interface FarmaciaInsight {
   status: 'destaque_preco' | 'alerta_gasto' | 'neutro';
@@ -245,15 +255,15 @@ export function analisarFarmaciaDetalhada(farmaciaContexto: {
 export interface AlertaVisaoGeral {
   tipo: 'estoque' | 'receita' | 'consulta' | 'exame' | 'cirurgia';
   mensagem: string;
-  urgencia: 'alta' | 'media' | 'baixa' | 'nenhuma';
+  urgencia: 'alta' | 'media' | 'baixa' | 'nenhuma'; // ✅ JÁ INCLUI "nenhuma"
   link: string;
 }
 
 export function gerarAlertasVisaoGeral(contexto: {
-  medicamentos: any[];
-  consultas: any[];
-  exames: any[];
-  cirurgias: any[];
+  medicamentos: Medicamento[];
+  consultas: Consulta[];
+  exames: Exame[];
+  cirurgias: Cirurgia[];
 }): AlertaVisaoGeral[] {
   const alerts: AlertaVisaoGeral[] = [];
   const hoje = new Date();
@@ -292,7 +302,7 @@ export function gerarAlertasVisaoGeral(contexto: {
       const dataCon = new Date(con.data);
       if (dataCon >= hoje && dataCon <= seteDias) {
         const dias = Math.ceil((dataCon.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-        const nomeMedico = con.medico || con.medico_nome || 'médico';
+        const nomeMedico = con.medico || 'médico';
         alerts.push({
           tipo: 'consulta',
           mensagem: `Consulta com ${nomeMedico} em ${dias} dia${dias > 1 ? 's' : ''}`,
@@ -345,12 +355,12 @@ export function gerarAlertasVisaoGeral(contexto: {
 
   // Ordenar por urgência
   return alerts.sort((a, b) => {
-  const ordem = {
-    alta: 0,
-    media: 1,
-    baixa: 2,
-    nenhuma: 3,
-  };
+    const ordem = {
+      alta: 0,
+      media: 1,
+      baixa: 2,
+      nenhuma: 3,
+    };
     return ordem[a.urgencia] - ordem[b.urgencia];
   });
 }
@@ -366,45 +376,46 @@ export interface RotinaInsight {
 }
 
 export function analisarRotinaDiaria(
-  dosesHoje: any[],
-  compromissosHoje: any[]
+  dosesHoje: Array<{ tomada?: boolean; ignorada?: boolean; horario: string }>,
+  compromissosHoje: Array<{ tipo: string; procedimento?: string; nome?: string; medico?: string }>
 ): RotinaInsight | null {
   // Regra 1: Risco Cirúrgico (Jejum/Interação)
   const cirurgiaHoje = compromissosHoje.find(c => c.tipo === 'cirurgia');
   if (cirurgiaHoje && dosesHoje.some(d => !d.tomada && !d.ignorada)) {
-     return {
-       titulo: 'Atenção: Jejum e Medicações',
-       mensagem: `Você tem uma cirurgia hoje (${cirurgiaHoje.procedimento}). Confirme com sua equipe médica antes de tomar qualquer dose pendente.`,
-       icone: 'cirurgia',
-       urgencia: 'alta'
-     };
+    return {
+      titulo: 'Atenção: Jejum e Medicações',
+      mensagem: `Você tem uma cirurgia hoje (${cirurgiaHoje.procedimento || ''}). Confirme com sua equipe médica antes de tomar qualquer dose pendente.`,
+      icone: 'cirurgia',
+      urgencia: 'alta'
+    };
   }
 
   // Regra 2: Risco de Exame (Ex: Exames de Sangue pedem jejum)
-  const exameHoje = compromissosHoje.find(c => c.tipo === 'exame' && (
-    c.nome.toLowerCase().includes('sangue') || 
-    c.nome.toLowerCase().includes('glicemia') || 
-    c.nome.toLowerCase().includes('colesterol')
-  ));
+  const exameHoje = compromissosHoje.find(c => 
+    c.tipo === 'exame' && 
+    (c.nome?.toLowerCase().includes('sangue') || 
+     c.nome?.toLowerCase().includes('glicemia') || 
+     c.nome?.toLowerCase().includes('colesterol'))
+  );
   if (exameHoje && dosesHoje.some(d => !d.tomada && !d.ignorada && Number(d.horario.split(':')[0]) < 12)) {
-     return {
-       titulo: 'Exame Laboratorial Hoje',
-       mensagem: `Verifique os requisitos de jejum para o exame "${exameHoje.nome}" antes de tomar medicamentos pela manhã.`,
-       icone: 'alerta',
-       urgencia: 'media'
-     };
+    return {
+      titulo: 'Exame Laboratorial Hoje',
+      mensagem: `Verifique os requisitos de jejum para o exame "${exameHoje.nome}" antes de tomar medicamentos pela manhã.`,
+      icone: 'alerta',
+      urgencia: 'media'
+    };
   }
 
   // Regra 3: Aproveitamento de Consulta
   const consultaHoje = compromissosHoje.find(c => c.tipo === 'consulta');
   if (consultaHoje) {
-     const medico = consultaHoje.medico || consultaHoje.medico_nome || 'seu médico';
-     return {
-       titulo: 'Dia de Consulta',
-       mensagem: `Você verá o(a) Dr(a). ${medico} hoje. Aproveite para relatar como está sendo sua adesão à rotina de medicamentos.`,
-       icone: 'medico',
-       urgencia: 'baixa'
-     };
+    const medico = consultaHoje.medico || 'seu médico';
+    return {
+      titulo: 'Dia de Consulta',
+      mensagem: `Você verá o(a) Dr(a). ${medico} hoje. Aproveite para relatar como está sendo sua adesão à rotina de medicamentos.`,
+      icone: 'medico',
+      urgencia: 'baixa'
+    };
   }
 
   return null;
@@ -420,9 +431,9 @@ export interface StatusReceita {
 }
 
 export function analisarReceitaArquivada(
-  dataReceita: string | undefined, // Data de emissão ou validade que tá no documento
-  medicamentoAlvo: any | null,    // Medicamento que essa receita atende
-  renovacoesDoMedicamento: any[]  // Histórico de compras desse remédio
+  dataReceita: string | undefined,
+  medicamentoAlvo: Medicamento | null,
+  renovacoesDoMedicamento: Renovacao[]
 ): StatusReceita | null {
   if (!dataReceita) return null;
 
@@ -432,11 +443,10 @@ export function analisarReceitaArquivada(
   );
 
   if (temRenovacaoRecente) {
-    // O usuário já usou essa receita ou pegou uma mais nova e comprou o remédio
-    return { status: 'renovada_historico', label: 'Arquivada (Renovada)', color: '#38BDF8' }; // Azul informativo, não vermelho crítico
+    return { status: 'renovada_historico', label: 'Arquivada (Renovada)', color: '#38BDF8' };
   }
 
-  // 2. Se não renovou, a receita ainda é a "vigente" pro usuário. Vamos checar se estourou.
+  // 2. Se não renovou, verifica se está vencida
   const vencida = isReceitaVencidaSegura(dataReceita);
   const dias = getDaysUntil(dataReceita);
 

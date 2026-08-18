@@ -1,3 +1,4 @@
+// app/saude/page.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -26,7 +27,11 @@ import {
   FileHeart,
   Plus,
   Users,
-  X, // 🛡️ CORREÇÃO DO ERRO DO VERCEL: O ícone 'X' foi importado de volta!
+  X,
+  Bell,
+  CheckCircle,
+  AlertCircle,
+  Eye,
 } from "lucide-react";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -52,6 +57,10 @@ import {
   type AlertLevel,
 } from "@/lib/health-utils";
 import { sugerirRenovacao } from "@/lib/health-insights";
+
+// ============================================================
+// UTILITÁRIOS (mantidos)
+// ============================================================
 
 function getTratamentoIcon(nome: string) {
   const n = (nome || "").toLowerCase();
@@ -126,6 +135,102 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
   );
 }
 
+// ============================================================
+// FUNÇÃO PARA GERAR ALERTAS AGRUPADOS (Atenção Urgente)
+// ============================================================
+
+function gerarAlertasDashboard(
+  medicamentos: any[],
+  renovacoes: any[],
+  consultas: any[],
+  exames: any[],
+  today: string
+) {
+  const alertas = [];
+
+  // 1. Estoque zero
+  const semEstoque = medicamentos.filter(m => (m.estoque_quantidade || 0) <= 0 && m.status === 'ativo');
+  for (const med of semEstoque) {
+    alertas.push({
+      id: `estoque-${med.id}`,
+      titulo: `${med.nome} sem estoque`,
+      descricao: `Adicione ${med.dosagem} ao estoque para continuar o tratamento.`,
+      urgencia: 'alta',
+      cor: '#EF4444',
+      icone: <AlertCircle size={16} className="text-coral" />,
+      acao: { rota: `/saude/medicamentos/detalhes?id=${med.id}` }
+    });
+  }
+
+  // 2. Renovações vencendo em 7 dias
+  const renovacoesVencendo = renovacoes.filter(r => {
+    if (!r.proxima_renovacao) return false;
+    const diff = Math.floor((new Date(r.proxima_renovacao).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24));
+    return diff <= 7 && diff >= 0;
+  });
+  for (const ren of renovacoesVencendo) {
+    const med = medicamentos.find(m => m.id === ren.medicamento_id);
+    alertas.push({
+      id: `renovacao-${ren.id}`,
+      titulo: `Receita de ${med?.nome || 'medicamento'} vence em ${Math.ceil((new Date(ren.proxima_renovacao).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24))} dias`,
+      descricao: `Agende uma consulta para renovar a receita.`,
+      urgencia: 'media',
+      cor: '#F59E0B',
+      icone: <Calendar size={16} className="text-amber-500" />,
+      acao: { rota: `/saude/renovacao/detalhes?id=${ren.id}` }
+    });
+  }
+
+  // 3. Consultas hoje
+  const consultasHoje = consultas.filter(c => c.data === today && c.status === 'agendada');
+  for (const consulta of consultasHoje) {
+    alertas.push({
+      id: `consulta-${consulta.id}`,
+      titulo: `Consulta hoje com ${consulta.medico}`,
+      descricao: `${consulta.especialidade} - ${consulta.horario || 'horário não informado'}`,
+      urgencia: 'alta',
+      cor: '#3B82F6',
+      icone: <Stethoscope size={16} className="text-ice" />,
+      acao: { rota: `/saude/consultas/detalhes?id=${consulta.id}` }
+    });
+  }
+
+  // 4. Exames com prazo vencido ou próximo (7 dias)
+  exames.forEach(exame => {
+    if (!exame.data_retorno) return;
+    const diff = Math.floor((new Date(exame.data_retorno).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24));
+    if (diff < 0) {
+      alertas.push({
+        id: `exame-vencido-${exame.id}`,
+        titulo: `Prazo do exame "${exame.nome}" venceu`,
+        descricao: `Apresente o resultado o quanto antes.`,
+        urgencia: 'alta',
+        cor: '#EF4444',
+        icone: <FlaskConical size={16} className="text-coral" />,
+        acao: { rota: `/saude/exames/detalhes?id=${exame.id}` }
+      });
+    } else if (diff <= 7) {
+      alertas.push({
+        id: `exame-proximo-${exame.id}`,
+        titulo: `Apresentação do exame "${exame.nome}" em ${diff} dias`,
+        descricao: `Não se esqueça de levar o resultado.`,
+        urgencia: 'media',
+        cor: '#F59E0B',
+        icone: <FlaskConical size={16} className="text-amber-500" />,
+        acao: { rota: `/saude/exames/detalhes?id=${exame.id}` }
+      });
+    }
+  });
+
+  // Ordenar por urgência
+  const ordem = { alta: 0, media: 1, baixa: 2, nenhuma: 3 };
+  return alertas.sort((a, b) => ordem[a.urgencia] - ordem[b.urgencia]);
+}
+
+// ============================================================
+// PÁGINA PRINCIPAL
+// ============================================================
+
 export default function SaudePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
@@ -196,10 +301,21 @@ export default function SaudePage() {
     return lista;
   }, [medicamentos, doseLogs, horaAtual]);
 
+  // Alertas para o bloco "Atenção Urgente"
+  const alertasAgrupados = useMemo(() => {
+    return gerarAlertasDashboard(
+      medicamentos || [],
+      renovacoes || [],
+      consultas || [],
+      exames || [],
+      hoje
+    );
+  }, [medicamentos, renovacoes, consultas, exames, hoje]);
+
+  // Alertas antigos (para manter compatibilidade com outros componentes)
   const alertasEstoque = useMemo<HealthAlert[]>(() => {
     if (!medicamentos) return [];
     const alerts: HealthAlert[] = [];
-    
     medicamentos.forEach((m) => {
       if (m.status === "descontinuado" || !m.id) return;
       const insight = sugerirRenovacao(m);
@@ -228,12 +344,11 @@ export default function SaudePage() {
       if (!medicoId) return;
       const consMedico = consultas.filter((c) => c.medico_id === medicoId);
       const consFuturas = consMedico.filter((c) => c.data >= hoje);
-      
       if (consFuturas.length === 0) {
         const ultimaCons = [...consMedico].sort((a, b) => b.data.localeCompare(a.data))[0];
         if (ultimaCons) {
           const diffDias = Math.floor((new Date(hoje).getTime() - new Date(ultimaCons.data).getTime()) / (1000 * 3600 * 24));
-          if (diffDias > 180) { 
+          if (diffDias > 180) {
             alertas.push({
               id: `cons-${medicoId}`,
               title: `Dr(a). ${ultimaCons.medico}`,
@@ -250,6 +365,37 @@ export default function SaudePage() {
     });
     return alertas;
   }, [consultas, hoje]);
+
+  const docAlerts = useMemo(() => getDocumentAlerts(documents || []).filter(a => a.daysUntil <= 5), [documents]);
+  const exameAlerts = useMemo(() => getExameAlerts(exames || []).filter((a: any) => a.daysUntil <= 5), [exames]);
+
+  const otherAlerts = useMemo(
+    () => [...docAlerts, ...exameAlerts, ...alertasEstoque, ...alertasConsultas].sort((a, b) => a.daysUntil - b.daysUntil),
+    [docAlerts, exameAlerts, alertasEstoque, alertasConsultas]
+  );
+
+  const isLoading = documents === undefined || medicamentos === undefined || exames === undefined;
+  if (isLoading) return <LoadingSkeleton />;
+
+  // Ações rápidas para cards (navegação para LISTAGENS)
+  const quickActions = [
+    { id: "consultas", label: "Consultas", icon: Calendar, path: "/saude/consultas" },
+    { id: "cirurgias", label: "Cirurgias", icon: Activity, path: "/saude/cirurgias" },
+    { id: "exames", label: "Exames", icon: FlaskConical, path: "/saude/exames" },
+    { id: "medicamentos", label: "Remédios", icon: Pill, path: "/saude/medicamentos" },
+  ];
+
+  // Ações para o grid "Sua rede e locais" (já estão corretas, levam para listagem)
+  const redeActions = [
+    { id: "medicos", label: "Médicos", icon: Stethoscope, path: "/saude/medicos", count: medicos?.length || 0 },
+    { id: "farmacias", label: "Farmácias", icon: Pill, path: "/saude/farmacias", count: farmacias?.length || 0 },
+    { id: "hospitais", label: "Hospitais", icon: Building2, path: "/saude/hospitais", count: hospitais?.length || 0 },
+    { id: "locais", label: "Postos", icon: MapPin, path: "/saude/locais", count: locais?.length || 0 },
+  ];
+
+  // ============================================================
+  // HANDLERS
+  // ============================================================
 
   const handleTomarDosePendente = async (d: { medicamentoId: string; nome: string; horario: string }) => {
     if (processandoDoseId) return;
@@ -294,27 +440,14 @@ export default function SaudePage() {
     }
   };
 
-  const docAlerts = useMemo(() => getDocumentAlerts(documents || []).filter(a => a.daysUntil <= 5), [documents]);
-  const exameAlerts = useMemo(() => getExameAlerts(exames || []).filter((a: any) => a.daysUntil <= 5), [exames]);
-
-  const otherAlerts = useMemo(
-    () => [...docAlerts, ...exameAlerts, ...alertasEstoque, ...alertasConsultas].sort((a, b) => a.daysUntil - b.daysUntil),
-    [docAlerts, exameAlerts, alertasEstoque, alertasConsultas]
-  );
-
-  const isLoading = documents === undefined || medicamentos === undefined || exames === undefined;
-  if (isLoading) return <LoadingSkeleton />;
-
-  const quickActions = [
-    { id: "nova-consulta", label: "Consulta", icon: Stethoscope, path: "/saude/consultas/nova" },
-    { id: "nova-cirurgia", label: "Cirurgia", icon: Activity, path: "/saude/cirurgias/nova" },
-    { id: "novo-medicamento", label: "Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
-    { id: "novo-local", label: "Posto / Local", icon: MapPin, path: "/saude/locais/novo" },
-  ];
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
+        {/* HEADER */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -338,32 +471,11 @@ export default function SaudePage() {
           </div>
         </header>
 
+        {/* CONTEÚDO */}
         <section className="space-y-6 px-5 pt-5">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24 }}
-            className="grid grid-cols-4 gap-2"
-          >
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.id}
-                  onClick={() => { trigger("vibrate"); router.push(action.path); }}
-                  className="flex flex-col items-center gap-2 rounded-[20px] border border-surface-border/50 bg-surface p-3 text-center transition-all active:scale-[0.95] hover:bg-surface-raised/80"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice">
-                    <Icon size={17} />
-                  </div>
-                  <span className="text-[10px] font-medium leading-tight text-ink-muted">
-                    {action.label}
-                  </span>
-                </button>
-              );
-            })}
-          </motion.div>
+          {/* REMOVIDO: 4 ícones de acesso rápido (agora navegação pelos cards) */}
 
+          {/* ROTINA E DOSES DE HOJE */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -385,10 +497,54 @@ export default function SaudePage() {
             <ChevronRight size={18} className="text-ice" />
           </motion.div>
 
+          {/* ATENÇÃO URGENTE (alertas agrupados) */}
+          {alertasAgrupados.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: 0.02 }}
+              className="space-y-3"
+            >
+              <div className="flex items-center gap-2">
+                <Bell size={18} className="text-coral" />
+                <h2 className="font-display text-base font-semibold text-ink-primary">Atenção Urgente</h2>
+                <span className="ml-auto text-xs text-ink-muted">{alertasAgrupados.length} alertas</span>
+              </div>
+              <div className="space-y-2">
+                {alertasAgrupados.map((alerta) => (
+                  <div
+                    key={alerta.id}
+                    className={`rounded-2xl border px-4 py-3 flex items-start gap-3 ${
+                      alerta.urgencia === 'alta'
+                        ? 'border-coral/30 bg-coral/10'
+                        : alerta.urgencia === 'media'
+                        ? 'border-amber-500/30 bg-amber-500/10'
+                        : 'border-ice/20 bg-ice/5'
+                    }`}
+                    style={{ borderLeftColor: alerta.cor, borderLeftWidth: 4 }}
+                  >
+                    <div className="mt-0.5">{alerta.icone}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-ink-primary">{alerta.titulo}</p>
+                      <p className="text-xs text-ink-muted">{alerta.descricao}</p>
+                    </div>
+                    <button
+                      onClick={() => { trigger("vibrate"); router.push(alerta.acao.rota); }}
+                      className="shrink-0 text-xs font-medium text-ice hover:text-ice/80 transition-colors"
+                    >
+                      Ver
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* GASTOS COM SAÚDE */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.02 }}
+            transition={{ duration: 0.24, delay: 0.03 }}
             onClick={() => { trigger("vibrate"); router.push("/saude/renovacao"); }}
             className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm cursor-pointer hover:border-ice/30 transition-all active:scale-[0.985]"
           >
@@ -414,11 +570,12 @@ export default function SaudePage() {
             </div>
           </motion.div>
 
+          {/* COMPROMISSOS DE HOJE */}
           {(consultasHoje.length > 0 || cirurgiasHoje.length > 0 || examesHoje.length > 0) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.025 }}
+              transition={{ duration: 0.24, delay: 0.04 }}
               className="rounded-[26px] border border-coral/30 bg-coral/5 p-4 space-y-2.5"
             >
               <div className="flex items-center gap-2">
@@ -448,6 +605,7 @@ export default function SaudePage() {
             </motion.div>
           )}
 
+          {/* PENDÊNCIAS DE DOSES */}
           {dosesPendentesAtrasadas.length > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -472,20 +630,22 @@ export default function SaudePage() {
             </motion.div>
           )}
 
+          {/* NOTIFICAÇÕES DE SAÚDE E MEDICAMENTOS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.03 }}
+            transition={{ duration: 0.24, delay: 0.05 }}
             className="space-y-4"
           >
             <HealthNotifications />
             <MedicamentosNotifications />
           </motion.div>
 
+          {/* TRATAMENTOS ATIVOS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.05 }}
+            transition={{ duration: 0.24, delay: 0.06 }}
           >
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -531,6 +691,7 @@ export default function SaudePage() {
             )}
           </motion.div>
 
+          {/* ALERTAS INTELIGENTES (mantido para compatibilidade) */}
           {otherAlerts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -549,69 +710,43 @@ export default function SaudePage() {
             </motion.div>
           )}
 
+          {/* CARDS DE ACESSO RÁPIDO (LISTAGENS) */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.10 }}
+            className="grid grid-cols-2 gap-2.5"
+          >
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.id}
+                  onClick={() => { trigger("vibrate"); router.push(action.path); }}
+                  className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/12 text-ice">
+                    <Icon size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink-primary">{action.label}</p>
+                    <p className="text-[10px] text-ink-muted">
+                      {action.id === "consultas" ? "Agenda clínica" :
+                       action.id === "cirurgias" ? "Procedimentos" :
+                       action.id === "exames" ? "Resultados e pedidos" :
+                       "Estoque e gaveta"}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </motion.div>
+
+          {/* SUA REDE E LOCAIS (grid 2x2 + "Rede" em destaque) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24, delay: 0.12 }}
-            className="grid grid-cols-2 gap-2.5"
-          >
-            <button
-              onClick={() => { trigger("vibrate"); router.push("/saude/consultas"); }}
-              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/12 text-ice">
-                <Calendar size={18} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-primary">Consultas</p>
-                <p className="text-[10px] text-ink-muted">Agenda clínica</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => { trigger("vibrate"); router.push("/saude/cirurgias"); }}
-              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-coral/12 text-coral">
-                <Activity size={18} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-primary">Cirurgias</p>
-                <p className="text-[10px] text-ink-muted">Procedimentos</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => { trigger("vibrate"); router.push("/saude/exames"); }}
-              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-400/12 text-violet-400">
-                <FlaskConical size={18} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-primary">Exames</p>
-                <p className="text-[10px] text-ink-muted">Resultados e pedidos</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => { trigger("vibrate"); router.push("/saude/medicamentos"); }}
-              className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/12 text-emerald-400">
-                <Pill size={18} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-primary">Remédios</p>
-                <p className="text-[10px] text-ink-muted">Estoque e gaveta</p>
-              </div>
-            </button>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.14 }}
             className="rounded-[24px] border border-surface-border/50 bg-surface p-4"
           >
             <div className="mb-3 flex items-center justify-between">
@@ -623,54 +758,44 @@ export default function SaudePage() {
                 Ver rede completa →
               </button>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center">
-              <button
-                onClick={() => { trigger("vibrate"); router.push("/saude/medicos"); }}
-                className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
-              >
-                <Stethoscope size={16} className="text-ice mb-1" />
-                <p className="font-display text-base font-semibold text-ink-primary">{(medicos || []).length}</p>
-                <p className="text-[10px] text-ink-muted">Médicos</p>
-              </button>
-              <button
-                onClick={() => { trigger("vibrate"); router.push("/saude/farmacias"); }}
-                className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
-              >
-                <Pill size={16} className="text-amber-400 mb-1" />
-                <p className="font-display text-base font-semibold text-ink-primary">{(farmacias || []).length}</p>
-                <p className="text-[10px] text-ink-muted">Farmácias</p>
-              </button>
-              <button
-                onClick={() => { trigger("vibrate"); router.push("/saude/hospitais"); }}
-                className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
-              >
-                <Building2 size={16} className="text-ice mb-1" />
-                <p className="font-display text-base font-semibold text-ink-primary">{(hospitais || []).length}</p>
-                <p className="text-[10px] text-ink-muted">Hospitais</p>
-              </button>
-              <button
-                onClick={() => { trigger("vibrate"); router.push("/saude/locais"); }}
-                className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
-              >
-                <MapPin size={16} className="text-emerald-400 mb-1" />
-                <p className="font-display text-base font-semibold text-ink-primary">{(locais || []).length}</p>
-                <p className="text-[10px] text-ink-muted">Postos</p>
-              </button>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {redeActions.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { trigger("vibrate"); router.push(item.path); }}
+                    className="rounded-2xl bg-surface-raised/60 py-3 px-2 transition-all active:scale-95 hover:bg-surface-raised border border-transparent hover:border-surface-border/50 cursor-pointer flex flex-col items-center justify-center"
+                  >
+                    <Icon size={16} className={
+                      item.id === "medicos" ? "text-ice" :
+                      item.id === "farmacias" ? "text-amber-400" :
+                      item.id === "hospitais" ? "text-ice" :
+                      "text-emerald-400"
+                    } />
+                    <p className="font-display text-base font-semibold text-ink-primary mt-1">{item.count}</p>
+                    <p className="text-[10px] text-ink-muted">{item.label}</p>
+                  </button>
+                );
+              })}
+              {/* Botão "Rede" ocupa as 2 colunas */}
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/rede"); }}
-                className="rounded-2xl bg-gradient-to-br from-ice/10 to-violet-400/10 py-3 px-2 transition-all active:scale-95 hover:from-ice/20 hover:to-violet-400/20 border border-ice/20 cursor-pointer flex flex-col items-center justify-center"
+                className="col-span-2 rounded-2xl bg-gradient-to-br from-ice/10 to-violet-400/10 py-3 px-2 transition-all active:scale-95 hover:from-ice/20 hover:to-violet-400/20 border border-ice/20 cursor-pointer flex flex-col items-center justify-center"
               >
-                <Users size={16} className="text-ice mb-1" />
-                <p className="font-display text-base font-semibold text-ink-primary">Rede</p>
-                <p className="text-[10px] text-ink-muted">Visualizar</p>
+                <Users size={16} className="text-ice" />
+                <p className="font-display text-base font-semibold text-ink-primary mt-1">Rede Completa</p>
+                <p className="text-[10px] text-ink-muted">Visualizar todos os locais</p>
               </button>
             </div>
           </motion.div>
 
+          {/* ARQUIVO CLÍNICO */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.16 }}
+            transition={{ duration: 0.24, delay: 0.14 }}
             className="pb-4"
           >
             <div className="mb-3 flex items-center justify-between">
@@ -694,6 +819,7 @@ export default function SaudePage() {
           </motion.div>
         </section>
 
+        {/* MODAL DE PENDÊNCIAS */}
         <AnimatePresence>
           {modalPendenciasAberto && (
             <div
