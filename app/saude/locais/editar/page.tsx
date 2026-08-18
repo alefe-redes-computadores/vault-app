@@ -52,7 +52,7 @@ function EditarLocalContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
 
-  const { getLocal, updateLocal, deleteLocalSafe } = useLocais();
+  const { getLocal, updateLocal, deleteLocal } = useLocais(); // ✅ CORRIGIDO: deleteLocal
   const { renovacoes = [] } = useRenovacoes();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -130,7 +130,7 @@ function EditarLocalContent() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await deleteLocalSafe(id);
+      await deleteLocal(id);
       trigger("success");
       showToast("Local excluído com sucesso", "success");
       router.replace("/saude/locais");

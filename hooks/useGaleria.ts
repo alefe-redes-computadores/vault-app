@@ -1,9 +1,9 @@
+// hooks/useGaleria.ts
 "use client";
 
 import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
-import type { CategoryId } from "@/lib/types";
 
 // Tipagem unificada para a Galeria não importar de onde o arquivo veio
 export interface GalleryItem {
@@ -23,12 +23,14 @@ export interface GalleryItem {
 export function useGaleria(personIdFilter?: string) {
   // 1. Busca todos os documentos que possuem anexos
   const documentosRaw = useLiveQuery(() => db.documents.toArray(), []) || [];
-  
+
   // 2. Busca todos os anexos clínicos soltos
-  const anexosClinicosRaw = useLiveQuery(() => db.anexos_clinicos.toArray(), []) || [];
-  
+  const anexosClinicosRaw =
+    useLiveQuery(() => db.anexos_clinicos.toArray(), []) || [];
+
   // 3. Busca renovações que possuem foto da receita/comprovante
-  const renovacoesRaw = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
+  const renovacoesRaw =
+    useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
   const items = useMemo(() => {
     const combined: GalleryItem[] = [];
@@ -45,12 +47,18 @@ export function useGaleria(personIdFilter?: string) {
           source_id: doc.id!,
           source_table: "documents",
           url: att.url,
-          file_type: att.type || (att.url.toLowerCase().includes(".pdf") ? "pdf" : "image"),
+          file_type:
+            att.type || (att.url.toLowerCase().includes(".pdf") ? "pdf" : "image"),
           category: doc.category_id === "pessoal" ? "pessoal" : "saude",
           person_id: doc.person_id,
           title: doc.title,
           subtitle: doc.type.toUpperCase().replace("_", " "),
-          date: doc.metadata?.date || doc.metadata?.issue_date || doc.created_at,
+          date: String(
+            doc.metadata?.date ||
+              doc.metadata?.issue_date ||
+              doc.created_at ||
+              ""
+          ),
         });
       });
     });
@@ -71,7 +79,7 @@ export function useGaleria(personIdFilter?: string) {
         person_id: anexo.person_id || "",
         title: anexo.tipo || "Anexo Clínico",
         subtitle: anexo.tags?.join(", ") || "Arquivo de saúde",
-        date: anexo.created_at,
+        date: String(anexo.created_at || ""),
       });
     });
 
@@ -90,12 +98,14 @@ export function useGaleria(personIdFilter?: string) {
         person_id: ren.person_id || "",
         title: "Comprovante / Receita",
         subtitle: "Renovação de Medicamento",
-        date: ren.data || ren.created_at || new Date().toISOString(),
+        date: String(ren.data || ren.created_at || new Date().toISOString()),
       });
     });
 
     // Ordena do mais recente para o mais antigo
-    return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return combined.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
   }, [documentosRaw, anexosClinicosRaw, renovacoesRaw, personIdFilter]);
 
   // Função utilitária que agrupa a lista final por Mês/Ano (ex: "Agosto 2026")
@@ -105,10 +115,13 @@ export function useGaleria(personIdFilter?: string) {
     items.forEach((item) => {
       const d = new Date(item.date);
       // Evita datas inválidas
-      if (isNaN(d.getTime())) return; 
+      if (isNaN(d.getTime())) return;
 
-      const mesAno = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-      const label = mesAno.charAt(0).toUpperCase() + mesAno.slice(1); // Ex: "Agosto de 2026"
+      const mesAno = d.toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      });
+      const label = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
 
       if (!groups[label]) groups[label] = [];
       groups[label].push(item);
