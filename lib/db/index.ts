@@ -682,15 +682,14 @@ class VaultDB extends Dexie {
         }
       });
 
-    //     // ==========================================================
-    // VERSÃO 22
+    // ==========================================================
+    // VERSÃO 23
     //
-    // - Adiciona o índice 'data' em cirurgias e consultas
-    // - Atualização dos índices de CIDs para incluir campos clínicos
-    // - Adiciona índices para document_id
+    // - Correção definitiva: Adiciona o índice 'data' em exames e renovacoes
+    //   para evitar crash na tela de "Rotina Diária (Hoje)" e listagens
     // ==========================================================
 
-    this.version(22).stores({
+    this.version(23).stores({
       persons:
         'id, user_id, name, synced, updated_at',
 
@@ -701,7 +700,7 @@ class VaultDB extends Dexie {
         'id, user_id, person_id, document_id, medico_id, farmacia_id, hospital_id, local_id, status, synced, updated_at, *tratamento_ids',
 
       renovacoes:
-        'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, synced, updated_at',
+        'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, data, synced, updated_at', // ADICIONADO: data
 
       medicos:
         'id, user_id, nome, especialidade, synced, updated_at',
@@ -716,13 +715,13 @@ class VaultDB extends Dexie {
         'id, user_id, nome, synced, updated_at',
 
       exames:
-        'id, user_id, person_id, medico_id, local_id, document_id, synced, updated_at, *tratamento_ids',
+        'id, user_id, person_id, medico_id, local_id, document_id, data, synced, updated_at, *tratamento_ids', // ADICIONADO: data
 
       consultas:
-        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at', // ADICIONADO: data
+        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at', 
 
       cirurgias:
-        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at', // ADICIONADO: data
+        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at',
 
       doseLogs:
         'id, user_id, person_id, medicamento_id, data, horario, synced, updated_at',
@@ -752,6 +751,7 @@ class VaultDB extends Dexie {
     });
   }
 }
+
 
 
 // ============================================================
