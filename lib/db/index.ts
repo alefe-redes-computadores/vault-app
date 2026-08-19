@@ -731,25 +731,26 @@ class VaultDB extends Dexie {
     // VERSÃO 25
     // Corrige índice ausente que quebrava o Dexie
     // ==========================================================
-    this.version(25).stores({
+    (this as any).version(25).stores({
       anexos_clinicos: 'id, user_id, person_id, synced, updated_at',
     });
-  }
-}
-// ==========================================================
-// VERSÃO 26 — Índices multiEntry para relacionamentos
-// ==========================================================
-// TODO: Remover ts-ignore na futura refatoração do Dexie
-// @ts-ignore
-this.version(26)!.stores({
-  medicos: 'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
-  hospitais: 'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
-});
+
+    // ==========================================================
+    // VERSÃO 26 — Índices multiEntry para relacionamentos
+    // ==========================================================
+    (this as any).version(26).stores({
+      medicos: 'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
+      hospitais: 'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
+    });
+
+  } // <--- Fecha o constructor
+} // <--- Fecha a classe VaultDB
+
 // ============================================================
 // INSTÂNCIA ÚNICA
 // ============================================================
-
 export const db = new VaultDB();
+
 
 // ============================================================
 // MEDICAMENTO ↔ TRATAMENTO

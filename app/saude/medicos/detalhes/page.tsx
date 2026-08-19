@@ -25,6 +25,8 @@ import {
   Syringe,
   FileText,
   ExternalLink,
+  FlaskConical,
+  DollarSign,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -42,6 +44,7 @@ import type {
   Hospital,
   DoseLog,
   Document,
+  Exame,
 } from "@/lib/types";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
@@ -120,7 +123,11 @@ function DetalhesMedicoContent() {
     [id]
   ) || [];
   const renovacoes = useLiveQuery(
-    () => (id ? db.renovacoes.where("medico_id").equals(id).reverse().limit(5).toArray() : Promise.resolve([] as Renovacao[])),
+    () => (id ? db.renovacoes.where("medico_id").equals(id).reverse().sortBy("data") : Promise.resolve([] as Renovacao[])),
+    [id]
+  ) || [];
+  const exames = useLiveQuery(
+    () => (id ? db.exames.where("medico_id").equals(id).toArray() : Promise.resolve([] as Exame[])),
     [id]
   ) || [];
 
@@ -195,6 +202,13 @@ function DetalhesMedicoContent() {
     const comportamentos = alertasMedicamentos.filter((m) => m.comportamento);
     return { ativos, vencidos, comportamentos };
   }, [alertasMedicamentos]);
+
+  const totalGastoRenovacoes = useMemo(() => {
+    return renovacoes.reduce((acc, r) => {
+      const preco = typeof r.preco === "number" ? r.preco : Number(r.preco) || 0;
+      return acc + preco;
+    }, 0);
+  }, [renovacoes]);
 
   const menuOptions = [
     { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?medico_id=${id}` },
@@ -592,7 +606,66 @@ function DetalhesMedicoContent() {
             </motion.div>
           )}
 
-          <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 pt-2">
+          {/* EXAMES SOLICITADOS */}
+          {exames.length > 0 && (
+            <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <FlaskConical size={16} className="text-violet-400" />
+                <h4 className="text-sm font-semibold text-ink-primary">Exames Solicitados</h4>
+                <span className="ml-auto text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{exames.length}</span>
+              </div>
+              <div className="space-y-2">
+                {exames.slice(0, 3).map((exame) => (
+                  <div
+                    key={exame.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }}
+                    className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-violet-400/30 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink-primary truncate">{exame.nome}</p>
+                      <p className="text-[11px] text-ink-muted">{formatDateDisplay(exame.data)}</p>
+                    </div>
+                    <ChevronRight size={14} className="text-ink-faint" />
+                  </div>
+                ))}
+                {exames.length > 3 && (
+                  <p className="text-[10px] text-center text-ink-muted pt-1">E mais {exames.length - 3} registro(s)...</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* RENOVAÇÕES */}
+          {renovacoes.length > 0 && (
+            <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <FileWarning size={16} className="text-amber-400" />
+                <h4 className="text-sm font-semibold text-ink-primary">Renovações Emitidas</h4>
+                <span className="ml-auto text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{renovacoes.length}</span>
+              </div>
+              <div className="space-y-2">
+                {renovacoes.slice(0, 3).map((ren) => (
+                  <div key={ren.id} className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink-primary">{formatDateDisplay(ren.data)}</p>
+                      <p className="text-[11px] text-ink-muted">{ren.observacoes || "Renovação de receita"}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-emerald-400">
+                      {typeof ren.preco === "number" && ren.preco > 0 ? `R$ ${ren.preco.toFixed(2).replace(".", ",")}` : "Gratuito"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {totalGastoRenovacoes > 0 && (
+                <div className="mt-3 pt-3 border-t border-surface-border/40 flex items-center justify-between">
+                  <span className="text-xs text-ink-muted">Total com renovações</span>
+                  <span className="text-xs font-bold text-emerald-400">R$ {totalGastoRenovacoes.toFixed(2).replace(".", ",")}</span>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.07 }} className="space-y-4 pt-2">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">Histórico Clínico</h3>
 
             <div className="grid grid-cols-1 gap-3">

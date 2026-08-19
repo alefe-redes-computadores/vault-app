@@ -14,6 +14,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { RouteProgress } from "@/components/loading/RouteProgress";
 import { PersonProvider } from "@/contexts/PersonContext";
 import { PersonSelector } from "@/components/PersonSelector";
+import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -82,8 +83,11 @@ export default function RootLayout({
                   <PersonProvider>
                     {!isAuthPage && (
                       <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3 border-b border-surface-border/30 bg-void/82 backdrop-blur-xl">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-ink-primary">Vault</span>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-sm font-bold text-ink-primary">
+                            Vault
+                          </span>
+                          <SyncStatusIndicator />
                         </div>
                         <Suspense fallback={<div className="h-8 w-8 rounded-full bg-surface-raised animate-pulse" />}>
                           <PersonSelector />

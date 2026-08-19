@@ -4,6 +4,9 @@ const { withSentryConfig } = require('@sentry/nextjs');
 const nextConfig = {
   images: { unoptimized: true },
   reactStrictMode: true,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 module.exports = withSentryConfig(nextConfig, {

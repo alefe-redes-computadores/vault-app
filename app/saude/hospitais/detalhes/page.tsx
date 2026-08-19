@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2,
   Activity, FlaskConical, ExternalLink, Stethoscope, Calendar,
-  Clock, Plus, FolderHeart,
+  Clock, Plus, FolderHeart, FileWarning, DollarSign,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -18,7 +18,15 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
-import type { Hospital, Exame, Consulta, Medico, Cirurgia, Tratamento } from "@/lib/types";
+import type {
+  Hospital,
+  Exame,
+  Consulta,
+  Medico,
+  Cirurgia,
+  Tratamento,
+  Renovacao,
+} from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -31,6 +39,17 @@ const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
 };
+
+// Definição explícita do retorno do analiseHospital
+interface AnaliseHospital {
+  cirurgias: Cirurgia[];
+  exames: Exame[];
+  consultas: Consulta[];
+  medicos: Medico[];
+  renovacoes: Renovacao[];
+  ultimaConsulta: Consulta | null;
+  totalGastoRenovacoes: number;
+}
 
 function DetalhesHospitalContent() {
   const router = useRouter();
@@ -53,6 +72,10 @@ function DetalhesHospitalContent() {
     () => (id ? db.cirurgias.where("hospital_id").equals(id).toArray() : Promise.resolve([] as Cirurgia[])),
     [id]
   ) || [];
+  const renovacoes = useLiveQuery(
+    () => (id ? db.renovacoes.where("hospital_id").equals(id).toArray() : Promise.resolve([] as Renovacao[])),
+    [id]
+  ) || [];
 
   useEffect(() => {
     if (!id) {
@@ -69,26 +92,44 @@ function DetalhesHospitalContent() {
     });
   }, [id, getHospital, router]);
 
-  const analiseHospital = useMemo(() => {
+  const tratamentoIds = hospital?.tratamento_ids || [];
+  const tratamentos = useLiveQuery(
+    () => tratamentoIds.length > 0 ? db.tratamentos.where('id').anyOf(tratamentoIds).toArray() : Promise.resolve([] as Tratamento[]),
+    [tratamentoIds]
+  ) || [];
+
+  const analiseHospital = useMemo<AnaliseHospital>(() => {
     if (!id || !hospital) {
       return {
-        cirurgias: [] as Cirurgia[],
-        exames: [] as Exame[],
-        consultas: [] as Consulta[],
-        medicos: [] as Medico[],
-        tratamentos: [] as Tratamento[],
-        ultimaConsulta: null as Consulta | null,
+        cirurgias: [],
+        exames: [],
+        consultas: [],
+        medicos: [],
+        renovacoes: [],
+        ultimaConsulta: null,
+        totalGastoRenovacoes: 0,
       };
     }
 
-    const examesDoHospital = exames.filter((e) => e.local_id === id);
-    const consultasDoHospital = consultas.filter((c) => c.hospital_id === id);
+    const examesDoHospital = exames
+      .filter((e) => e.local_id === id)
+      .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+
+    const consultasDoHospital = consultas
+      .filter((c) => c.hospital_id === id)
+      .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+
+    const cirurgiasDoHospital = [...cirurgias]
+      .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+
+    const renovacoesDoHospital = [...renovacoes]
+      .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
 
     // Médicos vinculados diretamente pelo novo campo
     const medicoIdsDiretos = hospital.medico_ids || [];
     const medicosDiretos = medicos.filter((m) => m.id && medicoIdsDiretos.includes(m.id));
 
-    // Também mantém a inferência por consultas
+    // Inferência por consultas
     const medicoIdsInferidos = new Set(consultasDoHospital.map((c) => c.medico_id).filter(Boolean));
     const medicosInferidos = medicos.filter((m) => m.id && medicoIdsInferidos.has(m.id));
 
@@ -98,26 +139,23 @@ function DetalhesHospitalContent() {
       if (m.id) medicosUnicos.set(m.id, m);
     });
 
-    const ultimaConsulta = consultasDoHospital.length > 0
-      ? [...consultasDoHospital].sort((a, b) => b.data.localeCompare(a.data))[0]
-      : null;
+    const ultimaConsulta = consultasDoHospital.length > 0 ? consultasDoHospital[0] : null;
 
-    // Tratamentos vinculados diretamente
-    const tratamentoIds = hospital.tratamento_ids || [];
-    const tratamentos = useLiveQuery(
-      () => tratamentoIds.length > 0 ? db.tratamentos.where('id').anyOf(tratamentoIds).toArray() : Promise.resolve([] as Tratamento[]),
-      [tratamentoIds]
-    ) || [];
+    const totalGastoRenovacoes = renovacoesDoHospital.reduce((acc, r) => {
+      const preco = typeof r.preco === "number" ? r.preco : Number(r.preco) || 0;
+      return acc + preco;
+    }, 0);
 
     return {
-      cirurgias,
+      cirurgias: cirurgiasDoHospital,
       exames: examesDoHospital,
       consultas: consultasDoHospital,
       medicos: Array.from(medicosUnicos.values()),
-      tratamentos,
+      renovacoes: renovacoesDoHospital,
       ultimaConsulta,
+      totalGastoRenovacoes,
     };
-  }, [id, hospital, exames, consultas, medicos, cirurgias]);
+  }, [id, hospital, exames, consultas, medicos, cirurgias, renovacoes]);
 
   const handleDelete = () => {
     deleteAction.run(
@@ -325,14 +363,14 @@ function DetalhesHospitalContent() {
             </motion.div>
           )}
 
-          {analiseHospital.tratamentos.length > 0 && (
+          {tratamentos.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
                 <FolderHeart size={16} className="text-violet-400" />
                 <h3 className="font-display text-base font-semibold text-ink-primary">Tratamentos Relacionados</h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                {analiseHospital.tratamentos.map((t) => (
+                {tratamentos.map((t) => (
                   <span
                     key={t.id}
                     className="rounded-full bg-violet-400/10 border border-violet-400/20 px-4 py-2 text-sm font-medium text-violet-300"
@@ -344,7 +382,72 @@ function DetalhesHospitalContent() {
             </motion.div>
           )}
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
+          {/* CONSULTAS REALIZADAS */}
+          {analiseHospital.consultas.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
+              <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
+                <Stethoscope size={16} className="text-ice" /> Consultas Realizadas ({analiseHospital.consultas.length})
+              </h3>
+              <div className="space-y-2">
+                {analiseHospital.consultas.slice(0, 3).map((consulta) => (
+                  <div
+                    key={consulta.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${consulta.id}`); }}
+                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 transition-all active:scale-[0.98] hover:border-ice/30 cursor-pointer shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                        <Calendar size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink-primary truncate">{consulta.especialidade}</p>
+                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(consulta.data)}</p>
+                      </div>
+                    </div>
+                    <ExternalLink size={15} className="text-ink-faint shrink-0" />
+                  </div>
+                ))}
+                {analiseHospital.consultas.length > 3 && (
+                  <p className="text-[10px] text-center text-ink-muted pt-1">E mais {analiseHospital.consultas.length - 3} registro(s)...</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* RENOVAÇÕES/RETIRADAS */}
+          {analiseHospital.renovacoes.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-3">
+              <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
+                <FileWarning size={16} className="text-amber-400" /> Retiradas / Renovações ({analiseHospital.renovacoes.length})
+              </h3>
+              <div className="space-y-2">
+                {analiseHospital.renovacoes.slice(0, 3).map((ren) => (
+                  <div key={ren.id} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
+                        <FileWarning size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink-primary truncate">{formatDateDisplay(ren.data)}</p>
+                        <p className="text-[11px] text-ink-muted">{ren.observacoes || "Retirada de medicamento"}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-emerald-400 shrink-0">
+                      {typeof ren.preco === "number" && ren.preco > 0 ? `R$ ${ren.preco.toFixed(2).replace(".", ",")}` : "Gratuito"}
+                    </span>
+                  </div>
+                ))}
+                {analiseHospital.totalGastoRenovacoes > 0 && (
+                  <div className="mt-3 pt-3 border-t border-surface-border/40 flex items-center justify-between">
+                    <span className="text-xs text-ink-muted">Total com retiradas</span>
+                    <span className="text-xs font-bold text-emerald-400">R$ {analiseHospital.totalGastoRenovacoes.toFixed(2).replace(".", ",")}</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.07 }} className="space-y-3">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
               <Activity size={16} className="text-ice" /> Cirurgias ({analiseHospital.cirurgias.length})
             </h3>
@@ -377,7 +480,7 @@ function DetalhesHospitalContent() {
             )}
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.08 }} className="space-y-3">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
               <FlaskConical size={16} className="text-violet-400" /> Exames Realizados ({analiseHospital.exames.length})
             </h3>
