@@ -1,7 +1,7 @@
 // components/Providers.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
@@ -159,7 +159,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   if (pathname === "/login" || pathname === "/auth/callback") {
     return (
       <ToastProvider>
-        <ErrorBoundary>{children}</ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="min-h-screen bg-void" />}>
+            {children}
+          </Suspense>
+        </ErrorBoundary>
       </ToastProvider>
     );
   }
@@ -168,7 +172,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return (
       <ToastProvider>
         <ErrorBoundary>
-          <div className="min-h-screen">{children}</div>
+          <Suspense fallback={<div className="min-h-screen bg-void" />}>
+            <div className="min-h-screen">{children}</div>
+          </Suspense>
         </ErrorBoundary>
       </ToastProvider>
     );
@@ -179,7 +185,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ErrorBoundary>
         <div className="min-h-screen pb-24">
           <RouteProgress />
-          {children}
+          <Suspense fallback={<div className="min-h-screen bg-void" />}>
+            {children}
+          </Suspense>
           <BottomNav />
         </div>
       </ErrorBoundary>
