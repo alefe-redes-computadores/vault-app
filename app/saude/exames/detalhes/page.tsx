@@ -41,6 +41,7 @@ import { useToast } from "@/components/ToastProvider";
 import { SelectionModal } from "@/components/SelectionModal";
 import { safeAddMedico, safeAddLocal } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { Button } from "@/components/ui/Button";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import type { Exame, Medico, Hospital, Tratamento } from "@/lib/types";
@@ -67,6 +68,7 @@ function DetalhesExameContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
 
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -131,7 +133,6 @@ function DetalhesExameContent() {
     return exame?.data_retorno ? isReceitaVencidaSegura(exame.data_retorno) : false;
   }, [exame]);
 
-  // 🔧 Opções do menu flutuante
   const menuOptions = [
     { id: "duplicar-exame", label: "Solicitar Novamente", icon: Copy, path: `/saude/exames/novo?duplicar=${id}` },
     { id: "editar-exame", label: "Editar Exame", icon: Edit3, path: `/saude/exames/editar?id=${id}` },
@@ -194,7 +195,6 @@ function DetalhesExameContent() {
     }
     trigger("vibrate");
     try {
-      // Agora usamos safeAddLocal em vez de safeAddHospital, pois o exame aponta para locais
       const newId = await safeAddLocal({
         user_id: user?.id || "",
         nome: newLocalNome.trim(),
@@ -300,7 +300,6 @@ function DetalhesExameContent() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* BOTÃO + COM MENU FLUTUANTE */}
               <div className="relative">
                 <button
                   onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
@@ -409,6 +408,9 @@ function DetalhesExameContent() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4"
+            style={{
+              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}`
+            }}
           >
             <div className="flex items-center gap-3.5 pb-4 border-b border-surface-border/40">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">

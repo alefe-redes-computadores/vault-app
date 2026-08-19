@@ -7,12 +7,11 @@ import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useSentry } from "@/hooks/useSentry";
-// ✅ IMPORT ADICIONADO: O hook que escuta as ações da notificação de dose ("Tomei" / "Ignorar")
 import { useDoseNotificationActions } from "@/hooks/useDoseNotificationActions";
 import { BottomNav } from "./BottomNav";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
-import { RouteProgress } from "./RouteProgress";
+import { RouteProgress } from "@/components/loading/RouteProgress";
 import { pullAllData } from "@/lib/sync/pull";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
@@ -27,31 +26,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [isPullDone, setIsPullDone] = useState(false);
   const [pullAttempted, setPullAttempted] = useState(false);
 
-  // ✅ CHAMADA DO HOOK ADICIONADA: Fica ouvindo os botões "Tomei"/"Ignorar" da push notification
   useDoseNotificationActions();
 
-  // ============================================================
-  // 0. STATUS BAR NATIVA — imersiva (overlay), consistente com
-  // capacitor.config.ts. Antes esse useEffect fazia
-  // setOverlaysWebView({ overlay: false }), o que CONTRADIZIA o
-  // "overlaysWebView: true" do config e causava o WebView
-  // redimensionar no meio do carregamento (o "pulo" de espaçamento).
-  // Agora os dois lugares concordam: overlay sempre true.
-  // ============================================================
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       try {
         StatusBar.setOverlaysWebView({ overlay: true });
-        StatusBar.setStyle({ style: Style.Dark }); // ícones claros p/ fundo escuro
+        StatusBar.setStyle({ style: Style.Dark });
       } catch (e) {
         console.error("Erro ao configurar StatusBar nativa:", e);
       }
     }
   }, []);
 
-  // ============================================================
-  // 1. PULL DOS DADOS (executado no login)
-  // ============================================================
   useEffect(() => {
     if (user && !loading && !isPullDone) {
       console.log("🔵 Usuário logado, executando pullAllData...");
@@ -68,9 +55,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, isPullDone]);
 
-  // ============================================================
-  // 2. REPULL AO FICAR ONLINE (se o pull inicial falhou ou não rodou)
-  // ============================================================
   useEffect(() => {
     if (isOnline && user && pullAttempted && !isPullDone) {
       console.log("🔵 Reconectado, tentando pull novamente...");
@@ -83,9 +67,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [isOnline, user, pullAttempted, isPullDone]);
 
-  // ============================================================
-  // 3. PUSH (processQueue) DEPOIS DO PULL
-  // ============================================================
   useEffect(() => {
     if (isOnline && user && isPullDone) {
       console.log("🔄 Executando push (processQueue)...");
@@ -93,9 +74,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [isOnline, user, isPullDone, processQueue]);
 
-  // ============================================================
-  // 4. SENTRY: definir usuário
-  // ============================================================
   useEffect(() => {
     if (user) {
       setUser({
@@ -106,9 +84,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [user, setUser]);
 
-  // ============================================================
-  // 5. CAPTURA DE ERROS GLOBAIS
-  // ============================================================
   useEffect(() => {
     const errorHandler = (event: ErrorEvent) => {
       captureException(event.error, {
@@ -135,9 +110,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     };
   }, [captureException]);
 
-  // ============================================================
-  // 6. AUTH POPUP (Google)
-  // ============================================================
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data === "auth-success") {
@@ -148,9 +120,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  // ============================================================
-  // 7. NOTIFICAÇÕES
-  // ============================================================
   useEffect(() => {
     const removeListener = handleNotificationAction((data) => {
       console.log("Notificação clicada:", data);
@@ -163,9 +132,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => removeListener?.();
   }, [handleNotificationAction, router]);
 
-  // ============================================================
-  // 8. REDIRECIONAMENTO
-  // ============================================================
   useEffect(() => {
     if (loading) return;
     if (pathname === "/login" || pathname === "/auth/callback") return;
@@ -174,9 +140,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [loading, user, pathname, router]);
 
-  // ============================================================
-  // RENDER
-  // ============================================================
   if (loading) {
     return (
       <div className="min-h-screen bg-void flex items-center justify-center px-6">

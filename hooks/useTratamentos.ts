@@ -7,15 +7,23 @@ import { db } from "@/lib/db";
 import { tratamentosRepository } from "@/lib/repositories/tratamentos";
 import { medicamentosRepository } from "@/lib/repositories/medicamentos";
 import { useAuth } from "./useAuth";
+import { useActivePersonId } from "./useActivePersonId";
 import type { Tratamento } from "@/lib/types";
 import { cancelDoseNotifications } from "@/lib/dose-notifications";
 
 export function useTratamentos() {
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
 
   const tratamentos = useLiveQuery(
-    () => db.tratamentos.where('user_id').equals(user?.id || '').toArray(),
-    [user?.id],
+    () => {
+      if (!activePersonId) return [];
+      return db.tratamentos
+        .where('person_id')
+        .equals(activePersonId)
+        .toArray();
+    },
+    [activePersonId],
     []
   );
 
@@ -32,10 +40,8 @@ export function useTratamentos() {
 
   const updateTratamento = useCallback(
     async (id: string, data: Partial<Tratamento>) => {
-      // 1. Atualiza os dados do Tratamento (via repositório, já enfileira)
       await tratamentosRepository.update(id, data);
 
-      // 2. O "Efeito Dominó" (lógica de negócio)
       if (data.status === 'concluido' || data.status === 'suspenso') {
         const medicamentosAfetados = await db.medicamentos
           .where('tratamento_ids')
@@ -44,7 +50,6 @@ export function useTratamentos() {
 
         for (const med of medicamentosAfetados) {
           if (med.id && med.status !== 'descontinuado') {
-            // Usa o repositório para enfileirar a atualização do medicamento
             await medicamentosRepository.update(med.id, {
               status: 'descontinuado',
               motivo_descontinuacao: `Tratamento original marcado como ${data.status}`
@@ -54,7 +59,7 @@ export function useTratamentos() {
               await cancelDoseNotifications({
                 id: med.id,
                 estoque_horarios: med.estoque_horarios
-              } as any); // TODO: tipar DoseNotificationPayload
+              } as any);
             }
           }
         }

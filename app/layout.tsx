@@ -1,3 +1,5 @@
+// app/(app)/layout.tsx
+
 import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
@@ -6,6 +8,9 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { BiometricLock } from "@/components/BiometricLock";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { RouteProgress } from "@/components/loading/RouteProgress";
+import { PersonProvider } from "@/contexts/PersonContext";
+import { PersonSelector } from "@/components/PersonSelector";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -73,6 +78,7 @@ export default function RootLayout({
         <meta name="msapplication-TileImage" content="/icon-144x144.png" />
       </head>
       <body className="font-body antialiased bg-void min-h-screen transition-colors duration-300 pb-safe">
+        <RouteProgress />
         <ErrorBoundary>
           <ThemeProvider
             attribute="class"
@@ -82,7 +88,17 @@ export default function RootLayout({
           >
             <Providers>
               <SplashScreen>
-                <BiometricLock>{children}</BiometricLock>
+                <BiometricLock>
+                  <PersonProvider>
+                    <header className="flex items-center justify-between px-5 py-3 border-b border-surface-border/30 bg-void/82 backdrop-blur-xl">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-ink-primary">Vault</span>
+                      </div>
+                      <PersonSelector />
+                    </header>
+                    {children}
+                  </PersonProvider>
+                </BiometricLock>
               </SplashScreen>
             </Providers>
           </ThemeProvider>

@@ -75,7 +75,13 @@ function GaleriaContent() {
     return () => { document.body.style.overflow = 'unset'; };
   }, [viewingItem, isUploadOpen]);
 
-  const { items, isLoading } = useGaleria(selectedPerson || undefined);
+  // Hook puro, filtro feito localmente
+  const { items: allItems, isLoading } = useGaleria();
+
+  const items = useMemo(() => {
+    if (!selectedPerson) return allItems || [];
+    return (allItems || []).filter((item: any) => item.person_id === selectedPerson);
+  }, [allItems, selectedPerson]);
 
   const activePersonObj = useMemo(() => persons.find((p) => p.id === selectedPerson), [persons, selectedPerson]);
   const themeColors = { saude: "#34D399", pessoal: "#38BDF8" }; 

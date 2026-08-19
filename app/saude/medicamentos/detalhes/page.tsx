@@ -18,6 +18,7 @@ import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { computeEstoqueInfo, TIPO_RECEITA_LABELS, VALIDADE_RECEITA_DIAS, getDaysUntil } from "@/lib/health-utils";
 import { sugerirRenovacao } from "@/lib/health-insights";
 import { format } from "date-fns";
@@ -55,6 +56,7 @@ function MedicamentoDetalhesContent() {
   const id = searchParams.get("id");
   const { trigger } = useHapticFeedback();
   const { updateMedicamento, deleteMedicamento } = useMedicamentos();
+  const { activePersonId } = useActivePersonId();
 
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [showAllRenovacoes, setShowAllRenovacoes] = useState(false);
@@ -222,7 +224,6 @@ Estoque: ${qtd} doses`;
   const qtdeCompras = renovacoes.length + (med.preco ? 1 : 0);
   const precoMedio = qtdeCompras > 0 ? (custoTotalAcumulado / qtdeCompras) : 0;
 
-  // Verifica se a última renovação foi gratuita
   const ultimaRenovacao = renovacoes.length > 0 ? renovacoes[0] : null;
   const isUltimaRenovacaoGratuita = ultimaRenovacao?.tipo_aquisicao === 'gratuito';
 
@@ -231,6 +232,8 @@ Estoque: ${qtd} doses`;
 
   const SelectedFormatIcon = FORMATOS.find(f => f.id === med.formato)?.icon || Pill;
   const color1 = med.cores?.[0] || "#60A5FA";
+
+  const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
   return (
     <PageTransition>
@@ -269,7 +272,6 @@ Estoque: ${qtd} doses`;
               <Share2 size={18} />
             </button>
 
-            {/* Botão + com menu flutuante (mantido) */}
             <div className="relative">
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
@@ -354,7 +356,7 @@ Estoque: ${qtd} doses`;
           </AnimatePresence>
 
           <div className="rounded-[32px] bg-surface p-6 border border-surface-border shadow-lg relative overflow-hidden">
-            <div className={`absolute left-0 top-0 bottom-0 w-2 ${med.status === 'descontinuado' ? 'bg-coral' : med.tipo_receita === 'amarela' ? 'bg-amber-400' : med.tipo_receita === 'azul' ? 'bg-blue-400' : 'bg-ice/50'}`} />
+            <div className={`absolute left-0 top-0 bottom-0 w-2 ${med.status === 'descontinuado' ? 'bg-coral' : med.tipo_receita === 'amarela' ? 'bg-amber-400' : med.tipo_receita === 'azul' ? 'bg-blue-400' : personAccent}`} />
 
             <div className="flex items-center gap-4 ml-2">
               <div className="h-16 w-16 rounded-2xl flex items-center justify-center border border-surface-border shadow-inner" style={{ backgroundColor: color1 + '15' }}>
@@ -400,7 +402,6 @@ Estoque: ${qtd} doses`;
                  </div>
 
                  <div className="mt-4 pt-4 border-t border-surface-border/50 flex justify-between items-center text-xs text-ink-muted">
-                   {/* ✅ CORRIGIDO: "Gasto por dose" → "Dosagem" */}
                    <span>Dosagem: <b>{med.estoque_unidade_por_dose || 1} {med.estoque_unidade_medida || "unidade(s)"}</b></span>
                    <span>Última contagem: <b>{formatDate(med.estoque_data_referencia)}</b></span>
                  </div>
@@ -503,7 +504,6 @@ Estoque: ${qtd} doses`;
                  </div>
                )}
 
-               {/* ✅ NOVO: Exibir se última renovação foi gratuita */}
                {ultimaRenovacao && isUltimaRenovacaoGratuita && (
                  <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl flex items-center gap-3">
                    <Gift size={16} className="text-emerald-400" />
@@ -582,7 +582,6 @@ Estoque: ${qtd} doses`;
                                <p className="text-xs font-bold text-ink-primary">{formatDate(r.data || r.created_at)}</p>
                                <div className="flex items-center gap-1.5 mt-0.5">
                                  {farmaciaNome && <p className="text-[10px] text-ink-muted">{farmaciaNome}</p>}
-                                 {/* ✅ NOVO: Badge gratuito/comprado */}
                                  {isGratuita ? (
                                    <span className="text-[8px] font-bold uppercase bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                                      <Gift size={10} /> Gratuito
@@ -592,13 +591,11 @@ Estoque: ${qtd} doses`;
                                      <DollarSign size={10} /> Comprado
                                    </span>
                                  )}
-                                 {/* ✅ NOVO: Alerta se exige nova receita */}
                                  {isGratuita && r.exige_nova_receita && (
                                    <span className="text-[8px] font-bold uppercase bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                                      <AlertCircle size={10} /> Nova Receita
                                    </span>
                                  )}
-                                 {/* ✅ NOVO: Próxima retirada */}
                                  {isGratuita && r.data_proxima_retirada && (
                                    <span className="text-[8px] font-bold uppercase bg-ice/10 text-ice px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                                      <Calendar size={10} /> Retirada: {formatDate(r.data_proxima_retirada)}

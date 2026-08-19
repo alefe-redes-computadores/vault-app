@@ -27,6 +27,7 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { Cirurgia, Medico, Hospital, Medicamento, Exame } from "@/lib/types";
 import { useCirurgias } from "@/hooks/useCirurgias";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
@@ -48,6 +49,7 @@ function DetalhesCirurgiaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { activePersonId } = useActivePersonId();
 
   const [cirurgia, setCirurgia] = useState<Cirurgia | null>(null);
   const [medico, setMedico] = useState<Medico | null>(null);
@@ -248,7 +250,9 @@ function DetalhesCirurgiaContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4 relative overflow-hidden"
-            style={{ borderLeft: `6px solid ${cirurgiaVencida ? '#EF4444' : '#F97316'}` }}
+            style={{ 
+              borderLeft: `6px solid ${cirurgiaVencida ? '#EF4444' : (activePersonId ? 'var(--person-accent, #F97316)' : '#F97316')}` 
+            }}
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-coral/5 rounded-bl-full pointer-events-none" />
 

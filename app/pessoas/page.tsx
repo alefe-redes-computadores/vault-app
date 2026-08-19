@@ -1,10 +1,10 @@
+// app/pessoas/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  Plus,
   Trash2,
   Loader2,
   Users,
@@ -12,6 +12,7 @@ import {
   Mail,
   Phone,
   User,
+  CheckCircle,
 } from "lucide-react";
 
 import { usePersons } from "@/hooks/usePersons";
@@ -24,11 +25,13 @@ import { useToast } from "@/components/ToastProvider";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 
 export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast } = useToast();
+  const { activePersonId } = useActivePersonId();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -41,7 +44,6 @@ export default function PessoasPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 420);
-
     return () => clearTimeout(timer);
   }, []);
 
@@ -53,14 +55,9 @@ export default function PessoasPage() {
     );
   }, [persons]);
 
-  const handleAddPerson = () => {
-    trigger("vibrate");
-    router.push("/pessoas/novo");
-  };
-
   const handlePersonClick = (id: string) => {
     trigger("vibrate");
-    router.push(`/pessoas/editar?id=${id}`);
+    router.push(`/pessoas/detalhes?id=${id}`);
   };
 
   const handleDeleteClick = (id: string, name: string) => {
@@ -77,8 +74,6 @@ export default function PessoasPage() {
     setIsDeleting(id);
 
     try {
-      const timestamp = new Date().toISOString();
-
       await db.transaction(
         "rw",
         [db.persons, db.documents],
@@ -110,7 +105,6 @@ export default function PessoasPage() {
       showToast(`"${name}" foi removido(a)`, "success");
     } catch (error) {
       console.error("Erro ao remover pessoa:", error);
-
       trigger("error");
       showToast("Não foi possível remover a pessoa", "error");
     } finally {
@@ -132,26 +126,15 @@ export default function PessoasPage() {
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
                 Vault
               </p>
-
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Pessoas
               </h1>
-
               <p className="mt-1 text-sm text-ink-muted">
                 {sortedPersons.length} pessoa
                 {sortedPersons.length !== 1 ? "s" : ""} cadastrada
                 {sortedPersons.length !== 1 ? "s" : ""}
               </p>
             </div>
-
-            <button
-              type="button"
-              onClick={handleAddPerson}
-              aria-label="Adicionar pessoa"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 transition-all duration-200 hover:scale-[1.03] hover:shadow-ice/30 active:scale-95"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-            </button>
           </div>
         </header>
 
@@ -164,35 +147,20 @@ export default function PessoasPage() {
               className="flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
             >
               <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
-                <Users
-                  size={32}
-                  strokeWidth={1.8}
-                  className="text-ink-muted"
-                />
+                <Users size={32} strokeWidth={1.8} className="text-ink-muted" />
               </div>
-
               <h3 className="font-display text-lg font-semibold text-ink-primary">
                 Nenhuma pessoa cadastrada
               </h3>
-
               <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
-                Cadastre pessoas para vincular documentos e deixar sua
-                organização mais rápida.
+                Cadastre pessoas para vincular documentos e deixar sua organização mais rápida.
               </p>
-
-              <Button
-                variant="primary"
-                onClick={handleAddPerson}
-                className="mt-6"
-              >
-                <Plus size={16} strokeWidth={2.2} />
-                Adicionar pessoa
-              </Button>
             </motion.div>
           ) : (
             <div className="space-y-3">
               {sortedPersons.map((person, index) => {
                 const personId = person.id!;
+                const isDefault = activePersonId === personId;
 
                 return (
                   <motion.article
@@ -204,6 +172,9 @@ export default function PessoasPage() {
                       delay: Math.min(index * 0.04, 0.28),
                     }}
                     className="group flex items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm transition-all duration-200 hover:border-surface-border active:scale-[0.99]"
+                    style={{
+                      borderLeft: isDefault ? `4px solid ${person.color || "#38BDF8"}` : undefined,
+                    }}
                   >
                     <button
                       type="button"
@@ -217,46 +188,45 @@ export default function PessoasPage() {
                           className="h-12 w-12 shrink-0 rounded-full border border-surface-border/50 object-cover"
                         />
                       ) : (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-sm font-semibold text-ink-primary">
+                        <div
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-surface-border/50 text-sm font-semibold text-white"
+                          style={{
+                            backgroundColor: person.color || "#38BDF8",
+                          }}
+                        >
                           {person.name?.charAt(0).toUpperCase() || "P"}
                         </div>
                       )}
 
                       <div className="min-w-0">
-                        <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
-                          {person.name}
-                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
+                            {person.name}
+                          </h3>
+                          {isDefault && (
+                            <span className="flex items-center gap-0.5 rounded-full bg-ice/15 px-2 py-0.5 text-[9px] font-bold uppercase text-ice border border-ice/20">
+                              <CheckCircle size={10} />
+                              Padrão
+                            </span>
+                          )}
+                        </div>
 
                         <div className="mt-1 space-y-1">
                           {person.email && (
                             <p className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
-                              <Mail
-                                size={12}
-                                strokeWidth={1.8}
-                                className="shrink-0"
-                              />
+                              <Mail size={12} strokeWidth={1.8} className="shrink-0" />
                               <span className="truncate">{person.email}</span>
                             </p>
                           )}
-
                           {person.phone && (
                             <p className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
-                              <Phone
-                                size={12}
-                                strokeWidth={1.8}
-                                className="shrink-0"
-                              />
+                              <Phone size={12} strokeWidth={1.8} className="shrink-0" />
                               <span className="truncate">{person.phone}</span>
                             </p>
                           )}
-
                           {!person.email && !person.phone && (
                             <p className="flex items-center gap-1.5 text-xs text-ink-faint">
-                              <User
-                                size={12}
-                                strokeWidth={1.8}
-                                className="shrink-0"
-                              />
+                              <User size={12} strokeWidth={1.8} className="shrink-0" />
                               <span>Sem informações adicionais</span>
                             </p>
                           )}
@@ -278,25 +248,24 @@ export default function PessoasPage() {
                         <Edit size={16} strokeWidth={1.9} />
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteClick(personId, person.name);
-                        }}
-                        disabled={isDeleting === personId}
-                        aria-label={`Remover ${person.name}`}
-                        className="flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-all duration-200 hover:bg-surface-raised hover:text-coral active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isDeleting === personId ? (
-                          <Loader2
-                            size={16}
-                            className="animate-spin text-coral"
-                          />
-                        ) : (
-                          <Trash2 size={16} strokeWidth={1.9} />
-                        )}
-                      </button>
+                      {!isDefault && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeleteClick(personId, person.name);
+                          }}
+                          disabled={isDeleting === personId}
+                          aria-label={`Remover ${person.name}`}
+                          className="flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-all duration-200 hover:bg-surface-raised hover:text-coral active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isDeleting === personId ? (
+                            <Loader2 size={16} className="animate-spin text-coral" />
+                          ) : (
+                            <Trash2 size={16} strokeWidth={1.9} />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </motion.article>
                 );

@@ -32,6 +32,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useToast } from "@/components/ToastProvider";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document } from "@/lib/types";
 import { getCidInsights } from "@/lib/health-insights";
 
@@ -65,6 +66,7 @@ function CidDetalhesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { activePersonId } = useActivePersonId();
 
   const [cid, setCid] = useState<Cid | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -265,6 +267,9 @@ function CidDetalhesContent() {
             initial="initial" 
             animate="animate" 
             className={`relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm ${theme.border} ${theme.borderLeft}`}
+            style={{ 
+              borderLeftColor: activePersonId ? 'var(--person-accent, #8B5CF6)' : theme.borderLeft.split(' ')[2] || '#8B5CF6'
+            }}
           >
             <div className={`absolute -right-4 -top-4 opacity-5 pointer-events-none ${theme.text}`}>
               <IconComp size={140} />

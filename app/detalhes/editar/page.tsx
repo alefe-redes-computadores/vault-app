@@ -12,7 +12,7 @@ import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, TYPE_CATEGORY_MAP, type CategoryId, type DocumentType, DOCUMENT_FIELDS, type Attachment } from "@/lib/types";
+import { CATEGORIES, type CategoryId, type DocumentType, type Attachment, type Person } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -24,25 +24,49 @@ import { db } from "@/lib/db";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
-import { useLiveQuery } from "dexie-react-hooks";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
+// ---- CONSTANTES LOCAIS PARA EVITAR ERROS DE IMPORT ----
+const TYPE_CATEGORY_MAP: Record<string, CategoryId[]> = {
+  rg: ["pessoal"], cpf: ["pessoal"], cnh: ["pessoal"], certidao_nascimento: ["pessoal"],
+  titulo_eleitor: ["pessoal"], certificado: ["pessoal", "empresa"],
+  receita: ["saude"], prontuario: ["saude"], laudo: ["saude"], encaminhamento: ["saude"],
+  consulta: ["saude"], cirurgia: ["saude"], exame_sangue: ["saude"], exame_imagem: ["saude"],
+  credencial: ["saude", "empresa", "outros"], outro: ["saude", "pessoal", "empresa", "outros"]
+};
+
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  rg: "C.I.N / Identidade", cpf: "CPF", cnh: "CNH", certidao_nascimento: "Certidão de Nascimento",
+  titulo_eleitor: "Título de Eleitor", certificado: "Certificado", receita: "Receita médica",
+  prontuario: "Prontuário", laudo: "Laudo", encaminhamento: "Encaminhamento",
+  consulta: "Consulta", cirurgia: "Cirurgia", exame_sangue: "Exame de Sangue",
+  exame_imagem: "Exame de Imagem", credencial: "Credencial / Carteirinha", outro: "Outro",
+};
+
+interface DocField { key: string; label: string; type: string; options?: string[] }
+
+const getFieldsForType = (type: string): DocField[] => {
+  const map: Record<string, DocField[]> = {
+    rg: [{ key: "modelo", label: "Modelo", type: "select", options: ["C.I.N (Nova Identidade)", "RG Antigo"] }, { key: "cpf", label: "CPF", type: "text" }, { key: "rg_number", label: "Número do RG", type: "text" }, { key: "issue_date", label: "Data de emissão", type: "date" }, { key: "issuer", label: "Órgão emissor", type: "text" }],
+    cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
+    cnh: [{ key: "number", label: "Número da CNH", type: "text" }, { key: "category", label: "Categoria", type: "text" }, { key: "issue_date", label: "Data de emissão", type: "date" }, { key: "expiry_date", label: "Data de validade", type: "date" }],
+    certidao_nascimento: [{ key: 'nome_registrado', label: 'Nome Registrado', type: 'text' }, { key: 'matricula', label: 'Matrícula', type: 'text' }, { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date' }],
+    receita: [{ key: "medication", label: "Medicamento", type: "text" }, { key: "doctor", label: "Médico", type: "select" }, { key: "pharmacy", label: "Farmácia", type: "select" }, { key: "prescription_date", label: "Data da receita", type: "date" }],
+    consulta: [{ key: "doctor", label: "Médico", type: "select" }, { key: "hospital", label: "Clínica / Hospital", type: "select" }, { key: "date", label: "Data da Consulta", type: "date" }, { key: "reason", label: "Motivo", type: "text" }],
+    exame_sangue: [{ key: 'hospital', label: 'Laboratório', type: 'select' }, { key: 'data_exame', label: 'Data do Exame', type: 'date' }],
+    outro: [{ key: "custom_field_1", label: "Campo 1", type: "text" }]
+  };
+  return map[type] || map.outro;
+};
+
+// ---- FUNÇÕES UTILITÁRIAS ----
 const applyMask = (value: string, type: string): string => {
   const digits = value.replace(/\D/g, "");
-  if (type === "cpf") {
-    return digits.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})/, "$1-$2").slice(0, 14);
-  }
-  if (type === "rg") {
-    return digits.replace(/(\d{2})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})/, "$1-$2").slice(0, 13);
-  }
-  if (type === "cnh") {
-    return digits.slice(0, 11);
-  }
-  if (type === "date") {
-    return digits.replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{2})(\d)/, "$1/$2").slice(0, 10);
-  }
+  if (type === "cpf") return digits.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})/, "$1-$2").slice(0, 14);
+  if (type === "rg") return digits.replace(/(\d{2})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})/, "$1-$2").slice(0, 13);
+  if (type === "date") return digits.replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{2})(\d)/, "$1/$2").slice(0, 10);
   return value;
 };
 
@@ -53,25 +77,6 @@ const getMaskType = (fieldKey: string, fieldType: string): string | null => {
   return null;
 };
 
-const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
-  rg: "C.I.N / Identidade",
-  cpf: "CPF",
-  cnh: "CNH",
-  certidao_nascimento: "Certidão de Nascimento",
-  titulo_eleitor: "Título de Eleitor",
-  certificado: "Certificado",
-  receita: "Receita médica",
-  prontuario: "Prontuário",
-  laudo: "Laudo",
-  encaminhamento: "Encaminhamento",
-  consulta: "Consulta",
-  cirurgia: "Cirurgia",
-  exame_sangue: "Exame de Sangue",
-  exame_imagem: "Exame de Imagem (Raio-X, RM)",
-  credencial: "Credencial / Carteirinha",
-  outro: "Outro",
-};
-
 export default function EditarDetalhePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -80,7 +85,7 @@ export default function EditarDetalhePage() {
 
   const { user } = useAuth();
   const doc = useDocument(id);
-  const persons = usePersons();
+  const persons = usePersons() as Person[];
   const { updateDocument } = useSafeDb();
 
   const { medicos } = useMedicos();
@@ -145,7 +150,7 @@ export default function EditarDetalhePage() {
     }
   }, [doc]);
 
-  const fields = useMemo(() => DOCUMENT_FIELDS[formData.type] || [], [formData.type]);
+  const fields = useMemo(() => getFieldsForType(formData.type), [formData.type]);
   const availableTypes = useMemo(() => {
     return (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).filter(
       type => TYPE_CATEGORY_MAP[type].includes(formData.category_id)
@@ -243,7 +248,7 @@ export default function EditarDetalhePage() {
     try {
       const cleanMetadata = { ...formData.metadata };
       
-      fields.forEach(field => {
+      fields.forEach((field: DocField) => {
         if (field.type === 'date' && cleanMetadata[field.key]) {
           const parts = cleanMetadata[field.key].split('/');
           if (parts.length === 3) {
@@ -290,7 +295,6 @@ export default function EditarDetalhePage() {
       });
 
       trigger("success");
-      // CORREÇÃO: Usando replace para não criar histórico em cascata
       router.replace(`/detalhes?id=${id}`);
     } catch (error) {
       console.error("Erro ao atualizar:", error);
@@ -302,21 +306,21 @@ export default function EditarDetalhePage() {
   };
 
   const handleDelete = async () => {
-  if (!id) return;
-  setDeleting(true);
-  try {
-    await db.documents.delete(id);
-    await enfileirarOperacao("documents", "delete", { id });
-    trigger("success");
-    router.replace("/");
-  } catch (error) {
-    console.error("Erro ao excluir:", error);
-    trigger("error");
-  } finally {
-    setDeleting(false);
-    setShowDeleteModal(false);
-  }
-};
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await db.documents.delete(id);
+      await enfileirarOperacao("documents", "delete", { id });
+      trigger("success");
+      router.replace("/");
+    } catch (error) {
+      console.error("Erro ao excluir:", error);
+      trigger("error");
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
 
   if (!doc) {
     return (
@@ -324,7 +328,6 @@ export default function EditarDetalhePage() {
         <main className="flex min-h-screen items-center justify-center bg-void px-5">
           <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
             <p className="text-sm text-ink-muted">Documento não encontrado</p>
-            {/* CORREÇÃO: Usando replace para não criar histórico em cascata */}
             <Button variant="primary" onClick={() => router.replace("/")} className="mt-5">Voltar</Button>
           </div>
         </main>
@@ -377,7 +380,7 @@ export default function EditarDetalhePage() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa</p>
             <div className="flex flex-wrap gap-2">
-              {persons.map((person: any) => (
+              {persons.map((person) => (
                 <button
                   key={person.id}
                   onClick={() => handleChange("person_id", person.id!)}
@@ -419,10 +422,8 @@ export default function EditarDetalhePage() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
             <Input label="Título" value={formData.title} onChange={(e) => handleChange("title", e.target.value)} error={errors.title} />
 
-            {fields.map((field: any) => {
-               if (formData.type === 'rg' && field.key === 'rg_number' && formData.metadata['modelo'] === 'C.I.N (Nova Identidade)') {
-                  return null; 
-               }
+            {fields.map((field) => {
+               if (formData.type === 'rg' && field.key === 'rg_number' && formData.metadata['modelo'] === 'C.I.N (Nova Identidade)') return null; 
 
                const maskType = getMaskType(field.key, field.type);
                const rawValue = formData.metadata[field.key] || "";

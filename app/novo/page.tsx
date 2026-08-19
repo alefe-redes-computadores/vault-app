@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 
 import { usePersons } from "@/hooks/usePersons";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -214,6 +215,7 @@ export default function NewDocumentPage() {
   const { user } = useAuth();
   const { addDocument } = useSafeDb();
   const persons = usePersons();
+  const { activePersonId } = useActivePersonId();
 
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
@@ -277,14 +279,18 @@ export default function NewDocumentPage() {
       [],
     ) || [];
 
+  const selectedPerson = persons.find((p) => p.id === formData.person_id);
+  const personColor = selectedPerson?.color || DEFAULT_PERSON_COLOR;
+
   useEffect(() => {
     if (persons.length > 0 && !formData.person_id && !initialPersonId) {
+      const defaultPerson = persons.find((p) => p.id === activePersonId);
       setFormData((prev) => ({
         ...prev,
-        person_id: persons[0].id!,
+        person_id: defaultPerson?.id || persons[0].id!,
       }));
     }
-  }, [persons, formData.person_id, initialPersonId]);
+  }, [persons, formData.person_id, initialPersonId, activePersonId]);
 
   useEffect(() => {
     const fields = DOCUMENT_FIELDS[formData.type] || [];
@@ -843,6 +849,11 @@ export default function NewDocumentPage() {
                         ? "border-coral/50 bg-surface-raised"
                         : "border-surface-border/50 bg-surface-raised text-ink-primary"
                     }`}
+                    style={{
+                      borderColor: formData.person_id
+                        ? personColor
+                        : undefined,
+                    }}
                   >
                     {formData.person_id
                       ? persons.find(

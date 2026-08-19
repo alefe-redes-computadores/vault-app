@@ -1,24 +1,33 @@
+// hooks/useRenovacoes.ts
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { renovacoesRepository } from "@/lib/repositories/renovacoes";
 import { useAuth } from "./useAuth";
+import { useActivePersonId } from "./useActivePersonId";
 import { useCallback } from "react";
 import type { Renovacao } from "@/lib/types";
 
 export function useRenovacoes(medicamentoId?: string) {
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
 
   const renovacoes = useLiveQuery(
     () => {
-      let query = db.renovacoes.where("user_id").equals(user?.id || "");
+      if (!activePersonId) return [];
+      let query = db.renovacoes
+        .where('person_id')
+        .equals(activePersonId);
+      
+      // Se veio um medicamentoId específico, filtra por ele também
       if (medicamentoId) {
         query = query.and((r) => r.medicamento_id === medicamentoId);
       }
+      
       return query.reverse().sortBy("data");
     },
-    [user?.id, medicamentoId],
+    [activePersonId, medicamentoId],
     []
   );
 
@@ -27,7 +36,7 @@ export function useRenovacoes(medicamentoId?: string) {
   }, []);
 
   const addRenovacao = useCallback(
-    async (data: Omit<Renovacao, "id" | "user_id" | "created_at" | "updated_at" | "synced">) => {
+    async (data: Omit<Renovacao, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
       return renovacoesRepository.create({ ...data, user_id: user?.id || "" });
     },
     [user]

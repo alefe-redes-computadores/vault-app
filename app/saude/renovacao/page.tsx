@@ -25,6 +25,7 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
@@ -51,12 +52,15 @@ type RenovacaoEnriquecida = Renovacao & {
 export default function RenovacoesPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
   const [search, setSearch] = useState("");
   const [filtroPeriodo, setFiltroPeriodo] = useState<"todos" | "30dias" | "60dias">("todos");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "vencida" | "valida">("todos");
 
   const { renovacoes = [] } = useRenovacoes();
   const { medicamentos = [] } = useMedicamentos();
+
+  const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
   const medicamentoMap = useMemo(() => new Map(medicamentos.map((m) => [m.id, m])), [medicamentos]);
 
@@ -209,8 +213,6 @@ export default function RenovacoesPage() {
                   ? "Tente ajustar os filtros aplicados."
                   : "Registre receitas renovadas para acompanhar custos e validades."
               }
-              actionLabel="Nova Renovação"
-              onAction={() => router.push("/saude/renovacao/nova")}
             />
           ) : (
             filteredRenovacoes.map((renovacao) => (
@@ -220,7 +222,7 @@ export default function RenovacoesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${renovacao.id}`); }}
                 className="flex w-full items-start gap-3.5 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden cursor-pointer"
-                style={{ borderLeft: `6px solid ${renovacao.vencida ? "#EF4444" : "#38BDF8"}` }}
+                style={{ borderLeft: `6px solid ${renovacao.vencida ? "#EF4444" : personAccent}` }}
               >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">
                   <Pill size={22} className={renovacao.vencida ? "text-coral" : "text-ice"} />

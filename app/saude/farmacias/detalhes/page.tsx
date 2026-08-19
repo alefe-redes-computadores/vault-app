@@ -13,6 +13,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
@@ -43,6 +44,7 @@ function DetalhesFarmaciaContent() {
   const { trigger } = useHapticFeedback();
   const { getFarmacia, deleteFarmacia } = useFarmacias();
   const { medicamentos } = useMedicamentos();
+  const { activePersonId } = useActivePersonId();
 
   const [farmacia, setFarmacia] = useState<Farmacia | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,7 +85,6 @@ function DetalhesFarmaciaContent() {
       (m) => m.farmacia_id === farmacia.id
     );
 
-    // Agora filtra diretamente pela farmácia, usando o campo farmacia_id
     const renovacoesDaFarmacia = renovacoes
       .filter((r) => r.farmacia_id === id)
       .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
@@ -257,7 +258,9 @@ function DetalhesFarmaciaContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ borderLeft: "6px solid #F59E0B" }}
+            style={{ 
+              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #F59E0B)' : '#F59E0B'}` 
+            }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400 border border-amber-400/20">

@@ -14,6 +14,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
 import type { Renovacao, Medicamento, Medico, Farmacia } from "@/lib/types";
@@ -41,6 +42,7 @@ function DetalhesRenovacaoContent() {
   const id = searchParams.get("id");
   const { trigger } = useHapticFeedback();
   const { deleteRenovacao } = useRenovacoes();
+  const { activePersonId } = useActivePersonId();
 
   const [renovacao, setRenovacao] = useState<Renovacao | null>(null);
   const [medicamento, setMedicamento] = useState<Medicamento | null>(null);
@@ -138,7 +140,6 @@ function DetalhesRenovacaoContent() {
     ? formatCurrency(renovacao.preco)
     : "SUS / Gratuito";
 
-  // A validade da receita está associada ao medicamento, não à renovação.
   const vencida = medicamento ? isReceitaVencidaSegura(medicamento.proxima_renovacao) : isReceitaVencidaSegura(renovacao.data);
   const diasRestantes = getDaysUntil(medicamento?.proxima_renovacao || renovacao.data);
 
@@ -235,7 +236,9 @@ function DetalhesRenovacaoContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ borderLeft: `6px solid ${vencida ? '#EF4444' : '#38BDF8'}` }}
+            style={{ 
+              borderLeft: `6px solid ${vencida ? '#EF4444' : (activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8')}` 
+            }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/20">

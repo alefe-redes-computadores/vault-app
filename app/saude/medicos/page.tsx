@@ -27,6 +27,7 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useMedicos } from "@/hooks/useMedicos";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { useConsultas } from "@/hooks/useConsultas";
@@ -65,6 +66,7 @@ type MedicoComMetadados = Medico & {
 export default function MedicosPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
   const [search, setSearch] = useState("");
 
   const [filtroTratamento, setFiltroTratamento] = useState<string | null>(null);
@@ -77,6 +79,8 @@ export default function MedicosPage() {
   const { cirurgias = [] } = useCirurgias();
   const { hospitais = [] } = useHospitais();
   const documentos = useLiveQuery(() => db.documents.toArray(), []) as Document[];
+
+  const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
   const tratamentoMap = useMemo(() => new Map(tratamentos.map((t) => [t.id, t])), [tratamentos]);
   const hospitalMap = useMemo(() => new Map(hospitais.map((h) => [h.id, h])), [hospitais]);
@@ -303,15 +307,13 @@ export default function MedicosPage() {
                   ? "Tente ajustar os filtros ou a busca."
                   : "Cadastre profissionais para gerenciar suas prescrições e atendimentos."
               }
-              actionLabel="Novo Médico"
-              onAction={() => router.push("/saude/medicos/novo")}
             />
           ) : (
             filteredMedicos.map((medico) => {
               const primaryColor =
                 medico.tratamentos.length > 0
                   ? medico.tratamentos[0].color
-                  : "#38BDF8";
+                  : personAccent;
 
               return (
                 <motion.button

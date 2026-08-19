@@ -893,6 +893,16 @@ export interface Credential {
   synced: boolean;
 }
 
+export interface AppSettings {
+  id: string;
+  user_id: string;
+  default_person_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
+}
+
+
 export type CardType =
   | 'cartao_credito'
   | 'cartao_debito'
@@ -907,6 +917,7 @@ export type CardBrand =
   | 'amex'
   | 'hipercard'
   | 'unknown';
+
 
 export interface BankCard {
   id?: string;

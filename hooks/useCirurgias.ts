@@ -1,18 +1,27 @@
+// hooks/useCirurgias.ts
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { cirurgiasRepository } from "@/lib/repositories/cirurgias";
 import { useAuth } from "./useAuth";
+import { useActivePersonId } from "./useActivePersonId";
 import { useCallback } from "react";
 import type { Cirurgia } from "@/lib/types";
 
 export function useCirurgias() {
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
 
   const cirurgias = useLiveQuery(
-    () => db.cirurgias.where('user_id').equals(user?.id || '').toArray(),
-    [user?.id],
+    () => {
+      if (!activePersonId) return [];
+      return db.cirurgias
+        .where('person_id')
+        .equals(activePersonId)
+        .toArray();
+    },
+    [activePersonId],
     []
   );
 

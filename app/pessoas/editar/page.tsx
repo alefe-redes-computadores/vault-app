@@ -1,3 +1,4 @@
+// app/pessoas/editar/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -12,6 +13,7 @@ import {
   Phone,
   Camera,
   Palette,
+  Check,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +23,7 @@ import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
 const PERSON_COLORS = [
@@ -32,6 +35,9 @@ const PERSON_COLORS = [
   { name: "Amarelo", value: "#FACC15" },
   { name: "Verde", value: "#4ADE80" },
   { name: "Ciano", value: "#22D3EE" },
+  { name: "Índigo", value: "#6366F1" },
+  { name: "Coral", value: "#F87171" },
+  { name: "Cinza", value: "#9CA3AF" },
 ];
 
 export default function EditarPessoaPage() {
@@ -41,6 +47,7 @@ export default function EditarPessoaPage() {
   const id = searchParams.get("id");
   const { user } = useAuth();
   const { showToast, showSuccess } = useToast();
+  const { activePersonId } = useActivePersonId();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +63,8 @@ export default function EditarPessoaPage() {
     avatar_url: "",
     color: "#38BDF8",
   });
+
+  const isDefault = activePersonId === id;
 
   useEffect(() => {
     if (!id) {
@@ -93,22 +102,13 @@ export default function EditarPessoaPage() {
     loadPerson();
   }, [id, router, showToast]);
 
-  const handleUploadPhoto = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      showToast(
-        "A imagem é muito grande. Escolha uma de até 5MB.",
-        "error"
-      );
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-
+      showToast("A imagem é muito grande. Escolha uma de até 5MB.", "error");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
@@ -117,50 +117,29 @@ export default function EditarPessoaPage() {
 
     try {
       const { url, error } = await uploadFile(user.id, file, "avatars");
+      if (error) throw new Error(error.message || "Erro no storage");
+      if (!url) throw new Error("URL de retorno vazia");
 
-      if (error) {
-        console.error("Erro detalhado do Supabase Storage:", error);
-        throw new Error(error.message || "Erro no storage");
-      }
-
-      if (!url) {
-        throw new Error("URL de retorno vazia");
-      }
-
-      setFormData((prev) => ({
-        ...prev,
-        avatar_url: url,
-      }));
-
+      setFormData((prev) => ({ ...prev, avatar_url: url }));
       showToast("Foto enviada com sucesso!", "success");
     } catch (error: any) {
       console.error("Erro ao enviar foto:", error);
-
       showToast(
-        error?.message?.includes("Bucket not found") ||
-          error?.message?.includes("bucket")
+        error?.message?.includes("Bucket not found")
           ? "Erro: O bucket 'avatars' precisa ser criado no Supabase."
-          : "Erro ao enviar foto. Verifique a conexão e as permissões.",
+          : "Erro ao enviar foto.",
         "error"
       );
     } finally {
       setUploadingPhoto(false);
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Nome é obrigatório";
-    }
-
+    if (!formData.name.trim()) newErrors.name = "Nome é obrigatório";
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
@@ -177,42 +156,25 @@ export default function EditarPessoaPage() {
         name: formData.name.trim(),
         avatar_url: formData.avatar_url || undefined,
         color: formData.color,
+        email: formData.email.trim() || undefined,
+        phone: formData.phone.trim() || undefined,
         updated_at: new Date().toISOString(),
-        synced: false,
+        synced: 0,
       };
 
-      if (formData.email.trim()) {
-        updateData.email = formData.email.trim();
-      } else {
-        updateData.email = undefined;
-      }
-
-      if (formData.phone.trim()) {
-        updateData.phone = formData.phone.trim();
-      } else {
-        updateData.phone = undefined;
-      }
-
+      // Salva no Dexie
       await db.persons.update(id, updateData);
+      
+      // Enfileira pro Supabase
+      await enfileirarOperacao("persons", "update", { id, ...updateData });
 
-      const updatedPerson = await db.persons.get(id);
-
-      if (!updatedPerson) {
-        throw new Error("Pessoa não encontrada após atualização");
-      }
-
-      await enfileirarOperacao("persons", "update", updatedPerson);
-
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("sync:process"));
+      if (isDefault && formData.color) {
+        document.documentElement.style.setProperty("--person-accent", formData.color);
       }
 
       trigger("success");
       showSuccess("Pessoa atualizada com sucesso!", 3000);
-
-      setTimeout(() => {
-        router.push("/pessoas");
-      }, 500);
+      setTimeout(() => router.push("/pessoas"), 500);
     } catch (error) {
       console.error("Erro ao atualizar pessoa:", error);
       trigger("error");
@@ -226,12 +188,9 @@ export default function EditarPessoaPage() {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void px-5 pb-28 pt-6">
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-8 shadow-sm">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-ice border-t-transparent" />
-
-            <p className="mt-4 text-center text-sm text-ink-muted">
-              Carregando dados...
-            </p>
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-8 shadow-sm flex flex-col items-center">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-ice border-t-transparent" />
+            <p className="mt-4 text-center text-sm text-ink-muted">Carregando dados...</p>
           </div>
         </main>
       </PageTransition>
@@ -266,11 +225,9 @@ export default function EditarPessoaPage() {
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
                 Vault
               </p>
-
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Editar pessoa
               </h1>
-
               <p className="mt-1 text-sm text-ink-muted">
                 Atualize os dados vinculados aos documentos dessa pessoa
               </p>
@@ -292,23 +249,14 @@ export default function EditarPessoaPage() {
                     src={formData.avatar_url}
                     alt={formData.name}
                     className="h-16 w-16 rounded-full border-2 object-cover"
-                    style={{
-                      borderColor: `${formData.color}55`,
-                    }}
+                    style={{ borderColor: `${formData.color}55` }}
                   />
                 ) : (
                   <div
                     className="flex h-16 w-16 items-center justify-center rounded-full border bg-surface-raised"
-                    style={{
-                      borderColor: `${formData.color}55`,
-                    }}
+                    style={{ borderColor: `${formData.color}55` }}
                   >
-                    <User
-                      size={28}
-                      style={{
-                        color: formData.color,
-                      }}
-                    />
+                    <User size={28} style={{ color: formData.color }} />
                   </div>
                 )}
 
@@ -327,15 +275,19 @@ export default function EditarPessoaPage() {
               </div>
 
               <div className="min-w-0">
-                <p className="text-sm text-ink-muted">Editando</p>
-
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm text-ink-muted">Editando</p>
+                  {isDefault && (
+                    <span className="rounded-full bg-ice/15 px-2 py-0.5 text-[10px] font-bold uppercase text-ice border border-ice/20">
+                      Padrão
+                    </span>
+                  )}
+                </div>
                 <p className="truncate font-display text-lg font-semibold text-ink-primary">
                   {formData.name || "Sem nome"}
                 </p>
-
                 <p className="mt-1 text-xs leading-5 text-ink-faint">
-                  Revise e salve os dados para manter o cadastro atualizado e
-                  consistente.
+                  Revise e salve os dados para manter o cadastro atualizado.
                 </p>
               </div>
             </div>
@@ -353,10 +305,7 @@ export default function EditarPessoaPage() {
                   placeholder="Digite o nome"
                   value={formData.name}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      name: e.target.value,
-                    })
+                    setFormData({ ...formData, name: e.target.value })
                   }
                   error={errors.name}
                   required
@@ -373,16 +322,12 @@ export default function EditarPessoaPage() {
                   size={16}
                   className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
                 />
-
                 <Input
                   label="E-mail"
                   placeholder="Digite o e-mail"
                   value={formData.email}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      email: e.target.value,
-                    })
+                    setFormData({ ...formData, email: e.target.value })
                   }
                   type="email"
                   className="pl-9"
@@ -391,7 +336,7 @@ export default function EditarPessoaPage() {
 
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.24, delay: 0.15 }}
                 className="relative"
               >
@@ -399,16 +344,12 @@ export default function EditarPessoaPage() {
                   size={16}
                   className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted"
                 />
-
                 <Input
                   label="Telefone"
                   placeholder="Digite o telefone"
                   value={formData.phone}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      phone: e.target.value,
-                    })
+                    setFormData({ ...formData, phone: e.target.value })
                   }
                   className="pl-9"
                 />
@@ -420,45 +361,31 @@ export default function EditarPessoaPage() {
                 transition={{ duration: 0.24, delay: 0.2 }}
               >
                 <div className="mb-2 flex items-center gap-2">
-                  <Palette
-                    size={16}
-                    style={{ color: formData.color }}
-                  />
-
+                  <Palette size={16} style={{ color: formData.color }} />
                   <label className="text-sm font-medium text-ink-primary">
                     Cor da pessoa
                   </label>
                 </div>
 
                 <p className="mb-3 text-xs leading-5 text-ink-muted">
-                  Essa cor será usada para identificar visualmente a pessoa
-                  nos Cards.
+                  Essa cor será usada para identificar visualmente a pessoa nos cards.
                 </p>
 
                 <div className="grid grid-cols-4 gap-3">
                   {PERSON_COLORS.map((color) => {
                     const selected = formData.color === color.value;
-
                     return (
                       <button
                         key={color.value}
                         type="button"
                         onClick={() => {
                           trigger("vibrate");
-
-                          setFormData((prev) => ({
-                            ...prev,
-                            color: color.value,
-                          }));
+                          setFormData((prev) => ({ ...prev, color: color.value }));
                         }}
                         className="group flex flex-col items-center gap-2 rounded-2xl border p-3 transition-all active:scale-95"
                         style={{
-                          borderColor: selected
-                            ? color.value
-                            : "rgba(255,255,255,0.08)",
-                          backgroundColor: selected
-                            ? `${color.value}12`
-                            : "transparent",
+                          borderColor: selected ? color.value : "rgba(255,255,255,0.08)",
+                          backgroundColor: selected ? `${color.value}12` : "transparent",
                         }}
                         aria-label={`Selecionar cor ${color.name}`}
                       >
@@ -466,21 +393,14 @@ export default function EditarPessoaPage() {
                           className="h-9 w-9 rounded-full border-2 transition-transform group-hover:scale-105"
                           style={{
                             backgroundColor: color.value,
-                            borderColor: selected
-                              ? "#ffffff"
-                              : `${color.value}55`,
-                            boxShadow: selected
-                              ? `0 0 0 2px ${color.value}55`
-                              : "none",
+                            borderColor: selected ? "#ffffff" : `${color.value}55`,
+                            boxShadow: selected ? `0 0 0 2px ${color.value}55` : "none",
                           }}
                         />
-
                         <span
                           className="text-[11px] font-medium"
                           style={{
-                            color: selected
-                              ? color.value
-                              : "var(--color-ink-muted)",
+                            color: selected ? color.value : "var(--color-ink-muted)",
                           }}
                         >
                           {color.name}

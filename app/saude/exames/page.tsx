@@ -26,6 +26,7 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useExames } from "@/hooks/useExames";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
 import type { Exame, Person } from "@/lib/types";
@@ -40,6 +41,7 @@ function formatDateDisplay(isoStr: string): string {
 export default function ExamesPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
   const [search, setSearch] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "vencido" | "valido" | "proximo">("todos");
 
@@ -47,6 +49,8 @@ export default function ExamesPage() {
   const persons = useLiveQuery(() => db.persons.toArray(), []) as Person[];
 
   const personMap = useMemo(() => new Map(persons.map((p) => [p.id!, p.name])), [persons]);
+
+  const personAccent = activePersonId ? 'var(--person-accent, #10B981)' : '#10B981';
 
   type ExameComStatus = Exame & { vencido: boolean; proximo: boolean };
 
@@ -171,10 +175,8 @@ export default function ExamesPage() {
               description={
                 search || filtroStatus !== "todos"
                   ? "Tente ajustar a busca ou os filtros."
-                  : "Toque no botão + para cadastrar seus exames e laudos."
+                  : "Cadastre seus exames e laudos."
               }
-              actionLabel="Novo Exame"
-              onAction={() => router.push("/saude/exames/novo")}
             />
           ) : (
             filteredExames.map((exame) => {
@@ -189,7 +191,7 @@ export default function ExamesPage() {
                 >
                   <div
                     className="absolute left-0 top-0 bottom-0 w-1.5"
-                    style={{ backgroundColor: exame.vencido ? "#EF4444" : exame.proximo ? "#F59E0B" : "#10B981" }}
+                    style={{ backgroundColor: exame.vencido ? "#EF4444" : exame.proximo ? "#F59E0B" : personAccent }}
                   />
 
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">

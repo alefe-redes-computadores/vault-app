@@ -23,6 +23,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useTratamentos } from "@/hooks/useTratamentos";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import type { Tratamento, Medicamento, Renovacao } from "@/lib/types";
@@ -51,11 +52,14 @@ type TratamentoEnriquecido = Tratamento & {
 function TratamentoListContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "ativo" | "concluido" | "suspenso">("todos");
 
   const { tratamentos = [] } = useTratamentos();
   const { medicamentos = [] } = useMedicamentos();
   const { renovacoes = [] } = useRenovacoes();
+
+  const personAccent = activePersonId ? 'var(--person-accent, #8B5CF6)' : '#8B5CF6';
 
   const listaEnriquecida = useMemo<TratamentoEnriquecido[]>(() => {
     return tratamentos.map((t) => {
@@ -173,13 +177,11 @@ function TratamentoListContent() {
                   ? "Tente ajustar os filtros."
                   : "Cadastre tratamentos para acompanhar medicamentos, gastos e receitas."
               }
-              actionLabel="Novo Tratamento"
-              onAction={() => router.push("/saude/tratamentos/novo")}
             />
           ) : (
             filteredList.map((t) => {
               const IconComp = getTratamentoIcon(t.nome);
-              const cor = t.cor || "#8B5CF6";
+              const cor = t.cor || personAccent;
               return (
                 <motion.button
                   key={t.id}

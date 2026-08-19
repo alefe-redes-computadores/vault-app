@@ -32,6 +32,7 @@ import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Medico, Consulta, Cirurgia, Medicamento, Renovacao, Tratamento, Hospital, DoseLog } from "@/lib/types";
 import { useMedicos } from "@/hooks/useMedicos";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { sugerirRenovacao, isReceitaVencidaSegura, analisarComportamentoUso } from "@/lib/health-insights";
 
 function getTreatmentColor(nome: string): string {
@@ -85,6 +86,7 @@ function DetalhesMedicoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { activePersonId } = useActivePersonId();
 
   const [medico, setMedico] = useState<Medico | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -308,6 +310,9 @@ function DetalhesMedicoContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
+            style={{ 
+              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}` 
+            }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/20">

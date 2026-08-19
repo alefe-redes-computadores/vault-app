@@ -12,6 +12,7 @@ import {
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHospitais } from "@/hooks/useHospitais";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
@@ -36,6 +37,7 @@ function DetalhesHospitalContent() {
   const id = searchParams.get("id");
   const { trigger } = useHapticFeedback();
   const { getHospital, deleteHospital } = useHospitais();
+  const { activePersonId } = useActivePersonId();
 
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -225,7 +227,9 @@ function DetalhesHospitalContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ borderLeft: `6px solid ${cor}` }}
+            style={{ 
+              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}` 
+            }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/20">

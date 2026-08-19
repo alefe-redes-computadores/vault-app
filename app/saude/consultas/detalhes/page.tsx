@@ -26,6 +26,7 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { Consulta, Medico, Hospital, Medicamento, Exame } from "@/lib/types";
 import { useConsultas } from "@/hooks/useConsultas";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
@@ -47,6 +48,7 @@ function DetalhesConsultaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { activePersonId } = useActivePersonId();
 
   const [consulta, setConsulta] = useState<Consulta | null>(null);
   const [medico, setMedico] = useState<Medico | null>(null);
@@ -246,7 +248,9 @@ function DetalhesConsultaContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ borderLeft: `6px solid ${consultaVencida ? '#EF4444' : '#38BDF8'}` }}
+            style={{ 
+              borderLeft: `6px solid ${consultaVencida ? '#EF4444' : (activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8')}` 
+            }}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">

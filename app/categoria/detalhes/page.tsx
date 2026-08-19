@@ -11,6 +11,7 @@ import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { CATEGORIES, type CategoryId, type DocumentType, type Attachment } from "@/lib/types";
+import { Person } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -147,7 +148,7 @@ export default function EditarDetalhePage() {
   const id = searchParams.get("id") || "";
 
   const doc = useDocument(id);
-  const persons = usePersons();
+  const persons = usePersons() as Person[];
   const { updateDocument } = useSafeDb();
 
   const [loading, setLoading] = useState(false);
@@ -197,6 +198,9 @@ export default function EditarDetalhePage() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const selectedPerson = persons.find(p => p.id === formData.person_id);
+  const personColor = selectedPerson?.color || "#38BDF8";
 
   const handleSubmit = async () => {
     if (!validate() || !doc || !id) {
@@ -275,6 +279,9 @@ export default function EditarDetalhePage() {
             {...sectionMotion}
             transition={{ duration: 0.22 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm"
+            style={{
+              borderLeft: `4px solid ${personColor}`,
+            }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised">

@@ -19,6 +19,7 @@ import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Consulta } from "@/lib/types";
 import { useConsultas } from "@/hooks/useConsultas";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { EmptyState } from "@/components/EmptyState";
 
 const fadeUp = {
@@ -36,6 +37,7 @@ function formatDateDisplay(isoStr: string): string {
 export default function ConsultasPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
   
   const [abaAtiva, setAbaAtiva] = useState<"proximas" | "historico">("proximas");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "agendada" | "realizada" | "cancelada">("todos");
@@ -43,6 +45,8 @@ export default function ConsultasPage() {
   const { consultas } = useConsultas();
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
+
+  const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
   const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -189,11 +193,9 @@ export default function ConsultasPage() {
               }
               description={
                 abaAtiva === "proximas"
-                  ? "Toque no botão + para agendar uma nova consulta."
+                  ? "Agende uma nova consulta."
                   : "As consultas realizadas ou canceladas aparecerão aqui."
               }
-              actionLabel="Nova Consulta"
-              onAction={() => router.push("/saude/consultas/nova")}
             />
           ) : (
             <div className="space-y-3">
@@ -208,6 +210,7 @@ export default function ConsultasPage() {
                     transition={{ delay: index * 0.04 }}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }}
                     className="group cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.98] hover:border-ice/30 relative overflow-hidden"
+                    style={{ borderLeft: `4px solid ${personAccent}` }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3.5 min-w-0">

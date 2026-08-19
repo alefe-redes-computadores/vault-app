@@ -33,6 +33,7 @@ import { SeletorReceita } from "@/components/saude/SeletorReceita";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
 import { sugerirHorarios } from "@/lib/health-insights";
+import { FloatingSpinner } from "@/components/loading/FloatingSpinner";
 import type { Attachment, Document, TipoReceita, Person, Medico, Farmacia, Hospital, LocalSaude, Medicamento } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 } };
@@ -87,7 +88,6 @@ export default function NovoMedicamentoPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 3;
 
-  // Etapa 1
   const [personId, setPersonId] = useState<string>("");
   const [nome, setNome] = useState("");
   const [dosagem, setDosagem] = useState("");
@@ -104,7 +104,6 @@ export default function NovoMedicamentoPage() {
   const [gotasPorMl, setGotasPorMl] = useState("20");
   const [estoqueGotasCalculado, setEstoqueGotasCalculado] = useState(0);
 
-  // Etapa 2
   const [medicoId, setMedicoId] = useState<string>("");
   const [medicoNome, setMedicoNome] = useState("");
   const [hospitalId, setHospitalId] = useState<string>("");
@@ -115,7 +114,6 @@ export default function NovoMedicamentoPage() {
   const [farmaciaNome, setFarmaciaNome] = useState("");
   const [preco, setPreco] = useState("");
 
-  // Etapa 3
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
   const [estoqueDataReferenciaTexto, setEstoqueDataReferenciaTexto] = useState(isoParaBr(new Date().toISOString().slice(0, 10)));
@@ -126,12 +124,10 @@ export default function NovoMedicamentoPage() {
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [observacoes, setObservacoes] = useState("");
 
-  // Upload
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Modais de Seleção
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
@@ -139,7 +135,6 @@ export default function NovoMedicamentoPage() {
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [showDesativarEstoqueModal, setShowDesativarEstoqueModal] = useState(false);
 
-  // Autocomplete Inteligente & Duplicidade
   const [isTypingName, setIsTypingName] = useState(false);
   const [isRecognized, setIsRecognized] = useState(false);
   const [showDuplicateActionModal, setShowDuplicateActionModal] = useState(false);
@@ -405,7 +400,6 @@ export default function NovoMedicamentoPage() {
         <section className="px-5 pt-6 space-y-6">
           <AnimatePresence mode="wait">
 
-            {/* ================= ETAPA 1 ================= */}
             {currentStep === 1 && (
               <motion.div key="step1" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
 
@@ -517,7 +511,6 @@ export default function NovoMedicamentoPage() {
               </motion.div>
             )}
 
-            {/* ================= ETAPA 2 ================= */}
             {currentStep === 2 && (
               <motion.div key="step2" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
@@ -566,7 +559,6 @@ export default function NovoMedicamentoPage() {
               </motion.div>
             )}
 
-            {/* ================= ETAPA 3 ================= */}
             {currentStep === 3 && (
               <motion.div key="step3" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
                 <CalculadoraGotas isAtivo={isGotas} onToggle={(ativo) => { setFormato(ativo ? "gota" : "comprimido"); }} mlTotal={mlTotal} setMlTotal={setMlTotal} gotasPorMl={gotasPorMl} setGotasPorMl={setGotasPorMl} onEstoqueCalculado={(v) => { setEstoqueGotasCalculado(v); if(estoqueAtivo) setEstoqueQuantidade(String(v)); }} />
@@ -695,6 +687,10 @@ export default function NovoMedicamentoPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <FloatingSpinner
+          label={uploadProgress > 0 ? `Enviando anexo...                ${uploadProgress}%` : "Salvando medicamento..."}
+        />
 
         <SelectionModal<Farmacia>
           isOpen={isPharmacyModalOpen}

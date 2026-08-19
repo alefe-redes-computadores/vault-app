@@ -9,6 +9,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import {
   ArrowLeft, FileText, MapPin, Edit3, Trash2, 
   Clock, Plus, Pill, FileWarning
@@ -35,6 +36,7 @@ function DetalhesLocalContent() {
   const id = searchParams.get("id");
   const { trigger } = useHapticFeedback();
   const { deleteLocal } = useLocais();
+  const { activePersonId } = useActivePersonId();
 
   const [local, setLocal] = useState<LocalSaude | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -221,7 +223,9 @@ function DetalhesLocalContent() {
             initial="initial"
             animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ borderLeft: `6px solid ${hasHistory ? '#34D399' : '#6B7280'}` }}
+            style={{ 
+              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #34D399)' : '#34D399'}` 
+            }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">

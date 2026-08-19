@@ -1,18 +1,27 @@
+// hooks/useConsultas.ts
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { consultasRepository } from "@/lib/repositories/consultas";
 import { useAuth } from "./useAuth";
+import { useActivePersonId } from "./useActivePersonId";
 import { useCallback } from "react";
 import type { Consulta } from "@/lib/types";
 
 export function useConsultas() {
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
 
   const consultas = useLiveQuery(
-    () => db.consultas.where('user_id').equals(user?.id || '').toArray(),
-    [user?.id],
+    () => {
+      if (!activePersonId) return [];
+      return db.consultas
+        .where('person_id')
+        .equals(activePersonId)
+        .toArray();
+    },
+    [activePersonId],
     []
   );
 

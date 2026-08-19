@@ -19,6 +19,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { useCids } from "@/hooks/useCids";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { getCidInsights } from "@/lib/health-insights";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -26,10 +27,13 @@ export default function CidsPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { cids } = useCids();
+  const { activePersonId } = useActivePersonId();
   const [search, setSearch] = useState("");
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const medicosMap = useMemo(() => new Map(medicos.map((m) => [m.id, m])), [medicos]);
+
+  const personAccent = activePersonId ? 'var(--person-accent, #8B5CF6)' : '#8B5CF6';
 
   const filteredCids = useMemo(() => {
     if (!cids) return [];
@@ -88,8 +92,6 @@ export default function CidsPage() {
                   ? "Tente ajustar a busca."
                   : "Cadastre seus diagnósticos para acompanhar tratamentos."
               }
-              actionLabel="Novo CID"
-              onAction={() => router.push("/saude/cids/novo")}
             />
           ) : (
             filteredCids.map((cid) => {
@@ -105,6 +107,7 @@ export default function CidsPage() {
                     router.push(`/saude/cids/detalhes?id=${cid.id}`);
                   }}
                   className="flex w-full items-start gap-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
+                  style={{ borderLeft: `4px solid ${personAccent}` }}
                 >
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400 border border-violet-400/20">
                     <FileText size={20} />

@@ -21,6 +21,7 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocais } from "@/hooks/useLocais";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import type { LocalSaude, Renovacao } from "@/lib/types";
 
@@ -44,11 +45,14 @@ type LocalComHistorico = LocalSaude & {
 export default function LocaisPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
   const [search, setSearch] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "com_registros" | "sem_registros">("todos");
 
   const { locais } = useLocais();
   const { renovacoes } = useRenovacoes();
+
+  const personAccent = activePersonId ? 'var(--person-accent, #34D399)' : '#34D399';
 
   const locaisEnriquecidos = useMemo<LocalComHistorico[]>(() => {
     if (!locais || !renovacoes) return [];
@@ -172,8 +176,6 @@ export default function LocaisPage() {
                   ? "Tente ajustar os filtros aplicados."
                   : "Cadastre postos do SUS, laboratórios ou clínicas para acompanhar retiradas e atendimentos."
               }
-              actionLabel="Novo Local"
-              onAction={() => router.push("/saude/locais/novo")}
             />
           ) : (
             filteredLocais.map((local) => (
@@ -183,7 +185,7 @@ export default function LocaisPage() {
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => { trigger("vibrate"); router.push(`/saude/locais/detalhes?id=${local.id}`); }}
                 className="flex w-full items-start gap-3.5 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden cursor-pointer"
-                style={{ borderLeft: `6px solid ${local.historicoCount > 0 ? "#34D399" : "#6B7280"}` }}
+                style={{ borderLeft: `6px solid ${local.historicoCount > 0 ? personAccent : "#6B7280"}` }}
               >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">
                   <MapPin size={22} className={local.historicoCount > 0 ? "text-emerald-400" : "text-ink-muted"} />

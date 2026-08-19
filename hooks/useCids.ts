@@ -5,15 +5,23 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { cidsRepository } from "@/lib/repositories/cids";
 import { useAuth } from "./useAuth";
+import { useActivePersonId } from "./useActivePersonId";
 import { useCallback } from "react";
 import type { Cid } from "@/lib/types";
 
 export function useCids() {
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
 
   const cids = useLiveQuery(
-    () => db.cids.where('user_id').equals(user?.id || '').toArray(),
-    [user?.id],
+    () => {
+      if (!activePersonId) return [];
+      return db.cids
+        .where('person_id')
+        .equals(activePersonId)
+        .toArray();
+    },
+    [activePersonId],
     []
   );
 

@@ -29,12 +29,15 @@ export default function CategoryPage() {
     }
   }, [persons, selectedPersonId]);
 
-  const allDocs = useDocuments(selectedPersonId || undefined);
+  // Busca todos os documentos e filtra localmente
+  const allDocsRaw = useDocuments();
 
-  const documents = useMemo(
-    () => (allDocs || []).filter((doc: Document) => doc.category_id === categoryId),
-    [allDocs, categoryId]
-  );
+  const documents = useMemo(() => {
+    const docs = allDocsRaw || [];
+    const catDocs = docs.filter((doc: Document) => doc.category_id === categoryId);
+    if (!selectedPersonId) return catDocs;
+    return catDocs.filter((doc: Document) => doc.person_id === selectedPersonId);
+  }, [allDocsRaw, categoryId, selectedPersonId]);
 
   const { favorite } = useSafeDb();
   const category = categoryId ? CATEGORIES[categoryId] : undefined;

@@ -1,18 +1,27 @@
+// hooks/useExames.ts
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { examesRepository } from "@/lib/repositories/exames";
 import { useAuth } from "./useAuth";
+import { useActivePersonId } from "./useActivePersonId";
 import { useCallback } from "react";
 import type { Exame } from "@/lib/types";
 
 export function useExames() {
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
 
   const exames = useLiveQuery(
-    () => db.exames.where('user_id').equals(user?.id || '').toArray(),
-    [user?.id],
+    () => {
+      if (!activePersonId) return [];
+      return db.exames
+        .where('person_id')
+        .equals(activePersonId)
+        .toArray();
+    },
+    [activePersonId],
     []
   );
 

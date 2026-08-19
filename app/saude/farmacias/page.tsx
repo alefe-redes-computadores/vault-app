@@ -27,6 +27,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { analisarMelhorFarmacia } from "@/lib/health-insights";
 import type { Farmacia, Medicamento, Renovacao } from "@/lib/types";
 
@@ -55,6 +56,7 @@ type FarmaciaComAnalise = Farmacia & {
 export default function FarmaciasPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
   const [search, setSearch] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "com_medicamentos" | "mais_economica">("todos");
 
@@ -64,11 +66,11 @@ export default function FarmaciasPage() {
 
   const rankingFarmacias = useMemo<RankingFarmacia[]>(() => {
     const resultado = analisarMelhorFarmacia(renovacoes);
-return resultado.map((item) => ({
-  farmacia_id: item.farmacia_id,
-  media_preco: item.media_preco,
-  total_compras: item.total_compras,
-}));
+    return resultado.map((item) => ({
+      farmacia_id: item.farmacia_id,
+      media_preco: item.media_preco,
+      total_compras: item.total_compras,
+    }));
   }, [renovacoes]);
 
   const rankingMap = useMemo(() => {
@@ -78,6 +80,8 @@ return resultado.map((item) => ({
     });
     return map;
   }, [rankingFarmacias]);
+
+  const personAccent = activePersonId ? 'var(--person-accent, #F59E0B)' : '#F59E0B';
 
   const farmaciasComAnalise = useMemo<FarmaciaComAnalise[]>(() => {
     return farmacias.map((farmacia) => {
@@ -221,8 +225,6 @@ return resultado.map((item) => ({
                   ? "Tente ajustar os filtros aplicados."
                   : "Cadastre farmácias para acompanhar histórico de preços e renovações."
               }
-              actionLabel="Nova Farmácia"
-              onAction={() => router.push("/saude/farmacias/novo")}
             />
           ) : (
             filteredFarmacias.map((farmacia) => (
@@ -232,7 +234,7 @@ return resultado.map((item) => ({
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => { trigger("vibrate"); router.push(`/saude/farmacias/detalhes?id=${farmacia.id}`); }}
                 className="flex w-full flex-col gap-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden cursor-pointer"
-                style={{ borderLeft: `6px solid ${farmacia.isMaisEconomica ? '#34D399' : '#F59E0B'}` }}
+                style={{ borderLeft: `6px solid ${farmacia.isMaisEconomica ? '#34D399' : personAccent}` }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">

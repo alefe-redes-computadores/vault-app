@@ -36,6 +36,7 @@ import { DocumentCard } from "@/components/DocumentCard";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Tratamento, Document, Medicamento, Renovacao, Medico, Cid } from "@/lib/types";
@@ -123,12 +124,12 @@ function TratamentoContent() {
   const { favorite } = useSafeDb();
   const { medicamentos } = useMedicamentos();
   const { medicos } = useMedicos();
+  const { activePersonId } = useActivePersonId();
 
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
-  // Persistência de fechamento do alerta de economia
   const [dismissEconomia, setDismissEconomia] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(`dismissEconomia_${id}`);
@@ -266,7 +267,6 @@ function TratamentoContent() {
   const medicamentosAtivos = medicamentosComAlertas.filter((m) => m.status !== "descontinuado");
   const medicamentosDescontinuados = medicamentosComAlertas.filter((m) => m.status === "descontinuado");
 
-  // Nomes de médicos extraídos dos medicamentos (fallback)
   const medicosNomesDosMedicamentos = [...new Set(linkedMedicamentos.map(m => m.medico).filter(Boolean))];
 
   return (
@@ -355,7 +355,6 @@ function TratamentoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          {/* Card principal do tratamento */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
@@ -392,7 +391,6 @@ function TratamentoContent() {
               </div>
             </div>
 
-            {/* Diagnósticos vinculados com insights estilizados */}
             {cidsVinculados.length > 0 && (
               <div className="relative z-10 mt-4 rounded-xl bg-surface-raised/50 border border-surface-border/40 p-3 space-y-2">
                 <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5">
@@ -420,7 +418,6 @@ function TratamentoContent() {
               </div>
             )}
 
-            {/* Resumo financeiro */}
             <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5">
               <div className="flex flex-col items-center text-center">
                 <div className="flex items-center gap-1 text-ink-muted">
@@ -450,7 +447,6 @@ function TratamentoContent() {
             </div>
           </motion.div>
 
-          {/* Alerta de economia (corrigido e estilizado) */}
           {economiaInfo && isFinite(economiaInfo.percentual) && !dismissEconomia && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
@@ -491,7 +487,6 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          {/* Equipe Clínica */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Users size={16} className="text-ice" />
@@ -521,7 +516,6 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          {/* Últimas Compras */}
           {linkedRenovacoes.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -550,7 +544,6 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          {/* Medicamentos Ativos */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
@@ -568,7 +561,9 @@ function TratamentoContent() {
                     key={med.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
                     className="group cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.98] hover:border-ice/30 relative overflow-hidden"
-                    style={{ borderLeft: `4px solid ${tratamentoCor}` }}
+                    style={{ 
+                      borderLeft: `4px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}` 
+                    }}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
@@ -600,7 +595,6 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          {/* Medicamentos Descontinuados */}
           {medicamentosDescontinuados.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
               <div className="flex items-center gap-2 pl-1">
@@ -630,7 +624,6 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          {/* Documentos */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
             <div className="flex items-center justify-between pl-1 pr-1">
               <div className="flex items-center gap-2">

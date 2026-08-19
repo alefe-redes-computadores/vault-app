@@ -22,6 +22,7 @@ import type {
   LocalSaude,
   Consulta,
   Cirurgia,
+  AppSettings,
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
 import { getLocalTodayISO } from '@/lib/health-utils';
@@ -108,7 +109,7 @@ class VaultDB extends Dexie {
   doseLogs!: Table<DoseLog, string>;
 
   credentials!: Table<Credential, string>;
-  bankCards!: Table<BankCard, string>; // ✅ Única tabela de cartões
+  bankCards!: Table<BankCard, string>;
 
   instituicoes!: Table<InstituicaoEnsino, string>;
   tratamentos!: Table<Tratamento, string>;
@@ -119,8 +120,8 @@ class VaultDB extends Dexie {
 
   anexos_clinicos!: Table<AnexoClinico, string>;
 
-  // Relações N:N legadas.
-  // O modelo atual utiliza tratamento_ids/cid_ids diretamente.
+  settings!: Table<AppSettings, string>;
+
   medicamento_tratamentos!: Table<MedicamentoTratamento, string>;
   exame_tratamentos!: Table<ExameTratamento, string>;
 
@@ -175,8 +176,6 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 7
-    // Remove temporariamente medicamentos/renovacoes
-    // para reconstrução posterior.
     // ==========================================================
 
     this.version(7).stores({
@@ -228,7 +227,6 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 13
-    // Laboratórios ainda existiam nesta versão.
     // ==========================================================
 
     this.version(13).stores({
@@ -245,7 +243,6 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 15
-    // Relações N:N e anexos clínicos.
     // ==========================================================
 
     this.version(15).stores({
@@ -339,10 +336,6 @@ class VaultDB extends Dexie {
           'id, table, operation, created_at, retry_count, failed',
       })
       .upgrade(async (tx) => {
-        // --------------------------------------------------------
-        // Medicamentos: relacionamento N:N legado -> tratamento_ids
-        // --------------------------------------------------------
-
         const medicamentos = await tx
           .table('medicamentos')
           .toArray();
@@ -399,10 +392,6 @@ class VaultDB extends Dexie {
           }
         }
 
-        // --------------------------------------------------------
-        // Exames: relacionamento N:N legado -> tratamento_ids
-        // --------------------------------------------------------
-
         const exames = await tx
           .table('exames')
           .toArray();
@@ -455,7 +444,6 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 19
-    // Suporte a múltiplos CIDs por tratamento.
     // ==========================================================
 
     this.version(19)
@@ -613,10 +601,6 @@ class VaultDB extends Dexie {
         laboratorios: null,
       })
       .upgrade(async (tx) => {
-        // --------------------------------------------------------
-        // Medicamentos: estabelecimento_id -> local_id
-        // --------------------------------------------------------
-
         const medicamentos = await tx
           .table('medicamentos')
           .toArray();
@@ -636,10 +620,6 @@ class VaultDB extends Dexie {
               });
           }
         }
-
-        // --------------------------------------------------------
-        // Exames: laboratorio_id -> local_id
-        // --------------------------------------------------------
 
         const exames = await tx
           .table('exames')
@@ -662,14 +642,11 @@ class VaultDB extends Dexie {
       });
 
     // ==========================================================
-    // VERSÃO 21 (PULADA - reservada para futuras migrações)
+    // VERSÃO 21 (PULADA)
     // ==========================================================
 
     // ==========================================================
     // VERSÃO 22
-    //
-    // Adiciona índices para os novos campos de renovação gratuita:
-    // tipo_aquisicao, data_proxima_retirada, exige_nova_receita
     // ==========================================================
 
     this.version(22).stores({
@@ -679,10 +656,6 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 23
-    //
-    // Adiciona índice 'data' em exames, consultas, cirurgias e renovacoes
-    // para consultas por data (tela "Hoje", filtros).
-    // Também adiciona o índice 'chave' na syncQueue.
     // ==========================================================
 
     this.version(23).stores({
@@ -741,9 +714,20 @@ class VaultDB extends Dexie {
         'id, user_id, synced, updated_at',
 
       syncQueue:
-        'id, chave, table, operation, created_at, retry_count, failed', // ✅ ADICIONADO: chave
+        'id, chave, table, operation, created_at, retry_count, failed',
 
       laboratorios: null,
+    });
+
+    // ==========================================================
+    // VERSÃO 24
+    //
+    // Adiciona tabela settings para armazenar preferências do usuário
+    // como default_person_id (pessoa padrão) e futuras configurações.
+    // ==========================================================
+
+    this.version(24).stores({
+      settings: 'id, user_id, default_person_id, updated_at',
     });
   }
 }
@@ -773,7 +757,6 @@ export async function syncMedicamentoTratamentos(
 
   await db.medicamentos.update(medicamentoId, {
     tratamento_ids: tratamentoIds,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -795,8 +778,7 @@ export async function safeAddPerson(
     ...person,
     id,
     synced: false,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
   };
 
   await db.persons.add(full);
@@ -818,7 +800,6 @@ export async function safeUpdatePerson(
 
   await db.persons.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -846,8 +827,7 @@ export async function safeAddDocument(
     ...doc,
     id,
     synced: false,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
   };
 
   await db.documents.add(full);
@@ -870,7 +850,6 @@ export async function safeUpdateDocument(
 
   await db.documents.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -941,8 +920,7 @@ export async function safeAddMedicamento(
   const full: Medicamento = {
     ...med,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -966,7 +944,6 @@ export async function safeUpdateMedicamento(
 
   await db.medicamentos.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -993,8 +970,7 @@ export async function safeAddRenovacao(
   const full: Renovacao = {
     ...ren,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1018,7 +994,6 @@ export async function safeUpdateRenovacao(
 
   await db.renovacoes.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1060,7 +1035,6 @@ export async function safeSetDoseLog(
       data: targetDate,
       tomado_em: data.tomado_em,
       ignorado_em: data.ignorado_em,
-      updated_at: timestamp,
       synced: false,
     });
 
@@ -1073,8 +1047,7 @@ export async function safeSetDoseLog(
     ...data,
     data: targetDate,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1099,8 +1072,7 @@ export async function safeAddVault(
   const full: Vault = {
     ...vault,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1122,7 +1094,7 @@ export async function safeAddVaultMember(
     ...member,
     id,
     invited_at: timestamp,
-    updated_at: timestamp,
+    updated_at: new Date().toISOString(),
     synced: false,
   };
 
@@ -1148,7 +1120,6 @@ export async function safeUpdateVaultMember(
 
   await db.vaultMembers.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1168,7 +1139,6 @@ export async function shareDocumentWithVault(
 
   await db.documents.update(documentId, {
     vault_id: vaultId,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1207,8 +1177,7 @@ export async function safeAddMedico(
   const full: Medico = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1232,7 +1201,6 @@ export async function safeUpdateMedico(
 
   await db.medicos.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1259,8 +1227,7 @@ export async function safeAddFarmacia(
   const full: Farmacia = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1286,7 +1253,6 @@ export async function safeUpdateFarmacia(
 
   await db.farmacias.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1313,8 +1279,7 @@ export async function safeAddHospital(
   const full: Hospital = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1340,7 +1305,6 @@ export async function safeUpdateHospital(
 
   await db.hospitais.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1367,8 +1331,7 @@ export async function safeAddLocal(
   const full: LocalSaude = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1394,7 +1357,6 @@ export async function safeUpdateLocal(
 
   await db.locais.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1421,8 +1383,7 @@ export async function safeAddExame(
   const full: Exame = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1448,7 +1409,6 @@ export async function safeUpdateExame(
 
   await db.exames.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1475,8 +1435,7 @@ export async function safeAddConsulta(
   const full: Consulta = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1502,7 +1461,6 @@ export async function safeUpdateConsulta(
 
   await db.consultas.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1529,8 +1487,7 @@ export async function safeAddCirurgia(
   const full: Cirurgia = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1556,7 +1513,6 @@ export async function safeUpdateCirurgia(
 
   await db.cirurgias.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1583,8 +1539,7 @@ export async function safeAddCredential(
   const full: Credential = {
     ...cred,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1610,7 +1565,6 @@ export async function safeUpdateCredential(
 
   await db.credentials.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1637,8 +1591,7 @@ export async function safeAddBankCard(
   const full: BankCard = {
     ...card,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1664,7 +1617,6 @@ export async function safeUpdateBankCard(
 
   await db.bankCards.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1691,8 +1643,7 @@ export async function safeAddInstituicao(
   const full: InstituicaoEnsino = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1718,7 +1669,6 @@ export async function safeUpdateInstituicao(
 
   await db.instituicoes.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1745,8 +1695,7 @@ export async function safeAddTratamento(
   const full: Tratamento = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1772,7 +1721,6 @@ export async function safeUpdateTratamento(
 
   await db.tratamentos.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1788,10 +1736,6 @@ export async function safeDeleteTratamento(
   if (!existing) {
     return;
   }
-
-  // ----------------------------------------------------------
-  // Remover dos medicamentos
-  // ----------------------------------------------------------
 
   const medicamentos =
     await db.medicamentos.toArray();
@@ -1810,16 +1754,11 @@ export async function safeDeleteTratamento(
         medicamento.id!,
         {
           tratamento_ids: tratamentoIds,
-          updated_at: timestamp,
           synced: false,
         }
       );
     }
   }
-
-  // ----------------------------------------------------------
-  // Remover dos exames
-  // ----------------------------------------------------------
 
   const exames =
     await db.exames.toArray();
@@ -1838,16 +1777,11 @@ export async function safeDeleteTratamento(
         exame.id!,
         {
           tratamento_ids: tratamentoIds,
-          updated_at: timestamp,
           synced: false,
         }
       );
     }
   }
-
-  // ----------------------------------------------------------
-  // Limpar relações legadas
-  // ----------------------------------------------------------
 
   await db.medicamento_tratamentos
     .where('tratamento_id')
@@ -1858,10 +1792,6 @@ export async function safeDeleteTratamento(
     .where('tratamento_id')
     .equals(id)
     .delete();
-
-  // ----------------------------------------------------------
-  // Deletar tratamento
-  // ----------------------------------------------------------
 
   await db.tratamentos.delete(id);
 }
@@ -1882,8 +1812,7 @@ export async function safeAddCid(
   const full: Cid = {
     ...data,
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -1909,7 +1838,6 @@ export async function safeUpdateCid(
 
   await db.cids.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -1925,10 +1853,6 @@ export async function safeDeleteCid(
   if (!existing) {
     return;
   }
-
-  // ----------------------------------------------------------
-  // Remover CID dos tratamentos
-  // ----------------------------------------------------------
 
   const tratamentos =
     await db.tratamentos.toArray();
@@ -1946,7 +1870,6 @@ export async function safeDeleteCid(
         tratamento.id!,
         {
           cid_ids: cidIds,
-          updated_at: timestamp,
           synced: false,
         }
       );
@@ -1973,8 +1896,7 @@ export async function safeAddAnexoClinico(
     ...data,
     id,
     user_id: String(data.user_id || ""),
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamp, updated_at: timestamp,
     synced: false,
   };
 
@@ -2000,7 +1922,6 @@ export async function safeUpdateAnexoClinico(
 
   await db.anexos_clinicos.update(id, {
     ...changes,
-    updated_at: timestamp,
     synced: false,
   });
 }
@@ -2009,4 +1930,70 @@ export async function safeDeleteAnexoClinico(
   id: string
 ): Promise<void> {
   await db.anexos_clinicos.delete(id);
+}
+
+// ============================================================
+// SETTINGS (CONFIGURAÇÕES DO USUÁRIO)
+// ============================================================
+
+export async function safeAddSettings(
+  data: Omit<AppSettings, 'id' | 'updated_at' | 'synced'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+
+  const full: AppSettings = {
+    ...data,
+    id,
+    synced: false,
+  };
+
+  await db.settings.add(full);
+  return id;
+}
+
+export async function safeUpdateSettings(
+  id: string,
+  changes: Partial<AppSettings>
+): Promise<void> {
+  const timestamp = nowIso();
+
+  const existing = await db.settings.get(id);
+  if (!existing) {
+    throw new Error('Configuração não encontrada');
+  }
+
+  await db.settings.update(id, {
+    ...changes,
+    synced: false,
+  });
+}
+
+export async function getDefaultPersonId(): Promise<string | null> {
+  const settings = await db.settings.toArray();
+  if (settings.length === 0) return null;
+  return settings[0]?.default_person_id || null;
+}
+
+export async function updateDefaultPersonId(personId: string): Promise<void> {
+  const settings = await db.settings.toArray();
+  const timestamp = nowIso();
+
+  if (settings.length === 0) {
+    await safeAddSettings({
+      user_id: '',
+      default_person_id: personId,
+    });
+  } else {
+    await safeUpdateSettings(settings[0].id!, {
+      default_person_id: personId,
+      synced: false,
+    });
+  }
+}
+
+export async function getSettings(): Promise<AppSettings | null> {
+  const settings = await db.settings.toArray();
+  if (settings.length === 0) return null;
+  return settings[0];
 }

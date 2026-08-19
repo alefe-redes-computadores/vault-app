@@ -21,6 +21,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useHospitais } from "@/hooks/useHospitais";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useConsultas } from "@/hooks/useConsultas";
 import { useCirurgias } from "@/hooks/useCirurgias";
 import { useExames } from "@/hooks/useExames";
@@ -45,6 +46,7 @@ type HospitalComCruzamento = Hospital & {
 export default function HospitaisPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
   const [search, setSearch] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<"todos" | "hospital" | "clinica">("todos");
 
@@ -53,6 +55,8 @@ export default function HospitaisPage() {
   const { cirurgias = [] } = useCirurgias();
   const { exames = [] } = useExames();
   const { medicos = [] } = useMedicos();
+
+  const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
   const hospitaisComCruzamento = useMemo<HospitalComCruzamento[]>(() => {
     return hospitais.map((hospital) => {
@@ -181,12 +185,10 @@ export default function HospitaisPage() {
                   ? "Tente ajustar os filtros aplicados."
                   : "Cadastre unidades para centralizar cirurgias, exames e prontuários."
               }
-              actionLabel="Novo Hospital"
-              onAction={() => router.push("/saude/hospitais/novo")}
             />
           ) : (
             filteredHospitais.map((hospital) => {
-              const cor = hospital.tipo === "clinica" ? "#34D399" : "#38BDF8";
+              const cor = hospital.tipo === "clinica" ? "#34D399" : personAccent;
               return (
                 <motion.div
                   key={hospital.id}

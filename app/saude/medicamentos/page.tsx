@@ -26,6 +26,7 @@ import {
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { usePersons } from "@/hooks/usePersons";
 import { useTratamentos } from "@/hooks/useTratamentos";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
@@ -69,24 +70,16 @@ export default function MedicamentosListPage() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const { medicamentos, updateMedicamento } = useMedicamentos();
+  const { activePersonId } = useActivePersonId();
   const persons = usePersons() as Person[];
   const { tratamentos = [] } = useTratamentos();
 
-  const [selectedPersonId, setSelectedPersonId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDescontinuados, setShowDescontinuados] = useState(false);
   const [sortBy, setSortBy] = useState<"urgency" | "name" | "renewal">("urgency");
   const [tomandoDoseId, setTomandoDoseId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("vault_med_filtro_pessoa");
-    if (saved) setSelectedPersonId(saved);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("vault_med_filtro_pessoa", selectedPersonId);
-  }, [selectedPersonId]);
-
+  // Mapa de tratamentos para exibir os nomes
   const tratamentoMap = useMemo(() => {
     const map = new Map<string, { nome: string }>();
     tratamentos.forEach((t: Tratamento) => {
@@ -95,6 +88,7 @@ export default function MedicamentosListPage() {
     return map;
   }, [tratamentos]);
 
+  // Mapa de pessoas (apenas para referência, não usamos mais a etiqueta)
   const personMap = useMemo(() => {
     const map = new Map<string, Person>();
     persons.forEach((p: Person) => {
@@ -162,10 +156,6 @@ export default function MedicamentosListPage() {
       list = list.filter((m) => m.status !== "descontinuado");
     }
 
-    if (selectedPersonId !== "all") {
-      list = list.filter((m) => m.person_id === selectedPersonId);
-    }
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(
@@ -198,9 +188,16 @@ export default function MedicamentosListPage() {
 
       return diasA - diasB;
     });
-  }, [medicamentos, selectedPersonId, searchQuery, showDescontinuados, sortBy]);
+  }, [medicamentos, searchQuery, showDescontinuados, sortBy]);
 
   if (medicamentos === undefined) return <CardListSkeleton />;
+
+  // Cor da pessoa ativa para aplicar nos cards
+  const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
+
+  // Buscar a pessoa ativa para saber a cor
+  const activePerson = persons.find((p) => p.id === activePersonId);
+  const activePersonColor = activePerson?.color || personAccent;
 
   return (
     <PageTransition>
@@ -269,45 +266,6 @@ export default function MedicamentosListPage() {
               <option value="name">Nome</option>
             </select>
           </div>
-
-          {persons.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-                  setSelectedPersonId("all");
-                }}
-                className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all whitespace-nowrap border ${
-                  selectedPersonId === "all"
-                    ? "bg-ice text-void border-transparent shadow-sm"
-                    : "bg-surface-raised text-ink-muted border-surface-border/50"
-                }`}
-              >
-                Todos
-              </button>
-              {persons.map((p: Person) => {
-                const isSelected = selectedPersonId === p.id;
-                const count = countByPerson.get(p.id!) || 0;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      trigger("vibrate");
-                      setSelectedPersonId(p.id!);
-                    }}
-                    className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all whitespace-nowrap border flex items-center gap-1.5 ${
-                      isSelected
-                        ? "bg-ice/20 text-ice border-ice/40 shadow-sm"
-                        : "bg-surface-raised text-ink-muted border-surface-border/50"
-                    }`}
-                  >
-                    <span>{p.name}</span>
-                    <span className="rounded-full bg-void/50 px-1.5 py-0.2 text-[10px]">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </header>
 
         <section className="space-y-4 px-5 pt-4">
@@ -315,11 +273,10 @@ export default function MedicamentosListPage() {
             <EmptyState
               icon={Pill}
               title="Nenhum medicamento encontrado"
-              description="Tente mudar o filtro ou cadastre um novo medicamento."
+              description="Tente mudar os filtros ou cadastre um novo medicamento."
               actionLabel="Limpar filtros"
               onAction={() => {
                 setSearchQuery("");
-                setSelectedPersonId("all");
                 setShowDescontinuados(false);
                 trigger("vibrate");
               }}
@@ -328,7 +285,6 @@ export default function MedicamentosListPage() {
             filteredAndSorted.map((med: Medicamento) => {
               const estoqueInfo = computeEstoqueInfo(med);
               const qtd = estoqueInfo?.quantidadeRestante ?? null;
-              const person = med.person_id ? personMap.get(med.person_id) : null;
               const tIds = med.tratamento_ids || [];
               const isSuspenso = med.status === "descontinuado";
               const isControlado = med.tipo_receita === "amarela";
@@ -338,6 +294,9 @@ export default function MedicamentosListPage() {
               const SelectedFormatIcon =
                 FORMATOS.find((f) => f.id === med.formato)?.icon || Pill;
               const color1 = med.cores?.[0] || "#60A5FA";
+
+              // Usar a cor da pessoa ativa ou a cor do medicamento como fallback
+              const cardBorderColor = activePersonColor || color1;
 
               return (
                 <motion.button
@@ -350,8 +309,7 @@ export default function MedicamentosListPage() {
                     isSuspenso ? "opacity-60 border-coral/30" : "border-surface-border"
                   }`}
                   style={{
-                    borderColor:
-                      person?.color && !isSuspenso ? `${person.color}40` : undefined,
+                    borderColor: !isSuspenso ? `${cardBorderColor}40` : undefined,
                   }}
                 >
                   <div
@@ -362,7 +320,7 @@ export default function MedicamentosListPage() {
                         ? "bg-amber-400"
                         : med.tipo_receita === "azul"
                         ? "bg-blue-400"
-                        : "bg-ice/50"
+                        : cardBorderColor
                     }`}
                   />
 
@@ -387,17 +345,6 @@ export default function MedicamentosListPage() {
                         <p className="text-[10px] font-medium text-ink-muted shrink-0 truncate">
                           {med.dosagem}
                         </p>
-                        {person && (
-                          <span
-                            className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase"
-                            style={{
-                              backgroundColor: `${person.color || "#60A5FA"}20`,
-                              color: person.color || "#60A5FA",
-                            }}
-                          >
-                            {person.name}
-                          </span>
-                        )}
                         {isControlado && (
                           <span className="shrink-0 rounded-full bg-amber-400/10 px-2 py-0.5 text-[9px] font-bold text-amber-400 border border-amber-400/20 uppercase">
                             Controlado
@@ -431,7 +378,6 @@ export default function MedicamentosListPage() {
                         })}
                       </div>
 
-                      {/* ✅ ALERTA DE ESTOQUE COM CONTRASTE MELHORADO */}
                       {insight?.deveRenovar && (
                         <div
                           className={`mt-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold w-fit ${
@@ -491,7 +437,6 @@ export default function MedicamentosListPage() {
                           )}
                         </div>
 
-                        {/* ✅ RENOVA: TEXTO SIMPLES COM ÍCONE */}
                         <div className="flex items-center gap-1 text-[11px] text-ink-muted font-mono">
                           <Calendar size={12} className="text-ink-faint" />
                           <span>Renova: {formatDate(med.proxima_renovacao) || "—"}</span>
