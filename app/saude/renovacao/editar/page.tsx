@@ -20,12 +20,12 @@ import {
   MapPin,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useToast } from "@/components/ToastProvider";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
-import { usePersons } from "@/hooks/usePersons";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
@@ -33,11 +33,9 @@ import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import type {
   Renovacao,
-  Person,
   Medicamento,
   Medico,
   Farmacia,
@@ -77,28 +75,37 @@ function handleDateMask(value: string): string {
   return clean;
 }
 
+function handleCurrencyMask(value: string): string {
+  const clean = value.replace(/\D/g, "");
+  if (!clean) return "";
+  const numberVal = parseInt(clean, 10) / 100;
+  return numberVal.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 function EditarRenovacaoContent() {
   const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
+  const { activePersonId } = useActivePersonId();
   const { getRenovacao, updateRenovacao, deleteRenovacao } = useRenovacoes();
   const { medicamentos } = useMedicamentos();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
   const { locais } = useLocais();
-  const persons = usePersons() as Person[];
+
+  const { run: runSave, isSubmitting: isSaving } = useSubmitAction();
+  const { run: runDelete, isSubmitting: isDeleting } = useSubmitAction();
 
   const [isLoading, setIsLoading] = useState(true);
   const [renovacao, setRenovacao] = useState<Renovacao | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
-  const [personId, setPersonId] = useState("");
   const [medicamentoId, setMedicamentoId] = useState("");
   const [medicoId, setMedicoId] = useState("");
   const [farmaciaId, setFarmaciaId] = useState("");
@@ -132,14 +139,20 @@ function EditarRenovacaoContent() {
         const data = await getRenovacao(id);
         if (data) {
           setRenovacao(data);
-          setPersonId(data.person_id || persons[0]?.id || "");
           setMedicamentoId(data.medicamento_id || "");
           setMedicoId(data.medico_id || "");
           setFarmaciaId(data.farmacia_id || "");
           setHospitalId(data.hospital_id || "");
           setLocalId(data.local_id || "");
           setDataDisplay(formatDateToDisplay(data.data));
-          setPreco(data.preco ? String(data.preco).replace(".", ",") : "");
+          
+          if (data.preco !== undefined && data.preco !== null) {
+             const precoCents = Math.round(data.preco * 100).toString();
+             setPreco(handleCurrencyMask(precoCents));
+          } else {
+             setPreco("");
+          }
+
           setObservacoes(data.observacoes || "");
           setAnexoUrl(data.anexo_url || "");
         } else {
@@ -153,58 +166,51 @@ function EditarRenovacaoContent() {
     };
 
     loadData();
-  }, [id, router, getRenovacao, persons]);
+  }, [id, router, getRenovacao]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
     if (!id) return;
 
-    setSaving(true);
-    try {
-      const dataISO = parseDateToISO(dataDisplay);
-      const precoNum = preco
-        ? parseFloat(preco.replace(/\./g, "").replace(",", "."))
-        : undefined;
+    runSave(
+      async () => {
+        const dataISO = parseDateToISO(dataDisplay);
+        const precoNum = preco
+          ? parseFloat(preco.replace(/\./g, "").replace(",", "."))
+          : undefined;
 
-      await updateRenovacao(id, {
-        person_id: personId || undefined,
-        medicamento_id: medicamentoId || undefined,
-        medico_id: medicoId || undefined,
-        farmacia_id: farmaciaId || undefined,
-        hospital_id: hospitalId || undefined,
-        local_id: localId || undefined,
-        data: dataISO || renovacao?.data,
-        preco: precoNum,
-        observacoes: observacoes.trim() || undefined,
-        anexo_url: anexoUrl.trim() || undefined,
-      });
-
-      trigger("success");
-      showToast("Renovação atualizada com sucesso", "success");
-      router.replace(`/saude/renovacao/detalhes?id=${id}`);
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao atualizar renovação", "error");
-    } finally {
-      setSaving(false);
-    }
+        await updateRenovacao(id, {
+          person_id: activePersonId || undefined,
+          medicamento_id: medicamentoId || undefined,
+          medico_id: medicoId || undefined,
+          farmacia_id: farmaciaId || undefined,
+          hospital_id: hospitalId || undefined,
+          local_id: localId || undefined,
+          data: dataISO || renovacao?.data,
+          preco: precoNum,
+          observacoes: observacoes.trim() || undefined,
+          anexo_url: anexoUrl.trim() || undefined,
+        });
+      },
+      {
+        successMessage: "Renovação atualizada com sucesso",
+        errorMessage: "Erro ao atualizar renovação",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    trigger("vibrate");
-    try {
-      await deleteRenovacao(id!);
-      trigger("success");
-      showToast("Renovação excluída com sucesso", "success");
-      router.replace("/saude/renovacao");
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao excluir renovação", "error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
+  const handleDelete = () => {
+    runDelete(
+      async () => {
+        await deleteRenovacao(id!);
+        router.replace("/saude/renovacao");
+      },
+      {
+        successMessage: "Renovação excluída com sucesso",
+        errorMessage: "Erro ao excluir renovação",
+      }
+    );
   };
 
   if (isLoading) return <DetailSkeleton />;
@@ -225,7 +231,6 @@ function EditarRenovacaoContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Vault</p>
               <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
                 Editar Renovação
               </h1>
@@ -244,41 +249,6 @@ function EditarRenovacaoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {persons.length > 0 && (
-            <motion.div
-              variants={fadeUp}
-              initial="initial"
-              animate="animate"
-              className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-            >
-              <p className="mb-3 text-sm font-medium text-ink-primary">
-                Para quem? <span className="text-coral">*</span>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {persons.map((person) => {
-                  const active = personId === person.id;
-                  return (
-                    <button
-                      key={person.id}
-                      onClick={() => {
-                        trigger("vibrate");
-                        setPersonId(person.id!);
-                      }}
-                      className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
-                        active
-                          ? "border-ice bg-ice/12 text-ice"
-                          : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                      }`}
-                    >
-                      {person.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Medicamento */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -303,7 +273,6 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Médico */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -327,7 +296,6 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Farmácia */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -351,7 +319,6 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Hospital */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -375,7 +342,6 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Local / Posto */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -399,7 +365,6 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* Data e Custo */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -422,21 +387,20 @@ function EditarRenovacaoContent() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Custo</label>
+              <label className="block text-sm font-medium text-ink-primary">Custo (R$)</label>
               <div className="relative">
                 <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="0,00"
                   value={preco}
-                  onChange={(e) => setPreco(e.target.value.replace(/\D/g, "").replace(/(\d)(\d{2})$/, "$1,$2"))}
+                  onChange={(e) => setPreco(handleCurrencyMask(e.target.value))}
                   className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm"
                 />
               </div>
             </div>
           </motion.div>
 
-          {/* Observações */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -452,7 +416,6 @@ function EditarRenovacaoContent() {
             />
           </motion.div>
 
-          {/* Anexo */}
           {anexoUrl && (
             <motion.div
               variants={fadeUp}
@@ -477,22 +440,20 @@ function EditarRenovacaoContent() {
           )}
         </section>
 
-        {/* Footer */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button
             variant="primary"
             size="lg"
             fullWidth
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={isSaving}
             className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
           >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {saving ? "Salvando..." : "Salvar Alterações"}
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSaving ? "Salvando..." : "Salvar Alterações"}
           </Button>
         </div>
 
-        {/* Modais de seleção */}
         <SelectionModal<Medicamento>
           isOpen={isMedModalOpen}
           onClose={() => setIsMedModalOpen(false)}
@@ -604,7 +565,8 @@ function EditarRenovacaoContent() {
           onConfirm={handleDelete}
           title="Excluir Renovação"
           message="Tem certeza que deseja excluir este registro de renovação?"
-          isLoading={deleting}
+          isLoading={isDeleting}
+          type="danger"
         />
       </main>
     </PageTransition>

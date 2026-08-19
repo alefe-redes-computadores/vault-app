@@ -736,7 +736,15 @@ class VaultDB extends Dexie {
     });
   }
 }
-
+// ==========================================================
+// VERSÃO 26 — Índices multiEntry para relacionamentos
+// ==========================================================
+// TODO: Remover ts-ignore na futura refatoração do Dexie
+// @ts-ignore
+this.version(26)!.stores({
+  medicos: 'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
+  hospitais: 'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
+});
 // ============================================================
 // INSTÂNCIA ÚNICA
 // ============================================================

@@ -23,6 +23,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { db } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 
 const PERSON_COLORS = [
   { name: "Azul", value: "#38BDF8" },
@@ -38,13 +39,21 @@ const PERSON_COLORS = [
   { name: "Cinza", value: "#9CA3AF" },
 ];
 
+function formatPhone(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 11);
+  if (clean.length <= 2) return clean;
+  if (clean.length <= 6) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
+  if (clean.length <= 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+  return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+}
+
 export default function NewPersonPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { run, isSubmitting } = useSubmitAction();
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
@@ -60,7 +69,7 @@ export default function NewPersonPage() {
     setFormData((prev) => ({ ...prev, color }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
 
     if (!formData.name.trim()) {
@@ -75,39 +84,35 @@ export default function NewPersonPage() {
       return;
     }
 
-    setLoading(true);
-    setError("");
+    run(
+      async () => {
+        const newPerson = {
+          id: crypto.randomUUID(),
+          user_id: user.id,
+          name: formData.name.trim(),
+          email: formData.email.trim() || undefined,
+          phone: formData.phone.trim() || undefined,
+          avatar_url: formData.avatar_url || undefined,
+          color: formData.color,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: 0, // Usando 0 em vez de false para o Dexie/Supabase
+        };
 
-    try {
-      const newPerson = {
-        id: crypto.randomUUID(),
-        user_id: user.id,
-        name: formData.name.trim(),
-        email: formData.email.trim() || undefined,
-        phone: formData.phone.trim() || undefined,
-        avatar_url: formData.avatar_url || undefined,
-        color: formData.color,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        synced: 0 // Usando 0 em vez de false para o Dexie/Supabase
-      };
+        // Salva no banco local
+        await db.persons.add(newPerson as any);
 
-      // Salva no banco local
-      await db.persons.add(newPerson as any);
-      
-      // Enfileira para subir para a nuvem quando houver internet
-      await enfileirarOperacao("persons", "add", newPerson);
-      trigger("success");
-      showToast("Pessoa adicionada com sucesso!", "success");
-      router.push("/pessoas");
-    } catch (err: any) {
-      console.error("Erro ao salvar pessoa:", err);
-      setError(err?.message || "Erro ao salvar pessoa");
-      trigger("error");
-      showToast("Erro ao salvar pessoa", "error");
-    } finally {
-      setLoading(false);
-    }
+        // Enfileira para subir para a nuvem quando houver internet
+        await enfileirarOperacao("persons", "add", newPerson);
+
+        router.push("/pessoas");
+      },
+      {
+        successMessage: "Pessoa adicionada com sucesso!",
+        errorMessage: "Erro ao salvar pessoa",
+        goBackOnSuccess: false, // navegamos manualmente
+      }
+    );
   };
 
   const handlePreencherDados = () => {
@@ -136,9 +141,6 @@ export default function NewPersonPage() {
             </button>
 
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                Vault
-              </p>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Nova pessoa
               </h1>
@@ -255,7 +257,7 @@ export default function NewPersonPage() {
                   placeholder="(11) 99999-9999"
                   value={formData.phone}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                    setFormData((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))
                   }
                   className="pl-9"
                 />
@@ -336,10 +338,10 @@ export default function NewPersonPage() {
               size="lg"
               fullWidth
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={isSubmitting}
               className="mt-4 flex items-center justify-center gap-2"
             >
-              {loading ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
                   Salvando...

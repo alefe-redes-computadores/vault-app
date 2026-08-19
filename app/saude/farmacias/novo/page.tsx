@@ -11,6 +11,7 @@ import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -30,12 +31,12 @@ export default function NovaFarmaciaPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const { addFarmacia } = useFarmacias();
+  const { run, isSubmitting } = useSubmitAction();
 
   const [nome, setNome] = useState("");
   const [endereco, setEndereco] = useState("");
   const [telefone, setTelefone] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -51,22 +52,20 @@ export default function NovaFarmaciaPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      await addFarmacia({
-        nome: nome.trim(),
-        endereco: endereco.trim() || undefined,
-        telefone: telefone.trim() || undefined,
-      });
-      trigger("success");
-      showToast("Farmácia cadastrada com sucesso", "success");
-      router.back();
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao cadastrar farmácia", "error");
-    } finally {
-      setLoading(false);
-    }
+    await run(
+      async () => {
+        await addFarmacia({
+          nome: nome.trim(),
+          endereco: endereco.trim() || undefined,
+          telefone: telefone.trim() || undefined,
+        });
+      },
+      {
+        successMessage: "Farmácia cadastrada com sucesso",
+        errorMessage: "Erro ao cadastrar farmácia",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
   return (
@@ -136,10 +135,10 @@ export default function NovaFarmaciaPage() {
             size="lg"
             fullWidth
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={isSubmitting}
             className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
           >
-            {loading ? (
+            {isSubmitting ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 Salvando...

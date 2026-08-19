@@ -4,13 +4,13 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, 
-  Stethoscope, 
-  Phone, 
-  Mail, 
-  Edit3, 
-  Trash2, 
+import {
+  ArrowLeft,
+  Stethoscope,
+  Phone,
+  Mail,
+  Edit3,
+  Trash2,
   Calendar,
   Activity,
   Pill,
@@ -23,6 +23,8 @@ import {
   AlertTriangle,
   Plus,
   Syringe,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -30,7 +32,17 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import type { Medico, Consulta, Cirurgia, Medicamento, Renovacao, Tratamento, Hospital, DoseLog } from "@/lib/types";
+import type {
+  Medico,
+  Consulta,
+  Cirurgia,
+  Medicamento,
+  Renovacao,
+  Tratamento,
+  Hospital,
+  DoseLog,
+  Document,
+} from "@/lib/types";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { sugerirRenovacao, isReceitaVencidaSegura, analisarComportamentoUso } from "@/lib/health-insights";
@@ -95,10 +107,22 @@ function DetalhesMedicoContent() {
 
   const { deleteMedico } = useMedicos();
 
-  const consultas = useLiveQuery(() => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as Consulta[])), [id]) || [];
-  const cirurgias = useLiveQuery(() => (id ? db.cirurgias.where("medico_id").equals(id).toArray() : Promise.resolve([] as Cirurgia[])), [id]) || [];
-  const medicamentos = useLiveQuery(() => (id ? db.medicamentos.where("medico_id").equals(id).toArray() : Promise.resolve([] as Medicamento[])), [id]) || [];
-  const renovacoes = useLiveQuery(() => (id ? db.renovacoes.where("medico_id").equals(id).reverse().limit(5).toArray() : Promise.resolve([] as Renovacao[])), [id]) || [];
+  const consultas = useLiveQuery(
+    () => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as Consulta[])),
+    [id]
+  ) || [];
+  const cirurgias = useLiveQuery(
+    () => (id ? db.cirurgias.where("medico_id").equals(id).toArray() : Promise.resolve([] as Cirurgia[])),
+    [id]
+  ) || [];
+  const medicamentos = useLiveQuery(
+    () => (id ? db.medicamentos.where("medico_id").equals(id).toArray() : Promise.resolve([] as Medicamento[])),
+    [id]
+  ) || [];
+  const renovacoes = useLiveQuery(
+    () => (id ? db.renovacoes.where("medico_id").equals(id).reverse().limit(5).toArray() : Promise.resolve([] as Renovacao[])),
+    [id]
+  ) || [];
 
   const doseLogs = useLiveQuery(() => {
     const validMedIds = medicamentos.map((m) => m.id).filter(Boolean) as string[];
@@ -218,6 +242,20 @@ function DetalhesMedicoContent() {
 
   const medicamentosAtivos = medicamentos.filter((m) => m.status === "ativo");
 
+  // Separando documentos de prescrições e laudos
+  const documentosDoMedico = useLiveQuery(
+    () => (id ? db.documents.where("medico_id").equals(id).reverse().sortBy("created_at") : Promise.resolve([] as Document[])),
+    [id]
+  ) || [];
+
+  const prescricoes = documentosDoMedico.filter((doc) => doc.type === "receita");
+  const laudosRelatorios = documentosDoMedico.filter((doc) => doc.type === "laudo" || doc.type === "encaminhamento" || doc.type === "exame_imagem" || doc.type === "exame_sangue");
+
+  const hospitaisVinculados = useLiveQuery(() => {
+    if (!medico?.hospital_ids || medico.hospital_ids.length === 0) return Promise.resolve([] as Hospital[]);
+    return db.hospitais.where('id').anyOf(medico.hospital_ids).toArray();
+  }, [medico?.hospital_ids]) || [];
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
@@ -305,13 +343,13 @@ function DetalhesMedicoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          <motion.div 
+          <motion.div
             variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}
-            initial="initial" 
-            animate="animate" 
+            initial="initial"
+            animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ 
-              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}` 
+            style={{
+              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}`
             }}
           >
             <div className="flex items-start gap-4">
@@ -378,13 +416,13 @@ function DetalhesMedicoContent() {
               </div>
             )}
 
-            {estabelecimentos.length > 0 && (
+            {hospitaisVinculados.length > 0 && (
               <div className="pt-4 border-t border-surface-border/40">
                 <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
                   <Building2 size={14} className="text-ice" /> Atende em:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {estabelecimentos.map((h) => (
+                  {hospitaisVinculados.map((h) => (
                     <span key={h.id} className="text-xs bg-surface-raised border border-surface-border/40 px-3 py-1.5 rounded-full text-ink-primary">
                       {h.nome}
                     </span>
@@ -395,10 +433,10 @@ function DetalhesMedicoContent() {
           </motion.div>
 
           {(alertasGerais.ativos.length > 0 || alertasGerais.vencidos.length > 0 || alertasGerais.comportamentos.length > 0 || alertaSemRetorno) && (
-            <motion.div 
-              variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} 
-              initial="initial" 
-              animate="animate" 
+            <motion.div
+              variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}
+              initial="initial"
+              animate="animate"
               transition={{ delay: 0.02 }}
               className="rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-4 shadow-sm"
             >
@@ -406,7 +444,7 @@ function DetalhesMedicoContent() {
                 <AlertTriangle size={16} className="text-amber-400" />
                 <h4 className="text-sm font-semibold text-ink-primary">Alertas Inteligentes</h4>
               </div>
-              
+
               <div className="space-y-2">
                 {alertaSemRetorno && (
                   <div className="flex items-start gap-2 text-xs border-b border-amber-400/10 pb-2 last:border-0">
@@ -462,8 +500,8 @@ function DetalhesMedicoContent() {
                 {tratamentos.map((t) => {
                   const color = getTreatmentColor(t.nome);
                   return (
-                    <span 
-                      key={t.id} 
+                    <span
+                      key={t.id}
                       className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded-md border"
                       style={{
                         backgroundColor: `${color}20`,
@@ -479,26 +517,78 @@ function DetalhesMedicoContent() {
             </motion.div>
           )}
 
-          {renovacoes.length > 0 && (
-            <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <FileWarning size={16} className="text-amber-400" />
-                <h4 className="text-sm font-semibold text-ink-primary">Últimas Renovações</h4>
+          {(prescricoes.length > 0 || laudosRelatorios.length > 0) && (
+            <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <FileText size={16} className="text-ice" />
+                <h4 className="text-sm font-semibold text-ink-primary">Documentos e Prescrições</h4>
               </div>
-              <div className="space-y-2">
-                {renovacoes.slice(0, 3).map((ren) => (
-                  <div key={ren.id} className="flex items-center justify-between text-sm border-b border-surface-border/30 pb-2 last:border-0">
-                    <div>
-                      <p className="font-medium text-ink-primary">Medicamento</p>
-                      <p className="text-xs text-ink-muted">{formatDateDisplay(ren.data)}</p>
-                    </div>
-                    <ChevronRight size={14} className="text-ink-faint" />
+
+              {prescricoes.length > 0 && (
+                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileWarning size={16} className="text-amber-400" />
+                    <h5 className="text-sm font-medium text-ink-primary">Prescrições</h5>
+                    <span className="ml-auto text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{prescricoes.length}</span>
                   </div>
-                ))}
-                {renovacoes.length > 3 && (
-                  <p className="text-[10px] text-center text-ink-muted pt-1">E mais {renovacoes.length - 3} registro(s)...</p>
-                )}
-              </div>
+                  <div className="space-y-2">
+                    {prescricoes.slice(0, 3).map((doc) => (
+                      <div
+                        key={doc.id}
+                        onClick={() => { trigger("vibrate"); router.push(`/detalhes?id=${doc.id}`); }}
+                        className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-amber-400/30 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-ink-primary truncate">{doc.title}</p>
+                          <p className="text-[11px] text-ink-muted">{formatDateDisplay(doc.created_at)}</p>
+                        </div>
+                        <ChevronRight size={14} className="text-ink-faint" />
+                      </div>
+                    ))}
+                    {prescricoes.length > 3 && (
+                      <button
+                        onClick={() => { trigger("vibrate"); router.push("/documentos?tipo=receita"); }}
+                        className="w-full text-center text-[10px] font-medium text-ice bg-ice/10 py-2 rounded-xl mt-1 active:scale-95 transition-all"
+                      >
+                        Ver todas ({prescricoes.length})
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {laudosRelatorios.length > 0 && (
+                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText size={16} className="text-ice" />
+                    <h5 className="text-sm font-medium text-ink-primary">Laudos e Relatórios</h5>
+                    <span className="ml-auto text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{laudosRelatorios.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {laudosRelatorios.slice(0, 3).map((doc) => (
+                      <div
+                        key={doc.id}
+                        onClick={() => { trigger("vibrate"); router.push(`/detalhes?id=${doc.id}`); }}
+                        className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-ice/30 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-ink-primary truncate">{doc.title}</p>
+                          <p className="text-[11px] text-ink-muted">{formatDateDisplay(doc.created_at)}</p>
+                        </div>
+                        <ChevronRight size={14} className="text-ink-faint" />
+                      </div>
+                    ))}
+                    {laudosRelatorios.length > 3 && (
+                      <button
+                        onClick={() => { trigger("vibrate"); router.push("/documentos?tipo=laudo"); }}
+                        className="w-full text-center text-[10px] font-medium text-ice bg-ice/10 py-2 rounded-xl mt-1 active:scale-95 transition-all"
+                      >
+                        Ver todos ({laudosRelatorios.length})
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -521,8 +611,8 @@ function DetalhesMedicoContent() {
                 ) : (
                   <div className="space-y-2">
                     {[...consultas].sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((con) => (
-                      <div 
-                        key={con.id} 
+                      <div
+                        key={con.id}
                         onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-ice/30 transition-colors"
                       >
@@ -550,8 +640,8 @@ function DetalhesMedicoContent() {
                 ) : (
                   <div className="space-y-2">
                     {[...cirurgias].sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((cir) => (
-                      <div 
-                        key={cir.id} 
+                      <div
+                        key={cir.id}
                         onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-coral/30 transition-colors"
                       >
@@ -584,8 +674,8 @@ function DetalhesMedicoContent() {
                 ) : (
                   <div className="space-y-2">
                     {alertasMedicamentos.slice(0, 3).map((med) => (
-                      <div 
-                        key={med.id} 
+                      <div
+                        key={med.id}
                         onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-emerald-400/30 transition-colors"
                       >
@@ -618,12 +708,12 @@ function DetalhesMedicoContent() {
           </motion.div>
         </section>
 
-        <ConfirmationModal 
-          isOpen={showDeleteModal} 
-          onClose={() => setShowDeleteModal(false)} 
-          onConfirm={handleDelete} 
-          title="Excluir Médico" 
-          message="Tem certeza que deseja excluir este profissional? As consultas e registros vinculados não serão apagados, mas perderão a associação com este nome." 
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir Médico"
+          message="Tem certeza que deseja excluir este profissional? As consultas e registros vinculados não serão apagados, mas perderão a associação com este nome."
         />
       </main>
     </PageTransition>

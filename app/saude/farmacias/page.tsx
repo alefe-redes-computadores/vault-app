@@ -164,8 +164,8 @@ export default function FarmaciasPage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber-400">Vault Saúde</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary truncate">Farmácias e Custo de Retirada</h1>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber-400">Farmácias</p>
+              <h1 className="font-display text-xl font-semibold text-ink-primary truncate">Farmácias</h1>
             </div>
           </div>
 

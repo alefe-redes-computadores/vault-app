@@ -6,6 +6,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { settingsRepository } from "@/lib/repositories/settings";
+import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 
 interface PersonContextType {
   activePersonId: string | null;
@@ -18,6 +20,8 @@ const PersonContext = createContext<PersonContextType | undefined>(undefined);
 
 export function PersonProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const [activePersonId, setActivePersonId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -87,11 +91,16 @@ export function PersonProvider({ children }: { children: ReactNode }) {
         setActivePersonId(personId);
         await settingsRepository.setDefaultPersonId(user.id, personId);
         await applyPersonColor(personId);
+
+        trigger("vibrate");
+        showToast(`Pessoa alterada para ${person.name}`, "success");
       } catch (error) {
         console.error("Erro ao trocar pessoa:", error);
+        trigger("error");
+        showToast("Erro ao trocar pessoa", "error");
       }
     },
-    [user, applyPersonColor]
+    [user, applyPersonColor, trigger, showToast]
   );
 
   return (

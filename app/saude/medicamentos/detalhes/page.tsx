@@ -10,7 +10,7 @@ import {
   FileText, Calendar, Activity, AlertTriangle, DollarSign,
   CheckCircle2, Building2, Info, MapPin, Zap, Clock, TrendingUp,
   LineChart, Check, ExternalLink, Share2, Phone, Copy, ChevronDown, ChevronUp,
-  Plus, FileWarning, Gift, AlertCircle
+  Plus, FileWarning, Gift, AlertCircle, Trash2
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -24,6 +24,7 @@ import { sugerirRenovacao } from "@/lib/health-insights";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 import type { Medicamento, Tratamento, Renovacao, Medico, Farmacia, Hospital } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
@@ -62,6 +63,8 @@ function MedicamentoDetalhesContent() {
   const [showAllRenovacoes, setShowAllRenovacoes] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' | 'loading' } | null>(null);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ============================================================
   // CONSULTAS DEXIE (REATIVAS)
@@ -151,6 +154,22 @@ function MedicamentoDetalhesContent() {
       setTimeout(() => setToastMessage(null), 3000);
     }
   }, [med, updateMedicamento, trigger]);
+
+  const handleDelete = async () => {
+    if (!med?.id) return;
+    setIsDeleting(true);
+    try {
+      await deleteMedicamento(med.id);
+      trigger("success");
+      router.replace("/saude/medicamentos");
+    } catch (error) {
+      console.error("Erro ao excluir medicamento:", error);
+      trigger("error");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
 
   if (med === undefined) return <DetailSkeleton />;
   if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
@@ -327,6 +346,12 @@ Estoque: ${qtd} doses`;
 
             <button onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${id}`); }} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ice">
               <Edit3 size={18} />
+            </button>
+            <button
+              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
+              className="h-10 w-10 flex items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral active:scale-95 transition-transform"
+            >
+              <Trash2 size={18} />
             </button>
           </div>
         </header>
@@ -540,9 +565,13 @@ Estoque: ${qtd} doses`;
                    <p className="text-[10px] uppercase font-bold opacity-70">Válida até</p>
                    <p className="text-sm font-bold mt-0.5">{formatDate(med.proxima_renovacao)}</p>
                  </div>
-                 {documento?.attachments && documento.attachments.length > 0 && (
+                 {documento?.attachments && documento.attachments.length > 0 ? (
                    <button onClick={abrirAnexo} className="flex items-center gap-1.5 bg-current/10 hover:bg-current/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">
                      <ExternalLink size={14} /> Ver Anexo
+                   </button>
+                 ) : (
+                   <button onClick={() => router.push(`/saude/medicamentos/editar?id=${id}`)} className="flex items-center gap-1.5 bg-current/10 hover:bg-current/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">
+                     <Plus size={14} /> Vincular receita
                    </button>
                  )}
                </div>
@@ -629,6 +658,18 @@ Estoque: ${qtd} doses`;
              </button>
           </div>
         </BottomSheet>
+
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir medicamento"
+          message={`Tem certeza que deseja excluir "${med.nome}"? Esta ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          cancelLabel="Cancelar"
+          isLoading={isDeleting}
+          type="danger"
+        />
       </main>
     </PageTransition>
   );

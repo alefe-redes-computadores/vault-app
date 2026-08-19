@@ -60,6 +60,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 
 const DEFAULT_PERSON_COLOR = "#7C9CB5";
 
@@ -216,10 +217,10 @@ export default function NewDocumentPage() {
   const { addDocument } = useSafeDb();
   const persons = usePersons();
   const { activePersonId } = useActivePersonId();
-
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
+  const { run, isSubmitting } = useSubmitAction();
 
   const laboratorios = useLiveQuery(
     () =>
@@ -249,7 +250,6 @@ export default function NewDocumentPage() {
     vault_id: undefined,
   });
 
-  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [localFiles, setLocalFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -382,6 +382,14 @@ export default function NewDocumentPage() {
     const file = event.target.files?.[0];
 
     if (file) {
+      // Sugestão: validar tamanho máximo de 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        trigger("error");
+        alert("Arquivo muito grande. Máximo 10MB.");
+        event.target.value = "";
+        return;
+      }
+
       trigger("vibrate");
       setLocalFiles((prev) => [...prev, file]);
 
@@ -408,6 +416,13 @@ export default function NewDocumentPage() {
     const file = event.target.files?.[0];
 
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        trigger("error");
+        alert("Arquivo muito grande. Máximo 10MB.");
+        event.target.value = "";
+        return;
+      }
+
       trigger("vibrate");
       setLocalFiles((prev) => [...prev, file]);
 
@@ -524,220 +539,140 @@ export default function NewDocumentPage() {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
 
     if (!validateStep(3)) return;
-
     if (!user?.id) {
       trigger("error");
       return;
     }
 
-    setLoading(true);
-    setUploadProgress(0);
+    run(
+      async () => {
+        setUploadProgress(0);
 
-    try {
-      const cleanMetadata: Record<string, string> = {
-        ...formData.metadata,
-      };
+        const cleanMetadata: Record<string, string> = {
+          ...formData.metadata,
+        };
 
-      fields.forEach((field) => {
-        if (
-          field.type === "date" &&
-          cleanMetadata[field.key]
-        ) {
-          const parts = cleanMetadata[field.key].split("/");
+        fields.forEach((field) => {
+          if (
+            field.type === "date" &&
+            cleanMetadata[field.key]
+          ) {
+            const parts = cleanMetadata[field.key].split("/");
 
-          if (parts.length === 3) {
-            cleanMetadata[field.key] =
-              `${parts[2]}-${parts[1]}-${parts[0]}`;
+            if (parts.length === 3) {
+              cleanMetadata[field.key] =
+                `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
           }
-        }
-      });
+        });
 
-      const docData: Omit<
-        Document,
-        "id" | "created_at" | "updated_at" | "synced"
-      > = {
-        user_id: user.id,
-        person_id: formData.person_id,
-        category_id: formData.category_id,
-        type: formData.type,
-        title: formData.title.trim(),
-        description:
-          formData.description.trim() || undefined,
-        metadata: cleanMetadata,
-        attachments: formData.attachments,
-        is_favorite: false,
-        vault_id: formData.vault_id || undefined,
-      };
+        const docData: Omit<
+          Document,
+          "id" | "created_at" | "updated_at" | "synced"
+        > = {
+          user_id: user.id,
+          person_id: formData.person_id,
+          category_id: formData.category_id,
+          type: formData.type,
+          title: formData.title.trim(),
+          description:
+            formData.description.trim() || undefined,
+          metadata: cleanMetadata,
+          attachments: formData.attachments,
+          is_favorite: false,
+          vault_id: formData.vault_id || undefined,
+        };
 
-      const docId = await addDocument(docData);
+        const docId = await addDocument(docData);
 
-      if (localFiles.length > 0) {
-        const folder = formData.category_id;
-        const uploadedAttachments: Attachment[] = [];
+        if (localFiles.length > 0) {
+          const folder = formData.category_id;
+          const uploadedAttachments: Attachment[] = [];
 
-        for (
-          let index = 0;
-          index < localFiles.length;
-          index++
-        ) {
-          const file = localFiles[index];
-          const attachment = formData.attachments[index];
+          for (
+            let index = 0;
+            index < localFiles.length;
+            index++
+          ) {
+            const file = localFiles[index];
+            const attachment = formData.attachments[index];
 
-          if (!attachment) continue;
+            if (!attachment) continue;
 
-          const { url, error } = await uploadFile(
-            user.id,
-            file,
-            folder,
-          );
+            const { url, error } = await uploadFile(
+              user.id,
+              file,
+              folder,
+            );
 
-          if (error) {
-            console.error("Erro no upload:", error);
-            continue;
-          }
+            if (error) {
+              console.error("Erro no upload:", error);
+              continue;
+            }
 
-          uploadedAttachments.push({
-            ...attachment,
-            url,
-          });
-
-          setUploadProgress(
-            Math.round(
-              ((index + 1) / localFiles.length) * 100,
-            ),
-          );
-        }
-
-        if (uploadedAttachments.length > 0) {
-          const finalAttachments =
-            formData.attachments.map((attachment) => {
-              const updated = uploadedAttachments.find(
-                (uploaded) =>
-                  uploaded.id === attachment.id,
-              );
-
-              return updated || attachment;
+            uploadedAttachments.push({
+              ...attachment,
+              url,
             });
 
-          await db.documents.update(docId, {
-            attachments: finalAttachments,
-            updated_at: new Date().toISOString(),
-            synced: false,
-          });
+            setUploadProgress(
+              Math.round(
+                ((index + 1) / localFiles.length) * 100,
+              ),
+            );
+          }
 
-          formData.attachments.forEach((attachment) => {
-            if (attachment.url.startsWith("blob:")) {
-              URL.revokeObjectURL(attachment.url);
-            }
-          });
+          if (uploadedAttachments.length > 0) {
+            const finalAttachments =
+              formData.attachments.map((attachment) => {
+                const updated = uploadedAttachments.find(
+                  (uploaded) =>
+                    uploaded.id === attachment.id,
+                );
 
-          setLocalFiles([]);
+                return updated || attachment;
+              });
+
+            await db.documents.update(docId, {
+              attachments: finalAttachments,
+              updated_at: new Date().toISOString(),
+              synced: false,
+            });
+
+            formData.attachments.forEach((attachment) => {
+              if (attachment.url.startsWith("blob:")) {
+                URL.revokeObjectURL(attachment.url);
+              }
+            });
+
+            setLocalFiles([]);
+          }
         }
-      }
 
-      if (cleanMetadata.expiry_date) {
-        await scheduleDocumentExpiryNotification(
-          docId,
-          formData.title,
-          cleanMetadata.expiry_date,
-          CATEGORIES[formData.category_id].name,
-          30,
-        );
-      }
+        if (cleanMetadata.expiry_date) {
+          await scheduleDocumentExpiryNotification(
+            docId,
+            formData.title,
+            cleanMetadata.expiry_date,
+            CATEGORIES[formData.category_id].name,
+            30,
+          );
+        }
 
-      trigger("success");
-      router.push("/");
-    } catch (error) {
-      console.error("Erro ao salvar:", error);
-      trigger("error");
-    } finally {
-      setLoading(false);
-      setUploadProgress(0);
-    }
+        // Navegar após sucesso
+        router.push("/");
+      },
+      {
+        successMessage: "Documento salvo com sucesso",
+        errorMessage: "Erro ao salvar documento",
+        goBackOnSuccess: false, // usamos router.push dentro
+      }
+    );
   };
-
-  const selectionConfig = useMemo<
-    Record<string, SelectionConfig>
-  >(
-    () => ({
-      medico_id: {
-        items: medicos,
-        title: "Médico",
-        isOpen: isDoctorModalOpen,
-        setIsOpen: setIsDoctorModalOpen,
-        onCreateNew: () => {
-          setIsDoctorModalOpen(false);
-          router.push("/saude/medicos/novo");
-        },
-        createNewLabel: "Criar médico",
-      },
-      from_medico_id: {
-        items: medicos,
-        title: "Médico",
-        isOpen: isDoctorModalOpen,
-        setIsOpen: setIsDoctorModalOpen,
-        onCreateNew: () => {
-          setIsDoctorModalOpen(false);
-          router.push("/saude/medicos/novo");
-        },
-        createNewLabel: "Criar médico",
-      },
-      to_medico_id: {
-        items: medicos,
-        title: "Médico",
-        isOpen: isDoctorModalOpen,
-        setIsOpen: setIsDoctorModalOpen,
-        onCreateNew: () => {
-          setIsDoctorModalOpen(false);
-          router.push("/saude/medicos/novo");
-        },
-        createNewLabel: "Criar médico",
-      },
-      farmacia_id: {
-        items: farmacias,
-        title: "Farmácia",
-        isOpen: isPharmacyModalOpen,
-        setIsOpen: setIsPharmacyModalOpen,
-        onCreateNew: () => {
-          setIsPharmacyModalOpen(false);
-          router.push("/saude/farmacias/novo");
-        },
-        createNewLabel: "Criar farmácia",
-      },
-      hospital_id: {
-        items: hospitais,
-        title: "Hospital",
-        isOpen: isHospitalModalOpen,
-        setIsOpen: setIsHospitalModalOpen,
-        onCreateNew: () => {
-          setIsHospitalModalOpen(false);
-          router.push("/saude/hospitais/novo");
-        },
-        createNewLabel: "Criar hospital",
-      },
-      laboratorio_id: {
-        items: laboratorios,
-        title: "Laboratório",
-        isOpen: isLaboratoryModalOpen,
-        setIsOpen: setIsLaboratoryModalOpen,
-      },
-    }),
-    [
-      medicos,
-      farmacias,
-      hospitais,
-      laboratorios,
-      isDoctorModalOpen,
-      isPharmacyModalOpen,
-      isHospitalModalOpen,
-      isLaboratoryModalOpen,
-      router,
-    ],
-  );
 
   return (
     <PageTransition>
@@ -1025,6 +960,7 @@ export default function NewDocumentPage() {
                       }
 
                       const selection =
+                        // @ts-ignore
                         selectionConfig[field.key];
 
                       if (
@@ -1033,7 +969,7 @@ export default function NewDocumentPage() {
                       ) {
                         const selectedItem =
                           selection.items.find(
-                            (item) =>
+                            (item: any) =>
                               String(item.id) ===
                               formData.metadata[
                                 field.key
@@ -1243,7 +1179,7 @@ export default function NewDocumentPage() {
                       onClick={() =>
                         fileInputRef.current?.click()
                       }
-                      disabled={loading}
+                      disabled={isSubmitting}
                     >
                       <Upload size={16} />
                       Arquivo
@@ -1255,7 +1191,7 @@ export default function NewDocumentPage() {
                       onClick={() =>
                         cameraInputRef.current?.click()
                       }
-                      disabled={loading}
+                      disabled={isSubmitting}
                     >
                       <Camera size={16} />
                       Câmera
@@ -1568,7 +1504,7 @@ export default function NewDocumentPage() {
               variant="secondary"
               size="lg"
               onClick={prevStep}
-              disabled={loading}
+              disabled={isSubmitting}
               className="flex w-1/3 items-center justify-center"
             >
               <ChevronLeft size={20} />
@@ -1580,7 +1516,7 @@ export default function NewDocumentPage() {
               variant="primary"
               size="lg"
               onClick={nextStep}
-              disabled={loading}
+              disabled={isSubmitting}
               className={`${
                 currentStep === 1
                   ? "w-full"
@@ -1595,10 +1531,10 @@ export default function NewDocumentPage() {
               variant="primary"
               size="lg"
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={isSubmitting}
               className="w-2/3 flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
             >
-              {loading ? (
+              {isSubmitting ? (
                 <>
                   <Loader2
                     size={16}

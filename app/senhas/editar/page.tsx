@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import type { Credential } from "@/lib/types";
 
 const fadeUp = {
@@ -50,6 +51,7 @@ function EditPasswordContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { updateCredential } = useCredentials();
+  const { run, isSubmitting } = useSubmitAction();
 
   const { authenticate } = useBiometric({
     title: "Editar Senha",
@@ -58,7 +60,6 @@ function EditPasswordContent() {
   });
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasAuthenticated, setHasAuthenticated] = useState(false);
@@ -181,7 +182,7 @@ function EditPasswordContent() {
     setVisibleHistoryPass((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!id || !originalItem) return;
     trigger("vibrate");
 
@@ -195,37 +196,34 @@ function EditPasswordContent() {
       return;
     }
 
-    setSaving(true);
-    try {
-      const payload: Partial<Credential> & { password_plain: string; password_history?: { encrypted: string; date: string }[] } = {
-        title: formData.title.trim(),
-        username: formData.username.trim(),
-        password_plain: formData.password_plain,
-        url: formData.url.trim(),
-        notes: formData.notes.trim(),
-        category: formData.category,
-      };
+    run(
+      async () => {
+        const payload: Partial<Credential> & { password_plain: string; password_history?: { encrypted: string; date: string }[] } = {
+          title: formData.title.trim(),
+          username: formData.username.trim(),
+          password_plain: formData.password_plain,
+          url: formData.url.trim(),
+          notes: formData.notes.trim(),
+          category: formData.category,
+        };
 
-      if (formData.password_plain !== originalPlainPass) {
-        const newHistory = [...historyItems];
-        newHistory.push({
-          encrypted: originalItem.password_encrypted,
-          date: new Date().toISOString(),
-        });
-        payload.password_history = newHistory;
+        if (formData.password_plain !== originalPlainPass) {
+          const newHistory = [...historyItems];
+          newHistory.push({
+            encrypted: originalItem.password_encrypted,
+            date: new Date().toISOString(),
+          });
+          payload.password_history = newHistory;
+        }
+
+        await updateCredential(id, payload);
+      },
+      {
+        successMessage: "Senha atualizada",
+        errorMessage: "Erro ao salvar",
+        goBackOnSuccess: true,
       }
-
-      await updateCredential(id, payload);
-      trigger("success");
-      showToast("Senha atualizada", "success");
-      router.back();
-    } catch (error) {
-      console.error("Erro ao salvar:", error);
-      trigger("error");
-      showToast("Erro ao salvar", "error");
-    } finally {
-      setSaving(false);
-    }
+    );
   };
 
   if (loading || !hasAuthenticated) {
@@ -352,7 +350,7 @@ function EditPasswordContent() {
                   </h3>
                   <button onClick={() => setShowGenerator(false)} className="rounded-full p-2 bg-surface-raised text-ink-muted active:scale-95"><X size={16}/></button>
                 </div>
-                
+
                 <div className="space-y-6">
                   <div>
                     <div className="flex justify-between text-sm mb-2"><span className="text-ink-muted">Tamanho</span><span className="font-mono text-ice font-bold">{genLength} caracteres</span></div>
@@ -382,9 +380,9 @@ function EditPasswordContent() {
         </AnimatePresence>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {saving ? "Salvando Alterações..." : "Salvar Alterações"}
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={isSubmitting} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSubmitting ? "Salvando Alterações..." : "Salvar Alterações"}
           </Button>
         </div>
       </main>

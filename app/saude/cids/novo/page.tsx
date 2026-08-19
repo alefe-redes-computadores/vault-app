@@ -29,6 +29,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ToastProvider";
 import { uploadFile } from "@/lib/supabase/storage";
 import type { Person, Medico, Hospital, LocalSaude } from "@/lib/types";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 
 function handleDateMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 8);
@@ -51,8 +53,9 @@ export default function NovoCidPage() {
   const { hospitais } = useHospitais();
   const { locais } = useLocais();
   const persons = usePersons() as Person[];
+  const { activePersonId } = useActivePersonId();
+  const { run, isSubmitting } = useSubmitAction();
 
-  const [personId, setPersonId] = useState<string>("");
   const [codigo, setCodigo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [dataDiagnostico, setDataDiagnostico] = useState("");
@@ -68,7 +71,6 @@ export default function NovoCidPage() {
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
 
   const selectedMedico = medicos.find((m) => m.id === medicoId);
   const selectedHospital = hospitais.find((h) => h.id === hospitalId);
@@ -76,7 +78,6 @@ export default function NovoCidPage() {
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!personId) newErrors.personId = "Selecione uma pessoa";
     if (!codigo.trim()) newErrors.codigo = "Código é obrigatório";
     if (!descricao.trim()) newErrors.descricao = "Descrição é obrigatória";
     setErrors(newErrors);
@@ -107,34 +108,30 @@ export default function NovoCidPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const dataISO = dataDiagnostico
-        ? dataDiagnostico.split("/").reverse().join("-")
-        : undefined;
+    await run(
+      async () => {
+        const dataISO = dataDiagnostico
+          ? dataDiagnostico.split("/").reverse().join("-")
+          : undefined;
 
-      await addCid({
-        person_id: personId,
-        codigo: codigo.trim(),
-        descricao: descricao.trim(),
-        data_diagnostico: dataISO,
-        medico_id: medicoId || undefined,
-        hospital_id: hospitalId || undefined,
-        local_id: localId || undefined,
-        observacoes: observacoes.trim() || undefined,
-        anexo_url: anexoUrl || undefined,
-      });
-
-      trigger("success");
-      showToast("CID cadastrado com sucesso!", "success");
-      router.back();
-    } catch (error) {
-      console.error("Erro ao cadastrar CID:", error);
-      trigger("error");
-      showToast("Erro ao cadastrar CID", "error");
-    } finally {
-      setLoading(false);
-    }
+        await addCid({
+          person_id: activePersonId || undefined,
+          codigo: codigo.trim(),
+          descricao: descricao.trim(),
+          data_diagnostico: dataISO,
+          medico_id: medicoId || undefined,
+          hospital_id: hospitalId || undefined,
+          local_id: localId || undefined,
+          observacoes: observacoes.trim() || undefined,
+          anexo_url: anexoUrl || undefined,
+        });
+      },
+      {
+        successMessage: "CID cadastrado com sucesso",
+        errorMessage: "Erro ao cadastrar CID",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
   return (
@@ -161,31 +158,6 @@ export default function NovoCidPage() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-          >
-            <p className="mb-3 text-sm font-medium text-ink-primary">Para quem? <span className="text-coral">*</span></p>
-            <div className="flex flex-wrap gap-2">
-              {persons.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => { trigger("vibrate"); setPersonId(p.id!); }}
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                    personId === p.id
-                      ? "border-ice bg-ice/12 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-            {errors.personId && <p className="mt-2 text-xs text-coral">{errors.personId}</p>}
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.02 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4"
           >
             <Input
@@ -328,9 +300,9 @@ export default function NovoCidPage() {
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading}>
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {loading ? "Salvando..." : "Salvar CID"}
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSubmitting ? "Salvando..." : "Salvar CID"}
           </Button>
         </div>
 
@@ -348,6 +320,8 @@ export default function NovoCidPage() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }}
+          createNewLabel="Cadastrar Novo Médico"
         />
 
         <SelectionModal<Hospital>
@@ -364,6 +338,8 @@ export default function NovoCidPage() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
+          createNewLabel="Cadastrar Novo Hospital"
         />
 
         <SelectionModal<LocalSaude>
@@ -380,6 +356,8 @@ export default function NovoCidPage() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }}
+          createNewLabel="Cadastrar Novo Local"
         />
       </main>
     </PageTransition>

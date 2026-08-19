@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import { useLocais } from "@/hooks/useLocais";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useToast } from "@/components/ToastProvider";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
@@ -34,16 +34,15 @@ function formatPhone(value: string): string {
 
 export default function NovoLocalPage() {
   const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
   const { addLocal } = useLocais();
+  const { run, isSubmitting } = useSubmitAction();
 
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<string>("posto_saude");
   const [endereco, setEndereco] = useState("");
   const [telefone, setTelefone] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -52,30 +51,27 @@ export default function NovoLocalPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
     if (!validate()) {
       trigger("error");
       return;
     }
 
-    setLoading(true);
-    try {
-      await addLocal({
-        nome: nome.trim(),
-        tipo: tipo || undefined,
-        endereco: endereco.trim() || undefined,
-        telefone: telefone.trim() || undefined,
-      });
-      trigger("success");
-      showToast("Local cadastrado com sucesso", "success");
-      router.back();
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao cadastrar local", "error");
-    } finally {
-      setLoading(false);
-    }
+    run(
+      () =>
+        addLocal({
+          nome: nome.trim(),
+          tipo: tipo || undefined,
+          endereco: endereco.trim() || undefined,
+          telefone: telefone.trim() || undefined,
+        }),
+      {
+        successMessage: "Local cadastrado com sucesso",
+        errorMessage: "Erro ao cadastrar local",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
   return (
@@ -92,13 +88,7 @@ export default function NovoLocalPage() {
             </button>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <MapPin size={16} className="text-emerald-400" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">
-                  Vault
-                </p>
-              </div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
                 Novo local
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
@@ -165,10 +155,10 @@ export default function NovoLocalPage() {
             size="lg"
             fullWidth
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={isSubmitting}
             className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
           >
-            {loading ? (
+            {isSubmitting ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 Salvando...

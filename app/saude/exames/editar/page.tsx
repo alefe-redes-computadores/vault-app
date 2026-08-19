@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
@@ -32,10 +33,9 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
-import { usePersons } from "@/hooks/usePersons";
 import { useExames } from "@/hooks/useExames";
 import { db } from "@/lib/db";
-import type { Medico, LocalSaude, Tratamento, Person } from "@/lib/types";
+import type { Medico, LocalSaude, Tratamento } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -84,16 +84,16 @@ function getTratamentoIcon(nome: string) {
 
 function EditarExameContent() {
   const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { showToast } = useToast();
 
   const { medicos, addMedico } = useMedicos();
   const { locais, addLocal } = useLocais();
   const { addTratamento } = useTratamentos();
-  const persons = usePersons() as Person[];
   const { getExame, updateExame } = useExames();
+  const { run, isSubmitting } = useSubmitAction();
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -112,7 +112,6 @@ function EditarExameContent() {
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
 
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
@@ -129,8 +128,12 @@ function EditarExameContent() {
   const [isCreatingLocal, setIsCreatingLocal] = useState(false);
   const [newLocalName, setNewLocalName] = useState("");
 
-  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const tratamentos = useLiveQuery<Tratamento[]>(
+    () => personId ? db.tratamentos.where('person_id').equals(personId).toArray() : Promise.resolve([]),
+    [personId]
+  ) || [];
 
   useEffect(() => {
     if (!id) {
@@ -226,7 +229,7 @@ function EditarExameContent() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!id) return;
     trigger("vibrate");
     if (!nome.trim()) {
@@ -235,32 +238,28 @@ function EditarExameContent() {
       return;
     }
 
-    setSaving(true);
-    try {
-      await updateExame(id, {
-        person_id: personId || undefined,
-        nome: nome.trim(),
-        laboratorio: laboratorio.trim() || undefined,
-        local_id: localId || undefined,
-        medico: medico.trim() || undefined,
-        medico_id: medicoId || undefined,
-        data: parseDateToISO(dataSolicitacaoDisplay),
-        data_retorno: dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined,
-        motivo: motivo.trim() || undefined,
-        observacoes: observacoes.trim() || undefined,
-        anexo_url: anexoUrl.trim() || undefined,
-        tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-      });
-
-      trigger("success");
-      showToast("Exame atualizado", "success");
-      router.replace(`/saude/exames/detalhes?id=${id}`);
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao atualizar exame", "error");
-    } finally {
-      setSaving(false);
-    }
+    run(
+      () =>
+        updateExame(id, {
+          person_id: personId || undefined,
+          nome: nome.trim(),
+          laboratorio: laboratorio.trim() || undefined,
+          local_id: localId || undefined,
+          medico: medico.trim() || undefined,
+          medico_id: medicoId || undefined,
+          data: parseDateToISO(dataSolicitacaoDisplay),
+          data_retorno: dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined,
+          motivo: motivo.trim() || undefined,
+          observacoes: observacoes.trim() || undefined,
+          anexo_url: anexoUrl.trim() || undefined,
+          tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+        }),
+      {
+        successMessage: "Exame atualizado",
+        errorMessage: "Erro ao atualizar exame",
+        goBackOnSuccess: false,
+      }
+    ).then(() => router.replace(`/saude/exames/detalhes?id=${id}`)).catch(() => {});
   };
 
   if (isLoading) return <DetailSkeleton />;
@@ -284,27 +283,6 @@ function EditarExameContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* Seletor de Pessoa */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa <span className="text-coral">*</span></p>
-            <div className="flex flex-wrap gap-2">
-              {persons.map((person) => {
-                const active = personId === person.id;
-                return (
-                  <button
-                    key={person.id}
-                    onClick={() => { trigger("vibrate"); setPersonId(person.id!); }}
-                    className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
-                      active ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                    }`}
-                  >
-                    {person.name}
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
-
           {/* Tratamentos Vinculados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
@@ -436,11 +414,11 @@ function EditarExameContent() {
             size="lg"
             fullWidth
             onClick={handleSave}
-            disabled={saving}
+            disabled={isSubmitting}
             className="flex items-center justify-center gap-2"
           >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {saving ? "Salvando..." : "Salvar Alterações"}
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSubmitting ? "Salvando..." : "Salvar Alterações"}
           </Button>
         </div>
 

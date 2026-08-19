@@ -25,6 +25,7 @@ import { useToast } from "@/components/ToastProvider";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
 const PERSON_COLORS = [
@@ -41,6 +42,14 @@ const PERSON_COLORS = [
   { name: "Cinza", value: "#9CA3AF" },
 ];
 
+function formatPhone(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 11);
+  if (clean.length <= 2) return clean;
+  if (clean.length <= 6) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
+  if (clean.length <= 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+  return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+}
+
 export default function EditarPessoaPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -49,10 +58,10 @@ export default function EditarPessoaPage() {
   const { user } = useAuth();
   const { showToast, showSuccess } = useToast();
   const { activePersonId } = useActivePersonId();
+  const { run, isSubmitting } = useSubmitAction();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -149,42 +158,40 @@ export default function EditarPessoaPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
+    trigger("vibrate");
     if (!validate() || !id) {
       trigger("error");
       return;
     }
 
-    setLoading(true);
+    run(
+      async () => {
+        const updateData: any = {
+          name: formData.name.trim(),
+          avatar_url: formData.avatar_url || undefined,
+          color: formData.color,
+          email: formData.email.trim() || undefined,
+          phone: formData.phone.trim() || undefined,
+          updated_at: new Date().toISOString(),
+          synced: false,
+        };
 
-    try {
-      const updateData: any = {
-        name: formData.name.trim(),
-        avatar_url: formData.avatar_url || undefined,
-        color: formData.color,
-        email: formData.email.trim() || undefined,
-        phone: formData.phone.trim() || undefined,
-        updated_at: new Date().toISOString(),
-        synced: false,
-      };
+        await db.persons.update(id, updateData);
+        await enfileirarOperacao("persons", "update", { id, ...updateData });
 
-      await db.persons.update(id, updateData);
-      await enfileirarOperacao("persons", "update", { id, ...updateData });
+        if (isDefault && formData.color) {
+          document.documentElement.style.setProperty("--person-accent", formData.color);
+        }
 
-      if (isDefault && formData.color) {
-        document.documentElement.style.setProperty("--person-accent", formData.color);
+        router.push("/pessoas");
+      },
+      {
+        successMessage: "Pessoa atualizada com sucesso!",
+        errorMessage: "Erro ao atualizar pessoa",
+        goBackOnSuccess: false,
       }
-
-      trigger("success");
-      showSuccess("Pessoa atualizada com sucesso!", 3000);
-      setTimeout(() => router.push("/pessoas"), 500);
-    } catch (error) {
-      console.error("Erro ao atualizar pessoa:", error);
-      trigger("error");
-      showToast("Erro ao atualizar pessoa", "error");
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   if (isLoading) {
@@ -225,9 +232,6 @@ export default function EditarPessoaPage() {
             </button>
 
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                Vault
-              </p>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Editar pessoa
               </h1>
@@ -359,10 +363,10 @@ export default function EditarPessoaPage() {
                 />
                 <Input
                   label="Telefone"
-                  placeholder="Digite o telefone"
+                  placeholder="(11) 99999-9999"
                   value={formData.phone}
                   onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
+                    setFormData({ ...formData, phone: formatPhone(e.target.value) })
                   }
                   className="pl-9"
                 />
@@ -436,10 +440,10 @@ export default function EditarPessoaPage() {
               size="lg"
               fullWidth
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={isSubmitting}
               className="mt-4 flex items-center justify-center gap-2"
             >
-              {loading ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
                   Salvando...

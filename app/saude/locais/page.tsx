@@ -14,6 +14,10 @@ import {
   DollarSign,
   Filter,
   X,
+  Plus,
+  Stethoscope,
+  Building2,
+  Store,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -167,6 +171,36 @@ export default function LocaisPage() {
         </header>
 
         <section className="px-5 pt-5 space-y-3">
+          {/* Banner CTA Adicionar Local */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                router.push("/saude/locais/novo");
+              }}
+              className="group relative w-full overflow-hidden rounded-[24px] border border-emerald-400/30 bg-gradient-to-r from-emerald-400/10 via-surface to-surface p-4 shadow-sm transition-all active:scale-[0.985] hover:border-emerald-400/50"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-400">
+                  <Plus size={24} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-ink-primary">
+                    Adicionar posto, laboratório, hospital ou farmácia
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    Centralize os locais onde você consulta, retira medicamentos e faz exames.
+                  </p>
+                </div>
+                <ChevronRight size={18} className="shrink-0 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </button>
+          </motion.div>
+
           {filteredLocais.length === 0 ? (
             <EmptyState
               icon={MapPin}

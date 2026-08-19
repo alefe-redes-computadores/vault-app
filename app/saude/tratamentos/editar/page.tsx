@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, Trash2, ChevronRight, X, Check, FolderHeart } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
@@ -15,8 +16,6 @@ import { SelectionModal } from "@/components/SelectionModal";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
-import { useToast } from "@/components/ToastProvider";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { Tratamento, Cid, Person } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
@@ -33,7 +32,6 @@ const CORES_TRATAMENTO = [
 
 function EditarTratamentoContent() {
   const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -41,6 +39,9 @@ function EditarTratamentoContent() {
   const { getTratamento, updateTratamento, deleteTratamentoSafe } = useTratamentos();
   const { cids } = useCids();
   const persons = usePersons() as Person[];
+
+  const saveAction = useSubmitAction();
+  const deleteAction = useSubmitAction();
 
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +51,6 @@ function EditarTratamentoContent() {
   const [cor, setCor] = useState("#8B5CF6");
   const [status, setStatus] = useState<"ativo" | "concluido" | "suspenso">("ativo");
   const [observacoes, setObservacoes] = useState("");
-  const [saving, setSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [error, setError] = useState("");
   const [isCidModalOpen, setIsCidModalOpen] = useState(false);
@@ -84,7 +84,7 @@ function EditarTratamentoContent() {
     loadData();
   }, [id, router, getTratamento]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
     if (!personId) {
       setError("Selecione uma pessoa");
@@ -98,50 +98,39 @@ function EditarTratamentoContent() {
     }
     if (!id) return;
 
-    setSaving(true);
-    try {
-      const patch = {
-        person_id: personId,
-        nome: nome.trim(),
-        cid_ids: cidIds.length > 0 ? cidIds : undefined,
-        cor,
-        status,
-        observacoes: observacoes.trim() || undefined,
-      };
+    const patch = {
+      person_id: personId,
+      nome: nome.trim(),
+      cid_ids: cidIds.length > 0 ? cidIds : undefined,
+      cor,
+      status,
+      observacoes: observacoes.trim() || undefined,
+    };
 
-      // 1. Atualiza no Dexie (UI otimista)
-      await updateTratamento(id, patch);
-
-      // 2. Enfileira para o Supabase (fonte de verdade)
-      await enfileirarOperacao("tratamentos", "update", { id, ...patch });
-
-      trigger("success");
-      showToast("Tratamento atualizado com sucesso!", "success");
-      router.back();
-    } catch (err) {
-      trigger("error");
-      showToast("Erro ao atualizar tratamento", "error");
-    } finally {
-      setSaving(false);
-    }
+    saveAction.run(
+      () => updateTratamento(id, patch),
+      {
+        successMessage: "Tratamento atualizado com sucesso!",
+        errorMessage: "Erro ao atualizar tratamento",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     trigger("vibrate");
     if (!id) return;
-    try {
-      await deleteTratamentoSafe(id);
 
-      // Enfileira a exclusão para o Supabase
-      await enfileirarOperacao("tratamentos", "delete", { id });
-
-      trigger("success");
-      showToast("Tratamento excluído com sucesso!", "success");
-      router.replace("/saude");
-    } catch (err) {
-      trigger("error");
-      showToast("Erro ao excluir tratamento", "error");
-    }
+    deleteAction.run(
+      async () => {
+        await deleteTratamentoSafe(id);
+        router.replace("/saude");
+      },
+      {
+        successMessage: "Tratamento excluído com sucesso!",
+        errorMessage: "Erro ao excluir tratamento",
+      }
+    );
   };
 
   const handleAddCid = (cidId: string) => {
@@ -175,7 +164,6 @@ function EditarTratamentoContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-violet-400">Edição</p>
               <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">Editar Tratamento</h1>
             </div>
           </div>
@@ -291,8 +279,8 @@ function EditarTratamentoContent() {
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving} className="shadow-lg shadow-ice/10">
-            {saving ? <Loader2 size={18} className="animate-spin" /> : "Salvar alterações"}
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saveAction.isSubmitting} className="shadow-lg shadow-ice/10">
+            {saveAction.isSubmitting ? <Loader2 size={18} className="animate-spin" /> : "Salvar alterações"}
           </Button>
         </div>
 
@@ -302,6 +290,7 @@ function EditarTratamentoContent() {
           onConfirm={handleDelete}
           title="Excluir Tratamento"
           message="Tem certeza que deseja excluir este tratamento? O histórico de medicamentos associados não será apagado, mas perderão este vínculo."
+          isLoading={deleteAction.isSubmitting}
         />
 
         <SelectionModal<Cid>

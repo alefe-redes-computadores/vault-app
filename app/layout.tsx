@@ -1,6 +1,9 @@
 // app/(app)/layout.tsx
+"use client";
+
 import { Suspense } from "react";
-import type { Metadata, Viewport } from "next";
+import { usePathname } from "next/navigation";
+import type { Viewport } from "next";
 import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -30,25 +33,6 @@ const mono = IBM_Plex_Mono({
   variable: "--font-mono",
 });
 
-export const metadata: Metadata = {
-  title: "Vault — Seus documentos, sempre à mão",
-  description: "Guarde prontuários, receitas, laudos e documentos pessoais com acesso offline garantido.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Vault",
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon-192x192.png", type: "image/png", sizes: "192x192" },
-      { url: "/icon-512x512.png", type: "image/png", sizes: "512x512" },
-    ],
-    apple: [{ url: "/icon-192x192.png", sizes: "192x192" }],
-  },
-};
-
 export const viewport: Viewport = {
   themeColor: "#06090E",
   width: "device-width",
@@ -62,6 +46,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isAuthPage = pathname === "/login" || pathname === "/auth/callback";
+
   return (
     <html
       lang="pt-BR"
@@ -93,14 +80,16 @@ export default function RootLayout({
               <SplashScreen>
                 <BiometricLock>
                   <PersonProvider>
-                    <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3 border-b border-surface-border/30 bg-void/82 backdrop-blur-xl">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-ink-primary">Vault</span>
-                      </div>
-                      <Suspense fallback={<div className="h-8 w-8 rounded-full bg-surface-raised animate-pulse" />}>
-                        <PersonSelector />
-                      </Suspense>
-                    </header>
+                    {!isAuthPage && (
+                      <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3 border-b border-surface-border/30 bg-void/82 backdrop-blur-xl">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-ink-primary">Vault</span>
+                        </div>
+                        <Suspense fallback={<div className="h-8 w-8 rounded-full bg-surface-raised animate-pulse" />}>
+                          <PersonSelector />
+                        </Suspense>
+                      </header>
+                    )}
                     {children}
                   </PersonProvider>
                 </BiometricLock>

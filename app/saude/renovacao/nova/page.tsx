@@ -11,7 +11,7 @@ import {
   Upload,
   Camera,
   X,
-  Image as ImageIcon,
+  Save,
   DollarSign,
   Calendar,
   Store,
@@ -22,6 +22,7 @@ import {
   Building2,
   MapPin,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -30,15 +31,14 @@ import { useFarmacias } from "@/hooks/useFarmacias";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
-import { usePersons } from "@/hooks/usePersons";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useToast } from "@/components/ToastProvider";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { uploadFile } from "@/lib/supabase/storage";
-import { VALIDADE_RECEITA_DIAS, getLocalTodayISO } from "@/lib/health-utils";
+import { getLocalTodayISO, getDaysUntil, VALIDADE_RECEITA_DIAS } from "@/lib/health-utils";
 import type {
   Attachment,
   TipoReceita,
-  Person,
   Medicamento,
   Medico,
   Farmacia,
@@ -67,7 +67,7 @@ function formatDateToDisplay(isoStr: string): string {
 
 function parseDateToISO(displayStr: string): string {
   const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return new Date().toISOString().slice(0, 10);
+  if (clean.length !== 8) return "";
   const day = clean.slice(0, 2);
   const month = clean.slice(2, 4);
   const year = clean.slice(4, 8);
@@ -104,24 +104,23 @@ function addDaysToISO(dateISO: string, days: number): string {
 
 function NovaRenovacaoContent() {
   const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const autoSelectMedId = searchParams.get("medicamento_id");
+  const { run, isSubmitting } = useSubmitAction();
 
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
   const { medicamentos, updateMedicamento } = useMedicamentos();
   const { addRenovacao } = useRenovacoes();
   const { farmacias } = useFarmacias();
   const { medicos } = useMedicos();
   const { hospitais } = useHospitais();
   const { locais } = useLocais();
-  const persons = usePersons() as Person[];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const [personId, setPersonId] = useState<string>(persons[0]?.id || "");
   const [medicamentoId, setMedicamentoId] = useState("");
   const [isMedModalOpen, setIsMedModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
@@ -129,8 +128,8 @@ function NovaRenovacaoContent() {
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const [dataDisplay, setDataDisplay] = useState(formatDateToDisplay(todayISO));
+  // Inicia vazio, só calcula quando usuário digitar
+  const [dataDisplay, setDataDisplay] = useState("");
   const [proximaDisplay, setProximaDisplay] = useState("");
 
   const [medicoId, setMedicoId] = useState("");
@@ -159,9 +158,7 @@ function NovaRenovacaoContent() {
   const [observacoes, setObservacoes] = useState("");
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
-
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
 
   const selectedMedicamento = medicamentos.find((m) => m.id === medicamentoId);
   const selectedFarmacia = farmacias.find((f) => f.id === farmaciaId);
@@ -178,16 +175,13 @@ function NovaRenovacaoContent() {
   useEffect(() => {
     if (autoSelectMedId && medicamentos.length > 0 && !medicamentoId) {
       const med = medicamentos.find((m) => m.id === autoSelectMedId);
-      if (med) {
-        handleSelectMedicamento(med);
-      }
+      if (med) handleSelectMedicamento(med);
     }
   }, [autoSelectMedId, medicamentos, medicamentoId]);
 
   const handleSelectMedicamento = (item: Medicamento) => {
     trigger("vibrate");
     setMedicamentoId(item.id!);
-
     if (item.medico_id) {
       setMedicoId(item.medico_id);
       const mObj = medicos.find((m) => m.id === item.medico_id);
@@ -195,21 +189,27 @@ function NovaRenovacaoContent() {
     } else if (item.medico) {
       setMedicoNome(item.medico);
     }
-
-    const tipo = item.tipo_receita as TipoReceita;
-    const currentISO = parseDateToISO(dataDisplay);
-    const proxISO = calcularValidadePadrao(tipo, currentISO);
-    setProximaDisplay(formatDateToDisplay(proxISO));
+    recalcularProximaData(item, dataDisplay);
   };
 
-  useEffect(() => {
-    if (selectedMedicamento && dataDisplay.length === 10) {
-      const tipo = selectedMedicamento.tipo_receita as TipoReceita;
-      const currentISO = parseDateToISO(dataDisplay);
-      const proxISO = calcularValidadePadrao(tipo, currentISO);
-      setProximaDisplay(formatDateToDisplay(proxISO));
+  const recalcularProximaData = (medItem: Medicamento | undefined, dataAtual: string) => {
+    if (medItem && dataAtual.length === 10) {
+      const tipo = medItem.tipo_receita as TipoReceita;
+      const currentISO = parseDateToISO(dataAtual);
+      if (currentISO) {
+        const proxISO = calcularValidadePadrao(tipo, currentISO);
+        setProximaDisplay(formatDateToDisplay(proxISO));
+      }
+    } else {
+      setProximaDisplay("");
     }
-  }, [dataDisplay, selectedMedicamento, calcularValidadePadrao]);
+  };
+
+  const handleDataChange = (val: string) => {
+    const masked = handleDateMask(val);
+    setDataDisplay(masked);
+    recalcularProximaData(selectedMedicamento, masked);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -255,16 +255,11 @@ function NovaRenovacaoContent() {
     if (!medicamentoId) newErrors.medicamentoId = "Selecione o medicamento";
     if (!dataDisplay || dataDisplay.length < 10) newErrors.data = "Data inválida";
 
-    if (
-      selectedMedicamento &&
-      selectedMedicamento.tipo_receita === "amarela" &&
-      registrarCompra &&
-      !forcarRegistroReceita
-    ) {
+    if (selectedMedicamento && selectedMedicamento.tipo_receita === "amarela" && registrarCompra && !forcarRegistroReceita) {
       const qtd = Number(quantidadeAdicionar) || 0;
       if (qtd > 30) {
         setMensagemAlertaRegulatorio(
-          `Este medicamento (${selectedMedicamento.nome}) utiliza Receita Amarela, cujo limite regulatório padrão é de 30 dias por via. A quantidade informada (${qtd} unidades) excede o período permitido.`
+          `Este medicamento utiliza Receita Amarela (limite 30 dias). A quantidade informada (${qtd}) excede o permitido.`
         );
         setModalAlertaAberto(true);
         return false;
@@ -275,100 +270,83 @@ function NovaRenovacaoContent() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
     if (!validate()) {
       trigger("error");
       return;
     }
 
-    setLoading(true);
-    try {
-      let anexoUrl: string | undefined;
+    run(
+      async () => {
+        let finalAnexoUrl: string | undefined;
 
-      if (localFile && user) {
-        const { url, error } = await uploadFile(user.id, localFile, "saude");
-        if (!error && url) {
-          anexoUrl = url;
-          if (attachment?.url.startsWith("blob:")) URL.revokeObjectURL(attachment.url);
+        if (localFile && user) {
+          const { url, error } = await uploadFile(user.id, localFile, "saude");
+          if (!error && url) {
+            finalAnexoUrl = url;
+            if (attachment?.url.startsWith("blob:")) URL.revokeObjectURL(attachment.url);
+          }
         }
-      }
 
-      const dataISO = parseDateToISO(dataDisplay);
-      const proximaISO =
-        proximaDisplay.length === 10 ? parseDateToISO(proximaDisplay) : addDaysToISO(dataISO, 30);
-      const precoNumerico = preco
-        ? parseFloat(preco.replace(/\./g, "").replace(",", "."))
-        : undefined;
-      const quantidadeNum = registrarCompra ? Number(quantidadeAdicionar) || 0 : undefined;
+        const dataISO = parseDateToISO(dataDisplay);
+        const proximaISO = proximaDisplay.length === 10 ? parseDateToISO(proximaDisplay) : addDaysToISO(dataISO, 30);
+        const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
+        const quantidadeNum = registrarCompra ? Number(quantidadeAdicionar) || 0 : undefined;
 
-      await addRenovacao({
-        person_id: personId || undefined,
-        medicamento_id: medicamentoId,
-        medico_id: medicoId || undefined,
-        farmacia_id: farmaciaId || undefined,
-        hospital_id: hospitalId || undefined,
-        local_id: localId || undefined,
-        tipo_aquisicao: tipoAquisicao,
-        data_proxima_retirada: tipoAquisicao === "gratuito" ? dataProximaRetirada : undefined,
-        exige_nova_receita: tipoAquisicao === "gratuito" ? exigeNovaReceita : undefined,
-        quantidade: quantidadeNum,
-        preco: precoNumerico,
-        lote: lote.trim() || undefined,
-        validade_produto: validadeProduto || undefined,
-        data: dataISO,
-        anexo_url: anexoUrl,
-        observacoes: observacoes.trim() || undefined,
-      });
+        await addRenovacao({
+          person_id: activePersonId || undefined,
+          medicamento_id: medicamentoId,
+          medico_id: medicoId || undefined,
+          farmacia_id: farmaciaId || undefined,
+          hospital_id: hospitalId || undefined,
+          local_id: localId || undefined,
+          tipo_aquisicao: tipoAquisicao,
+          data_proxima_retirada: tipoAquisicao === "gratuito" ? parseDateToISO(dataProximaRetirada) : undefined,
+          exige_nova_receita: tipoAquisicao === "gratuito" ? exigeNovaReceita : undefined,
+          quantidade: quantidadeNum,
+          preco: precoNumerico,
+          lote: lote.trim() || undefined,
+          validade_produto: validadeProduto ? parseDateToISO(validadeProduto) : undefined,
+          data: dataISO,
+          anexo_url: finalAnexoUrl,
+          observacoes: observacoes.trim() || undefined,
+        });
 
-      const dadosUpdate: Partial<Medicamento> = {
-        data_receita: dataISO,
-        proxima_renovacao: proximaISO,
-        medico_id: medicoId || undefined,
-        medico: medicoNome || undefined,
-      };
+        const dadosUpdate: Partial<Medicamento> = {
+          data_receita: dataISO,
+          proxima_renovacao: proximaISO,
+          medico_id: medicoId || undefined,
+          medico: medicoNome || undefined,
+        };
 
-      if (registrarCompra && selectedMedicamento) {
-        const estoqueAtual = Number(selectedMedicamento.estoque_quantidade) || 0;
-        dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
-        dadosUpdate.estoque_data_referencia = getLocalTodayISO();
-        if (selectedFarmacia) {
-          dadosUpdate.farmacia = selectedFarmacia.nome;
-          dadosUpdate.farmacia_id = selectedFarmacia.id;
+        if (registrarCompra && selectedMedicamento) {
+          const estoqueAtual = Number(selectedMedicamento.estoque_quantidade) || 0;
+          dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
+          dadosUpdate.estoque_data_referencia = getLocalTodayISO();
+          if (selectedFarmacia) {
+            dadosUpdate.farmacia = selectedFarmacia.nome;
+            dadosUpdate.farmacia_id = selectedFarmacia.id;
+          }
         }
+
+        await updateMedicamento(medicamentoId, dadosUpdate);
+      },
+      {
+        successMessage: "Renovação registrada com sucesso",
+        errorMessage: "Erro ao salvar renovação",
+        goBackOnSuccess: true,
       }
-
-      await updateMedicamento(medicamentoId, dadosUpdate);
-
-      trigger("success");
-      showToast("Renovação registrada com sucesso", "success");
-      router.back();
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao salvar renovação", "error");
-    } finally {
-      setLoading(false);
-    }
+    );
   };
+
+  const calcDiasVencimento = proximaDisplay.length === 10 ? getDaysUntil(parseDateToISO(proximaDisplay)) : null;
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,application/pdf"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={handleCameraCapture}
-        />
+        <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
 
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
@@ -384,7 +362,6 @@ function NovaRenovacaoContent() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <FileWarning size={16} className="text-ice" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
               </div>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Nova receita / Renovação</h1>
             </div>
@@ -392,40 +369,6 @@ function NovaRenovacaoContent() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {persons.length > 0 && (
-            <motion.div
-              variants={fadeUp}
-              initial="initial"
-              animate="animate"
-              className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-            >
-              <p className="mb-3 text-sm font-medium text-ink-primary">
-                Para quem? <span className="text-coral">*</span>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {persons.map((person) => {
-                  const active = personId === person.id;
-                  return (
-                    <button
-                      key={person.id}
-                      onClick={() => {
-                        trigger("vibrate");
-                        setPersonId(person.id!);
-                      }}
-                      className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
-                        active
-                          ? "border-ice bg-ice/12 text-ice"
-                          : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                      }`}
-                    >
-                      {person.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -450,6 +393,7 @@ function NovaRenovacaoContent() {
                   : "Selecionar medicamento"}
               </span>
             </button>
+            {errors.medicamentoId && <p className="mt-1 text-xs text-coral">{errors.medicamentoId}</p>}
           </motion.div>
 
           <motion.div
@@ -530,14 +474,14 @@ function NovaRenovacaoContent() {
           >
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Data da Renovação *</label>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Data da Prescrição *</label>
                 <div className="relative">
                   <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                   <input
                     type="text"
                     placeholder="DD/MM/AAAA"
                     value={dataDisplay}
-                    onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
+                    onChange={(e) => handleDataChange(e.target.value)}
                     maxLength={10}
                     className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50"
                   />
@@ -550,7 +494,7 @@ function NovaRenovacaoContent() {
                   <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                   <input
                     type="text"
-                    placeholder="DD/MM/AAAA"
+                    placeholder="Calculado auto."
                     value={proximaDisplay}
                     onChange={(e) => setProximaDisplay(handleDateMask(e.target.value))}
                     maxLength={10}
@@ -559,6 +503,25 @@ function NovaRenovacaoContent() {
                 </div>
               </div>
             </div>
+
+            {calcDiasVencimento !== null && (
+              <div
+                className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold ${
+                  calcDiasVencimento < 0
+                    ? "bg-coral/10 text-coral border border-coral/20"
+                    : calcDiasVencimento <= 7
+                    ? "bg-amber-400/10 text-amber-400 border border-amber-400/20"
+                    : "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
+                }`}
+              >
+                {calcDiasVencimento < 0 ? <AlertTriangle size={14} /> : <Check size={14} />}
+                {calcDiasVencimento < 0
+                  ? `Atenção: Esta receita venceu há ${Math.abs(calcDiasVencimento)} dias!`
+                  : calcDiasVencimento === 0
+                  ? "Vence hoje!"
+                  : `Válida por mais ${calcDiasVencimento} dias.`}
+              </div>
+            )}
           </motion.div>
 
           <motion.div
@@ -653,8 +616,7 @@ function NovaRenovacaoContent() {
                         <span className="text-emerald-400">
                           {analisePreco.farmaciaAnteriorName
                             ? `R$ ${analisePreco.diff.toFixed(2).replace(".", ",")} mais barato que em ${analisePreco.farmaciaAnteriorName}`
-                            : `R$ ${analisePreco.diff.toFixed(2).replace(".", ",")} mais barato que a média`
-                          }
+                            : `R$ ${analisePreco.diff.toFixed(2).replace(".", ",")} mais barato que a média`}
                         </span>
                       </>
                     ) : (
@@ -663,8 +625,7 @@ function NovaRenovacaoContent() {
                         <span className="text-coral">
                           {analisePreco.farmaciaAnteriorName
                             ? `R$ ${Math.abs(analisePreco.diff).toFixed(2).replace(".", ",")} mais caro que em ${analisePreco.farmaciaAnteriorName}`
-                            : `R$ ${Math.abs(analisePreco.diff).toFixed(2).replace(".", ",")} acima da média`
-                          }
+                            : `R$ ${Math.abs(analisePreco.diff).toFixed(2).replace(".", ",")} acima da média`}
                         </span>
                       </>
                     )}
@@ -786,23 +747,28 @@ function NovaRenovacaoContent() {
           >
             <label className="mb-3 block text-sm font-medium text-ink-primary">Foto da Receita (opcional)</label>
             {!attachment ? (
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"
-                >
-                  <Upload size={18} />
-                  <span className="text-xs font-semibold">Anexar</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"
-                >
-                  <Camera size={18} />
-                  <span className="text-xs font-semibold">Foto</span>
-                </button>
+              <div className="flex flex-col items-center justify-center p-6 bg-surface-raised border border-dashed border-surface-border/60 rounded-2xl">
+                <FileWarning size={32} className="text-ink-muted mb-2" />
+                <p className="text-sm font-semibold text-ink-primary">Nenhuma receita anexada</p>
+                <p className="text-xs text-ink-muted text-center mt-1 mb-4">
+                  Você ainda não vinculou a foto ou PDF da prescrição.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 bg-ice/10 text-ice px-4 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform"
+                  >
+                    <Upload size={14} /> Arquivo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex items-center gap-2 bg-ice/10 text-ice px-4 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform"
+                  >
+                    <Camera size={14} /> Câmera
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised p-3">
@@ -828,9 +794,18 @@ function NovaRenovacaoContent() {
           </motion.div>
         </section>
 
+        {/* Footer */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading}>
-            {loading ? <Loader2 size={16} className="animate-spin" /> : "Salvar Histórico"}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
+          >
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSubmitting ? "Salvando..." : "Salvar Histórico"}
           </Button>
         </div>
 

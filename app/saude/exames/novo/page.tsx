@@ -21,6 +21,7 @@ import {
   Activity,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/Button";
@@ -31,11 +32,11 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
-import { usePersons } from "@/hooks/usePersons";
 import { useExames } from "@/hooks/useExames";
+import { useActivePersonId } from "@/contexts/PersonContext";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import type { Medico, LocalSaude, Tratamento, Person } from "@/lib/types";
+import type { Medico, LocalSaude, Tratamento } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -84,16 +85,16 @@ function getTratamentoIcon(nome: string) {
 
 export default function NovoExamePage() {
   const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
+  const { showToast } = useToast();
 
   const { medicos, addMedico } = useMedicos();
   const { locais, addLocal } = useLocais();
   const { addTratamento } = useTratamentos();
-  const persons = usePersons() as Person[];
   const { addExame } = useExames();
+  const { run, isSubmitting } = useSubmitAction();
 
-  const [personId, setPersonId] = useState<string>(persons[0]?.id || "");
   const [nomesExames, setNomesExames] = useState("");
 
   const [localRealizacao, setLocalRealizacao] = useState("");
@@ -118,14 +119,17 @@ export default function NovoExamePage() {
   const [isCreatingLocal, setIsCreatingLocal] = useState(false);
   const [newLocalName, setNewLocalName] = useState("");
 
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const tratamentos = useLiveQuery<Tratamento[]>(
+    () => activePersonId ? db.tratamentos.where('person_id').equals(activePersonId).toArray() : Promise.resolve([]),
+    [activePersonId]
+  ) || [];
+
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
   const [newTratamentoName, setNewTratamentoName] = useState("");
   const [isSavingTratamento, setIsSavingTratamento] = useState(false);
 
-  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleCreateDoctor = async () => {
@@ -170,12 +174,12 @@ export default function NovoExamePage() {
   };
 
   const handleCreateTratamento = async () => {
-    if (!newTratamentoName.trim()) return;
+    if (!newTratamentoName.trim() || !activePersonId) return;
     setIsSavingTratamento(true);
     trigger("vibrate");
     try {
       const newId = await addTratamento({
-        person_id: personId,
+        person_id: activePersonId,
         nome: newTratamentoName.trim(),
         status: "ativo",
       });
@@ -194,51 +198,48 @@ export default function NovoExamePage() {
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!personId) newErrors.personId = "Selecione uma pessoa";
+    if (!activePersonId) newErrors.person = "Nenhuma pessoa ativa selecionada";
     if (!nomesExames.trim()) newErrors.nomes = "Informe ao menos um exame";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     trigger("vibrate");
-    if (!validate()) {
+    if (!validate() || !activePersonId) {
       trigger("error");
       return;
     }
 
-    setSaving(true);
-    try {
-      const listaExames = nomesExames.split(/,|\n/).map((item) => item.trim()).filter(Boolean);
-      const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
-      const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
+    run(
+      async () => {
+        const listaExames = nomesExames.split(/,|\n/).map((item) => item.trim()).filter(Boolean);
+        const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
+        const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
 
-      for (const nomeExame of listaExames) {
-        await addExame({
-          person_id: personId,
-          nome: nomeExame,
-          laboratorio: localRealizacao.trim() || undefined,
-          local_id: localId || undefined,
-          medico: medicoSolicitante.trim() || undefined,
-          medico_id: medicoId || undefined,
-          data: dataSolicitacaoISO,
-          data_retorno: dataRetornoISO,
-          motivo: motivo.trim() || undefined,
-          observacoes: observacoes.trim() || undefined,
-          anexo_url: anexoUrl.trim() || undefined,
-          tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-        });
+        for (const nomeExame of listaExames) {
+          await addExame({
+            person_id: activePersonId,
+            nome: nomeExame,
+            laboratorio: localRealizacao.trim() || undefined,
+            local_id: localId || undefined,
+            medico: medicoSolicitante.trim() || undefined,
+            medico_id: medicoId || undefined,
+            data: dataSolicitacaoISO,
+            data_retorno: dataRetornoISO,
+            motivo: motivo.trim() || undefined,
+            observacoes: observacoes.trim() || undefined,
+            anexo_url: anexoUrl.trim() || undefined,
+            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+          });
+        }
+      },
+      {
+        successMessage: "Exame(s) cadastrado(s)",
+        errorMessage: "Erro ao salvar exame(s)",
+        goBackOnSuccess: true,
       }
-
-      trigger("success");
-      showToast("Exame(s) cadastrado(s)", "success");
-      router.back();
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao salvar exame(s)", "error");
-    } finally {
-      setSaving(false);
-    }
+    );
   };
 
   return (
@@ -260,29 +261,6 @@ export default function NovoExamePage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* Seletor de Pessoa */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <p className="mb-3 text-sm font-medium text-ink-primary">Para quem é o exame? <span className="text-coral">*</span></p>
-            <div className="flex flex-wrap gap-2">
-              {persons.map((person) => {
-                const active = personId === person.id;
-                return (
-                  <button
-                    key={person.id}
-                    onClick={() => { trigger("vibrate"); setPersonId(person.id!); }}
-                    className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
-                      active ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                    }`}
-                  >
-                    {person.name}
-                  </button>
-                );
-              })}
-            </div>
-            {errors.personId && <p className="mt-2 text-xs text-coral">{errors.personId}</p>}
-          </motion.div>
-
-          {/* Tratamentos Vinculados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -319,7 +297,6 @@ export default function NovoExamePage() {
             </button>
           </motion.div>
 
-          {/* Formulário */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -397,8 +374,8 @@ export default function NovoExamePage() {
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSave} disabled={saving} className="flex items-center justify-center gap-2">
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {saving ? "Salvando..." : "Salvar Exame(s)"}
+          <Button variant="primary" size="lg" fullWidth onClick={handleSave} disabled={isSubmitting} className="flex items-center justify-center gap-2">
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {isSubmitting ? "Salvando..." : "Salvar Exame(s)"}
           </Button>
         </div>
 

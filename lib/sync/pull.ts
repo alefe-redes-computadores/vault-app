@@ -4,16 +4,12 @@ import { supabase } from '@/lib/supabase/client';
 import { db } from '@/lib/db';
 import type {
   Person, Document, Medicamento, Renovacao, Vault,
-  VaultMember, Medico, Farmacia, Hospital, Credential, BankCard
+  VaultMember, Medico, Farmacia, Hospital, Credential, BankCard,
+  Tratamento, Cid, Exame, Consulta, Cirurgia, DoseLog, InstituicaoEnsino, LocalSaude, AppSettings
 } from '@/lib/types';
 
-// Lock para evitar execução simultânea
 let isPulling = false;
 
-/**
- * Puxa todos os dados do Supabase e faz merge no Dexie (upsert)
- * Cada tabela é processada individualmente; uma falha não interrompe as demais.
- */
 export async function pullAllData(userId: string): Promise<void> {
   if (isPulling) {
     console.warn('⚠️ Pull já em andamento, ignorando nova chamada');
@@ -24,7 +20,6 @@ export async function pullAllData(userId: string): Promise<void> {
   try {
     console.log('🔄 Iniciando pull de dados (merge upsert)...');
 
-    // Buscar itens pendentes na syncQueue (para não sobrescrever)
     const pendingItems = await db.syncQueue
       .toCollection()
       .filter((item) => !item.failed)
@@ -93,31 +88,9 @@ export async function pullAllData(userId: string): Promise<void> {
     });
 
     // ---- Renovacoes ----
-    try {
-      const { data, error } = await supabase.from('renovacoes').select('*').eq('user_id', userId);
-      if (error) {
-        const { data: fallbackData, error: fallbackError } = await supabase.from('renovacoes').select('*');
-        if (!fallbackError && fallbackData) {
-          const pendingIds = pendingTables.get('renovacoes') || new Set();
-          const toUpsert = fallbackData.filter((r: any) => r.id && !pendingIds.has(r.id));
-          if (toUpsert.length > 0) {
-            await db.transaction('rw', db.renovacoes, async () => {
-              for (const ren of toUpsert) { await db.renovacoes.put(ren); }
-            });
-          }
-        }
-      } else if (data) {
-        const pendingIds = pendingTables.get('renovacoes') || new Set();
-        const toUpsert = data.filter((r: any) => r.id && !pendingIds.has(r.id));
-        if (toUpsert.length > 0) {
-          await db.transaction('rw', db.renovacoes, async () => {
-            for (const ren of toUpsert) { await db.renovacoes.put(ren); }
-          });
-        }
-      }
-    } catch (err) {
-      console.error('❌ Erro inesperado ao processar renovacoes:', err);
-    }
+    await processTable('renovacoes', db.renovacoes, async () => {
+      return await supabase.from('renovacoes').select('*').eq('user_id', userId);
+    });
 
     // ---- Vaults ----
     await processTable('vaults', db.vaults, async () => {
@@ -154,14 +127,54 @@ export async function pullAllData(userId: string): Promise<void> {
       return await supabase.from('credentials').select('*').eq('user_id', userId);
     });
 
-    // ---- Cards (Bancos & Cartões) CORRIGIDO: bankCards ----
+    // ---- Cards (Bancos & Cartões) ----
     await processTable('cards', db.bankCards, async () => {
       return await supabase.from('cards').select('*').eq('user_id', userId);
     });
 
-    // ---- Settings (configurações do usuário) ----
+    // ---- Settings ----
     await processTable('settings', db.settings, async () => {
       return await supabase.from('settings').select('*').eq('user_id', userId);
+    });
+
+    // ---- TRATAMENTOS (ADICIONADO) ----
+    await processTable('tratamentos', db.tratamentos, async () => {
+      return await supabase.from('tratamentos').select('*').eq('user_id', userId);
+    });
+
+    // ---- CIDs (ADICIONADO) ----
+    await processTable('cids', db.cids, async () => {
+      return await supabase.from('cids').select('*').eq('user_id', userId);
+    });
+
+    // ---- EXAMES (ADICIONADO) ----
+    await processTable('exames', db.exames, async () => {
+      return await supabase.from('exames').select('*').eq('user_id', userId);
+    });
+
+    // ---- CONSULTAS (ADICIONADO) ----
+    await processTable('consultas', db.consultas, async () => {
+      return await supabase.from('consultas').select('*').eq('user_id', userId);
+    });
+
+    // ---- CIRURGIAS (ADICIONADO) ----
+    await processTable('cirurgias', db.cirurgias, async () => {
+      return await supabase.from('cirurgias').select('*').eq('user_id', userId);
+    });
+
+    // ---- DOSE LOGS (ADICIONADO) ----
+    await processTable('dose_logs', db.doseLogs, async () => {
+      return await supabase.from('dose_logs').select('*').eq('user_id', userId);
+    });
+
+    // ---- ANEXOS CLÍNICOS (ADICIONADO) ----
+    await processTable('anexos_clinicos', db.anexos_clinicos, async () => {
+      return await supabase.from('anexos_clinicos').select('*').eq('user_id', userId);
+    });
+
+    // ---- INSTITUIÇÕES (ADICIONADO) ----
+    await processTable('instituicoes', db.instituicoes, async () => {
+      return await supabase.from('instituicoes').select('*').eq('user_id', userId);
     });
 
     window.dispatchEvent(new Event('sync:end'));

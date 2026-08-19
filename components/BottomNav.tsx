@@ -26,6 +26,7 @@ import {
   RotateCcw,
   FileText,
   Lock,
+  User,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -136,24 +137,21 @@ const SENHAS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-senha", label: "Nova senha", icon: Lock, path: "/senhas/novo" },
 ];
 
+const PESSOAS_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "nova-pessoa", label: "Nova Pessoa", icon: User, path: "/pessoas/novo" },
+];
+
 function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
-  // Home
   if (pathname === "/") return DEFAULT_COMPOSE_OPTIONS;
-
-  // Dashboard Saúde
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
-
-  // Extras
   if (pathname === "/galeria") return GALERIA_COMPOSE_OPTIONS;
   if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
   if (pathname === "/contas") return CONTAS_COMPOSE_OPTIONS;
   if (pathname === "/vaults") return VAULTS_COMPOSE_OPTIONS;
   if (pathname === "/senhas") return SENHAS_COMPOSE_OPTIONS;
-
-  // Favoritos não tem criação direta
+  if (pathname === "/pessoas") return PESSOAS_COMPOSE_OPTIONS;
   if (pathname === "/favoritos") return [];
 
-  // Listagens de Saúde
   if (pathname === "/saude/medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
   if (pathname === "/saude/medicamentos") return MEDICAMENTOS_LIST_COMPOSE_OPTIONS;
   if (pathname === "/saude/farmacias") return FARMACIAS_LIST_COMPOSE_OPTIONS;
@@ -166,7 +164,6 @@ function getComposeOptions(pathname: string, searchParams: URLSearchParams): Com
   if (pathname === "/saude/cirurgias") return CIRURGIAS_LIST_COMPOSE_OPTIONS;
   if (pathname === "/saude/cids") return CIDS_LIST_COMPOSE_OPTIONS;
 
-  // Rede (com tab)
   if (pathname === "/saude/rede") {
     const tab = searchParams.get("tab");
     if (tab === "medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
@@ -190,6 +187,7 @@ const ALLOWED_NAV_PATHS = [
   "/vaults",
   "/favoritos",
   "/senhas",
+  "/pessoas",
   "/saude/medicamentos",
   "/saude/medicos",
   "/saude/farmacias",

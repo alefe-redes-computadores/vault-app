@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import type { Farmacia, Medicamento } from "@/lib/types";
 
 const fadeUp = {
@@ -37,6 +38,7 @@ function EditarFarmaciaContent() {
   const id = searchParams.get("id") || "";
   const { getFarmacia, updateFarmacia, deleteFarmaciaSafe } = useFarmacias();
   const { medicamentos = [] } = useMedicamentos();
+  const { run, isSubmitting } = useSubmitAction();
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -44,8 +46,6 @@ function EditarFarmaciaContent() {
   const [endereco, setEndereco] = useState("");
   const [telefone, setTelefone] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
@@ -89,38 +89,38 @@ function EditarFarmaciaContent() {
       return;
     }
 
-    setSaving(true);
-    try {
-      await updateFarmacia(id, {
-        nome: nome.trim(),
-        endereco: endereco.trim() || undefined,
-        telefone: telefone.trim() || undefined,
-      });
-      trigger("success");
-      showToast("Farmácia atualizada com sucesso", "success");
-      router.back();
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao atualizar farmácia", "error");
-    } finally {
-      setSaving(false);
-    }
+    await run(
+      async () => {
+        await updateFarmacia(id, {
+          nome: nome.trim(),
+          endereco: endereco.trim() || undefined,
+          telefone: telefone.trim() || undefined,
+        });
+      },
+      {
+        successMessage: "Farmácia atualizada com sucesso",
+        errorMessage: "Erro ao atualizar farmácia",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
   const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      await deleteFarmaciaSafe(id);
-      trigger("success");
-      showToast("Farmácia excluída com sucesso", "success");
-      router.replace("/saude/farmacias");
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao excluir farmácia", "error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
+    trigger("vibrate");
+
+    await run(
+      async () => {
+        await deleteFarmaciaSafe(id);
+        router.replace("/saude/farmacias");
+      },
+      {
+        successMessage: "Farmácia excluída com sucesso",
+        errorMessage: "Erro ao excluir farmácia",
+        goBackOnSuccess: false,
+      }
+    );
+
+    setShowDeleteModal(false);
   };
 
   if (isLoading) {
@@ -262,10 +262,10 @@ function EditarFarmaciaContent() {
             size="lg"
             fullWidth
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={isSubmitting}
             className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
           >
-            {saving ? (
+            {isSubmitting ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 Salvando...
@@ -287,7 +287,7 @@ function EditarFarmaciaContent() {
           message={`Tem certeza que deseja excluir "${nome}"?`}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
-          isLoading={deleting}
+          isLoading={isSubmitting}
           type="danger"
         />
       </main>

@@ -32,9 +32,9 @@ import {
   Ban,
   Settings2,
   Upload,
-  Camera,
   FileText,
   TrendingUp,
+  HeartPulse
 } from "lucide-react";
 
 import { usePersons } from "@/hooks/usePersons";
@@ -48,6 +48,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { uploadFile } from "@/lib/supabase/storage";
 import {
   suggestRenewalDate,
@@ -81,7 +82,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
 import { db } from "@/lib/db";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
-import { SeletorTratamentoModal, getTratamentoIcon } from "@/components/saude/SeletorTratamentoModal";
+import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
 import { SeletorReceita } from "@/components/saude/SeletorReceita";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -15 } };
@@ -98,6 +99,12 @@ function brParaIso(br: string) {
   const parts = br.split("/");
   if (parts.length !== 3 || parts[2].length !== 4) return "";
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+function handleCurrencyMask(value: string): string {
+  const clean = value.replace(/\D/g, "");
+  if (!clean) return "";
+  const numberVal = parseInt(clean, 10) / 100;
+  return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
@@ -142,10 +149,15 @@ function EditarMedicamentoContent() {
 
   const { user } = useAuth();
   const persons = usePersons() as Person[];
+
+  // Nossos hooks de proteção anti-duplo clique e controle centralizado
+  const { run: runSave, isSubmitting: isSaving } = useSubmitAction();
+  const { run: runDelete, isSubmitting: isDeleting } = useSubmitAction();
+
   const { getMedicamento, updateMedicamento, deleteMedicamento, medicamentos: medicamentosList } = useMedicamentos();
   const { addDocument, updateDocument } = useSafeDb();
-  const { medicos } = useMedicos();
-  const { farmacias } = useFarmacias();
+  const { medicos, addMedico } = useMedicos();
+  const { farmacias, addFarmacia } = useFarmacias();
   const { hospitais: hospitaisLocais, addHospital } = useHospitais();
   const { locais, addLocal } = useLocais();
   const { tratamentos } = useTratamentos();
@@ -153,7 +165,6 @@ function EditarMedicamentoContent() {
   const medicamentosAtivos = medicamentosList.filter((m) => m.id !== id && m.status !== "descontinuado");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -225,12 +236,9 @@ function EditarMedicamentoContent() {
 
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeFields, setShakeFields] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   const selectedMedico = medicos.find((m) => m.id === medicoId) || medicos.find((m) => m.nome === medicoNome);
   const selectedMedicoDescontinuacao =
@@ -239,9 +247,6 @@ function EditarMedicamentoContent() {
     medicos.find((m) => m.id === medicoEvolucaoId) || medicos.find((m) => m.nome === medicoEvolucaoNome);
   const selectedFarmacia = farmacias.find((f) => f.id === farmaciaId) || farmacias.find((f) => f.nome === farmaciaNome);
   const selectedSubstituto = medicamentosList.find((m) => m.id === substituidoPorId);
-  const selectedTratamentos = tratamentos.filter((t) => tratamentosSelecionados.includes(t.id || ""));
-  const selectedHospital = hospitaisLocais.find((h) => h.id === hospitalId);
-  const selectedLocal = locais.find((l) => l.id === localId);
 
   const markChanged = () => setHasChanges(true);
 
@@ -275,7 +280,12 @@ function EditarMedicamentoContent() {
         setLocalId(item.local_id || "");
         setFarmaciaNome(item.farmacia || "");
         setFarmaciaId(item.farmacia_id || "");
-        setPreco(item.preco ? String(item.preco) : "");
+
+        if (item.preco !== undefined && item.preco !== null) {
+          const precoCents = Math.round(item.preco * 100).toString();
+          setPreco(handleCurrencyMask(precoCents));
+        }
+
         setTipoReceita((item.tipo_receita as TipoReceita) || "comum");
         setDataReceitaTexto(isoParaBr(item.data_receita || ""));
         setProximaRenovacaoTexto(isoParaBr(item.proxima_renovacao || ""));
@@ -321,6 +331,11 @@ function EditarMedicamentoContent() {
         } else {
           setEstoqueDataReferenciaTexto(isoParaBr(getLocalTodayISO()));
         }
+
+        if (item.formato === "gota") {
+          setEstoqueUnidade("gota(s)");
+        }
+
         setIsLoading(false);
       })
       .catch(() => {
@@ -333,7 +348,12 @@ function EditarMedicamentoContent() {
     trigger("vibrate");
     setFormato(novoFormato);
     if (novoFormato === "partido") setEstoqueUnidadePorDose("0.5");
-    else if (novoFormato !== "gota") setEstoqueUnidadePorDose("1");
+    else if (novoFormato === "gota") {
+      setEstoqueUnidade("gota(s)");
+      if (!isGotasCalcAtivo) setIsGotasCalcAtivo(true);
+    } else {
+      setEstoqueUnidadePorDose("1");
+    }
     markChanged();
   };
 
@@ -399,6 +419,21 @@ function EditarMedicamentoContent() {
     markChanged();
   };
 
+  const handleRegistrarDoseUnica = () => {
+    const currentQtd = Number(estoqueQuantidade) || 0;
+    const dose = Number(estoqueUnidadePorDose) || 1;
+    if (currentQtd >= dose) {
+      const novaQtd = currentQtd - dose;
+      setEstoqueQuantidade(String(novaQtd));
+      markChanged();
+      trigger("success");
+      showToast(`Dose registrada! Restam ${novaQtd} ${estoqueUnidade}. Não esqueça de Salvar as Alterações.`, "success");
+    } else {
+      trigger("error");
+      showToast("Estoque insuficiente para abater a dose.", "error");
+    }
+  };
+
   const updateHorario = (index: number, value: string) => {
     setHorarios((prev) => prev.map((h, i) => (i === index ? value : h)));
     markChanged();
@@ -450,10 +485,6 @@ function EditarMedicamentoContent() {
     const shakeList: string[] = [];
 
     if (editIntent === "basico" || editIntent === "menu") {
-      if (!personId) {
-        newErrors.personId = "Obrigatório";
-        shakeList.push("personId");
-      }
       if (!nome.trim()) {
         newErrors.nome = "Obrigatório";
         shakeList.push("nome");
@@ -499,164 +530,158 @@ function EditarMedicamentoContent() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
-    setSaving(true);
     trigger("vibrate");
 
-    try {
-      const horariosFiltrados = horarios.filter((h) => h.trim());
-      const dataReceitaISO = brParaIso(dataReceitaTexto);
-      const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
-      const estoqueDataReferenciaISO = brParaIso(estoqueDataReferenciaTexto);
+    runSave(
+      async () => {
+        const horariosFiltrados = horarios.filter((h) => h.trim());
+        const dataReceitaISO = brParaIso(dataReceitaTexto);
+        const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
+        const estoqueDataReferenciaISO = brParaIso(estoqueDataReferenciaTexto);
 
-      let dosagemFinal = dosagem;
-      let historicoFinal = [...historicoDosagens];
+        let dosagemFinal = dosagem;
+        let historicoFinal = [...historicoDosagens];
 
-      if (editIntent === "evolucao" && novaDosagem.trim() !== dosagemOriginal) {
-        historicoFinal.push({
-          dosagem_antiga: dosagemOriginal,
-          data_mudanca: getLocalTodayISO(),
-          medico_responsavel: selectedMedicoEvolucao?.nome || medicoEvolucaoNome || "Não informado",
-        });
-        dosagemFinal = novaDosagem.trim();
-      }
+        if (editIntent === "evolucao" && novaDosagem.trim() !== dosagemOriginal) {
+          historicoFinal.push({
+            dosagem_antiga: dosagemOriginal,
+            data_mudanca: getLocalTodayISO(),
+            medico_responsavel: selectedMedicoEvolucao?.nome || medicoEvolucaoNome || "Não informado",
+          });
+          dosagemFinal = novaDosagem.trim();
+        }
 
-      let updatedDocId = documentId;
-      if (!documentId && (dataReceitaISO || attachment)) {
-        const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'> = {
-          user_id: user?.id || "",
-          person_id: personId,
-          category_id: "saude",
-          type: "receita",
-          title: `Receita — ${nome.trim()}`,
-          description: observacoes.trim() || undefined,
-          metadata: {
-            medication: nome.trim(),
-            dosage: dosagemFinal,
-            prescription_date: dataReceitaISO,
-            renewal_date: proximaRenovacaoISO,
-            tratamento_ids: tratamentosSelecionados,
-            tipo_receita: tipoReceita,
-            formato,
-            status: "ativo",
-          },
-          attachments: attachment ? [attachment] : [],
-          is_favorite: false,
-        };
-        updatedDocId = await addDocument(docData);
-        setDocumentId(updatedDocId);
-      } else if (documentId) {
-        const doc = await db.documents.get(documentId);
-        if (doc && doc.id) {
-          const updatedAttachments = attachment ? [attachment] : [];
-          await updateDocument(doc.id, {
-            attachments: updatedAttachments,
+        let updatedDocId = documentId;
+        if (!documentId && (dataReceitaISO || attachment)) {
+          const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'> = {
+            user_id: user?.id || "",
+            person_id: personId,
+            category_id: "saude",
+            type: "receita",
+            title: `Receita — ${nome.trim()}`,
+            description: observacoes.trim() || undefined,
             metadata: {
-              ...doc.metadata,
+              medication: nome.trim(),
               dosage: dosagemFinal,
-              tratamento_ids: tratamentosSelecionados,
+              prescription_date: dataReceitaISO,
               renewal_date: proximaRenovacaoISO,
+              tratamento_ids: tratamentosSelecionados,
+              tipo_receita: tipoReceita,
+              formato,
+              status: "ativo",
             },
-          });
+            attachments: attachment ? [attachment] : [],
+            is_favorite: false,
+          };
+          updatedDocId = await addDocument(docData);
+          setDocumentId(updatedDocId);
+        } else if (documentId) {
+          const doc = await db.documents.get(documentId);
+          if (doc && doc.id) {
+            const updatedAttachments = attachment ? [attachment] : [];
+            await updateDocument(doc.id, {
+              attachments: updatedAttachments,
+              metadata: {
+                ...doc.metadata,
+                dosage: dosagemFinal,
+                tratamento_ids: tratamentosSelecionados,
+                renewal_date: proximaRenovacaoISO,
+              },
+            });
+          }
         }
-      }
 
-      if (localFile && user && attachment && updatedDocId) {
-        const { url, error } = await uploadFile(user.id, localFile, "saude");
-        if (!error && url) {
-          await updateDocument(updatedDocId, {
-            attachments: [{ ...attachment, url }],
-          });
+        if (localFile && user && attachment && updatedDocId) {
+          const { url, error } = await uploadFile(user.id, localFile, "saude");
+          if (!error && url) {
+            await updateDocument(updatedDocId, {
+              attachments: [{ ...attachment, url }],
+            });
+          }
         }
-      }
 
-      await updateMedicamento(id, {
-        person_id: personId,
-        nome: nome.trim(),
-        dosagem: dosagemFinal,
-        formato,
-        cores,
-        tipo_uso: tipoUso,
-        historico_dosagens: historicoFinal,
-        medico: selectedMedico?.nome || medicoNome.trim(),
-        medico_id: medicoId || undefined,
-        hospital_id: hospitalId || undefined,
-        local_id: localId || undefined,
-        farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
-        farmacia_id: farmaciaId || undefined,
-        preco: preco ? Number(preco.replace(",", ".")) : undefined,
-        data_receita: dataReceitaISO,
-        proxima_renovacao: proximaRenovacaoISO,
-        observacoes: observacoes.trim() || undefined,
-        tipo_receita: tipoReceita,
-        tratamento_ids: tratamentosSelecionados,
-        status: statusAtivo ? "ativo" : "descontinuado",
-        motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
-        medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
-        medico_descontinuacao_nome: !statusAtivo
-          ? selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim()
-          : undefined,
-        substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
-        data_descontinuacao: !statusAtivo ? getLocalTodayISO() : undefined,
-        estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
-        estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-        estoque_horarios: tipoUso === "continuo" && estoqueAtivo ? horariosFiltrados : undefined,
-        estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) || 1 : undefined,
-        estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
-        estoque_ml_total: isGotasCalcAtivo && formato === "gota" ? Number(mlTotal) : undefined,
-        estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : undefined,
-      });
+        const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
 
-      if (horariosOriginais.length > 0) {
-        await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
-      }
-      if (estoqueAtivo && tipoUso === "continuo" && horariosFiltrados.length > 0 && statusAtivo) {
-        const granted = await requestNotificationPermission();
-        if (granted) {
-          await scheduleDoseNotifications({
-            id,
-            nome: nome.trim(),
-            dosagem: dosagemFinal,
-            estoque_horarios: horariosFiltrados,
-          } as DoseNotificationPayload);
+        await updateMedicamento(id, {
+          person_id: personId,
+          nome: nome.trim(),
+          dosagem: dosagemFinal,
+          formato,
+          cores,
+          tipo_uso: tipoUso,
+          historico_dosagens: historicoFinal,
+          medico: selectedMedico?.nome || medicoNome.trim(),
+          medico_id: medicoId || undefined,
+          hospital_id: hospitalId || undefined,
+          local_id: localId || undefined,
+          farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
+          farmacia_id: farmaciaId || undefined,
+          preco: precoNumerico,
+          data_receita: dataReceitaISO,
+          proxima_renovacao: proximaRenovacaoISO,
+          observacoes: observacoes.trim() || undefined,
+          tipo_receita: tipoReceita,
+          tratamento_ids: tratamentosSelecionados,
+          status: statusAtivo ? "ativo" : "descontinuado",
+          motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
+          medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
+          medico_descontinuacao_nome: !statusAtivo
+            ? selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim()
+            : undefined,
+          substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
+          data_descontinuacao: !statusAtivo ? getLocalTodayISO() : undefined,
+          estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
+          estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
+          estoque_horarios: tipoUso === "continuo" && estoqueAtivo ? horariosFiltrados : undefined,
+          estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) || 1 : undefined,
+          estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
+          estoque_ml_total: isGotasCalcAtivo && formato === "gota" ? Number(mlTotal) : undefined,
+          estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : undefined,
+        });
+
+        if (horariosOriginais.length > 0) {
+          await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
         }
-      }
+        if (estoqueAtivo && tipoUso === "continuo" && horariosFiltrados.length > 0 && statusAtivo) {
+          const granted = await requestNotificationPermission();
+          if (granted) {
+            await scheduleDoseNotifications({
+              id,
+              nome: nome.trim(),
+              dosagem: dosagemFinal,
+              estoque_horarios: horariosFiltrados,
+            } as DoseNotificationPayload);
+          }
+        }
 
-      setHasChanges(false);
-      trigger("success");
-      showToast("Alterações salvas com sucesso", "success");
-
-      if (editIntent !== "menu") {
-        setEditIntent("menu");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        router.back();
+        setHasChanges(false);
+        if (editIntent !== "menu") {
+          setEditIntent("menu");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      },
+      {
+        successMessage: "Alterações salvas com sucesso",
+        errorMessage: "Erro ao salvar alterações",
+        goBackOnSuccess: editIntent === "menu",
       }
-    } catch (error) {
-      console.error("Erro ao salvar:", error);
-      trigger("error");
-      showToast("Erro ao salvar alterações", "error");
-    } finally {
-      setSaving(false);
-    }
+    );
   };
 
   const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      if (horariosOriginais.length > 0) {
-        await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
+    runDelete(
+      async () => {
+        if (horariosOriginais.length > 0) {
+          await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
+        }
+        await deleteMedicamento(id);
+        router.replace("/saude/medicamentos");
+      },
+      {
+        successMessage: "Medicamento excluído com sucesso",
+        errorMessage: "Erro ao excluir medicamento",
       }
-      await deleteMedicamento(id);
-      trigger("success");
-      showToast("Medicamento excluído com sucesso", "success");
-      router.back();
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao excluir medicamento", "error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
+    );
   };
 
   const handleBack = () => {
@@ -693,7 +718,6 @@ function EditarMedicamentoContent() {
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={() => {}} />
 
         <svg width="0" height="0" className="absolute">
           <defs>
@@ -718,14 +742,22 @@ function EditarMedicamentoContent() {
                 <h1 className="mt-0.5 truncate text-xl font-bold uppercase text-ink-primary">
                   {editIntent === "menu" ? nome || "Medicamento" : `Editando ${nome}`}
                 </h1>
-                {hasChanges && editIntent !== "menu" && (
+                {hasChanges && editIntent !== "menu" ? (
                   <button
                     onClick={() => setShowConfirmExitModal(true)}
                     className="ml-4 shrink-0 text-sm font-medium text-ink-muted transition-colors hover:text-coral"
                   >
                     Descartar
                   </button>
-                )}
+                ) : editIntent === "menu" ? (
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    aria-label="Excluir medicamento"
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-coral/10 text-coral active:scale-95 ml-4 shrink-0"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -917,12 +949,12 @@ function EditarMedicamentoContent() {
                   <div>
                     <Input
                       label="Valor pago (R$)"
-                      type="number"
-                      inputMode="decimal"
+                      type="text"
+                      inputMode="numeric"
                       placeholder="0,00"
                       value={preco}
                       onChange={(e) => {
-                        setPreco(e.target.value);
+                        setPreco(handleCurrencyMask(e.target.value));
                         markChanged();
                       }}
                       icon={<DollarSign size={16} className="text-emerald-400" />}
@@ -1085,6 +1117,15 @@ function EditarMedicamentoContent() {
                       </div>
                     </div>
                   )}
+
+                  {tipoUso !== "continuo" && estoqueAtivo && (
+                    <div className="mt-4 pt-5 border-t border-surface-border/40 space-y-3">
+                      <p className="text-xs text-ink-muted">Como este medicamento é SOS, não haverá alarmes automáticos. Você pode abater o estoque manualmente aqui ao utilizar.</p>
+                      <button onClick={handleRegistrarDoseUnica} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400/10 text-amber-400 border border-amber-400/20 py-3.5 text-sm font-bold active:scale-95 transition-all">
+                        <HeartPulse size={18}/> Registrar Dose Única Agora
+                      </button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -1175,23 +1216,13 @@ function EditarMedicamentoContent() {
                   </div>
 
                   {!attachment ? (
-                    <div className="grid grid-cols-2 gap-3 mt-4">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"
-                      >
-                        <Upload size={18} />
-                        <span className="text-xs font-semibold">Anexar</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised px-4 py-4 text-ink-muted hover:border-ice/40 hover:text-ice"
-                      >
-                        <Camera size={18} />
-                        <span className="text-xs font-semibold">Foto</span>
-                      </button>
+                    <div className="flex flex-col items-center justify-center p-6 bg-surface-raised border border-dashed border-surface-border/60 rounded-2xl mt-4">
+                      <FileText size={32} className="text-ink-muted mb-2" />
+                      <p className="text-sm font-semibold text-ink-primary">Nenhuma receita anexada</p>
+                      <p className="text-xs text-ink-muted text-center mt-1 mb-4">Você ainda não vinculou a foto ou PDF da prescrição.</p>
+                      <div className="flex gap-3">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-ice/10 text-ice px-4 py-2 rounded-xl text-xs font-bold active:scale-95"><Upload size={14}/> Arquivo</button>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised p-3 mt-4">
@@ -1351,10 +1382,10 @@ function EditarMedicamentoContent() {
                   size="lg"
                   fullWidth
                   onClick={handleSubmit}
-                  disabled={saving}
+                  disabled={isSaving}
                   className="flex items-center justify-center gap-2 shadow-lg shadow-ice/20 h-14 rounded-[20px] font-bold text-base"
                 >
-                  {saving ? (
+                  {isSaving ? (
                     <>
                       <Loader2 size={20} className="animate-spin" /> Salvando...
                     </>
@@ -1408,7 +1439,7 @@ function EditarMedicamentoContent() {
           message={`Excluir permanentemente o registro de "${nome}"? Essa ação não poderá ser desfeita e todas as doses registradas podem ficar órfãs.`}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
-          isLoading={deleting}
+          isLoading={isDeleting}
           type="danger"
         />
 

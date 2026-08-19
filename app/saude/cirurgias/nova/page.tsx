@@ -1,3 +1,4 @@
+// app/saude/cirurgias/nova/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -20,6 +21,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 import { useCirurgias } from "@/hooks/useCirurgias";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -56,6 +58,7 @@ function handleDateMask(value: string): string {
 export default function NovaCirurgiaPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { run, isSubmitting } = useSubmitAction();
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
@@ -65,18 +68,17 @@ export default function NovaCirurgiaPage() {
   const [procedimento, setProcedimento] = useState("");
   const [medicoId, setMedicoId] = useState("");
   const [hospitalId, setHospitalId] = useState("");
-  
+
   const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
 
   const todayISO = new Date().toISOString().slice(0, 10);
   const [dataDisplay, setDataDisplay] = useState(formatDateToDisplay(todayISO));
-  
+
   const [status, setStatus] = useState<"agendada" | "realizada" | "cancelada">("agendada");
   const [observacoes, setObservacoes] = useState("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
 
   const selectedMedico = medicos.find((m: any) => m.id === medicoId);
   const selectedHospital = hospitais.find((h: any) => h.id === hospitalId);
@@ -96,27 +98,24 @@ export default function NovaCirurgiaPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const dataISO = parseDateToISO(dataDisplay);
-
-      await addCirurgia({
-        procedimento: procedimento.trim(),
-        medico_id: medicoId || undefined,
-        hospital_id: hospitalId || undefined,
-        data: dataISO,
-        status,
-        observacoes: observacoes.trim() || undefined,
-      });
-
-      trigger("success");
-      router.push("/saude/cirurgias");
-    } catch (error) {
-      console.error("Erro ao salvar cirurgia:", error);
-      trigger("error");
-    } finally {
-      setLoading(false);
-    }
+    await run(
+      async () => {
+        const dataISO = parseDateToISO(dataDisplay);
+        await addCirurgia({
+          procedimento: procedimento.trim(),
+          medico_id: medicoId || undefined,
+          hospital_id: hospitalId || undefined,
+          data: dataISO,
+          status,
+          observacoes: observacoes.trim() || undefined,
+        });
+      },
+      {
+        successMessage: "Cirurgia criada com sucesso",
+        errorMessage: "Erro ao criar cirurgia",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
   return (
@@ -124,8 +123,8 @@ export default function NovaCirurgiaPage() {
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => { trigger("vibrate"); router.back(); }} 
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
@@ -154,9 +153,9 @@ export default function NovaCirurgiaPage() {
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico / Cirurgião Responsável (Opcional)</label>
-            <button 
+            <button
               type="button"
-              onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }} 
+              onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
             >
               <div className="flex items-center gap-2.5 min-w-0">
@@ -168,9 +167,9 @@ export default function NovaCirurgiaPage() {
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital / Unidade (Opcional)</label>
-            <button 
+            <button
               type="button"
-              onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }} 
+              onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
             >
               <div className="flex items-center gap-2.5 min-w-0">
@@ -185,13 +184,13 @@ export default function NovaCirurgiaPage() {
               <label className="block text-sm font-medium text-ink-primary">Data da Cirurgia <span className="text-coral">*</span></label>
               <div className="relative">
                 <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="DD/MM/AAAA"
                   maxLength={10}
-                  value={dataDisplay} 
-                  onChange={(e) => setDataDisplay(handleDateMask(e.target.value))} 
-                  className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm`} 
+                  value={dataDisplay}
+                  onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
+                  className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm`}
                 />
               </div>
               <p className="text-[10px] text-ink-muted px-1">Permite agendamento ou histórico retroativo.</p>
@@ -206,8 +205,8 @@ export default function NovaCirurgiaPage() {
                     type="button"
                     onClick={() => { trigger("vibrate"); setStatus(st); }}
                     className={`rounded-xl border py-2 text-[11px] font-medium capitalize transition-all ${
-                      status === st 
-                        ? "border-coral bg-coral/15 text-coral shadow-sm" 
+                      status === st
+                        ? "border-coral bg-coral/15 text-coral shadow-sm"
                         : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                     }`}
                   >
@@ -219,62 +218,62 @@ export default function NovaCirurgiaPage() {
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.12 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <TextArea 
-              label="Orientações e Preparo (Opcional)" 
-              value={observacoes} 
-              onChange={(e) => setObservacoes(e.target.value)} 
-              placeholder="Jejum, itens para levar, recomendações pós-operatórias..." 
+            <TextArea
+              label="Orientações e Preparo (Opcional)"
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
+              placeholder="Jejum, itens para levar, recomendações pós-operatórias..."
             />
           </motion.div>
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button 
-            variant="primary" 
-            size="lg" 
-            fullWidth 
-            onClick={handleSubmit} 
-            disabled={loading}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSubmit}
+            disabled={isSubmitting}
             className="bg-coral text-void hover:bg-coral-light border-none"
           >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : "Salvar Cirurgia"}
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Salvar Cirurgia"}
           </Button>
         </div>
 
-        <SelectionModal 
-          isOpen={isMedicoModalOpen} 
-          onClose={() => setIsMedicoModalOpen(false)} 
-          onSelect={(item: any) => setMedicoId(item.id!)} 
-          items={medicos} 
-          title="Selecionar Cirurgião" 
+        <SelectionModal
+          isOpen={isMedicoModalOpen}
+          onClose={() => setIsMedicoModalOpen(false)}
+          onSelect={(item: any) => setMedicoId(item.id!)}
+          items={medicos}
+          title="Selecionar Cirurgião"
           renderItem={(item: any) => (
             <div>
               <p className="font-medium text-ink-primary">Dr(a). {item.nome}</p>
               <p className="text-xs text-ink-muted">{item.especialidade || "Especialidade não informada"}</p>
             </div>
-          )} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          onCreateNew={() => {}} 
-          createNewLabel="" 
+          )}
+          getItemId={(item: any) => item.id!}
+          getItemLabel={(item: any) => item.nome}
+          onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }}
+          createNewLabel="Cadastrar Novo Médico"
         />
 
-        <SelectionModal 
-          isOpen={isHospitalModalOpen} 
-          onClose={() => setIsHospitalModalOpen(false)} 
-          onSelect={(item: any) => setHospitalId(item.id!)} 
-          items={hospitais} 
-          title="Selecionar Hospital" 
+        <SelectionModal
+          isOpen={isHospitalModalOpen}
+          onClose={() => setIsHospitalModalOpen(false)}
+          onSelect={(item: any) => setHospitalId(item.id!)}
+          items={hospitais}
+          title="Selecionar Hospital"
           renderItem={(item: any) => (
             <div>
               <p className="font-medium text-ink-primary">{item.nome}</p>
               <p className="text-xs text-ink-muted">{item.endereco || "Endereço não informado"}</p>
             </div>
-          )} 
-          getItemId={(item: any) => item.id!} 
-          getItemLabel={(item: any) => item.nome} 
-          onCreateNew={() => {}} 
-          createNewLabel="" 
+          )}
+          getItemId={(item: any) => item.id!}
+          getItemLabel={(item: any) => item.nome}
+          onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
+          createNewLabel="Cadastrar Novo Hospital"
         />
       </main>
     </PageTransition>

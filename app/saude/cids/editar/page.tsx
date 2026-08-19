@@ -25,6 +25,7 @@ import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { useToast } from "@/components/ToastProvider";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,6 +60,7 @@ function EditarCidContent() {
   const { medicos } = useMedicos();
   const { hospitais } = useHospitais();
   const { locais } = useLocais();
+  const { run, isSubmitting } = useSubmitAction();
 
   const [cid, setCid] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,7 +77,6 @@ function EditarCidContent() {
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -131,39 +132,36 @@ function EditarCidContent() {
     e.target.value = "";
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
     if (!validate()) {
       trigger("error");
       return;
     }
-    setLoading(true);
-    try {
-      const dataISO = dataDiagnostico
-        ? dataDiagnostico.split("/").reverse().join("-")
-        : undefined;
 
-      await updateCid(id!, {
-        codigo: codigo.trim(),
-        descricao: descricao.trim(),
-        data_diagnostico: dataISO,
-        medico_id: medicoId || undefined,
-        hospital_id: hospitalId || undefined,
-        local_id: localId || undefined,
-        observacoes: observacoes.trim() || undefined,
-        anexo_url: anexoUrl || undefined,
-      });
+    run(
+      async () => {
+        const dataISO = dataDiagnostico
+          ? dataDiagnostico.split("/").reverse().join("-")
+          : undefined;
 
-      trigger("success");
-      showToast("CID atualizado com sucesso!", "success");
-      router.back();
-    } catch (error) {
-      console.error("Erro ao atualizar CID:", error);
-      trigger("error");
-      showToast("Erro ao atualizar CID", "error");
-    } finally {
-      setLoading(false);
-    }
+        await updateCid(id!, {
+          codigo: codigo.trim(),
+          descricao: descricao.trim(),
+          data_diagnostico: dataISO,
+          medico_id: medicoId || undefined,
+          hospital_id: hospitalId || undefined,
+          local_id: localId || undefined,
+          observacoes: observacoes.trim() || undefined,
+          anexo_url: anexoUrl || undefined,
+        });
+      },
+      {
+        successMessage: "CID atualizado com sucesso!",
+        errorMessage: "Erro ao atualizar CID",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
   if (isLoading) return <DetailSkeleton />;
@@ -181,7 +179,6 @@ function EditarCidContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-violet-400">Vault</p>
               <h1 className="font-display text-xl font-semibold text-ink-primary truncate">
                 Editar CID
               </h1>
@@ -335,9 +332,9 @@ function EditarCidContent() {
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading}>
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {loading ? "Salvando..." : "Salvar Alterações"}
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSubmitting ? "Salvando..." : "Salvar Alterações"}
           </Button>
         </div>
 

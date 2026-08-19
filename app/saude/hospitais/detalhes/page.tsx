@@ -4,10 +4,10 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2, 
+import {
+  ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2,
   Activity, FlaskConical, ExternalLink, Stethoscope, Calendar,
-  Clock, Plus,
+  Clock, Plus, FolderHeart,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -17,7 +17,8 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import type { Hospital, Document, Exame, Consulta, Medico, Cirurgia } from "@/lib/types";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
+import type { Hospital, Exame, Consulta, Medico, Cirurgia, Tratamento } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -38,18 +39,20 @@ function DetalhesHospitalContent() {
   const { trigger } = useHapticFeedback();
   const { getHospital, deleteHospital } = useHospitais();
   const { activePersonId } = useActivePersonId();
+  const deleteAction = useSubmitAction();
 
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
-  const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
-  const cirurgias = useLiveQuery(() => (id ? db.cirurgias.where("hospital_id").equals(id).toArray() : Promise.resolve([] as Cirurgia[])), [id]) || [];
+  const cirurgias = useLiveQuery(
+    () => (id ? db.cirurgias.where("hospital_id").equals(id).toArray() : Promise.resolve([] as Cirurgia[])),
+    [id]
+  ) || [];
 
   useEffect(() => {
     if (!id) {
@@ -67,51 +70,67 @@ function DetalhesHospitalContent() {
   }, [id, getHospital, router]);
 
   const analiseHospital = useMemo(() => {
-    if (!id) {
-      return { 
-        cirurgias: [] as Cirurgia[], 
-        exames: [] as Exame[], 
-        consultas: [] as Consulta[], 
+    if (!id || !hospital) {
+      return {
+        cirurgias: [] as Cirurgia[],
+        exames: [] as Exame[],
+        consultas: [] as Consulta[],
         medicos: [] as Medico[],
+        tratamentos: [] as Tratamento[],
         ultimaConsulta: null as Consulta | null,
       };
     }
 
-    const examesDoHospital = exames.filter((e) => 
-      e.local_id === id
-    );
-
+    const examesDoHospital = exames.filter((e) => e.local_id === id);
     const consultasDoHospital = consultas.filter((c) => c.hospital_id === id);
 
-    const medicoIds = new Set(consultasDoHospital.map((c) => c.medico_id).filter(Boolean));
-    const medicosDoHospital = medicos.filter((m) => m.id && medicoIds.has(m.id));
+    // Médicos vinculados diretamente pelo novo campo
+    const medicoIdsDiretos = hospital.medico_ids || [];
+    const medicosDiretos = medicos.filter((m) => m.id && medicoIdsDiretos.includes(m.id));
+
+    // Também mantém a inferência por consultas
+    const medicoIdsInferidos = new Set(consultasDoHospital.map((c) => c.medico_id).filter(Boolean));
+    const medicosInferidos = medicos.filter((m) => m.id && medicoIdsInferidos.has(m.id));
+
+    // Junta sem duplicar
+    const medicosUnicos = new Map<string, Medico>();
+    [...medicosDiretos, ...medicosInferidos].forEach((m) => {
+      if (m.id) medicosUnicos.set(m.id, m);
+    });
 
     const ultimaConsulta = consultasDoHospital.length > 0
       ? [...consultasDoHospital].sort((a, b) => b.data.localeCompare(a.data))[0]
       : null;
 
-    return { 
-      cirurgias, 
-      exames: examesDoHospital, 
-      consultas: consultasDoHospital, 
-      medicos: medicosDoHospital,
+    // Tratamentos vinculados diretamente
+    const tratamentoIds = hospital.tratamento_ids || [];
+    const tratamentos = useLiveQuery(
+      () => tratamentoIds.length > 0 ? db.tratamentos.where('id').anyOf(tratamentoIds).toArray() : Promise.resolve([] as Tratamento[]),
+      [tratamentoIds]
+    ) || [];
+
+    return {
+      cirurgias,
+      exames: examesDoHospital,
+      consultas: consultasDoHospital,
+      medicos: Array.from(medicosUnicos.values()),
+      tratamentos,
       ultimaConsulta,
     };
-  }, [id, exames, consultas, medicos, cirurgias]);
+  }, [id, hospital, exames, consultas, medicos, cirurgias]);
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      await deleteHospital(id!);
-      trigger("success");
-      router.replace("/saude/hospitais");
-    } catch (error) {
-      console.error("Erro ao excluir hospital:", error);
-      trigger("error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
+  const handleDelete = () => {
+    deleteAction.run(
+      async () => {
+        await deleteHospital(id!);
+        router.replace("/saude/hospitais");
+      },
+      {
+        successMessage: "Hospital excluído com sucesso",
+        errorMessage: "Erro ao excluir hospital",
+        goBackOnSuccess: false,
+      }
+    );
   };
 
   const menuOptions = [
@@ -222,13 +241,13 @@ function DetalhesHospitalContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          <motion.div 
-            variants={fadeUp} 
-            initial="initial" 
-            animate="animate" 
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ 
-              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}` 
+            style={{
+              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}`
             }}
           >
             <div className="flex items-start gap-4">
@@ -241,7 +260,7 @@ function DetalhesHospitalContent() {
                 </h2>
                 {hospital.tipo && (
                   <span className={`inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border mt-1 ${
-                    hospital.tipo === 'clinica' 
+                    hospital.tipo === 'clinica'
                       ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-400'
                       : 'border-ice/30 bg-ice/10 text-ice'
                   }`}>
@@ -294,13 +313,32 @@ function DetalhesHospitalContent() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {analiseHospital.medicos.map((m) => (
-                  <button 
-                    key={m.id} 
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${m.id}`); }} 
+                  <button
+                    key={m.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${m.id}`); }}
                     className="rounded-full bg-surface border border-surface-border px-4 py-2 text-sm font-medium text-ink-primary shadow-sm hover:border-ice/30 transition-all active:scale-95"
                   >
                     Dr(a). {m.nome}
                   </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {analiseHospital.tratamentos.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
+              <div className="flex items-center gap-2 pl-1">
+                <FolderHeart size={16} className="text-violet-400" />
+                <h3 className="font-display text-base font-semibold text-ink-primary">Tratamentos Relacionados</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {analiseHospital.tratamentos.map((t) => (
+                  <span
+                    key={t.id}
+                    className="rounded-full bg-violet-400/10 border border-violet-400/20 px-4 py-2 text-sm font-medium text-violet-300"
+                  >
+                    {t.nome}
+                  </span>
                 ))}
               </div>
             </motion.div>
@@ -381,7 +419,7 @@ function DetalhesHospitalContent() {
           message={`Tem certeza que deseja excluir "${hospital.nome}"?`}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
-          isLoading={deleting}
+          isLoading={deleteAction.isSubmitting}
           type="danger"
         />
       </main>

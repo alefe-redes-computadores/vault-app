@@ -790,6 +790,8 @@ export interface Medico {
   email?: string;
   observacoes?: string;
   created_at: string;
+  hospital_ids?: string[];
+  tratamento_ids?: string[];
   updated_at: string;
   synced: boolean;
 }
@@ -814,6 +816,8 @@ export interface Hospital {
   telefone?: string;
   tipo?: string;
   observacoes?: string;
+  medico_ids?: string[];
+  tratamento_ids?: string[];
   created_at: string;
   updated_at: string;
   synced: boolean;

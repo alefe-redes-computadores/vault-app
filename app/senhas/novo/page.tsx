@@ -4,7 +4,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Save, Loader2, Eye, EyeOff, ShieldCheck, KeyRound, Wand2, X } from "lucide-react";
+import {
+  ArrowLeft, Save, Loader2, Eye, EyeOff, ShieldCheck, KeyRound, Wand2, X,
+} from "lucide-react";
 import { useCredentials } from "@/hooks/useCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -14,6 +16,7 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import type { Credential } from "@/lib/types";
 
 const fadeUp = {
@@ -44,20 +47,25 @@ export default function NewPasswordPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { addCredential } = useCredentials();
+  const { run, isSubmitting } = useSubmitAction();
 
   const { authenticate } = useBiometric({
     title: "Visualizar Senha",
     subtitle: "Por segurança, confirme sua identidade.",
   });
 
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [faviconError, setFaviconError] = useState(false);
 
   const [showGenerator, setShowGenerator] = useState(false);
   const [genLength, setGenLength] = useState(16);
-  const [genOptions, setGenOptions] = useState({ uppercase: true, lowercase: true, numbers: true, symbols: true });
+  const [genOptions, setGenOptions] = useState({
+    uppercase: true,
+    lowercase: true,
+    numbers: true,
+    symbols: true,
+  });
 
   const [formData, setFormData] = useState({
     title: "",
@@ -115,7 +123,7 @@ export default function NewPasswordPage() {
     trigger("success");
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
     const newErrors: Record<string, string> = {};
     if (!formData.title.trim()) newErrors.title = "O título é obrigatório";
@@ -127,27 +135,22 @@ export default function NewPasswordPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      await addCredential({
-        title: formData.title.trim(),
-        username: formData.username.trim(),
-        password_plain: formData.password_plain,
-        url: formData.url.trim(),
-        notes: formData.notes.trim(),
-        category: formData.category,
-      });
-
-      trigger("success");
-      showToast("Senha salva com sucesso", "success");
-      router.back();
-    } catch (error) {
-      console.error("Erro ao salvar senha:", error);
-      trigger("error");
-      showToast("Erro ao salvar senha", "error");
-    } finally {
-      setLoading(false);
-    }
+    run(
+      () =>
+        addCredential({
+          title: formData.title.trim(),
+          username: formData.username.trim(),
+          password_plain: formData.password_plain,
+          url: formData.url.trim(),
+          notes: formData.notes.trim(),
+          category: formData.category,
+        }),
+      {
+        successMessage: "Senha salva com sucesso",
+        errorMessage: "Erro ao salvar senha",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
   const faviconUrl = getFaviconUrl(formData.url);
@@ -176,22 +179,50 @@ export default function NewPasswordPage() {
           <div className="flex justify-center">
             <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-surface-border/50 bg-surface shadow-sm">
               {faviconUrl && !faviconError ? (
-                <img src={faviconUrl} alt="Favicon" className="h-8 w-8 object-contain" onError={() => setFaviconError(true)} />
+                <img
+                  src={faviconUrl}
+                  alt="Favicon"
+                  className="h-8 w-8 object-contain"
+                  onError={() => setFaviconError(true)}
+                />
               ) : (
                 <KeyRound size={28} className="text-ice" />
               )}
             </div>
           </div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input label="Título (ex: Itaú, Netflix)" value={formData.title} onChange={(e) => handleChange("title", e.target.value)} error={errors.title} required />
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <Input
+              label="Título (ex: Itaú, Netflix)"
+              value={formData.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+              error={errors.title}
+              required
+            />
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input label="E-mail ou Usuário" value={formData.username} onChange={(e) => handleChange("username", e.target.value)} />
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.05 }}
+            className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <Input
+              label="E-mail ou Usuário"
+              value={formData.username}
+              onChange={(e) => handleChange("username", e.target.value)}
+            />
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-ink-primary">Senha secreta <span className="text-coral">*</span></label>
+              <label className="block text-sm font-medium text-ink-primary">
+                Senha secreta <span className="text-coral">*</span>
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -203,11 +234,17 @@ export default function NewPasswordPage() {
                   placeholder="••••••••••••"
                 />
                 <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
-                  <button onClick={() => { trigger("vibrate"); setShowGenerator(true); }} className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-surface-border/50 hover:text-ice active:scale-95 transition-all">
+                  <button
+                    onClick={() => { trigger("vibrate"); setShowGenerator(true); }}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-surface-border/50 hover:text-ice active:scale-95 transition-all"
+                  >
                     <Wand2 size={16} />
                   </button>
                   <div className="mx-0.5 h-4 w-px bg-surface-border/50"></div>
-                  <button onClick={handleTogglePassword} className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-surface-border/50 hover:text-ice active:scale-95 transition-all">
+                  <button
+                    onClick={handleTogglePassword}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-surface-border/50 hover:text-ice active:scale-95 transition-all"
+                  >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
@@ -215,15 +252,28 @@ export default function NewPasswordPage() {
 
               <div className="flex gap-1 h-1 w-full mt-2">
                 {[1, 2, 3, 4].map((level) => (
-                  <div key={level} className={`flex-1 rounded-full transition-colors duration-500 ${strengthScore >= level ? getStrengthColor(strengthScore) : "bg-surface-border/40"}`} />
+                  <div
+                    key={level}
+                    className={`flex-1 rounded-full transition-colors duration-500 ${
+                      strengthScore >= level ? getStrengthColor(strengthScore) : "bg-surface-border/40"
+                    }`}
+                  />
                 ))}
               </div>
 
-              {errors.password_plain && <p className="text-xs text-coral mt-1">{errors.password_plain}</p>}
+              {errors.password_plain && (
+                <p className="text-xs text-coral mt-1">{errors.password_plain}</p>
+              )}
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.1 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <p className="mb-3 text-sm font-medium text-ink-primary">Categoria</p>
             <div className="flex flex-wrap gap-2">
               {(["banco", "social", "trabalho", "outros"] as const).map((cat) => (
@@ -231,7 +281,9 @@ export default function NewPasswordPage() {
                   key={cat}
                   onClick={() => { trigger("vibrate"); handleChange("category", cat); }}
                   className={`capitalize rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
-                    formData.category === cat ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                    formData.category === cat
+                      ? "border-ice bg-ice/12 text-ice"
+                      : "border-surface-border/50 bg-surface-raised text-ink-muted"
                   }`}
                 >
                   {cat}
@@ -240,25 +292,58 @@ export default function NewPasswordPage() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input label="URL do Site/App" placeholder="https://exemplo.com" value={formData.url} onChange={(e) => { handleChange("url", e.target.value); setFaviconError(false); }} />
-            <TextArea label="Notas (opcional)" placeholder="Perguntas de segurança, dicas..." value={formData.notes} onChange={(e) => handleChange("notes", e.target.value)} />
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.15 }}
+            className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <Input
+              label="URL do Site/App"
+              placeholder="https://exemplo.com"
+              value={formData.url}
+              onChange={(e) => {
+                handleChange("url", e.target.value);
+                setFaviconError(false);
+              }}
+            />
+            <TextArea
+              label="Notas (opcional)"
+              placeholder="Perguntas de segurança, dicas..."
+              value={formData.notes}
+              onChange={(e) => handleChange("notes", e.target.value)}
+            />
           </motion.div>
         </section>
 
         <AnimatePresence>
           {showGenerator && (
             <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowGenerator(false)} className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" />
               <motion.div
-                initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowGenerator(false)}
+                className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[32px] border-t border-surface-border/60 bg-surface p-6 shadow-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
               >
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-display text-lg font-semibold text-ink-primary flex items-center gap-2">
                     <Wand2 size={20} className="text-ice" /> Gerador Inteligente
                   </h3>
-                  <button onClick={() => setShowGenerator(false)} className="rounded-full p-2 bg-surface-raised text-ink-muted active:scale-95"><X size={16}/></button>
+                  <button
+                    onClick={() => setShowGenerator(false)}
+                    className="rounded-full p-2 bg-surface-raised text-ink-muted active:scale-95"
+                  >
+                    <X size={16}/>
+                  </button>
                 </div>
 
                 <div className="space-y-6">
@@ -267,7 +352,14 @@ export default function NewPasswordPage() {
                       <span className="text-ink-muted">Tamanho</span>
                       <span className="font-mono text-ice font-bold">{genLength} caracteres</span>
                     </div>
-                    <input type="range" min="8" max="64" value={genLength} onChange={(e) => { trigger("vibrate"); setGenLength(Number(e.target.value)); }} className="w-full accent-ice" />
+                    <input
+                      type="range"
+                      min="8"
+                      max="64"
+                      value={genLength}
+                      onChange={(e) => { trigger("vibrate"); setGenLength(Number(e.target.value)); }}
+                      className="w-full accent-ice"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -279,9 +371,17 @@ export default function NewPasswordPage() {
                     ].map((opt) => (
                       <button
                         key={opt.id}
-                        onClick={() => { trigger("vibrate"); setGenOptions(p => ({ ...p, [opt.id]: !p[opt.id as keyof typeof p] })); }}
+                        onClick={() => {
+                          trigger("vibrate");
+                          setGenOptions((p) => ({
+                            ...p,
+                            [opt.id]: !p[opt.id as keyof typeof p],
+                          }));
+                        }}
                         className={`flex items-center justify-center rounded-2xl border py-3 text-sm font-medium transition-all active:scale-95 ${
-                          genOptions[opt.id as keyof typeof genOptions] ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                          genOptions[opt.id as keyof typeof genOptions]
+                            ? "border-ice bg-ice/12 text-ice"
+                            : "border-surface-border/50 bg-surface-raised text-ink-muted"
                         }`}
                       >
                         {opt.label}
@@ -289,7 +389,13 @@ export default function NewPasswordPage() {
                     ))}
                   </div>
 
-                  <Button variant="primary" fullWidth size="lg" onClick={executeGeneration} className="shadow-lg shadow-ice/10 mt-2">
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    size="lg"
+                    onClick={executeGeneration}
+                    className="shadow-lg shadow-ice/10 mt-2"
+                  >
                     Aplicar Senha Gerada
                   </Button>
                 </div>
@@ -299,9 +405,16 @@ export default function NewPasswordPage() {
         </AnimatePresence>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {loading ? "Salvando..." : "Salvar Senha"}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
+          >
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSubmitting ? "Salvando..." : "Salvar Senha"}
           </Button>
         </div>
       </main>

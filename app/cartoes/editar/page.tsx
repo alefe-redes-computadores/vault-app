@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import type { CardType } from "@/lib/types";
 
 const fadeUp = {
@@ -29,9 +30,9 @@ function EditCardContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { updateCard } = useCards();
+  const { run, isSubmitting } = useSubmitAction();
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
@@ -90,7 +91,7 @@ function EditCardContent() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!id) return;
     trigger("vibrate");
 
@@ -104,35 +105,31 @@ function EditCardContent() {
       return;
     }
 
-    setSaving(true);
-    try {
-      const cardNumberEncrypted = formData.card_number ? encryptPassword(formData.card_number) : undefined;
-      const cvvEncrypted = formData.cvv ? encryptPassword(formData.cvv) : undefined;
+    run(
+      async () => {
+        const cardNumberEncrypted = formData.card_number ? encryptPassword(formData.card_number) : undefined;
+        const cvvEncrypted = formData.cvv ? encryptPassword(formData.cvv) : undefined;
 
-      await updateCard(id, {
-        title: formData.title.trim(),
-        bank_name: formData.bank_name.trim(),
-        type: formData.type,
-        card_number_encrypted: cardNumberEncrypted,
-        card_holder: formData.card_holder.trim(),
-        brand: detectedBrand,
-        expiry_date: formData.expiry_date.trim(),
-        cvv_encrypted: cvvEncrypted,
-        agency: formData.agency.trim(),
-        account: formData.account.trim(),
-        notes: formData.notes.trim(),
-      });
-
-      trigger("success");
-      showToast("Registro atualizado", "success");
-      router.back();
-    } catch (error) {
-      console.error("Erro ao atualizar cartão/conta:", error);
-      trigger("error");
-      showToast("Erro ao atualizar", "error");
-    } finally {
-      setSaving(false);
-    }
+        await updateCard(id, {
+          title: formData.title.trim(),
+          bank_name: formData.bank_name.trim(),
+          type: formData.type,
+          card_number_encrypted: cardNumberEncrypted,
+          card_holder: formData.card_holder.trim(),
+          brand: detectedBrand,
+          expiry_date: formData.expiry_date.trim(),
+          cvv_encrypted: cvvEncrypted,
+          agency: formData.agency.trim(),
+          account: formData.account.trim(),
+          notes: formData.notes.trim(),
+        });
+      },
+      {
+        successMessage: "Registro atualizado",
+        errorMessage: "Erro ao atualizar",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
   if (loading) {
@@ -274,9 +271,9 @@ function EditCardContent() {
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saving} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {saving ? "Salvando Alterações..." : "Salvar Alterações"}
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={isSubmitting} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSubmitting ? "Salvando Alterações..." : "Salvar Alterações"}
           </Button>
         </div>
       </main>

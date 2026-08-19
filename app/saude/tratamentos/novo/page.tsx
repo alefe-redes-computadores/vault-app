@@ -9,13 +9,12 @@ import { useTratamentos } from "@/hooks/useTratamentos";
 import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useToast } from "@/components/ToastProvider";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
-import type { Cid, Person, Tratamento } from "@/lib/types";
+import type { Cid, Person } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -34,11 +33,11 @@ const CORES_TRATAMENTO = [
 
 export default function NovoTratamentoPage() {
   const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
   const { addTratamento } = useTratamentos();
   const { cids } = useCids();
   const persons = usePersons() as Person[];
+  const { run, isSubmitting } = useSubmitAction();
 
   const [personId, setPersonId] = useState<string>(persons[0]?.id || "");
   const [nome, setNome] = useState("");
@@ -46,13 +45,12 @@ export default function NovoTratamentoPage() {
   const [status, setStatus] = useState<"ativo" | "concluido" | "suspenso">("ativo");
   const [cor, setCor] = useState("#8B5CF6");
   const [observacoes, setObservacoes] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [isCidModalOpen, setIsCidModalOpen] = useState(false);
   const [showAddCidPrompt, setShowAddCidPrompt] = useState(false);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
     if (!personId) {
       setError("Selecione uma pessoa");
@@ -65,39 +63,23 @@ export default function NovoTratamentoPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      // O hook addTratamento injeta user_id/created_at/updated_at/synced e retorna o id
-      const novoId = await addTratamento({
-        person_id: personId,
-        nome: nome.trim(),
-        cid_ids: cidIds.length > 0 ? cidIds : undefined,
-        status,
-        cor,
-        observacoes: observacoes.trim() || undefined,
-      });
+    const dados = {
+      person_id: personId,
+      nome: nome.trim(),
+      cid_ids: cidIds.length > 0 ? cidIds : undefined,
+      status,
+      cor,
+      observacoes: observacoes.trim() || undefined,
+    };
 
-      // Enfileira para o Supabase (fonte de verdade)
-      await enfileirarOperacao("tratamentos", "add", {
-        id: novoId,
-        person_id: personId,
-        nome: nome.trim(),
-        cid_ids: cidIds.length > 0 ? cidIds : undefined,
-        status,
-        cor,
-        observacoes: observacoes.trim() || undefined,
-      });
-
-      trigger("success");
-      showToast("Tratamento cadastrado com sucesso", "success");
-      router.back();
-    } catch (err) {
-      trigger("error");
-      showToast("Erro ao salvar tratamento", "error");
-      setError("Erro ao salvar tratamento. Tente novamente.");
-    } finally {
-      setLoading(false);
-    }
+    run(
+      () => addTratamento(dados),
+      {
+        successMessage: "Tratamento cadastrado com sucesso",
+        errorMessage: "Erro ao salvar tratamento",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
   const handleAddCid = (cidId: string) => {
@@ -128,10 +110,6 @@ export default function NovoTratamentoPage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <FolderHeart size={16} className="text-violet-400" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-violet-300">Vault</p>
-              </div>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Novo Tratamento</h1>
             </div>
           </div>
@@ -256,10 +234,10 @@ export default function NovoTratamentoPage() {
             size="lg"
             fullWidth
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={isSubmitting}
             className="flex items-center justify-center gap-2 shadow-lg shadow-violet-400/10"
           >
-            {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar tratamento</>}
+            {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar tratamento</>}
           </Button>
         </div>
 

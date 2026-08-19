@@ -45,6 +45,7 @@ import {
   analisarRotinaDiaria,
 } from "@/lib/health-insights";
 import { useToast } from "@/components/ToastProvider";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { Tratamento } from "@/lib/types";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
@@ -99,18 +100,44 @@ export default function HojePage() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const hoje = getLocalTodayISO();
+  const { activePersonId } = useActivePersonId();
 
   const { medicamentos } = useMedicamentos();
   const { doseLogs, marcarComoTomada: marcarDose, marcarComoIgnorada } = useDoseLogs(hoje);
 
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const tratamentos = useLiveQuery(
+    () => activePersonId ? db.tratamentos.where('person_id').equals(activePersonId).toArray() : [],
+    [activePersonId]
+  ) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const farmacias = useLiveQuery(() => db.farmacias.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
-  const consultas = useLiveQuery(() => db.consultas.where("data").equals(hoje).toArray(), [hoje]) || [];
-  const cirurgias = useLiveQuery(() => db.cirurgias.where("data").equals(hoje).toArray(), [hoje]) || [];
-  const examesDoDia = useLiveQuery(() => db.exames.where("data").equals(hoje).toArray(), [hoje]) || [];
+  const consultas = useLiveQuery(
+    () => activePersonId ? db.consultas.where('person_id').equals(activePersonId).toArray() : [],
+    [activePersonId]
+  ) || [];
+  const cirurgias = useLiveQuery(
+    () => activePersonId ? db.cirurgias.where('person_id').equals(activePersonId).toArray() : [],
+    [activePersonId]
+  ) || [];
+  const exames = useLiveQuery(
+    () => activePersonId ? db.exames.where('person_id').equals(activePersonId).toArray() : [],
+    [activePersonId]
+  ) || [];
+
+  const consultasHoje = useMemo(
+    () => consultas.filter((c: any) => c.data === hoje),
+    [consultas, hoje]
+  );
+  const cirurgiasHoje = useMemo(
+    () => cirurgias.filter((c: any) => c.data === hoje),
+    [cirurgias, hoje]
+  );
+  const examesHoje = useMemo(
+    () => exames.filter((e: any) => e.data === hoje),
+    [exames, hoje]
+  );
 
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("todos");
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
@@ -182,16 +209,16 @@ export default function HojePage() {
   const compromissosFiltrados = useMemo(() => {
     let items: any[] = [];
     if (filtroCompromisso === "todos" || filtroCompromisso === "consultas") {
-      items = [...items, ...consultas.map(c => ({ ...c, tipo: "consulta" }))];
+      items = [...items, ...consultasHoje.map(c => ({ ...c, tipo: "consulta" }))];
     }
     if (filtroCompromisso === "todos" || filtroCompromisso === "cirurgias") {
-      items = [...items, ...cirurgias.map(c => ({ ...c, tipo: "cirurgia" }))];
+      items = [...items, ...cirurgiasHoje.map(c => ({ ...c, tipo: "cirurgia" }))];
     }
     if (filtroCompromisso === "todos" || filtroCompromisso === "exames") {
-      items = [...items, ...examesDoDia.map(e => ({ ...e, tipo: "exame" }))];
+      items = [...items, ...examesHoje.map(e => ({ ...e, tipo: "exame" }))];
     }
     return items;
-  }, [consultas, cirurgias, examesDoDia, filtroCompromisso]);
+  }, [consultasHoje, cirurgiasHoje, examesHoje, filtroCompromisso]);
 
   const assistenteDiario = useMemo(() => {
     return analisarRotinaDiaria(doses, compromissosFiltrados);
@@ -395,16 +422,16 @@ export default function HojePage() {
 
             <div className="w-px h-5 bg-surface-border/40 mx-1" />
 
-            {(consultas.length > 0 || cirurgias.length > 0 || examesDoDia.length > 0) && (
+            {(consultasHoje.length > 0 || cirurgiasHoje.length > 0 || examesHoje.length > 0) && (
               <>
-                <button onClick={() => { trigger("vibrate"); setFiltroCompromisso(filtroCompromisso === "consultas" ? "todos" : "consultas"); }} disabled={consultas.length === 0} className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${filtroCompromisso === "consultas" ? "border-ice bg-ice/20 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"} ${consultas.length === 0 ? "opacity-40 pointer-events-none" : ""}`}>
-                  Consultas ({consultas.length})
+                <button onClick={() => { trigger("vibrate"); setFiltroCompromisso(filtroCompromisso === "consultas" ? "todos" : "consultas"); }} disabled={consultasHoje.length === 0} className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${filtroCompromisso === "consultas" ? "border-ice bg-ice/20 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"} ${consultasHoje.length === 0 ? "opacity-40 pointer-events-none" : ""}`}>
+                  Consultas ({consultasHoje.length})
                 </button>
-                <button onClick={() => { trigger("vibrate"); setFiltroCompromisso(filtroCompromisso === "cirurgias" ? "todos" : "cirurgias"); }} disabled={cirurgias.length === 0} className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${filtroCompromisso === "cirurgias" ? "border-coral bg-coral/20 text-coral" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"} ${cirurgias.length === 0 ? "opacity-40 pointer-events-none" : ""}`}>
-                  Cirurgias ({cirurgias.length})
+                <button onClick={() => { trigger("vibrate"); setFiltroCompromisso(filtroCompromisso === "cirurgias" ? "todos" : "cirurgias"); }} disabled={cirurgiasHoje.length === 0} className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${filtroCompromisso === "cirurgias" ? "border-coral bg-coral/20 text-coral" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"} ${cirurgiasHoje.length === 0 ? "opacity-40 pointer-events-none" : ""}`}>
+                  Cirurgias ({cirurgiasHoje.length})
                 </button>
-                <button onClick={() => { trigger("vibrate"); setFiltroCompromisso(filtroCompromisso === "exames" ? "todos" : "exames"); }} disabled={examesDoDia.length === 0} className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${filtroCompromisso === "exames" ? "border-emerald-400 bg-emerald-400/20 text-emerald-300" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"} ${examesDoDia.length === 0 ? "opacity-40 pointer-events-none" : ""}`}>
-                  Exames ({examesDoDia.length})
+                <button onClick={() => { trigger("vibrate"); setFiltroCompromisso(filtroCompromisso === "exames" ? "todos" : "exames"); }} disabled={examesHoje.length === 0} className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${filtroCompromisso === "exames" ? "border-emerald-400 bg-emerald-400/20 text-emerald-300" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"} ${examesHoje.length === 0 ? "opacity-40 pointer-events-none" : ""}`}>
+                  Exames ({examesHoje.length})
                 </button>
               </>
             )}

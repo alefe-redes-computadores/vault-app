@@ -1,7 +1,7 @@
 // components/PersonSelector.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, Users, User } from "lucide-react";
@@ -17,6 +17,7 @@ export function PersonSelector({ className = "" }: PersonSelectorProps) {
   const { trigger } = useHapticFeedback();
   const { activePersonId, changePerson } = useActivePersonId();
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const persons = useLiveQuery(
     () => db.persons.toArray(),
@@ -25,6 +26,26 @@ export function PersonSelector({ className = "" }: PersonSelectorProps) {
   );
 
   const activePerson = persons.find((p) => p.id === activePersonId);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+
+      if (containerRef.current && !containerRef.current.contains(target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isOpen]);
 
   const handleSelect = async (personId: string) => {
     trigger("vibrate");
@@ -35,11 +56,12 @@ export function PersonSelector({ className = "" }: PersonSelectorProps) {
   if (persons.length === 0) return null;
 
   return (
-    <div className={`relative ${className}`}>
+    <div ref={containerRef} className={`relative ${className}`}>
       <button
+        type="button"
         onClick={() => {
           trigger("vibrate");
-          setIsOpen(!isOpen);
+          setIsOpen((prev) => !prev);
         }}
         className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-1.5 transition-all hover:border-ice/30 active:scale-95"
         style={{
@@ -81,6 +103,7 @@ export function PersonSelector({ className = "" }: PersonSelectorProps) {
               className="fixed inset-0 z-[60]"
               onClick={() => setIsOpen(false)}
             />
+
             <motion.div
               initial={{ opacity: 0, y: -8, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -99,6 +122,7 @@ export function PersonSelector({ className = "" }: PersonSelectorProps) {
                   const isActive = activePersonId === person.id;
                   return (
                     <button
+                      type="button"
                       key={person.id}
                       onClick={() => handleSelect(person.id!)}
                       className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"

@@ -27,6 +27,7 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 
 // ---- CONSTANTES LOCAIS PARA EVITAR ERROS DE IMPORT ----
 const TYPE_CATEGORY_MAP: Record<string, CategoryId[]> = {
@@ -92,12 +93,13 @@ export default function EditarDetalhePage() {
   const { farmacias } = useFarmacias();
   const { hospitais } = useHospitais();
 
+  const saveAction = useSubmitAction();
+  const deleteAction = useSubmitAction();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -238,88 +240,90 @@ export default function EditarDetalhePage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!validate() || !doc || !id) {
       trigger("error");
       return;
     }
 
-    setLoading(true);
-    try {
-      const cleanMetadata = { ...formData.metadata };
-      
-      fields.forEach((field: DocField) => {
-        if (field.type === 'date' && cleanMetadata[field.key]) {
-          const parts = cleanMetadata[field.key].split('/');
-          if (parts.length === 3) {
-            cleanMetadata[field.key] = `${parts[2]}-${parts[1]}-${parts[0]}`; 
+    saveAction.run(
+      async () => {
+        const cleanMetadata = { ...formData.metadata };
+        
+        fields.forEach((field: DocField) => {
+          if (field.type === 'date' && cleanMetadata[field.key]) {
+            const parts = cleanMetadata[field.key].split('/');
+            if (parts.length === 3) {
+              cleanMetadata[field.key] = `${parts[2]}-${parts[1]}-${parts[0]}`; 
+            }
           }
-        }
-      });
-
-      let finalAttachments = [...formData.attachments];
-      if (localFiles.length > 0 && user) {
-        setUploading(true);
-        const folder = formData.category_id;
-        const uploadedAttachments: Attachment[] = [];
-
-        for (let i = 0; i < localFiles.length; i++) {
-          const file = localFiles[i];
-          const attachment = formData.attachments.find(a => a.name === file.name || a.name.startsWith("foto_"));
-          if (!attachment) continue;
-
-          const { url, error } = await uploadFile(user.id, file, folder);
-          if (!error && url) {
-            uploadedAttachments.push({ ...attachment, url });
-          }
-        }
-
-        finalAttachments = formData.attachments.map((att) => {
-          const updated = uploadedAttachments.find((u) => u.id === att.id);
-          return updated || att;
         });
 
-        formData.attachments.forEach((att) => {
-          if (att.url.startsWith("blob:")) URL.revokeObjectURL(att.url);
+        let finalAttachments = [...formData.attachments];
+        if (localFiles.length > 0 && user) {
+          setUploading(true);
+          try {
+            const folder = formData.category_id;
+            const uploadedAttachments: Attachment[] = [];
+
+            for (let i = 0; i < localFiles.length; i++) {
+              const file = localFiles[i];
+              const attachment = formData.attachments.find(a => a.name === file.name || a.name.startsWith("foto_"));
+              if (!attachment) continue;
+
+              const { url, error } = await uploadFile(user.id, file, folder);
+              if (!error && url) {
+                uploadedAttachments.push({ ...attachment, url });
+              }
+            }
+
+            finalAttachments = formData.attachments.map((att) => {
+              const updated = uploadedAttachments.find((u) => u.id === att.id);
+              return updated || att;
+            });
+
+            formData.attachments.forEach((att) => {
+              if (att.url.startsWith("blob:")) URL.revokeObjectURL(att.url);
+            });
+          } finally {
+            setUploading(false);
+          }
+        }
+
+        await updateDocument(id, {
+          person_id: formData.person_id,
+          category_id: formData.category_id,
+          type: formData.type,
+          title: formData.title.trim(),
+          description: formData.description.trim() || undefined,
+          metadata: cleanMetadata,
+          attachments: finalAttachments,
         });
+
+        router.replace(`/detalhes?id=${id}`);
+      },
+      {
+        successMessage: "Documento atualizado com sucesso",
+        errorMessage: "Erro ao atualizar documento",
+        goBackOnSuccess: false,
       }
-
-      await updateDocument(id, {
-        person_id: formData.person_id,
-        category_id: formData.category_id,
-        type: formData.type,
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        metadata: cleanMetadata,
-        attachments: finalAttachments,
-      });
-
-      trigger("success");
-      router.replace(`/detalhes?id=${id}`);
-    } catch (error) {
-      console.error("Erro ao atualizar:", error);
-      trigger("error");
-    } finally {
-      setLoading(false);
-      setUploading(false);
-    }
+    );
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!id) return;
-    setDeleting(true);
-    try {
-      await db.documents.delete(id);
-      await enfileirarOperacao("documents", "delete", { id });
-      trigger("success");
-      router.replace("/");
-    } catch (error) {
-      console.error("Erro ao excluir:", error);
-      trigger("error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
+    deleteAction.run(
+      async () => {
+        await db.documents.delete(id);
+        await enfileirarOperacao("documents", "delete", { id });
+        router.replace("/");
+      },
+      {
+        successMessage: "Documento excluído com sucesso",
+        errorMessage: "Erro ao excluir documento",
+        goBackOnSuccess: false,
+      }
+    );
   };
 
   if (!doc) {
@@ -349,7 +353,6 @@ export default function EditarDetalhePage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
               <h1 className="font-display text-xl font-semibold text-ink-primary">Editar documento</h1>
             </div>
             <button
@@ -513,10 +516,10 @@ export default function EditarDetalhePage() {
                <label className="block text-sm font-medium text-ink-primary">Anexos</label>
              </div>
              <div className="grid grid-cols-2 gap-3">
-               <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading || loading}>
+               <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading || saveAction.isSubmitting}>
                  <Upload size={16} /> Arquivo
                </Button>
-               <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => cameraInputRef.current?.click()} disabled={uploading || loading}>
+               <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => cameraInputRef.current?.click()} disabled={uploading || saveAction.isSubmitting}>
                  <Camera size={16} /> Câmera
                </Button>
                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
@@ -536,8 +539,8 @@ export default function EditarDetalhePage() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
-            <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={loading || deleting || uploading} className="flex items-center justify-center gap-2">
-              {loading || uploading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar alterações</>}
+            <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saveAction.isSubmitting || uploading || deleteAction.isSubmitting} className="flex items-center justify-center gap-2">
+              {saveAction.isSubmitting || uploading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar alterações</>}
             </Button>
           </motion.div>
         </section>
@@ -571,7 +574,7 @@ export default function EditarDetalhePage() {
           </div>
         </BottomSheet>
 
-        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir documento" message={`Tem certeza que deseja excluir "${formData.title}"? Esta ação não pode ser desfeita.`} confirmLabel="Excluir" cancelLabel="Cancelar" isLoading={deleting} type="danger" />
+        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir documento" message={`Tem certeza que deseja excluir "${formData.title}"? Esta ação não pode ser desfeita.`} confirmLabel="Excluir" cancelLabel="Cancelar" isLoading={deleteAction.isSubmitting} type="danger" />
       </main>
     </PageTransition>
   );

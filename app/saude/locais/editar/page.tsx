@@ -10,7 +10,7 @@ import {
 import { useLocais } from "@/hooks/useLocais";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useToast } from "@/components/ToastProvider";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
@@ -47,13 +47,15 @@ function formatPhone(value: string): string {
 
 function EditarLocalContent() {
   const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
 
-  const { getLocal, updateLocal, deleteLocal } = useLocais(); // ✅ CORRIGIDO: deleteLocal
+  const { getLocal, updateLocal, deleteLocal } = useLocais();
   const { renovacoes = [] } = useRenovacoes();
+
+  const saveAction = useSubmitAction();
+  const deleteAction = useSubmitAction();
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -62,8 +64,6 @@ function EditarLocalContent() {
   const [endereco, setEndereco] = useState("");
   const [telefone, setTelefone] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
@@ -101,46 +101,40 @@ function EditarLocalContent() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
     if (!validate()) {
       trigger("error");
       return;
     }
 
-    setSaving(true);
-    try {
-      await updateLocal(id, {
-        nome: nome.trim(),
-        tipo: tipo || undefined,
-        endereco: endereco.trim() || undefined,
-        telefone: telefone.trim() || undefined,
-      });
-      trigger("success");
-      showToast("Local atualizado com sucesso", "success");
-      router.back();
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao atualizar local", "error");
-    } finally {
-      setSaving(false);
-    }
+    saveAction.run(
+      () =>
+        updateLocal(id, {
+          nome: nome.trim(),
+          tipo: tipo || undefined,
+          endereco: endereco.trim() || undefined,
+          telefone: telefone.trim() || undefined,
+        }),
+      {
+        successMessage: "Local atualizado com sucesso",
+        errorMessage: "Erro ao atualizar local",
+        goBackOnSuccess: true,
+      }
+    );
   };
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      await deleteLocal(id);
-      trigger("success");
-      showToast("Local excluído com sucesso", "success");
-      router.replace("/saude/locais");
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao excluir local", "error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
+  const handleDelete = () => {
+    deleteAction.run(
+      async () => {
+        await deleteLocal(id);
+        router.replace("/saude/locais");
+      },
+      {
+        successMessage: "Local excluído com sucesso",
+        errorMessage: "Erro ao excluir local",
+      }
+    );
   };
 
   if (isLoading) {
@@ -181,7 +175,6 @@ function EditarLocalContent() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <MapPin size={16} className="text-emerald-400" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">Rede de Apoio</p>
               </div>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary truncate">
                 {nome || "Editar local"}
@@ -308,10 +301,10 @@ function EditarLocalContent() {
             size="lg"
             fullWidth
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saveAction.isSubmitting}
             className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
           >
-            {saving ? (
+            {saveAction.isSubmitting ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 Salvando...
@@ -333,7 +326,7 @@ function EditarLocalContent() {
           message={`Tem certeza que deseja excluir "${nome}"?`}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
-          isLoading={deleting}
+          isLoading={deleteAction.isSubmitting}
           type="danger"
         />
       </main>

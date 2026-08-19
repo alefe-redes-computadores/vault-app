@@ -4,8 +4,8 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2, 
+import {
+  ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2,
   Pill, ExternalLink, Clock, TrendingDown, TrendingUp,
   Plus, FileWarning,
 } from "lucide-react";
@@ -19,6 +19,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { calcularEconomia, isReceitaVencidaSegura } from "@/lib/health-insights";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import type { Farmacia, Medicamento, Renovacao } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
@@ -45,11 +46,11 @@ function DetalhesFarmaciaContent() {
   const { getFarmacia, deleteFarmacia } = useFarmacias();
   const { medicamentos } = useMedicamentos();
   const { activePersonId } = useActivePersonId();
+  const deleteAction = useSubmitAction();
 
   const [farmacia, setFarmacia] = useState<Farmacia | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
@@ -71,9 +72,9 @@ function DetalhesFarmaciaContent() {
 
   const analiseFarmacia = useMemo(() => {
     if (!farmacia || !medicamentos) {
-      return { 
-        medicamentosVinculados: [] as Medicamento[], 
-        totalGasto: 0, 
+      return {
+        medicamentosVinculados: [] as Medicamento[],
+        totalGasto: 0,
         precoMedio: 0,
         ultimaCompra: null as Renovacao | null,
         ultimasRenovacoes: [] as Array<Renovacao & { medicamento_nome: string; dosagem?: string }>,
@@ -99,8 +100,8 @@ function DetalhesFarmaciaContent() {
     const precos = renovacoesDaFarmacia
       .filter((r) => typeof r.preco === "number" && r.preco > 0)
       .map((r) => r.preco as number);
-    const precoMedio = precos.length > 0 
-      ? precos.reduce((a, b) => a + b, 0) / precos.length 
+    const precoMedio = precos.length > 0
+      ? precos.reduce((a, b) => a + b, 0) / precos.length
       : 0;
 
     const ultimaCompra = renovacoesDaFarmacia.length > 0 ? renovacoesDaFarmacia[0] : null;
@@ -145,19 +146,18 @@ function DetalhesFarmaciaContent() {
     router.push(path);
   };
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      await deleteFarmacia(id!);
-      trigger("success");
-      router.replace("/saude/farmacias");
-    } catch (error) {
-      console.error("Erro ao excluir farmácia:", error);
-      trigger("error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
+  const handleDelete = () => {
+    deleteAction.run(
+      async () => {
+        await deleteFarmacia(id!);
+        router.replace("/saude/farmacias");
+      },
+      {
+        successMessage: "Farmácia excluída com sucesso",
+        errorMessage: "Erro ao excluir farmácia",
+        goBackOnSuccess: false,
+      }
+    );
   };
 
   if (isLoading) return <DetailSkeleton />;
@@ -176,7 +176,7 @@ function DetalhesFarmaciaContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber-400">Hub de Farmácia</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber-400">Farmácia</p>
               <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Detalhes da Farmácia</h1>
             </div>
           </div>
@@ -253,13 +253,13 @@ function DetalhesFarmaciaContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          <motion.div 
-            variants={fadeUp} 
-            initial="initial" 
-            animate="animate" 
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ 
-              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #F59E0B)' : '#F59E0B'}` 
+            style={{
+              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #F59E0B)' : '#F59E0B'}`
             }}
           >
             <div className="flex items-start gap-4">
@@ -297,22 +297,22 @@ function DetalhesFarmaciaContent() {
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-surface-border/40">
-              <div className="rounded-2xl bg-surface-raised p-3">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Vinculados</p>
-                <p className="mt-0.5 text-sm font-semibold text-ink-primary">
-                  {analiseFarmacia.medicamentosVinculados.length} medicamento(s)
+            <div className="grid grid-cols-3 gap-2 pt-4 border-t border-surface-border/40">
+              <div className="rounded-2xl bg-surface-raised p-3 text-center min-w-0">
+                <p className="text-[10px] uppercase font-mono text-ink-muted truncate">Vinculados</p>
+                <p className="mt-0.5 text-sm font-semibold text-ink-primary leading-tight">
+                  {analiseFarmacia.medicamentosVinculados.length}
                 </p>
               </div>
-              <div className="rounded-2xl bg-surface-raised p-3">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Total Gasto</p>
-                <p className="mt-0.5 text-sm font-semibold text-emerald-400">
+              <div className="rounded-2xl bg-surface-raised p-3 text-center min-w-0">
+                <p className="text-[10px] uppercase font-mono text-ink-muted truncate">Total Gasto</p>
+                <p className="mt-0.5 text-sm font-semibold text-emerald-400 leading-tight">
                   {analiseFarmacia.totalGasto > 0 ? formatCurrency(analiseFarmacia.totalGasto) : "R$ 0,00"}
                 </p>
               </div>
-              <div className="rounded-2xl bg-surface-raised p-3">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Preço Médio</p>
-                <p className="mt-0.5 text-sm font-semibold text-ink-primary">
+              <div className="rounded-2xl bg-surface-raised p-3 text-center min-w-0">
+                <p className="text-[10px] uppercase font-mono text-ink-muted truncate">Preço Médio</p>
+                <p className="mt-0.5 text-sm font-semibold text-ink-primary leading-tight">
                   {analiseFarmacia.precoMedio > 0 ? formatCurrency(analiseFarmacia.precoMedio) : "—"}
                 </p>
               </div>
@@ -327,7 +327,7 @@ function DetalhesFarmaciaContent() {
                     <TrendingUp size={14} />
                   )}
                   <span>
-                    {analiseFarmacia.economia.economia > 0 
+                    {analiseFarmacia.economia.economia > 0
                       ? `Economia de ${formatCurrency(Math.abs(analiseFarmacia.economia.economia))} (${Math.abs(analiseFarmacia.economia.percentual)}%) na última compra`
                       : `Aumento de ${formatCurrency(Math.abs(analiseFarmacia.economia.economia))} (${Math.abs(analiseFarmacia.economia.percentual)}%) na última compra`
                     }
@@ -419,7 +419,7 @@ function DetalhesFarmaciaContent() {
           message={`Tem certeza que deseja excluir "${farmacia.nome}"?`}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
-          isLoading={deleting}
+          isLoading={deleteAction.isSubmitting}
           type="danger"
         />
       </main>
