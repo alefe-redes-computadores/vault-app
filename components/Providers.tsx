@@ -11,7 +11,6 @@ import { useDoseNotificationActions } from "@/hooks/useDoseNotificationActions";
 import { BottomNav } from "./BottomNav";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
-import { RouteProgress } from "@/components/loading/RouteProgress";
 import { pullAllData } from "@/lib/sync/pull";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
@@ -184,11 +183,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ToastProvider>
       <ErrorBoundary>
         <div className="min-h-screen pb-24">
-          <RouteProgress />
           <Suspense fallback={<div className="min-h-screen bg-void" />}>
             {children}
           </Suspense>
-          <BottomNav />
+          
+          <Suspense fallback={null}>
+            <BottomNav />
+          </Suspense>
         </div>
       </ErrorBoundary>
     </ToastProvider>
