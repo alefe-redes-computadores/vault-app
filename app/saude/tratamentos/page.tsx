@@ -31,7 +31,7 @@ import type { Tratamento, Medicamento, Renovacao } from "@/lib/types";
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
 
 function getTratamentoIcon(nome: string) {
-  const n = nome.toLowerCase();
+  const n = (nome || "").toLowerCase();
   if (n.includes("tdah")) return Brain;
   if (n.includes("dor") || n.includes("neuropática")) return Flame;
   if (n.includes("depress")) return HeartPulse;
@@ -62,15 +62,15 @@ function TratamentoListContent() {
   const personAccent = activePersonId ? 'var(--person-accent, #8B5CF6)' : '#8B5CF6';
 
   const listaEnriquecida = useMemo<TratamentoEnriquecido[]>(() => {
-    return tratamentos.map((t) => {
-      const meds = medicamentos.filter((m: Medicamento) => {
+    return (tratamentos || []).map((t) => {
+      const meds = (medicamentos || []).filter((m: Medicamento) => {
         if (!t.id) return false;
         return m.tratamento_ids && m.tratamento_ids.includes(t.id);
       });
 
       const medIds = new Set(meds.map((m) => m.id).filter(Boolean));
       let totalGasto = 0;
-      renovacoes.forEach((r: Renovacao) => {
+      (renovacoes || []).forEach((r: Renovacao) => {
         if (medIds.has(r.medicamento_id) && typeof r.preco === "number" && r.preco > 0) {
           totalGasto += r.preco;
         }
@@ -95,7 +95,7 @@ function TratamentoListContent() {
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [listaEnriquecida, filtroStatus]);
 
-  if (!tratamentos.length && !medicamentos.length && !renovacoes.length) {
+  if (!tratamentos && !medicamentos) {
     return <CardListSkeleton />;
   }
 

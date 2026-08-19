@@ -721,13 +721,18 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 24
-    //
-    // Adiciona tabela settings para armazenar preferências do usuário
-    // como default_person_id (pessoa padrão) e futuras configurações.
     // ==========================================================
 
     this.version(24).stores({
       settings: 'id, user_id, default_person_id, updated_at',
+    });
+    
+    // ==========================================================
+    // VERSÃO 25
+    // Corrige índice ausente que quebrava o Dexie
+    // ==========================================================
+    this.version(25).stores({
+      anexos_clinicos: 'id, user_id, person_id, synced, updated_at',
     });
   }
 }
@@ -1937,7 +1942,7 @@ export async function safeDeleteAnexoClinico(
 // ============================================================
 
 export async function safeAddSettings(
-  data: Omit<AppSettings, 'id' | 'updated_at' | 'synced'>
+  data: Omit<AppSettings, 'id' | 'updated_at' | 'created_at' | 'synced'>
 ): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -1945,6 +1950,8 @@ export async function safeAddSettings(
   const full: AppSettings = {
     ...data,
     id,
+    created_at: timestamp,
+    updated_at: timestamp,
     synced: false,
   };
 
@@ -1965,6 +1972,7 @@ export async function safeUpdateSettings(
 
   await db.settings.update(id, {
     ...changes,
+    updated_at: timestamp,
     synced: false,
   });
 }

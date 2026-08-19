@@ -1,7 +1,7 @@
 // app/saude/medicamentos/page.tsx
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -57,7 +57,7 @@ function formatDate(date?: string) {
 }
 
 function getTratamentoStyle(nome: string) {
-  const n = nome.toLowerCase();
+  const n = (nome || "").toLowerCase();
   if (n.includes("tdah")) return "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
   if (n.includes("dor")) return "bg-coral/10 border-coral/20 text-coral";
   if (n.includes("depress")) return "bg-blue-500/10 border-blue-500/20 text-blue-400";
@@ -69,7 +69,7 @@ export default function MedicamentosListPage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
-  const { medicamentos, updateMedicamento } = useMedicamentos();
+  const { medicamentos: medicamentosTodas, updateMedicamento } = useMedicamentos();
   const { activePersonId } = useActivePersonId();
   const persons = usePersons() as Person[];
   const { tratamentos = [] } = useTratamentos();
@@ -79,33 +79,23 @@ export default function MedicamentosListPage() {
   const [sortBy, setSortBy] = useState<"urgency" | "name" | "renewal">("urgency");
   const [tomandoDoseId, setTomandoDoseId] = useState<string | null>(null);
 
-  // Mapa de tratamentos para exibir os nomes
+  const medicamentos = useMemo(() => {
+    if (!activePersonId) return [];
+    return (medicamentosTodas || []).filter(
+      (m: Medicamento) => m.person_id === activePersonId
+    );
+  }, [medicamentosTodas, activePersonId]);
+
   const tratamentoMap = useMemo(() => {
     const map = new Map<string, { nome: string }>();
-    tratamentos.forEach((t: Tratamento) => {
+    (tratamentos || []).forEach((t: Tratamento) => {
       if (t.id) map.set(t.id, { nome: t.nome });
     });
     return map;
   }, [tratamentos]);
 
-  // Mapa de pessoas (apenas para referência, não usamos mais a etiqueta)
-  const personMap = useMemo(() => {
-    const map = new Map<string, Person>();
-    persons.forEach((p: Person) => {
-      if (p.id) map.set(p.id, p);
-    });
-    return map;
-  }, [persons]);
-
-  const countByPerson = useMemo(() => {
-    const map = new Map<string, number>();
-    medicamentos?.forEach((m: Medicamento) => {
-      if (m.person_id && m.status !== "descontinuado") {
-        map.set(m.person_id, (map.get(m.person_id) || 0) + 1);
-      }
-    });
-    return map;
-  }, [medicamentos]);
+  const activePerson = (persons || []).find((p) => p.id === activePersonId);
+  const activePersonColor = activePerson?.color || "#38BDF8";
 
   const handleTomarAgora = useCallback(
     async (e: React.MouseEvent, med: Medicamento) => {
@@ -190,14 +180,7 @@ export default function MedicamentosListPage() {
     });
   }, [medicamentos, searchQuery, showDescontinuados, sortBy]);
 
-  if (medicamentos === undefined) return <CardListSkeleton />;
-
-  // Cor da pessoa ativa para aplicar nos cards
-  const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
-
-  // Buscar a pessoa ativa para saber a cor
-  const activePerson = persons.find((p) => p.id === activePersonId);
-  const activePersonColor = activePerson?.color || personAccent;
+  if (medicamentosTodas === undefined) return <CardListSkeleton />;
 
   return (
     <PageTransition>
@@ -295,7 +278,6 @@ export default function MedicamentosListPage() {
                 FORMATOS.find((f) => f.id === med.formato)?.icon || Pill;
               const color1 = med.cores?.[0] || "#60A5FA";
 
-              // Usar a cor da pessoa ativa ou a cor do medicamento como fallback
               const cardBorderColor = activePersonColor || color1;
 
               return (

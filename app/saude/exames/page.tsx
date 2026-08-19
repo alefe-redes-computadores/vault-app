@@ -45,12 +45,17 @@ export default function ExamesPage() {
   const [search, setSearch] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "vencido" | "valido" | "proximo">("todos");
 
-  const { exames } = useExames();
+  const { exames: allExames } = useExames();
   const persons = useLiveQuery(() => db.persons.toArray(), []) as Person[];
 
-  const personMap = useMemo(() => new Map(persons.map((p) => [p.id!, p.name])), [persons]);
+  const personMap = useMemo(() => new Map((persons || []).map((p) => [p.id!, p.name])), [persons]);
 
   const personAccent = activePersonId ? 'var(--person-accent, #10B981)' : '#10B981';
+
+  const exames = useMemo(() => {
+    if (!activePersonId) return allExames || [];
+    return (allExames || []).filter((exame: Exame) => exame.person_id === activePersonId);
+  }, [allExames, activePersonId]);
 
   type ExameComStatus = Exame & { vencido: boolean; proximo: boolean };
 
@@ -87,7 +92,7 @@ export default function ExamesPage() {
     return result.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
   }, [examesComStatus, search, filtroStatus]);
 
-  if (!exames) return <CardListSkeleton />;
+  if (!allExames) return <CardListSkeleton />;
 
   return (
     <PageTransition>

@@ -35,18 +35,11 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { updateDefaultPersonId } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { personsRepository } from "@/lib/repositories/persons";
 import type { Person, Document, Medicamento, Consulta, Exame, Cirurgia, Tratamento, Cid } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
-
-function formatCount(count: number, label: string, plural?: string) {
-  const pluralLabel = plural || label + "s";
-  return `${count} ${count !== 1 ? pluralLabel : label}`;
-}
 
 function getTratamentoIcon(nome: string) {
   const n = (nome || "").toLowerCase();
@@ -82,6 +75,7 @@ export default function PessoaDetalhesPage() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const { activePersonId, changePerson } = useActivePersonId();
+  const { user } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
   const [showDefaultModal, setShowDefaultModal] = useState(false);
@@ -147,18 +141,11 @@ export default function PessoaDetalhesPage() {
   }, [id, router]);
 
   const handleSetDefault = async () => {
-    if (!id || !person) return;
+    if (!id || !person || !user) return;
     setIsSettingDefault(true);
     trigger("vibrate");
     try {
       await changePerson(id);
-      const { user } = useAuth();
-      if (user) {
-      await updateDefaultPersonId(user.id, id);
-      }
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("sync:process"));
-      }
       trigger("success");
       showToast(`${person.name} definido como padrão`, "success");
       setShowDefaultModal(false);
@@ -234,9 +221,9 @@ export default function PessoaDetalhesPage() {
     );
   }
 
-  const medicamentosAtivos = medicamentos?.filter((m) => m.status !== "descontinuado") || [];
-  const consultasFuturas = consultas?.filter((c) => c.data >= new Date().toISOString().slice(0, 10)) || [];
-  const examesPendentes = exames?.filter((e) => e.data_retorno && new Date(e.data_retorno) >= new Date()) || [];
+  const medicamentosAtivos = (medicamentos || []).filter((m) => m.status !== "descontinuado");
+  const consultasFuturas = (consultas || []).filter((c) => c.data >= new Date().toISOString().slice(0, 10));
+  const examesPendentes = (exames || []).filter((e) => e.data_retorno && new Date(e.data_retorno) >= new Date());
 
   return (
     <PageTransition>
@@ -358,9 +345,7 @@ export default function PessoaDetalhesPage() {
             <div className="flex items-center gap-4">
               <div
                 className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 object-cover cursor-pointer"
-                style={{
-                  borderColor: `${person.color || "#38BDF8"}55`,
-                }}
+                style={{ borderColor: `${person.color || "#38BDF8"}55` }}
                 onClick={() => {
                   trigger("vibrate");
                   router.push(`/pessoas/editar?id=${id}`);
@@ -374,12 +359,7 @@ export default function PessoaDetalhesPage() {
                     className="h-full w-full rounded-full object-cover"
                   />
                 ) : (
-                  <User
-                    size={36}
-                    style={{
-                      color: person.color || "#38BDF8",
-                    }}
-                  />
+                  <User size={36} style={{ color: person.color || "#38BDF8" }} />
                 )}
                 <div className="absolute bottom-0 right-0 rounded-full bg-void/80 border border-surface-border p-0.5">
                   <div className="rounded-full bg-ice/20 p-0.5">

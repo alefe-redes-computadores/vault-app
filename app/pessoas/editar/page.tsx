@@ -14,6 +14,7 @@ import {
   Camera,
   Palette,
   Check,
+  X,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
@@ -136,6 +137,11 @@ export default function EditarPessoaPage() {
     }
   };
 
+  const removePhoto = () => {
+    setFormData((prev) => ({ ...prev, avatar_url: "" }));
+    trigger("vibrate");
+  };
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = "Nome é obrigatório";
@@ -159,13 +165,10 @@ export default function EditarPessoaPage() {
         email: formData.email.trim() || undefined,
         phone: formData.phone.trim() || undefined,
         updated_at: new Date().toISOString(),
-        synced: 0,
+        synced: false,
       };
 
-      // Salva no Dexie
       await db.persons.update(id, updateData);
-      
-      // Enfileira pro Supabase
       await enfileirarOperacao("persons", "update", { id, ...updateData });
 
       if (isDefault && formData.color) {
@@ -248,30 +251,40 @@ export default function EditarPessoaPage() {
                   <img
                     src={formData.avatar_url}
                     alt={formData.name}
-                    className="h-16 w-16 rounded-full border-2 object-cover"
+                    className="h-20 w-20 rounded-full border-2 object-cover"
                     style={{ borderColor: `${formData.color}55` }}
                   />
                 ) : (
                   <div
-                    className="flex h-16 w-16 items-center justify-center rounded-full border bg-surface-raised"
+                    className="flex h-20 w-20 items-center justify-center rounded-full border bg-surface-raised"
                     style={{ borderColor: `${formData.color}55` }}
                   >
-                    <User size={28} style={{ color: formData.color }} />
+                    <User size={36} style={{ color: formData.color }} />
                   </div>
                 )}
 
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingPhoto}
-                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-void bg-ice text-void transition-all active:scale-95 disabled:opacity-50"
+                  className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-void bg-ice text-void transition-all active:scale-95 disabled:opacity-50"
                   title="Alterar foto"
                 >
                   {uploadingPhoto ? (
-                    <Loader2 size={12} className="animate-spin" />
+                    <Loader2 size={14} className="animate-spin" />
                   ) : (
-                    <Camera size={12} />
+                    <Camera size={14} />
                   )}
                 </button>
+
+                {formData.avatar_url && (
+                  <button
+                    onClick={removePhoto}
+                    className="absolute -top-1 -left-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-void bg-coral text-white transition-all active:scale-95"
+                    title="Remover foto"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
               </div>
 
               <div className="min-w-0">

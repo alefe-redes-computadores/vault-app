@@ -186,7 +186,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <Suspense fallback={<div className="min-h-screen bg-void" />}>
             {children}
           </Suspense>
-          
           <Suspense fallback={null}>
             <BottomNav />
           </Suspense>

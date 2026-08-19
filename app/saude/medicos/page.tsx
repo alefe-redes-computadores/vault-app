@@ -82,12 +82,12 @@ export default function MedicosPage() {
 
   const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
-  const tratamentoMap = useMemo(() => new Map(tratamentos.map((t) => [t.id, t])), [tratamentos]);
-  const hospitalMap = useMemo(() => new Map(hospitais.map((h) => [h.id, h])), [hospitais]);
+  const tratamentoMap = useMemo(() => new Map((tratamentos || []).map((t) => [t.id, t])), [tratamentos]);
+  const hospitalMap = useMemo(() => new Map((hospitais || []).map((h) => [h.id, h])), [hospitais]);
 
   const medicosComMetadados = useMemo<MedicoComMetadados[]>(() => {
-    return medicos.map((medico) => {
-      const medsDoMedico = medicamentos.filter(
+    return (medicos || []).map((medico) => {
+      const medsDoMedico = (medicamentos || []).filter(
         (m) => m.medico_id === medico.id || m.medico === medico.nome
       );
 
@@ -103,10 +103,10 @@ export default function MedicosPage() {
         }
       });
 
-      const consultasDoMedico = consultas.filter((c) => c.medico_id === medico.id);
-      const cirurgiasDoMedico = cirurgias.filter((c) => c.medico_id === medico.id);
+      const consultasDoMedico = (consultas || []).filter((c) => c.medico_id === medico.id);
+      const cirurgiasDoMedico = (cirurgias || []).filter((c) => c.medico_id === medico.id);
 
-      const docsDoMedico = documentos.filter(
+      const docsDoMedico = (documentos || []).filter(
         (d) =>
           d.metadata?.doctor_id === medico.id ||
           String(d.metadata?.doctor || "").toLowerCase() === medico.nome.toLowerCase()
@@ -198,7 +198,7 @@ export default function MedicosPage() {
     return Array.from(map.values());
   }, [medicosComMetadados]);
 
-  if (!medicos.length) return <CardListSkeleton />;
+  if (!medicos) return <CardListSkeleton />;
 
   return (
     <PageTransition>

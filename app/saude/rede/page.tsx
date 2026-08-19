@@ -35,6 +35,7 @@ import { useExames } from "@/hooks/useExames";
 import { useCirurgias } from "@/hooks/useCirurgias";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { usePersons } from "@/hooks/usePersons";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -74,29 +75,25 @@ export default function RedeSaudePage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { activePersonId } = useActivePersonId();
   
-  const { medicos } = useMedicos();
-  const { farmacias } = useFarmacias();
-  const { hospitais } = useHospitais();
-  const { medicamentos } = useMedicamentos();
-  const { tratamentos } = useTratamentos();
-  const { consultas } = useConsultas();
-  const { exames } = useExames();
-  const { cirurgias } = useCirurgias();
-  const { renovacoes } = useRenovacoes();
-  const persons = usePersons();
+  const { medicos = [] } = useMedicos();
+  const { farmacias = [] } = useFarmacias();
+  const { hospitais = [] } = useHospitais();
+  const { medicamentos = [] } = useMedicamentos();
+  const { tratamentos = [] } = useTratamentos();
+  const { consultas = [] } = useConsultas();
+  const { exames = [] } = useExames();
+  const { cirurgias = [] } = useCirurgias();
+  const { renovacoes = [] } = useRenovacoes();
+  const persons = usePersons() as Person[];
 
-  const [selectedPersonId, setSelectedPersonId] = useState<string>("");
   const [search, setSearch] = useState("");
 
   const tabFromUrl = searchParams.get("tab") as TabType | null;
   const [activeTab, setActiveTab] = useState<TabType>(tabFromUrl || "visao-geral");
 
-  useEffect(() => {
-    if (persons.length > 0 && !selectedPersonId) {
-      setSelectedPersonId(persons[0].id!);
-    }
-  }, [persons, selectedPersonId]);
+  const selectedPersonId = activePersonId || "";
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -114,33 +111,33 @@ export default function RedeSaudePage() {
 
   const filteredMedicamentos = useMemo(() => {
     if (!selectedPersonId) return [];
-    return medicamentos.filter((m: Medicamento) => m.person_id === selectedPersonId);
+    return (medicamentos || []).filter((m: Medicamento) => m.person_id === selectedPersonId);
   }, [medicamentos, selectedPersonId]);
 
   const filteredTratamentos = useMemo(() => {
     if (!selectedPersonId) return [];
-    return tratamentos.filter((t: Tratamento) => t.person_id === selectedPersonId);
+    return (tratamentos || []).filter((t: Tratamento) => t.person_id === selectedPersonId);
   }, [tratamentos, selectedPersonId]);
 
   const filteredConsultas = useMemo(() => {
     if (!selectedPersonId) return [];
-    return consultas.filter((c: Consulta) => c.person_id === selectedPersonId);
+    return (consultas || []).filter((c: Consulta) => c.person_id === selectedPersonId);
   }, [consultas, selectedPersonId]);
 
   const filteredExames = useMemo(() => {
     if (!selectedPersonId) return [];
-    return exames.filter((e: Exame) => e.person_id === selectedPersonId);
+    return (exames || []).filter((e: Exame) => e.person_id === selectedPersonId);
   }, [exames, selectedPersonId]);
 
   const filteredCirurgias = useMemo(() => {
     if (!selectedPersonId) return [];
-    return cirurgias.filter((c: Cirurgia) => c.person_id === selectedPersonId);
+    return (cirurgias || []).filter((c: Cirurgia) => c.person_id === selectedPersonId);
   }, [cirurgias, selectedPersonId]);
 
   const filteredRenovacoes = useMemo(() => {
     if (!selectedPersonId) return [];
     const medsIds = new Set(filteredMedicamentos.map(m => m.id).filter((id): id is string => Boolean(id)));
-    return renovacoes.filter((r: Renovacao) => r.person_id === selectedPersonId || (r.medicamento_id && medsIds.has(r.medicamento_id)));
+    return (renovacoes || []).filter((r: Renovacao) => r.person_id === selectedPersonId || (r.medicamento_id && medsIds.has(r.medicamento_id)));
   }, [renovacoes, selectedPersonId, filteredMedicamentos]);
 
   const filteredMedicos = useMemo(() => {
@@ -151,7 +148,7 @@ export default function RedeSaudePage() {
       ...filteredMedicamentos.map(m => m.medico_id)
     ].filter((id): id is string => Boolean(id)));
 
-    return medicos.filter((m: Medico) => m.id && linked.has(m.id));
+    return (medicos || []).filter((m: Medico) => m.id && linked.has(m.id));
   }, [medicos, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
 
   const filteredFarmacias = useMemo(() => {
@@ -161,7 +158,7 @@ export default function RedeSaudePage() {
       ...filteredRenovacoes.map(r => r.farmacia_id)
     ].filter((id): id is string => Boolean(id)));
 
-    return farmacias.filter((f: Farmacia) => f.id && linked.has(f.id));
+    return (farmacias || []).filter((f: Farmacia) => f.id && linked.has(f.id));
   }, [farmacias, selectedPersonId, filteredMedicamentos, filteredRenovacoes]);
 
   const filteredHospitais = useMemo(() => {
@@ -172,7 +169,7 @@ export default function RedeSaudePage() {
       ...filteredMedicamentos.map(m => m.local_id)
     ].filter((id): id is string => Boolean(id)));
 
-    return hospitais.filter((h: Hospital) => h.id && linked.has(h.id));
+    return (hospitais || []).filter((h: Hospital) => h.id && linked.has(h.id));
   }, [hospitais, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
 
   const alertas = useMemo(() => {
@@ -312,25 +309,6 @@ export default function RedeSaudePage() {
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Minha Rede de Saúde
               </h1>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <User size={16} className="text-ink-muted shrink-0" />
-            <div className="flex flex-wrap gap-1.5">
-              {persons.map((p: Person) => (
-                <button
-                  key={p.id}
-                  onClick={() => { trigger("vibrate"); setSelectedPersonId(p.id!); }}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
-                    selectedPersonId === p.id
-                      ? "border-ice bg-ice/12 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
             </div>
           </div>
 

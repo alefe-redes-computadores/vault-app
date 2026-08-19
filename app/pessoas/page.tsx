@@ -31,7 +31,7 @@ export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast } = useToast();
-  const { activePersonId } = useActivePersonId();
+  const { activePersonId, changePerson } = useActivePersonId();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -48,16 +48,16 @@ export default function PessoasPage() {
   }, []);
 
   const sortedPersons = useMemo(() => {
-    return [...persons].sort((a, b) =>
+    return [...(persons || [])].sort((a, b) =>
       (a.name || "").localeCompare(b.name || "", "pt-BR", {
         sensitivity: "base",
       })
     );
   }, [persons]);
 
-  const handlePersonClick = (id: string) => {
+  const handlePersonClick = async (id: string) => {
     trigger("vibrate");
-    router.push(`/pessoas/detalhes?id=${id}`);
+    await changePerson(id);
   };
 
   const handleDeleteClick = (id: string, name: string) => {
@@ -90,9 +90,7 @@ export default function PessoasPage() {
           }
 
           await db.documents.where("person_id").equals(id).delete();
-
           await db.persons.delete(id);
-
           await enfileirarOperacao("persons", "delete", { id });
         }
       );

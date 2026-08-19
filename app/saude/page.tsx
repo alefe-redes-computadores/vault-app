@@ -57,10 +57,7 @@ import {
   type AlertLevel,
 } from "@/lib/health-utils";
 import { sugerirRenovacao } from "@/lib/health-insights";
-
-// ============================================================
-// UTILITÁRIOS (mantidos)
-// ============================================================
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 
 function getTratamentoIcon(nome: string) {
   const n = (nome || "").toLowerCase();
@@ -135,10 +132,6 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
   );
 }
 
-// ============================================================
-// FUNÇÃO PARA GERAR ALERTAS AGRUPADOS (Atenção Urgente)
-// ============================================================
-
 function gerarAlertasDashboard(
   medicamentos: any[],
   renovacoes: any[],
@@ -148,8 +141,7 @@ function gerarAlertasDashboard(
 ) {
   const alertas = [];
 
-  // 1. Estoque zero
-  const semEstoque = medicamentos.filter(m => (m.estoque_quantidade || 0) <= 0 && m.status === 'ativo');
+  const semEstoque = (medicamentos || []).filter(m => (m.estoque_quantidade || 0) <= 0 && m.status === 'ativo');
   for (const med of semEstoque) {
     alertas.push({
       id: `estoque-${med.id}`,
@@ -162,14 +154,13 @@ function gerarAlertasDashboard(
     });
   }
 
-  // 2. Renovações vencendo em 7 dias
-  const renovacoesVencendo = renovacoes.filter(r => {
+  const renovacoesVencendo = (renovacoes || []).filter(r => {
     if (!r.proxima_renovacao) return false;
     const diff = Math.floor((new Date(r.proxima_renovacao).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24));
     return diff <= 7 && diff >= 0;
   });
   for (const ren of renovacoesVencendo) {
-    const med = medicamentos.find(m => m.id === ren.medicamento_id);
+    const med = (medicamentos || []).find(m => m.id === ren.medicamento_id);
     alertas.push({
       id: `renovacao-${ren.id}`,
       titulo: `Receita de ${med?.nome || 'medicamento'} vence em ${Math.ceil((new Date(ren.proxima_renovacao).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24))} dias`,
@@ -181,8 +172,7 @@ function gerarAlertasDashboard(
     });
   }
 
-  // 3. Consultas hoje
-  const consultasHoje = consultas.filter(c => c.data === today && c.status === 'agendada');
+  const consultasHoje = (consultas || []).filter(c => c.data === today && c.status === 'agendada');
   for (const consulta of consultasHoje) {
     alertas.push({
       id: `consulta-${consulta.id}`,
@@ -195,8 +185,7 @@ function gerarAlertasDashboard(
     });
   }
 
-  // 4. Exames com prazo vencido ou próximo (7 dias)
-  exames.forEach(exame => {
+  (exames || []).forEach(exame => {
     if (!exame.data_retorno) return;
     const diff = Math.floor((new Date(exame.data_retorno).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24));
     if (diff < 0) {
@@ -222,41 +211,67 @@ function gerarAlertasDashboard(
     }
   });
 
-  // Ordenar por urgência
   const ordem: Record<string, number> = {
-  alta: 0,
-  media: 1,
-  baixa: 2,
-  nenhuma: 3,
-};
-return alertas.sort((a, b) => ordem[a.urgencia] - ordem[b.urgencia]);
+    alta: 0,
+    media: 1,
+    baixa: 2,
+    nenhuma: 3,
+  };
+  return alertas.sort((a, b) => ordem[a.urgencia] - ordem[b.urgencia]);
 }
-
-// ============================================================
-// PÁGINA PRINCIPAL
-// ============================================================
 
 export default function SaudePage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const hoje = getLocalTodayISO();
+  const { activePersonId } = useActivePersonId();
 
   const documents = useDocuments();
-  const { medicamentos } = useMedicamentos();
-  const { medicos } = useMedicos();
-  const { farmacias } = useFarmacias();
-  const { hospitais } = useHospitais();
-  const { locais } = useLocais();
+  const { medicamentos: medicamentosTodas } = useMedicamentos();
+  const { medicos = [] } = useMedicos();
+  const { farmacias = [] } = useFarmacias();
+  const { hospitais = [] } = useHospitais();
+  const { locais = [] } = useLocais();
   const { doseLogs, marcarComoTomada: marcarDose } = useDoseLogs(hoje);
 
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
-  const renovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
-  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+  const tratamentosTodas = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const examesTodas = useLiveQuery(() => db.exames.toArray(), []) || [];
+  const renovacoesTodas = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
+  const consultasTodas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+  const cirurgiasTodas = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
 
-  const consultasHoje = consultas.filter((c) => c.data === hoje);
-  const cirurgiasHoje = useLiveQuery(() => db.cirurgias.where("data").equals(hoje).toArray(), [hoje]) || [];
-  const examesHoje = exames.filter((e) => e.data === hoje);
+  const medicamentos = useMemo(
+    () => activePersonId ? (medicamentosTodas || []).filter((m) => m.person_id === activePersonId) : [],
+    [medicamentosTodas, activePersonId]
+  );
+  const tratamentos = useMemo(
+    () => activePersonId ? tratamentosTodas.filter((t) => t.person_id === activePersonId) : [],
+    [tratamentosTodas, activePersonId]
+  );
+  const exames = useMemo(
+    () => activePersonId ? examesTodas.filter((e) => e.person_id === activePersonId) : [],
+    [examesTodas, activePersonId]
+  );
+  const renovacoes = useMemo(
+    () => activePersonId ? renovacoesTodas.filter((r) => r.person_id === activePersonId) : [],
+    [renovacoesTodas, activePersonId]
+  );
+  const consultas = useMemo(
+    () => activePersonId ? consultasTodas.filter((c) => c.person_id === activePersonId) : [],
+    [consultasTodas, activePersonId]
+  );
+  const cirurgiasHoje = useMemo(
+    () => activePersonId ? cirurgiasTodas.filter((c) => c.person_id === activePersonId && c.data === hoje) : [],
+    [cirurgiasTodas, activePersonId, hoje]
+  );
+  const consultasHoje = useMemo(
+    () => (consultas || []).filter((c) => c.data === hoje),
+    [consultas, hoje]
+  );
+  const examesHoje = useMemo(
+    () => (exames || []).filter((e) => e.data === hoje),
+    [exames, hoje]
+  );
 
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
@@ -274,7 +289,7 @@ export default function SaudePage() {
     let gastoMesAtual = 0;
     let gastoMesAnterior = 0;
 
-    renovacoes.forEach((r) => {
+    (renovacoes || []).forEach((r) => {
       if (typeof r.preco === "number" && r.preco > 0 && r.data) {
         const dataR = new Date(r.data);
         if (dataR.getMonth() === mesAtual && dataR.getFullYear() === anoAtual) {
@@ -297,7 +312,7 @@ export default function SaudePage() {
       if (!med.id || med.status === "descontinuado" || !med.estoque_horarios) continue;
       for (const horario of med.estoque_horarios) {
         if (!horario || horario > horaAtual) continue;
-        const log = doseLogs.find((l) => l.medicamento_id === med.id && l.horario === horario);
+        const log = (doseLogs || []).find((l) => l.medicamento_id === med.id && l.horario === horario);
         if (!log?.tomado_em) {
           lista.push({ medicamentoId: med.id, nome: med.nome, horario });
         }
@@ -306,7 +321,6 @@ export default function SaudePage() {
     return lista;
   }, [medicamentos, doseLogs, horaAtual]);
 
-  // Alertas para o bloco "Atenção Urgente"
   const alertasAgrupados = useMemo(() => {
     return gerarAlertasDashboard(
       medicamentos || [],
@@ -317,7 +331,6 @@ export default function SaudePage() {
     );
   }, [medicamentos, renovacoes, consultas, exames, hoje]);
 
-  // Alertas antigos (para manter compatibilidade com outros componentes)
   const alertasEstoque = useMemo<HealthAlert[]>(() => {
     if (!medicamentos) return [];
     const alerts: HealthAlert[] = [];
@@ -342,12 +355,12 @@ export default function SaudePage() {
   }, [medicamentos, hoje]);
 
   const alertasConsultas = useMemo<HealthAlert[]>(() => {
-    const medicosUnicosIds = Array.from(new Set(consultas.map((c) => c.medico_id).filter(Boolean)));
+    const medicosUnicosIds = Array.from(new Set((consultas || []).map((c) => c.medico_id).filter(Boolean)));
     const alertas: HealthAlert[] = [];
 
     medicosUnicosIds.forEach((medicoId) => {
       if (!medicoId) return;
-      const consMedico = consultas.filter((c) => c.medico_id === medicoId);
+      const consMedico = (consultas || []).filter((c) => c.medico_id === medicoId);
       const consFuturas = consMedico.filter((c) => c.data >= hoje);
       if (consFuturas.length === 0) {
         const ultimaCons = [...consMedico].sort((a, b) => b.data.localeCompare(a.data))[0];
@@ -379,10 +392,9 @@ export default function SaudePage() {
     [docAlerts, exameAlerts, alertasEstoque, alertasConsultas]
   );
 
-  const isLoading = documents === undefined || medicamentos === undefined || exames === undefined;
+  const isLoading = documents === undefined || medicamentosTodas === undefined || examesTodas === undefined;
   if (isLoading) return <CardListSkeleton />;
 
-  // Ações rápidas para cards (navegação para LISTAGENS)
   const quickActions = [
     { id: "consultas", label: "Consultas", icon: Calendar, path: "/saude/consultas" },
     { id: "cirurgias", label: "Cirurgias", icon: Activity, path: "/saude/cirurgias" },
@@ -390,7 +402,6 @@ export default function SaudePage() {
     { id: "medicamentos", label: "Remédios", icon: Pill, path: "/saude/medicamentos" },
   ];
 
-  // Ações para o grid "Sua rede e locais" (já estão corretas, levam para listagem)
   const redeActions = [
     { id: "medicos", label: "Médicos", icon: Stethoscope, path: "/saude/medicos", count: medicos?.length || 0 },
     { id: "farmacias", label: "Farmácias", icon: Pill, path: "/saude/farmacias", count: farmacias?.length || 0 },
@@ -398,17 +409,13 @@ export default function SaudePage() {
     { id: "locais", label: "Postos", icon: MapPin, path: "/saude/locais", count: locais?.length || 0 },
   ];
 
-  // ============================================================
-  // HANDLERS
-  // ============================================================
-
   const handleTomarDosePendente = async (d: { medicamentoId: string; nome: string; horario: string }) => {
     if (processandoDoseId) return;
     setProcessandoDoseId(`${d.medicamentoId}-${d.horario}`);
     trigger("success");
     try {
       await marcarDose(d.medicamentoId, hoje, d.horario);
-      const medOriginal = medicamentos?.find(m => m.id === d.medicamentoId);
+      const medOriginal = (medicamentos || []).find(m => m.id === d.medicamentoId);
       if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
         const unidadePorDose = medOriginal.estoque_unidade_por_dose || 1;
         const novoEstoque = Math.max(0, medOriginal.estoque_quantidade - unidadePorDose);
@@ -429,7 +436,7 @@ export default function SaudePage() {
     try {
       for (const d of dosesPendentesAtrasadas) {
         await marcarDose(d.medicamentoId, hoje, d.horario);
-        const medOriginal = medicamentos?.find(m => m.id === d.medicamentoId);
+        const medOriginal = (medicamentos || []).find(m => m.id === d.medicamentoId);
         if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
           const unidadePorDose = medOriginal.estoque_unidade_por_dose || 1;
           const novoEstoque = Math.max(0, medOriginal.estoque_quantidade - unidadePorDose);
@@ -445,14 +452,9 @@ export default function SaudePage() {
     }
   };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
-
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* HEADER */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -476,11 +478,7 @@ export default function SaudePage() {
           </div>
         </header>
 
-        {/* CONTEÚDO */}
         <section className="space-y-6 px-5 pt-5">
-          {/* REMOVIDO: 4 ícones de acesso rápido (agora navegação pelos cards) */}
-
-          {/* ROTINA E DOSES DE HOJE */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -502,7 +500,6 @@ export default function SaudePage() {
             <ChevronRight size={18} className="text-ice" />
           </motion.div>
 
-          {/* ATENÇÃO URGENTE (alertas agrupados) */}
           {alertasAgrupados.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -545,7 +542,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* GASTOS COM SAÚDE */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -575,7 +571,6 @@ export default function SaudePage() {
             </div>
           </motion.div>
 
-          {/* COMPROMISSOS DE HOJE */}
           {(consultasHoje.length > 0 || cirurgiasHoje.length > 0 || examesHoje.length > 0) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -610,7 +605,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* PENDÊNCIAS DE DOSES */}
           {dosesPendentesAtrasadas.length > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -635,7 +629,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* NOTIFICAÇÕES DE SAÚDE E MEDICAMENTOS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -646,7 +639,6 @@ export default function SaudePage() {
             <MedicamentosNotifications />
           </motion.div>
 
-          {/* TRATAMENTOS ATIVOS */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -696,7 +688,6 @@ export default function SaudePage() {
             )}
           </motion.div>
 
-          {/* ALERTAS INTELIGENTES (mantido para compatibilidade) */}
           {otherAlerts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -715,7 +706,6 @@ export default function SaudePage() {
             </motion.div>
           )}
 
-          {/* CARDS DE ACESSO RÁPIDO (LISTAGENS) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -747,7 +737,6 @@ export default function SaudePage() {
             })}
           </motion.div>
 
-          {/* SUA REDE E LOCAIS (grid 2x2 + "Rede" em destaque) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -784,7 +773,6 @@ export default function SaudePage() {
                   </button>
                 );
               })}
-              {/* Botão "Rede" ocupa as 2 colunas */}
               <button
                 onClick={() => { trigger("vibrate"); router.push("/saude/rede"); }}
                 className="col-span-2 rounded-2xl bg-gradient-to-br from-ice/10 to-violet-400/10 py-3 px-2 transition-all active:scale-95 hover:from-ice/20 hover:to-violet-400/20 border border-ice/20 cursor-pointer flex flex-col items-center justify-center"
@@ -796,7 +784,6 @@ export default function SaudePage() {
             </div>
           </motion.div>
 
-          {/* ARQUIVO CLÍNICO */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -824,7 +811,6 @@ export default function SaudePage() {
           </motion.div>
         </section>
 
-        {/* MODAL DE PENDÊNCIAS */}
         <AnimatePresence>
           {modalPendenciasAberto && (
             <div
