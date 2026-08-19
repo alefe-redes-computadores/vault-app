@@ -159,6 +159,11 @@ export async function pullAllData(userId: string): Promise<void> {
       return await supabase.from('cards').select('*').eq('user_id', userId);
     });
 
+    // ---- Settings (configurações do usuário) ----
+    await processTable('settings', db.settings, async () => {
+      return await supabase.from('settings').select('*').eq('user_id', userId);
+    });
+
     window.dispatchEvent(new Event('sync:end'));
     console.log('✅ Pull de dados concluído com sucesso!');
   } catch (error) {

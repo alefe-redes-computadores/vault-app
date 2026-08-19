@@ -1969,31 +1969,29 @@ export async function safeUpdateSettings(
   });
 }
 
-export async function getDefaultPersonId(): Promise<string | null> {
-  const settings = await db.settings.toArray();
-  if (settings.length === 0) return null;
-  return settings[0]?.default_person_id || null;
+export async function getDefaultPersonId(userId: string): Promise<string | null> {
+  if (!userId) return null;
+  const settings = await db.settings.where("user_id").equals(userId).first();
+  return settings?.default_person_id || null;
 }
 
-export async function updateDefaultPersonId(personId: string): Promise<void> {
-  const settings = await db.settings.toArray();
-  const timestamp = nowIso();
+export async function updateDefaultPersonId(userId: string, personId: string): Promise<void> {
+  if (!userId) throw new Error("User ID é obrigatório");
 
-  if (settings.length === 0) {
+  const settings = await db.settings.where("user_id").equals(userId).first();
+  if (!settings) {
     await safeAddSettings({
-      user_id: '',
+      user_id: userId,
       default_person_id: personId,
     });
   } else {
-    await safeUpdateSettings(settings[0].id!, {
+    await safeUpdateSettings(settings.id!, {
       default_person_id: personId,
-      synced: false,
     });
   }
 }
 
-export async function getSettings(): Promise<AppSettings | null> {
-  const settings = await db.settings.toArray();
-  if (settings.length === 0) return null;
-  return settings[0];
+export async function getSettings(userId: string): Promise<AppSettings | null> {
+  if (!userId) return null;
+  return (await db.settings.where("user_id").equals(userId).first()) ?? null;
 }

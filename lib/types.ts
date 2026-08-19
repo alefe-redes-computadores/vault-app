@@ -574,7 +574,8 @@ export interface SyncQueueItem {
     | 'instituicoes'
     | 'tratamentos'
     | 'cids'
-    | 'anexos_clinicos';
+    | 'anexos_clinicos'
+    | 'settings';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;

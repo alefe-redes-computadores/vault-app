@@ -41,6 +41,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { personsRepository } from "@/lib/repositories/persons";
 import type { Person, Document, Medicamento, Consulta, Exame, Cirurgia, Tratamento, Cid } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 function formatCount(count: number, label: string, plural?: string) {
   const pluralLabel = plural || label + "s";
@@ -151,7 +152,10 @@ export default function PessoaDetalhesPage() {
     trigger("vibrate");
     try {
       await changePerson(id);
-      await updateDefaultPersonId(id);
+      const { user } = useAuth();
+      if (user) {
+      await updateDefaultPersonId(user.id, id);
+      }
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("sync:process"));
       }

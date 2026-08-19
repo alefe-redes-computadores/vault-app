@@ -2,20 +2,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getDefaultPersonId, updateDefaultPersonId, db } from "@/lib/db";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/db";
+import { settingsRepository } from "@/lib/repositories/settings";
 import type { Person } from "@/lib/types";
 
 export function useDefaultPerson() {
+  const { user } = useAuth();
   const [defaultPersonId, setDefaultPersonId] = useState<string | null>(null);
   const [defaultPerson, setDefaultPerson] = useState<Person | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadDefault = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const id = await getDefaultPersonId();
+        const id = await settingsRepository.getDefaultPersonId(user.id);
         setDefaultPersonId(id);
-        
+
         if (id) {
           const person = await db.persons.get(id);
           if (person) {
@@ -30,13 +38,15 @@ export function useDefaultPerson() {
     };
 
     loadDefault();
-  }, []);
+  }, [user?.id]);
 
   const setDefaultPersonHandler = async (personId: string) => {
+    if (!user?.id) return;
+
     try {
-      await updateDefaultPersonId(personId);
+      await settingsRepository.setDefaultPersonId(user.id, personId);
       setDefaultPersonId(personId);
-      
+
       const person = await db.persons.get(personId);
       if (person) {
         setDefaultPerson(person);

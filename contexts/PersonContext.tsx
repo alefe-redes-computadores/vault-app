@@ -2,8 +2,10 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { db, getDefaultPersonId, updateDefaultPersonId } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
+import { settingsRepository } from "@/lib/repositories/settings";
 
 interface PersonContextType {
   activePersonId: string | null;
@@ -19,7 +21,22 @@ export function PersonProvider({ children }: { children: ReactNode }) {
   const [activePersonId, setActivePersonId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Carregar a pessoa padrão ao iniciar
+  const persons = useLiveQuery(() => db.persons.toArray(), [], []);
+  const settings = useLiveQuery(() => db.settings.toArray(), [], []);
+
+  const applyPersonColor = useCallback(async (personId: string) => {
+    try {
+      const person = await db.persons.get(personId);
+      if (person?.color) {
+        document.documentElement.style.setProperty("--person-accent", person.color);
+      } else {
+        document.documentElement.style.setProperty("--person-accent", "#38BDF8");
+      }
+    } catch (error) {
+      console.error("Erro ao aplicar cor da pessoa:", error);
+    }
+  }, []);
+
   useEffect(() => {
     const loadDefaultPerson = async () => {
       if (!user) {
@@ -28,26 +45,23 @@ export function PersonProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const defaultId = await getDefaultPersonId();
-        
+        const defaultId = await settingsRepository.getDefaultPersonId(user.id);
+
         if (defaultId) {
-          // Verificar se a pessoa ainda existe
           const person = await db.persons.get(defaultId);
           if (person) {
             setActivePersonId(defaultId);
-            applyPersonColor(defaultId);
+            await applyPersonColor(defaultId);
             setLoading(false);
             return;
           }
         }
 
-        // Se não houver pessoa padrão, pegar a primeira pessoa
-        const persons = await db.persons.toArray();
         if (persons.length > 0) {
           const firstPersonId = persons[0].id!;
           setActivePersonId(firstPersonId);
-          await updateDefaultPersonId(firstPersonId);
-          applyPersonColor(firstPersonId);
+          await settingsRepository.setDefaultPersonId(user.id, firstPersonId);
+          await applyPersonColor(firstPersonId);
         }
       } catch (error) {
         console.error("Erro ao carregar pessoa padrão:", error);
@@ -57,46 +71,28 @@ export function PersonProvider({ children }: { children: ReactNode }) {
     };
 
     loadDefaultPerson();
-  }, [user]);
+  }, [user, persons, settings, applyPersonColor]);
 
-  // Aplicar a cor da pessoa no CSS
-  const applyPersonColor = useCallback(async (personId: string) => {
-    try {
-      const person = await db.persons.get(personId);
-      if (person?.color) {
-        document.documentElement.style.setProperty("--person-accent", person.color);
-      } else {
-        // Cor padrão (ice) se a pessoa não tiver cor definida
-        document.documentElement.style.setProperty("--person-accent", "#38BDF8");
+  const changePerson = useCallback(
+    async (personId: string) => {
+      if (!personId || !user) return;
+
+      try {
+        const person = await db.persons.get(personId);
+        if (!person) {
+          console.error("Pessoa não encontrada:", personId);
+          return;
+        }
+
+        setActivePersonId(personId);
+        await settingsRepository.setDefaultPersonId(user.id, personId);
+        await applyPersonColor(personId);
+      } catch (error) {
+        console.error("Erro ao trocar pessoa:", error);
       }
-    } catch (error) {
-      console.error("Erro ao aplicar cor da pessoa:", error);
-    }
-  }, []);
-
-  // Função para trocar de pessoa
-  const changePerson = useCallback(async (personId: string) => {
-    if (!personId) return;
-
-    try {
-      // Verificar se a pessoa existe
-      const person = await db.persons.get(personId);
-      if (!person) {
-        console.error("Pessoa não encontrada:", personId);
-        return;
-      }
-
-      setActivePersonId(personId);
-      
-      // Salvar como pessoa padrão no settings
-      await updateDefaultPersonId(personId);
-      
-      // Aplicar a cor
-      await applyPersonColor(personId);
-    } catch (error) {
-      console.error("Erro ao trocar pessoa:", error);
-    }
-  }, [applyPersonColor]);
+    },
+    [user, applyPersonColor]
+  );
 
   return (
     <PersonContext.Provider value={{ activePersonId, setActivePersonId, changePerson, loading }}>

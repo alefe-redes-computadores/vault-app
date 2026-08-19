@@ -63,8 +63,13 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "tratamento", label: "Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" },
   { id: "renovacao", label: "Renovação", icon: FileWarning, path: "/saude/renovacao/nova" },
   { id: "medico", label: "Médico", icon: Stethoscope, path: "/saude/medicos/novo" },
-  { id: "farmacia", label: "Nova Farmácia", icon: Building2, path: "/saude/farmacias/novo" },
-  { id: "hospital", label: "Novo Hospital", icon: Building2, path: "/saude/hospitais/novo" },
+  { id: "farmacia", label: "Farmácia", icon: Building2, path: "/saude/farmacias/novo" },
+  { id: "hospital", label: "Hospital", icon: Building2, path: "/saude/hospitais/novo" },
+  { id: "local", label: "Posto / Local", icon: MapPin, path: "/saude/locais/novo" },
+  { id: "exame", label: "Exame", icon: FlaskConical, path: "/saude/exames/novo" },
+  { id: "consulta", label: "Consulta", icon: Calendar, path: "/saude/consultas/nova" },
+  { id: "cirurgia", label: "Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
+  { id: "cid", label: "CID", icon: FileText, path: "/saude/cids/novo" },
 ];
 
 const MEDICOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
@@ -127,32 +132,28 @@ const GALERIA_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "upload-galeria", label: "Adicionar à Galeria", icon: UploadCloud, path: "/galeria?upload=true" },
 ];
 
-function getRedeComposeOptions(tab: string | null): ComposeOption[] {
-  switch (tab) {
-    case "medicos":
-      return [{ id: "novo-medico", label: "Novo Médico", icon: Stethoscope, path: "/saude/medicos/novo" }];
-    case "farmacias":
-      return [{ id: "nova-farmacia", label: "Nova Farmácia", icon: Building2, path: "/saude/farmacias/novo" }];
-    case "hospitais":
-      return [{ id: "novo-hospital", label: "Novo Hospital", icon: Building2, path: "/saude/hospitais/novo" }];
-    case "tratamentos":
-      return [{ id: "novo-tratamento", label: "Novo Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" }];
-    case "cids":
-      return [{ id: "novo-cid", label: "Novo CID", icon: FileText, path: "/saude/cids/novo" }];
-    case "visao-geral":
-    default:
-      return SAUDE_COMPOSE_OPTIONS;
-  }
-}
+const SENHAS_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "nova-senha", label: "Nova senha", icon: Lock, path: "/senhas/novo" },
+];
 
 function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
+  // Home
   if (pathname === "/") return DEFAULT_COMPOSE_OPTIONS;
+
+  // Dashboard Saúde
   if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
+
+  // Extras
   if (pathname === "/galeria") return GALERIA_COMPOSE_OPTIONS;
   if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
   if (pathname === "/contas") return CONTAS_COMPOSE_OPTIONS;
   if (pathname === "/vaults") return VAULTS_COMPOSE_OPTIONS;
+  if (pathname === "/senhas") return SENHAS_COMPOSE_OPTIONS;
 
+  // Favoritos não tem criação direta
+  if (pathname === "/favoritos") return [];
+
+  // Listagens de Saúde
   if (pathname === "/saude/medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
   if (pathname === "/saude/medicamentos") return MEDICAMENTOS_LIST_COMPOSE_OPTIONS;
   if (pathname === "/saude/farmacias") return FARMACIAS_LIST_COMPOSE_OPTIONS;
@@ -165,9 +166,15 @@ function getComposeOptions(pathname: string, searchParams: URLSearchParams): Com
   if (pathname === "/saude/cirurgias") return CIRURGIAS_LIST_COMPOSE_OPTIONS;
   if (pathname === "/saude/cids") return CIDS_LIST_COMPOSE_OPTIONS;
 
+  // Rede (com tab)
   if (pathname === "/saude/rede") {
     const tab = searchParams.get("tab");
-    return getRedeComposeOptions(tab);
+    if (tab === "medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
+    if (tab === "farmacias") return FARMACIAS_LIST_COMPOSE_OPTIONS;
+    if (tab === "hospitais") return HOSPITAIS_LIST_COMPOSE_OPTIONS;
+    if (tab === "tratamentos") return TRATAMENTOS_LIST_COMPOSE_OPTIONS;
+    if (tab === "cids") return CIDS_LIST_COMPOSE_OPTIONS;
+    return SAUDE_COMPOSE_OPTIONS;
   }
 
   return [];
@@ -182,6 +189,7 @@ const ALLOWED_NAV_PATHS = [
   "/contas",
   "/vaults",
   "/favoritos",
+  "/senhas",
   "/saude/medicamentos",
   "/saude/medicos",
   "/saude/farmacias",
@@ -278,13 +286,13 @@ export function BottomNav() {
   const gridClass = showCompose ? "grid-cols-5" : "grid-cols-4";
 
   const colMap: Record<string, string> = showCompose
-  ? {
-      home: "col-start-1",
-      saude: "col-start-2",
-      galeria: "col-start-4",
-      mais: "col-start-5",
-    }
-  : {};
+    ? {
+        home: "col-start-1",
+        saude: "col-start-2",
+        galeria: "col-start-4",
+        mais: "col-start-5",
+      }
+    : {};
 
   return (
     <>

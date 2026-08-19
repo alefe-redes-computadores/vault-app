@@ -26,6 +26,7 @@ import type {
   Person,
   InstituicaoEnsino,
   SyncQueueItem,
+  AppSettings,
 } from "@/lib/types";
 
 const MAX_RETRIES = 5;
@@ -64,10 +65,6 @@ export function useSyncQueue() {
   const processingRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ============================================================
-  // LOGS
-  // ============================================================
-
   const addLog = useCallback((message: string, type: SyncLogType = "info") => {
     const time = new Date().toLocaleTimeString();
     setSyncLogs((prev) => {
@@ -79,10 +76,6 @@ export function useSyncQueue() {
   const clearLogs = useCallback(() => {
     setSyncLogs([]);
   }, []);
-
-  // ============================================================
-  // ONLINE / OFFLINE
-  // ============================================================
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -100,10 +93,6 @@ export function useSyncQueue() {
       }
     };
   }, []);
-
-  // ============================================================
-  // SUPABASE
-  // ============================================================
 
   const requireSupabase = () => {
     if (!supabase) {
@@ -1334,74 +1323,121 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-// CARTÕES (bankCards)
-// ============================================================
+  // SETTINGS
+  // ============================================================
 
-const syncCard = async (item: SyncQueueItem) => {
-  const client = requireSupabase();
-  const card = item.payload as unknown as BankCard;
+  const syncSettings = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const settings = item.payload as unknown as AppSettings;
 
-  switch (item.operation) {
-    case "add": {
-      const { error } = await client.from("cards").upsert(
-        {
-          id: card.id,
-          user_id: card.user_id,
-          title: card.title,
-          bank_name: card.bank_name,
-          type: card.type,
-          card_number_encrypted: card.card_number_encrypted || null,
-          card_holder: card.card_holder || null,
-          brand: card.brand || null,
-          expiry_date: card.expiry_date || null,
-          cvv_encrypted: card.cvv_encrypted || null,
-          agency: card.agency || null,
-          account: card.account || null,
-          notes: card.notes || null,
-          created_at: card.created_at,
-          updated_at: card.updated_at,
-        },
-        { onConflict: "id" }
-      );
-      if (error) throw new Error(`Cards insert error: ${error.message}`);
-      break;
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("settings").upsert(
+          {
+            id: settings.id,
+            user_id: settings.user_id,
+            default_person_id: settings.default_person_id || null,
+            updated_at: settings.updated_at || new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Settings insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("settings")
+          .update({
+            default_person_id: settings.default_person_id || null,
+            updated_at: settings.updated_at || new Date().toISOString(),
+          })
+          .eq("id", settings.id);
+        if (error) throw new Error(`Settings update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("settings").delete().eq("id", payload.id);
+        if (error) throw new Error(`Settings delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em settings: ${item.operation}`);
     }
-    case "update": {
-      const { error } = await client
-        .from("cards")
-        .update({
-          title: card.title,
-          bank_name: card.bank_name,
-          type: card.type,
-          card_number_encrypted: card.card_number_encrypted || null,
-          card_holder: card.card_holder || null,
-          brand: card.brand || null,
-          expiry_date: card.expiry_date || null,
-          cvv_encrypted: card.cvv_encrypted || null,
-          agency: card.agency || null,
-          account: card.account || null,
-          notes: card.notes || null,
-          updated_at: card.updated_at,
-        })
-        .eq("id", card.id);
-      if (error) throw new Error(`Cards update error: ${error.message}`);
-      break;
-    }
-    case "delete": {
-      const payload = item.payload as unknown as { id: string };
-      const { error } = await client.from("cards").delete().eq("id", payload.id);
-      if (error) throw new Error(`Cards delete error: ${error.message}`);
-      break;
-    }
-    default:
-      throw new Error(`Operação não suportada em cards: ${item.operation}`);
-  }
 
-  // CORRIGIDO: db.bankCards em vez de db.cards
-  if (item.operation !== "delete" && card.id) {
-    await db.bankCards.update(card.id, { synced: true });
-  }
-};
+    if (item.operation !== "delete" && settings.id) {
+      await db.settings.update(settings.id, { synced: true });
+    }
+  };
+
+  // ============================================================
+  // CARTÕES (bankCards)
+  // ============================================================
+
+  const syncCard = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const card = item.payload as unknown as BankCard;
+
+    switch (item.operation) {
+      case "add": {
+        const { error } = await client.from("cards").upsert(
+          {
+            id: card.id,
+            user_id: card.user_id,
+            title: card.title,
+            bank_name: card.bank_name,
+            type: card.type,
+            card_number_encrypted: card.card_number_encrypted || null,
+            card_holder: card.card_holder || null,
+            brand: card.brand || null,
+            expiry_date: card.expiry_date || null,
+            cvv_encrypted: card.cvv_encrypted || null,
+            agency: card.agency || null,
+            account: card.account || null,
+            notes: card.notes || null,
+            created_at: card.created_at,
+            updated_at: card.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Cards insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        const { error } = await client
+          .from("cards")
+          .update({
+            title: card.title,
+            bank_name: card.bank_name,
+            type: card.type,
+            card_number_encrypted: card.card_number_encrypted || null,
+            card_holder: card.card_holder || null,
+            brand: card.brand || null,
+            expiry_date: card.expiry_date || null,
+            cvv_encrypted: card.cvv_encrypted || null,
+            agency: card.agency || null,
+            account: card.account || null,
+            notes: card.notes || null,
+            updated_at: card.updated_at,
+          })
+          .eq("id", card.id);
+        if (error) throw new Error(`Cards update error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("cards").delete().eq("id", payload.id);
+        if (error) throw new Error(`Cards delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em cards: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && card.id) {
+      await db.bankCards.update(card.id, { synced: true });
+    }
+  };
 
   // ============================================================
   // SINCRONIZAÇÃO DAS JUNÇÕES N:N
@@ -1490,6 +1526,7 @@ const syncCard = async (item: SyncQueueItem) => {
 
       const priorityOrder: SyncQueueItem["table"][] = [
         "persons",
+        "settings",
         "medicos",
         "farmacias",
         "hospitais",
@@ -1533,6 +1570,9 @@ const syncCard = async (item: SyncQueueItem) => {
           switch (item.table) {
             case "persons":
               await syncPerson(item);
+              break;
+            case "settings":
+              await syncSettings(item);
               break;
             case "medicos":
               await syncMedico(item);
@@ -1648,10 +1688,6 @@ const syncCard = async (item: SyncQueueItem) => {
     }
   }, [isOnline, addLog]);
 
-  // ============================================================
-  // RESETAR FALHAS PERMANENTES
-  // ============================================================
-
   const resetFailedItems = useCallback(async () => {
     const failedItems = await db.syncQueue
       .toCollection()
@@ -1673,10 +1709,6 @@ const syncCard = async (item: SyncQueueItem) => {
     await processQueue();
   }, [processQueue, addLog]);
 
-  // ============================================================
-  // EVENTO MANUAL
-  // ============================================================
-
   useEffect(() => {
     const handleProcess = () => {
       if (isOnline && !processingRef.current) {
@@ -1691,19 +1723,11 @@ const syncCard = async (item: SyncQueueItem) => {
     };
   }, [isOnline, processQueue]);
 
-  // ============================================================
-  // PROCESSAMENTO AO VOLTAR ONLINE
-  // ============================================================
-
   useEffect(() => {
     if (isOnline) {
       processQueue();
     }
   }, [isOnline, processQueue]);
-
-  // ============================================================
-  // RETORNO
-  // ============================================================
 
   return {
     processQueue,
