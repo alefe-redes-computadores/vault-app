@@ -1,3 +1,4 @@
+// app/documentos/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -22,6 +23,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 
 function useDebounce(value: string, delay: number = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -71,10 +73,13 @@ export default function DocumentsPage() {
   const router = useRouter();
   const { favorite } = useSafeDb();
   const persons = usePersons();
+  const { activePersonId } = useActivePersonId();
 
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(
+    activePersonId || null
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | "all">("all");
   const [selectedType, setSelectedType] = useState<DocumentType | "all">("all");
@@ -88,6 +93,10 @@ export default function DocumentsPage() {
     const timer = setTimeout(() => setIsLoading(false), 420);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    setSelectedPersonId(activePersonId || null);
+  }, [activePersonId]);
 
   const {
     documents: paginatedDocs,
@@ -142,9 +151,9 @@ export default function DocumentsPage() {
     setSelectedCategory("all");
     setSelectedType("all");
     setDateFilter("all");
-    setSelectedPersonId(null);
+    setSelectedPersonId(activePersonId || null);
     trigger("vibrate");
-  }, [trigger]);
+  }, [trigger, activePersonId]);
 
   const hasActiveFilters =
     selectedPersonId !== null ||
@@ -169,10 +178,7 @@ export default function DocumentsPage() {
         <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                Vault
-              </p>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
                 Documentos
               </h1>
               <p className="mt-1 text-sm text-ink-muted">

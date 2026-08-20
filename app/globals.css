@@ -52,6 +52,7 @@ html,
 body {
   @apply bg-void text-ink-primary;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
   transition: background-color 300ms ease, color 300ms ease;
 }
 
@@ -95,17 +96,6 @@ body.page-transitioning {
 
 /* ============================================================
    STATUS BAR IMERSIVA (Capacitor overlaysWebView: true)
-   ============================================================
-   Com a status bar em modo overlay, o WebView desenha por baixo
-   dela — então QUALQUER header fixo/sticky no topo precisa
-   reservar esse espaço manualmente via env(safe-area-inset-top).
-   No navegador comum essa variável é 0px, então não afeta o PWA
-   nem o preview web; só entra em ação dentro do app nativo.
-
-   Uso: troque "pt-6" (ou o padding-top que o header já tiver)
-   por "header-safe-top" nos headers sticky do app. O valor de
-   1.5rem abaixo é o antigo pt-6 — ajuste aqui se mudar em algum
-   lugar e quiser manter todos os headers consistentes.
    ============================================================ */
 .header-safe-top {
   padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
@@ -261,15 +251,6 @@ html.light input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-/* ============================================================
-   TRANSITION GLOBAL
-   ============================================================ */
-* {
-  transition-property: background-color, border-color, color, box-shadow, transform, opacity;
-  transition-duration: 200ms;
-  transition-timing-function: ease-in-out;
 }
 
 /* ============================================================

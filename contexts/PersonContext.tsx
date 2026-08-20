@@ -88,9 +88,16 @@ export function PersonProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Aplica a troca imediatamente na UI
         setActivePersonId(personId);
-        await settingsRepository.setDefaultPersonId(user.id, personId);
         await applyPersonColor(personId);
+
+        // Persiste a preferência, mas não deixa erro de gravação bloquear a experiência
+        try {
+          await settingsRepository.setDefaultPersonId(user.id, personId);
+        } catch (persistError) {
+          console.error("Erro ao salvar pessoa padrão (não crítico):", persistError);
+        }
 
         trigger("vibrate");
         showToast(`Pessoa alterada para ${person.name}`, "success");

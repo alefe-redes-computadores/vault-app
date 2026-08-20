@@ -464,11 +464,7 @@ export default function SaudePage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <Heart size={18} className="text-coral" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
-              </div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Saúde</h1>
+              <h1 className="font-display text-xl font-semibold text-ink-primary">Saúde</h1>
               <p className="mt-1 text-sm text-ink-muted">
                 {dosesPendentesAtrasadas.length > 0
                   ? `${dosesPendentesAtrasadas.length} dose(s) pendente(s)`

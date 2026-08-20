@@ -664,12 +664,16 @@ export function useSyncQueue() {
         if (error) throw new Error(`Medicamentos update error: ${error.message}`);
         break;
       }
-      case "delete": {
+        case "delete": {
         const payload = item.payload as unknown as { id: string };
+        await client.from("medicamento_tratamentos").delete().eq("medicamento_id", payload.id);
+        await client.from("renovacoes").delete().eq("medicamento_id", payload.id);
+        await client.from("dose_logs").delete().eq("medicamento_id", payload.id);
         const { error } = await client.from("medicamentos").delete().eq("id", payload.id);
         if (error) throw new Error(`Medicamentos delete error: ${error.message}`);
         break;
       }
+
       default:
         throw new Error(`Operação não suportada em medicamentos: ${item.operation}`);
     }

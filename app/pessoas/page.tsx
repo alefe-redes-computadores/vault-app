@@ -13,6 +13,7 @@ import {
   Phone,
   User,
   CheckCircle,
+  Info,
 } from "lucide-react";
 
 import { usePersons } from "@/hooks/usePersons";
@@ -121,10 +122,7 @@ export default function PessoasPage() {
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                Vault
-              </p>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
                 Pessoas
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
@@ -137,6 +135,21 @@ export default function PessoasPage() {
         </header>
 
         <section className="px-5 pt-6">
+          {/* Banner informativo */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24 }}
+            className="mb-5 flex items-start gap-3 rounded-[22px] border border-ice/20 bg-ice/5 p-4 shadow-sm"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ice/15 text-ice">
+              <Info size={16} />
+            </div>
+            <p className="text-sm leading-6 text-ink-primary">
+              Toque no card de uma pessoa para torná-la <span className="font-semibold text-ice">ativa</span>. O app passará a filtrar documentos e dados por ela automaticamente.
+            </p>
+          </motion.div>
+
           {sortedPersons.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -204,7 +217,7 @@ export default function PessoasPage() {
                           {isDefault && (
                             <span className="flex items-center gap-0.5 rounded-full bg-ice/15 px-2 py-0.5 text-[9px] font-bold uppercase text-ice border border-ice/20">
                               <CheckCircle size={10} />
-                              Padrão
+                              Ativa
                             </span>
                           )}
                         </div>

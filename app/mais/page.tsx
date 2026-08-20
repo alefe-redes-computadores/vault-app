@@ -210,13 +210,13 @@ export default function MaisPage() {
     trigger("vibrate");
     if (isNotificationsEnabled) {
       await cancelAllDoseNotifications(
-  allMedicamentos.map((med) => ({
-    id: med.id!,
-    nome: med.nome,
-    dosagem: med.dosagem,
-    estoque_horarios: med.estoque_horarios || [],
-  }))
-);
+        allMedicamentos.map((med) => ({
+          id: med.id!,
+          nome: med.nome,
+          dosagem: med.dosagem,
+          estoque_horarios: med.estoque_horarios || [],
+        }))
+      );
       disableNotifications();
       showToast("Lembretes desativados", "info");
     } else {
@@ -400,10 +400,7 @@ export default function MaisPage() {
             </button>
 
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                Vault
-              </p>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
                 Mais
               </h1>
               <p className="mt-1 text-sm text-ink-muted">

@@ -12,15 +12,15 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
-import { db } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { getDaysUntil } from "@/lib/health-utils";
 
 export function MedicamentosNotifications() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
 
-  const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
+  // ✅ Agora usa o hook que filtra por activePersonId
+  const { medicamentos } = useMedicamentos();
 
   const { alertas } = useMemo(() => {
     const hoje = new Date();
@@ -66,7 +66,7 @@ export function MedicamentosNotifications() {
         }
       }
 
-      // 🔧 CORRIGIDO: Usa estoque_quantidade (campo correto)
+      // 2. Lógica de Estoque
       if (med.estoque_quantidade !== undefined && med.estoque_quantidade !== null) {
         if (med.estoque_quantidade === 0) {
           itensAlerta.push({

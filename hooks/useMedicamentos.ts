@@ -31,20 +31,29 @@ export function useMedicamentos() {
 
   const addMedicamento = useCallback(
     async (data: Omit<Medicamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return medicamentosRepository.create({ ...data, user_id: user?.id || "" });
+      const result = await medicamentosRepository.create({ ...data, user_id: user?.id || "" });
+      // Dispara a sincronização imediatamente após adicionar
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("sync:process"));
+      return result;
     },
     [user]
   );
 
   const updateMedicamento = useCallback(
     async (id: string, data: Partial<Medicamento>) => {
-      return medicamentosRepository.update(id, data);
+      const result = await medicamentosRepository.update(id, data);
+      // Dispara a sincronização imediatamente após atualizar
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("sync:process"));
+      return result;
     },
     []
   );
 
   const deleteMedicamento = useCallback(async (id: string) => {
-    return medicamentosRepository.delete(id);
+    const result = await medicamentosRepository.delete(id);
+    // Dispara a sincronização imediatamente após deletar
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("sync:process"));
+    return result;
   }, []);
 
   return {

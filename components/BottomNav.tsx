@@ -4,8 +4,6 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home,
-  Heart,
-  Images,
   LayoutGrid,
   Plus,
   Pill,
@@ -18,15 +16,13 @@ import {
   UploadCloud,
   Calendar,
   Syringe,
-  Edit,
   FlaskConical,
   MapPin,
-  Activity,
-  Copy,
-  RotateCcw,
   FileText,
   Lock,
   User,
+  Clock,
+  FolderOpen,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -43,8 +39,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
-  { id: "saude", icon: Heart, label: "Saúde", path: "/saude" },
-  { id: "galeria", icon: Images, label: "Galeria", path: "/galeria" },
+  { id: "hoje", icon: Clock, label: "Hoje", path: "/hoje" },
+  { id: "documentos", icon: FolderOpen, label: "Documentos", path: "/documentos" },
   { id: "mais", icon: LayoutGrid, label: "Mais", path: "/mais" },
 ];
 
@@ -56,7 +52,7 @@ interface ComposeOption {
 }
 
 const DEFAULT_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "documento", label: "Novo documento", icon: Plus, path: "/novo" },
+  { id: "documento", label: "Novo arquivo", icon: Plus, path: "/novo" },
 ];
 
 const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
@@ -71,6 +67,10 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "consulta", label: "Consulta", icon: Calendar, path: "/saude/consultas/nova" },
   { id: "cirurgia", label: "Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
   { id: "cid", label: "CID", icon: FileText, path: "/saude/cids/novo" },
+];
+
+const DOCUMENTOS_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "novo-documento", label: "Novo documento", icon: Plus, path: "/novo" },
 ];
 
 const MEDICOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
@@ -137,19 +137,22 @@ const SENHAS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-senha", label: "Nova senha", icon: Lock, path: "/senhas/novo" },
 ];
 
+// Declarada apenas uma vez (Correção do erro TS2451)
 const PESSOAS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-pessoa", label: "Nova Pessoa", icon: User, path: "/pessoas/novo" },
 ];
 
 function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
-  if (pathname === "/") return DEFAULT_COMPOSE_OPTIONS;
-  if (pathname === "/saude") return SAUDE_COMPOSE_OPTIONS;
-  if (pathname === "/galeria") return GALERIA_COMPOSE_OPTIONS;
+  if (pathname === "/") return SAUDE_COMPOSE_OPTIONS;
+  if (pathname === "/documentos") return DOCUMENTOS_COMPOSE_OPTIONS;
+  if (pathname === "/hoje") return [];
+  if (pathname === "/mais") return [];
+
+  if (pathname === "/pessoas") return PESSOAS_COMPOSE_OPTIONS;
   if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
   if (pathname === "/contas") return CONTAS_COMPOSE_OPTIONS;
   if (pathname === "/vaults") return VAULTS_COMPOSE_OPTIONS;
   if (pathname === "/senhas") return SENHAS_COMPOSE_OPTIONS;
-  if (pathname === "/pessoas") return PESSOAS_COMPOSE_OPTIONS;
   if (pathname === "/favoritos") return [];
 
   if (pathname === "/saude/medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
@@ -179,15 +182,16 @@ function getComposeOptions(pathname: string, searchParams: URLSearchParams): Com
 
 const ALLOWED_NAV_PATHS = [
   "/",
-  "/saude",
-  "/galeria",
+  "/hoje",
+  "/documentos",
   "/mais",
+  "/pessoas",
   "/cartoes",
   "/contas",
   "/vaults",
-  "/favoritos",
   "/senhas",
-  "/pessoas",
+  "/favoritos",
+  "/saude",
   "/saude/medicamentos",
   "/saude/medicos",
   "/saude/farmacias",
@@ -213,7 +217,6 @@ export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isEnabled: isBiometricEnabled } = useBiometricPreference();
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
 
@@ -223,21 +226,11 @@ export function BottomNav() {
     };
 
     checkLock();
-
-    const handleLockChange = () => {
-      checkLock();
-    };
-
+    const handleLockChange = () => checkLock();
     window.addEventListener("biometric:lockchange", handleLockChange);
 
-    const observer = new MutationObserver(() => {
-      checkLock();
-    });
-
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
+    const observer = new MutationObserver(() => checkLock());
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
 
     return () => {
       window.removeEventListener("biometric:lockchange", handleLockChange);
@@ -286,8 +279,8 @@ export function BottomNav() {
   const colMap: Record<string, string> = showCompose
     ? {
         home: "col-start-1",
-        saude: "col-start-2",
-        galeria: "col-start-4",
+        hoje: "col-start-2",
+        documentos: "col-start-4",
         mais: "col-start-5",
       }
     : {};
@@ -311,31 +304,33 @@ export function BottomNav() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="shadow-vault fixed bottom-[6.5rem] left-1/2 z-50 w-[calc(100%-2.5rem)] max-w-xs -translate-x-1/2 overflow-hidden rounded-[26px] border border-surface-border/60 bg-surface"
+              className="shadow-vault fixed bottom-[6.5rem] left-1/2 z-50 w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 overflow-hidden rounded-[26px] border border-surface-border/60 bg-surface"
             >
               <div className="px-4 pb-1 pt-3.5">
                 <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-faint">
                   Adicionar
                 </p>
               </div>
-              <div className="px-2 pb-2">
-                {composeOptions.map((option) => {
-                  const Icon = option.icon;
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => handleComposeOptionPress(option)}
-                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                        <Icon size={16} />
-                      </div>
-                      <span className="text-sm font-medium text-ink-primary">
-                        {option.label}
-                      </span>
-                    </button>
-                  );
-                })}
+              <div className="max-h-[420px] overflow-y-auto px-2 pb-2 pt-1">
+                <div className="grid grid-cols-2 gap-2">
+                  {composeOptions.map((option) => {
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => handleComposeOptionPress(option)}
+                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-4 text-center transition-all active:scale-95 hover:border-ice/30 hover:bg-surface-raised"
+                      >
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                          <Icon size={20} />
+                        </div>
+                        <span className="line-clamp-1 text-xs font-medium text-ink-primary">
+                          {option.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </motion.div>
           </>
@@ -384,20 +379,11 @@ export function BottomNav() {
             {showCompose && (
               <button
                 onClick={handleComposePress}
-                aria-label={
-                  composeOptions.length > 1
-                    ? "Adicionar"
-                    : composeOptions[0].label
-                }
-                aria-expanded={
-                  composeOptions.length > 1 ? isComposeMenuOpen : undefined
-                }
+                aria-label={composeOptions.length > 1 ? "Adicionar" : composeOptions[0].label}
+                aria-expanded={composeOptions.length > 1 ? isComposeMenuOpen : undefined}
                 className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(47,227,201,0.28)] transition-all duration-200 active:scale-95"
               >
-                <motion.div
-                  animate={{ rotate: isComposeMenuOpen ? 45 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
+                <motion.div animate={{ rotate: isComposeMenuOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
                   <Plus size={24} strokeWidth={2.6} />
                 </motion.div>
               </button>
