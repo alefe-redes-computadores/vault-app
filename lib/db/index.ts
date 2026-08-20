@@ -151,10 +151,16 @@ class VaultDB extends Dexie {
     // VERSÃO 4
     // ==========================================================
 
-    this.version(4).stores({
-      vaults: 'id',
-      vaultMembers: 'id',
+      this.version(4).stores({
+      persons: 'id',
+      documents: 'id',
+      syncQueue: 'id',
+      medicamentos: 'id',
+      renovacoes: 'id',
+      vaults: 'id, user_id, name',
+      vaultMembers: 'id'
     });
+
 
     // ==========================================================
     // VERSÃO 5

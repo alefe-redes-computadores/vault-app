@@ -1,11 +1,10 @@
-// app/saude/hoje/page.tsx
+// app/hoje/page.tsx
 "use client";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
   CheckCircle2,
   Circle,
   Pill,
@@ -25,7 +24,6 @@ import {
   AlertOctagon,
   Info,
   Activity,
-  Plus,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
@@ -47,7 +45,6 @@ import {
 } from "@/lib/health-insights";
 import { useToast } from "@/components/ToastProvider";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { SOSDoseModal } from "@/components/saude/SOSDoseModal";
 import type { Tratamento } from "@/lib/types";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
@@ -151,7 +148,6 @@ export default function HojePage() {
   const [adicionarMaisEstoque, setAdicionarMaisEstoque] = useState(30);
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showSOSModal, setShowSOSModal] = useState(false);
 
   const historicoDosesCompleto = useLiveQuery(() => db.doseLogs.toArray(), []) || [];
   const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -361,24 +357,16 @@ export default function HojePage() {
       <main className="min-h-screen bg-void pb-32">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => { trigger("vibrate"); router.back(); }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-              >
-                <ArrowLeft size={18} className="text-ink-primary" />
-              </button>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <Clock size={16} className="text-ice" />
-                  <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                    Rotina Diária
-                  </p>
-                </div>
-                <h1 className="mt-0.5 font-display text-xl font-semibold text-ink-primary">
-                  Cronograma de Hoje
-                </h1>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Clock size={16} className="text-ice" />
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                  Linha do Tempo
+                </p>
               </div>
+              <h1 className="mt-0.5 font-display text-xl font-semibold text-ink-primary">
+                Hoje
+              </h1>
             </div>
             <div className="text-right">
               <span className="font-mono text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full border border-ice/20">
@@ -659,17 +647,6 @@ export default function HojePage() {
             ))
           )}
         </section>
-
-        {/* Botão flutuante para Dose SOS */}
-        <button
-          onClick={() => { trigger("vibrate"); setShowSOSModal(true); }}
-          className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/30 active:scale-95"
-          aria-label="Registrar Dose SOS"
-        >
-          <Plus size={24} strokeWidth={2.6} />
-        </button>
-
-        <SOSDoseModal isOpen={showSOSModal} onClose={() => setShowSOSModal(false)} />
 
         <AnimatePresence>
           {modalAberto && medicamentoSelecionado && (

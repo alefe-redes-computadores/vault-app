@@ -35,7 +35,10 @@ import { useToast } from "@/components/ToastProvider";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { useNotificationPreference } from "@/hooks/useNotificationPreference";
-import { requestNotificationPermission, cancelAllDoseNotifications } from "@/lib/dose-notifications";
+import {
+  requestNotificationPermission,
+  cancelAllDoseNotifications,
+} from "@/lib/dose-notifications";
 import { useState, useCallback, ReactNode } from "react";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -66,16 +69,19 @@ export default function MaisPage() {
   const { user, logout } = useAuth();
   const { showToast, showSuccess, showError, showInfo } = useToast();
   const { processQueue, isOnline, syncLogs, clearLogs } = useSyncQueue();
-  const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
-  const { isEnabled: isNotificationsEnabled, enable: enableNotifications, disable: disableNotifications } = useNotificationPreference();
+  const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } =
+    useBiometricPreference();
+  const {
+    isEnabled: isNotificationsEnabled,
+    enable: enableNotifications,
+    disable: disableNotifications,
+  } = useNotificationPreference();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [showLogsModal, setShowLogsModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [logsContent, setLogsContent] = useState("");
 
   const pendingQueueCount = useLiveQuery(() => db.syncQueue.count(), []) ?? 0;
   const allMedicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) as Medicamento[];
@@ -232,21 +238,18 @@ export default function MaisPage() {
 
   const avatarUrl = user?.user_metadata?.avatar_url;
   const displayName =
-    user?.user_metadata?.full_name ||
-    user?.email?.split("@")[0] ||
-    "Usuário";
+    user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuário";
 
   const handleShowLogs = useCallback(() => {
     if (syncLogs.length === 0) {
       showToast("Nenhum log disponível", "info");
       return;
     }
-    const logText = syncLogs.map(l => 
-      `[${l.time}] ${l.type.toUpperCase()}: ${l.message}`
-    ).join('\n');
-    setLogsContent(logText);
-    setShowLogsModal(true);
-  }, [syncLogs, showToast]);
+    const logText = syncLogs
+      .map((l) => `[${l.time}] ${l.type.toUpperCase()}: ${l.message}`)
+      .join("\n");
+    showInfo(logText, 8000);
+  }, [syncLogs, showInfo]);
 
   const menuSections: MenuSection[] = [
     {
@@ -257,35 +260,50 @@ export default function MaisPage() {
           icon: KeyRound,
           label: "Senhas",
           description: "Gerenciador de credenciais com criptografia",
-          onClick: () => { trigger("vibrate"); router.push("/senhas"); },
+          onClick: () => {
+            trigger("vibrate");
+            router.push("/senhas");
+          },
         },
         {
           id: "cartoes",
           icon: CreditCard,
           label: "Bancos & Cartões",
           description: "Gerencie suas contas e cartões com segurança",
-          onClick: () => { trigger("vibrate"); router.push("/cartoes"); },
+          onClick: () => {
+            trigger("vibrate");
+            router.push("/cartoes");
+          },
         },
         {
           id: "cofres",
           icon: Shield,
           label: "Cofres",
           description: "Documentos compartilhados com sua família",
-          onClick: () => { trigger("vibrate"); router.push("/vaults"); },
+          onClick: () => {
+            trigger("vibrate");
+            router.push("/vaults");
+          },
         },
         {
           id: "pessoas",
           icon: Users,
           label: "Pessoas",
           description: "Gerencie as pessoas do seu vault",
-          onClick: () => { trigger("vibrate"); router.push("/pessoas"); },
+          onClick: () => {
+            trigger("vibrate");
+            router.push("/pessoas");
+          },
         },
         {
           id: "favoritos",
           icon: Star,
           label: "Favoritos",
           description: "Acesse seus documentos marcados com estrela",
-          onClick: () => { trigger("vibrate"); router.push("/favoritos"); },
+          onClick: () => {
+            trigger("vibrate");
+            router.push("/favoritos");
+          },
         },
         {
           id: "tema",
@@ -308,7 +326,9 @@ export default function MaisPage() {
             : isSyncing
             ? "Baixando e enviando dados..."
             : pendingQueueCount > 0
-            ? `${pendingQueueCount} ${pendingQueueCount === 1 ? "item pendente" : "itens pendentes"} na fila`
+            ? `${pendingQueueCount} ${
+                pendingQueueCount === 1 ? "item pendente" : "itens pendentes"
+              } na fila`
             : "Tudo sincronizado com a nuvem",
           onClick: handleSync,
           disabled: !isOnline || isSyncing,
@@ -318,14 +338,20 @@ export default function MaisPage() {
           icon: Download,
           label: "Exportar dados",
           description: "Baixe todos os seus dados em JSON",
-          onClick: () => { trigger("vibrate"); showToast("Em breve...", "info"); },
+          onClick: () => {
+            trigger("vibrate");
+            showToast("Em breve...", "info");
+          },
         },
         {
           id: "limpar",
           icon: HardDrive,
           label: "Limpar dados locais",
           description: "Remove todos os dados do dispositivo",
-          onClick: () => { trigger("vibrate"); setShowClearDataModal(true); },
+          onClick: () => {
+            trigger("vibrate");
+            setShowClearDataModal(true);
+          },
         },
       ],
     },
@@ -337,21 +363,30 @@ export default function MaisPage() {
           icon: Activity,
           label: "Diagnóstico de dados",
           description: "Compara o que está no aparelho com o que está na nuvem",
-          onClick: () => { trigger("vibrate"); router.push("/diagnostico"); },
+          onClick: () => {
+            trigger("vibrate");
+            router.push("/diagnostico");
+          },
         },
         {
           id: "destravar-sync",
           icon: ShieldAlert,
           label: "Destravar Sincronização",
           description: "Remove itens presos em falha para a fila voltar a andar",
-          onClick: () => { trigger("vibrate"); setShowUnlockModal(true); },
+          onClick: () => {
+            trigger("vibrate");
+            setShowUnlockModal(true);
+          },
           disabled: pendingQueueCount === 0,
         },
         {
           id: "ver-logs",
           icon: Terminal,
           label: "Ver logs de sincronização",
-          description: syncLogs.length > 0 ? `${syncLogs.length} eventos registrados` : "Nenhum log disponível",
+          description:
+            syncLogs.length > 0
+              ? `${syncLogs.length} eventos registrados`
+              : "Nenhum log disponível",
           onClick: handleShowLogs,
           disabled: syncLogs.length === 0,
         },
@@ -377,7 +412,10 @@ export default function MaisPage() {
           icon: HelpCircle,
           label: "Ajuda",
           description: "Dúvidas e suporte",
-          onClick: () => { trigger("vibrate"); showToast("Em breve...", "info"); },
+          onClick: () => {
+            trigger("vibrate");
+            showToast("Em breve...", "info");
+          },
         },
       ],
     },
@@ -385,7 +423,7 @@ export default function MaisPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
+      <main className="min-h-screen bg-void pb-28 overflow-y-auto">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -411,6 +449,7 @@ export default function MaisPage() {
         </header>
 
         <section className="space-y-6 px-5 pt-6">
+          {/* Card perfil */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -562,21 +601,48 @@ export default function MaisPage() {
                           : "hover:bg-surface-raised/80"
                       }`}
                     >
-                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 ${
-                        isLogItem || isDiagnosticoItem ? "bg-ice/10 border-ice/20" : isUnlockItem && !item.disabled ? "bg-coral/10 border-coral/20" : "bg-surface-raised"
-                      }`}>
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 ${
+                          isLogItem || isDiagnosticoItem
+                            ? "bg-ice/10 border-ice/20"
+                            : isUnlockItem && !item.disabled
+                            ? "bg-coral/10 border-coral/20"
+                            : "bg-surface-raised"
+                        }`}
+                      >
                         {isSyncItem && isSyncing ? (
                           <Loader2 size={18} className="animate-spin text-ice" />
                         ) : (
-                          <Icon size={18} className={isLogItem || isDiagnosticoItem ? "text-ice" : isUnlockItem && !item.disabled ? "text-coral" : "text-ink-muted"} />
+                          <Icon
+                            size={18}
+                            className={
+                              isLogItem || isDiagnosticoItem
+                                ? "text-ice"
+                                : isUnlockItem && !item.disabled
+                                ? "text-coral"
+                                : "text-ink-muted"
+                            }
+                          />
                         )}
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <p className={`text-sm font-medium ${isUnlockItem && !item.disabled ? "text-coral" : "text-ink-primary"}`}>
+                        <p
+                          className={`text-sm font-medium ${
+                            isUnlockItem && !item.disabled
+                              ? "text-coral"
+                              : "text-ink-primary"
+                          }`}
+                        >
                           {item.label}
                         </p>
-                        <p className={`text-xs leading-5 ${isUnlockItem && !item.disabled ? "text-coral/70" : "text-ink-muted"}`}>
+                        <p
+                          className={`text-xs leading-5 ${
+                            isUnlockItem && !item.disabled
+                              ? "text-coral/70"
+                              : "text-ink-muted"
+                          }`}
+                        >
                           {item.description}
                         </p>
                       </div>
@@ -621,7 +687,8 @@ export default function MaisPage() {
           >
             <p className="text-xs text-ink-faint">Vault v{APP_VERSION}</p>
             <p className="mt-1 flex items-center justify-center gap-1 text-xs text-ink-faint">
-              Desenvolvido com <Heart size={12} className="fill-coral text-coral" /> por Álefe Jôhsefe
+              Desenvolvido com <Heart size={12} className="fill-coral text-coral" /> por
+              Álefe Jôhsefe
             </p>
             <p className="mt-2 text-[10px] text-ink-faint/50">
               © {new Date().getFullYear()} — Todos os direitos reservados
@@ -663,17 +730,6 @@ export default function MaisPage() {
           cancelLabel="Cancelar"
           isLoading={isLoading}
           type="warning"
-        />
-
-        <ConfirmationModal
-          isOpen={showLogsModal}
-          onClose={() => setShowLogsModal(false)}
-          onConfirm={() => setShowLogsModal(false)}
-          title="Logs de sincronização"
-          message={logsContent}
-          confirmLabel="Fechar"
-          cancelLabel=""
-          type="info"
         />
       </main>
     </PageTransition>

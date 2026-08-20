@@ -137,7 +137,6 @@ const SENHAS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-senha", label: "Nova senha", icon: Lock, path: "/senhas/novo" },
 ];
 
-// Declarada apenas uma vez (Correção do erro TS2451)
 const PESSOAS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "nova-pessoa", label: "Nova Pessoa", icon: User, path: "/pessoas/novo" },
 ];
@@ -145,7 +144,7 @@ const PESSOAS_COMPOSE_OPTIONS: ComposeOption[] = [
 function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
   if (pathname === "/") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/documentos") return DOCUMENTOS_COMPOSE_OPTIONS;
-  if (pathname === "/hoje") return [];
+  if (pathname === "/hoje") return SAUDE_COMPOSE_OPTIONS; // Menu central ativado com as opções de saúde em /hoje
   if (pathname === "/mais") return [];
 
   if (pathname === "/pessoas") return PESSOAS_COMPOSE_OPTIONS;
@@ -217,6 +216,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isEnabled: isBiometricEnabled } = useBiometricPreference();
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
 
