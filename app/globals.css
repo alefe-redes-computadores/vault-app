@@ -51,7 +51,6 @@ html.light {
 html,
 body {
   @apply bg-void text-ink-primary;
-  overscroll-behavior-y: none;
   overflow-x: hidden;
   transition: background-color 300ms ease, color 300ms ease;
 }
