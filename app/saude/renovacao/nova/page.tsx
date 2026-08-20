@@ -5,28 +5,11 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
-  Loader2,
-  FileWarning,
-  Upload,
-  Camera,
-  X,
-  Save,
-  DollarSign,
-  Calendar,
-  Store,
-  PackagePlus,
-  Stethoscope,
-  TrendingDown,
-  TrendingUp,
-  Building2,
-  MapPin,
-  Check,
-  AlertTriangle,
+  ArrowLeft, Loader2, FileWarning, Upload, Camera, X, Save, DollarSign,
+  Calendar, Store, PackagePlus, Stethoscope, TrendingDown, TrendingUp, Building2, MapPin, Check, AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
-import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
@@ -36,15 +19,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { uploadFile } from "@/lib/supabase/storage";
 import { getLocalTodayISO, getDaysUntil, VALIDADE_RECEITA_DIAS } from "@/lib/health-utils";
-import type {
-  Attachment,
-  TipoReceita,
-  Medicamento,
-  Medico,
-  Farmacia,
-  Hospital,
-  LocalSaude,
-} from "@/lib/types";
+import type { Attachment, TipoReceita, Medicamento, Medico, Farmacia, Hospital, LocalSaude, Renovacao } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
 import { Input } from "@/components/ui/Input";
@@ -52,11 +27,10 @@ import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 import { useRenovacaoInteligente } from "@/hooks/useRenovacaoInteligente";
 import { ModalAlertaReceita } from "@/components/saude/ModalAlertaReceita";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-};
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
 function formatDateToDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -76,12 +50,8 @@ function parseDateToISO(displayStr: string): string {
 
 function handleDateMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 8);
-  if (clean.length > 4) {
-    return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
-  }
-  if (clean.length > 2) {
-    return `${clean.slice(0, 2)}/${clean.slice(2)}`;
-  }
+  if (clean.length > 4) return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
+  if (clean.length > 2) return `${clean.slice(0, 2)}/${clean.slice(2)}`;
   return clean;
 }
 
@@ -89,10 +59,7 @@ function handleCurrencyMask(value: string): string {
   const clean = value.replace(/\D/g, "");
   if (!clean) return "";
   const numberVal = parseInt(clean, 10) / 100;
-  return numberVal.toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function addDaysToISO(dateISO: string, days: number): string {
@@ -111,8 +78,7 @@ function NovaRenovacaoContent() {
 
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
-  const { medicamentos, updateMedicamento } = useMedicamentos();
-  const { addRenovacao } = useRenovacoes();
+  const { medicamentos } = useMedicamentos();
   const { farmacias } = useFarmacias();
   const { medicos } = useMedicos();
   const { hospitais } = useHospitais();
@@ -128,7 +94,6 @@ function NovaRenovacaoContent() {
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
-  // Inicia vazio, só calcula quando usuário digitar
   const [dataDisplay, setDataDisplay] = useState("");
   const [proximaDisplay, setProximaDisplay] = useState("");
 
@@ -289,48 +254,66 @@ function NovaRenovacaoContent() {
           }
         }
 
-        const dataISO = parseDateToISO(dataDisplay);
-        const proximaISO = proximaDisplay.length === 10 ? parseDateToISO(proximaDisplay) : addDaysToISO(dataISO, 30);
-        const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
-        const quantidadeNum = registrarCompra ? Number(quantidadeAdicionar) || 0 : undefined;
+        await db.transaction('rw', db.renovacoes, db.medicamentos, db.syncQueue, async () => {
+          const dataISO = parseDateToISO(dataDisplay);
+          const proximaISO = proximaDisplay.length === 10 ? parseDateToISO(proximaDisplay) : addDaysToISO(dataISO, 30);
+          const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
+          const quantidadeNum = registrarCompra ? Number(quantidadeAdicionar) || 0 : undefined;
 
-        await addRenovacao({
-          person_id: activePersonId || undefined,
-          medicamento_id: medicamentoId,
-          medico_id: medicoId || undefined,
-          farmacia_id: farmaciaId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          tipo_aquisicao: tipoAquisicao,
-          data_proxima_retirada: tipoAquisicao === "gratuito" ? parseDateToISO(dataProximaRetirada) : undefined,
-          exige_nova_receita: tipoAquisicao === "gratuito" ? exigeNovaReceita : undefined,
-          quantidade: quantidadeNum,
-          preco: precoNumerico,
-          lote: lote.trim() || undefined,
-          validade_produto: validadeProduto ? parseDateToISO(validadeProduto) : undefined,
-          data: dataISO,
-          anexo_url: finalAnexoUrl,
-          observacoes: observacoes.trim() || undefined,
-        });
+          const idRenovacao = crypto.randomUUID();
+          const novaRenovacao: Renovacao = {
+            id: idRenovacao,
+            user_id: user?.id || "",
+            person_id: activePersonId || undefined,
+            medicamento_id: medicamentoId,
+            medico_id: medicoId || undefined,
+            farmacia_id: farmaciaId || undefined,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            tipo_aquisicao: tipoAquisicao,
+            data_proxima_retirada: tipoAquisicao === "gratuito" ? parseDateToISO(dataProximaRetirada) : undefined,
+            exige_nova_receita: tipoAquisicao === "gratuito" ? exigeNovaReceita : undefined,
+            quantidade: quantidadeNum,
+            preco: precoNumerico,
+            lote: lote.trim() || undefined,
+            validade_produto: validadeProduto ? parseDateToISO(validadeProduto) : undefined,
+            data: dataISO,
+            anexo_url: finalAnexoUrl,
+            observacoes: observacoes.trim() || undefined,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            synced: false
+          };
 
-        const dadosUpdate: Partial<Medicamento> = {
-          data_receita: dataISO,
-          proxima_renovacao: proximaISO,
-          medico_id: medicoId || undefined,
-          medico: medicoNome || undefined,
-        };
+          await db.renovacoes.add(novaRenovacao);
+          await enfileirarOperacao("renovacoes", "add", novaRenovacao);
 
-        if (registrarCompra && selectedMedicamento) {
-          const estoqueAtual = Number(selectedMedicamento.estoque_quantidade) || 0;
-          dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
-          dadosUpdate.estoque_data_referencia = getLocalTodayISO();
-          if (selectedFarmacia) {
-            dadosUpdate.farmacia = selectedFarmacia.nome;
-            dadosUpdate.farmacia_id = selectedFarmacia.id;
+          const medOriginal = await db.medicamentos.get(medicamentoId);
+          if (medOriginal) {
+            const dadosUpdate: Partial<Medicamento> = {
+              data_receita: dataISO,
+              proxima_renovacao: proximaISO,
+              medico_id: medicoId || undefined,
+              medico: medicoNome || undefined,
+              updated_at: new Date().toISOString(),
+              synced: false
+            };
+
+            if (registrarCompra) {
+              const estoqueAtual = Number(medOriginal.estoque_quantidade) || 0;
+              dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
+              dadosUpdate.estoque_data_referencia = getLocalTodayISO();
+              if (selectedFarmacia) {
+                dadosUpdate.farmacia = selectedFarmacia.nome;
+                dadosUpdate.farmacia_id = selectedFarmacia.id;
+              }
+            }
+
+            const medAtualizado = { ...medOriginal, ...dadosUpdate };
+            await db.medicamentos.put(medAtualizado);
+            await enfileirarOperacao("medicamentos", "update", medAtualizado);
           }
-        }
-
-        await updateMedicamento(medicamentoId, dadosUpdate);
+        });
       },
       {
         successMessage: "Renovação registrada com sucesso",
@@ -344,7 +327,7 @@ function NovaRenovacaoContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
 
@@ -483,7 +466,7 @@ function NovaRenovacaoContent() {
                     value={dataDisplay}
                     onChange={(e) => handleDataChange(e.target.value)}
                     maxLength={10}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50"
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50 text-ink-primary"
                   />
                 </div>
                 {errors.data && <p className="mt-1 text-xs text-coral">{errors.data}</p>}
@@ -498,7 +481,7 @@ function NovaRenovacaoContent() {
                     value={proximaDisplay}
                     onChange={(e) => setProximaDisplay(handleDateMask(e.target.value))}
                     maxLength={10}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50"
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50 text-ink-primary"
                   />
                 </div>
               </div>
@@ -703,7 +686,7 @@ function NovaRenovacaoContent() {
                     value={dataProximaRetirada}
                     onChange={(e) => setDataProximaRetirada(handleDateMask(e.target.value))}
                     maxLength={10}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50"
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50 text-ink-primary"
                   />
                 </div>
               </div>
@@ -734,7 +717,7 @@ function NovaRenovacaoContent() {
               label="Observações (opcional)"
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Ex: Retirada mensal, farmácia de confiança..."
+              placeholder="Notas sobre esta renovação..."
             />
           </motion.div>
 
@@ -794,7 +777,6 @@ function NovaRenovacaoContent() {
           </motion.div>
         </section>
 
-        {/* Footer */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button
             variant="primary"
@@ -832,7 +814,7 @@ function NovaRenovacaoContent() {
           title="Selecionar medicamento"
           renderItem={(item) => (
             <div>
-              <p className="font-medium">{item.nome}</p>
+              <p className="font-medium text-ink-primary">{item.nome}</p>
               <p className="text-xs text-ink-muted">{item.dosagem}</p>
             </div>
           )}
@@ -847,15 +829,15 @@ function NovaRenovacaoContent() {
           onClose={() => setIsDoctorModalOpen(false)}
           onSelect={(item) => {
             trigger("vibrate");
-            setMedicoNome(item.nome);
             setMedicoId(item.id!);
+            setMedicoNome(item.nome);
           }}
           items={medicos}
           title="Selecionar médico"
           placeholder="Buscar médico..."
           renderItem={(item) => (
             <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
+              <p className="font-medium text-ink-primary">Dr(a). {item.nome}</p>
               {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
             </div>
           )}
@@ -873,8 +855,8 @@ function NovaRenovacaoContent() {
           onClose={() => setIsHospitalModalOpen(false)}
           onSelect={(item) => {
             trigger("vibrate");
-            setHospitalNome(item.nome);
             setHospitalId(item.id!);
+            setHospitalNome(item.nome);
           }}
           items={hospitais}
           title="Selecionar Hospital"
@@ -899,8 +881,8 @@ function NovaRenovacaoContent() {
           onClose={() => setIsLocalModalOpen(false)}
           onSelect={(item) => {
             trigger("vibrate");
-            setLocalNome(item.nome);
             setLocalId(item.id!);
+            setLocalNome(item.nome);
           }}
           items={locais}
           title="Selecionar Local / Posto"
@@ -925,8 +907,8 @@ function NovaRenovacaoContent() {
           onClose={() => setIsPharmacyModalOpen(false)}
           onSelect={(item) => {
             trigger("vibrate");
-            setFarmaciaNome(item.nome);
             setFarmaciaId(item.id!);
+            setFarmaciaNome(item.nome);
           }}
           items={farmacias}
           title="Selecionar farmácia"

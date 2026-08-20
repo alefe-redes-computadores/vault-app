@@ -174,11 +174,22 @@ export default function EditarPessoaPage() {
           email: formData.email.trim() || undefined,
           phone: formData.phone.trim() || undefined,
           updated_at: new Date().toISOString(),
-          synced: false,
+          synced: 0,
         };
 
-        await db.persons.update(id, updateData);
-        await enfileirarOperacao("persons", "update", { id, ...updateData });
+        // Transação Atômica com Merge Completo (.get() + .put() + syncQueue)
+        await db.transaction("rw", db.persons, db.syncQueue, async () => {
+          const original = await db.persons.get(id);
+          if (!original) throw new Error("Pessoa não encontrada");
+
+          const mergedData = {
+            ...original,
+            ...updateData,
+          };
+
+          await db.persons.put(mergedData);
+          await enfileirarOperacao("persons", "update", mergedData);
+        });
 
         if (isDefault && formData.color) {
           document.documentElement.style.setProperty("--person-accent", formData.color);
@@ -197,7 +208,7 @@ export default function EditarPessoaPage() {
   if (isLoading) {
     return (
       <PageTransition>
-        <main className="min-h-screen bg-void px-5 pb-28 pt-6">
+        <main className="min-h-[100dvh] bg-void px-5 pb-28 pt-6">
           <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-8 shadow-sm flex flex-col items-center">
             <div className="h-12 w-12 animate-spin rounded-full border-4 border-ice border-t-transparent" />
             <p className="mt-4 text-center text-sm text-ink-muted">Carregando dados...</p>
@@ -209,7 +220,7 @@ export default function EditarPessoaPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
+      <main className="min-h-[100dvh] bg-void pb-32">
         <input
           ref={fileInputRef}
           type="file"

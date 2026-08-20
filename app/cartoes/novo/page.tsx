@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
-import { useCards } from "@/hooks/useCards";
+import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { encryptPassword } from "@/lib/crypto";
@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { CardType } from "@/lib/types";
 
 const fadeUp = {
@@ -26,7 +28,7 @@ export default function NewCardPage() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const router = useRouter();
-  const { addCard } = useCards();
+  const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -71,12 +73,20 @@ export default function NewCardPage() {
       return;
     }
 
+    if (!user?.id) {
+      showToast("Usuário não autenticado", "error");
+      return;
+    }
+
     run(
       async () => {
+        const id = crypto.randomUUID();
         const cardNumberEncrypted = formData.card_number ? encryptPassword(formData.card_number) : undefined;
         const cvvEncrypted = formData.cvv ? encryptPassword(formData.cvv) : undefined;
 
-        await addCard({
+        const payload = {
+          id,
+          user_id: user.id,
           title: formData.title.trim(),
           bank_name: formData.bank_name.trim(),
           type: formData.type,
@@ -88,6 +98,14 @@ export default function NewCardPage() {
           agency: formData.agency.trim(),
           account: formData.account.trim(),
           notes: formData.notes.trim(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: false
+        };
+
+        await db.transaction("rw", db.bankCards, db.syncQueue, async () => {
+          await db.bankCards.add(payload);
+          await enfileirarOperacao("bankCards" as any, "add", payload);
         });
       },
       {
@@ -100,7 +118,7 @@ export default function NewCardPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-44">
+      <main className="min-h-[100dvh] bg-void pb-44">
         <header className="header-safe-top sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <button 
             onClick={() => { trigger("vibrate"); router.back(); }} 

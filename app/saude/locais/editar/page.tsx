@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { LocalSaude, Renovacao } from "@/lib/types";
 
 const fadeUp = {
@@ -51,7 +53,7 @@ function EditarLocalContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
 
-  const { getLocal, updateLocal, deleteLocal } = useLocais();
+  const { getLocal } = useLocais();
   const { renovacoes = [] } = useRenovacoes();
 
   const saveAction = useSubmitAction();
@@ -101,21 +103,33 @@ function EditarLocalContent() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trigger("vibrate");
     if (!validate()) {
       trigger("error");
       return;
     }
 
-    saveAction.run(
-      () =>
-        updateLocal(id, {
-          nome: nome.trim(),
-          tipo: tipo || undefined,
-          endereco: endereco.trim() || undefined,
-          telefone: telefone.trim() || undefined,
-        }),
+    await saveAction.run(
+      async () => {
+        await db.transaction("rw", db.locais, db.syncQueue, async () => {
+          const original = await db.locais.get(id);
+          if (!original) throw new Error("Local não encontrado");
+
+          const localAtualizado: LocalSaude = {
+            ...original,
+            nome: nome.trim(),
+            tipo: tipo || undefined,
+            endereco: endereco.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+            updated_at: new Date().toISOString(),
+            synced: false,
+          };
+
+          await db.locais.put(localAtualizado);
+          await enfileirarOperacao("locais", "update", localAtualizado);
+        });
+      },
       {
         successMessage: "Local atualizado com sucesso",
         errorMessage: "Erro ao atualizar local",
@@ -124,10 +138,15 @@ function EditarLocalContent() {
     );
   };
 
-  const handleDelete = () => {
-    deleteAction.run(
+  const handleDelete = async () => {
+    trigger("vibrate");
+
+    await deleteAction.run(
       async () => {
-        await deleteLocal(id);
+        await db.transaction("rw", db.locais, db.syncQueue, async () => {
+          await db.locais.delete(id);
+          await enfileirarOperacao("locais", "delete", { id });
+        });
         router.replace("/saude/locais");
       },
       {
@@ -135,6 +154,8 @@ function EditarLocalContent() {
         errorMessage: "Erro ao excluir local",
       }
     );
+
+    setShowDeleteModal(false);
   };
 
   if (isLoading) {
@@ -144,7 +165,7 @@ function EditarLocalContent() {
   if (notFound) {
     return (
       <PageTransition>
-        <main className="flex min-h-screen flex-col items-center justify-center bg-void px-6 text-center">
+        <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-void px-6 text-center">
           <p className="font-display text-lg font-semibold text-ink-primary">
             Local não encontrado
           </p>
@@ -161,7 +182,7 @@ function EditarLocalContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button

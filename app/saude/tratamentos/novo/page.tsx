@@ -5,16 +5,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Plus, Check } from "lucide-react";
-import { useTratamentos } from "@/hooks/useTratamentos";
 import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
+import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
-import type { Cid, Person } from "@/lib/types";
+import type { Cid, Person, Tratamento } from "@/lib/types";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -34,7 +36,7 @@ const CORES_TRATAMENTO = [
 export default function NovoTratamentoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { addTratamento } = useTratamentos();
+  const { user } = useAuth();
   const { cids } = useCids();
   const persons = usePersons() as Person[];
   const { run, isSubmitting } = useSubmitAction();
@@ -50,7 +52,7 @@ export default function NovoTratamentoPage() {
   const [isCidModalOpen, setIsCidModalOpen] = useState(false);
   const [showAddCidPrompt, setShowAddCidPrompt] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trigger("vibrate");
     if (!personId) {
       setError("Selecione uma pessoa");
@@ -62,18 +64,36 @@ export default function NovoTratamentoPage() {
       trigger("error");
       return;
     }
+    if (!user?.id) {
+      setError("Usuário não autenticado");
+      trigger("error");
+      return;
+    }
 
-    const dados = {
-      person_id: personId,
-      nome: nome.trim(),
-      cid_ids: cidIds.length > 0 ? cidIds : undefined,
-      status,
-      cor,
-      observacoes: observacoes.trim() || undefined,
-    };
+    await run(
+      async () => {
+        const novoId = crypto.randomUUID();
+        const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
 
-    run(
-      () => addTratamento(dados),
+        const novoTratamento: Tratamento = {
+          id: novoId,
+          user_id: user.id,
+          person_id: personId,
+          nome: nome.trim(),
+          cid_ids: cleanCids,
+          status,
+          cor,
+          observacoes: observacoes.trim() || undefined,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: false,
+        };
+
+        await db.transaction("rw", db.tratamentos, db.syncQueue, async () => {
+          await db.tratamentos.add(novoTratamento);
+          await enfileirarOperacao("tratamentos", "add", novoTratamento);
+        });
+      },
       {
         successMessage: "Tratamento cadastrado com sucesso",
         errorMessage: "Erro ao salvar tratamento",
@@ -100,7 +120,7 @@ export default function NovoTratamentoPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button

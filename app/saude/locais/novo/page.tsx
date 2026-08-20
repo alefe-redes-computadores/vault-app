@@ -5,12 +5,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { useLocais } from "@/hooks/useLocais";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import type { LocalSaude } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -35,7 +39,7 @@ function formatPhone(value: string): string {
 export default function NovoLocalPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { addLocal } = useLocais();
+  const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
 
   const [nome, setNome] = useState("");
@@ -51,21 +55,34 @@ export default function NovoLocalPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trigger("vibrate");
     if (!validate()) {
       trigger("error");
       return;
     }
+    if (!user?.id) return;
 
-    run(
-      () =>
-        addLocal({
+    await run(
+      async () => {
+        const novoId = crypto.randomUUID();
+        const novoLocal: LocalSaude = {
+          id: novoId,
+          user_id: user.id,
           nome: nome.trim(),
           tipo: tipo || undefined,
           endereco: endereco.trim() || undefined,
           telefone: telefone.trim() || undefined,
-        }),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: false,
+        };
+
+        await db.transaction("rw", db.locais, db.syncQueue, async () => {
+          await db.locais.add(novoLocal);
+          await enfileirarOperacao("locais", "add", novoLocal);
+        });
+      },
       {
         successMessage: "Local cadastrado com sucesso",
         errorMessage: "Erro ao cadastrar local",
@@ -76,7 +93,7 @@ export default function NovoLocalPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button

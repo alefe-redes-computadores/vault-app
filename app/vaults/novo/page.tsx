@@ -17,7 +17,7 @@ import {
   Lock,
   Loader2,
 } from "lucide-react";
-import { useVaults } from "@/hooks/useVaults";
+import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
@@ -25,6 +25,9 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { motion } from "framer-motion";
 
 const ICON_OPTIONS: { label: string; icon: LucideIcon; value: string }[] = [
   { label: "Casa", icon: Home, value: "home" },
@@ -52,7 +55,7 @@ export default function NewVaultPage() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const router = useRouter();
-  const { addVault } = useVaults();
+  const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
 
   const [formData, setFormData] = useState({
@@ -62,7 +65,7 @@ export default function NewVaultPage() {
     color: "#7DD3FC",
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trigger("vibrate");
 
     if (!formData.name.trim()) {
@@ -71,14 +74,32 @@ export default function NewVaultPage() {
       return;
     }
 
-    run(
-      () =>
-        addVault({
+    if (!user?.id) {
+      trigger("error");
+      showToast("Usuário não autenticado", "error");
+      return;
+    }
+
+    await run(
+      async () => {
+        const novoId = crypto.randomUUID();
+        const payload = {
+          id: novoId,
+          user_id: user.id,
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
           icon: formData.icon,
           color: formData.color,
-        }),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: false,
+        };
+
+        await db.transaction("rw", db.vaults, db.syncQueue, async () => {
+          await db.vaults.add(payload);
+          await enfileirarOperacao("vaults" as any, "add", payload);
+        });
+      },
       {
         successMessage: "Cofre criado com sucesso",
         errorMessage: "Erro ao criar cofre",
@@ -92,7 +113,7 @@ export default function NewVaultPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button

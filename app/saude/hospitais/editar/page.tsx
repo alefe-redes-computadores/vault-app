@@ -4,12 +4,22 @@
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Building2, Trash2, Activity, FlaskConical, Stethoscope, ExternalLink, Calendar, FolderHeart, Check, X, Plus } from "lucide-react";
-import { useHospitais } from "@/hooks/useHospitais";
-import { useCirurgias } from "@/hooks/useCirurgias";
-import { useExames } from "@/hooks/useExames";
-import { useConsultas } from "@/hooks/useConsultas";
-import { useMedicos } from "@/hooks/useMedicos";
+import {
+  ArrowLeft,
+  Loader2,
+  Save,
+  Building2,
+  Trash2,
+  Activity,
+  FlaskConical,
+  Stethoscope,
+  ExternalLink,
+  Calendar,
+  FolderHeart,
+  Check,
+  X,
+  Plus
+} from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
@@ -18,9 +28,10 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
-import type { Hospital, Cirurgia, Exame, Consulta, Tratamento } from "@/lib/types";
+import type { Hospital, Cirurgia, Exame, Consulta } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
@@ -44,19 +55,7 @@ function EditarHospitalContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
-
-  const { getHospital, updateHospital, deleteHospitalSafe } = useHospitais();
-  const { cirurgias = [] } = useCirurgias();
-  const { exames = [] } = useExames();
-  const { consultas = [] } = useConsultas();
-  const { medicos } = useMedicos();
   const { user } = useAuth();
-
-  const tratamentos = useLiveQuery(
-    () => user ? db.tratamentos.where('user_id').equals(user.id).toArray() : [],
-    [user?.id],
-    []
-  ) || [];
 
   const saveAction = useSubmitAction();
   const deleteAction = useSubmitAction();
@@ -75,6 +74,13 @@ function EditarHospitalContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const medicos = useLiveQuery(() => db.medicos.toArray(), [], []) || [];
+  const tratamentos = useLiveQuery(() => user ? db.tratamentos.where('user_id').equals(user.id).toArray() : [], [user?.id], []) || [];
+  
+  const cirurgias = useLiveQuery(() => db.cirurgias.toArray(), [], []) || [];
+  const exames = useLiveQuery(() => db.exames.toArray(), [], []) || [];
+  const consultas = useLiveQuery(() => db.consultas.toArray(), [], []) || [];
+
   useEffect(() => {
     if (!id) {
       setNotFound(true);
@@ -82,22 +88,20 @@ function EditarHospitalContent() {
       return;
     }
 
-    getHospital(id)
-      .then((item) => {
-        if (!item) {
-          setNotFound(true);
-        } else {
-          setNome(item.nome || "");
-          setEndereco(item.endereco || "");
-          setTelefone(item.telefone || "");
-          setMedicoIds(item.medico_ids || []);
-          setTratamentoIds(item.tratamento_ids || []);
-        }
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [id, getHospital]);
+    db.hospitais.get(id).then((item) => {
+      if (!item) {
+        setNotFound(true);
+      } else {
+        setNome(item.nome || "");
+        setEndereco(item.endereco || "");
+        setTelefone(item.telefone || "");
+        setMedicoIds(item.medico_ids || []);
+        setTratamentoIds(item.tratamento_ids || []);
+      }
+    }).finally(() => {
+      setIsLoading(false);
+    });
+  }, [id]);
 
   const cirurgiasVinculadas = useMemo(() => {
     if (!id) return [];
@@ -123,13 +127,26 @@ function EditarHospitalContent() {
     }
 
     saveAction.run(
-      () => updateHospital(id, {
-        nome: nome.trim(),
-        endereco: endereco.trim() || undefined,
-        telefone: telefone.trim() || undefined,
-        medico_ids: medicoIds,
-        tratamento_ids: tratamentoIds,
-      }),
+      async () => {
+        await db.transaction("rw", db.hospitais, db.syncQueue, async () => {
+          const original = await db.hospitais.get(id);
+          if (!original) throw new Error("Hospital não encontrado");
+
+          const hospitalAtualizado: Hospital = {
+            ...original,
+            nome: nome.trim(),
+            endereco: endereco.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+            medico_ids: medicoIds,
+            tratamento_ids: tratamentoIds,
+            updated_at: new Date().toISOString(),
+            synced: false
+          };
+
+          await db.hospitais.put(hospitalAtualizado);
+          await enfileirarOperacao("hospitais", "update", hospitalAtualizado);
+        });
+      },
       { successMessage: "Hospital atualizado com sucesso", errorMessage: "Erro ao atualizar hospital", goBackOnSuccess: true }
     );
   };
@@ -137,7 +154,10 @@ function EditarHospitalContent() {
   const handleDelete = () => {
     deleteAction.run(
       async () => {
-        await deleteHospitalSafe(id);
+        await db.transaction("rw", db.hospitais, db.syncQueue, async () => {
+          await db.hospitais.delete(id);
+          await enfileirarOperacao("hospitais", "delete", { id });
+        });
         router.replace("/saude/hospitais");
       },
       { successMessage: "Hospital excluído com sucesso", errorMessage: "Erro ao excluir hospital" }
@@ -203,7 +223,7 @@ function EditarHospitalContent() {
   if (notFound) {
     return (
       <PageTransition>
-        <main className="flex min-h-screen flex-col items-center justify-center bg-void px-6 text-center">
+        <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-void px-6 text-center">
           <p className="font-display text-lg font-semibold text-ink-primary">Hospital não encontrado</p>
           <button onClick={() => router.back()} className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void">Voltar</button>
         </main>
@@ -213,7 +233,7 @@ function EditarHospitalContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -296,7 +316,7 @@ function EditarHospitalContent() {
             </div>
           </motion.div>
 
-          {/* Histórico Vinculado */}
+          {/* Histórico Vinculado: Cirurgias */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.08 }} className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between px-1">
               <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
@@ -331,6 +351,7 @@ function EditarHospitalContent() {
             )}
           </motion.div>
 
+          {/* Histórico Vinculado: Exames */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.10 }} className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between px-1">
               <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
@@ -365,6 +386,7 @@ function EditarHospitalContent() {
             )}
           </motion.div>
 
+          {/* Histórico Vinculado: Consultas */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.12 }} className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between px-1">
               <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">

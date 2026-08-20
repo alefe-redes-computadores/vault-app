@@ -144,7 +144,7 @@ const PESSOAS_COMPOSE_OPTIONS: ComposeOption[] = [
 function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
   if (pathname === "/") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/documentos") return DOCUMENTOS_COMPOSE_OPTIONS;
-  if (pathname === "/hoje") return SAUDE_COMPOSE_OPTIONS; // Menu central ativado com as opções de saúde em /hoje
+  if (pathname === "/hoje") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/mais") return [];
 
   if (pathname === "/pessoas") return PESSOAS_COMPOSE_OPTIONS;
@@ -216,7 +216,6 @@ export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isEnabled: isBiometricEnabled } = useBiometricPreference();
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const [isComposeMenuOpen, setIsComposeMenuOpen] = useState(false);
 
@@ -304,14 +303,14 @@ export function BottomNav() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="shadow-vault fixed bottom-[6.5rem] left-1/2 z-50 w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 overflow-hidden rounded-[26px] border border-surface-border/60 bg-surface"
+              className="shadow-vault fixed bottom-[6.5rem] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[340px] -translate-x-1/2 overflow-hidden rounded-[26px] border border-surface-border/60 bg-surface"
             >
               <div className="px-4 pb-1 pt-3.5">
                 <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-faint">
                   Adicionar
                 </p>
               </div>
-              <div className="max-h-[420px] overflow-y-auto px-2 pb-2 pt-1">
+              <div className="max-h-[380px] overflow-y-auto px-3 pb-3 pt-1">
                 <div className="grid grid-cols-2 gap-2">
                   {composeOptions.map((option) => {
                     const Icon = option.icon;
@@ -319,12 +318,12 @@ export function BottomNav() {
                       <button
                         key={option.id}
                         onClick={() => handleComposeOptionPress(option)}
-                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-4 text-center transition-all active:scale-95 hover:border-ice/30 hover:bg-surface-raised"
+                        className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-center transition-all active:scale-95 hover:border-ice/30 hover:bg-surface-raised"
                       >
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                          <Icon size={20} />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                          <Icon size={18} />
                         </div>
-                        <span className="line-clamp-1 text-xs font-medium text-ink-primary">
+                        <span className="line-clamp-1 text-[11px] font-medium text-ink-primary">
                           {option.label}
                         </span>
                       </button>
@@ -379,8 +378,7 @@ export function BottomNav() {
             {showCompose && (
               <button
                 onClick={handleComposePress}
-                aria-label={composeOptions.length > 1 ? "Adicionar" : composeOptions[0].label}
-                aria-expanded={composeOptions.length > 1 ? isComposeMenuOpen : undefined}
+                aria-label={composeOptions.length > 1 ? "Adicionar" : composeOptions[0].path}
                 className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(47,227,201,0.28)] transition-all duration-200 active:scale-95"
               >
                 <motion.div animate={{ rotate: isComposeMenuOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>

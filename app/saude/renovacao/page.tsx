@@ -38,8 +38,10 @@ function formatDateDisplay(isoStr: string): string {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function formatCurrency(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+function formatCurrency(value: number | string): string {
+  const numericValue = Number(value);
+  if (isNaN(numericValue)) return "R$ 0,00";
+  return `R$ ${numericValue.toFixed(2).replace(".", ",")}`;
 }
 
 type RenovacaoEnriquecida = Renovacao & {
@@ -57,8 +59,11 @@ export default function RenovacoesPage() {
   const [filtroPeriodo, setFiltroPeriodo] = useState<"todos" | "30dias" | "60dias">("todos");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "vencida" | "valida">("todos");
 
-  const { renovacoes = [] } = useRenovacoes();
-  const { medicamentos = [] } = useMedicamentos();
+  // BLINDAGEM: Garantindo que nunca seja undefined
+  const { renovacoes: rawRenovacoes } = useRenovacoes();
+  const { medicamentos: rawMedicamentos } = useMedicamentos();
+  const renovacoes = rawRenovacoes ?? [];
+  const medicamentos = rawMedicamentos ?? [];
 
   const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
@@ -96,11 +101,11 @@ export default function RenovacoesPage() {
     if (filtroPeriodo === "30dias") {
       const trintaDiasAtras = new Date();
       trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-      result = result.filter((r) => new Date(r.data) >= trintaDiasAtras);
+      result = result.filter((r) => r.data && new Date(r.data) >= trintaDiasAtras);
     } else if (filtroPeriodo === "60dias") {
       const sessentaDiasAtras = new Date();
       sessentaDiasAtras.setDate(sessentaDiasAtras.getDate() - 60);
-      result = result.filter((r) => new Date(r.data) >= sessentaDiasAtras);
+      result = result.filter((r) => r.data && new Date(r.data) >= sessentaDiasAtras);
     }
 
     if (filtroStatus === "vencida") {
@@ -109,10 +114,24 @@ export default function RenovacoesPage() {
       result = result.filter((r) => !r.vencida);
     }
 
-    return result.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    // BLINDAGEM DE DATA: Ordena corretamente mesmo se a data estiver no formato BR ou corrompida
+    return result.sort((a, b) => {
+      let dateA = 0;
+      let dateB = 0;
+      
+      if (a.data) {
+        dateA = a.data.includes('/') ? new Date(a.data.split('/').reverse().join('-')).getTime() : new Date(a.data).getTime();
+      }
+      if (b.data) {
+        dateB = b.data.includes('/') ? new Date(b.data.split('/').reverse().join('-')).getTime() : new Date(b.data).getTime();
+      }
+      
+      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+    });
   }, [renovacoesEnriquecidas, search, filtroPeriodo, filtroStatus]);
 
-  if (!renovacoes.length) return <CardListSkeleton />;
+  // Se o hook ainda está carregando o dado inicial e as listas estão vazias, mostra skeleton
+  if (!rawRenovacoes && renovacoes.length === 0) return <CardListSkeleton />;
 
   return (
     <PageTransition>

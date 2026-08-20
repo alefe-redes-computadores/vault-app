@@ -5,17 +5,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Building2, Stethoscope, FolderHeart, Check, X, Plus } from "lucide-react";
-import { useHospitais } from "@/hooks/useHospitais";
-import { useMedicos } from "@/hooks/useMedicos";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
-import type { Tratamento } from "@/lib/types";
+import type { Tratamento, Hospital } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
@@ -30,11 +29,10 @@ function formatPhone(value: string): string {
 export default function NovoHospitalPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { addHospital } = useHospitais();
-  const { medicos } = useMedicos();
   const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
 
+  const medicos = useLiveQuery(() => db.medicos.toArray(), [], []) || [];
   const tratamentos = useLiveQuery(
     () => user ? db.tratamentos.where('user_id').equals(user.id).toArray() : [],
     [user?.id],
@@ -59,20 +57,35 @@ export default function NovoHospitalPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trigger("vibrate");
     if (!validate()) {
       trigger("error");
       return;
     }
-    run(
-      () => addHospital({
-        nome: nome.trim(),
-        endereco: endereco.trim() || undefined,
-        telefone: telefone.trim() || undefined,
-        medico_ids: medicoIds,
-        tratamento_ids: tratamentoIds,
-      }),
+    if (!user?.id) return;
+
+    await run(
+      async () => {
+        const novoId = crypto.randomUUID();
+        const novoHospital: Hospital = {
+          id: novoId,
+          user_id: user.id,
+          nome: nome.trim(),
+          endereco: endereco.trim() || undefined,
+          telefone: telefone.trim() || undefined,
+          medico_ids: medicoIds,
+          tratamento_ids: tratamentoIds,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: false,
+        };
+
+        await db.transaction("rw", db.hospitais, db.syncQueue, async () => {
+          await db.hospitais.add(novoHospital);
+          await enfileirarOperacao("hospitais", "add", novoHospital);
+        });
+      },
       { successMessage: "Hospital cadastrado com sucesso", errorMessage: "Erro ao cadastrar hospital", goBackOnSuccess: true }
     );
   };
@@ -125,7 +138,7 @@ export default function NovoHospitalPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
@@ -147,25 +160,17 @@ export default function NovoHospitalPage() {
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Rede Relacional</h2>
-
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médicos que atendem aqui</label>
               <button type="button" onClick={() => { trigger("vibrate"); setIsMedModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Stethoscope size={16} className="text-ice" />
-                  {medicoIds.length > 0 ? `${medicoIds.length} médico(s) selecionado(s)` : "Vincular médicos..."}
-                </span>
+                <span className="flex items-center gap-2"><Stethoscope size={16} className="text-ice" />{medicoIds.length > 0 ? `${medicoIds.length} médico(s) selecionado(s)` : "Vincular médicos..."}</span>
                 <span className="text-xs text-ice font-medium">Alterar</span>
               </button>
             </div>
-
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink-primary">Tratamentos realizados aqui</label>
               <button type="button" onClick={() => { trigger("vibrate"); setIsTratModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <FolderHeart size={16} className="text-violet-400" />
-                  {tratamentoIds.length > 0 ? `${tratamentoIds.length} tratamento(s) selecionado(s)` : "Vincular tratamentos..."}
-                </span>
+                <span className="flex items-center gap-2"><FolderHeart size={16} className="text-violet-400" />{tratamentoIds.length > 0 ? `${tratamentoIds.length} tratamento(s) selecionado(s)` : "Vincular tratamentos..."}</span>
                 <span className="text-xs text-ice font-medium">Alterar</span>
               </button>
             </div>

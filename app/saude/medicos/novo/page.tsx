@@ -4,18 +4,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Stethoscope, Building2, FolderHeart, Check, X, Plus } from "lucide-react";
-import { useMedicos } from "@/hooks/useMedicos";
-import { useHospitais } from "@/hooks/useHospitais";
+import { ArrowLeft, Loader2, Save, Building2, MapPin, FolderHeart, Check, X, Plus } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
-import type { Tratamento } from "@/lib/types";
+import type { Medico, Tratamento, Hospital, LocalSaude } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
@@ -30,12 +29,11 @@ function formatPhone(value: string): string {
 export default function NovoMedicoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { addMedico } = useMedicos();
-  const { hospitais } = useHospitais();
   const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
 
-  // Lista todos os tratamentos do usuário (sem filtro de pessoa)
+  const hospitais = useLiveQuery(() => db.hospitais.toArray(), [], []) || [];
+  const locais = useLiveQuery(() => db.locais.toArray(), [], []) || [];
   const tratamentos = useLiveQuery(
     () => user ? db.tratamentos.where('user_id').equals(user.id).toArray() : [],
     [user?.id],
@@ -51,9 +49,11 @@ export default function NovoMedicoPage() {
 
   const [hospitalIds, setHospitalIds] = useState<string[]>([]);
   const [tratamentoIds, setTratamentoIds] = useState<string[]>([]);
+  const [localIds, setLocalIds] = useState<string[]>([]);
 
   const [isHospModalOpen, setIsHospModalOpen] = useState(false);
   const [isTratModalOpen, setIsTratModalOpen] = useState(false);
+  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -62,16 +62,20 @@ export default function NovoMedicoPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trigger("vibrate");
     if (!validate()) {
       trigger("error");
       return;
     }
+    if (!user?.id) return;
 
-    run(
-      () =>
-        addMedico({
+    await run(
+      async () => {
+        const novoId = crypto.randomUUID();
+        const novoMedico: Medico = {
+          id: novoId,
+          user_id: user.id,
           nome: nome.trim(),
           especialidade: especialidade.trim() || undefined,
           crm: crm.trim() || undefined,
@@ -79,7 +83,17 @@ export default function NovoMedicoPage() {
           email: email.trim() || undefined,
           hospital_ids: hospitalIds,
           tratamento_ids: tratamentoIds,
-        }),
+          // Removido local_ids por não existir no tipo Medico
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: false,
+        };
+
+        await db.transaction("rw", db.medicos, db.syncQueue, async () => {
+          await db.medicos.add(novoMedico);
+          await enfileirarOperacao("medicos", "add", novoMedico);
+        });
+      },
       {
         successMessage: "Médico cadastrado com sucesso",
         errorMessage: "Erro ao cadastrar médico",
@@ -128,7 +142,7 @@ export default function NovoMedicoPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95" aria-label="Voltar">
@@ -165,6 +179,17 @@ export default function NovoMedicoPage() {
             </div>
 
             <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Clínicas, Postos e Laboratórios</label>
+              <button type="button" onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <MapPin size={16} className="text-emerald-400" />
+                  {localIds.length > 0 ? `${localIds.length} local(is) vinculado(s)` : "Vincular locais de atendimento..."}
+                </span>
+                <span className="text-xs text-ice font-medium">Alterar</span>
+              </button>
+            </div>
+
+            <div>
               <label className="mb-1.5 block text-sm font-medium text-ink-primary">Tratamentos acompanhados</label>
               <button type="button" onClick={() => { trigger("vibrate"); setIsTratModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -184,6 +209,7 @@ export default function NovoMedicoPage() {
         </div>
 
         <MultiSelectModal isOpen={isHospModalOpen} onClose={() => setIsHospModalOpen(false)} title="Hospitais Vinculados" items={hospitais} selectedIds={hospitalIds} onChange={setHospitalIds} icon={Building2} onCreateNew={() => router.push("/saude/hospitais/novo")} createLabel="Cadastrar Novo Hospital" />
+        <MultiSelectModal isOpen={isLocalModalOpen} onClose={() => setIsLocalModalOpen(false)} title="Locais e Clínicas" items={locais} selectedIds={localIds} onChange={setLocalIds} icon={MapPin} onCreateNew={() => router.push("/saude/locais/novo")} createLabel="Cadastrar Novo Local" />
         <MultiSelectModal isOpen={isTratModalOpen} onClose={() => setIsTratModalOpen(false)} title="Tratamentos Acompanhados" items={tratamentos} selectedIds={tratamentoIds} onChange={setTratamentoIds} icon={FolderHeart} onCreateNew={() => router.push("/saude/tratamentos/novo")} createLabel="Cadastrar Novo Tratamento" />
       </main>
     </PageTransition>

@@ -17,6 +17,9 @@ import { useTratamentos } from "@/hooks/useTratamentos";
 import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
 import type { Tratamento, Cid, Person } from "@/lib/types";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { cancelDoseNotifications } from "@/lib/dose-notifications";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
@@ -36,7 +39,7 @@ function EditarTratamentoContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
-  const { getTratamento, updateTratamento, deleteTratamentoSafe } = useTratamentos();
+  const { getTratamento, deleteTratamentoSafe } = useTratamentos();
   const { cids } = useCids();
   const persons = usePersons() as Person[];
 
@@ -84,7 +87,7 @@ function EditarTratamentoContent() {
     loadData();
   }, [id, router, getTratamento]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trigger("vibrate");
     if (!personId) {
       setError("Selecione uma pessoa");
@@ -98,17 +101,61 @@ function EditarTratamentoContent() {
     }
     if (!id) return;
 
-    const patch = {
-      person_id: personId,
-      nome: nome.trim(),
-      cid_ids: cidIds.length > 0 ? cidIds : undefined,
-      cor,
-      status,
-      observacoes: observacoes.trim() || undefined,
-    };
+    const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
 
-    saveAction.run(
-      () => updateTratamento(id, patch),
+    await saveAction.run(
+      async () => {
+        await db.transaction("rw", db.tratamentos, db.medicamentos, db.syncQueue, async () => {
+          const original = await db.tratamentos.get(id);
+          if (!original) throw new Error("Tratamento não encontrado");
+
+          const tratamentoAtualizado: Tratamento = {
+            ...original,
+            person_id: personId,
+            nome: nome.trim(),
+            cid_ids: cleanCids,
+            cor,
+            status,
+            observacoes: observacoes.trim() || undefined,
+            updated_at: new Date().toISOString(),
+            synced: false,
+          };
+
+          await db.tratamentos.put(tratamentoAtualizado);
+          await enfileirarOperacao("tratamentos", "update", tratamentoAtualizado);
+
+          if (status === 'concluido' || status === 'suspenso') {
+            const medicamentosAfetados = await db.medicamentos
+              .where('tratamento_ids')
+              .equals(id)
+              .toArray();
+
+            for (const med of medicamentosAfetados) {
+              if (med.id && med.status !== 'descontinuado') {
+                const medOriginal = await db.medicamentos.get(med.id);
+                if (medOriginal) {
+                  const medAtualizado = {
+                    ...medOriginal,
+                    status: 'descontinuado' as const,
+                    motivo_descontinuacao: `Tratamento original marcado como ${status}`,
+                    updated_at: new Date().toISOString(),
+                    synced: false,
+                  };
+                  await db.medicamentos.put(medAtualizado);
+                  await enfileirarOperacao("medicamentos", "update", medAtualizado);
+
+                  if (med.estoque_horarios && med.estoque_horarios.length > 0) {
+                    await cancelDoseNotifications({
+                      id: med.id,
+                      estoque_horarios: med.estoque_horarios
+                    } as any);
+                  }
+                }
+              }
+            }
+          }
+        });
+      },
       {
         successMessage: "Tratamento atualizado com sucesso!",
         errorMessage: "Erro ao atualizar tratamento",
@@ -154,7 +201,7 @@ function EditarTratamentoContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <button

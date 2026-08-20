@@ -96,21 +96,21 @@ export default function NewPersonPage() {
           color: formData.color,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          synced: 0, // Usando 0 em vez de false para o Dexie/Supabase
+          synced: 0,
         };
 
-        // Salva no banco local
-        await db.persons.add(newPerson as any);
-
-        // Enfileira para subir para a nuvem quando houver internet
-        await enfileirarOperacao("persons", "add", newPerson);
+        // Transação Atômica Local + Fila de Sincronização
+        await db.transaction("rw", db.persons, db.syncQueue, async () => {
+          await db.persons.add(newPerson as any);
+          await enfileirarOperacao("persons", "add", newPerson);
+        });
 
         router.push("/pessoas");
       },
       {
         successMessage: "Pessoa adicionada com sucesso!",
         errorMessage: "Erro ao salvar pessoa",
-        goBackOnSuccess: false, // navegamos manualmente
+        goBackOnSuccess: false,
       }
     );
   };
@@ -126,7 +126,7 @@ export default function NewPersonPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
+      <main className="min-h-[100dvh] bg-void pb-32">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -239,6 +239,7 @@ export default function NewPersonPage() {
                     setFormData((prev) => ({ ...prev, email: e.target.value }))
                   }
                   className="pl-9"
+                  type="email"
                 />
               </motion.div>
 

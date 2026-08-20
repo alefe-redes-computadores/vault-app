@@ -40,7 +40,6 @@ import { useLocais } from "@/hooks/useLocais";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { SimpleSpinner } from "@/components/loading/SimpleSpinner";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, safeUpdateMedicamento } from "@/lib/db";
@@ -268,30 +267,31 @@ export default function HomePage() {
     "Usuário";
   const avatarUrl = activePerson?.avatar_url || user?.user_metadata?.avatar_url;
 
+  // Filtros afrouxados (aceita null/indefinido se for dado antigo, ou vincula ao activePerson)
   const medicamentos = useMemo(
-    () => (activePersonId ? (medicamentosTodas || []).filter((m) => m.person_id === activePersonId) : []),
+    () => (activePersonId ? (medicamentosTodas || []).filter((m) => m.person_id === activePersonId || !m.person_id) : []),
     [medicamentosTodas, activePersonId]
   );
   const tratamentos = useMemo(
-    () => (activePersonId ? tratamentosTodas.filter((t) => t.person_id === activePersonId) : []),
+    () => (activePersonId ? tratamentosTodas.filter((t) => t.person_id === activePersonId || !t.person_id) : []),
     [tratamentosTodas, activePersonId]
   );
   const exames = useMemo(
-    () => (activePersonId ? examesTodas.filter((e) => e.person_id === activePersonId) : []),
+    () => (activePersonId ? examesTodas.filter((e) => e.person_id === activePersonId || !e.person_id) : []),
     [examesTodas, activePersonId]
   );
   const renovacoes = useMemo(
-    () => (activePersonId ? renovacoesTodas.filter((r) => r.person_id === activePersonId) : []),
+    () => (activePersonId ? renovacoesTodas.filter((r) => r.person_id === activePersonId || !r.person_id) : []),
     [renovacoesTodas, activePersonId]
   );
   const consultas = useMemo(
-    () => (activePersonId ? consultasTodas.filter((c) => c.person_id === activePersonId) : []),
+    () => (activePersonId ? consultasTodas.filter((c) => c.person_id === activePersonId || !c.person_id) : []),
     [consultasTodas, activePersonId]
   );
   const cirurgiasHoje = useMemo(
     () =>
       activePersonId
-        ? cirurgiasTodas.filter((c) => c.person_id === activePersonId && c.data === hoje)
+        ? cirurgiasTodas.filter((c) => (c.person_id === activePersonId || !c.person_id) && c.data === hoje)
         : [],
     [cirurgiasTodas, activePersonId, hoje]
   );
@@ -313,6 +313,7 @@ export default function HomePage() {
     minute: "2-digit",
   });
 
+  // CORREÇÃO: Leitura blindada de datas e valores numéricos
   const metricasFinanceiras = useMemo(() => {
     const dataAtual = new Date();
     const mesAtual = dataAtual.getMonth();
@@ -324,12 +325,25 @@ export default function HomePage() {
     let gastoMesAnterior = 0;
 
     (renovacoes || []).forEach((r) => {
-      if (typeof r.preco === "number" && r.preco > 0 && r.data) {
-        const dataR = new Date(r.data);
-        if (dataR.getMonth() === mesAtual && dataR.getFullYear() === anoAtual) {
-          gastoMesAtual += r.preco;
-        } else if (dataR.getMonth() === mesAnterior && dataR.getFullYear() === anoDoMesAnterior) {
-          gastoMesAnterior += r.preco;
+      const precoNumerico = Number(r.preco); // Converte de string para número caso precise
+      if (!isNaN(precoNumerico) && precoNumerico > 0 && r.data) {
+        
+        let dataR = new Date(r.data);
+        
+        // Tratamento para data no formato brasileiro (DD/MM/YYYY)
+        if (isNaN(dataR.getTime()) && r.data.includes("/")) {
+          const partes = r.data.split("/");
+          if (partes.length === 3) {
+            dataR = new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00`);
+          }
+        }
+
+        if (!isNaN(dataR.getTime())) {
+          if (dataR.getMonth() === mesAtual && dataR.getFullYear() === anoAtual) {
+            gastoMesAtual += precoNumerico;
+          } else if (dataR.getMonth() === mesAnterior && dataR.getFullYear() === anoDoMesAnterior) {
+            gastoMesAnterior += precoNumerico;
+          }
         }
       }
     });

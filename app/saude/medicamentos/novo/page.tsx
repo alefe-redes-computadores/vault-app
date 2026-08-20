@@ -10,6 +10,7 @@ import {
   Building2, MapPin, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, TrendingUp, Sparkles, Circle
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
@@ -35,6 +36,7 @@ import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
 import { sugerirHorarios } from "@/lib/health-insights";
 import { FloatingSpinner } from "@/components/loading/FloatingSpinner";
+import { db } from "@/lib/db";
 import type { Attachment, Document, TipoReceita, Medico, Farmacia, Hospital, LocalSaude, Medicamento } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 } };
@@ -57,6 +59,13 @@ function handleCurrencyMask(value: string): string {
   if (!clean) return "";
   const numberVal = parseInt(clean, 10) / 100;
   return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function handleTimeMask(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 4);
+  if (clean.length > 2) {
+    return `${clean.slice(0, 2)}:${clean.slice(2)}`;
+  }
+  return clean;
 }
 
 const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
@@ -127,7 +136,7 @@ export default function NovoMedicamentoPage() {
 
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
-  const [estoqueDataReferenciaTexto, setEstoqueDataReferenciaTexto] = useState(isoParaBr(new Date().toISOString().slice(0, 10)));
+  const [estoqueDataReferenciaTexto, setEstoqueDataReferenciaTexto] = useState(isoParaBr(getLocalTodayISO()));
   const [estoqueUnidade, setEstoqueUnidade] = useState("comprimido(s)");
 
   const [tipoReceita, setTipoReceita] = useState<TipoReceita>("comum");
@@ -271,18 +280,6 @@ export default function NovoMedicamentoPage() {
         newErrors.vezesAoDia = "Obrigatório";
         shakeList.push("vezesAoDia");
       }
-
-      const exactDuplicate = medicamentosList.find((m: Medicamento) =>
-        m.nome.toLowerCase() === nome.toLowerCase().trim() &&
-        m.dosagem.toLowerCase() === dosagem.toLowerCase().trim() &&
-        m.person_id === activePersonId &&
-        m.status !== "descontinuado"
-      );
-      if (exactDuplicate && !isRecognized) {
-        newErrors.nome = "Remédio exato já cadastrado";
-        shakeList.push("nome");
-        trigger("error");
-      }
     }
     if (step === 3) {
       if (dataReceitaTexto && dataReceitaTexto.length < 10) {
@@ -337,90 +334,133 @@ export default function NovoMedicamentoPage() {
     run(
       async () => {
         setUploadProgress(0);
-        const dataReceitaISO = brParaIso(dataReceitaTexto);
-        const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
-        const estoqueDataReferenciaISO = brParaIso(estoqueDataReferenciaTexto);
+        
+        await db.transaction('rw', db.documents, db.medicamentos, db.renovacoes, db.syncQueue, async () => {
+          const dataReceitaISO = brParaIso(dataReceitaTexto);
+          const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
+          const estoqueDataReferenciaISO = brParaIso(estoqueDataReferenciaTexto) || getLocalTodayISO();
 
-        const quantidadeEstoqueFinal = isGotas
-          ? (estoqueGotasCalculado > 0 ? estoqueGotasCalculado : Number(estoqueQuantidade) || 0)
-          : Number(estoqueQuantidade) || 0;
+          const quantidadeEstoqueFinal = isGotas
+            ? (estoqueGotasCalculado > 0 ? estoqueGotasCalculado : Number(estoqueQuantidade) || 0)
+            : Number(estoqueQuantidade) || 0;
 
-        const horariosFiltrados = horarios.filter(Boolean);
+          const horariosFiltrados = horarios.filter(Boolean);
+          const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
 
-        let docId = "";
+          let docId = "";
 
-        if (dataReceitaISO || attachment) {
-          const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'> = {
-            user_id: user?.id || "",
-            person_id: activePersonId || "",
-            category_id: "saude",
-            type: "receita",
-            title: `Receita — ${nome.trim()}`,
-            description: observacoes.trim() || undefined,
-            metadata: {
-              medication: nome.trim(),
-              dosage: dosagem.trim(),
-              prescription_date: dataReceitaISO,
-              renewal_date: proximaRenovacaoISO,
-              tratamento_ids: tratamentosSelecionados,
-              tipo_receita: tipoReceita,
-              formato,
-              status: "ativo",
-            },
-            attachments: attachment ? [attachment] : [],
-            is_favorite: false,
-          };
+          if (dataReceitaISO || attachment) {
+            const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'> = {
+              user_id: user?.id || "",
+              person_id: activePersonId || "",
+              category_id: "saude",
+              type: "receita",
+              title: `Receita — ${nome.trim()}`,
+              description: observacoes.trim() || undefined,
+              metadata: {
+                medication: nome.trim(),
+                dosage: dosagem.trim(),
+                prescription_date: dataReceitaISO,
+                renewal_date: proximaRenovacaoISO,
+                tratamento_ids: tratamentosSelecionados,
+                tipo_receita: tipoReceita,
+                formato,
+                status: "ativo",
+              },
+              attachments: attachment ? [attachment] : [],
+              is_favorite: false,
+            };
 
-          docId = await addDocument(docData);
+            docId = await addDocument(docData);
 
-          if (localFile && user && attachment) {
-            const { url, error } = await uploadFile(user.id, localFile, "saude");
-            if (!error && url) {
-              await updateDocument(docId, { attachments: [{ ...attachment, url }] });
-              setUploadProgress(100);
+            if (localFile && user && attachment) {
+              const { url, error } = await uploadFile(user.id, localFile, "saude");
+              if (!error && url) {
+                await updateDocument(docId, { attachments: [{ ...attachment, url }] });
+                setUploadProgress(100);
+              }
             }
           }
-        }
 
-        const medicamentoId = await addMedicamento({
-          document_id: docId || undefined,
-          person_id: activePersonId || "",
-          nome: nome.trim(),
-          dosagem: dosagem.trim(),
-          formato,
-          cores,
-          tipo_uso: tipoUso,
-          medico: medicoNome?.trim() || "",
-          medico_id: medicoId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          farmacia: farmaciaNome?.trim() || "",
-          farmacia_id: farmaciaId || undefined,
-          preco: preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined,
-          data_receita: dataReceitaISO,
-          proxima_renovacao: proximaRenovacaoISO,
-          observacoes: observacoes?.trim() || undefined,
-          tipo_receita: tipoReceita,
-          tratamento_ids: tratamentosSelecionados,
-          status: "ativo",
-          estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
-          estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-          estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
-          estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
-          estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
-        });
+          const medicamentoId = await addMedicamento({
+            document_id: docId || undefined,
+            person_id: activePersonId || "",
+            nome: nome.trim(),
+            dosagem: dosagem.trim(),
+            formato,
+            cores,
+            tipo_uso: tipoUso,
+            medico: medicoNome?.trim() || "",
+            medico_id: medicoId || undefined,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            farmacia: farmaciaNome?.trim() || "",
+            farmacia_id: farmaciaId || undefined,
+            preco: precoNumerico,
+            data_receita: dataReceitaISO,
+            proxima_renovacao: proximaRenovacaoISO,
+            observacoes: observacoes?.trim() || undefined,
+            tipo_receita: tipoReceita,
+            tratamento_ids: tratamentosSelecionados,
+            status: "ativo",
+            estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+            estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
+            estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
+            estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
+            estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
+          });
 
-        if (estoqueAtivo && tipoUso === 'continuo' && horariosFiltrados.length > 0) {
-          const granted = await requestNotificationPermission();
-          if (granted) {
-            await scheduleDoseNotifications({
-              id: medicamentoId,
-              nome: nome.trim(),
-              dosagem: dosagem.trim(),
-              estoque_horarios: horariosFiltrados
+          if (precoNumerico !== undefined || (estoqueAtivo && quantidadeEstoqueFinal > 0)) {
+            const idRenovacao = crypto.randomUUID();
+            await db.renovacoes.add({
+              id: idRenovacao,
+              user_id: user?.id || "",
+              person_id: activePersonId || undefined,
+              medicamento_id: medicamentoId,
+              medico_id: medicoId || undefined,
+              farmacia_id: farmaciaId || undefined,
+              hospital_id: hospitalId || undefined,
+              local_id: localId || undefined,
+              tipo_aquisicao: precoNumerico !== undefined ? "comprado" : "gratuito",
+              quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+              preco: precoNumerico,
+              data: dataReceitaISO || getLocalTodayISO(), 
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              synced: false
+            });
+            
+            await enfileirarOperacao("renovacoes", "add", {
+              id: idRenovacao,
+              user_id: user?.id || "",
+              person_id: activePersonId || undefined,
+              medicamento_id: medicamentoId,
+              medico_id: medicoId || undefined,
+              farmacia_id: farmaciaId || undefined,
+              hospital_id: hospitalId || undefined,
+              local_id: localId || undefined,
+              tipo_aquisicao: precoNumerico !== undefined ? "comprado" : "gratuito",
+              quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+              preco: precoNumerico,
+              data: dataReceitaISO || getLocalTodayISO(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              synced: false,
             });
           }
-        }
+
+          if (estoqueAtivo && tipoUso === 'continuo' && horariosFiltrados.length > 0) {
+            const granted = await requestNotificationPermission();
+            if (granted) {
+              await scheduleDoseNotifications({
+                id: medicamentoId,
+                nome: nome.trim(),
+                dosagem: dosagem.trim(),
+                estoque_horarios: horariosFiltrados
+              });
+            }
+          }
+        });
       },
       {
         successMessage: "Medicamento cadastrado com sucesso",
@@ -436,7 +476,7 @@ export default function NovoMedicamentoPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
 
         <svg width="0" height="0" className="absolute">
@@ -629,12 +669,17 @@ export default function NovoMedicamentoPage() {
                             error={errors.vezesAoDia}
                           />
                         </div>
-                        <Input
-                          label="1º Horário"
-                          type="time"
-                          value={primeiroHorario}
-                          onChange={(e) => setPrimeiroHorario(e.target.value)}
-                        />
+                        <div className="relative">
+                          <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                          <input
+                            type="text"
+                            placeholder="00:00"
+                            maxLength={5}
+                            value={primeiroHorario}
+                            onChange={(e) => setPrimeiroHorario(handleTimeMask(e.target.value))}
+                            className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                          />
+                        </div>
                       </div>
 
                       <div className="rounded-xl bg-surface-raised p-4 border border-surface-border">
@@ -848,7 +893,7 @@ export default function NovoMedicamentoPage() {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised p-3 mt-4">
+                    <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised p-3">
                       <div className="flex h-11 w-11 overflow-hidden rounded-xl bg-surface">
                         {attachment.type === "image" ? (
                           <img src={attachment.url} className="h-full w-full object-cover" />
@@ -921,7 +966,6 @@ export default function NovoMedicamentoPage() {
           </div>
         </div>
 
-        {/* MODAIS AUXILIARES */}
         <ConfirmationModal
           isOpen={showDesativarEstoqueModal}
           onClose={() => setShowDesativarEstoqueModal(false)}

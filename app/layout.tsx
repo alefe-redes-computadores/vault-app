@@ -1,7 +1,7 @@
 // app/(app)/layout.tsx
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import type { Viewport } from "next";
 import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
@@ -50,6 +50,16 @@ export default function RootLayout({
   const pathname = usePathname();
   const isAuthPage = pathname === "/login" || pathname === "/auth/callback";
 
+  // Força o WebView do Capacitor a recalcular a Safe Area para não cortar o Header
+  useEffect(() => {
+    const forceReflow = () => {
+      window.innerHeight; 
+      document.body.style.paddingTop = '0.1px';
+      setTimeout(() => { document.body.style.paddingTop = '0px'; }, 50);
+    };
+    forceReflow();
+  }, [pathname]);
+
   return (
     <html
       lang="pt-BR"
@@ -65,7 +75,7 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#06090E" />
         <meta name="msapplication-TileImage" content="/icon-144x144.png" />
       </head>
-      <body className="font-body antialiased bg-void min-h-screen transition-colors duration-300 pb-safe">
+      <body className="font-body antialiased bg-void min-h-[100dvh] transition-colors duration-300 pb-safe">
         <Suspense fallback={null}>
           <RouteProgress />
         </Suspense>

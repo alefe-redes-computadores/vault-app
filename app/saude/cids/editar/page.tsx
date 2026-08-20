@@ -5,14 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
-  Save,
-  Loader2,
-  Stethoscope,
-  Building2,
-  MapPin,
-  Upload,
-  X,
+  ArrowLeft, Save, Loader2, Stethoscope, Building2, MapPin, Upload, X,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -29,7 +22,9 @@ import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
-import type { Medico, Hospital, LocalSaude } from "@/lib/types";
+import type { Medico, Hospital, LocalSaude, Cid } from "@/lib/types";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
 function handleDateMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 8);
@@ -56,13 +51,13 @@ function EditarCidContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { user } = useAuth();
-  const { getCid, updateCid } = useCids();
+  const { getCid } = useCids();
   const { medicos } = useMedicos();
   const { hospitais } = useHospitais();
   const { locais } = useLocais();
   const { run, isSubmitting } = useSubmitAction();
 
-  const [cid, setCid] = useState<any>(null);
+  const [cid, setCid] = useState<Cid | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [codigo, setCodigo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -145,15 +140,26 @@ function EditarCidContent() {
           ? dataDiagnostico.split("/").reverse().join("-")
           : undefined;
 
-        await updateCid(id!, {
-          codigo: codigo.trim(),
-          descricao: descricao.trim(),
-          data_diagnostico: dataISO,
-          medico_id: medicoId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          observacoes: observacoes.trim() || undefined,
-          anexo_url: anexoUrl || undefined,
+        await db.transaction("rw", db.cids, db.syncQueue, async () => {
+          const cidOriginal = await db.cids.get(id!);
+          if (!cidOriginal) throw new Error("CID não encontrado");
+
+          const cidAtualizado: Cid = {
+            ...cidOriginal,
+            codigo: codigo.trim(),
+            descricao: descricao.trim(),
+            data_diagnostico: dataISO,
+            medico_id: medicoId || undefined,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            observacoes: observacoes.trim() || undefined,
+            anexo_url: anexoUrl || undefined,
+            updated_at: new Date().toISOString(),
+            synced: false
+          };
+
+          await db.cids.put(cidAtualizado);
+          await enfileirarOperacao("cids", "update", cidAtualizado);
         });
       },
       {
@@ -169,7 +175,7 @@ function EditarCidContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button

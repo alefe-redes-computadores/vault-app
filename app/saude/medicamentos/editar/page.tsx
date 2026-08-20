@@ -45,6 +45,7 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { useAuth } from "@/hooks/useAuth";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
@@ -106,20 +107,18 @@ function handleCurrencyMask(value: string): string {
   const numberVal = parseInt(clean, 10) / 100;
   return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+function handleTimeMask(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 4);
+  if (clean.length > 2) {
+    return `${clean.slice(0, 2)}:${clean.slice(2)}`;
+  }
+  return clean;
+}
 
 const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10" fill={fill} />
-    <line x1="12" y1="2" x2="12" y2="22" stroke="rgba(0, 0, 0, 0.3)" strokeWidth="2" />
+    <line x1="12" y1="2" x2="12" y2="22" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
   </svg>
 );
 
@@ -150,20 +149,17 @@ function EditarMedicamentoContent() {
   const { user } = useAuth();
   const persons = usePersons() as Person[];
 
-  // Nossos hooks de proteção anti-duplo clique e controle centralizado
   const { run: runSave, isSubmitting: isSaving } = useSubmitAction();
   const { run: runDelete, isSubmitting: isDeleting } = useSubmitAction();
 
-  const { getMedicamento, updateMedicamento, deleteMedicamento, medicamentos: medicamentosList } = useMedicamentos();
+  const { getMedicamento, medicamentos: medicamentosList } = useMedicamentos();
   const { addDocument, updateDocument } = useSafeDb();
-  const { medicos, addMedico } = useMedicos();
-  const { farmacias, addFarmacia } = useFarmacias();
-  const { hospitais: hospitaisLocais, addHospital } = useHospitais();
-  const { locais, addLocal } = useLocais();
-  const { tratamentos } = useTratamentos();
+  const { medicos } = useMedicos();
+  const { farmacias } = useFarmacias();
+  const { hospitais: hospitaisLocais } = useHospitais();
+  const { locais } = useLocais();
 
   const medicamentosAtivos = medicamentosList.filter((m) => m.id !== id && m.status !== "descontinuado");
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -241,36 +237,40 @@ function EditarMedicamentoContent() {
   const [shakeFields, setShakeFields] = useState<string[]>([]);
 
   const selectedMedico = medicos.find((m) => m.id === medicoId) || medicos.find((m) => m.nome === medicoNome);
-  const selectedMedicoDescontinuacao =
-    medicos.find((m) => m.id === medicoDescontinuacaoId) || medicos.find((m) => m.nome === medicoDescontinuacaoNome);
-  const selectedMedicoEvolucao =
-    medicos.find((m) => m.id === medicoEvolucaoId) || medicos.find((m) => m.nome === medicoEvolucaoNome);
+  const selectedMedicoDescontinuacao = medicos.find((m) => m.id === medicoDescontinuacaoId) || medicos.find((m) => m.nome === medicoDescontinuacaoNome);
+  const selectedMedicoEvolucao = medicos.find((m) => m.id === medicoEvolucaoId) || medicos.find((m) => m.nome === medicoEvolucaoNome);
   const selectedFarmacia = farmacias.find((f) => f.id === farmaciaId) || farmacias.find((f) => f.nome === farmaciaNome);
   const selectedSubstituto = medicamentosList.find((m) => m.id === substituidoPorId);
 
   const markChanged = () => setHasChanges(true);
 
+  const addHospital = async (data: { nome: string; tipo: string }) => {
+    const newId = crypto.randomUUID();
+    const hObj = { id: newId, user_id: user?.id || "", ...data, synced: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    await db.hospitais.add(hObj as any);
+    await enfileirarOperacao("hospitais", "add", hObj);
+    return newId;
+  };
+
+  const addLocal = async (data: { nome: string; tipo: string }) => {
+    const newId = crypto.randomUUID();
+    const lObj = { id: newId, user_id: user?.id || "", ...data, synced: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    await db.locais.add(lObj as any);
+    await enfileirarOperacao("locais", "add", lObj);
+    return newId;
+  };
+
   useEffect(() => {
-    if (!id) {
-      setNotFound(true);
-      setIsLoading(false);
-      return;
-    }
+    if (!id) { setNotFound(true); setIsLoading(false); return; }
     getMedicamento(id)
       .then(async (item?: Medicamento) => {
-        if (!item) {
-          setNotFound(true);
-          setIsLoading(false);
-          return;
-        }
-
+        if (!item) { setNotFound(true); setIsLoading(false); return; }
         setPersonId(item.person_id || "");
         setNome(item.nome || "");
         setDosagem(item.dosagem || "");
         setDosagemOriginal(item.dosagem || "");
         setNovaDosagem(item.dosagem || "");
         setHistoricoDosagens(item.historico_dosagens || []);
-
         setFormato(item.formato || "comprimido");
         setCores(item.cores || []);
         setTipoUso(item.tipo_uso || "continuo");
@@ -332,17 +332,11 @@ function EditarMedicamentoContent() {
           setEstoqueDataReferenciaTexto(isoParaBr(getLocalTodayISO()));
         }
 
-        if (item.formato === "gota") {
-          setEstoqueUnidade("gota(s)");
-        }
-
+        if (item.formato === "gota") setEstoqueUnidade("gota(s)");
         setIsLoading(false);
       })
-      .catch(() => {
-        setNotFound(true);
-        setIsLoading(false);
-      });
-  }, [id]);
+      .catch(() => { setNotFound(true); setIsLoading(false); });
+  }, [id, getMedicamento]);
 
   const toggleFormato = (novoFormato: string) => {
     trigger("vibrate");
@@ -353,30 +347,22 @@ function EditarMedicamentoContent() {
       if (!isGotasCalcAtivo) setIsGotasCalcAtivo(true);
     } else {
       setEstoqueUnidadePorDose("1");
+      setEstoqueUnidade("comprimido(s)");
     }
     markChanged();
   };
 
   const toggleCor = (hex: string) => {
     trigger("vibrate");
-    setCores((prev) =>
-      prev.includes(hex) ? prev.filter((c) => c !== hex) : prev.length >= 2 ? [prev[1], hex] : [...prev, hex]
-    );
+    setCores((prev) => prev.includes(hex) ? prev.filter((c) => c !== hex) : prev.length >= 2 ? [prev[1], hex] : [...prev, hex]);
     markChanged();
   };
 
   const handleGerarHorarios = () => {
     if (tipoUso !== "continuo") return;
     const qtd = Number(vezesAoDia);
-    if (!qtd || qtd <= 0) {
-      setErrors((prev) => ({ ...prev, vezesAoDia: "Obrigatório" }));
-      triggerShake(["vezesAoDia"]);
-      return;
-    }
-    if (!primeiroHorario) {
-      triggerShake(["primeiroHorario"]);
-      return;
-    }
+    if (!qtd || qtd <= 0) { setErrors((prev) => ({ ...prev, vezesAoDia: "Obrigatório" })); triggerShake(["vezesAoDia"]); return; }
+    if (!primeiroHorario) { triggerShake(["primeiroHorario"]); return; }
     const novosHorarios = sugerirHorarios(primeiroHorario, qtd);
     setHorarios(novosHorarios.length > 0 ? novosHorarios : [primeiroHorario]);
     markChanged();
@@ -438,16 +424,8 @@ function EditarMedicamentoContent() {
     setHorarios((prev) => prev.map((h, i) => (i === index ? value : h)));
     markChanged();
   };
-  const addHorario = () => {
-    trigger("vibrate");
-    setHorarios((prev) => [...prev, ""]);
-    markChanged();
-  };
-  const removeHorario = (index: number) => {
-    trigger("vibrate");
-    setHorarios((prev) => prev.filter((_, i) => i !== index));
-    markChanged();
-  };
+  const addHorario = () => { trigger("vibrate"); setHorarios((prev) => [...prev, ""]); markChanged(); };
+  const removeHorario = (index: number) => { trigger("vibrate"); setHorarios((prev) => prev.filter((_, i) => i !== index)); markChanged(); };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -485,46 +463,21 @@ function EditarMedicamentoContent() {
     const shakeList: string[] = [];
 
     if (editIntent === "basico" || editIntent === "menu") {
-      if (!nome.trim()) {
-        newErrors.nome = "Obrigatório";
-        shakeList.push("nome");
-      }
+      if (!nome.trim()) { newErrors.nome = "Obrigatório"; shakeList.push("nome"); }
     }
+    if (editIntent === "evolucao" && !novaDosagem.trim()) { newErrors.novaDosagem = "Obrigatória"; shakeList.push("novaDosagem"); }
 
-    if (editIntent === "evolucao" && !novaDosagem.trim()) {
-      newErrors.novaDosagem = "Obrigatória";
-      shakeList.push("novaDosagem");
-    }
-
-    if (dataReceitaTexto && dataReceitaTexto.length < 10) {
-      newErrors.dataReceitaTexto = "Data inválida";
-      shakeList.push("dataReceitaTexto");
-    }
-    if (proximaRenovacaoTexto && proximaRenovacaoTexto.length < 10) {
-      newErrors.proximaRenovacaoTexto = "Data inválida";
-      shakeList.push("proximaRenovacaoTexto");
-    }
-    if (!statusAtivo && !motivoDescontinuacao.trim()) {
-      newErrors.motivoDescontinuacao = "Informe o motivo";
-      shakeList.push("motivoDescontinuacao");
-    }
+    if (dataReceitaTexto && dataReceitaTexto.length < 10) { newErrors.dataReceitaTexto = "Data inválida"; shakeList.push("dataReceitaTexto"); }
+    if (proximaRenovacaoTexto && proximaRenovacaoTexto.length < 10) { newErrors.proximaRenovacaoTexto = "Data inválida"; shakeList.push("proximaRenovacaoTexto"); }
+    if (!statusAtivo && !motivoDescontinuacao.trim()) { newErrors.motivoDescontinuacao = "Informe o motivo"; shakeList.push("motivoDescontinuacao"); }
 
     if (estoqueAtivo && editIntent === "compra") {
-      if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) {
-        newErrors.estoqueQuantidade = "Informe a quantidade";
-        shakeList.push("estoqueQuantidade");
-      }
-      if (!estoqueDataReferenciaTexto || estoqueDataReferenciaTexto.length < 10) {
-        newErrors.estoqueDataReferenciaTexto = "Data inválida";
-        shakeList.push("estoqueDataReferenciaTexto");
-      }
+      if (!estoqueQuantidade || Number(estoqueQuantidade) <= 0) { newErrors.estoqueQuantidade = "Informe a quantidade"; shakeList.push("estoqueQuantidade"); }
+      if (!estoqueDataReferenciaTexto || estoqueDataReferenciaTexto.length < 10) { newErrors.estoqueDataReferenciaTexto = "Data inválida"; shakeList.push("estoqueDataReferenciaTexto"); }
     }
 
     setErrors(newErrors);
-    if (shakeList.length > 0) {
-      triggerShake(shakeList);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    if (shakeList.length > 0) { triggerShake(shakeList); window.scrollTo({ top: 0, behavior: "smooth" }); }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -551,107 +504,126 @@ function EditarMedicamentoContent() {
           dosagemFinal = novaDosagem.trim();
         }
 
-        let updatedDocId = documentId;
-        if (!documentId && (dataReceitaISO || attachment)) {
-          const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'> = {
-            user_id: user?.id || "",
-            person_id: personId,
-            category_id: "saude",
-            type: "receita",
-            title: `Receita — ${nome.trim()}`,
-            description: observacoes.trim() || undefined,
-            metadata: {
-              medication: nome.trim(),
-              dosage: dosagemFinal,
-              prescription_date: dataReceitaISO,
-              renewal_date: proximaRenovacaoISO,
-              tratamento_ids: tratamentosSelecionados,
-              tipo_receita: tipoReceita,
-              formato,
-              status: "ativo",
-            },
-            attachments: attachment ? [attachment] : [],
-            is_favorite: false,
-          };
-          updatedDocId = await addDocument(docData);
-          setDocumentId(updatedDocId);
-        } else if (documentId) {
-          const doc = await db.documents.get(documentId);
-          if (doc && doc.id) {
-            const updatedAttachments = attachment ? [attachment] : [];
-            await updateDocument(doc.id, {
-              attachments: updatedAttachments,
-              metadata: {
-                ...doc.metadata,
-                dosage: dosagemFinal,
-                tratamento_ids: tratamentosSelecionados,
-                renewal_date: proximaRenovacaoISO,
-              },
-            });
-          }
-        }
-
-        if (localFile && user && attachment && updatedDocId) {
-          const { url, error } = await uploadFile(user.id, localFile, "saude");
-          if (!error && url) {
-            await updateDocument(updatedDocId, {
-              attachments: [{ ...attachment, url }],
-            });
-          }
-        }
-
         const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
 
-        await updateMedicamento(id, {
-          person_id: personId,
-          nome: nome.trim(),
-          dosagem: dosagemFinal,
-          formato,
-          cores,
-          tipo_uso: tipoUso,
-          historico_dosagens: historicoFinal,
-          medico: selectedMedico?.nome || medicoNome.trim(),
-          medico_id: medicoId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
-          farmacia_id: farmaciaId || undefined,
-          preco: precoNumerico,
-          data_receita: dataReceitaISO,
-          proxima_renovacao: proximaRenovacaoISO,
-          observacoes: observacoes.trim() || undefined,
-          tipo_receita: tipoReceita,
-          tratamento_ids: tratamentosSelecionados,
-          status: statusAtivo ? "ativo" : "descontinuado",
-          motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
-          medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
-          medico_descontinuacao_nome: !statusAtivo
-            ? selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim()
-            : undefined,
-          substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
-          data_descontinuacao: !statusAtivo ? getLocalTodayISO() : undefined,
-          estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
-          estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-          estoque_horarios: tipoUso === "continuo" && estoqueAtivo ? horariosFiltrados : undefined,
-          estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) || 1 : undefined,
-          estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
-          estoque_ml_total: isGotasCalcAtivo && formato === "gota" ? Number(mlTotal) : undefined,
-          estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : undefined,
-        });
+        await db.transaction("rw", db.documents, db.medicamentos, db.syncQueue, async () => {
+          let updatedDocId = documentId;
+          
+          if (!documentId && (dataReceitaISO || attachment)) {
+            const docId = crypto.randomUUID();
+            const novoDocumento: Document = {
+              id: docId,
+              user_id: user?.id || "",
+              person_id: personId,
+              category_id: "saude",
+              type: "receita",
+              title: `Receita — ${nome.trim()}`,
+              description: observacoes.trim() || undefined,
+              metadata: {
+                medication: nome.trim(),
+                dosage: dosagemFinal,
+                prescription_date: dataReceitaISO,
+                renewal_date: proximaRenovacaoISO,
+                tratamento_ids: tratamentosSelecionados,
+                tipo_receita: tipoReceita,
+                formato,
+                status: "ativo",
+              },
+              attachments: attachment ? [attachment] : [],
+              is_favorite: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              synced: false
+            };
+            await db.documents.add(novoDocumento);
+            await enfileirarOperacao("documents", "add", novoDocumento);
+            updatedDocId = docId;
+          } else if (documentId) {
+            const doc = await db.documents.get(documentId);
+            if (doc) {
+              const docAtualizado: Document = {
+                ...doc,
+                attachments: attachment ? [attachment] : [],
+                metadata: {
+                  ...doc.metadata,
+                  dosage: dosagemFinal,
+                  tratamento_ids: tratamentosSelecionados,
+                  renewal_date: proximaRenovacaoISO,
+                },
+                updated_at: new Date().toISOString(),
+                synced: false
+              };
+              await db.documents.put(docAtualizado);
+              await enfileirarOperacao("documents", "update", docAtualizado);
+            }
+          }
 
-        if (horariosOriginais.length > 0) {
-          await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
-        }
-        if (estoqueAtivo && tipoUso === "continuo" && horariosFiltrados.length > 0 && statusAtivo) {
-          const granted = await requestNotificationPermission();
-          if (granted) {
-            await scheduleDoseNotifications({
-              id,
+          if (localFile && user && attachment && updatedDocId) {
+            const { url, error } = await uploadFile(user.id, localFile, "saude");
+            if (!error && url) {
+              const doc = await db.documents.get(updatedDocId);
+              if (doc) {
+                const docAtualizado: Document = {
+                  ...doc,
+                  attachments: [{ ...attachment, url }],
+                  updated_at: new Date().toISOString(),
+                  synced: false
+                };
+                await db.documents.put(docAtualizado);
+                await enfileirarOperacao("documents", "update", docAtualizado);
+              }
+            }
+          }
+
+          const originalMed = await db.medicamentos.get(id);
+          if (originalMed) {
+            const medicamentoAtualizado: Medicamento = {
+              ...originalMed,
+              person_id: personId,
+              document_id: updatedDocId || originalMed.document_id,
               nome: nome.trim(),
               dosagem: dosagemFinal,
-              estoque_horarios: horariosFiltrados,
-            } as DoseNotificationPayload);
+              formato,
+              cores,
+              tipo_uso: tipoUso,
+              historico_dosagens: historicoFinal,
+              medico: selectedMedico?.nome || medicoNome.trim(),
+              medico_id: medicoId || undefined,
+              hospital_id: hospitalId || undefined,
+              local_id: localId || undefined,
+              farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
+              farmacia_id: farmaciaId || undefined,
+              preco: precoNumerico,
+              data_receita: dataReceitaISO,
+              proxima_renovacao: proximaRenovacaoISO,
+              observacoes: observacoes.trim() || undefined,
+              tipo_receita: tipoReceita,
+              tratamento_ids: tratamentosSelecionados,
+              status: statusAtivo ? "ativo" : "descontinuado",
+              motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
+              medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
+              medico_descontinuacao_nome: !statusAtivo ? selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim() : undefined,
+              substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
+              data_descontinuacao: !statusAtivo ? getLocalTodayISO() : undefined,
+              estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
+              estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
+              estoque_horarios: tipoUso === "continuo" && estoqueAtivo ? horariosFiltrados : undefined,
+              estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) || 1 : undefined,
+              estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
+              estoque_ml_total: isGotasCalcAtivo && formato === "gota" ? Number(mlTotal) : undefined,
+              estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : undefined,
+              updated_at: new Date().toISOString(),
+              synced: false
+            };
+            await db.medicamentos.put(medicamentoAtualizado);
+            await enfileirarOperacao("medicamentos", "update", medicamentoAtualizado);
           }
+        });
+
+        if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
+        if (estoqueAtivo && tipoUso === "continuo" && horariosFiltrados.length > 0 && statusAtivo) {
+          const granted = await requestNotificationPermission();
+          if (granted) await scheduleDoseNotifications({ id, nome: nome.trim(), dosagem: dosagemFinal, estoque_horarios: horariosFiltrados } as DoseNotificationPayload);
         }
 
         setHasChanges(false);
@@ -671,10 +643,11 @@ function EditarMedicamentoContent() {
   const handleDelete = async () => {
     runDelete(
       async () => {
-        if (horariosOriginais.length > 0) {
-          await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
-        }
-        await deleteMedicamento(id);
+        if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
+        await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
+          await db.medicamentos.delete(id);
+          await enfileirarOperacao("medicamentos", "delete", { id });
+        });
         router.replace("/saude/medicamentos");
       },
       {
@@ -685,15 +658,8 @@ function EditarMedicamentoContent() {
   };
 
   const handleBack = () => {
-    if (hasChanges && editIntent !== "menu") {
-      setShowConfirmExitModal(true);
-      return;
-    }
-    if (editIntent !== "menu") {
-      setEditIntent("menu");
-    } else {
-      router.back();
-    }
+    if (hasChanges && editIntent !== "menu") { setShowConfirmExitModal(true); return; }
+    if (editIntent !== "menu") setEditIntent("menu"); else router.back();
   };
 
   if (isLoading) return <DetailSkeleton />;
@@ -716,7 +682,7 @@ function EditarMedicamentoContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
 
         <svg width="0" height="0" className="absolute">
@@ -1074,9 +1040,11 @@ function EditarMedicamentoContent() {
                         <div className={`transition-all ${shakeFields.includes("primeiroHorario") ? "animate-shake" : ""}`}>
                           <Input
                             label="1º Horário"
-                            type="time"
+                            type="text"
+                            placeholder="00:00"
+                            maxLength={5}
                             value={primeiroHorario}
-                            onChange={(e) => setPrimeiroHorario(e.target.value)}
+                            onChange={(e) => setPrimeiroHorario(handleTimeMask(e.target.value))}
                           />
                         </div>
                       </div>
@@ -1093,14 +1061,10 @@ function EditarMedicamentoContent() {
                             <div key={i} className="flex items-center gap-1">
                               <input
                                 type="text"
-                                placeholder="08:00"
+                                placeholder="00:00"
                                 value={h}
                                 maxLength={5}
-                                onChange={(e) => {
-                                  let v = e.target.value.replace(/\D/g, "");
-                                  if (v.length > 2) v = v.substring(0, 2) + ":" + v.substring(2);
-                                  updateHorario(i, v);
-                                }}
+                                onChange={(e) => updateHorario(i, handleTimeMask(e.target.value))}
                                 className="w-16 bg-void border border-surface-border rounded-xl text-center py-2.5 text-sm font-mono focus:border-ice outline-none shadow-inner"
                               />
                               {horarios.length > 1 && (

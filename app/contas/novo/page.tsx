@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
-import { useCards } from "@/hooks/useCards";
+import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { getBankLogoUrl } from "@/lib/utils/card-helper";
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { CardType } from "@/lib/types";
 
 const fadeUp = {
@@ -25,7 +27,7 @@ export default function NewAccountPage() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const router = useRouter();
-  const { addCard } = useCards();
+  const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -46,7 +48,7 @@ export default function NewAccountPage() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     trigger("vibrate");
 
     const newErrors: Record<string, string> = {};
@@ -61,16 +63,33 @@ export default function NewAccountPage() {
       return;
     }
 
-    run(
-      () =>
-        addCard({
+    if (!user?.id) {
+      showToast("Usuário não autenticado", "error");
+      return;
+    }
+
+    await run(
+      async () => {
+        const id = crypto.randomUUID();
+        const payload = {
+          id,
+          user_id: user.id,
           title: formData.title.trim(),
           bank_name: formData.bank_name.trim(),
           type: formData.type,
           agency: formData.agency.trim(),
           account: formData.account.trim(),
           notes: formData.notes.trim(),
-        }),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: false
+        };
+
+        await db.transaction("rw", db.bankCards, db.syncQueue, async () => {
+            await db.bankCards.add(payload);
+            await enfileirarOperacao("bankCards" as any, "add", payload);
+        });
+      },
       {
         successMessage: "Conta salva com sucesso",
         errorMessage: "Erro ao salvar conta",
@@ -81,7 +100,7 @@ export default function NewAccountPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-44">
+      <main className="min-h-[100dvh] bg-void pb-44">
         <header className="header-safe-top sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <button 
             onClick={() => { trigger("vibrate"); router.back(); }} 
@@ -180,7 +199,7 @@ export default function NewAccountPage() {
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/90 px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl">
           <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={isSubmitting} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
             {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {isSubmitting ? "Salvando com Segurança..." : "Salvar Conta"}
+            {isSubmitting ? "Salvando..." : "Salvar Conta"}
           </Button>
         </div>
       </main>

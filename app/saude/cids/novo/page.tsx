@@ -5,14 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
-  Save,
-  Loader2,
-  Stethoscope,
-  Building2,
-  MapPin,
-  Upload,
-  X,
+  ArrowLeft, Save, Loader2, Stethoscope, Building2, MapPin, Upload, X,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -20,17 +13,17 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { SelectionModal } from "@/components/SelectionModal";
-import { useCids } from "@/hooks/useCids";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
-import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ToastProvider";
 import { uploadFile } from "@/lib/supabase/storage";
-import type { Person, Medico, Hospital, LocalSaude } from "@/lib/types";
+import type { Medico, Hospital, LocalSaude, Cid } from "@/lib/types";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
 function handleDateMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 8);
@@ -48,11 +41,9 @@ export default function NovoCidPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
-  const { addCid } = useCids();
   const { medicos } = useMedicos();
   const { hospitais } = useHospitais();
   const { locais } = useLocais();
-  const persons = usePersons() as Person[];
   const { activePersonId } = useActivePersonId();
   const { run, isSubmitting } = useSubmitAction();
 
@@ -107,14 +98,18 @@ export default function NovoCidPage() {
       trigger("error");
       return;
     }
+    if (!user?.id) return;
 
     await run(
       async () => {
         const dataISO = dataDiagnostico
           ? dataDiagnostico.split("/").reverse().join("-")
           : undefined;
+        const novoId = crypto.randomUUID();
 
-        await addCid({
+        const novoCid: Cid = {
+          id: novoId,
+          user_id: user.id,
           person_id: activePersonId || undefined,
           codigo: codigo.trim(),
           descricao: descricao.trim(),
@@ -124,6 +119,14 @@ export default function NovoCidPage() {
           local_id: localId || undefined,
           observacoes: observacoes.trim() || undefined,
           anexo_url: anexoUrl || undefined,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: false
+        };
+
+        await db.transaction("rw", db.cids, db.syncQueue, async () => {
+          await db.cids.add(novoCid);
+          await enfileirarOperacao("cids", "add", novoCid);
         });
       },
       {
@@ -136,7 +139,7 @@ export default function NovoCidPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -320,8 +323,6 @@ export default function NovoCidPage() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }}
-          createNewLabel="Cadastrar Novo Médico"
         />
 
         <SelectionModal<Hospital>
@@ -338,8 +339,6 @@ export default function NovoCidPage() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
-          createNewLabel="Cadastrar Novo Hospital"
         />
 
         <SelectionModal<LocalSaude>
@@ -356,8 +355,6 @@ export default function NovoCidPage() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }}
-          createNewLabel="Cadastrar Novo Local"
         />
       </main>
     </PageTransition>

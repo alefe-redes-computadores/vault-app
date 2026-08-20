@@ -33,7 +33,6 @@ import {
 
 import { usePersons } from "@/hooks/usePersons";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useSafeDb } from "@/hooks/useSafeDb";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
@@ -54,6 +53,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
 import { db, safeAddPerson } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useLiveQuery } from "dexie-react-hooks";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -214,7 +214,6 @@ export default function NewDocumentPage() {
   const initialPersonId = searchParams.get("person_id");
 
   const { user } = useAuth();
-  const { addDocument } = useSafeDb();
   const persons = usePersons();
   const { activePersonId } = useActivePersonId();
   const { medicos } = useMedicos();
@@ -317,6 +316,33 @@ export default function NewDocumentPage() {
 
   const fields = DOCUMENT_FIELDS[formData.type] || [];
 
+  const selectionConfig: Record<string, SelectionConfig> = {
+    doctor: {
+      items: medicos,
+      title: "Selecionar Médico",
+      isOpen: isDoctorModalOpen,
+      setIsOpen: setIsDoctorModalOpen,
+    },
+    pharmacy: {
+      items: farmacias,
+      title: "Selecionar Farmácia",
+      isOpen: isPharmacyModalOpen,
+      setIsOpen: setIsPharmacyModalOpen,
+    },
+    hospital: {
+      items: hospitais,
+      title: "Selecionar Hospital",
+      isOpen: isHospitalModalOpen,
+      setIsOpen: setIsHospitalModalOpen,
+    },
+    laboratory: {
+      items: laboratorios,
+      title: "Selecionar Laboratório",
+      isOpen: isLaboratoryModalOpen,
+      setIsOpen: setIsLaboratoryModalOpen,
+    },
+  };
+
   const handleChange = <K extends keyof FormData>(
     field: K,
     value: FormData[K],
@@ -382,7 +408,6 @@ export default function NewDocumentPage() {
     const file = event.target.files?.[0];
 
     if (file) {
-      // Sugestão: validar tamanho máximo de 10MB
       if (file.size > 10 * 1024 * 1024) {
         trigger("error");
         alert("Arquivo muito grande. Máximo 10MB.");
@@ -570,27 +595,12 @@ export default function NewDocumentPage() {
           }
         });
 
-        const docData: Omit<
-          Document,
-          "id" | "created_at" | "updated_at" | "synced"
-        > = {
-          user_id: user.id,
-          person_id: formData.person_id,
-          category_id: formData.category_id,
-          type: formData.type,
-          title: formData.title.trim(),
-          description:
-            formData.description.trim() || undefined,
-          metadata: cleanMetadata,
-          attachments: formData.attachments,
-          is_favorite: false,
-          vault_id: formData.vault_id || undefined,
-        };
-
-        const docId = await addDocument(docData);
+        const docId = crypto.randomUUID();
+        const folder = formData.category_id;
+        let finalAttachments = [...formData.attachments];
 
         if (localFiles.length > 0) {
-          const folder = formData.category_id;
+          setUploadProgress(10);
           const uploadedAttachments: Attachment[] = [];
 
           for (
@@ -621,13 +631,13 @@ export default function NewDocumentPage() {
 
             setUploadProgress(
               Math.round(
-                ((index + 1) / localFiles.length) * 100,
+                ((index + 1) / localFiles.length) * 80,
               ),
             );
           }
 
           if (uploadedAttachments.length > 0) {
-            const finalAttachments =
+            finalAttachments =
               formData.attachments.map((attachment) => {
                 const updated = uploadedAttachments.find(
                   (uploaded) =>
@@ -636,12 +646,6 @@ export default function NewDocumentPage() {
 
                 return updated || attachment;
               });
-
-            await db.documents.update(docId, {
-              attachments: finalAttachments,
-              updated_at: new Date().toISOString(),
-              synced: false,
-            });
 
             formData.attachments.forEach((attachment) => {
               if (attachment.url.startsWith("blob:")) {
@@ -653,6 +657,29 @@ export default function NewDocumentPage() {
           }
         }
 
+        const payload = {
+          id: docId,
+          user_id: user.id,
+          person_id: formData.person_id,
+          category_id: formData.category_id,
+          type: formData.type,
+          title: formData.title.trim(),
+          description:
+            formData.description.trim() || undefined,
+          metadata: cleanMetadata,
+          attachments: finalAttachments,
+          is_favorite: false,
+          vault_id: formData.vault_id || undefined,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced: false,
+        };
+
+        await db.transaction("rw", db.documents, db.syncQueue, async () => {
+          await db.documents.add(payload);
+          await enfileirarOperacao("documents", "add", payload);
+        });
+
         if (cleanMetadata.expiry_date) {
           await scheduleDocumentExpiryNotification(
             docId,
@@ -663,20 +690,19 @@ export default function NewDocumentPage() {
           );
         }
 
-        // Navegar após sucesso
         router.push("/");
       },
       {
         successMessage: "Documento salvo com sucesso",
         errorMessage: "Erro ao salvar documento",
-        goBackOnSuccess: false, // usamos router.push dentro
+        goBackOnSuccess: false,
       }
     );
   };
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))] overflow-x-hidden">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))] overflow-x-hidden">
         <input
           ref={fileInputRef}
           type="file"

@@ -15,6 +15,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { Farmacia, Medicamento } from "@/lib/types";
 
 const fadeUp = {
@@ -36,7 +38,6 @@ function EditarFarmaciaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
-  const { getFarmacia, updateFarmacia, deleteFarmaciaSafe } = useFarmacias();
   const { medicamentos = [] } = useMedicamentos();
   const { run, isSubmitting } = useSubmitAction();
 
@@ -55,7 +56,7 @@ function EditarFarmaciaContent() {
       return;
     }
 
-    getFarmacia(id)
+    db.farmacias.get(id)
       .then((item) => {
         if (!item) {
           setNotFound(true);
@@ -68,7 +69,7 @@ function EditarFarmaciaContent() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [id, getFarmacia]);
+  }, [id]);
 
   const medicamentosVinculados = useMemo(() => {
     if (!medicamentos.length || !id) return [];
@@ -91,10 +92,21 @@ function EditarFarmaciaContent() {
 
     await run(
       async () => {
-        await updateFarmacia(id, {
-          nome: nome.trim(),
-          endereco: endereco.trim() || undefined,
-          telefone: telefone.trim() || undefined,
+        await db.transaction("rw", db.farmacias, db.syncQueue, async () => {
+          const original = await db.farmacias.get(id);
+          if (!original) throw new Error("Farmácia não encontrada");
+
+          const farmaciaAtualizada: Farmacia = {
+            ...original,
+            nome: nome.trim(),
+            endereco: endereco.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+            updated_at: new Date().toISOString(),
+            synced: false,
+          };
+
+          await db.farmacias.put(farmaciaAtualizada);
+          await enfileirarOperacao("farmacias", "update", farmaciaAtualizada);
         });
       },
       {
@@ -110,13 +122,15 @@ function EditarFarmaciaContent() {
 
     await run(
       async () => {
-        await deleteFarmaciaSafe(id);
+        await db.transaction("rw", db.farmacias, db.syncQueue, async () => {
+          await db.farmacias.delete(id);
+          await enfileirarOperacao("farmacias", "delete", { id });
+        });
         router.replace("/saude/farmacias");
       },
       {
         successMessage: "Farmácia excluída com sucesso",
         errorMessage: "Erro ao excluir farmácia",
-        goBackOnSuccess: false,
       }
     );
 
@@ -130,7 +144,7 @@ function EditarFarmaciaContent() {
   if (notFound) {
     return (
       <PageTransition>
-        <main className="flex min-h-screen flex-col items-center justify-center bg-void px-6 text-center">
+        <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-void px-6 text-center">
           <p className="font-display text-lg font-semibold text-ink-primary">
             Farmácia não encontrada
           </p>
@@ -147,7 +161,7 @@ function EditarFarmaciaContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -296,5 +310,9 @@ function EditarFarmaciaContent() {
 }
 
 export default function EditarFarmaciaPage() {
-  return <Suspense fallback={<DetailSkeleton />}><EditarFarmaciaContent /></Suspense>;
+  return (
+    <Suspense fallback={<DetailSkeleton />}>
+      <EditarFarmaciaContent />
+    </Suspense>
+  );
 }

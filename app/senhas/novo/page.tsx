@@ -136,15 +136,18 @@ export default function NewPasswordPage() {
     }
 
     run(
-      () =>
-        addCredential({
+      async () => {
+        // O repositório já faz a transação, criptografia e enfileiramento.
+        // Basta chamar a hook.
+        await addCredential({
           title: formData.title.trim(),
           username: formData.username.trim(),
           password_plain: formData.password_plain,
           url: formData.url.trim(),
           notes: formData.notes.trim(),
           category: formData.category,
-        }),
+        });
+      },
       {
         successMessage: "Senha salva com sucesso",
         errorMessage: "Erro ao salvar senha",
@@ -157,7 +160,7 @@ export default function NewPasswordPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="header-safe-top sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button

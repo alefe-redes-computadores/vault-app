@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
 import { db } from "@/lib/db";
-import { useCards } from "@/hooks/useCards";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { encryptPassword, decryptPassword } from "@/lib/crypto";
@@ -16,7 +15,9 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { CardType } from "@/lib/types";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -29,7 +30,6 @@ function EditCardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { updateCard } = useCards();
   const { run, isSubmitting } = useSubmitAction();
 
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,6 @@ function EditCardContent() {
     async function loadCard() {
       if (!id) return;
       try {
-        // CORRIGIDO: db.bankCards em vez de db.cards
         const item = await db.bankCards.get(id);
         if (item) {
           setFormData({
@@ -109,8 +108,8 @@ function EditCardContent() {
       async () => {
         const cardNumberEncrypted = formData.card_number ? encryptPassword(formData.card_number) : undefined;
         const cvvEncrypted = formData.cvv ? encryptPassword(formData.cvv) : undefined;
-
-        await updateCard(id, {
+        
+        const payload = {
           title: formData.title.trim(),
           bank_name: formData.bank_name.trim(),
           type: formData.type,
@@ -122,6 +121,15 @@ function EditCardContent() {
           agency: formData.agency.trim(),
           account: formData.account.trim(),
           notes: formData.notes.trim(),
+          updated_at: new Date().toISOString(),
+          synced: false
+        };
+
+        await db.transaction("rw", db.bankCards, db.syncQueue, async () => {
+            const original = await db.bankCards.get(id);
+            if (!original) throw new Error("Não encontrado");
+            await db.bankCards.put({ ...original, ...payload });
+            await enfileirarOperacao("bankCards" as any, "update", { id, ...payload });
         });
       },
       {
@@ -142,11 +150,11 @@ function EditCardContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
+      <main className="min-h-[100dvh] bg-void pb-32">
         <header className="header-safe-top sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <button
             onClick={() => { trigger("vibrate"); router.back(); }}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
           >
             <ArrowLeft size={18} className="text-ink-primary" />
           </button>

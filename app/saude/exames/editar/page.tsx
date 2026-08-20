@@ -18,6 +18,7 @@ import {
   HeartPulse,
   ShieldAlert,
   Calendar,
+  Clock
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -33,9 +34,9 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
-import { useExames } from "@/hooks/useExames";
 import { db } from "@/lib/db";
-import type { Medico, LocalSaude, Tratamento } from "@/lib/types";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import type { Medico, LocalSaude, Tratamento, Exame } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -55,7 +56,7 @@ function formatDateToDisplay(isoStr: string): string {
 
 function parseDateToISO(displayStr: string): string {
   const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return todayISO();
+  if (clean.length !== 8) return ""; 
   const day = clean.slice(0, 2);
   const month = clean.slice(2, 4);
   const year = clean.slice(4, 8);
@@ -69,6 +70,14 @@ function handleDateMask(value: string): string {
   }
   if (clean.length > 2) {
     return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  }
+  return clean;
+}
+
+function handleTimeMask(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 4);
+  if (clean.length > 2) {
+    return `${clean.slice(0, 2)}:${clean.slice(2)}`;
   }
   return clean;
 }
@@ -92,7 +101,6 @@ function EditarExameContent() {
   const { medicos, addMedico } = useMedicos();
   const { locais, addLocal } = useLocais();
   const { addTratamento } = useTratamentos();
-  const { getExame, updateExame } = useExames();
   const { run, isSubmitting } = useSubmitAction();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -107,6 +115,7 @@ function EditarExameContent() {
   const [medicoId, setMedicoId] = useState("");
 
   const [dataSolicitacaoDisplay, setDataSolicitacaoDisplay] = useState("");
+  const [horario, setHorario] = useState("");
   const [dataRetornoDisplay, setDataRetornoDisplay] = useState("");
   const [motivo, setMotivo] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -142,7 +151,7 @@ function EditarExameContent() {
     }
 
     const loadExame = async () => {
-      const data = await getExame(id);
+      const data = await db.exames.get(id);
       if (data) {
         setPersonId(data.person_id || "");
         setNome(data.nome || "");
@@ -151,6 +160,7 @@ function EditarExameContent() {
         setMedico(data.medico || "");
         setMedicoId(data.medico_id || "");
         setDataSolicitacaoDisplay(formatDateToDisplay(data.data || ""));
+        setHorario((data as any).horario || "");
         setDataRetornoDisplay(formatDateToDisplay(data.data_retorno || ""));
         setMotivo(data.motivo || "");
         setObservacoes(data.observacoes || "");
@@ -163,7 +173,7 @@ function EditarExameContent() {
     };
 
     loadExame();
-  }, [id, router, getExame]);
+  }, [id, router]);
 
   const handleCreateDoctor = async () => {
     if (!newDocName.trim()) return;
@@ -229,33 +239,59 @@ function EditarExameContent() {
     }
   };
 
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!nome.trim()) newErrors.nome = "Nome do exame é obrigatório";
+    if (!dataSolicitacaoDisplay || dataSolicitacaoDisplay.length < 10) newErrors.data = "Data inválida";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = () => {
     if (!id) return;
     trigger("vibrate");
-    if (!nome.trim()) {
-      setErrors({ nome: "Nome do exame é obrigatório" });
+    if (!validate()) {
       trigger("error");
       return;
     }
 
     run(
-      () =>
-        updateExame(id, {
-          person_id: personId || undefined,
-          nome: nome.trim(),
-          laboratorio: laboratorio.trim() || undefined,
-          local_id: localId || undefined,
-          medico: medico.trim() || undefined,
-          medico_id: medicoId || undefined,
-          data: parseDateToISO(dataSolicitacaoDisplay),
-          data_retorno: dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined,
-          motivo: motivo.trim() || undefined,
-          observacoes: observacoes.trim() || undefined,
-          anexo_url: anexoUrl.trim() || undefined,
-          tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-        }),
+      async () => {
+        const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
+        if (!dataSolicitacaoISO) throw new Error("Data inválida");
+
+        const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
+
+        await db.transaction("rw", db.exames, db.syncQueue, async () => {
+          const original = await db.exames.get(id);
+          if (!original) throw new Error("Exame não encontrado");
+
+          const exameAtualizado: Exame = {
+            ...original,
+            person_id: personId || undefined,
+            nome: nome.trim(),
+            laboratorio: laboratorio.trim() || undefined,
+            local_id: localId || undefined,
+            medico: medico.trim() || undefined,
+            medico_id: medicoId || undefined,
+            data: dataSolicitacaoISO,
+            data_retorno: dataRetornoISO,
+            motivo: motivo.trim() || undefined,
+            observacoes: observacoes.trim() || undefined,
+            anexo_url: anexoUrl.trim() || undefined,
+            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+            updated_at: new Date().toISOString(),
+            synced: false
+          };
+
+          (exameAtualizado as any).horario = horario || undefined;
+
+          await db.exames.put(exameAtualizado);
+          await enfileirarOperacao("exames", "update", exameAtualizado);
+        });
+      },
       {
-        successMessage: "Exame atualizado",
+        successMessage: "Exame atualizado com sucesso",
         errorMessage: "Erro ao atualizar exame",
         goBackOnSuccess: false,
       }
@@ -266,7 +302,7 @@ function EditarExameContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -283,7 +319,6 @@ function EditarExameContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* Tratamentos Vinculados */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -325,40 +360,44 @@ function EditarExameContent() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <Input
-              label="Nome do Exame *"
-              placeholder="Ex: Hemograma..."
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              error={errors.nome}
-              required
-            />
+            <div>
+              <Input
+                label="Nome do Exame *"
+                placeholder="Ex: Hemograma..."
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                error={errors.nome}
+                required
+              />
+            </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink-primary">Laboratório / Hospital</label>
               <button
+                type="button"
                 onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
               >
-                <span>{laboratorio || "Selecionar laboratório ou hospital"}</span>
-                <Building2 size={16} className="text-ink-muted" />
+                <span className="truncate">{laboratorio || "Selecionar laboratório ou hospital"}</span>
+                <Building2 size={16} className="text-ink-muted shrink-0" />
               </button>
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico Solicitante</label>
               <button
+                type="button"
                 onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
               >
-                <span>{medico || "Selecionar médico"}</span>
-                <Stethoscope size={16} className="text-ink-muted" />
+                <span className="truncate">{medico || "Selecionar médico"}</span>
+                <Stethoscope size={16} className="text-ink-muted shrink-0" />
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Data da Solicitação</label>
+                <label className="block text-sm font-medium text-ink-primary">Data da Coleta <span className="text-coral">*</span></label>
                 <div className="relative">
                   <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                   <input
@@ -367,24 +406,39 @@ function EditarExameContent() {
                     maxLength={10}
                     value={dataSolicitacaoDisplay}
                     onChange={(e) => setDataSolicitacaoDisplay(handleDateMask(e.target.value))}
+                    className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50`}
+                  />
+                </div>
+                {errors.data && <p className="text-xs text-coral ml-1">{errors.data}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Horário</label>
+                <div className="relative">
+                  <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="00:00"
+                    maxLength={5}
+                    value={horario}
+                    onChange={(e) => setHorario(handleTimeMask(e.target.value))}
                     className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
                   />
                 </div>
               </div>
+            </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Data Apresentação</label>
-                <div className="relative">
-                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="DD/MM/AAAA"
-                    maxLength={10}
-                    value={dataRetornoDisplay}
-                    onChange={(e) => setDataRetornoDisplay(handleDateMask(e.target.value))}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
-                  />
-                </div>
+            <div className="space-y-1.5 pt-2 border-t border-surface-border/30">
+              <label className="block text-sm font-medium text-ink-primary">Data Previsão / Retorno <span className="text-[10px] text-ink-faint">(Alerta)</span></label>
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="DD/MM/AAAA"
+                  maxLength={10}
+                  value={dataRetornoDisplay}
+                  onChange={(e) => setDataRetornoDisplay(handleDateMask(e.target.value))}
+                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                />
               </div>
             </div>
 
@@ -401,7 +455,7 @@ function EditarExameContent() {
             />
 
             <Input
-              label="Link ou Anexo (URL)"
+              label="Link Externo (URL)"
               value={anexoUrl}
               onChange={(e) => setAnexoUrl(e.target.value)}
             />
@@ -432,8 +486,8 @@ function EditarExameContent() {
           renderItem={(item) => <p className="font-medium text-ink-primary">{item.nome}</p>}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsLocalModalOpen(false); setIsCreatingLocal(true); }}
-          createNewLabel="Cadastrar Novo Local"
+          onCreateNew={() => { setIsLocalModalOpen(false); trigger("vibrate"); }}
+          createNewLabel=""
         />
 
         <SelectionModal<Medico>
@@ -445,14 +499,14 @@ function EditarExameContent() {
           placeholder="Buscar médico..."
           renderItem={(item) => (
             <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
+              <p className="font-medium text-ink-primary">Dr(a). {item.nome}</p>
               {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
             </div>
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsDoctorModalOpen(false); setIsCreatingDoctor(true); }}
-          createNewLabel="Cadastrar Novo Médico"
+          onCreateNew={() => { setIsDoctorModalOpen(false); trigger("vibrate"); }}
+          createNewLabel=""
         />
 
         <SelectionModal<Tratamento>
@@ -470,45 +524,17 @@ function EditarExameContent() {
           renderItem={(item) => {
             const IconComp = getTratamentoIcon(item.nome);
             return (
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
-                  <IconComp size={18} />
-                </div>
-                <div>
-                  <p className="font-medium text-ink-primary">{item.nome}</p>
-                </div>
+              <div className="flex items-center gap-2">
+                <IconComp size={16} className="text-violet-400" />
+                <span className="text-sm font-medium text-ink-primary">{item.nome}</span>
               </div>
             );
           }}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }}
-          createNewLabel="Novo Tratamento"
+          onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); }}
+          createNewLabel=""
         />
-
-        <BottomSheet isOpen={isCreatingDoctor} onClose={() => setIsCreatingDoctor(false)} title="Novo Médico">
-          <div className="space-y-4 px-1 pb-2">
-            <Input label="Nome" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} autoFocus />
-            <Input label="Especialidade" value={newDocEspecialidade} onChange={(e) => setNewDocEspecialidade(e.target.value)} />
-            <Button variant="primary" fullWidth onClick={handleCreateDoctor} disabled={!newDocName.trim()}>Salvar e Selecionar</Button>
-          </div>
-        </BottomSheet>
-
-        <BottomSheet isOpen={isCreatingLocal} onClose={() => setIsCreatingLocal(false)} title="Novo Local">
-          <div className="space-y-4 px-1 pb-2">
-            <Input label="Nome" value={newLocalName} onChange={(e) => setNewLocalName(e.target.value)} autoFocus />
-            <Button variant="primary" fullWidth onClick={handleCreateLocal} disabled={!newLocalName.trim()}>Salvar e Selecionar</Button>
-          </div>
-        </BottomSheet>
-
-        <BottomSheet isOpen={isCreatingTratamento} onClose={() => { trigger("vibrate"); setIsCreatingTratamento(false); setNewTratamentoName(""); }} title="Cadastrar Tratamento">
-          <div className="space-y-4 px-1 pb-2">
-            <Input label="Nome" placeholder="Ex: TDAH, Dor Crônica..." value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus />
-            <Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={isSavingTratamento || !newTratamentoName.trim()} className="flex items-center justify-center gap-2">
-              {isSavingTratamento ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Salvar e selecionar
-            </Button>
-          </div>
-        </BottomSheet>
       </main>
     </PageTransition>
   );

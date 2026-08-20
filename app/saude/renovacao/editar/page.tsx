@@ -34,6 +34,8 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
+import { db } from "@/lib/db";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type {
   Renovacao,
   Medicamento,
@@ -92,7 +94,7 @@ function EditarRenovacaoContent() {
   const id = searchParams.get("id");
 
   const { activePersonId } = useActivePersonId();
-  const { getRenovacao, updateRenovacao, deleteRenovacao } = useRenovacoes();
+  const { getRenovacao } = useRenovacoes();
   const { medicamentos } = useMedicamentos();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
@@ -179,17 +181,28 @@ function EditarRenovacaoContent() {
           ? parseFloat(preco.replace(/\./g, "").replace(",", "."))
           : undefined;
 
-        await updateRenovacao(id, {
-          person_id: activePersonId || undefined,
-          medicamento_id: medicamentoId || undefined,
-          medico_id: medicoId || undefined,
-          farmacia_id: farmaciaId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          data: dataISO || renovacao?.data,
-          preco: precoNum,
-          observacoes: observacoes.trim() || undefined,
-          anexo_url: anexoUrl.trim() || undefined,
+        await db.transaction("rw", db.renovacoes, db.syncQueue, async () => {
+          const original = await db.renovacoes.get(id);
+          if (!original) throw new Error("Renovação não encontrada");
+
+          const renovacaoAtualizada: Renovacao = {
+            ...original,
+            person_id: activePersonId || undefined,
+            medicamento_id: medicamentoId || original.medicamento_id,
+            medico_id: medicoId || undefined,
+            farmacia_id: farmaciaId || undefined,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            data: dataISO || original.data,
+            preco: precoNum,
+            observacoes: observacoes.trim() || undefined,
+            anexo_url: anexoUrl.trim() || undefined,
+            updated_at: new Date().toISOString(),
+            synced: false
+          };
+
+          await db.renovacoes.put(renovacaoAtualizada);
+          await enfileirarOperacao("renovacoes", "update", renovacaoAtualizada);
         });
       },
       {
@@ -203,7 +216,10 @@ function EditarRenovacaoContent() {
   const handleDelete = () => {
     runDelete(
       async () => {
-        await deleteRenovacao(id!);
+        await db.transaction("rw", db.renovacoes, db.syncQueue, async () => {
+          await db.renovacoes.delete(id!);
+          await enfileirarOperacao("renovacoes", "delete", { id: id! });
+        });
         router.replace("/saude/renovacao");
       },
       {
@@ -218,7 +234,7 @@ function EditarRenovacaoContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -382,7 +398,7 @@ function EditarRenovacaoContent() {
                   maxLength={10}
                   value={dataDisplay}
                   onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm"
+                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
                 />
               </div>
             </div>
@@ -395,7 +411,7 @@ function EditarRenovacaoContent() {
                   placeholder="0,00"
                   value={preco}
                   onChange={(e) => setPreco(handleCurrencyMask(e.target.value))}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm"
+                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
                 />
               </div>
             </div>
