@@ -50,6 +50,24 @@ export default function RootLayout({
   const pathname = usePathname();
   const isAuthPage = pathname === "/login" || pathname === "/auth/callback";
 
+  // Injeção do Eruda para debug mobile direto na tela
+  useEffect(() => {
+    // Evita duplicar se já injetou
+    if (typeof window !== "undefined" && !document.getElementById("eruda-script")) {
+      const script = document.createElement("script");
+      script.id = "eruda-script";
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/eruda/3.0.1/eruda.min.js";
+      script.onload = () => {
+        // @ts-ignore
+        if (window.eruda) {
+          // @ts-ignore
+          window.eruda.init();
+        }
+      };
+      document.body.appendChild(script);
+    }
+  }, []);
+
   // Força o WebView do Capacitor a recalcular a Safe Area para não cortar o Header
   useEffect(() => {
     const forceReflow = () => {
