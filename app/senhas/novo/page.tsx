@@ -1,7 +1,7 @@
 // app/senhas/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -48,6 +48,7 @@ export default function NewPasswordPage() {
   const { showToast } = useToast();
   const { addCredential } = useCredentials();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const { authenticate } = useBiometric({
     title: "Visualizar Senha",
@@ -135,18 +136,25 @@ export default function NewPasswordPage() {
       return;
     }
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        // O repositório já faz a transação, criptografia e enfileiramento.
-        // Basta chamar a hook.
-        await addCredential({
-          title: formData.title.trim(),
-          username: formData.username.trim(),
-          password_plain: formData.password_plain,
-          url: formData.url.trim(),
-          notes: formData.notes.trim(),
-          category: formData.category,
-        });
+        try {
+          // O repositório já faz a transação, criptografia e enfileiramento.
+          // Basta chamar a hook.
+          await addCredential({
+            title: formData.title.trim(),
+            username: formData.username.trim(),
+            password_plain: formData.password_plain,
+            url: formData.url.trim(),
+            notes: formData.notes.trim(),
+            category: formData.category,
+          });
+        } finally {
+          isSubmitLocked.current = false;
+        }
       },
       {
         successMessage: "Senha salva com sucesso",

@@ -1,7 +1,7 @@
 // app/saude/locais/editar/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -57,6 +57,7 @@ function EditarLocalContent() {
 
   const saveAction = useSubmitAction();
   const deleteAction = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -109,22 +110,29 @@ function EditarLocalContent() {
       return;
     }
 
-    await saveAction.run(
-      async () => {
-        // Repositório cuida de updated_at, synced e enfileiramento
-        await locaisRepository.update(id, {
-          nome: nome.trim(),
-          tipo: tipo || undefined,
-          endereco: endereco.trim() || undefined,
-          telefone: telefone.trim() || undefined,
-        });
-      },
-      {
-        successMessage: "Local atualizado com sucesso",
-        errorMessage: "Erro ao atualizar local",
-        goBackOnSuccess: true,
-      }
-    );
+    if (isSubmitLocked.current || saveAction.isSubmitting) return;
+    isSubmitLocked.current = true;
+
+    try {
+      await saveAction.run(
+        async () => {
+          // Repositório cuida de updated_at, synced e enfileiramento
+          await locaisRepository.update(id, {
+            nome: nome.trim(),
+            tipo: tipo || undefined,
+            endereco: endereco.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+          });
+        },
+        {
+          successMessage: "Local atualizado com sucesso",
+          errorMessage: "Erro ao atualizar local",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   const handleDelete = async () => {

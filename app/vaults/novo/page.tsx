@@ -1,7 +1,7 @@
 // app/vaults/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -56,6 +56,7 @@ export default function NewVaultPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -79,23 +80,30 @@ export default function NewVaultPage() {
       return;
     }
 
-    await run(
-      async () => {
-        // Repositório cuida de id, user_id, created_at, updated_at, synced e enfileiramento
-        await vaultsRepository.create({
-          name: formData.name.trim(),
-          user_id: user?.id,
-          description: formData.description.trim() || undefined,
-          icon: formData.icon,
-          color: formData.color,
-        });
-      },
-      {
-        successMessage: "Cofre criado com sucesso",
-        errorMessage: "Erro ao criar cofre",
-        goBackOnSuccess: true,
-      }
-    );
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
+    try {
+      await run(
+        async () => {
+          // Repositório cuida de id, user_id, created_at, updated_at, synced e enfileiramento
+          await vaultsRepository.create({
+            name: formData.name.trim(),
+            user_id: user?.id,
+            description: formData.description.trim() || undefined,
+            icon: formData.icon,
+            color: formData.color,
+          });
+        },
+        {
+          successMessage: "Cofre criado com sucesso",
+          errorMessage: "Erro ao criar cofre",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   const selectedIcon = ICON_OPTIONS.find((opt) => opt.value === formData.icon);

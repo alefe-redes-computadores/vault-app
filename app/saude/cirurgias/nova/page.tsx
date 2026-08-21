@@ -1,7 +1,7 @@
 // app/saude/cirurgias/nova/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -75,6 +75,7 @@ export default function NovaCirurgiaPage() {
   const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
   const { activePersonId } = useActivePersonId();
+  const isSubmitLocked = useRef(false);
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
@@ -118,30 +119,37 @@ export default function NovaCirurgiaPage() {
     }
     if (!user?.id) return;
 
-    await run(
-      async () => {
-        const dataISO = parseDateToISO(dataDisplay);
-        if (!dataISO) throw new Error("Data inválida");
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
 
-        await cirurgiasRepository.create({
-          user_id: user.id,
-          person_id: activePersonId || undefined,
-          procedimento: procedimento.trim(),
-          medico_id: medicoId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          data: dataISO,
-          horario: horario || undefined,
-          status,
-          observacoes: observacoes.trim() || undefined,
-        });
-      },
-      {
-        successMessage: "Cirurgia criada com sucesso",
-        errorMessage: "Erro ao criar cirurgia",
-        goBackOnSuccess: true,
-      }
-    );
+    try {
+      await run(
+        async () => {
+          const dataISO = parseDateToISO(dataDisplay);
+          if (!dataISO) throw new Error("Data inválida");
+
+          await cirurgiasRepository.create({
+            user_id: user.id,
+            person_id: activePersonId || undefined,
+            procedimento: procedimento.trim(),
+            medico_id: medicoId || undefined,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            data: dataISO,
+            horario: horario || undefined,
+            status,
+            observacoes: observacoes.trim() || undefined,
+          });
+        },
+        {
+          successMessage: "Cirurgia criada com sucesso",
+          errorMessage: "Erro ao criar cirurgia",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   return (

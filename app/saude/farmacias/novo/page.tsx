@@ -1,7 +1,7 @@
 // app/saude/farmacias/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Building2 } from "lucide-react";
@@ -34,6 +34,7 @@ export default function NovaFarmaciaPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [nome, setNome] = useState("");
   const [endereco, setEndereco] = useState("");
@@ -55,21 +56,28 @@ export default function NovaFarmaciaPage() {
     }
     if (!user?.id) return;
 
-    await run(
-      async () => {
-        await farmaciasRepository.create({
-          user_id: user.id,
-          nome: nome.trim(),
-          endereco: endereco.trim() || undefined,
-          telefone: telefone.trim() || undefined,
-        });
-      },
-      {
-        successMessage: "Farmácia cadastrada com sucesso",
-        errorMessage: "Erro ao cadastrar farmácia",
-        goBackOnSuccess: true,
-      }
-    );
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
+    try {
+      await run(
+        async () => {
+          await farmaciasRepository.create({
+            user_id: user.id,
+            nome: nome.trim(),
+            endereco: endereco.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+          });
+        },
+        {
+          successMessage: "Farmácia cadastrada com sucesso",
+          errorMessage: "Erro ao cadastrar farmácia",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   return (

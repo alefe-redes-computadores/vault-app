@@ -1,7 +1,7 @@
 // app/pessoas/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -52,6 +52,7 @@ export default function NewPersonPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [error, setError] = useState("");
 
@@ -83,16 +84,23 @@ export default function NewPersonPage() {
       return;
     }
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        await personsRepository.create({
-          user_id: user.id,
-          name: formData.name.trim(),
-          email: formData.email.trim() || undefined,
-          phone: formData.phone.trim() || undefined,
-          avatar_url: formData.avatar_url || undefined,
-          color: formData.color,
-        });
+        try {
+          await personsRepository.create({
+            user_id: user.id,
+            name: formData.name.trim(),
+            email: formData.email.trim() || undefined,
+            phone: formData.phone.trim() || undefined,
+            avatar_url: formData.avatar_url || undefined,
+            color: formData.color,
+          });
+        } finally {
+          isSubmitLocked.current = false;
+        }
       },
       {
         successMessage: "Pessoa adicionada com sucesso!",

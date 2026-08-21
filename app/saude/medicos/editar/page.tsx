@@ -1,7 +1,7 @@
 // app/saude/medicos/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, Stethoscope, Trash2, Calendar, FlaskConical, ExternalLink } from "lucide-react";
@@ -43,6 +43,7 @@ function EditarMedicoContent() {
 
   const saveAction = useSubmitAction();
   const deleteAction = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -111,20 +112,27 @@ function EditarMedicoContent() {
       return;
     }
 
-    await saveAction.run(
-      async () => {
-        // Repositório cuida de updated_at, synced e enfileiramento
-        await medicosRepository.update(id, {
-          nome: nome.trim(),
-          especialidade: especialidade.trim() || undefined,
-          telefone: telefone.trim() || undefined,
-          email: email.trim() || undefined,
-          crm: crm.trim() || undefined,
-          observacoes: observacoes.trim() || undefined,
-        });
-      },
-      { successMessage: "Médico atualizado com sucesso", errorMessage: "Erro ao atualizar médico", goBackOnSuccess: true }
-    );
+    if (isSubmitLocked.current || saveAction.isSubmitting) return;
+    isSubmitLocked.current = true;
+
+    try {
+      await saveAction.run(
+        async () => {
+          // Repositório cuida de updated_at, synced e enfileiramento
+          await medicosRepository.update(id, {
+            nome: nome.trim(),
+            especialidade: especialidade.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+            email: email.trim() || undefined,
+            crm: crm.trim() || undefined,
+            observacoes: observacoes.trim() || undefined,
+          });
+        },
+        { successMessage: "Médico atualizado com sucesso", errorMessage: "Erro ao atualizar médico", goBackOnSuccess: true }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   const handleDelete = async () => {

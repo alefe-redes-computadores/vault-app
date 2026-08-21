@@ -1,7 +1,7 @@
 // app/saude/cids/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -45,6 +45,7 @@ export default function NovoCidPage() {
   const { locais } = useLocais();
   const { activePersonId } = useActivePersonId();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [codigo, setCodigo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -99,31 +100,38 @@ export default function NovoCidPage() {
     }
     if (!user?.id) return;
 
-    await run(
-      async () => {
-        const dataISO = dataDiagnostico
-          ? dataDiagnostico.split("/").reverse().join("-")
-          : undefined;
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
 
-        await cidsRepository.create({
-          user_id: user.id,
-          person_id: activePersonId || undefined,
-          codigo: codigo.trim(),
-          descricao: descricao.trim(),
-          data_diagnostico: dataISO,
-          medico_id: medicoId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          observacoes: observacoes.trim() || undefined,
-          anexo_url: anexoUrl || undefined,
-        });
-      },
-      {
-        successMessage: "CID cadastrado com sucesso",
-        errorMessage: "Erro ao cadastrar CID",
-        goBackOnSuccess: true,
-      }
-    );
+    try {
+      await run(
+        async () => {
+          const dataISO = dataDiagnostico
+            ? dataDiagnostico.split("/").reverse().join("-")
+            : undefined;
+
+          await cidsRepository.create({
+            user_id: user.id,
+            person_id: activePersonId || undefined,
+            codigo: codigo.trim(),
+            descricao: descricao.trim(),
+            data_diagnostico: dataISO,
+            medico_id: medicoId || undefined,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            observacoes: observacoes.trim() || undefined,
+            anexo_url: anexoUrl || undefined,
+          });
+        },
+        {
+          successMessage: "CID cadastrado com sucesso",
+          errorMessage: "Erro ao cadastrar CID",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   return (

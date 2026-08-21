@@ -1,7 +1,7 @@
 // app/saude/tratamentos/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, Trash2, ChevronRight, X, Check, FolderHeart } from "lucide-react";
@@ -46,6 +46,7 @@ function EditarTratamentoContent() {
 
   const saveAction = useSubmitAction();
   const deleteAction = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,53 +103,60 @@ function EditarTratamentoContent() {
     }
     if (!id) return;
 
-    const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
+    if (isSubmitLocked.current || saveAction.isSubmitting) return;
+    isSubmitLocked.current = true;
 
-    await saveAction.run(
-      async () => {
-        // Repositório cuida de updated_at, synced e enfileiramento
-        await tratamentosRepository.update(id, {
-          person_id: personId,
-          nome: nome.trim(),
-          cid_ids: cleanCids,
-          cor,
-          status,
-          observacoes: observacoes.trim() || undefined,
-        });
+    try {
+      const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
 
-        // Se o tratamento foi concluído ou suspenso, descontinuamos os medicamentos vinculados
-        if (status === 'concluido' || status === 'suspenso') {
-          // 🔥 Substituído método inexistente por consulta Dexie
-          const medicamentosAfetados = await db.medicamentos
-            .where('tratamento_ids')
-            .anyOf(id)
-            .toArray();
+      await saveAction.run(
+        async () => {
+          // Repositório cuida de updated_at, synced e enfileiramento
+          await tratamentosRepository.update(id, {
+            person_id: personId,
+            nome: nome.trim(),
+            cid_ids: cleanCids,
+            cor,
+            status,
+            observacoes: observacoes.trim() || undefined,
+          });
 
-          for (const med of medicamentosAfetados) {
-            if (med.id && med.status !== 'descontinuado') {
-              await medicamentosRepository.update(med.id, {
-                status: 'descontinuado',
-                motivo_descontinuacao: `Tratamento original marcado como ${status}`,
-              });
+          // Se o tratamento foi concluído ou suspenso, descontinuamos os medicamentos vinculados
+          if (status === 'concluido' || status === 'suspenso') {
+            // 🔥 Substituído método inexistente por consulta Dexie
+            const medicamentosAfetados = await db.medicamentos
+              .where('tratamento_ids')
+              .anyOf(id)
+              .toArray();
 
-              if (med.estoque_horarios && med.estoque_horarios.length > 0) {
-                await cancelDoseNotifications({
-                  id: med.id,
-                  nome: med.nome,
-                  dosagem: med.dosagem,
-                  estoque_horarios: med.estoque_horarios,
+            for (const med of medicamentosAfetados) {
+              if (med.id && med.status !== 'descontinuado') {
+                await medicamentosRepository.update(med.id, {
+                  status: 'descontinuado',
+                  motivo_descontinuacao: `Tratamento original marcado como ${status}`,
                 });
+
+                if (med.estoque_horarios && med.estoque_horarios.length > 0) {
+                  await cancelDoseNotifications({
+                    id: med.id,
+                    nome: med.nome,
+                    dosagem: med.dosagem,
+                    estoque_horarios: med.estoque_horarios,
+                  });
+                }
               }
             }
           }
+        },
+        {
+          successMessage: "Tratamento atualizado com sucesso!",
+          errorMessage: "Erro ao atualizar tratamento",
+          goBackOnSuccess: true,
         }
-      },
-      {
-        successMessage: "Tratamento atualizado com sucesso!",
-        errorMessage: "Erro ao atualizar tratamento",
-        goBackOnSuccess: true,
-      }
-    );
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   const handleDelete = () => {

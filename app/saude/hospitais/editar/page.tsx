@@ -1,7 +1,7 @@
 // app/saude/hospitais/editar/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -60,6 +60,7 @@ function EditarHospitalContent() {
 
   const saveAction = useSubmitAction();
   const deleteAction = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -127,15 +128,22 @@ function EditarHospitalContent() {
       return;
     }
 
+    if (isSubmitLocked.current || saveAction.isSubmitting) return;
+    isSubmitLocked.current = true;
+
     saveAction.run(
       async () => {
-        await hospitaisRepository.update(id, {
-          nome: nome.trim(),
-          endereco: endereco.trim() || undefined,
-          telefone: telefone.trim() || undefined,
-          medico_ids: medicoIds,
-          tratamento_ids: tratamentoIds,
-        });
+        try {
+          await hospitaisRepository.update(id, {
+            nome: nome.trim(),
+            endereco: endereco.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+            medico_ids: medicoIds,
+            tratamento_ids: tratamentoIds,
+          });
+        } finally {
+          isSubmitLocked.current = false;
+        }
       },
       { successMessage: "Hospital atualizado com sucesso", errorMessage: "Erro ao atualizar hospital", goBackOnSuccess: true }
     );

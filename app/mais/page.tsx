@@ -1,31 +1,13 @@
 // app/mais/page.tsx
 "use client";
 
+import { useState, useCallback, ReactNode, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
-  Shield,
-  User,
-  Settings,
-  LogOut,
-  HardDrive,
-  Users,
-  ChevronRight,
-  HelpCircle,
-  Download,
-  RefreshCw,
-  Fingerprint,
-  Pencil,
-  Heart,
-  Loader2,
-  Terminal,
-  Activity,
-  KeyRound,
-  CreditCard,
-  ShieldAlert,
-  Bell,
-  Star,
+  Shield, User, Settings, LogOut, HardDrive, Users, ChevronRight, HelpCircle,
+  Download, RefreshCw, Fingerprint, Pencil, Heart, Loader2, Terminal, Activity,
+  KeyRound, CreditCard, ShieldAlert, Bell, Star,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -35,16 +17,35 @@ import { useToast } from "@/components/ToastProvider";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { useNotificationPreference } from "@/hooks/useNotificationPreference";
-import {
-  requestNotificationPermission,
-  cancelAllDoseNotifications,
-} from "@/lib/dose-notifications";
-import { useState, useCallback, ReactNode } from "react";
+import { requestNotificationPermission, cancelAllDoseNotifications } from "@/lib/dose-notifications";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { pullAllData } from "@/lib/sync/pull";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Medicamento } from "@/lib/types";
+
+// Componente rigoroso para confirmação de exclusão por digitação
+function RigorousConfirmInput({ onConfirm, label }: { onConfirm: () => void, label: string }) {
+  const [text, setText] = useState("");
+  return (
+    <div className="space-y-3 pt-2">
+      <p className="text-xs text-ink-muted">Digite <span className="font-bold text-coral">EXCLUIR</span> em letras maiúsculas para confirmar:</p>
+      <input 
+        value={text} 
+        onChange={(e) => setText(e.target.value.toUpperCase())}
+        className="w-full rounded-2xl border border-surface-border bg-surface-raised px-4 py-3 text-center uppercase tracking-widest font-mono text-sm text-ink-primary outline-none focus:border-coral"
+        placeholder="EXCLUIR"
+      />
+      <button 
+        disabled={text !== "EXCLUIR"}
+        onClick={onConfirm}
+        className="w-full bg-coral text-white font-bold py-3 rounded-2xl disabled:opacity-40 transition-all active:scale-95 text-sm shadow-lg shadow-coral/20"
+      >
+        {label}
+      </button>
+    </div>
+  );
+}
 
 const APP_VERSION = "1.0.0";
 
@@ -69,14 +70,10 @@ export default function MaisPage() {
   const { user, logout } = useAuth();
   const { showToast, showSuccess, showError, showInfo } = useToast();
   const { processQueue, isOnline, syncLogs, clearLogs } = useSyncQueue();
-  const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } =
-    useBiometricPreference();
-  const {
-    isEnabled: isNotificationsEnabled,
-    enable: enableNotifications,
-    disable: disableNotifications,
-  } = useNotificationPreference();
+  const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
+  const { isEnabled: isNotificationsEnabled, enable: enableNotifications, disable: disableNotifications } = useNotificationPreference();
 
+  const isSubmitLocked = useRef(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -86,7 +83,23 @@ export default function MaisPage() {
   const pendingQueueCount = useLiveQuery(() => db.syncQueue.count(), []) ?? 0;
   const allMedicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) as Medicamento[];
 
+  // Contagem dinâmica e real dos registros locais para atualizar o botão de sincronização
+  const totalLocalItems = useLiveQuery(async () => {
+    let count = 0;
+    const tables = ["persons", "documents", "medicamentos", "medicos", "farmacias", "hospitais", "tratamentos"];
+    for (const t of tables) {
+      try {
+        count += await (db as any)[t].count();
+      } catch (e) {
+        // ignora se tabela não existir por segurança
+      }
+    }
+    return count;
+  }, []) ?? 0;
+
   const handleLogout = async () => {
+    if (isSubmitLocked.current) return;
+    isSubmitLocked.current = true;
     setIsLoading(true);
     try {
       trigger("vibrate");
@@ -97,6 +110,7 @@ export default function MaisPage() {
     } finally {
       setIsLoading(false);
       setShowLogoutModal(false);
+      isSubmitLocked.current = false;
     }
   };
 
@@ -177,12 +191,9 @@ export default function MaisPage() {
       await pullAllData(user.id);
       await processQueue();
 
-      const finalPersons = await db.persons.count();
-      const finalDocs = await db.documents.count();
-
       trigger("success");
       showSuccess(
-        `Sincronizado com sucesso! (${finalPersons} pessoas, ${finalDocs} docs)`,
+        `Sincronizado com sucesso! (${totalLocalItems} registros gerenciados)`,
         5000
       );
 
@@ -196,7 +207,7 @@ export default function MaisPage() {
     } finally {
       setIsSyncing(false);
     }
-  }, [user, isOnline, isSyncing, trigger, showInfo, showSuccess, showError, processQueue]);
+  }, [user, isOnline, isSyncing, trigger, showInfo, showSuccess, showError, processQueue, totalLocalItems]);
 
   const handleEditProfile = () => {
     trigger("vibrate");
@@ -215,14 +226,16 @@ export default function MaisPage() {
   const handleNotificationsToggle = async () => {
     trigger("vibrate");
     if (isNotificationsEnabled) {
-      await cancelAllDoseNotifications(
-        allMedicamentos.map((med) => ({
-          id: med.id!,
-          nome: med.nome,
-          dosagem: med.dosagem,
-          estoque_horarios: med.estoque_horarios || [],
-        }))
-      );
+      if (allMedicamentos) {
+        await cancelAllDoseNotifications(
+          allMedicamentos.map((med) => ({
+            id: med.id!,
+            nome: med.nome,
+            dosagem: med.dosagem,
+            estoque_horarios: med.estoque_horarios || [],
+          }))
+        );
+      }
       disableNotifications();
       showToast("Lembretes desativados", "info");
     } else {
@@ -329,7 +342,7 @@ export default function MaisPage() {
             ? `${pendingQueueCount} ${
                 pendingQueueCount === 1 ? "item pendente" : "itens pendentes"
               } na fila`
-            : "Tudo sincronizado com a nuvem",
+            : `${totalLocalItems} registros locais · Sincronizado`,
           onClick: handleSync,
           disabled: !isOnline || isSyncing,
         },
@@ -424,28 +437,14 @@ export default function MaisPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28 overflow-y-auto">
+        {/* CABEÇALHO DA ABA RAIZ (Sem botão de voltar) */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
-              aria-label="Voltar"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-
-            <div>
-              <h1 className="font-display text-xl font-semibold text-ink-primary">
-                Mais
-              </h1>
-              <p className="mt-1 text-sm text-ink-muted">
-                Configurações, dados e opções da conta
-              </p>
-            </div>
-          </div>
+          <h1 className="font-display text-xl font-semibold text-ink-primary pt-2">
+            Mais
+          </h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Configurações, dados e opções da conta
+          </p>
         </header>
 
         <section className="space-y-6 px-5 pt-6">
@@ -586,6 +585,7 @@ export default function MaisPage() {
 
                   const Icon = item.icon;
                   const isSyncItem = item.id === "sync";
+                  const isClearItem = item.id === "limpar";
                   const isLogItem = item.id === "ver-logs" || item.id === "limpar-logs";
                   const isDiagnosticoItem = item.id === "diagnostico-dados";
                   const isUnlockItem = item.id === "destravar-sync";
@@ -595,42 +595,35 @@ export default function MaisPage() {
                       key={item.id}
                       onClick={item.onClick}
                       disabled={item.disabled || isSyncing}
-                      className={`flex w-full items-center gap-4 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] ${
-                        item.disabled || isSyncing
-                          ? "cursor-not-allowed opacity-50"
-                          : "hover:bg-surface-raised/80"
+                      className={`flex w-full items-center gap-4 rounded-[22px] border p-3.5 text-left shadow-sm transition-all active:scale-[0.985] ${
+                        isClearItem
+                          ? "border-coral/40 bg-coral/10 hover:bg-coral/15"
+                          : isUnlockItem && !item.disabled
+                          ? "border-coral/20 bg-coral/10 hover:bg-coral/15"
+                          : "border-surface-border/50 bg-surface hover:bg-surface-raised/80"
                       }`}
                     >
                       <div
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 ${
-                          isLogItem || isDiagnosticoItem
-                            ? "bg-ice/10 border-ice/20"
-                            : isUnlockItem && !item.disabled
-                            ? "bg-coral/10 border-coral/20"
-                            : "bg-surface-raised"
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border ${
+                          isClearItem || (isUnlockItem && !item.disabled)
+                            ? "bg-coral/20 border-coral/30 text-coral"
+                            : isLogItem || isDiagnosticoItem
+                            ? "bg-ice/10 border-ice/20 text-ice"
+                            : "bg-surface-raised text-ink-muted"
                         }`}
                       >
                         {isSyncItem && isSyncing ? (
                           <Loader2 size={18} className="animate-spin text-ice" />
                         ) : (
-                          <Icon
-                            size={18}
-                            className={
-                              isLogItem || isDiagnosticoItem
-                                ? "text-ice"
-                                : isUnlockItem && !item.disabled
-                                ? "text-coral"
-                                : "text-ink-muted"
-                            }
-                          />
+                          <Icon size={18} />
                         )}
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <p
                           className={`text-sm font-medium ${
-                            isUnlockItem && !item.disabled
-                              ? "text-coral"
+                            isClearItem || (isUnlockItem && !item.disabled)
+                              ? "text-coral font-bold"
                               : "text-ink-primary"
                           }`}
                         >
@@ -638,8 +631,8 @@ export default function MaisPage() {
                         </p>
                         <p
                           className={`text-xs leading-5 ${
-                            isUnlockItem && !item.disabled
-                              ? "text-coral/70"
+                            isClearItem || (isUnlockItem && !item.disabled)
+                              ? "text-coral/80"
                               : "text-ink-muted"
                           }`}
                         >
@@ -713,11 +706,9 @@ export default function MaisPage() {
           onClose={() => setShowClearDataModal(false)}
           onConfirm={clearLocalData}
           title="Limpar dados locais"
-          message="Tem certeza que deseja limpar todos os dados locais? Esta ação não pode ser desfeita."
-          confirmLabel="Limpar"
-          cancelLabel="Cancelar"
-          isLoading={isLoading}
+          message={<RigorousConfirmInput onConfirm={clearLocalData} label="Limpar Todos os Dados" />}
           type="danger"
+          showActions={false}
         />
 
         <ConfirmationModal

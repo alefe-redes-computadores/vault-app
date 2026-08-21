@@ -23,10 +23,15 @@ export function useTratamentos() {
 
   const getTratamento = useCallback((id: string) => tratamentosRepository.getById(id), []);
 
-  const addTratamento = useCallback(async (data: Omit<Tratamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
+  const addTratamento = useCallback(async (data: Omit<Tratamento, 'id' | 'user_id' | 'person_id' | 'created_at' | 'updated_at' | 'synced'>) => {
     if (!user) throw new Error('Usuário não autenticado');
-    return await tratamentosRepository.create({ ...data, user_id: user.id });
-  }, [user]);
+    // Injetando o person_id automaticamente
+    return await tratamentosRepository.create({ 
+      ...data, 
+      user_id: user.id,
+      person_id: activePersonId || undefined 
+    });
+  }, [user, activePersonId]);
 
   const updateTratamento = useCallback(async (id: string, data: Partial<Tratamento>) => {
     await tratamentosRepository.update(id, data);

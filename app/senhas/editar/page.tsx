@@ -1,7 +1,7 @@
 // app/senhas/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -52,6 +52,7 @@ function EditPasswordContent() {
   const id = searchParams.get("id");
   const { updateCredential } = useCredentials();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const { authenticate } = useBiometric({
     title: "Editar Senha",
@@ -196,27 +197,34 @@ function EditPasswordContent() {
       return;
     }
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        const payload: Partial<Credential> & { password_plain: string; password_history?: { encrypted: string; date: string }[] } = {
-          title: formData.title.trim(),
-          username: formData.username.trim(),
-          password_plain: formData.password_plain,
-          url: formData.url.trim(),
-          notes: formData.notes.trim(),
-          category: formData.category,
-        };
+        try {
+          const payload: Partial<Credential> & { password_plain: string; password_history?: { encrypted: string; date: string }[] } = {
+            title: formData.title.trim(),
+            username: formData.username.trim(),
+            password_plain: formData.password_plain,
+            url: formData.url.trim(),
+            notes: formData.notes.trim(),
+            category: formData.category,
+          };
 
-        if (formData.password_plain !== originalPlainPass) {
-          const newHistory = [...historyItems];
-          newHistory.push({
-            encrypted: originalItem.password_encrypted,
-            date: new Date().toISOString(),
-          });
-          payload.password_history = newHistory;
+          if (formData.password_plain !== originalPlainPass) {
+            const newHistory = [...historyItems];
+            newHistory.push({
+              encrypted: originalItem.password_encrypted,
+              date: new Date().toISOString(),
+            });
+            payload.password_history = newHistory;
+          }
+
+          await updateCredential(id, payload);
+        } finally {
+          isSubmitLocked.current = false;
         }
-
-        await updateCredential(id, payload);
       },
       {
         successMessage: "Senha atualizada",

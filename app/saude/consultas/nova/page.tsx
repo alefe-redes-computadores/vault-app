@@ -82,6 +82,7 @@ export default function NovaConsultaPage() {
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -166,35 +167,42 @@ export default function NovaConsultaPage() {
     if (!validate()) { trigger("error"); return; }
     if (!user?.id) return;
 
-    await run(
-      async () => {
-        let anexoUrl: string | undefined;
-        if (localFile && user) {
-          const { url, error } = await uploadFile(user.id, localFile, "saude");
-          if (!error && url) anexoUrl = url;
-        }
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
 
-        const dataISO = parseDateToISO(dataDisplay);
-        if (!dataISO) throw new Error("Data inválida");
-        
-        await consultasRepository.create({
-          user_id: user.id,
-          person_id: activePersonId || undefined,
-          especialidade: selectedMedico?.especialidade || "Geral",
-          medico: selectedMedico?.nome || "Médico",
-          medico_id: medicoId,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          data: dataISO,
-          horario: horario || undefined,
-          status,
-          motivo: motivo.trim() || undefined,
-          observacoes: observacoes.trim() || undefined,
-          anexo_url: anexoUrl,
-        });
-      },
-      { successMessage: "Consulta criada", errorMessage: "Erro ao salvar", goBackOnSuccess: true }
-    );
+    try {
+      await run(
+        async () => {
+          let anexoUrl: string | undefined;
+          if (localFile && user) {
+            const { url, error } = await uploadFile(user.id, localFile, "saude");
+            if (!error && url) anexoUrl = url;
+          }
+
+          const dataISO = parseDateToISO(dataDisplay);
+          if (!dataISO) throw new Error("Data inválida");
+          
+          await consultasRepository.create({
+            user_id: user.id,
+            person_id: activePersonId || undefined,
+            especialidade: selectedMedico?.especialidade || "Geral",
+            medico: selectedMedico?.nome || "Médico",
+            medico_id: medicoId,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            data: dataISO,
+            horario: horario || undefined,
+            status,
+            motivo: motivo.trim() || undefined,
+            observacoes: observacoes.trim() || undefined,
+            anexo_url: anexoUrl,
+          });
+        },
+        { successMessage: "Consulta criada", errorMessage: "Erro ao salvar", goBackOnSuccess: true }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   return (

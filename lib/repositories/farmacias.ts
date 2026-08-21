@@ -13,7 +13,7 @@ export const farmaciasRepository = {
     return db.farmacias.get(id);
   },
 
-  async create(data: Omit<Farmacia, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string; user_id?: string }) {
+  async create(data: Omit<Farmacia, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string; user_id?: string; person_id?: string }) {
     if (process.env.NODE_ENV === "development" && "user_id" in data) {
       console.warn("[farmaciasRepository] user_id recebido do caller será ignorado — repositório injeta internamente.");
     }
@@ -29,6 +29,7 @@ export const farmaciasRepository = {
     const farmaciaCompleta: Farmacia = {
       ...farmaciaData,
       user_id: user.id,
+      person_id: data.person_id,
       created_at: now,
       updated_at: now,
       synced: false,

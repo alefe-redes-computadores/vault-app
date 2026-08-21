@@ -1,7 +1,7 @@
 // app/saude/hospitais/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Building2, Stethoscope, FolderHeart, Check, X, Plus, Eraser } from "lucide-react";
@@ -31,6 +31,7 @@ export default function NovoHospitalPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), [], []) || [];
   const tratamentos = useLiveQuery(
@@ -65,19 +66,26 @@ export default function NovoHospitalPage() {
     }
     if (!user?.id) return;
 
-    await run(
-      async () => {
-        await hospitaisRepository.create({
-          user_id: user.id,
-          nome: nome.trim(),
-          endereco: endereco.trim() || undefined,
-          telefone: telefone.trim() || undefined,
-          medico_ids: medicoIds,
-          tratamento_ids: tratamentoIds,
-        });
-      },
-      { successMessage: "Hospital cadastrado com sucesso", errorMessage: "Erro ao cadastrar hospital", goBackOnSuccess: true }
-    );
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
+    try {
+      await run(
+        async () => {
+          await hospitaisRepository.create({
+            user_id: user.id,
+            nome: nome.trim(),
+            endereco: endereco.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+            medico_ids: medicoIds,
+            tratamento_ids: tratamentoIds,
+          });
+        },
+        { successMessage: "Hospital cadastrado com sucesso", errorMessage: "Erro ao cadastrar hospital", goBackOnSuccess: true }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   const MultiSelectModal = ({ isOpen, onClose, title, items, selectedIds, onChange, icon: Icon, onCreateNew, createLabel }: any) => {

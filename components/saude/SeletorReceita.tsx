@@ -38,7 +38,8 @@ export function SeletorReceita({ selected, onChange, onRenovarClick }: Props) {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <FileText size={16} className="text-ice" />
-          <h3 className="text-sm font-semibold text-ink-primary">Controle de Receita</h3>
+          {/* ALTERAÇÃO: De "Controle de Receita" para "Nível de Controle" */}
+          <h3 className="text-sm font-semibold text-ink-primary">Nível de Controle</h3>
         </div>
         <div className="grid grid-cols-2 gap-2.5">
           {tipos.map((tipo) => {

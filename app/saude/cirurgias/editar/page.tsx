@@ -1,7 +1,7 @@
 // app/saude/cirurgias/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -75,6 +75,7 @@ function EditarCirurgiaContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
@@ -141,28 +142,35 @@ function EditarCirurgiaContent() {
     }
     if (!id) return;
 
-    await run(
-      async () => {
-        const dataISO = parseDateToISO(dataDisplay);
-        if (!dataISO) throw new Error("Data inválida");
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
 
-        await cirurgiasRepository.update(id, {
-          procedimento: procedimento.trim(),
-          medico_id: medicoId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          data: dataISO,
-          horario: horario || undefined,
-          status,
-          observacoes: observacoes.trim() || undefined,
-        });
-      },
-      {
-        successMessage: "Cirurgia atualizada com sucesso",
-        errorMessage: "Erro ao atualizar cirurgia",
-        goBackOnSuccess: true,
-      }
-    );
+    try {
+      await run(
+        async () => {
+          const dataISO = parseDateToISO(dataDisplay);
+          if (!dataISO) throw new Error("Data inválida");
+
+          await cirurgiasRepository.update(id, {
+            procedimento: procedimento.trim(),
+            medico_id: medicoId || undefined,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            data: dataISO,
+            horario: horario || undefined,
+            status,
+            observacoes: observacoes.trim() || undefined,
+          });
+        },
+        {
+          successMessage: "Cirurgia atualizada com sucesso",
+          errorMessage: "Erro ao atualizar cirurgia",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   if (isLoading) return <DetailSkeleton />;

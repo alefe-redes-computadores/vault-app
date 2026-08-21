@@ -1,7 +1,7 @@
 // app/saude/exames/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -103,6 +103,7 @@ function EditarExameContent() {
   const { locais, addLocal } = useLocais();
   const { addTratamento } = useTratamentos();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -217,17 +218,16 @@ function EditarExameContent() {
     }
   };
 
-  const handleCreateTratamento = async () => {
-    if (!newTratamentoName.trim()) return;
+    const handleCreateTratamento = async () => {
+    if (!newTratamentoName.trim() || !personId) return;
     setIsSavingTratamento(true);
     trigger("vibrate");
     try {
       const newId = await addTratamento({
-        person_id: personId,
         nome: newTratamentoName.trim(),
         status: "ativo",
       });
-      setTratamentosSelecionados((prev) => [...prev, newId]);
+      setTratamentosSelecionados((prev: string[]) => [...prev, newId]);
       trigger("success");
       showToast("Tratamento cadastrado", "success");
       setIsCreatingTratamento(false);
@@ -239,6 +239,7 @@ function EditarExameContent() {
       setIsSavingTratamento(false);
     }
   };
+
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -256,28 +257,35 @@ function EditarExameContent() {
       return;
     }
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
-        if (!dataSolicitacaoISO) throw new Error("Data inválida");
+        try {
+          const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
+          if (!dataSolicitacaoISO) throw new Error("Data inválida");
 
-        const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
+          const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
 
-        await examesRepository.update(id, {
-          person_id: personId || undefined,
-          nome: nome.trim(),
-          laboratorio: laboratorio.trim() || undefined,
-          local_id: localId || undefined,
-          medico: medico.trim() || undefined,
-          medico_id: medicoId || undefined,
-          data: dataSolicitacaoISO,
-          horario: horario || undefined,
-          data_retorno: dataRetornoISO,
-          motivo: motivo.trim() || undefined,
-          observacoes: observacoes.trim() || undefined,
-          anexo_url: anexoUrl.trim() || undefined,
-          tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-        });
+          await examesRepository.update(id, {
+            person_id: personId || undefined,
+            nome: nome.trim(),
+            laboratorio: laboratorio.trim() || undefined,
+            local_id: localId || undefined,
+            medico: medico.trim() || undefined,
+            medico_id: medicoId || undefined,
+            data: dataSolicitacaoISO,
+            horario: horario || undefined,
+            data_retorno: dataRetornoISO,
+            motivo: motivo.trim() || undefined,
+            observacoes: observacoes.trim() || undefined,
+            anexo_url: anexoUrl.trim() || undefined,
+            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+          });
+        } finally {
+          isSubmitLocked.current = false;
+        }
       },
       {
         successMessage: "Exame atualizado com sucesso",

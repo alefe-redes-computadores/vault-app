@@ -1,7 +1,7 @@
 // app/contas/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
@@ -27,6 +27,7 @@ export default function NewAccountPage() {
   const router = useRouter();
   const { addCard } = useCards();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -61,17 +62,24 @@ export default function NewAccountPage() {
       return;
     }
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        // O repositório/hook cuida de id, user_id, created_at, updated_at, synced e enfileiramento
-        await addCard({
-          title: formData.title.trim(),
-          bank_name: formData.bank_name.trim(),
-          type: formData.type,
-          agency: formData.agency.trim(),
-          account: formData.account.trim(),
-          notes: formData.notes.trim(),
-        });
+        try {
+          // O repositório/hook cuida de id, user_id, created_at, updated_at, synced e enfileiramento
+          await addCard({
+            title: formData.title.trim(),
+            bank_name: formData.bank_name.trim(),
+            type: formData.type,
+            agency: formData.agency.trim(),
+            account: formData.account.trim(),
+            notes: formData.notes.trim(),
+          });
+        } finally {
+          isSubmitLocked.current = false;
+        }
       },
       {
         successMessage: "Conta salva com sucesso",

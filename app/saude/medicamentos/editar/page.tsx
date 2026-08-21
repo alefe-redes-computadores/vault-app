@@ -36,8 +36,12 @@ import {
   TrendingUp,
   HeartPulse,
   Eraser,
+  FileSearch,
+  Check,
 } from "lucide-react";
 
+import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { usePersons } from "@/hooks/usePersons";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
@@ -166,8 +170,11 @@ function EditarMedicamentoContent() {
   const { hospitais: hospitaisLocais } = useHospitais();
   const { locais } = useLocais();
 
+  const cids = useLiveQuery(() => db.cids?.toArray() || []) ?? [];
+
   const medicamentosAtivos = medicamentosList.filter((m) => m.id !== id && m.status !== "descontinuado");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isSubmitLocked = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -200,6 +207,9 @@ function EditarMedicamentoContent() {
   const [proximaRenovacaoTexto, setProximaRenovacaoTexto] = useState("");
   const [renovacaoEditadaManualmente, setRenovacaoEditadaManualmente] = useState(false);
   const [observacoes, setObservacoes] = useState("");
+
+  const [cidIds, setCidIds] = useState<string[]>([]);
+  const [isCidModalOpen, setIsCidModalOpen] = useState(false);
 
   const [dosagemOriginal, setDosagemOriginal] = useState("");
   const [novaDosagem, setNovaDosagem] = useState("");
@@ -271,6 +281,8 @@ function EditarMedicamentoContent() {
         setLocalId(item.local_id || "");
         setFarmaciaNome(item.farmacia || "");
         setFarmaciaId(item.farmacia_id || "");
+        
+        setCidIds(item.cid_ids || (item.cid_id ? [item.cid_id] : []));
 
         if (item.preco !== undefined && item.preco !== null) {
           const precoCents = Math.round(item.preco * 100).toString();
@@ -476,6 +488,9 @@ function EditarMedicamentoContent() {
     if (!validate()) return;
     trigger("vibrate");
 
+    if (isSubmitLocked.current || isSaving) return;
+    isSubmitLocked.current = true;
+
     runSave(
       async () => {
         const horariosFiltrados = horarios.filter((h) => h.trim());
@@ -511,29 +526,29 @@ function EditarMedicamentoContent() {
             });
           }
         } else if (!documentId && (dataReceitaISO || attachment)) {
-  if (!user) throw new Error('Usuário não autenticado');
-  const newDoc = await documentsRepository.create({
-    user_id: user.id,
-    person_id: personId,
-    category_id: "saude",
-    type: "receita",
-    title: `Receita — ${nome.trim()}`,
-    description: observacoes.trim() || undefined,
-    metadata: {
-      medication: nome.trim(),
-      dosage: dosagemFinal,
-      prescription_date: dataReceitaISO,
-      renewal_date: proximaRenovacaoISO,
-      tratamento_ids: tratamentosSelecionados,
-      tipo_receita: tipoReceita,
-      formato,
-      status: "ativo",
-    },
-    attachments: attachment ? [attachment] : [],
-    is_favorite: false,
-  });
-  setDocumentId(newDoc);
-}
+          if (!user) throw new Error('Usuário não autenticado');
+          const newDoc = await documentsRepository.create({
+            user_id: user.id,
+            person_id: personId,
+            category_id: "saude",
+            type: "receita",
+            title: `Receita — ${nome.trim()}`,
+            description: observacoes.trim() || undefined,
+            metadata: {
+              medication: nome.trim(),
+              dosage: dosagemFinal,
+              prescription_date: dataReceitaISO,
+              renewal_date: proximaRenovacaoISO,
+              tratamento_ids: tratamentosSelecionados,
+              tipo_receita: tipoReceita,
+              formato,
+              status: "ativo",
+            },
+            attachments: attachment ? [attachment] : [],
+            is_favorite: false,
+          });
+          setDocumentId(newDoc);
+        }
 
         if (localFile && user && attachment && documentId) {
           const { url, error } = await uploadFile(user.id, localFile, "saude");
@@ -549,6 +564,7 @@ function EditarMedicamentoContent() {
           document_id: documentId || undefined,
           nome: nome.trim(),
           dosagem: dosagemFinal,
+          cid_ids: cidIds,
           formato,
           cores,
           tipo_uso: tipoUso,
@@ -597,7 +613,9 @@ function EditarMedicamentoContent() {
         errorMessage: "Erro ao salvar alterações",
         goBackOnSuccess: editIntent === "menu",
       }
-    );
+    ).finally(() => {
+      isSubmitLocked.current = false;
+    });
   };
 
   const handleDelete = async () => {
@@ -1017,7 +1035,7 @@ function EditarMedicamentoContent() {
                             maxLength={5}
                             value={primeiroHorario}
                             onChange={(e) => setPrimeiroHorario(handleTimeMask(e.target.value))}
-                            className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3.5 text-ink-primary font-mono text-sm outline-none focus:border-ice/50 h-12"
+                            className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50 h-12"
                           />
                         </div>
                       </div>
@@ -1325,6 +1343,26 @@ function EditarMedicamentoContent() {
                       error={errors.nome}
                     />
                   </div>
+
+                  {/* CAMPO DE CID DINÂMICO MODIFICADO - SELEÇÃO MÚLTIPLA E BOTÃO NO MODAL */}
+                  <div>
+                    <label className="block text-sm font-medium text-ink-primary mb-1.5">Diagnóstico / CID Relacionado</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        setIsCidModalOpen(true);
+                      }}
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left transition-colors hover:border-ice/50"
+                    >
+                      <span className="flex items-center gap-2 font-medium text-ink-primary truncate">
+                        <FileSearch size={16} className="text-ice shrink-0" />
+                        {cidIds.length > 0 ? `${cidIds.length} CID(s) vinculado(s)` : "Vincular CID..."}
+                      </span>
+                      <span className="text-xs font-bold text-ice shrink-0 ml-2">Gerenciar</span>
+                    </button>
+                  </div>
+
                   <button
                     onClick={() => setIsTratamentoModalOpen(true)}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl border border-surface-border/50 bg-void py-3.5 text-sm font-bold text-ink-primary transition-colors hover:border-ice/50 shadow-inner"
@@ -1365,6 +1403,45 @@ function EditarMedicamentoContent() {
           </AnimatePresence>
           {(editIntent === "menu" || !hasChanges) && <div className="h-10" />}
         </div>
+
+        <SelectionModal<any>
+          isOpen={isCidModalOpen}
+          onClose={() => setIsCidModalOpen(false)}
+          title="Selecionar CID"
+          items={cids}
+          getItemId={(i) => i.id!}
+          getItemLabel={(i) => `${i.codigo} - ${i.descricao}`}
+          onCreateNew={() => {
+            setIsCidModalOpen(false);
+            router.push("/saude/cids/novo");
+          }}
+          createNewLabel="Cadastrar Novo CID"
+          onSelect={(item) => {
+            trigger("vibrate");
+            setCidIds((prev) => {
+              if (prev.includes(item.id!)) {
+                return prev.filter((id) => id !== item.id!);
+              } else {
+                return [...prev, item.id!];
+              }
+            });
+            markChanged();
+          }}
+          renderItem={(item) => {
+             const isSelected = cidIds.includes(item.id!);
+             return (
+              <div className="flex items-center gap-3 w-full">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${isSelected ? "bg-emerald-400 text-void" : "bg-ice/10 text-ice"}`}>
+                  {isSelected ? <Check size={18} /> : <FileText size={18} />}
+                </div>
+                <div className="text-left min-w-0">
+                  <p className={`font-semibold ${isSelected ? "text-emerald-400" : "text-ink-primary"}`}>{item.codigo}</p>
+                  <p className="text-xs text-ink-muted truncate">{item.descricao}</p>
+                </div>
+              </div>
+             );
+          }}
+        />
 
         <ConfirmationModal
           isOpen={showDesativarEstoqueModal}
@@ -1443,9 +1520,9 @@ function EditarMedicamentoContent() {
           getItemLabel={(i) => i.nome}
           enableQuickCreate
           onQuickCreate={async (name) => {
-            if (!user) throw new Error('Usuário não       autenticado');
+            if (!user) throw new Error('Usuário não autenticado');
             const newHosp = await hospitaisRepository.create({ user_id: user.id, nome: name, tipo: "hospital" });
-            return { id: newHosp, nome: name, tipo: "hospital" } as Hospital;
+            return { id: newHosp, nome: name, tipo: "hospital" } as any;
           }}
           onSelect={(item) => {
             setHospitalId(item.id!);
@@ -1466,7 +1543,7 @@ function EditarMedicamentoContent() {
           )}
         />
 
-        <SelectionModal<LocalSaude>
+        <SelectionModal<any>
           isOpen={isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}
           title="Selecionar Local / Posto"
@@ -1477,7 +1554,7 @@ function EditarMedicamentoContent() {
           onQuickCreate={async (name) => {
             if (!user) throw new Error('Usuário não autenticado');
             const newLocal = await locaisRepository.create({ user_id: user.id, nome: name, tipo: "outro" });
-            return { id: newLocal, nome: name, tipo: "outro" } as LocalSaude;
+            return { id: newLocal, nome: name, tipo: "outro" };
           }}
           onSelect={(item) => {
             setLocalId(item.id!);

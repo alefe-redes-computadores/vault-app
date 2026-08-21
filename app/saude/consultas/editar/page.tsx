@@ -1,7 +1,7 @@
 // app/saude/consultas/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -74,6 +74,7 @@ function EditarConsultaContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
@@ -133,28 +134,35 @@ function EditarConsultaContent() {
     }
     if (!id) return;
 
-    await run(
-      async () => {
-        const dataISO = parseDateToISO(dataDisplay);
-        if (!dataISO) throw new Error("Data inválida");
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
 
-        await consultasRepository.update(id, {
-          medico_id: medicoId,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          data: dataISO,
-          horario: horario || undefined,
-          status,
-          motivo: motivo.trim() || undefined,
-          observacoes: observacoes.trim() || undefined,
-        });
-      },
-      {
-        successMessage: "Consulta atualizada com sucesso",
-        errorMessage: "Erro ao atualizar consulta",
-        goBackOnSuccess: true,
-      }
-    );
+    try {
+      await run(
+        async () => {
+          const dataISO = parseDateToISO(dataDisplay);
+          if (!dataISO) throw new Error("Data inválida");
+
+          await consultasRepository.update(id, {
+            medico_id: medicoId,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            data: dataISO,
+            horario: horario || undefined,
+            status,
+            motivo: motivo.trim() || undefined,
+            observacoes: observacoes.trim() || undefined,
+          });
+        },
+        {
+          successMessage: "Consulta atualizada com sucesso",
+          errorMessage: "Erro ao atualizar consulta",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   if (isLoading) return <DetailSkeleton />;

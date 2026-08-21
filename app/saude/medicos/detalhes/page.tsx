@@ -112,60 +112,78 @@ function DetalhesMedicoContent() {
 
   const { deleteMedico } = useMedicos();
 
+  // Queries base
   const consultas = useLiveQuery(
     () => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as Consulta[])),
     [id]
-  ) || [];
+  ) ?? [];
   const cirurgias = useLiveQuery(
     () => (id ? db.cirurgias.where("medico_id").equals(id).toArray() : Promise.resolve([] as Cirurgia[])),
     [id]
-  ) || [];
+  ) ?? [];
   const medicamentos = useLiveQuery(
     () => (id ? db.medicamentos.where("medico_id").equals(id).toArray() : Promise.resolve([] as Medicamento[])),
     [id]
-  ) || [];
+  ) ?? [];
   const renovacoes = useLiveQuery(
     () => (id ? db.renovacoes.where("medico_id").equals(id).reverse().sortBy("data") : Promise.resolve([] as Renovacao[])),
     [id]
-  ) || [];
+  ) ?? [];
   const exames = useLiveQuery(
     () => (id ? db.exames.where("medico_id").equals(id).toArray() : Promise.resolve([] as Exame[])),
     [id]
-  ) || [];
+  ) ?? [];
 
+  // Proteção contra loops infinitos: convertendo dependências para strings
+  const medIdsStr = useMemo(() => medicamentos.map((m) => m.id).filter(Boolean).sort().join(','), [medicamentos]);
   const doseLogs = useLiveQuery(() => {
-    const validMedIds = medicamentos.map((m) => m.id).filter(Boolean) as string[];
+    const validMedIds = medIdsStr ? medIdsStr.split(',') : [];
     if (validMedIds.length === 0) return Promise.resolve([] as DoseLog[]);
     return db.doseLogs.where('medicamento_id').anyOf(validMedIds).toArray();
-  }, [medicamentos]) || [];
+  }, [medIdsStr]) ?? [];
 
-  const estabelecimentosIds = useMemo(() => {
+  const estabelecimentosIdsStr = useMemo(() => {
     const ids = new Set<string>();
     consultas.forEach((c) => c.hospital_id && ids.add(c.hospital_id));
     cirurgias.forEach((c) => c.hospital_id && ids.add(c.hospital_id));
-    return Array.from(ids);
+    return Array.from(ids).sort().join(',');
   }, [consultas, cirurgias]);
 
   const estabelecimentos = useLiveQuery(() => {
-    if (estabelecimentosIds.length === 0) return Promise.resolve([] as Hospital[]);
-    return db.hospitais.where('id').anyOf(estabelecimentosIds).toArray();
-  }, [estabelecimentosIds]) || [];
+    const ids = estabelecimentosIdsStr ? estabelecimentosIdsStr.split(',') : [];
+    if (ids.length === 0) return Promise.resolve([] as Hospital[]);
+    return db.hospitais.where('id').anyOf(ids).toArray();
+  }, [estabelecimentosIdsStr]) ?? [];
 
-  const tratamentosIds = useMemo(() => {
+  const tratamentosIdsStr = useMemo(() => {
     const ids = new Set<string>();
     medicamentos.forEach((m) => {
       if (m.tratamento_ids && Array.isArray(m.tratamento_ids)) {
         m.tratamento_ids.forEach((tid) => ids.add(tid));
       }
     });
-    return Array.from(ids);
+    return Array.from(ids).sort().join(',');
   }, [medicamentos]);
 
   const tratamentos = useLiveQuery(() => {
-    if (tratamentosIds.length === 0) return Promise.resolve([] as Tratamento[]);
-    return db.tratamentos.where('id').anyOf(tratamentosIds).toArray();
-  }, [tratamentosIds]) || [];
+    const ids = tratamentosIdsStr ? tratamentosIdsStr.split(',') : [];
+    if (ids.length === 0) return Promise.resolve([] as Tratamento[]);
+    return db.tratamentos.where('id').anyOf(ids).toArray();
+  }, [tratamentosIdsStr]) ?? [];
 
+  const medicoHospIdsStr = useMemo(() => (medico?.hospital_ids || []).sort().join(','), [medico?.hospital_ids]);
+  const hospitaisVinculados = useLiveQuery(() => {
+    const ids = medicoHospIdsStr ? medicoHospIdsStr.split(',') : [];
+    if (ids.length === 0) return Promise.resolve([] as Hospital[]);
+    return db.hospitais.where('id').anyOf(ids).toArray();
+  }, [medicoHospIdsStr]) ?? [];
+
+  const documentosDoMedico = useLiveQuery(
+    () => (id ? db.documents.where("medico_id").equals(id).reverse().sortBy("created_at") : Promise.resolve([] as Document[])),
+    [id]
+  ) ?? [];
+
+  // Cálculos de insights
   const proximaConsulta = useMemo(() => {
     const futuras = consultas.filter((c) => isDateInFuture(c.data));
     if (futuras.length === 0) return null;
@@ -227,20 +245,19 @@ function DetalhesMedicoContent() {
 
   useEffect(() => {
     if (!id) {
-      router.push("/saude/medicos");
+      router.replace("/saude/medicos");
       return;
     }
     db.medicos.get(id).then((medData) => {
       if (medData) {
         setMedico(medData);
       } else {
-        router.push("/saude/medicos");
+        router.replace("/saude/medicos");
       }
       setIsLoading(false);
     });
   }, [id, router]);
 
-  // Previne hydration mismatch: só renderiza o conteúdo depois de montado
   if (!mounted) return <DetailSkeleton />;
 
   const handleDelete = async () => {
@@ -260,20 +277,8 @@ function DetalhesMedicoContent() {
   if (!medico) return null;
 
   const medicamentosAtivos = medicamentos.filter((m) => m.status === "ativo");
-
-  // Separando documentos de prescrições e laudos
-  const documentosDoMedico = useLiveQuery(
-    () => (id ? db.documents.where("medico_id").equals(id).reverse().sortBy("created_at") : Promise.resolve([] as Document[])),
-    [id]
-  ) || [];
-
   const prescricoes = documentosDoMedico.filter((doc) => doc.type === "receita");
   const laudosRelatorios = documentosDoMedico.filter((doc) => doc.type === "laudo" || doc.type === "encaminhamento" || doc.type === "exame_imagem" || doc.type === "exame_sangue");
-
-  const hospitaisVinculados = useLiveQuery(() => {
-    if (!medico?.hospital_ids || medico.hospital_ids.length === 0) return Promise.resolve([] as Hospital[]);
-    return db.hospitais.where('id').anyOf(medico.hospital_ids).toArray();
-  }, [medico?.hospital_ids]) || [];
 
   return (
     <PageTransition>

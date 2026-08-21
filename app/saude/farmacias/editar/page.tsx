@@ -1,7 +1,7 @@
 // app/saude/farmacias/editar/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Building2, Trash2, Pill, ExternalLink } from "lucide-react";
@@ -39,6 +39,7 @@ function EditarFarmaciaContent() {
   const id = searchParams.get("id") || "";
   const { medicamentos = [] } = useMedicamentos();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -89,21 +90,28 @@ function EditarFarmaciaContent() {
       return;
     }
 
-    await run(
-      async () => {
-        // Repositório cuida de updated_at, synced e enfileiramento
-        await farmaciasRepository.update(id, {
-          nome: nome.trim(),
-          endereco: endereco.trim() || undefined,
-          telefone: telefone.trim() || undefined,
-        });
-      },
-      {
-        successMessage: "Farmácia atualizada com sucesso",
-        errorMessage: "Erro ao atualizar farmácia",
-        goBackOnSuccess: true,
-      }
-    );
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
+    try {
+      await run(
+        async () => {
+          // Repositório cuida de updated_at, synced e enfileiramento
+          await farmaciasRepository.update(id, {
+            nome: nome.trim(),
+            endereco: endereco.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+          });
+        },
+        {
+          successMessage: "Farmácia atualizada com sucesso",
+          errorMessage: "Erro ao atualizar farmácia",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   const handleDelete = async () => {

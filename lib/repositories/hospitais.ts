@@ -13,7 +13,7 @@ export const hospitaisRepository = {
     return db.hospitais.get(id);
   },
 
-  async create(data: Omit<Hospital, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string; user_id?: string }) {
+  async create(data: Omit<Hospital, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string; user_id?: string; person_id?: string }) {
     if (process.env.NODE_ENV === "development" && "user_id" in data) {
       console.warn("[hospitaisRepository] user_id recebido do caller será ignorado — repositório injeta internamente.");
     }
@@ -29,6 +29,7 @@ export const hospitaisRepository = {
     const hospitalCompleto: Hospital = {
       ...hospitalData,
       user_id: user.id,
+      person_id: data.person_id,
       created_at: now,
       updated_at: now,
       synced: false,

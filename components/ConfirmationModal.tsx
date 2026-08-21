@@ -1,5 +1,7 @@
+// components/ConfirmationModal.tsx
 "use client";
 
+import { ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "./ui/Button";
@@ -9,11 +11,12 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: string | ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   isLoading?: boolean;
   type?: "danger" | "warning" | "info";
+  showActions?: boolean;
 }
 
 export function ConfirmationModal({
@@ -26,6 +29,7 @@ export function ConfirmationModal({
   cancelLabel = "Cancelar",
   isLoading = false,
   type = "danger",
+  showActions = true,
 }: ConfirmationModalProps) {
   const tones = {
     danger: {
@@ -88,27 +92,28 @@ export function ConfirmationModal({
                 {message}
               </p>
             </div>
+            {showActions !== false && (
+              <div className="mt-6 flex gap-3">
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={onClose}
+                  disabled={isLoading}
+                >
+                  {cancelLabel}
+                </Button>
 
-            <div className="mt-6 flex gap-3">
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={onClose}
-                disabled={isLoading}
-              >
-                {cancelLabel}
-              </Button>
-
-              <Button
-                variant={type === "danger" ? "danger" : "primary"}
-                className="flex flex-1 items-center justify-center gap-2"
-                onClick={onConfirm}
-                disabled={isLoading}
-              >
-                {isLoading && <Loader2 size={16} className="animate-spin" />}
-                {isLoading ? "Aguarde..." : confirmLabel}
-              </Button>
-            </div>
+                <Button
+                  variant={type === "danger" ? "danger" : "primary"}
+                  className="flex flex-1 items-center justify-center gap-2"
+                  onClick={onConfirm}
+                  disabled={isLoading}
+                >
+                  {isLoading && <Loader2 size={16} className="animate-spin" />}
+                  {isLoading ? "Aguarde..." : confirmLabel}
+                </Button>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}

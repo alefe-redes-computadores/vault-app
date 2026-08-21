@@ -146,6 +146,7 @@ export default function NovoDocumentoPage() {
   const { user } = useAuth();
   const persons = usePersons() as Person[];
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -374,82 +375,89 @@ export default function NovoDocumentoPage() {
     trigger("vibrate");
     if (!validateStep(3) || !user?.id) return;
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        setUploadProgress(0);
-        const cleanMetadata: Record<string, string> = { ...formData.metadata };
+        try {
+          setUploadProgress(0);
+          const cleanMetadata: Record<string, string> = { ...formData.metadata };
 
-        fields.forEach((field) => {
-          if (field.type === "date" && cleanMetadata[field.key]) {
-            const iso = parseDateToISO(cleanMetadata[field.key]);
-            if (iso) cleanMetadata[field.key] = iso;
-          }
-        });
+          fields.forEach((field) => {
+            if (field.type === "date" && cleanMetadata[field.key]) {
+              const iso = parseDateToISO(cleanMetadata[field.key]);
+              if (iso) cleanMetadata[field.key] = iso;
+            }
+          });
 
-        customFields.forEach((cf) => {
-          if (cf.label.trim()) cleanMetadata[cf.label.trim()] = cf.value.trim();
-        });
+          customFields.forEach((cf) => {
+            if (cf.label.trim()) cleanMetadata[cf.label.trim()] = cf.value.trim();
+          });
 
-        let finalAttachments = [...formData.attachments];
+          let finalAttachments = [...formData.attachments];
 
-        // Upload de anexos, se houver
-        if (localFiles.length > 0) {
-          setUploadProgress(10);
-          const uploadedAttachments: Attachment[] = [];
+          // Upload de anexos, se houver
+          if (localFiles.length > 0) {
+            setUploadProgress(10);
+            const uploadedAttachments: Attachment[] = [];
 
-          for (let i = 0; i < localFiles.length; i++) {
-            const file = localFiles[i];
-            const attachment = formData.attachments[i];
-            if (!attachment) continue;
+            for (let i = 0; i < localFiles.length; i++) {
+              const file = localFiles[i];
+              const attachment = formData.attachments[i];
+              if (!attachment) continue;
 
-            const { url, error } = await uploadFile(user.id, file, formData.category_id);
-            if (error) {
-              console.error("Erro no upload:", error);
-              continue;
+              const { url, error } = await uploadFile(user.id, file, formData.category_id);
+              if (error) {
+                console.error("Erro no upload:", error);
+                continue;
+              }
+
+              uploadedAttachments.push({ ...attachment, url });
+              setUploadProgress(Math.round(((i + 1) / localFiles.length) * 80));
             }
 
-            uploadedAttachments.push({ ...attachment, url });
-            setUploadProgress(Math.round(((i + 1) / localFiles.length) * 80));
+            if (uploadedAttachments.length > 0) {
+              finalAttachments = formData.attachments.map((att) => {
+                const updated = uploadedAttachments.find((u) => u.id === att.id);
+                return updated || att;
+              });
+              formData.attachments.forEach((att) => {
+                if (att.url.startsWith("blob:")) URL.revokeObjectURL(att.url);
+              });
+              setLocalFiles([]);
+            }
           }
 
-          if (uploadedAttachments.length > 0) {
-            finalAttachments = formData.attachments.map((att) => {
-              const updated = uploadedAttachments.find((u) => u.id === att.id);
-              return updated || att;
-            });
-            formData.attachments.forEach((att) => {
-              if (att.url.startsWith("blob:")) URL.revokeObjectURL(att.url);
-            });
-            setLocalFiles([]);
+          // 🚀 USANDO O REPOSITÓRIO COM user_id
+          await documentsRepository.create({
+            user_id: user.id,
+            person_id: formData.person_id,
+            category_id: formData.category_id,
+            type: formData.type,
+            title: formData.title.trim(),
+            description: formData.description.trim() || undefined,
+            metadata: cleanMetadata,
+            attachments: finalAttachments,
+            is_favorite: false,
+            vault_id: formData.vault_id || undefined,
+          });
+
+          // Agendamento de notificação de vencimento (opcional)
+          if (cleanMetadata.expiry_date) {
+            await scheduleDocumentExpiryNotification(
+              crypto.randomUUID(),
+              formData.title,
+              cleanMetadata.expiry_date,
+              CATEGORIES[formData.category_id].name,
+              30
+            );
           }
+
+          router.push("/");
+        } finally {
+          isSubmitLocked.current = false;
         }
-
-        // 🚀 USANDO O REPOSITÓRIO COM user_id
-        await documentsRepository.create({
-          user_id: user.id,
-          person_id: formData.person_id,
-          category_id: formData.category_id,
-          type: formData.type,
-          title: formData.title.trim(),
-          description: formData.description.trim() || undefined,
-          metadata: cleanMetadata,
-          attachments: finalAttachments,
-          is_favorite: false,
-          vault_id: formData.vault_id || undefined,
-        });
-
-        // Agendamento de notificação de vencimento (opcional)
-        if (cleanMetadata.expiry_date) {
-          await scheduleDocumentExpiryNotification(
-            crypto.randomUUID(),
-            formData.title,
-            cleanMetadata.expiry_date,
-            CATEGORIES[formData.category_id].name,
-            30
-          );
-        }
-
-        router.push("/");
       },
       {
         successMessage: "Documento salvo com sucesso",

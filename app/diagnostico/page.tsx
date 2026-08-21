@@ -1,3 +1,4 @@
+// app/diagnostico/page.tsx
 "use client";
 
 import { useState, useCallback } from "react";
@@ -29,27 +30,26 @@ interface TableCheck {
   error?: string;
 }
 
-// 1. LISTA ATUALIZADA (SEM CIDs e COM Consultas/Cirurgias)
-const TABLES: { key: string; label: string }[] = [
-  { key: "persons", label: "Pessoas" },
-  { key: "medicos", label: "Médicos" },
-  { key: "hospitais", label: "Hospitais" },
-  { key: "locais", label: "Locais/Postos" },
-  { key: "laboratorios", label: "Laboratórios" },
-  { key: "farmacias", label: "Farmácias" },
-  { key: "instituicoes", label: "Instituições" },
-  { key: "tratamentos", label: "Tratamentos" },
-  { key: "consultas", label: "Consultas" },
-  { key: "cirurgias", label: "Cirurgias" },
-  { key: "exames", label: "Exames" },
-  { key: "medicamentos", label: "Medicamentos" },
-  { key: "renovacoes", label: "Renovações" },
-  { key: "doseLogs", label: "Registro de Doses" },
-  { key: "documents", label: "Documentos" },
-  { key: "anexos_clinicos", label: "Anexos Clínicos" },
-  { key: "credentials", label: "Senhas e Acessos" },
-  { key: "cards", label: "Contas e Cartões" },
-  { key: "vaults", label: "Cofres" },
+// 1. LISTA CORRIGIDA COM AS CHAVES REAIS DO DEXIE E SUPABASE
+const TABLES: { key: string; remoteKey: string; label: string }[] = [
+  { key: "persons", remoteKey: "persons", label: "Pessoas" },
+  { key: "medicos", remoteKey: "medicos", label: "Médicos" },
+  { key: "hospitais", remoteKey: "hospitais", label: "Hospitais" },
+  { key: "locais", remoteKey: "locais", label: "Locais/Postos" },
+  { key: "farmacias", remoteKey: "farmacias", label: "Farmácias" },
+  { key: "instituicoes", remoteKey: "instituicoes", label: "Instituições" },
+  { key: "tratamentos", remoteKey: "tratamentos", label: "Tratamentos" },
+  { key: "consultas", remoteKey: "consultas", label: "Consultas" },
+  { key: "cirurgias", remoteKey: "cirurgias", label: "Cirurgias" },
+  { key: "exames", remoteKey: "exames", label: "Exames" },
+  { key: "medicamentos", remoteKey: "medicamentos", label: "Medicamentos" },
+  { key: "renovacoes", remoteKey: "renovacoes", label: "Renovações" },
+  { key: "doseLogs", remoteKey: "doseLogs", label: "Registro de Doses" },
+  { key: "documents", remoteKey: "documents", label: "Documentos" },
+  { key: "anexos_clinicos", remoteKey: "anexos_clinicos", label: "Anexos Clínicos" },
+  { key: "credentials", remoteKey: "credentials", label: "Senhas e Acessos" },
+  { key: "bankCards", remoteKey: "cards", label: "Contas e Cartões" },
+  { key: "vaults", remoteKey: "vaults", label: "Cofres" },
 ];
 
 export default function DiagnosticoPage() {
@@ -59,7 +59,7 @@ export default function DiagnosticoPage() {
   const { showToast } = useToast();
 
   const [checks, setChecks] = useState<TableCheck[]>(
-    TABLES.map((t) => ({ ...t, local: null, remote: null }))
+    TABLES.map((t) => ({ key: t.key, label: t.label, local: null, remote: null }))
   );
   const [isChecking, setIsChecking] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
@@ -78,14 +78,18 @@ export default function DiagnosticoPage() {
       let error: string | undefined;
 
       try {
-        local = await (db as any)[table.key].where("user_id").equals(user.id).count();
+        if (db && (db as any)[table.key]) {
+          local = await (db as any)[table.key].where("user_id").equals(user.id).count();
+        } else {
+          error = "tabela local não encontrada";
+        }
       } catch (err: any) {
         error = `local: ${err?.message || "erro"}`;
       }
 
       try {
         const { count, error: supError } = await supabase
-          .from(table.key)
+          .from(table.remoteKey)
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id);
 
@@ -98,7 +102,7 @@ export default function DiagnosticoPage() {
         error = `${error ? error + " · " : ""}nuvem: ${err?.message || "erro"}`;
       }
 
-      results.push({ ...table, local, remote, error });
+      results.push({ key: table.key, label: table.label, local, remote, error });
     }
 
     setChecks(results);
@@ -107,7 +111,6 @@ export default function DiagnosticoPage() {
     trigger("success");
   }, [user, trigger]);
 
-  // Função de Push Direto atualizada com a ordem correta e sem CIDs
   const forcePushAll = async () => {
     if (!user?.id) return;
     trigger("vibrate");
@@ -117,44 +120,39 @@ export default function DiagnosticoPage() {
     let errorMsg = "";
 
     try {
-      const tablesToPush = [
-        "persons", "medicos", "hospitais", "locais", "laboratorios", "instituicoes", "tratamentos",
-        "documents", "exames", "medicamentos", "renovacoes", "doseLogs",
-        "consultas", "cirurgias", "anexos_clinicos",
-        "vaults", "credentials", "cards"
-      ];
-      
       let count = 0;
 
-      for (const tableName of tablesToPush) {
-        const items = await (db as any)[tableName].toArray();
+      for (const table of TABLES) {
+        if (db && (db as any)[table.key]) {
+          const items = await (db as any)[table.key].toArray();
 
-        if (items.length > 0) {
-          const { error } = await supabase.from(tableName).upsert(items);
+          if (items.length > 0) {
+            const { error } = await supabase.from(table.remoteKey).upsert(items);
 
-          if (error) {
-            errorMsg = `Tabela ${tableName}: ${error.message || error.details}`;
-            break;
-          } else {
-            count += items.length;
-            for (const item of items) {
-              await (db as any)[tableName].update(item.id, { synced: true });
+            if (error) {
+              errorMsg = `Tabela ${table.label}: ${error.message || error.details}`;
+              break;
+            } else {
+              count += items.length;
+              for (const item of items) {
+                if (item.id) {
+                  await (db as any)[table.key].update(item.id, { synced: true });
+                }
+              }
             }
           }
         }
       }
 
       if (errorMsg) {
-        alert(`🚨 O Supabase bloqueou o envio!\n\nMotivo Exato:\n${errorMsg}\n\nTire um print dessa tela e me mande!`);
+        alert(`🚨 O Supabase bloqueou o envio!\n\nMotivo Exato:\n${errorMsg}`);
         showToast("Erro direto da nuvem", "error");
       } else {
         showToast(`Sucesso absoluto! ${count} itens subiram pra nuvem.`, "success");
         setTimeout(() => runCheck(), 1500);
       }
-
     } catch (error: any) {
       alert(`🚨 Erro Crítico: ${error?.message}`);
-      setIsPushing(false);
     } finally {
       setIsPushing(false);
     }
@@ -304,7 +302,7 @@ export default function DiagnosticoPage() {
 
           <div className="rounded-[22px] border border-surface-border/40 bg-surface/50 px-4 py-3.5">
             <p className="text-xs leading-5 text-ink-muted">
-              Use o botão <span className="font-semibold text-violet-300">Forçar Upload</span> se o aparelho tiver dados que não sobem para a nuvem. Ele burla a fila de sincronização e avisa o erro exato caso o banco rejeite os dados.
+              Use o botão <span className="font-semibold text-violet-300">Forçar Upload</span> para enviar os dados locais direto ao Supabase e alinhar a contagem com a nuvem.
             </p>
           </div>
         </section>

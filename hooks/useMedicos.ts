@@ -1,18 +1,21 @@
+// hooks/useMedicos.ts
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { medicosRepository } from "@/lib/repositories/medicos";
 import { useAuth } from "./useAuth";
+import { useActivePersonId } from "./useActivePersonId";
 import { useCallback } from "react";
 import type { Medico } from "@/lib/types";
 
 export function useMedicos() {
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
 
   const medicos = useLiveQuery(
-    () => db.medicos.where('user_id').equals(user?.id || '').toArray(),
-    [user?.id],
+    () => activePersonId ? db.medicos.where('person_id').equals(activePersonId).toArray() : [],
+    [activePersonId],
     []
   );
 
@@ -21,10 +24,15 @@ export function useMedicos() {
   }, []);
 
   const addMedico = useCallback(
-    async (data: Omit<Medico, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return medicosRepository.create({ ...data, user_id: user?.id || "" });
+    async (data: Omit<Medico, 'id' | 'user_id' | 'person_id' | 'created_at' | 'updated_at' | 'synced'>) => {
+      if (!user) throw new Error('Usuário não autenticado');
+      return medicosRepository.create({ 
+        ...data, 
+        user_id: user.id,
+        person_id: activePersonId || undefined 
+      });
     },
-    [user]
+    [user, activePersonId]
   );
 
   const updateMedico = useCallback(async (id: string, data: Partial<Medico>) => {
@@ -35,7 +43,6 @@ export function useMedicos() {
     return medicosRepository.delete(id);
   }, []);
 
-  // ✅ Versão com cascade delete (limpa referências em medicamentos, consultas, cirurgias)
   const deleteMedicoSafe = useCallback(async (id: string) => {
     return medicosRepository.deleteSafe(id);
   }, []);

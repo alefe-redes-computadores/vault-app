@@ -13,7 +13,7 @@ export const tratamentosRepository = {
     return db.tratamentos.get(id);
   },
 
-  async create(data: Omit<Tratamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string; user_id?: string; tratamento_ids?: string[] }) {
+  async create(data: Omit<Tratamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string; user_id?: string; person_id?: string; tratamento_ids?: string[] }) {
     if (process.env.NODE_ENV === "development" && "user_id" in data) {
       console.warn("[tratamentosRepository] user_id recebido do caller será ignorado — repositório injeta internamente.");
     }
@@ -33,6 +33,7 @@ export const tratamentosRepository = {
     const tratamentoCompleto: Tratamento = {
       ...tratamentoData,
       user_id: user.id,
+      person_id: data.person_id,
       created_at: now,
       updated_at: now,
       synced: false,

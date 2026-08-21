@@ -1,7 +1,7 @@
 // app/saude/renovacao/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -103,6 +103,7 @@ function EditarRenovacaoContent() {
 
   const { run: runSave, isSubmitting: isSaving } = useSubmitAction();
   const { run: runDelete, isSubmitting: isDeleting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [renovacao, setRenovacao] = useState<Renovacao | null>(null);
@@ -174,6 +175,9 @@ function EditarRenovacaoContent() {
     trigger("vibrate");
     if (!id) return;
 
+    if (isSubmitLocked.current || isSaving) return;
+    isSubmitLocked.current = true;
+
     runSave(
       async () => {
         const dataISO = parseDateToISO(dataDisplay);
@@ -199,7 +203,9 @@ function EditarRenovacaoContent() {
         errorMessage: "Erro ao atualizar renovação",
         goBackOnSuccess: true,
       }
-    );
+    ).finally(() => {
+      isSubmitLocked.current = false;
+    });
   };
 
   const handleDelete = () => {

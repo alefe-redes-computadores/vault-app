@@ -57,6 +57,8 @@ import {
 import { sugerirRenovacao } from "@/lib/health-insights";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { PendingDosesModal } from "@/components/PendingDosesModal";
+// 🆕 IMPORT DO VERSÍCULO
+import { VersiculoDia } from "@/components/VersiculoDia";
 
 // 🔧 NOVA FUNÇÃO: Filtro por mês atual
 function isMesAtual(dataStr: string): boolean {
@@ -555,7 +557,6 @@ export default function HomePage() {
 
   return (
     <PageTransition>
-      {/* 🔧 CORRIGIDO: alterado de pb-28 para pb-40 para evitar corte atrás do menu inferior */}
       <main className="min-h-screen bg-void pb-40 overflow-y-auto">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <motion.div
@@ -603,6 +604,9 @@ export default function HomePage() {
             </button>
           </motion.div>
         </header>
+
+        {/* 🆕 VERSÍCULO DO DIA */}
+        <VersiculoDia />
 
         <section className="space-y-6 px-5 pt-5">
           {alertasAgrupados.length > 0 && (

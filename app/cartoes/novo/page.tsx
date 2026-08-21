@@ -1,7 +1,7 @@
 // app/cartoes/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
@@ -27,6 +27,7 @@ export default function NewCardPage() {
   const router = useRouter();
   const { addCard } = useCards();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,20 +71,27 @@ export default function NewCardPage() {
       return;
     }
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        await addCard({
-          title: formData.title.trim(),
-          bank_name: formData.bank_name.trim(),
-          type: formData.type,
-          card_number: formData.card_number.trim(),
-          card_holder: formData.card_holder.trim(),
-          expiry_date: formData.expiry_date.trim(),
-          cvv: formData.cvv.trim(),
-          agency: formData.agency.trim(),
-          account: formData.account.trim(),
-          notes: formData.notes.trim(),
-        } as any);
+        try {
+          await addCard({
+            title: formData.title.trim(),
+            bank_name: formData.bank_name.trim(),
+            type: formData.type,
+            card_number: formData.card_number.trim(),
+            card_holder: formData.card_holder.trim(),
+            expiry_date: formData.expiry_date.trim(),
+            cvv: formData.cvv.trim(),
+            agency: formData.agency.trim(),
+            account: formData.account.trim(),
+            notes: formData.notes.trim(),
+          } as any);
+        } finally {
+          isSubmitLocked.current = false;
+        }
       },
       {
         successMessage: "Cartão salvo com sucesso",

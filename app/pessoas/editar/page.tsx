@@ -58,6 +58,7 @@ export default function EditarPessoaPage() {
   const { showToast, showSuccess } = useToast();
   const { activePersonId } = useActivePersonId();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -164,25 +165,32 @@ export default function EditarPessoaPage() {
       return;
     }
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        // Usamos o repositório, que já cuida de:
-        // - updated_at
-        // - synced: false
-        // - enfileirarOperacao
-        await personsRepository.update(id, {
-          name: formData.name.trim(),
-          email: formData.email.trim() || undefined,
-          phone: formData.phone.trim() || undefined,
-          avatar_url: formData.avatar_url || undefined,
-          color: formData.color,
-        });
+        try {
+          // Usamos o repositório, que já cuida de:
+          // - updated_at
+          // - synced: false
+          // - enfileirarOperacao
+          await personsRepository.update(id, {
+            name: formData.name.trim(),
+            email: formData.email.trim() || undefined,
+            phone: formData.phone.trim() || undefined,
+            avatar_url: formData.avatar_url || undefined,
+            color: formData.color,
+          });
 
-        if (isDefault && formData.color) {
-          document.documentElement.style.setProperty("--person-accent", formData.color);
+          if (isDefault && formData.color) {
+            document.documentElement.style.setProperty("--person-accent", formData.color);
+          }
+
+          // Navegação após sucesso (useSubmitAction com goBackOnSuccess)
+        } finally {
+          isSubmitLocked.current = false;
         }
-
-        // Navegação após sucesso (useSubmitAction com goBackOnSuccess)
       },
       {
         successMessage: "Pessoa atualizada com sucesso!",

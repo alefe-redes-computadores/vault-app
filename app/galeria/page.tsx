@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Images,
@@ -14,6 +14,7 @@ import {
   Share,
   X,
   FileText,
+  ArrowLeft,
 } from "lucide-react";
 import { useGaleria, type GalleryItem } from "@/hooks/useGaleria";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -69,6 +70,7 @@ function GalleryEmptyState({
 
 function GaleriaContent() {
   const { trigger } = useHapticFeedback();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { activePersonId } = useActivePersonId();
 
@@ -225,9 +227,21 @@ function GaleriaContent() {
     <main className="min-h-screen bg-void pb-[calc(6rem+env(safe-area-inset-bottom))]">
       <header className="sticky top-0 z-20 bg-void/85 pt-safe backdrop-blur-xl transition-colors duration-300 border-b border-surface-border/30">
         <div className="px-5 pt-6 pb-4 flex items-center justify-between">
-          <h1 className="font-display text-[28px] font-bold text-ink-primary tracking-tight">
-            Galeria
-          </h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                trigger("vibrate");
+                router.back();
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-primary transition-transform active:scale-95"
+              aria-label="Voltar"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <h1 className="font-display text-[24px] font-bold text-ink-primary tracking-tight">
+              Galeria
+            </h1>
+          </div>
           <button
             className="h-11 w-11 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-primary transition-transform active:scale-95"
             aria-label="Buscar"

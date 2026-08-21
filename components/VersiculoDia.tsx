@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, X, Check } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,10 +38,27 @@ function getVersiculoDoDia(lista: Versiculo[]): Versiculo {
   return lista[index];
 }
 
+// 🔧 FUNÇÃO DE SAUDAÇÃO POR HORÁRIO
+function getSaudacao(): { icone: string; mensagem: string } {
+  const hora = new Date().getHours();
+  if (hora >= 5 && hora < 12) {
+    return { icone: "🌤️", mensagem: "Tenha um ótimo dia!" };
+  }
+  if (hora >= 12 && hora < 18) {
+    return { icone: "☀️", mensagem: "Tenha uma ótima tarde!" };
+  }
+  if (hora >= 18 && hora < 23) {
+    return { icone: "🌙", mensagem: "Tenha uma ótima noite!" };
+  }
+  return { icone: "🌙", mensagem: "Tenha uma ótima noite!" };
+}
+
 export function VersiculoDia() {
   const { user } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
 
   // Busca os versículos do Dexie
   const versiculosDb = useLiveQuery<Versiculo[]>(
@@ -68,47 +85,94 @@ export function VersiculoDia() {
   const handleDismiss = () => {
     const today = new Date().toDateString();
     localStorage.setItem(STORAGE_KEY, today);
+    
+    const saudacao = getSaudacao();
+    // Monta a mensagem com quebra de linha manual para melhor legibilidade
+    const msg = `${saudacao.icone} "${versiculo.texto.slice(0, 45)}..." Guarde esta palavra no coração. Amanhã você receberá uma nova. ${saudacao.mensagem}`;
+    setFeedbackMessage(msg);
+    setShowFeedback(true);
+    
+    // Fecha o feedback após 4 segundos
+    setTimeout(() => {
+      setShowFeedback(false);
+      setIsVisible(false);
+    }, 4000);
+  };
+
+  const handleCloseFeedback = () => {
+    setShowFeedback(false);
     setIsVisible(false);
   };
 
-  if (!isInitialized || !isVisible || !versiculo) return null;
+  if (!isInitialized || !versiculo) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -10, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -10, scale: 0.98 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="relative mx-5 mb-4 overflow-hidden rounded-[22px] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-surface/80 to-violet-500/5 p-4 shadow-sm"
-      >
-        {/* Ícone decorativo */}
-        <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-500/5 blur-2xl" />
-        <div className="absolute -bottom-8 -left-8 h-20 w-20 rounded-full bg-violet-500/5 blur-xl" />
+    <AnimatePresence mode="wait">
+      {isVisible ? (
+        <motion.div
+          key="versiculo"
+          initial={{ opacity: 0, y: -10, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -10, scale: 0.98 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="relative mx-5 mb-4 overflow-hidden rounded-[22px] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-surface/80 to-violet-500/5 p-4 shadow-sm"
+        >
+          {/* Ícone decorativo */}
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-500/5 blur-2xl" />
+          <div className="absolute -bottom-8 -left-8 h-20 w-20 rounded-full bg-violet-500/5 blur-xl" />
 
-        <div className="relative flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
-            <Sparkles size={16} />
+          <div className="relative flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+              <Sparkles size={16} />
+            </div>
+
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-sm italic leading-relaxed text-ink-primary break-words">
+                "{versiculo.texto}"
+              </p>
+              <p className="mt-1 text-xs font-medium text-amber-400/80">
+                — {versiculo.referencia}
+              </p>
+            </div>
+
+            {/* 🔧 BOTÃO X ESTILIZADO */}
+            <button
+              onClick={handleDismiss}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-raised text-ink-muted/60 transition-all hover:bg-coral/10 hover:text-coral active:scale-95 border border-surface-border/30"
+              aria-label="Fechar versículo"
+            >
+              <X size={14} />
+            </button>
           </div>
-
-          <div className="min-w-0 flex-1 pr-6">
-            <p className="text-sm italic leading-relaxed text-ink-primary">
-              "{versiculo.texto}"
-            </p>
-            <p className="mt-1 text-xs font-medium text-amber-400/80">
-              — {versiculo.referencia}
-            </p>
+        </motion.div>
+      ) : showFeedback ? (
+        <motion.div
+          key="feedback"
+          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -10, scale: 0.95 }}
+          transition={{ duration: 0.3 }}
+          className="mx-5 mb-4 rounded-[22px] border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-surface/80 to-teal-500/5 p-4 shadow-sm"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+              <Check size={16} />
+            </div>
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-sm font-medium text-ink-primary leading-relaxed break-words">
+                {feedbackMessage}
+              </p>
+            </div>
+            <button
+              onClick={handleCloseFeedback}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-raised text-ink-muted/60 transition-all hover:bg-surface-raised/80 active:scale-95 border border-surface-border/30"
+              aria-label="Fechar feedback"
+            >
+              <Check size={14} />
+            </button>
           </div>
-
-          <button
-            onClick={handleDismiss}
-            className="absolute right-2 top-2 rounded-full p-1 text-ink-muted/40 transition-colors hover:text-ink-muted active:scale-95"
-            aria-label="Fechar versículo"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      </motion.div>
+        </motion.div>
+      ) : null}
     </AnimatePresence>
   );
 }

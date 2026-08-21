@@ -1,7 +1,7 @@
 // app/saude/medicos/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Building2, MapPin, FolderHeart, Check, X, Plus, Eraser } from "lucide-react";
@@ -31,6 +31,7 @@ export default function NovoMedicoPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), [], []) || [];
   const locais = useLiveQuery(() => db.locais.toArray(), [], []) || [];
@@ -70,26 +71,33 @@ export default function NovoMedicoPage() {
     }
     if (!user?.id) return;
 
-    await run(
-      async () => {
-        await medicosRepository.create({
-          nome: nome.trim(),
-          especialidade: especialidade.trim() || undefined,
-          crm: crm.trim() || undefined,
-          user_id: user?.id,
-          telefone: telefone.trim() || undefined,
-          email: email.trim() || undefined,
-          hospital_ids: hospitalIds,
-          tratamento_ids: tratamentoIds,
-          local_ids: localIds,
-        });
-      },
-      {
-        successMessage: "Médico cadastrado com sucesso",
-        errorMessage: "Erro ao cadastrar médico",
-        goBackOnSuccess: true,
-      }
-    );
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
+    try {
+      await run(
+        async () => {
+          await medicosRepository.create({
+            nome: nome.trim(),
+            especialidade: especialidade.trim() || undefined,
+            crm: crm.trim() || undefined,
+            user_id: user?.id,
+            telefone: telefone.trim() || undefined,
+            email: email.trim() || undefined,
+            hospital_ids: hospitalIds,
+            tratamento_ids: tratamentoIds,
+            local_ids: localIds,
+          });
+        },
+        {
+          successMessage: "Médico cadastrado com sucesso",
+          errorMessage: "Erro ao cadastrar médico",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   const MultiSelectModal = ({ isOpen, onClose, title, items, selectedIds, onChange, icon: Icon, onCreateNew, createLabel }: any) => {

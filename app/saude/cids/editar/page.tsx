@@ -1,7 +1,7 @@
 // app/saude/cids/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -53,6 +53,7 @@ function EditarCidContent() {
   const { hospitais } = useHospitais();
   const { locais } = useLocais();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [cid, setCid] = useState<Cid | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -132,22 +133,29 @@ function EditarCidContent() {
     }
     if (!id) return;
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        const dataISO = dataDiagnostico
-          ? dataDiagnostico.split("/").reverse().join("-")
-          : undefined;
+        try {
+          const dataISO = dataDiagnostico
+            ? dataDiagnostico.split("/").reverse().join("-")
+            : undefined;
 
-        await cidsRepository.update(id, {
-          codigo: codigo.trim(),
-          descricao: descricao.trim(),
-          data_diagnostico: dataISO,
-          medico_id: medicoId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          observacoes: observacoes.trim() || undefined,
-          anexo_url: anexoUrl || undefined,
-        });
+          await cidsRepository.update(id, {
+            codigo: codigo.trim(),
+            descricao: descricao.trim(),
+            data_diagnostico: dataISO,
+            medico_id: medicoId || undefined,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            observacoes: observacoes.trim() || undefined,
+            anexo_url: anexoUrl || undefined,
+          });
+        } finally {
+          isSubmitLocked.current = false;
+        }
       },
       {
         successMessage: "CID atualizado com sucesso!",

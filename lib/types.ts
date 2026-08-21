@@ -716,6 +716,9 @@ export interface Medicamento {
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
+  cid_ids?: string[];
+  cid_id?: string;
+
 }
 
 export interface Renovacao {
@@ -870,6 +873,8 @@ export interface Medico {
   local_ids?: string[];
   updated_at: string;
   synced: boolean;
+  person_id?: string;
+
 }
 
 export interface Farmacia {
@@ -882,6 +887,8 @@ export interface Farmacia {
   created_at: string;
   updated_at: string;
   synced: boolean;
+  person_id?: string;
+
 }
 
 export interface Hospital {
@@ -897,6 +904,8 @@ export interface Hospital {
   created_at: string;
   updated_at: string;
   synced: boolean;
+  person_id?: string;
+
 }
 
 export interface LocalSaude {
@@ -910,6 +919,8 @@ export interface LocalSaude {
   created_at: string;
   updated_at: string;
   synced: boolean;
+  person_id?: string;
+
 }
 
 export interface InstituicaoEnsino {

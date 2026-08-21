@@ -1,7 +1,7 @@
 // app/saude/tratamentos/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Plus, Check } from "lucide-react";
@@ -39,6 +39,7 @@ export default function NovoTratamentoPage() {
   const { cids } = useCids();
   const persons = usePersons() as Person[];
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [personId, setPersonId] = useState<string>(persons[0]?.id || "");
   const [nome, setNome] = useState("");
@@ -69,26 +70,33 @@ export default function NovoTratamentoPage() {
       return;
     }
 
-    await run(
-      async () => {
-        const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
 
-        await tratamentosRepository.create({
-          user_id: user.id,
-          person_id: personId,
-          nome: nome.trim(),
-          cid_ids: cleanCids,
-          status,
-          cor,
-          observacoes: observacoes.trim() || undefined,
-        });
-      },
-      {
-        successMessage: "Tratamento cadastrado com sucesso",
-        errorMessage: "Erro ao salvar tratamento",
-        goBackOnSuccess: true,
-      }
-    );
+    try {
+      await run(
+        async () => {
+          const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
+
+          await tratamentosRepository.create({
+            user_id: user.id,
+            person_id: personId,
+            nome: nome.trim(),
+            cid_ids: cleanCids,
+            status,
+            cor,
+            observacoes: observacoes.trim() || undefined,
+          });
+        },
+        {
+          successMessage: "Tratamento cadastrado com sucesso",
+          errorMessage: "Erro ao salvar tratamento",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   const handleAddCid = (cidId: string) => {

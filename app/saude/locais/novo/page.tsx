@@ -1,7 +1,7 @@
 // app/saude/locais/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
@@ -39,6 +39,7 @@ export default function NovoLocalPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<string>("posto_saude");
@@ -61,22 +62,29 @@ export default function NovoLocalPage() {
     }
     if (!user?.id) return;
 
-    await run(
-      async () => {
-        await locaisRepository.create({
-          user_id: user.id,
-          nome: nome.trim(),
-          tipo: tipo || undefined,
-          endereco: endereco.trim() || undefined,
-          telefone: telefone.trim() || undefined,
-        });
-      },
-      {
-        successMessage: "Local cadastrado com sucesso",
-        errorMessage: "Erro ao cadastrar local",
-        goBackOnSuccess: true,
-      }
-    );
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
+    try {
+      await run(
+        async () => {
+          await locaisRepository.create({
+            user_id: user.id,
+            nome: nome.trim(),
+            tipo: tipo || undefined,
+            endereco: endereco.trim() || undefined,
+            telefone: telefone.trim() || undefined,
+          });
+        },
+        {
+          successMessage: "Local cadastrado com sucesso",
+          errorMessage: "Erro ao cadastrar local",
+          goBackOnSuccess: true,
+        }
+      );
+    } finally {
+      isSubmitLocked.current = false;
+    }
   };
 
   return (

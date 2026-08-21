@@ -1,7 +1,7 @@
 // app/cartoes/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
@@ -29,6 +29,7 @@ function EditCardContent() {
   const id = searchParams.get("id");
   const { getCard, updateCard } = useCards();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -103,20 +104,28 @@ function EditCardContent() {
       return;
     }
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
-      () =>
-        updateCard(id, {
-          title: formData.title.trim(),
-          bank_name: formData.bank_name.trim(),
-          type: formData.type,
-          card_number: formData.card_number.trim(),
-          card_holder: formData.card_holder.trim(),
-          expiry_date: formData.expiry_date.trim(),
-          cvv: formData.cvv.trim(),
-          agency: formData.agency.trim(),
-          account: formData.account.trim(),
-          notes: formData.notes.trim(),
-        } as any),
+      async () => {
+        try {
+          await updateCard(id, {
+            title: formData.title.trim(),
+            bank_name: formData.bank_name.trim(),
+            type: formData.type,
+            card_number: formData.card_number.trim(),
+            card_holder: formData.card_holder.trim(),
+            expiry_date: formData.expiry_date.trim(),
+            cvv: formData.cvv.trim(),
+            agency: formData.agency.trim(),
+            account: formData.account.trim(),
+            notes: formData.notes.trim(),
+          } as any);
+        } finally {
+          isSubmitLocked.current = false;
+        }
+      },
       {
         successMessage: "Registro atualizado",
         errorMessage: "Erro ao atualizar",

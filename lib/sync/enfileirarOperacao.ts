@@ -40,10 +40,15 @@ export async function enfileirarOperacao(
     await db.syncQueue.update(existente.id!, atualizacao);
   } else {
     await db.syncQueue.add({
-      id: generateQueueId(), // 🔥 ID injetado para satisfazer a chave primária do Dexie na syncQueue
+      id: generateQueueId(), // ID injetado para satisfazer a chave primária do Dexie na syncQueue
       chave,
       ...atualizacao,
       created_at: agora,
     });
+  }
+
+  // 🔥 O ELO PERDIDO: Dispara o evento global para acordar o hook useSyncQueue imediatamente
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("sync:process"));
   }
 }

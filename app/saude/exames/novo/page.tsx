@@ -104,6 +104,7 @@ export default function NovoExamePage() {
   const { activePersonId } = useActivePersonId();
   const { showToast } = useToast();
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -231,17 +232,16 @@ export default function NovoExamePage() {
     }
   };
 
-  const handleCreateTratamento = async () => {
+    const handleCreateTratamento = async () => {
     if (!newTratamentoName.trim() || !activePersonId) return;
     setIsSavingTratamento(true);
     trigger("vibrate");
     try {
       const newId = await addTratamento({
-        person_id: activePersonId,
         nome: newTratamentoName.trim(),
         status: "ativo",
       });
-      setTratamentosSelecionados((prev) => [...prev, newId]);
+      setTratamentosSelecionados((prev: string[]) => [...prev, newId]);
       trigger("success");
       showToast("Tratamento cadastrado", "success");
       setIsCreatingTratamento(false);
@@ -253,6 +253,7 @@ export default function NovoExamePage() {
       setIsSavingTratamento(false);
     }
   };
+
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -270,39 +271,46 @@ export default function NovoExamePage() {
       return;
     }
 
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
+
     run(
       async () => {
-        const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
-        if (!dataSolicitacaoISO) throw new Error("Data inválida");
+        try {
+          const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
+          if (!dataSolicitacaoISO) throw new Error("Data inválida");
 
-        const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
-        const listaExames = nomesExames.split(/,|\n/).map((item) => item.trim()).filter(Boolean);
+          const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
+          const listaExames = nomesExames.split(/,|\n/).map((item) => item.trim()).filter(Boolean);
 
-        let urlUpload = anexoUrl;
-        if (localFile && user) {
-          const { url, error } = await uploadFile(user.id, localFile, "saude");
-          if (!error && url) {
-            urlUpload = url;
-            if (attachment?.url.startsWith("blob:")) URL.revokeObjectURL(attachment.url);
+          let urlUpload = anexoUrl;
+          if (localFile && user) {
+            const { url, error } = await uploadFile(user.id, localFile, "saude");
+            if (!error && url) {
+              urlUpload = url;
+              if (attachment?.url.startsWith("blob:")) URL.revokeObjectURL(attachment.url);
+            }
           }
-        }
 
-        for (const nomeExame of listaExames) {
-          await examesRepository.create({
-            person_id: activePersonId,
-            nome: nomeExame,
-            laboratorio: localRealizacao.trim() || undefined,
-            local_id: localId || undefined,
-            medico: medicoSolicitante.trim() || undefined,
-            medico_id: medicoId || undefined,
-            data: dataSolicitacaoISO,
-            horario: horario || undefined,
-            data_retorno: dataRetornoISO,
-            motivo: motivo.trim() || undefined,
-            observacoes: observacoes.trim() || undefined,
-            anexo_url: urlUpload.trim() || undefined,
-            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-          });
+          for (const nomeExame of listaExames) {
+            await examesRepository.create({
+              person_id: activePersonId,
+              nome: nomeExame,
+              laboratorio: localRealizacao.trim() || undefined,
+              local_id: localId || undefined,
+              medico: medicoSolicitante.trim() || undefined,
+              medico_id: medicoId || undefined,
+              data: dataSolicitacaoISO,
+              horario: horario || undefined,
+              data_retorno: dataRetornoISO,
+              motivo: motivo.trim() || undefined,
+              observacoes: observacoes.trim() || undefined,
+              anexo_url: urlUpload.trim() || undefined,
+              tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+            });
+          }
+        } finally {
+          isSubmitLocked.current = false;
         }
       },
       {

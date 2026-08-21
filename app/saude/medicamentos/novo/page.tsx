@@ -7,8 +7,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2, Save, Pill, Upload, X, FileText, Package, Plus, Clock,
   Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, Store,
-  Building2, MapPin, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, Circle, Eraser
+  Building2, MapPin, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, Circle, Eraser,
+  FileSearch, Check
 } from "lucide-react";
+import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
@@ -32,6 +35,7 @@ import { SelectionModal } from "@/components/SelectionModal";
 import { SeletorReceita } from "@/components/saude/SeletorReceita";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
+import { SeletorCidModal } from "@/components/saude/SeletorCidModal";
 import { sugerirHorarios } from "@/lib/health-insights";
 import { FloatingSpinner } from "@/components/loading/FloatingSpinner";
 import { medicamentosRepository } from "@/lib/repositories/medicamentos";
@@ -105,7 +109,10 @@ export default function NovoMedicamentoPage() {
   const { locais, addLocal } = useLocais();
   const { tratamentos } = useTratamentos();
 
+  const cids = useLiveQuery(() => db.cids?.toArray() || []) ?? [];
+
   const { run, isSubmitting } = useSubmitAction();
+  const isSubmitLocked = useRef(false); // Trava síncrona contra duplo clique
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,6 +154,9 @@ export default function NovoMedicamentoPage() {
   const [proximaRenovacaoTexto, setProximaRenovacaoTexto] = useState("");
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [observacoes, setObservacoes] = useState("");
+
+  const [cidIds, setCidIds] = useState<string[]>([]);
+  const [isCidModalOpen, setIsCidModalOpen] = useState(false);
 
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
@@ -219,13 +229,16 @@ export default function NovoMedicamentoPage() {
     trigger("vibrate");
   };
 
-  const handleDataReceitaBlur = () => {
-    const isoData = brParaIso(dataReceitaTexto);
-    if (!isoData) return;
-    const dias = VALIDADE_RECEITA_DIAS[tipoReceita];
-    if (dias) {
-      const novaData = suggestRenewalDate(isoData, tipoReceita);
-      setProximaRenovacaoTexto(isoParaBr(novaData));
+  const handleDataReceitaChange = (val: string) => {
+    const masked = mascaraData(val);
+    setDataReceitaTexto(masked);
+    
+    // Autopreenchimento Inteligente: Ao bater 10 caracteres, já calcula o vencimento
+    if (masked.length === 10) {
+      const isoData = brParaIso(masked);
+      if (isoData && VALIDADE_RECEITA_DIAS[tipoReceita]) {
+        setProximaRenovacaoTexto(isoParaBr(suggestRenewalDate(isoData, tipoReceita)));
+      }
     }
   };
 
@@ -302,6 +315,10 @@ export default function NovoMedicamentoPage() {
 
   const handleSubmit = () => {
     if (!validateStep(3)) return;
+    
+    // Trava física contra duplo-clique no celular
+    if (isSubmitLocked.current || isSubmitting) return;
+    isSubmitLocked.current = true;
 
     run(
       async () => {
@@ -363,6 +380,7 @@ export default function NovoMedicamentoPage() {
           person_id: activePersonId || "",
           nome: nome.trim(),
           dosagem: dosagem.trim(),
+          cid_ids: cidIds,
           formato,
           cores,
           tipo_uso: tipoUso,
@@ -428,7 +446,10 @@ export default function NovoMedicamentoPage() {
         errorMessage: "Erro ao cadastrar medicamento",
         goBackOnSuccess: true,
       }
-    ).finally(() => setUploadProgress(0));
+    ).finally(() => {
+      isSubmitLocked.current = false;
+      setUploadProgress(0);
+    });
   };
 
   const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || Pill;
@@ -500,6 +521,24 @@ export default function NovoMedicamentoPage() {
                       onChange={(e) => setDosagem(e.target.value)}
                       error={errors.dosagem}
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-ink-primary mb-1.5">Diagnóstico / CID Relacionado</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        setIsCidModalOpen(true);
+                      }}
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left transition-colors hover:border-ice/50"
+                    >
+                      <span className="flex items-center gap-2 font-medium text-ink-primary truncate">
+                        <FileSearch size={16} className="text-ice shrink-0" />
+                        {cidIds.length > 0 ? `${cidIds.length} CID(s) vinculado(s)` : "Vincular CID..."}
+                      </span>
+                      <span className="text-xs font-bold text-ice shrink-0 ml-2">Gerenciar</span>
+                    </button>
                   </div>
                 </div>
 
@@ -808,8 +847,7 @@ export default function NovoMedicamentoPage() {
                       label="Data da receita"
                       placeholder="DD/MM/AAAA"
                       value={dataReceitaTexto}
-                      onChange={(e) => setDataReceitaTexto(mascaraData(e.target.value))}
-                      onBlur={handleDataReceitaBlur}
+                      onChange={(e) => handleDataReceitaChange(e.target.value)}
                       maxLength={10}
                       inputMode="numeric"
                     />
@@ -923,6 +961,45 @@ export default function NovoMedicamentoPage() {
         {(isSubmitting || uploadProgress > 0) && (
           <FloatingSpinner label={uploadProgress > 0 ? `Enviando anexo... ${uploadProgress}%` : "Salvando medicamento..."} />
         )}
+
+        {/* MODAL DE CID (NOVO) */}
+        <SelectionModal<any>
+          isOpen={isCidModalOpen}
+          onClose={() => setIsCidModalOpen(false)}
+          title="Selecionar CID"
+          items={cids}
+          getItemId={(i) => i.id!}
+          getItemLabel={(i) => `${i.codigo} - ${i.descricao}`}
+          onCreateNew={() => {
+            setIsCidModalOpen(false);
+            router.push("/saude/cids/novo");
+          }}
+          createNewLabel="Cadastrar Novo CID"
+          onSelect={(item) => {
+            trigger("vibrate");
+            setCidIds((prev) => {
+              if (prev.includes(item.id!)) {
+                return prev.filter((id) => id !== item.id!);
+              } else {
+                return [...prev, item.id!];
+              }
+            });
+          }}
+          renderItem={(item) => {
+             const isSelected = cidIds.includes(item.id!);
+             return (
+              <div className="flex items-center gap-3 w-full">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${isSelected ? "bg-emerald-400 text-void" : "bg-ice/10 text-ice"}`}>
+                  {isSelected ? <Check size={18} /> : <FileText size={18} />}
+                </div>
+                <div className="text-left min-w-0">
+                  <p className={`font-semibold ${isSelected ? "text-emerald-400" : "text-ink-primary"}`}>{item.codigo}</p>
+                  <p className="text-xs text-ink-muted truncate">{item.descricao}</p>
+                </div>
+              </div>
+             );
+          }}
+        />
 
         <SelectionModal<Farmacia>
           isOpen={isPharmacyModalOpen}
