@@ -315,7 +315,7 @@ export function BottomNav() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="shadow-[0_20px_50px_rgba(0,0,0,0.5)] fixed bottom-[6.5rem] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[360px] -translate-x-1/2 overflow-hidden rounded-[30px] border border-surface-border/80 bg-surface/95 backdrop-blur-xl"
+              className="shadow-[0_20px_50px_rgba(0,0,0,0.5)] fixed bottom-[6.5rem] left-1/2 z-50 w-[88vw] max-w-[320px] -translate-x-1/2 overflow-hidden rounded-[30px] border border-surface-border/80 bg-surface/95 backdrop-blur-xl"
             >
               <div className="px-4 pb-2 pt-4 flex items-center justify-between">
                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-ink-muted">
@@ -325,7 +325,7 @@ export function BottomNav() {
               
               {/* max-h-[70vh] garante que o scroll respeite a altura da tela no mobile sem cortar */}
               <div className="max-h-[70vh] overflow-y-auto px-4 pb-6 pt-2 scrollbar-hide">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-2.5">
                   {composeOptions.map((option) => {
                     const Icon = option.icon;
                     const colorClass = getOptionColorClass(option.id);
@@ -334,7 +334,7 @@ export function BottomNav() {
                       <button
                         key={option.id}
                         onClick={() => handleComposeOptionPress(option)}
-                        className="flex flex-col items-center justify-start gap-2 rounded-2xl border border-surface-border/40 bg-surface-raised/40 p-2.5 text-center transition-all active:scale-95 hover:bg-surface-raised"
+                        className="flex flex-col items-center justify-start gap-2 rounded-2xl border border-surface-border/40 bg-surface-raised/40 p-3 text-center transition-all active:scale-95 hover:bg-surface-raised"
                       >
                         <div className={`flex h-11 w-11 items-center justify-center rounded-full border ${colorClass}`}>
                           <Icon size={18} />
