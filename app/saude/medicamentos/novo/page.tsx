@@ -320,34 +320,34 @@ export default function NovoMedicamentoPage() {
 
         let docId: string | undefined = undefined;
 
-if (dataReceitaISO || attachment) {
-  if (!user) throw new Error('Usuário não autenticado');
-  
-  const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced' | 'user_id'> = {
-    person_id: activePersonId || "",
-    category_id: "saude",
-    type: "receita",
-    title: `Receita — ${nome.trim()}`,
-    description: observacoes.trim() || undefined,
-    metadata: {
-      medication: nome.trim(),
-      dosage: dosagem.trim(),
-      prescription_date: dataReceitaISO,
-      renewal_date: proximaRenovacaoISO,
-      tratamento_ids: tratamentosSelecionados,
-      tipo_receita: tipoReceita,
-      formato,
-      status: "ativo",
-    },
-    attachments: attachment ? [attachment] : [],
-    is_favorite: false,
-  };
+        if (dataReceitaISO || attachment) {
+          if (!user) throw new Error('Usuário não autenticado');
+          
+          const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced' | 'user_id'> = {
+            person_id: activePersonId || "",
+            category_id: "saude",
+            type: "receita",
+            title: `Receita — ${nome.trim()}`,
+            description: observacoes.trim() || undefined,
+            metadata: {
+              medication: nome.trim(),
+              dosage: dosagem.trim(),
+              prescription_date: dataReceitaISO,
+              renewal_date: proximaRenovacaoISO,
+              tratamento_ids: tratamentosSelecionados,
+              tipo_receita: tipoReceita,
+              formato,
+              status: "ativo",
+            },
+            attachments: attachment ? [attachment] : [],
+            is_favorite: false,
+          };
 
-  const createdDoc = await documentsRepository.create({
-    user_id: user.id,
-    ...docData,
-  });
-  docId = createdDoc;
+          const createdDoc = await documentsRepository.create({
+            user_id: user.id,
+            ...docData,
+          });
+          docId = createdDoc;
 
           if (localFile && user && attachment) {
             const { url, error } = await uploadFile(user.id, localFile, "saude");
@@ -359,57 +359,57 @@ if (dataReceitaISO || attachment) {
         }
 
         const medicamentoData = {
-  document_id: docId || undefined,
-  person_id: activePersonId || "",
-  nome: nome.trim(),
-  dosagem: dosagem.trim(),
-  formato,
-  cores,
-  tipo_uso: tipoUso,
-  medico: medicoNome?.trim() || "",
-  medico_id: medicoId || undefined,
-  hospital_id: hospitalId || undefined,
-  local_id: localId || undefined,
-  farmacia: farmaciaNome?.trim() || "",
-  farmacia_id: farmaciaId || undefined,
-  preco: precoNumerico,
-  data_receita: dataReceitaISO,
-  proxima_renovacao: proximaRenovacaoISO,
-  observacoes: observacoes?.trim() || undefined,
-  tipo_receita: tipoReceita,
-  tratamento_ids: tratamentosSelecionados,
-  status: "ativo" as const,
-  estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
-  estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-  estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
-  estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
-  estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
-};
+          document_id: docId || undefined,
+          person_id: activePersonId || "",
+          nome: nome.trim(),
+          dosagem: dosagem.trim(),
+          formato,
+          cores,
+          tipo_uso: tipoUso,
+          medico: medicoNome?.trim() || "",
+          medico_id: medicoId || undefined,
+          hospital_id: hospitalId || undefined,
+          local_id: localId || undefined,
+          farmacia: farmaciaNome?.trim() || "",
+          farmacia_id: farmaciaId || undefined,
+          preco: precoNumerico,
+          data_receita: dataReceitaISO,
+          proxima_renovacao: proximaRenovacaoISO,
+          observacoes: observacoes?.trim() || undefined,
+          tipo_receita: tipoReceita,
+          tratamento_ids: tratamentosSelecionados,
+          status: "ativo" as const,
+          estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+          estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
+          estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
+          estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
+          estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
+        };
 
-if (!user) throw new Error('Usuário não autenticado');
-const createdMed = await medicamentosRepository.create({
-  user_id: user.id,
-  ...medicamentoData,
-});
+        if (!user) throw new Error('Usuário não autenticado');
+        const createdMed = await medicamentosRepository.create({
+          user_id: user.id,
+          ...medicamentoData,
+        });
         const medicamentoId = createdMed;
 
         if (precoNumerico !== undefined || (estoqueAtivo && quantidadeEstoqueFinal > 0)) {
-  if (!user) throw new Error('Usuário não autenticado');
-  
-  await renovacoesRepository.create({
-    user_id: user.id,
-    person_id: activePersonId || undefined,
-    medicamento_id: medicamentoId,
-    medico_id: medicoId || undefined,
-    farmacia_id: farmaciaId || undefined,
-    hospital_id: hospitalId || undefined,
-    local_id: localId || undefined,
-    tipo_aquisicao: precoNumerico !== undefined ? "comprado" : "gratuito",
-    quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
-    preco: precoNumerico,
-    data: dataReceitaISO || getLocalTodayISO(),
-  });
-}
+          if (!user) throw new Error('Usuário não autenticado');
+          
+          await renovacoesRepository.create({
+            user_id: user.id,
+            person_id: activePersonId || undefined,
+            medicamento_id: medicamentoId,
+            medico_id: medicoId || undefined,
+            farmacia_id: farmaciaId || undefined,
+            hospital_id: hospitalId || undefined,
+            local_id: localId || undefined,
+            tipo_aquisicao: precoNumerico !== undefined ? "comprado" : "gratuito",
+            quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+            preco: precoNumerico,
+            data: dataReceitaISO || getLocalTodayISO(),
+          });
+        }
 
         if (estoqueAtivo && tipoUso === 'continuo' && horariosFiltrados.length > 0) {
           const granted = await requestNotificationPermission();
@@ -572,7 +572,7 @@ const createdMed = await medicamentosRepository.create({
 
                   {tipoUso === "continuo" && (
                     <div className="space-y-4 pt-4 border-t border-surface-border/40">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-3 items-end">
                         <div className={`transition-all ${shakeFields.includes('vezesAoDia') ? 'animate-shake' : ''}`}>
                           <Input
                             label="Doses por dia"
@@ -582,18 +582,17 @@ const createdMed = await medicamentosRepository.create({
                             value={vezesAoDia}
                             onChange={(e) => setVezesAoDia(e.target.value)}
                             error={errors.vezesAoDia}
-                            className="h-12"
                           />
                         </div>
-                        <div className="relative">
-                          <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-                          <input
+                        <div>
+                          <Input
+                            label="Horário inicial"
                             type="text"
                             placeholder="00:00"
                             maxLength={5}
                             value={primeiroHorario}
                             onChange={(e) => setPrimeiroHorario(handleTimeMask(e.target.value))}
-                            className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3.5 text-ink-primary font-mono text-sm outline-none focus:border-ice/50 h-12"
+                            icon={<Clock size={16} className="text-ink-muted" />}
                           />
                         </div>
                       </div>
@@ -753,6 +752,7 @@ const createdMed = await medicamentosRepository.create({
                       <h3 className="text-sm font-semibold text-ink-primary">Controle de Estoque</h3>
                     </div>
                     <button
+                      type="button"
                       onClick={toggleEstoque}
                       className={`h-6 w-11 rounded-full p-0.5 transition-colors ${estoqueAtivo ? "bg-ice" : "bg-surface-raised border border-surface-border"}`}
                     >

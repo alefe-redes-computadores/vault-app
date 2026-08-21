@@ -1,8 +1,7 @@
 // lib/repositories/tratamentos.ts
-import { db, safeAddTratamento, safeUpdateTratamento, safeDeleteTratamento } from "@/lib/db";
-import { safeUpdateMedicamento } from "@/lib/db";
-import { safeUpdateExame } from "@/lib/db";
+import { db } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { supabase } from "@/lib/supabase/client";
 import type { Tratamento } from "@/lib/types";
 
 export const tratamentosRepository = {
@@ -14,15 +13,53 @@ export const tratamentosRepository = {
     return db.tratamentos.get(id);
   },
 
-  async create(data: Omit<Tratamento, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
-    const id = await safeAddTratamento(data);
-    await enfileirarOperacao("tratamentos", "add", { id, ...data });
-    return id;
+  async create(data: Omit<Tratamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string; user_id?: string; tratamento_ids?: string[] }) {
+    if (process.env.NODE_ENV === "development" && "user_id" in data) {
+      console.warn("[tratamentosRepository] user_id recebido do caller será ignorado — repositório injeta internamente.");
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Usuário não autenticado");
+
+    if (data.tratamento_ids) {
+      data.tratamento_ids = Array.from(new Set(data.tratamento_ids));
+    }
+
+    const now = new Date().toISOString();
+    const tratamentoId = data.id || crypto.randomUUID();
+
+    const { user_id: _, ...tratamentoData } = data;
+
+    const tratamentoCompleto: Tratamento = {
+      ...tratamentoData,
+      user_id: user.id,
+      created_at: now,
+      updated_at: now,
+      synced: false,
+      id: tratamentoId,
+    };
+
+    await db.transaction("rw", [db.tratamentos, db.syncQueue], async () => {
+      await db.tratamentos.add(tratamentoCompleto);
+      await enfileirarOperacao("tratamentos", "add", tratamentoCompleto);
+    });
+
+    return tratamentoId;
   },
 
-  async update(id: string, data: Partial<Tratamento>) {
-    await safeUpdateTratamento(id, data);
-    await enfileirarOperacao("tratamentos", "update", { id, ...data });
+  async update(id: string, data: Partial<Tratamento> & { tratamento_ids?: string[] }) {
+    if (data.tratamento_ids) {
+      data.tratamento_ids = Array.from(new Set(data.tratamento_ids));
+    }
+
+    const now = new Date().toISOString();
+    const payload = { ...data, updated_at: now, synced: false };
+
+    await db.transaction("rw", [db.tratamentos, db.syncQueue], async () => {
+      await db.tratamentos.update(id, payload);
+      await enfileirarOperacao("tratamentos", "update", { id, ...payload });
+    });
+
     return id;
   },
 
@@ -31,33 +68,39 @@ export const tratamentosRepository = {
   },
 
   async deleteSafe(id: string) {
-    await safeDeleteTratamento(id);
-    await enfileirarOperacao("tratamentos", "delete", { id });
+    const now = new Date().toISOString();
 
-    const medicamentosAfetados = await db.medicamentos
-      .where('tratamento_ids')
-      .equals(id)
-      .toArray();
+    await db.transaction("rw", [db.tratamentos, db.medicamentos, db.exames, db.syncQueue], async () => {
+      await db.tratamentos.delete(id);
+      await enfileirarOperacao("tratamentos", "delete", { id });
 
-    for (const med of medicamentosAfetados) {
-      if (med.id && med.tratamento_ids) {
-        const novosIds = Array.from(new Set(med.tratamento_ids.filter(tId => tId !== id)));
-        await safeUpdateMedicamento(med.id, { tratamento_ids: novosIds });
-        await enfileirarOperacao("medicamentos", "update", { id: med.id, tratamento_ids: novosIds });
+      const medicamentosAfetados = await db.medicamentos
+        .where('tratamento_ids')
+        .equals(id)
+        .toArray();
+
+      for (const med of medicamentosAfetados) {
+        if (med.id && med.tratamento_ids) {
+          const novosIds = Array.from(new Set(med.tratamento_ids.filter(tId => tId !== id)));
+          const updatedMed = { ...med, tratamento_ids: novosIds, updated_at: now, synced: false };
+          await db.medicamentos.put(updatedMed);
+          await enfileirarOperacao("medicamentos", "update", { id: med.id, tratamento_ids: novosIds });
+        }
       }
-    }
 
-    const examesAfetados = await db.exames
-      .where('tratamento_ids')
-      .equals(id)
-      .toArray();
+      const examesAfetados = await db.exames
+        .where('tratamento_ids')
+        .equals(id)
+        .toArray();
 
-    for (const exame of examesAfetados) {
-      if (exame.id && exame.tratamento_ids) {
-        const novosIds = Array.from(new Set(exame.tratamento_ids.filter(tId => tId !== id)));
-        await safeUpdateExame(exame.id, { tratamento_ids: novosIds });
-        await enfileirarOperacao("exames", "update", { id: exame.id, tratamento_ids: novosIds });
+      for (const exame of examesAfetados) {
+        if (exame.id && exame.tratamento_ids) {
+          const novosIds = Array.from(new Set(exame.tratamento_ids.filter(tId => tId !== id)));
+          const updatedExame = { ...exame, tratamento_ids: novosIds, updated_at: now, synced: false };
+          await db.exames.put(updatedExame);
+          await enfileirarOperacao("exames", "update", { id: exame.id, tratamento_ids: novosIds });
+        }
       }
-    }
+    });
   }
 };

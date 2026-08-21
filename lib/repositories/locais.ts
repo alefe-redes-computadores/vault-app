@@ -1,16 +1,7 @@
 // lib/repositories/locais.ts
-import {
-  db,
-  safeAddLocal,
-  safeUpdateLocal,
-  safeDeleteLocal,
-  safeUpdateRenovacao,
-  safeUpdateMedicamento,
-  safeUpdateExame,
-  safeUpdateConsulta,
-  safeUpdateCirurgia,
-} from "@/lib/db";
+import { db } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { supabase } from "@/lib/supabase/client";
 import type { LocalSaude } from "@/lib/types";
 
 export const locaisRepository = {
@@ -22,15 +13,45 @@ export const locaisRepository = {
     return db.locais.get(id);
   },
 
-  async create(data: Omit<LocalSaude, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
-    const id = await safeAddLocal(data);
-    await enfileirarOperacao("locais", "add", { id, ...data });
-    return id;
+  async create(data: Omit<LocalSaude, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string; user_id?: string }) {
+    if (process.env.NODE_ENV === "development" && "user_id" in data) {
+      console.warn("[locaisRepository] user_id recebido do caller será ignorado — repositório injeta internamente.");
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Usuário não autenticado");
+
+    const now = new Date().toISOString();
+    const localId = data.id || crypto.randomUUID();
+
+    const { user_id: _, ...localData } = data;
+
+    const localCompleto: LocalSaude = {
+      ...localData,
+      user_id: user.id,
+      created_at: now,
+      updated_at: now,
+      synced: false,
+      id: localId,
+    };
+
+    await db.transaction("rw", [db.locais, db.syncQueue], async () => {
+      await db.locais.add(localCompleto);
+      await enfileirarOperacao("locais", "add", localCompleto);
+    });
+
+    return localId;
   },
 
   async update(id: string, data: Partial<LocalSaude>) {
-    await safeUpdateLocal(id, data);
-    await enfileirarOperacao("locais", "update", { id, ...data });
+    const now = new Date().toISOString();
+    const payload = { ...data, updated_at: now, synced: false };
+
+    await db.transaction("rw", [db.locais, db.syncQueue], async () => {
+      await db.locais.update(id, payload);
+      await enfileirarOperacao("locais", "update", { id, ...payload });
+    });
+
     return id;
   },
 
@@ -39,47 +60,30 @@ export const locaisRepository = {
   },
 
   async deleteSafe(id: string) {
-    await safeDeleteLocal(id);
-    await enfileirarOperacao("locais", "delete", { id });
+    const now = new Date().toISOString();
 
-    const renovacoesAfetadas = await db.renovacoes.where('local_id').equals(id).toArray();
-    for (const ren of renovacoesAfetadas) {
-      if (ren.id) {
-        await safeUpdateRenovacao(ren.id, { local_id: undefined });
-        await enfileirarOperacao("renovacoes", "update", { id: ren.id, local_id: undefined });
-      }
-    }
+    await db.transaction("rw", [db.locais, db.renovacoes, db.medicamentos, db.exames, db.consultas, db.cirurgias, db.syncQueue], async () => {
+      await db.locais.delete(id);
+      await enfileirarOperacao("locais", "delete", { id });
 
-    const medicamentosAfetados = await db.medicamentos.where('local_id').equals(id).toArray();
-    for (const med of medicamentosAfetados) {
-      if (med.id) {
-        await safeUpdateMedicamento(med.id, { local_id: undefined });
-        await enfileirarOperacao("medicamentos", "update", { id: med.id, local_id: undefined });
-      }
-    }
+      const tables = [
+        { table: db.renovacoes, field: 'local_id', name: 'renovacoes' },
+        { table: db.medicamentos, field: 'local_id', name: 'medicamentos' },
+        { table: db.exames, field: 'local_id', name: 'exames' },
+        { table: db.consultas, field: 'local_id', name: 'consultas' },
+        { table: db.cirurgias, field: 'local_id', name: 'cirurgias' },
+      ];
 
-    const examesAfetados = await db.exames.where('local_id').equals(id).toArray();
-    for (const exame of examesAfetados) {
-      if (exame.id) {
-        await safeUpdateExame(exame.id, { local_id: undefined });
-        await enfileirarOperacao("exames", "update", { id: exame.id, local_id: undefined });
+      for (const t of tables) {
+        const affected = await t.table.where(t.field).equals(id).toArray();
+        for (const item of affected) {
+          if (item.id) {
+            const updatedItem: any = { ...item, [t.field]: undefined, updated_at: now, synced: false };
+            await t.table.put(updatedItem);
+            await enfileirarOperacao(t.name as any, "update", { id: item.id, [t.field]: undefined });
+          }
+        }
       }
-    }
-
-    const consultasAfetadas = await db.consultas.where('local_id').equals(id).toArray();
-    for (const con of consultasAfetadas) {
-      if (con.id) {
-        await safeUpdateConsulta(con.id, { local_id: undefined });
-        await enfileirarOperacao("consultas", "update", { id: con.id, local_id: undefined });
-      }
-    }
-
-    const cirurgiasAfetadas = await db.cirurgias.where('local_id').equals(id).toArray();
-    for (const cir of cirurgiasAfetadas) {
-      if (cir.id) {
-        await safeUpdateCirurgia(cir.id, { local_id: undefined });
-        await enfileirarOperacao("cirurgias", "update", { id: cir.id, local_id: undefined });
-      }
-    }
+    });
   },
 };

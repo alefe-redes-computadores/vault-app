@@ -843,6 +843,7 @@ export interface VaultMember {
   invited_by: string;
   status: 'pending' | 'accepted' | 'rejected';
   invited_at: string;
+  created_at?: string;
   updated_at: string;
   synced: boolean;
 }

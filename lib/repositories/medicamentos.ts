@@ -13,16 +13,27 @@ export const medicamentosRepository = {
     return db.medicamentos.get(id);
   },
 
-  async create(data: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'>) {
+  async create(data: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string }) {
     if (data.tratamento_ids) {
       data.tratamento_ids = Array.from(new Set(data.tratamento_ids));
     }
 
-    // 1. Grava localmente
-    const id = await safeAddMedicamento(data);
+    const now = new Date().toISOString();
+    
+    // Garante que o ID e os metadados fundamentais sejam gerados aqui, na raiz
+    const payload = {
+      ...data,
+      id: data.id || crypto.randomUUID(),
+      created_at: now,
+      updated_at: now,
+      synced: false,
+    };
+
+    // 1. Grava localmente passando o objeto completo já com o ID
+    const id = await safeAddMedicamento(payload);
 
     // 2. Enfileira para o Supabase (fonte de verdade)
-    await enfileirarOperacao("medicamentos", "add", { id, ...data });
+    await enfileirarOperacao("medicamentos", "add", payload);
 
     return id;
   },
@@ -32,11 +43,18 @@ export const medicamentosRepository = {
       data.tratamento_ids = Array.from(new Set(data.tratamento_ids));
     }
 
+    const now = new Date().toISOString();
+    const payload = {
+      ...data,
+      updated_at: now,
+      synced: false,
+    };
+
     // 1. Atualiza localmente
-    await safeUpdateMedicamento(id, data);
+    await safeUpdateMedicamento(id, payload);
 
     // 2. Enfileira para o Supabase
-    await enfileirarOperacao("medicamentos", "update", { id, ...data });
+    await enfileirarOperacao("medicamentos", "update", { id, ...payload });
 
     return id;
   },

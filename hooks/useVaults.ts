@@ -38,7 +38,7 @@ export function useVaults() {
   }, []);
 
   const addMember = useCallback(
-    async (data: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>) => {
+    async (data: Omit<VaultMember, 'id' | 'updated_at' | 'synced' | 'invited_by'> & { id?: string; invited_at?: string }) => {
       return vaultsRepository.addMember(data);
     },
     []

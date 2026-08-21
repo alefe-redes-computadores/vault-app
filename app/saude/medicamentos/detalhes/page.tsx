@@ -158,21 +158,27 @@ function MedicamentoDetalhesContent() {
     }
   };
 
-  const handleDelete = async () => {
+    const handleDelete = async () => {
     if (!med?.id) return;
     setIsDeleting(true);
+    setToastMessage({ text: "Excluindo medicamento...", type: 'loading' });
     try {
       await deleteMedicamento(med.id);
       trigger("success");
-      router.replace("/saude/medicamentos");
+      setToastMessage({ text: "Excluído com sucesso!", type: 'success' });
+      setTimeout(() => {
+        router.replace("/saude/medicamentos");
+      }, 700);
     } catch (error) {
       console.error("Erro ao excluir medicamento:", error);
       trigger("error");
-    } finally {
+      setToastMessage({ text: "Erro ao excluir medicamento.", type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
       setIsDeleting(false);
       setShowDeleteModal(false);
     }
   };
+
 
   const estoqueInfo = computeEstoqueInfo(med);
   const qtd = estoqueInfo?.quantidadeRestante ?? 0;

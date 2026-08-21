@@ -72,8 +72,8 @@ function VaultMembersContent() {
         email: email.trim(),
         name: email.split("@")[0],
         permission,
-        invited_by: user.id,
         status: "pending",
+        invited_at: new Date().toISOString(), // Enviando a data aqui resolve o erro!
       });
       trigger("success");
       showToast("Membro convidado com sucesso!", "success");
