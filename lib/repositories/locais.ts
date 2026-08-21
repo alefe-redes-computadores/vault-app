@@ -4,18 +4,6 @@ import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { supabase } from "@/lib/supabase/client";
 import type { LocalSaude } from "@/lib/types";
 
-// Gerador de ID robusto com suporte total a ambientes mobile restritos
-function generateSafeId(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
 export const locaisRepository = {
   async getAll() {
     return db.locais.toArray();
@@ -34,9 +22,7 @@ export const locaisRepository = {
     if (!user) throw new Error("Usuário não autenticado");
 
     const now = new Date().toISOString();
-    
-    // Garante um ID válido utilizando o gerador seguro com fallback
-    const localId = data.id || generateSafeId();
+    const localId = data.id || crypto.randomUUID();
 
     const { user_id: _, ...localData } = data;
 
@@ -46,7 +32,7 @@ export const locaisRepository = {
       created_at: now,
       updated_at: now,
       synced: false,
-      id: localId, // Posicionado explicitamente por último para blindar a chave primária
+      id: localId,
     };
 
     await db.transaction("rw", [db.locais, db.syncQueue], async () => {
