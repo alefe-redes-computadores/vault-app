@@ -263,7 +263,6 @@ export default function HomePage() {
     [activePersonId]
   ) || [];
 
-  // 🔧 CORRIGIDO: queries filtradas por mês atual
   const exames = useLiveQuery(
     () => activePersonId 
       ? db.exames.where('person_id').equals(activePersonId)
@@ -556,7 +555,8 @@ export default function HomePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28 overflow-y-auto">
+      {/* 🔧 CORRIGIDO: alterado de pb-28 para pb-40 para evitar corte atrás do menu inferior */}
+      <main className="min-h-screen bg-void pb-40 overflow-y-auto">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <motion.div
             initial={{ opacity: 0, y: 10 }}

@@ -1,3 +1,4 @@
+// components/SyncStatusIndicator.tsx
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
@@ -26,8 +27,12 @@ function useOnlineStatus() {
 
 export function SyncStatusIndicator() {
   const online = useOnlineStatus();
-  // Lê a fila inteira. Conta qualquer registro pendente.
-  const pendingCount = useLiveQuery(() => db.syncQueue.count(), []) ?? 0;
+  
+  // 🔧 CORRIGIDO: Conta apenas os itens pendentes que não falharam usando a propriedade real 'failed'
+  const pendingCount = useLiveQuery(
+    () => db.syncQueue.filter((item) => !item.failed).count(),
+    []
+  ) ?? 0;
 
   if (!online) {
     return (
