@@ -348,7 +348,7 @@ export default function DocumentsPage() {
 
               <div className="min-w-0">
                 <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ice/90">
-                  REGISTROS CLÍNICOS
+                  Vault
                 </p>
                 <h1 className="font-display text-base font-semibold text-ink-primary truncate">
                   Acervo de Documentos

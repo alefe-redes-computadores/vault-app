@@ -18,6 +18,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { useMounted } from "@/hooks/useMounted";
 import type {
   Hospital,
   Exame,
@@ -59,6 +60,7 @@ function DetalhesHospitalContent() {
   const { getHospital, deleteHospital } = useHospitais();
   const { activePersonId } = useActivePersonId();
   const deleteAction = useSubmitAction();
+  const mounted = useMounted();
 
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +93,8 @@ function DetalhesHospitalContent() {
       setIsLoading(false);
     });
   }, [id, getHospital, router]);
+
+  if (!mounted) return <DetailSkeleton />;
 
   const tratamentoIds = hospital?.tratamento_ids || [];
   const tratamentos = useLiveQuery(

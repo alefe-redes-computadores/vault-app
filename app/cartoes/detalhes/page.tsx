@@ -1,3 +1,4 @@
+// app/cartoes/detalhes/page.tsx
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -6,7 +7,6 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Edit3, ShieldCheck, Copy, Check, Eye, EyeOff, Landmark, CreditCard, Loader2, Trash2, Wifi,
 } from "lucide-react";
-import { db } from "@/lib/db";
 import { useCards } from "@/hooks/useCards";
 import { useBiometric } from "@/hooks/useBiometric";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -15,6 +15,8 @@ import { decryptPassword } from "@/lib/crypto";
 import { getBankLogoUrl, getBrandLabel } from "@/lib/utils/card-helper";
 import { PageTransition } from "@/components/PageTransition";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
+import { useMounted } from "@/hooks/useMounted";
 import type { BankCard } from "@/lib/types";
 
 const fadeUp = {
@@ -49,7 +51,8 @@ function CardDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { deleteCard } = useCards();
+  const { deleteCard, getCard } = useCards();
+  const mounted = useMounted();
   const { authenticate } = useBiometric({
     title: "Revelar Dados",
     subtitle: "Confirme sua identidade para exibir os números do cartão e CVV.",
@@ -65,8 +68,8 @@ function CardDetailsContent() {
     async function loadCard() {
       if (!id) return;
       try {
-        // CORRIGIDO: db.bankCards em vez de db.cards
-        const item = await db.bankCards.get(id);
+        // Usando o repositório via hook
+        const item = await getCard(id);
         if (item) setCard(item);
       } catch (error) {
         console.error("Erro ao carregar detalhes:", error);
@@ -75,7 +78,9 @@ function CardDetailsContent() {
       }
     }
     loadCard();
-  }, [id]);
+  }, [id, getCard]);
+
+  if (!mounted) return <DetailSkeleton />;
 
   const handleCopy = async (text: string, fieldName: string) => {
     trigger("vibrate");
@@ -114,11 +119,7 @@ function CardDetailsContent() {
   };
 
   if (loading || !card) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-void">
-        <Loader2 size={32} className="animate-spin text-ice" />
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   const plainCardNumber = card.card_number_encrypted ? decryptPassword(card.card_number_encrypted) : "";
@@ -304,7 +305,7 @@ function CardDetailsContent() {
 
 export default function CardDetailsPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-void"><Loader2 size={32} className="animate-spin text-ice" /></div>}>
+    <Suspense fallback={<DetailSkeleton />}>
       <CardDetailsContent />
     </Suspense>
   );

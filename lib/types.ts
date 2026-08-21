@@ -20,7 +20,7 @@ export interface Person {
   email?: string;
   phone?: string;
   avatar_url?: string;
-  color: string; // Mais flexível para não quebrar dados antigos
+  color: string;
   isDefault?: boolean;
   created_at: string;
   updated_at: string;
@@ -78,6 +78,9 @@ export type DocumentType =
   | 'certidao_nascimento'
   | 'titulo_eleitor'
   | 'certificado'
+  | 'carteira_trabalho'
+  | 'passaporte'
+  | 'dispensa_militar'
   | 'receita'
   | 'prontuario'
   | 'laudo'
@@ -133,6 +136,9 @@ export const TYPE_CATEGORY_MAP: Record<DocumentType, CategoryId[]> = {
   exame_imagem: ['saude'],
   credencial: ['saude'],
   certificado: ['pessoal', 'empresa', 'outros'],
+  carteira_trabalho: ['pessoal', 'empresa'],
+  passaporte: ['pessoal'],
+  dispensa_militar: ['pessoal'],
   outro: ['pessoal', 'saude', 'empresa', 'outros'],
 };
 
@@ -306,6 +312,78 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
     {
       key: 'completion_date',
       label: 'Data de conclusão',
+      type: 'date',
+    },
+  ],
+
+  carteira_trabalho: [
+    {
+      key: 'numero',
+      label: 'Número da CTPS',
+      type: 'text',
+      required: true,
+    },
+    {
+      key: 'serie',
+      label: 'Série',
+      type: 'text',
+    },
+    {
+      key: 'data_emissao',
+      label: 'Data de emissão',
+      type: 'date',
+    },
+    {
+      key: 'uf',
+      label: 'UF',
+      type: 'text',
+    },
+  ],
+
+  passaporte: [
+    {
+      key: 'numero',
+      label: 'Número do Passaporte',
+      type: 'text',
+      required: true,
+    },
+    {
+      key: 'pais',
+      label: 'País de emissão',
+      type: 'text',
+      required: true,
+    },
+    {
+      key: 'data_emissao',
+      label: 'Data de emissão',
+      type: 'date',
+      required: true,
+    },
+    {
+      key: 'data_validade',
+      label: 'Data de validade',
+      type: 'date',
+      required: true,
+    },
+  ],
+
+  dispensa_militar: [
+    {
+      key: 'numero',
+      label: 'Número do Certificado',
+      type: 'text',
+      required: true,
+    },
+    {
+      key: 'categoria',
+      label: 'Categoria',
+      type: 'select',
+      options: ['A', 'B', 'C', 'D', 'E'],
+      required: true,
+    },
+    {
+      key: 'data_emissao',
+      label: 'Data de emissão',
       type: 'date',
     },
   ],
@@ -550,7 +628,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
     },
   ],
 };
-
 export interface SyncQueueItem {
   id?: string;
   chave: string;
@@ -575,7 +652,8 @@ export interface SyncQueueItem {
     | 'tratamentos'
     | 'cids'
     | 'anexos_clinicos'
-    | 'settings';
+    | 'settings'
+    | 'versiculos';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -594,15 +672,11 @@ export interface Medicamento {
   document_id?: string;
   nome: string;
   dosagem: string;
-
   medico_id?: string;
   farmacia_id?: string;
-
   hospital_id?: string;
   local_id?: string;
-
   tratamento_ids?: string[];
-
   medico: string;
   farmacia?: string;
   data_receita: string;
@@ -661,12 +735,9 @@ export interface Renovacao {
   data: string;
   anexo_url?: string;
   observacoes?: string;
-
-  // 🔹 NOVOS CAMPOS (RENOVAÇÃO GRATUITA)
   tipo_aquisicao?: 'comprado' | 'gratuito';
   data_proxima_retirada?: string;
   exige_nova_receita?: boolean;
-
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -698,6 +769,7 @@ export interface Exame {
   laboratorio?: string;
   medico?: string;
   data: string;
+  horario?: string;
   data_retorno?: string;
   motivo?: string;
   observacoes?: string;
@@ -715,6 +787,7 @@ export interface Cirurgia {
   document_id?: string;
   procedimento: string;
   data: string;
+  horario?: string;
   medico_id?: string;
   hospital_id?: string;
   local_id?: string;
@@ -739,6 +812,7 @@ export interface Consulta {
   horario?: string;
   motivo?: string;
   observacoes?: string;
+  anexo_url?: string;
   status: 'agendada' | 'realizada' | 'cancelada';
   created_at?: string;
   updated_at?: string;
@@ -792,6 +866,7 @@ export interface Medico {
   created_at: string;
   hospital_ids?: string[];
   tratamento_ids?: string[];
+  local_ids?: string[];
   updated_at: string;
   synced: boolean;
 }
@@ -907,6 +982,14 @@ export interface AppSettings {
   synced?: boolean;
 }
 
+export interface Versiculo {
+  id: string;
+  user_id: string;
+  texto: string;
+  referencia: string;
+  created_at: string;
+  updated_at?: string;
+}
 
 export type CardType =
   | 'cartao_credito'
@@ -922,7 +1005,6 @@ export type CardBrand =
   | 'amex'
   | 'hipercard'
   | 'unknown';
-
 
 export interface BankCard {
   id?: string;

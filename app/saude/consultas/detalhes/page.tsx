@@ -30,6 +30,7 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { Consulta, Medico, Hospital, Medicamento, Exame } from "@/lib/types";
 import { useConsultas } from "@/hooks/useConsultas";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import { useMounted } from "@/hooks/useMounted";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -49,6 +50,7 @@ function DetalhesConsultaContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { activePersonId } = useActivePersonId();
+  const mounted = useMounted();
 
   const [consulta, setConsulta] = useState<Consulta | null>(null);
   const [medico, setMedico] = useState<Medico | null>(null);
@@ -93,6 +95,8 @@ function DetalhesConsultaContent() {
 
     fetchData();
   }, [id, router, getConsulta]);
+
+  if (!mounted) return <DetailSkeleton />;
 
   const consultaVencida = useMemo(() => {
     return consulta?.data ? isReceitaVencidaSegura(consulta.data) : false;

@@ -15,8 +15,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { farmaciasRepository } from "@/lib/repositories/farmacias";
 import type { Farmacia, Medicamento } from "@/lib/types";
 
 const fadeUp = {
@@ -56,7 +55,7 @@ function EditarFarmaciaContent() {
       return;
     }
 
-    db.farmacias.get(id)
+    farmaciasRepository.getById(id)
       .then((item) => {
         if (!item) {
           setNotFound(true);
@@ -92,21 +91,11 @@ function EditarFarmaciaContent() {
 
     await run(
       async () => {
-        await db.transaction("rw", db.farmacias, db.syncQueue, async () => {
-          const original = await db.farmacias.get(id);
-          if (!original) throw new Error("Farmácia não encontrada");
-
-          const farmaciaAtualizada: Farmacia = {
-            ...original,
-            nome: nome.trim(),
-            endereco: endereco.trim() || undefined,
-            telefone: telefone.trim() || undefined,
-            updated_at: new Date().toISOString(),
-            synced: false,
-          };
-
-          await db.farmacias.put(farmaciaAtualizada);
-          await enfileirarOperacao("farmacias", "update", farmaciaAtualizada);
+        // Repositório cuida de updated_at, synced e enfileiramento
+        await farmaciasRepository.update(id, {
+          nome: nome.trim(),
+          endereco: endereco.trim() || undefined,
+          telefone: telefone.trim() || undefined,
         });
       },
       {
@@ -122,10 +111,7 @@ function EditarFarmaciaContent() {
 
     await run(
       async () => {
-        await db.transaction("rw", db.farmacias, db.syncQueue, async () => {
-          await db.farmacias.delete(id);
-          await enfileirarOperacao("farmacias", "delete", { id });
-        });
+        await farmaciasRepository.delete(id);
         router.replace("/saude/farmacias");
       },
       {

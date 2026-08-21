@@ -44,6 +44,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { Button } from "@/components/ui/Button";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import { useMounted } from "@/hooks/useMounted";
 import type { Exame, Medico, Hospital, Tratamento } from "@/lib/types";
 
 function getTratamentoIcon(nome: string) {
@@ -69,6 +70,7 @@ function DetalhesExameContent() {
   const id = searchParams.get("id");
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
+  const mounted = useMounted();
 
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -110,6 +112,8 @@ function DetalhesExameContent() {
     };
     loadExame();
   }, [id, router, getExame]);
+
+  if (!mounted) return <DetailSkeleton />;
 
   const person = useLiveQuery(() => exame?.person_id ? db.persons.get(exame.person_id) : undefined, [exame?.person_id]);
   const medico = useLiveQuery(() => exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined, [exame?.medico_id]);

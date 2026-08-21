@@ -53,14 +53,27 @@ export default function LocaisPage() {
   const [search, setSearch] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "com_registros" | "sem_registros">("todos");
 
-  const { locais } = useLocais();
-  const { renovacoes } = useRenovacoes();
+  const { locais = [] } = useLocais();
+  const { renovacoes = [] } = useRenovacoes();
 
   const personAccent = activePersonId ? 'var(--person-accent, #34D399)' : '#34D399';
 
+  // 🔥 FILTRO POR INFERÊNCIA: apenas locais vinculados à pessoa ativa via renovações
+  const locaisFiltradosPorPessoa = useMemo<LocalSaude[]>(() => {
+    if (!activePersonId) return [];
+
+    const localIdsSet = new Set<string>();
+
+    // Renovações da pessoa ativa
+    renovacoes.forEach((r) => {
+      if (r.local_id) localIdsSet.add(r.local_id);
+    });
+
+    return locais.filter((local) => local.id && localIdsSet.has(local.id));
+  }, [activePersonId, renovacoes, locais]);
+
   const locaisEnriquecidos = useMemo<LocalComHistorico[]>(() => {
-    if (!locais || !renovacoes) return [];
-    return locais.map((local) => {
+    return locaisFiltradosPorPessoa.map((local) => {
       const historico = renovacoes.filter((r: Renovacao) => r.local_id === local.id);
 
       const totalGasto = historico.reduce((acc, r) => {
@@ -81,7 +94,7 @@ export default function LocaisPage() {
         ultimaRenovacao,
       };
     });
-  }, [locais, renovacoes]);
+  }, [locaisFiltradosPorPessoa, renovacoes]);
 
   const filteredLocais = useMemo(() => {
     let result = locaisEnriquecidos;
@@ -204,10 +217,16 @@ export default function LocaisPage() {
           {filteredLocais.length === 0 ? (
             <EmptyState
               icon={MapPin}
-              title="Nenhum local encontrado"
+              title={
+                activePersonId
+                  ? "Nenhum local vinculado a esta pessoa"
+                  : "Nenhum local encontrado"
+              }
               description={
                 search || filtroStatus !== "todos"
                   ? "Tente ajustar os filtros aplicados."
+                  : activePersonId
+                  ? "Cadastre renovações para vincular locais de retirada."
                   : "Cadastre postos do SUS, laboratórios ou clínicas para acompanhar retiradas e atendimentos."
               }
             />

@@ -25,8 +25,7 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { vaultsRepository } from "@/lib/repositories/vaults";
 import { motion } from "framer-motion";
 
 const ICON_OPTIONS: { label: string; icon: LucideIcon; value: string }[] = [
@@ -82,22 +81,13 @@ export default function NewVaultPage() {
 
     await run(
       async () => {
-        const novoId = crypto.randomUUID();
-        const payload = {
-          id: novoId,
-          user_id: user.id,
+        // Repositório cuida de id, user_id, created_at, updated_at, synced e enfileiramento
+        await vaultsRepository.create({
           name: formData.name.trim(),
+          user_id: user?.id,
           description: formData.description.trim() || undefined,
           icon: formData.icon,
           color: formData.color,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: false,
-        };
-
-        await db.transaction("rw", db.vaults, db.syncQueue, async () => {
-          await db.vaults.add(payload);
-          await enfileirarOperacao("vaults" as any, "add", payload);
         });
       },
       {

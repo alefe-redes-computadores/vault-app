@@ -19,6 +19,7 @@ import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
 import type { Renovacao, Medicamento, Medico, Farmacia } from "@/lib/types";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
+import { useMounted } from "@/hooks/useMounted";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -43,6 +44,7 @@ function DetalhesRenovacaoContent() {
   const { trigger } = useHapticFeedback();
   const { deleteRenovacao } = useRenovacoes();
   const { activePersonId } = useActivePersonId();
+  const mounted = useMounted();
 
   const [renovacao, setRenovacao] = useState<Renovacao | null>(null);
   const [medicamento, setMedicamento] = useState<Medicamento | null>(null);
@@ -105,6 +107,9 @@ function DetalhesRenovacaoContent() {
     
     fetchData();
   }, [id, router]);
+
+  // Previne hydration mismatch: só renderiza o conteúdo depois de montado
+  if (!mounted) return <DetailSkeleton />;
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -307,7 +312,7 @@ function DetalhesRenovacaoContent() {
             {renovacao.observacoes && (
               <div className="pt-2">
                 <p className="text-xs font-medium text-ink-muted mb-1">Notas / Observações</p>
-                <p className="text-xs text-ink-primary bg-surface-raised p-3 rounded-xl border border-surface-border/40">{renovacao.observacoes}</p>
+                <p className="text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40">{renovacao.observacoes}</p>
               </div>
             )}
 

@@ -20,13 +20,12 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { personsRepository } from "@/lib/repositories/persons";
 
 const PERSON_COLORS = [
   { name: "Azul", value: "#38BDF8" },
@@ -85,7 +84,7 @@ export default function EditarPessoaPage() {
 
     const loadPerson = async () => {
       try {
-        const person = await db.persons.get(id);
+        const person = await personsRepository.getById(id);
 
         if (!person) {
           showToast("Pessoa não encontrada", "error");
@@ -167,40 +166,28 @@ export default function EditarPessoaPage() {
 
     run(
       async () => {
-        const updateData: any = {
+        // Usamos o repositório, que já cuida de:
+        // - updated_at
+        // - synced: false
+        // - enfileirarOperacao
+        await personsRepository.update(id, {
           name: formData.name.trim(),
-          avatar_url: formData.avatar_url || undefined,
-          color: formData.color,
           email: formData.email.trim() || undefined,
           phone: formData.phone.trim() || undefined,
-          updated_at: new Date().toISOString(),
-          synced: 0,
-        };
-
-        // Transação Atômica com Merge Completo (.get() + .put() + syncQueue)
-        await db.transaction("rw", db.persons, db.syncQueue, async () => {
-          const original = await db.persons.get(id);
-          if (!original) throw new Error("Pessoa não encontrada");
-
-          const mergedData = {
-            ...original,
-            ...updateData,
-          };
-
-          await db.persons.put(mergedData);
-          await enfileirarOperacao("persons", "update", mergedData);
+          avatar_url: formData.avatar_url || undefined,
+          color: formData.color,
         });
 
         if (isDefault && formData.color) {
           document.documentElement.style.setProperty("--person-accent", formData.color);
         }
 
-        router.push("/pessoas");
+        // Navegação após sucesso (useSubmitAction com goBackOnSuccess)
       },
       {
         successMessage: "Pessoa atualizada com sucesso!",
-        errorMessage: "Erro ao atualizar pessoa",
-        goBackOnSuccess: false,
+        errorMessage: "Erro ao atualizar pessoa. Tente novamente.",
+        goBackOnSuccess: true, // ativado para voltar para a lista
       }
     );
   };

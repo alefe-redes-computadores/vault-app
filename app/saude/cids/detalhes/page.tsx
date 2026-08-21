@@ -35,6 +35,7 @@ import { useToast } from "@/components/ToastProvider";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document } from "@/lib/types";
 import { getCidInsights } from "@/lib/health-insights";
+import { useMounted } from "@/hooks/useMounted";
 
 const fadeUp = {
   initial: { opacity: 0, y: 15 },
@@ -67,6 +68,7 @@ function CidDetalhesContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { activePersonId } = useActivePersonId();
+  const mounted = useMounted();
 
   const [cid, setCid] = useState<Cid | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,6 +139,8 @@ function CidDetalhesContent() {
 
     fetchData();
   }, [id, router]);
+
+  if (!mounted) return <DetailSkeleton />;
 
   const handleDelete = async () => {
     trigger("vibrate");

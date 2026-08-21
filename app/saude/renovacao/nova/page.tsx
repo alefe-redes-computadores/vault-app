@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Loader2, FileWarning, Upload, Camera, X, Save, DollarSign,
-  Calendar, Store, PackagePlus, Stethoscope, TrendingDown, TrendingUp, Building2, MapPin, Check, AlertTriangle,
+  Calendar, Store, PackagePlus, Stethoscope, TrendingDown, TrendingUp, Building2, MapPin, Check, AlertTriangle, Eraser,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -27,8 +27,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 import { useRenovacaoInteligente } from "@/hooks/useRenovacaoInteligente";
 import { ModalAlertaReceita } from "@/components/saude/ModalAlertaReceita";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { renovacoesRepository } from "@/lib/repositories/renovacoes";
+import { medicamentosRepository } from "@/lib/repositories/medicamentos";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
@@ -254,66 +254,57 @@ function NovaRenovacaoContent() {
           }
         }
 
-        await db.transaction('rw', db.renovacoes, db.medicamentos, db.syncQueue, async () => {
-          const dataISO = parseDateToISO(dataDisplay);
-          const proximaISO = proximaDisplay.length === 10 ? parseDateToISO(proximaDisplay) : addDaysToISO(dataISO, 30);
-          const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
-          const quantidadeNum = registrarCompra ? Number(quantidadeAdicionar) || 0 : undefined;
+        const dataISO = parseDateToISO(dataDisplay);
+        const proximaISO = proximaDisplay.length === 10 ? parseDateToISO(proximaDisplay) : addDaysToISO(dataISO, 30);
+        const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
+        const quantidadeNum = registrarCompra ? Number(quantidadeAdicionar) || 0 : undefined;
 
-          const idRenovacao = crypto.randomUUID();
-          const novaRenovacao: Renovacao = {
-            id: idRenovacao,
-            user_id: user?.id || "",
-            person_id: activePersonId || undefined,
-            medicamento_id: medicamentoId,
+        // 1. Cria a renovação via repositório
+        // 1. Cria a renovação via repositório
+if (!user) throw new Error('Usuário não autenticado');
+
+const novaRenovacao = await renovacoesRepository.create({
+  user_id: user.id,
+  person_id: activePersonId || undefined,
+  medicamento_id: medicamentoId,
+  medico_id: medicoId || undefined,
+  farmacia_id: farmaciaId || undefined,
+  hospital_id: hospitalId || undefined,
+  local_id: localId || undefined,
+  tipo_aquisicao: tipoAquisicao,
+  data_proxima_retirada: tipoAquisicao === "gratuito" ? parseDateToISO(dataProximaRetirada) : undefined,
+  exige_nova_receita: tipoAquisicao === "gratuito" ? exigeNovaReceita : undefined,
+  quantidade: quantidadeNum,
+  preco: precoNumerico,
+  lote: lote.trim() || undefined,
+  validade_produto: validadeProduto ? parseDateToISO(validadeProduto) : undefined,
+  data: dataISO,
+  anexo_url: finalAnexoUrl,
+  observacoes: observacoes.trim() || undefined,
+});
+
+        // 2. Atualiza o medicamento vinculado via repositório
+        const medOriginal = await medicamentosRepository.getById(medicamentoId);
+        if (medOriginal) {
+          const dadosUpdate: Partial<Medicamento> = {
+            data_receita: dataISO,
+            proxima_renovacao: proximaISO,
             medico_id: medicoId || undefined,
-            farmacia_id: farmaciaId || undefined,
-            hospital_id: hospitalId || undefined,
-            local_id: localId || undefined,
-            tipo_aquisicao: tipoAquisicao,
-            data_proxima_retirada: tipoAquisicao === "gratuito" ? parseDateToISO(dataProximaRetirada) : undefined,
-            exige_nova_receita: tipoAquisicao === "gratuito" ? exigeNovaReceita : undefined,
-            quantidade: quantidadeNum,
-            preco: precoNumerico,
-            lote: lote.trim() || undefined,
-            validade_produto: validadeProduto ? parseDateToISO(validadeProduto) : undefined,
-            data: dataISO,
-            anexo_url: finalAnexoUrl,
-            observacoes: observacoes.trim() || undefined,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            synced: false
+            medico: medicoNome || undefined,
           };
 
-          await db.renovacoes.add(novaRenovacao);
-          await enfileirarOperacao("renovacoes", "add", novaRenovacao);
-
-          const medOriginal = await db.medicamentos.get(medicamentoId);
-          if (medOriginal) {
-            const dadosUpdate: Partial<Medicamento> = {
-              data_receita: dataISO,
-              proxima_renovacao: proximaISO,
-              medico_id: medicoId || undefined,
-              medico: medicoNome || undefined,
-              updated_at: new Date().toISOString(),
-              synced: false
-            };
-
-            if (registrarCompra) {
-              const estoqueAtual = Number(medOriginal.estoque_quantidade) || 0;
-              dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
-              dadosUpdate.estoque_data_referencia = getLocalTodayISO();
-              if (selectedFarmacia) {
-                dadosUpdate.farmacia = selectedFarmacia.nome;
-                dadosUpdate.farmacia_id = selectedFarmacia.id;
-              }
+          if (registrarCompra) {
+            const estoqueAtual = Number(medOriginal.estoque_quantidade) || 0;
+            dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
+            dadosUpdate.estoque_data_referencia = getLocalTodayISO();
+            if (selectedFarmacia) {
+              dadosUpdate.farmacia = selectedFarmacia.nome;
+              dadosUpdate.farmacia_id = selectedFarmacia.id;
             }
-
-            const medAtualizado = { ...medOriginal, ...dadosUpdate };
-            await db.medicamentos.put(medAtualizado);
-            await enfileirarOperacao("medicamentos", "update", medAtualizado);
           }
-        });
+
+          await medicamentosRepository.update(medicamentoId, dadosUpdate);
+        }
       },
       {
         successMessage: "Renovação registrada com sucesso",
@@ -379,6 +370,7 @@ function NovaRenovacaoContent() {
             {errors.medicamentoId && <p className="mt-1 text-xs text-coral">{errors.medicamentoId}</p>}
           </motion.div>
 
+          {/* 🔥 MÉDICO COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -386,7 +378,22 @@ function NovaRenovacaoContent() {
             transition={{ delay: 0.02 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico Prescritor</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Médico Prescritor</label>
+              {medicoId && selectedMedico && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setMedicoId("");
+                    setMedicoNome("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => {
                 trigger("vibrate");
@@ -402,6 +409,7 @@ function NovaRenovacaoContent() {
             </button>
           </motion.div>
 
+          {/* 🔥 HOSPITAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -409,7 +417,22 @@ function NovaRenovacaoContent() {
             transition={{ delay: 0.03 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Hospital</label>
+              {hospitalId && selectedHospital && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setHospitalId("");
+                    setHospitalNome("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => {
                 trigger("vibrate");
@@ -425,6 +448,7 @@ function NovaRenovacaoContent() {
             </button>
           </motion.div>
 
+          {/* 🔥 LOCAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -432,7 +456,22 @@ function NovaRenovacaoContent() {
             transition={{ delay: 0.04 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Local / Posto</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Local / Posto</label>
+              {localId && selectedLocal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setLocalId("");
+                    setLocalNome("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => {
                 trigger("vibrate");
@@ -562,8 +601,24 @@ function NovaRenovacaoContent() {
                 <h3 className="text-sm font-semibold text-ink-primary">Dados da Compra</h3>
               </div>
 
+              {/* 🔥 FARMÁCIA COM LIMPAR */}
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-ink-primary">Farmácia</label>
+                  {farmaciaId && selectedFarmacia && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        setFarmaciaId("");
+                        setFarmaciaNome("");
+                      }}
+                      className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                    >
+                      <Eraser size={12} /> Limpar
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => setIsPharmacyModalOpen(true)}
@@ -662,8 +717,24 @@ function NovaRenovacaoContent() {
                 <span className="ml-auto text-xs text-emerald-400/60">Sem custo registrado</span>
               </div>
 
+              {/* 🔥 FARMÁCIA COM LIMPAR (gratuito também) */}
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia / Posto de Retirada</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-ink-primary">Farmácia / Posto de Retirada</label>
+                  {farmaciaId && selectedFarmacia && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        setFarmaciaId("");
+                        setFarmaciaNome("");
+                      }}
+                      className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                    >
+                      <Eraser size={12} /> Limpar
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => setIsPharmacyModalOpen(true)}

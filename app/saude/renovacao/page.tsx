@@ -145,7 +145,7 @@ export default function RenovacoesPage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Vault Saúde</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">HISTÓRICO FINANCEIRO</p>
               <h1 className="font-display text-xl font-semibold text-ink-primary truncate">Histórico de Renovações</h1>
             </div>
           </div>

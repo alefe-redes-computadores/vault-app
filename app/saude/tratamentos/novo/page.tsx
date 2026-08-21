@@ -14,9 +14,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
+import { tratamentosRepository } from "@/lib/repositories/tratamentos";
 import type { Cid, Person, Tratamento } from "@/lib/types";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -72,11 +71,9 @@ export default function NovoTratamentoPage() {
 
     await run(
       async () => {
-        const novoId = crypto.randomUUID();
         const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
 
-        const novoTratamento: Tratamento = {
-          id: novoId,
+        await tratamentosRepository.create({
           user_id: user.id,
           person_id: personId,
           nome: nome.trim(),
@@ -84,14 +81,6 @@ export default function NovoTratamentoPage() {
           status,
           cor,
           observacoes: observacoes.trim() || undefined,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: false,
-        };
-
-        await db.transaction("rw", db.tratamentos, db.syncQueue, async () => {
-          await db.tratamentos.add(novoTratamento);
-          await enfileirarOperacao("tratamentos", "add", novoTratamento);
         });
       },
       {

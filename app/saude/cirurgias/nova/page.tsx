@@ -12,12 +12,11 @@ import {
   Building2,
   UserCheck,
   MapPin,
-  Clock
+  Clock,
+  Eraser,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -26,6 +25,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { cirurgiasRepository } from "@/lib/repositories/cirurgias";
+import { db } from "@/lib/db";
 import type { Cirurgia } from "@/lib/types";
 
 const fadeUp = {
@@ -42,7 +43,7 @@ function formatDateToDisplay(isoStr: string): string {
 
 function parseDateToISO(displayStr: string): string {
   const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return ""; 
+  if (clean.length !== 8) return "";
   const day = clean.slice(0, 2);
   const month = clean.slice(2, 4);
   const year = clean.slice(4, 8);
@@ -121,10 +122,8 @@ export default function NovaCirurgiaPage() {
       async () => {
         const dataISO = parseDateToISO(dataDisplay);
         if (!dataISO) throw new Error("Data inválida");
-        
-        const novoId = crypto.randomUUID();
-        const novaCirurgia: Cirurgia = {
-          id: novoId,
+
+        await cirurgiasRepository.create({
           user_id: user.id,
           person_id: activePersonId || undefined,
           procedimento: procedimento.trim(),
@@ -132,16 +131,9 @@ export default function NovaCirurgiaPage() {
           hospital_id: hospitalId || undefined,
           local_id: localId || undefined,
           data: dataISO,
+          horario: horario || undefined,
           status,
           observacoes: observacoes.trim() || undefined,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: false
-        };
-
-        await db.transaction('rw', db.cirurgias, db.syncQueue, async () => {
-          await db.cirurgias.add(novaCirurgia);
-          await enfileirarOperacao("cirurgias", "add", novaCirurgia);
         });
       },
       {
@@ -185,9 +177,24 @@ export default function NovaCirurgiaPage() {
             />
           </motion.div>
 
+          {/* 🔥 MÉDICO COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico / Cirurgião (Opcional)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Médico / Cirurgião (Opcional)</label>
+                {medicoId && selectedMedico && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setMedicoId("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
@@ -199,8 +206,24 @@ export default function NovaCirurgiaPage() {
                 </div>
               </button>
             </div>
+
+            {/* 🔥 HOSPITAL COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
+                {hospitalId && selectedHospital && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setHospitalId("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }}
@@ -212,8 +235,24 @@ export default function NovaCirurgiaPage() {
                 </div>
               </button>
             </div>
+
+            {/* 🔥 LOCAL COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Clínica / Ambulatório (Opcional)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Clínica / Ambulatório (Opcional)</label>
+                {localId && selectedLocal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setLocalId("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
@@ -339,7 +378,7 @@ export default function NovaCirurgiaPage() {
           onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
           createNewLabel="Cadastrar Novo Hospital"
         />
-        
+
         <SelectionModal
           isOpen={isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}

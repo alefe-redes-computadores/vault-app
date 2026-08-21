@@ -13,9 +13,9 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { medicosRepository } from "@/lib/repositories/medicos";
 import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import type { Medico, Consulta, Exame, Cirurgia } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
@@ -66,7 +66,7 @@ function EditarMedicoContent() {
       return;
     }
 
-    db.medicos.get(id).then((item) => {
+    medicosRepository.getById(id).then((item) => {
       if (!item) {
         setNotFound(true);
       } else {
@@ -113,24 +113,14 @@ function EditarMedicoContent() {
 
     await saveAction.run(
       async () => {
-        await db.transaction("rw", db.medicos, db.syncQueue, async () => {
-          const original = await db.medicos.get(id);
-          if (!original) throw new Error("Médico não encontrado");
-
-          const medicoAtualizado: Medico = {
-            ...original,
-            nome: nome.trim(),
-            especialidade: especialidade.trim() || undefined,
-            telefone: telefone.trim() || undefined,
-            email: email.trim() || undefined,
-            crm: crm.trim() || undefined,
-            observacoes: observacoes.trim() || undefined,
-            updated_at: new Date().toISOString(),
-            synced: false
-          };
-
-          await db.medicos.put(medicoAtualizado);
-          await enfileirarOperacao("medicos", "update", medicoAtualizado);
+        // Repositório cuida de updated_at, synced e enfileiramento
+        await medicosRepository.update(id, {
+          nome: nome.trim(),
+          especialidade: especialidade.trim() || undefined,
+          telefone: telefone.trim() || undefined,
+          email: email.trim() || undefined,
+          crm: crm.trim() || undefined,
+          observacoes: observacoes.trim() || undefined,
         });
       },
       { successMessage: "Médico atualizado com sucesso", errorMessage: "Erro ao atualizar médico", goBackOnSuccess: true }
@@ -141,10 +131,7 @@ function EditarMedicoContent() {
     trigger("vibrate");
     await deleteAction.run(
       async () => {
-        await db.transaction("rw", db.medicos, db.syncQueue, async () => {
-          await db.medicos.delete(id);
-          await enfileirarOperacao("medicos", "delete", { id });
-        });
+        await medicosRepository.delete(id);
         router.replace("/saude/medicos");
       },
       { successMessage: "Médico excluído com sucesso", errorMessage: "Erro ao excluir médico" }

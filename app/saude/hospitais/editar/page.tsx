@@ -18,7 +18,8 @@ import {
   FolderHeart,
   Check,
   X,
-  Plus
+  Plus,
+  Eraser,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
@@ -27,10 +28,10 @@ import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { hospitaisRepository } from "@/lib/repositories/hospitais";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/db";
 import type { Hospital, Cirurgia, Exame, Consulta } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
@@ -88,7 +89,7 @@ function EditarHospitalContent() {
       return;
     }
 
-    db.hospitais.get(id).then((item) => {
+    hospitaisRepository.getById(id).then((item) => {
       if (!item) {
         setNotFound(true);
       } else {
@@ -128,23 +129,12 @@ function EditarHospitalContent() {
 
     saveAction.run(
       async () => {
-        await db.transaction("rw", db.hospitais, db.syncQueue, async () => {
-          const original = await db.hospitais.get(id);
-          if (!original) throw new Error("Hospital não encontrado");
-
-          const hospitalAtualizado: Hospital = {
-            ...original,
-            nome: nome.trim(),
-            endereco: endereco.trim() || undefined,
-            telefone: telefone.trim() || undefined,
-            medico_ids: medicoIds,
-            tratamento_ids: tratamentoIds,
-            updated_at: new Date().toISOString(),
-            synced: false
-          };
-
-          await db.hospitais.put(hospitalAtualizado);
-          await enfileirarOperacao("hospitais", "update", hospitalAtualizado);
+        await hospitaisRepository.update(id, {
+          nome: nome.trim(),
+          endereco: endereco.trim() || undefined,
+          telefone: telefone.trim() || undefined,
+          medico_ids: medicoIds,
+          tratamento_ids: tratamentoIds,
         });
       },
       { successMessage: "Hospital atualizado com sucesso", errorMessage: "Erro ao atualizar hospital", goBackOnSuccess: true }
@@ -154,10 +144,7 @@ function EditarHospitalContent() {
   const handleDelete = () => {
     deleteAction.run(
       async () => {
-        await db.transaction("rw", db.hospitais, db.syncQueue, async () => {
-          await db.hospitais.delete(id);
-          await enfileirarOperacao("hospitais", "delete", { id });
-        });
+        await hospitaisRepository.delete(id);
         router.replace("/saude/hospitais");
       },
       { successMessage: "Hospital excluído com sucesso", errorMessage: "Erro ao excluir hospital" }
@@ -285,8 +272,23 @@ function EditarHospitalContent() {
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Rede Relacional</h2>
 
+            {/* 🔥 MÉDICOS COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médicos que atendem aqui</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Médicos que atendem aqui</label>
+                {medicoIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setMedicoIds([]);
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setIsMedModalOpen(true)}
@@ -300,8 +302,23 @@ function EditarHospitalContent() {
               </button>
             </div>
 
+            {/* 🔥 TRATAMENTOS COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Tratamentos realizados aqui</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Tratamentos realizados aqui</label>
+                {tratamentoIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setTratamentoIds([]);
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setIsTratModalOpen(true)}

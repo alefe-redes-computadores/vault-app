@@ -4,16 +4,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Building2, MapPin, FolderHeart, Check, X, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Building2, MapPin, FolderHeart, Check, X, Plus, Eraser } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { medicosRepository } from "@/lib/repositories/medicos";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/db";
 import type { Medico, Tratamento, Hospital, LocalSaude } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
@@ -72,26 +72,16 @@ export default function NovoMedicoPage() {
 
     await run(
       async () => {
-        const novoId = crypto.randomUUID();
-        const novoMedico: Medico = {
-          id: novoId,
-          user_id: user.id,
+        await medicosRepository.create({
           nome: nome.trim(),
           especialidade: especialidade.trim() || undefined,
           crm: crm.trim() || undefined,
+          user_id: user?.id,
           telefone: telefone.trim() || undefined,
           email: email.trim() || undefined,
           hospital_ids: hospitalIds,
           tratamento_ids: tratamentoIds,
-          // Removido local_ids por não existir no tipo Medico
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: false,
-        };
-
-        await db.transaction("rw", db.medicos, db.syncQueue, async () => {
-          await db.medicos.add(novoMedico);
-          await enfileirarOperacao("medicos", "add", novoMedico);
+          local_ids: localIds,
         });
       },
       {
@@ -167,9 +157,28 @@ export default function NovoMedicoPage() {
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Atuação e Relacionamento</h2>
 
+            {/* 🔥 HOSPITAIS COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospitais e Unidades que atende</label>
-              <button type="button" onClick={() => { trigger("vibrate"); setIsHospModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Hospitais e Unidades que atende</label>
+                {hospitalIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setHospitalIds([]);
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => { trigger("vibrate"); setIsHospModalOpen(true); }}
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+              >
                 <span className="flex items-center gap-2">
                   <Building2 size={16} className="text-violet-400" />
                   {hospitalIds.length > 0 ? `${hospitalIds.length} hospital(is) vinculado(s)` : "Vincular hospitais..."}
@@ -178,9 +187,28 @@ export default function NovoMedicoPage() {
               </button>
             </div>
 
+            {/* 🔥 LOCAIS COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Clínicas, Postos e Laboratórios</label>
-              <button type="button" onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Clínicas, Postos e Laboratórios</label>
+                {localIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setLocalIds([]);
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+              >
                 <span className="flex items-center gap-2">
                   <MapPin size={16} className="text-emerald-400" />
                   {localIds.length > 0 ? `${localIds.length} local(is) vinculado(s)` : "Vincular locais de atendimento..."}
@@ -189,9 +217,28 @@ export default function NovoMedicoPage() {
               </button>
             </div>
 
+            {/* 🔥 TRATAMENTOS COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Tratamentos acompanhados</label>
-              <button type="button" onClick={() => { trigger("vibrate"); setIsTratModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Tratamentos acompanhados</label>
+                {tratamentoIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setTratamentoIds([]);
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => { trigger("vibrate"); setIsTratModalOpen(true); }}
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+              >
                 <span className="flex items-center gap-2">
                   <FolderHeart size={16} className="text-coral" />
                   {tratamentoIds.length > 0 ? `${tratamentoIds.length} tratamento(s) vinculado(s)` : "Vincular tratamentos..."}

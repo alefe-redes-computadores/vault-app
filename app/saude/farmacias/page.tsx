@@ -64,6 +64,25 @@ export default function FarmaciasPage() {
   const { medicamentos = [] } = useMedicamentos();
   const { renovacoes = [] } = useRenovacoes();
 
+  // 🔥 FILTRO POR INFERÊNCIA: apenas farmácias vinculadas à pessoa ativa
+  const farmaciasFiltradasPorPessoa = useMemo<Farmacia[]>(() => {
+    if (!activePersonId) return [];
+
+    const farmaciaIdsSet = new Set<string>();
+
+    // 1. Medicamentos da pessoa ativa
+    medicamentos.forEach((m) => {
+      if (m.farmacia_id) farmaciaIdsSet.add(m.farmacia_id);
+    });
+
+    // 2. Renovações da pessoa ativa
+    renovacoes.forEach((r) => {
+      if (r.farmacia_id) farmaciaIdsSet.add(r.farmacia_id);
+    });
+
+    return farmacias.filter((farmacia) => farmacia.id && farmaciaIdsSet.has(farmacia.id));
+  }, [activePersonId, medicamentos, renovacoes, farmacias]);
+
   const rankingFarmacias = useMemo<RankingFarmacia[]>(() => {
     const resultado = analisarMelhorFarmacia(renovacoes);
     return resultado.map((item) => ({
@@ -84,7 +103,7 @@ export default function FarmaciasPage() {
   const personAccent = activePersonId ? 'var(--person-accent, #F59E0B)' : '#F59E0B';
 
   const farmaciasComAnalise = useMemo<FarmaciaComAnalise[]>(() => {
-    return farmacias.map((farmacia) => {
+    return farmaciasFiltradasPorPessoa.map((farmacia) => {
       const medsDaFarmacia = medicamentos.filter((m: Medicamento) => m.farmacia_id === farmacia.id);
       const medIds = new Set(medsDaFarmacia.map((m) => m.id));
 
@@ -124,7 +143,7 @@ export default function FarmaciasPage() {
         ultimosMedicamentos,
       };
     });
-  }, [farmacias, medicamentos, renovacoes, rankingMap]);
+  }, [farmaciasFiltradasPorPessoa, medicamentos, renovacoes, rankingMap]);
 
   const filteredFarmacias = useMemo(() => {
     let result = farmaciasComAnalise;
@@ -219,10 +238,16 @@ export default function FarmaciasPage() {
           {filteredFarmacias.length === 0 ? (
             <EmptyState
               icon={Building2}
-              title="Nenhuma farmácia encontrada"
+              title={
+                activePersonId
+                  ? "Nenhuma farmácia vinculada a esta pessoa"
+                  : "Nenhuma farmácia encontrada"
+              }
               description={
                 search || filtroStatus !== "todos"
                   ? "Tente ajustar os filtros aplicados."
+                  : activePersonId
+                  ? "Cadastre medicamentos ou renovações para vincular farmácias."
                   : "Cadastre farmácias para acompanhar histórico de preços e renovações."
               }
             />

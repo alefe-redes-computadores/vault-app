@@ -16,8 +16,7 @@ import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { locaisRepository } from "@/lib/repositories/locais";
 import type { LocalSaude, Renovacao } from "@/lib/types";
 
 const fadeUp = {
@@ -75,7 +74,7 @@ function EditarLocalContent() {
       return;
     }
 
-    getLocal(id)
+    locaisRepository.getById(id)
       .then((item) => {
         if (!item) {
           setNotFound(true);
@@ -89,7 +88,7 @@ function EditarLocalContent() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [id, getLocal]);
+  }, [id]);
 
   const renovacoesVinculadas = useMemo(() => {
     if (!id || !renovacoes.length) return [];
@@ -112,22 +111,12 @@ function EditarLocalContent() {
 
     await saveAction.run(
       async () => {
-        await db.transaction("rw", db.locais, db.syncQueue, async () => {
-          const original = await db.locais.get(id);
-          if (!original) throw new Error("Local não encontrado");
-
-          const localAtualizado: LocalSaude = {
-            ...original,
-            nome: nome.trim(),
-            tipo: tipo || undefined,
-            endereco: endereco.trim() || undefined,
-            telefone: telefone.trim() || undefined,
-            updated_at: new Date().toISOString(),
-            synced: false,
-          };
-
-          await db.locais.put(localAtualizado);
-          await enfileirarOperacao("locais", "update", localAtualizado);
+        // Repositório cuida de updated_at, synced e enfileiramento
+        await locaisRepository.update(id, {
+          nome: nome.trim(),
+          tipo: tipo || undefined,
+          endereco: endereco.trim() || undefined,
+          telefone: telefone.trim() || undefined,
         });
       },
       {
@@ -143,10 +132,7 @@ function EditarLocalContent() {
 
     await deleteAction.run(
       async () => {
-        await db.transaction("rw", db.locais, db.syncQueue, async () => {
-          await db.locais.delete(id);
-          await enfileirarOperacao("locais", "delete", { id });
-        });
+        await locaisRepository.delete(id);
         router.replace("/saude/locais");
       },
       {

@@ -14,47 +14,24 @@ export function useCids() {
   const { activePersonId } = useActivePersonId();
 
   const cids = useLiveQuery(
-    () => {
-      if (!activePersonId) return [];
-      return db.cids
-        .where('person_id')
-        .equals(activePersonId)
-        .toArray();
-    },
+    () => activePersonId ? db.cids.where('person_id').equals(activePersonId).toArray() : [],
     [activePersonId],
     []
   );
 
-  const getCid = useCallback((id: string) => {
-    return cidsRepository.getById(id);
-  }, []);
+  const getCid = useCallback((id: string) => cidsRepository.getById(id), []);
 
-  const addCid = useCallback(
-    async (data: Omit<Cid, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      if (!user?.id) throw new Error("Usuário não autenticado");
-      return cidsRepository.create({ ...data, user_id: user.id });
-    },
-    [user]
-  );
+  const addCid = useCallback(async (data: Omit<Cid, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    return await cidsRepository.create({ ...data, user_id: user.id });
+  }, [user]);
 
   const updateCid = useCallback(async (id: string, data: Partial<Cid>) => {
-    return cidsRepository.update(id, data);
+    return await cidsRepository.update(id, data);
   }, []);
 
-  const deleteCid = useCallback(async (id: string) => {
-    return cidsRepository.delete(id);
-  }, []);
+  const deleteCid = useCallback(async (id: string) => await cidsRepository.delete(id), []);
+  const deleteCidSafe = useCallback(async (id: string) => await cidsRepository.deleteSafe(id), []);
 
-  const deleteCidSafe = useCallback(async (id: string) => {
-    return cidsRepository.deleteSafe(id);
-  }, []);
-
-  return {
-    cids,
-    getCid,
-    addCid,
-    updateCid,
-    deleteCid,
-    deleteCidSafe,
-  };
+  return { cids, getCid, addCid, updateCid, deleteCid, deleteCidSafe };
 }

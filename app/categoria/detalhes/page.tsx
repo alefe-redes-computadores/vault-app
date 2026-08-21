@@ -20,98 +20,117 @@ import { SelectionModal } from "@/components/SelectionModal";
 
 const getFieldsForType = (type: DocumentType) => {
   const fieldMap: Record<DocumentType, Array<{ key: string; label: string; type: string }>> = {
-    rg: [
-      { key: "modelo", label: "Modelo (C.I.N ou RG Antigo)", type: "text" },
-      { key: "cpf", label: "Número do CPF", type: "text" },
-      { key: "rg_number", label: "Número do RG (Se antigo)", type: "text" },
-      { key: "issue_date", label: "Data de emissão", type: "date" },
-      { key: "expiry_date", label: "Data de validade", type: "date" },
-      { key: "issuer", label: "Órgão emissor", type: "text" },
-    ],
-    cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
-    cnh: [
-      { key: "number", label: "Número da CNH", type: "text" },
-      { key: "category", label: "Categoria", type: "text" },
-      { key: "issue_date", label: "Data de emissão", type: "date" },
-      { key: "expiry_date", label: "Data de validade", type: "date" },
-    ],
-    certidao_nascimento: [
-      { key: 'nome_registrado', label: 'Nome Registrado', type: 'text' },
-      { key: 'matricula', label: 'Matrícula', type: 'text' },
-      { key: 'livro', label: 'Livro', type: 'text' },
-      { key: 'folha', label: 'Folha', type: 'text' },
-      { key: 'termo', label: 'Termo', type: 'text' },
-      { key: 'cartorio', label: 'Cartório de Registro', type: 'text' },
-      { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date' },
-    ],
-    titulo_eleitor: [
-      { key: 'number', label: 'Número do Título', type: 'text' },
-      { key: 'zona', label: 'Zona Eleitoral', type: 'text' },
-      { key: 'secao', label: 'Seção', type: 'text' },
-    ],
-    certificado: [
-      { key: "institution", label: "Instituição", type: "text" },
-      { key: "course", label: "Curso", type: "text" },
-      { key: "duration", label: "Duração", type: "text" },
-      { key: "completion_date", label: "Data de conclusão", type: "date" },
-    ],
-    receita: [
-      { key: "medication", label: "Medicamento", type: "text" },
-      { key: "dosage", label: "Dosagem", type: "text" },
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "pharmacy", label: "Farmácia", type: "text" },
-      { key: "prescription_date", label: "Data da receita", type: "date" },
-      { key: "renewal_date", label: "Próxima renovação", type: "date" },
-    ],
-    prontuario: [
-      { key: "hospital", label: "Hospital", type: "text" },
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "specialty", label: "Especialidade", type: "text" },
-      { key: "date", label: "Data", type: "date" },
-    ],
-    laudo: [
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "specialty", label: "Especialidade", type: "text" },
-      { key: "hospital", label: "Hospital", type: "text" },
-      { key: "date", label: "Data", type: "date" },
-    ],
-    encaminhamento: [
-      { key: "from", label: "Quem encaminhou", type: "text" },
-      { key: "to", label: "Para quem", type: "text" },
-      { key: "reason", label: "Motivo", type: "text" },
-      { key: "date", label: "Data", type: "date" },
-    ],
-    consulta: [
-      { key: "doctor", label: "Médico", type: "text" },
-      { key: "specialty", label: "Especialidade", type: "text" },
-      { key: "hospital", label: "Clínica / Hospital", type: "text" },
-      { key: "date", label: "Data da Consulta", type: "date" },
-      { key: "reason", label: "Motivo da Consulta", type: "text" },
-    ],
-    cirurgia: [
-      { key: "procedure", label: "Procedimento", type: "text" },
-      { key: "doctor", label: "Médico Cirurgião", type: "text" },
-      { key: "hospital", label: "Hospital", type: "text" },
-      { key: "date", label: "Data da Cirurgia", type: "date" },
-    ],
-    exame_sangue: [
-      { key: 'laboratorio', label: 'Laboratório', type: 'text' },
-      { key: 'data_exame', label: 'Data do Exame', type: 'date' },
-    ],
-    exame_imagem: [
-      { key: 'hospital', label: 'Local / Hospital', type: 'text' },
-      { key: 'tipo', label: 'Tipo de Exame', type: 'text' },
-      { key: 'data_exame', label: 'Data do Exame', type: 'date' },
-    ],
-    credencial: [
-      { key: 'orgao', label: 'Órgão Emissor', type: 'text' },
-      { key: 'validade', label: 'Validade', type: 'date' },
-    ],
-    outro: [
-      { key: "custom_field_1", label: "Campo 1", type: "text" },
-      { key: "custom_field_2", label: "Campo 2", type: "text" },
-    ],
-  };
+  rg: [
+    { key: 'modelo', label: 'Modelo', type: 'text' },
+    { key: 'cpf', label: 'CPF', type: 'text' },
+    { key: 'rg_number', label: 'Número do RG', type: 'text' },
+    { key: 'issue_date', label: 'Data de emissão', type: 'date' },
+    { key: 'expiry_date', label: 'Data de validade', type: 'date' },
+    { key: 'issuer', label: 'Órgão emissor', type: 'text' },
+  ],
+  cpf: [
+    { key: 'number', label: 'Número do CPF', type: 'text' },
+  ],
+  cnh: [
+    { key: 'number', label: 'Número da CNH', type: 'text' },
+    { key: 'category', label: 'Categoria', type: 'text' },
+    { key: 'issue_date', label: 'Data de emissão', type: 'date' },
+    { key: 'expiry_date', label: 'Data de validade', type: 'date' },
+  ],
+  certidao_nascimento: [
+    { key: 'nome_registrado', label: 'Nome Registrado', type: 'text' },
+    { key: 'matricula', label: 'Matrícula', type: 'text' },
+    { key: 'livro', label: 'Livro', type: 'text' },
+    { key: 'folha', label: 'Folha', type: 'text' },
+    { key: 'termo', label: 'Termo', type: 'text' },
+    { key: 'cartorio', label: 'Cartório', type: 'text' },
+    { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date' },
+  ],
+  titulo_eleitor: [
+    { key: 'number', label: 'Número do Título', type: 'text' },
+    { key: 'zona', label: 'Zona Eleitoral', type: 'text' },
+    { key: 'secao', label: 'Seção', type: 'text' },
+  ],
+  certificado: [
+    { key: 'institution', label: 'Instituição', type: 'text' },
+    { key: 'course', label: 'Curso', type: 'text' },
+    { key: 'duration', label: 'Duração', type: 'text' },
+    { key: 'completion_date', label: 'Data de conclusão', type: 'date' },
+  ],
+  carteira_trabalho: [
+    { key: 'numero', label: 'Número da CTPS', type: 'text' },
+    { key: 'serie', label: 'Série', type: 'text' },
+    { key: 'data_emissao', label: 'Data de emissão', type: 'date' },
+    { key: 'uf', label: 'UF', type: 'text' },
+  ],
+  passaporte: [
+    { key: 'numero', label: 'Número do Passaporte', type: 'text' },
+    { key: 'pais', label: 'País de emissão', type: 'text' },
+    { key: 'data_emissao', label: 'Data de emissão', type: 'date' },
+    { key: 'data_validade', label: 'Data de validade', type: 'date' },
+  ],
+  dispensa_militar: [
+    { key: 'numero', label: 'Número do Certificado', type: 'text' },
+    { key: 'categoria', label: 'Categoria', type: 'text' },
+    { key: 'data_emissao', label: 'Data de emissão', type: 'date' },
+  ],
+  receita: [
+    { key: 'medicamento_id', label: 'Medicamento', type: 'text' },
+    { key: 'dosage', label: 'Dosagem', type: 'text' },
+    { key: 'medico_id', label: 'Médico', type: 'text' },
+    { key: 'farmacia_id', label: 'Farmácia', type: 'text' },
+    { key: 'prescription_date', label: 'Data da receita', type: 'date' },
+    { key: 'renewal_date', label: 'Próxima renovação', type: 'date' },
+  ],
+  prontuario: [
+    { key: 'hospital_id', label: 'Hospital', type: 'text' },
+    { key: 'medico_id', label: 'Médico', type: 'text' },
+    { key: 'specialty', label: 'Especialidade', type: 'text' },
+    { key: 'date', label: 'Data', type: 'date' },
+  ],
+  laudo: [
+    { key: 'medico_id', label: 'Médico', type: 'text' },
+    { key: 'specialty', label: 'Especialidade', type: 'text' },
+    { key: 'hospital_id', label: 'Hospital', type: 'text' },
+    { key: 'date', label: 'Data', type: 'date' },
+  ],
+  encaminhamento: [
+    { key: 'from_medico_id', label: 'Quem encaminhou', type: 'text' },
+    { key: 'to_medico_id', label: 'Para quem', type: 'text' },
+    { key: 'reason', label: 'Motivo', type: 'text' },
+    { key: 'date', label: 'Data', type: 'date' },
+  ],
+  consulta: [
+    { key: 'medico_id', label: 'Médico', type: 'text' },
+    { key: 'specialty', label: 'Especialidade', type: 'text' },
+    { key: 'hospital_id', label: 'Clínica / Hospital', type: 'text' },
+    { key: 'date', label: 'Data da Consulta', type: 'date' },
+    { key: 'reason', label: 'Motivo', type: 'text' },
+  ],
+  cirurgia: [
+    { key: 'procedure', label: 'Procedimento', type: 'text' },
+    { key: 'medico_id', label: 'Médico Cirurgião', type: 'text' },
+    { key: 'hospital_id', label: 'Hospital', type: 'text' },
+    { key: 'date', label: 'Data da Cirurgia', type: 'date' },
+  ],
+  exame_sangue: [
+    { key: 'laboratorio_id', label: 'Laboratório', type: 'text' },
+    { key: 'data_exame', label: 'Data do Exame', type: 'date' },
+  ],
+  exame_imagem: [
+    { key: 'hospital_id', label: 'Local / Hospital', type: 'text' },
+    { key: 'tipo', label: 'Tipo de Exame', type: 'text' },
+    { key: 'data_exame', label: 'Data do Exame', type: 'date' },
+  ],
+  credencial: [
+    { key: 'orgao', label: 'Órgão Emissor', type: 'text' },
+    { key: 'validade', label: 'Validade', type: 'date' },
+  ],
+  outro: [
+    { key: 'custom_field_1', label: 'Campo 1', type: 'text' },
+    { key: 'custom_field_2', label: 'Campo 2', type: 'text' },
+  ],
+};
 
   return fieldMap[type] || [];
 };

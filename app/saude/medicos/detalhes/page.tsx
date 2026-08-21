@@ -49,6 +49,7 @@ import type {
 import { useMedicos } from "@/hooks/useMedicos";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { sugerirRenovacao, isReceitaVencidaSegura, analisarComportamentoUso } from "@/lib/health-insights";
+import { useMounted } from "@/hooks/useMounted";
 
 function getTreatmentColor(nome: string): string {
   const colors: Record<string, string> = {
@@ -102,6 +103,7 @@ function DetalhesMedicoContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { activePersonId } = useActivePersonId();
+  const mounted = useMounted();
 
   const [medico, setMedico] = useState<Medico | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -237,6 +239,9 @@ function DetalhesMedicoContent() {
       setIsLoading(false);
     });
   }, [id, router]);
+
+  // Previne hydration mismatch: só renderiza o conteúdo depois de montado
+  if (!mounted) return <DetailSkeleton />;
 
   const handleDelete = async () => {
     trigger("vibrate");

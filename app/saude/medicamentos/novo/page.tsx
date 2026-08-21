@@ -1,17 +1,15 @@
 // app/saude/medicamentos/novo/page.tsx
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2, Save, Pill, Upload, X, FileText, Package, Plus, Clock,
   Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, Store,
-  Building2, MapPin, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, TrendingUp, Sparkles, Circle
+  Building2, MapPin, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, Circle, Eraser
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
-import { useSafeDb } from "@/hooks/useSafeDb";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
@@ -36,7 +34,9 @@ import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
 import { sugerirHorarios } from "@/lib/health-insights";
 import { FloatingSpinner } from "@/components/loading/FloatingSpinner";
-import { db } from "@/lib/db";
+import { medicamentosRepository } from "@/lib/repositories/medicamentos";
+import { documentsRepository } from "@/lib/repositories/documents";
+import { renovacoesRepository } from "@/lib/repositories/renovacoes";
 import type { Attachment, Document, TipoReceita, Medico, Farmacia, Hospital, LocalSaude, Medicamento } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 } };
@@ -60,12 +60,16 @@ function handleCurrencyMask(value: string): string {
   const numberVal = parseInt(clean, 10) / 100;
   return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
 function handleTimeMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 4);
   if (clean.length > 2) {
     return `${clean.slice(0, 2)}:${clean.slice(2)}`;
   }
-  return clean;
+  if (clean.length > 0) {
+    return clean.padStart(2, '0');
+  }
+  return "";
 }
 
 const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
@@ -93,9 +97,8 @@ export default function NovoMedicamentoPage() {
 
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
-  const { addDocument, updateDocument } = useSafeDb();
 
-  const { addMedicamento, medicamentos: medicamentosList } = useMedicamentos();
+  const { medicamentos: medicamentosList } = useMedicamentos();
   const { medicos, addMedico } = useMedicos();
   const { farmacias, addFarmacia } = useFarmacias();
   const { hospitais, addHospital } = useHospitais();
@@ -156,39 +159,8 @@ export default function NovoMedicamentoPage() {
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [showDesativarEstoqueModal, setShowDesativarEstoqueModal] = useState(false);
 
-  const [isTypingName, setIsTypingName] = useState(false);
-  const [isRecognized, setIsRecognized] = useState(false);
-  const [showDuplicateActionModal, setShowDuplicateActionModal] = useState(false);
-  const [selectedDuplicate, setSelectedDuplicate] = useState<Medicamento | null>(null);
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeFields, setShakeFields] = useState<string[]>([]);
-
-  const suggestions = useMemo(() => {
-    if (nome.length < 2 || !isTypingName) return [];
-    return medicamentosList
-      .filter((m: Medicamento) =>
-        m.nome.toLowerCase().includes(nome.toLowerCase()) &&
-        m.status !== "descontinuado" &&
-        m.person_id === activePersonId
-      )
-      .slice(0, 4);
-  }, [nome, medicamentosList, isTypingName, activePersonId]);
-
-  const handleSuggestionClick = (med: Medicamento) => {
-    trigger("vibrate");
-    setNome(med.nome);
-    setIsTypingName(false);
-    setSelectedDuplicate(med);
-    setShowDuplicateActionModal(true);
-  };
-
-  const renderPillIcon = (formatoStr: string, coresArray: string[]) => {
-    const FormatObj = FORMATOS.find(f => f.id === formatoStr) || FORMATOS[0];
-    const Icon = FormatObj.icon;
-    const color = coresArray && coresArray.length > 0 ? coresArray[0] : "#9CA3AF";
-    return <Icon size={16} fill={color} stroke="none" />;
-  };
 
   useEffect(() => {
     if (tipoUso === "continuo" && vezesAoDia && primeiroHorario) {
@@ -282,11 +254,11 @@ export default function NovoMedicamentoPage() {
       }
     }
     if (step === 3) {
-      if (dataReceitaTexto && dataReceitaTexto.length < 10) {
+      if (dataReceitaTexto && dataReceitaTexto.length < 10 && dataReceitaTexto.length > 0) {
         newErrors.dataReceitaTexto = "Data inválida";
         shakeList.push("dataReceitaTexto");
       }
-      if (proximaRenovacaoTexto && proximaRenovacaoTexto.length < 10) {
+      if (proximaRenovacaoTexto && proximaRenovacaoTexto.length < 10 && proximaRenovacaoTexto.length > 0) {
         newErrors.proximaRenovacaoTexto = "Data inválida";
         shakeList.push("proximaRenovacaoTexto");
       }
@@ -335,132 +307,121 @@ export default function NovoMedicamentoPage() {
       async () => {
         setUploadProgress(0);
         
-        await db.transaction('rw', db.documents, db.medicamentos, db.renovacoes, db.syncQueue, async () => {
-          const dataReceitaISO = brParaIso(dataReceitaTexto);
-          const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
-          const estoqueDataReferenciaISO = brParaIso(estoqueDataReferenciaTexto) || getLocalTodayISO();
+        const dataReceitaISO = brParaIso(dataReceitaTexto);
+        const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
+        const estoqueDataReferenciaISO = brParaIso(estoqueDataReferenciaTexto) || getLocalTodayISO();
 
-          const quantidadeEstoqueFinal = isGotas
-            ? (estoqueGotasCalculado > 0 ? estoqueGotasCalculado : Number(estoqueQuantidade) || 0)
-            : Number(estoqueQuantidade) || 0;
+        const quantidadeEstoqueFinal = isGotas
+          ? (estoqueGotasCalculado > 0 ? estoqueGotasCalculado : Number(estoqueQuantidade) || 0)
+          : Number(estoqueQuantidade) || 0;
 
-          const horariosFiltrados = horarios.filter(Boolean);
-          const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
+        const horariosFiltrados = horarios.filter(Boolean);
+        const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
 
-          let docId = "";
+        let docId: string | undefined = undefined;
 
-          if (dataReceitaISO || attachment) {
-            const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'> = {
-              user_id: user?.id || "",
-              person_id: activePersonId || "",
-              category_id: "saude",
-              type: "receita",
-              title: `Receita — ${nome.trim()}`,
-              description: observacoes.trim() || undefined,
-              metadata: {
-                medication: nome.trim(),
-                dosage: dosagem.trim(),
-                prescription_date: dataReceitaISO,
-                renewal_date: proximaRenovacaoISO,
-                tratamento_ids: tratamentosSelecionados,
-                tipo_receita: tipoReceita,
-                formato,
-                status: "ativo",
-              },
-              attachments: attachment ? [attachment] : [],
-              is_favorite: false,
-            };
+if (dataReceitaISO || attachment) {
+  if (!user) throw new Error('Usuário não autenticado');
+  
+  const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced' | 'user_id'> = {
+    person_id: activePersonId || "",
+    category_id: "saude",
+    type: "receita",
+    title: `Receita — ${nome.trim()}`,
+    description: observacoes.trim() || undefined,
+    metadata: {
+      medication: nome.trim(),
+      dosage: dosagem.trim(),
+      prescription_date: dataReceitaISO,
+      renewal_date: proximaRenovacaoISO,
+      tratamento_ids: tratamentosSelecionados,
+      tipo_receita: tipoReceita,
+      formato,
+      status: "ativo",
+    },
+    attachments: attachment ? [attachment] : [],
+    is_favorite: false,
+  };
 
-            docId = await addDocument(docData);
+  const createdDoc = await documentsRepository.create({
+    user_id: user.id,
+    ...docData,
+  });
+  docId = createdDoc;
 
-            if (localFile && user && attachment) {
-              const { url, error } = await uploadFile(user.id, localFile, "saude");
-              if (!error && url) {
-                await updateDocument(docId, { attachments: [{ ...attachment, url }] });
-                setUploadProgress(100);
-              }
+          if (localFile && user && attachment) {
+            const { url, error } = await uploadFile(user.id, localFile, "saude");
+            if (!error && url) {
+              await documentsRepository.update(docId, { attachments: [{ ...attachment, url }] });
+              setUploadProgress(100);
             }
           }
+        }
 
-          const medicamentoId = await addMedicamento({
-            document_id: docId || undefined,
-            person_id: activePersonId || "",
-            nome: nome.trim(),
-            dosagem: dosagem.trim(),
-            formato,
-            cores,
-            tipo_uso: tipoUso,
-            medico: medicoNome?.trim() || "",
-            medico_id: medicoId || undefined,
-            hospital_id: hospitalId || undefined,
-            local_id: localId || undefined,
-            farmacia: farmaciaNome?.trim() || "",
-            farmacia_id: farmaciaId || undefined,
-            preco: precoNumerico,
-            data_receita: dataReceitaISO,
-            proxima_renovacao: proximaRenovacaoISO,
-            observacoes: observacoes?.trim() || undefined,
-            tipo_receita: tipoReceita,
-            tratamento_ids: tratamentosSelecionados,
-            status: "ativo",
-            estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
-            estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-            estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
-            estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
-            estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
-          });
+        const medicamentoData = {
+  document_id: docId || undefined,
+  person_id: activePersonId || "",
+  nome: nome.trim(),
+  dosagem: dosagem.trim(),
+  formato,
+  cores,
+  tipo_uso: tipoUso,
+  medico: medicoNome?.trim() || "",
+  medico_id: medicoId || undefined,
+  hospital_id: hospitalId || undefined,
+  local_id: localId || undefined,
+  farmacia: farmaciaNome?.trim() || "",
+  farmacia_id: farmaciaId || undefined,
+  preco: precoNumerico,
+  data_receita: dataReceitaISO,
+  proxima_renovacao: proximaRenovacaoISO,
+  observacoes: observacoes?.trim() || undefined,
+  tipo_receita: tipoReceita,
+  tratamento_ids: tratamentosSelecionados,
+  status: "ativo" as const,
+  estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+  estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
+  estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
+  estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
+  estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
+};
 
-          if (precoNumerico !== undefined || (estoqueAtivo && quantidadeEstoqueFinal > 0)) {
-            const idRenovacao = crypto.randomUUID();
-            await db.renovacoes.add({
-              id: idRenovacao,
-              user_id: user?.id || "",
-              person_id: activePersonId || undefined,
-              medicamento_id: medicamentoId,
-              medico_id: medicoId || undefined,
-              farmacia_id: farmaciaId || undefined,
-              hospital_id: hospitalId || undefined,
-              local_id: localId || undefined,
-              tipo_aquisicao: precoNumerico !== undefined ? "comprado" : "gratuito",
-              quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
-              preco: precoNumerico,
-              data: dataReceitaISO || getLocalTodayISO(), 
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              synced: false
-            });
-            
-            await enfileirarOperacao("renovacoes", "add", {
-              id: idRenovacao,
-              user_id: user?.id || "",
-              person_id: activePersonId || undefined,
-              medicamento_id: medicamentoId,
-              medico_id: medicoId || undefined,
-              farmacia_id: farmaciaId || undefined,
-              hospital_id: hospitalId || undefined,
-              local_id: localId || undefined,
-              tipo_aquisicao: precoNumerico !== undefined ? "comprado" : "gratuito",
-              quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
-              preco: precoNumerico,
-              data: dataReceitaISO || getLocalTodayISO(),
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              synced: false,
+if (!user) throw new Error('Usuário não autenticado');
+const createdMed = await medicamentosRepository.create({
+  user_id: user.id,
+  ...medicamentoData,
+});
+        const medicamentoId = createdMed;
+
+        if (precoNumerico !== undefined || (estoqueAtivo && quantidadeEstoqueFinal > 0)) {
+  if (!user) throw new Error('Usuário não autenticado');
+  
+  await renovacoesRepository.create({
+    user_id: user.id,
+    person_id: activePersonId || undefined,
+    medicamento_id: medicamentoId,
+    medico_id: medicoId || undefined,
+    farmacia_id: farmaciaId || undefined,
+    hospital_id: hospitalId || undefined,
+    local_id: localId || undefined,
+    tipo_aquisicao: precoNumerico !== undefined ? "comprado" : "gratuito",
+    quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+    preco: precoNumerico,
+    data: dataReceitaISO || getLocalTodayISO(),
+  });
+}
+
+        if (estoqueAtivo && tipoUso === 'continuo' && horariosFiltrados.length > 0) {
+          const granted = await requestNotificationPermission();
+          if (granted) {
+            await scheduleDoseNotifications({
+              id: medicamentoId,
+              nome: nome.trim(),
+              dosagem: dosagem.trim(),
+              estoque_horarios: horariosFiltrados
             });
           }
-
-          if (estoqueAtivo && tipoUso === 'continuo' && horariosFiltrados.length > 0) {
-            const granted = await requestNotificationPermission();
-            if (granted) {
-              await scheduleDoseNotifications({
-                id: medicamentoId,
-                nome: nome.trim(),
-                dosagem: dosagem.trim(),
-                estoque_horarios: horariosFiltrados
-              });
-            }
-          }
-        });
+        }
       },
       {
         successMessage: "Medicamento cadastrado com sucesso",
@@ -522,60 +483,14 @@ export default function NovoMedicamentoPage() {
               <motion.div key="step1" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
 
                 <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-                  <div className={`relative transition-all ${shakeFields.includes('nome') ? 'animate-shake' : ''}`}>
+                  <div className={`transition-all ${shakeFields.includes('nome') ? 'animate-shake' : ''}`}>
                     <Input
                       label="Medicamento"
                       placeholder="Ex: Sertralina"
                       value={nome}
-                      onChange={(e) => {
-                        setNome(e.target.value);
-                        setIsTypingName(true);
-                        setIsRecognized(false);
-                      }}
-                      onFocus={() => setIsTypingName(true)}
+                      onChange={(e) => setNome(e.target.value)}
                       error={errors.nome}
                     />
-
-                    <AnimatePresence>
-                      {isRecognized && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-                          <p className="text-[10px] text-emerald-400 mt-1.5 flex items-center gap-1 font-medium ml-1">
-                            <Sparkles size={12}/> Reconhecido. Prosseguindo como nova variação.
-                          </p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <AnimatePresence>
-                      {suggestions.length > 0 && isTypingName && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="absolute z-10 w-full mt-2 rounded-2xl border border-surface-border/60 bg-surface shadow-xl overflow-hidden backdrop-blur-xl"
-                        >
-                          <div className="p-2 bg-surface-raised/50 border-b border-surface-border/40">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted ml-2">Já Cadastrados para Você</span>
-                          </div>
-                          {suggestions.map((med: Medicamento) => (
-                            <button
-                              key={med.id}
-                              type="button"
-                              onClick={() => handleSuggestionClick(med)}
-                              className="flex items-center gap-3 w-full p-3 text-left border-b border-surface-border/40 last:border-0 hover:bg-surface-raised transition-colors"
-                            >
-                              <div className="h-8 w-8 rounded-full border border-surface-border/50 bg-surface flex items-center justify-center shrink-0">
-                                {renderPillIcon(med.formato || "comprimido", med.cores || [])}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-ink-primary text-sm leading-tight">{med.nome}</p>
-                                <p className="text-xs text-ink-muted mt-0.5">{med.dosagem}</p>
-                              </div>
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
 
                   <div className={`transition-all ${shakeFields.includes('dosagem') ? 'animate-shake' : ''}`}>
@@ -626,7 +541,7 @@ export default function NovoMedicamentoPage() {
                   </div>
 
                   <div className="mt-4 flex justify-center">
-                    <div className="flex h-16 w-24 items-center justify-center rounded-2xl border border-surface-border bg-void/50 shadow-inner">
+                    <div className="flex h-16 w-24 items-center justify-center rounded-2xl border border-surface bg-void/50 shadow-inner">
                       <SelectedFormatIcon size={32} fill={hasTwoColors ? `url(#${gradientId})` : (cores[0] || "#9CA3AF")} stroke="none" />
                     </div>
                   </div>
@@ -667,6 +582,7 @@ export default function NovoMedicamentoPage() {
                             value={vezesAoDia}
                             onChange={(e) => setVezesAoDia(e.target.value)}
                             error={errors.vezesAoDia}
+                            className="h-12"
                           />
                         </div>
                         <div className="relative">
@@ -677,7 +593,7 @@ export default function NovoMedicamentoPage() {
                             maxLength={5}
                             value={primeiroHorario}
                             onChange={(e) => setPrimeiroHorario(handleTimeMask(e.target.value))}
-                            className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                            className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3.5 text-ink-primary font-mono text-sm outline-none focus:border-ice/50 h-12"
                           />
                         </div>
                       </div>
@@ -713,7 +629,14 @@ export default function NovoMedicamentoPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-ink-primary">Em qual farmácia comprou?</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-ink-primary">Em qual farmácia comprou?</label>
+                      {farmaciaId && (
+                        <button type="button" onClick={() => { setFarmaciaId(""); setFarmaciaNome(""); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsPharmacyModalOpen(true)}
@@ -744,7 +667,14 @@ export default function NovoMedicamentoPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Médico Prescritor</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-ink-muted">Médico Prescritor</label>
+                      {medicoId && (
+                        <button type="button" onClick={() => { setMedicoId(""); setMedicoNome(""); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsDoctorModalOpen(true)}
@@ -756,7 +686,14 @@ export default function NovoMedicamentoPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Hospital</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-ink-muted">Hospital</label>
+                      {hospitalId && (
+                        <button type="button" onClick={() => { setHospitalId(""); setHospitalNome(""); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsHospitalModalOpen(true)}
@@ -771,7 +708,14 @@ export default function NovoMedicamentoPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Local / Posto</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-ink-muted">Local / Posto</label>
+                      {localId && (
+                        <button type="button" onClick={() => { setLocalId(""); setLocalNome(""); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsLocalModalOpen(true)}
@@ -936,7 +880,6 @@ export default function NovoMedicamentoPage() {
           </AnimatePresence>
         </section>
 
-        {/* CONTROLES DO RODAPÉ */}
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-surface-border/40 bg-void/90 p-5 backdrop-blur-xl pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div className="flex gap-3 max-w-2xl mx-auto">
             {currentStep > 1 && (
@@ -976,72 +919,6 @@ export default function NovoMedicamentoPage() {
           cancelLabel="Cancelar"
           type="warning"
         />
-
-        <AnimatePresence>
-          {showDuplicateActionModal && selectedDuplicate && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-4 backdrop-blur-md"
-              onClick={() => setShowDuplicateActionModal(false)}
-            >
-              <motion.div
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                onClick={e => e.stopPropagation()}
-                className="w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-surface p-6 shadow-vault"
-              >
-                <div className="flex justify-between items-start mb-5">
-                  <div>
-                    <div className="flex items-center gap-2 text-amber-400 mb-1">
-                      <AlertTriangle size={16} />
-                      <span className="text-xs font-bold uppercase tracking-widest">Aviso Inteligente</span>
-                    </div>
-                    <h2 className="text-xl font-display font-bold text-ink-primary">Você já possui {selectedDuplicate.nome}</h2>
-                  </div>
-                  <button onClick={() => setShowDuplicateActionModal(false)} className="h-8 w-8 bg-surface-raised rounded-full flex items-center justify-center text-ink-muted">
-                    <X size={16}/>
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  <button onClick={() => router.push(`/saude/medicamentos/editar?id=${selectedDuplicate.id}&intent=evolucao`)} className="w-full flex items-center justify-between p-4 rounded-2xl bg-ice/10 border border-ice/20 active:scale-95 transition-all">
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="h-10 w-10 bg-ice/20 text-ice rounded-xl flex items-center justify-center"><TrendingUp size={20}/></div>
-                      <div>
-                        <p className="font-bold text-ice">Aumento/Redução de Dose</p>
-                      </div>
-                    </div>
-                    <ChevronRight size={18} className="text-ice opacity-50"/>
-                  </button>
-
-                  <button onClick={() => router.push(`/saude/medicamentos/editar?id=${selectedDuplicate.id}&intent=compra`)} className="w-full flex items-center justify-between p-4 rounded-2xl bg-emerald-400/10 border border-emerald-400/20 active:scale-95 transition-all">
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="h-10 w-10 bg-emerald-400/20 text-emerald-400 rounded-xl flex items-center justify-center"><Package size={20}/></div>
-                      <div>
-                        <p className="font-bold text-emerald-400">Nova Compra / Estoque</p>
-                      </div>
-                    </div>
-                    <ChevronRight size={18} className="text-emerald-400 opacity-50"/>
-                  </button>
-
-                  <button onClick={() => { setShowDuplicateActionModal(false); setIsRecognized(true); }} className="w-full flex items-center justify-between p-4 rounded-2xl bg-surface-raised border border-surface-border active:scale-95 transition-all">
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="h-10 w-10 bg-void border border-surface-border text-ink-muted rounded-xl flex items-center justify-center"><Plus size={20}/></div>
-                      <div>
-                        <p className="font-bold text-ink-primary">Continuar novo cadastro</p>
-                      </div>
-                    </div>
-                    <ChevronRight size={18} className="text-ink-muted opacity-50"/>
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {(isSubmitting || uploadProgress > 0) && (
           <FloatingSpinner label={uploadProgress > 0 ? `Enviando anexo... ${uploadProgress}%` : "Salvando medicamento..."} />

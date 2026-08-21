@@ -46,6 +46,7 @@ import {
   sugerirRenovacao
 } from "@/lib/health-insights";
 import { getCidInsights } from "@/lib/health-insights";
+import { useMounted } from "@/hooks/useMounted";
 
 const listVariants = {
   hidden: { opacity: 0 },
@@ -125,6 +126,7 @@ function TratamentoContent() {
   const { medicamentos } = useMedicamentos();
   const { medicos } = useMedicos();
   const { activePersonId } = useActivePersonId();
+  const mounted = useMounted();
 
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -169,6 +171,9 @@ function TratamentoContent() {
     };
     fetchTratamento();
   }, [id, router]);
+
+  // Previne hydration mismatch: só renderiza o conteúdo depois de montado
+  if (!mounted) return <DetailSkeleton />;
 
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
   const allRenovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];

@@ -21,8 +21,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { personsRepository } from "@/lib/repositories/persons";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 
 const PERSON_COLORS = [
@@ -86,42 +85,21 @@ export default function NewPersonPage() {
 
     run(
       async () => {
-        const newPerson = {
-          id: crypto.randomUUID(),
+        await personsRepository.create({
           user_id: user.id,
           name: formData.name.trim(),
           email: formData.email.trim() || undefined,
           phone: formData.phone.trim() || undefined,
           avatar_url: formData.avatar_url || undefined,
           color: formData.color,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: 0,
-        };
-
-        // Transação Atômica Local + Fila de Sincronização
-        await db.transaction("rw", db.persons, db.syncQueue, async () => {
-          await db.persons.add(newPerson as any);
-          await enfileirarOperacao("persons", "add", newPerson);
         });
-
-        router.push("/pessoas");
       },
       {
         successMessage: "Pessoa adicionada com sucesso!",
-        errorMessage: "Erro ao salvar pessoa",
-        goBackOnSuccess: false,
+        errorMessage: "Erro ao salvar pessoa. Tente novamente.",
+        goBackOnSuccess: true,
       }
     );
-  };
-
-  const handlePreencherDados = () => {
-    trigger("vibrate");
-    const nome = user?.user_metadata?.full_name || "";
-    const email = user?.email || "";
-    const avatar = user?.user_metadata?.avatar_url || "";
-    setFormData((prev) => ({ ...prev, name: nome, email, avatar_url: avatar }));
-    showToast("Dados preenchidos com seu perfil!", "info");
   };
 
   return (
@@ -178,28 +156,6 @@ export default function NewPersonPage() {
                   Salve os dados principais para reutilizar em documentos e registros.
                 </p>
               </div>
-            </div>
-
-            <div className="mb-6 rounded-[22px] border border-surface-border/40 bg-surface-raised/60 px-4 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-surface-border/50 bg-surface">
-                  <User size={20} className="text-ink-muted" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink-primary">
-                    Preencher com meus dados
-                  </p>
-                  <p className="mt-0.5 text-xs leading-5 text-ink-faint">
-                    Usa nome, e-mail e avatar do seu perfil atual.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={handlePreencherDados}
-                className="mt-3 inline-flex rounded-full bg-ice/12 px-3.5 py-2 text-sm font-medium text-ice transition-all active:scale-95 hover:bg-ice/16"
-              >
-                Usar meu perfil
-              </button>
             </div>
 
             <div className="space-y-4">

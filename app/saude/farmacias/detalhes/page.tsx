@@ -20,6 +20,7 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { calcularEconomia, isReceitaVencidaSegura } from "@/lib/health-insights";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { useMounted } from "@/hooks/useMounted";
 import type { Farmacia, Medicamento, Renovacao } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
@@ -47,6 +48,7 @@ function DetalhesFarmaciaContent() {
   const { medicamentos } = useMedicamentos();
   const { activePersonId } = useActivePersonId();
   const deleteAction = useSubmitAction();
+  const mounted = useMounted();
 
   const [farmacia, setFarmacia] = useState<Farmacia | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +71,8 @@ function DetalhesFarmaciaContent() {
       setIsLoading(false);
     });
   }, [id, getFarmacia, router]);
+
+  if (!mounted) return <DetailSkeleton />;
 
   const analiseFarmacia = useMemo(() => {
     if (!farmacia || !medicamentos) {

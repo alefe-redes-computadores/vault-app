@@ -1,3 +1,4 @@
+// hooks/useLocais.ts
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
@@ -10,37 +11,24 @@ import type { LocalSaude } from "@/lib/types";
 export function useLocais() {
   const { user } = useAuth();
 
-  // ✅ CORRIGIDO: db.locais em vez de db.table("locais")
   const locais = useLiveQuery(
     () => db.locais.where('user_id').equals(user?.id || '').toArray(),
     [user?.id],
     []
   );
 
-  const getLocal = useCallback((id: string) => {
-    return locaisRepository.getById(id);
-  }, []);
-
-  const addLocal = useCallback(
-    async (data: Omit<LocalSaude, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return locaisRepository.create({ ...data, user_id: user?.id || "" });
-    },
-    [user]
-  );
-
+  const getLocal = useCallback((id: string) => locaisRepository.getById(id), []);
+  
+  const addLocal = useCallback(async (data: Omit<LocalSaude, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    return await locaisRepository.create({ ...data, user_id: user.id });
+  }, [user]);
+  
   const updateLocal = useCallback(async (id: string, data: Partial<LocalSaude>) => {
-    return locaisRepository.update(id, data);
+    return await locaisRepository.update(id, data);
   }, []);
+  
+  const deleteLocal = useCallback(async (id: string) => await locaisRepository.delete(id), []);
 
-  const deleteLocal = useCallback(async (id: string) => {
-    return locaisRepository.delete(id);
-  }, []);
-
-  return {
-    locais,
-    getLocal,
-    addLocal,
-    updateLocal,
-    deleteLocal,
-  };
+  return { locais, getLocal, addLocal, updateLocal, deleteLocal };
 }

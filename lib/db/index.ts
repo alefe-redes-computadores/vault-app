@@ -23,6 +23,7 @@ import type {
   Consulta,
   Cirurgia,
   AppSettings,
+  Versiculo, // 🔥 ADICIONADO
 } from '@/lib/types';
 import { deleteFile } from '@/lib/supabase/storage';
 import { getLocalTodayISO } from '@/lib/health-utils';
@@ -124,6 +125,8 @@ class VaultDB extends Dexie {
 
   medicamento_tratamentos!: Table<MedicamentoTratamento, string>;
   exame_tratamentos!: Table<ExameTratamento, string>;
+
+  versiculos!: Table<Versiculo, string>; // 🔥 ADICIONADO
 
   constructor() {
     super('vault-db');
@@ -747,6 +750,17 @@ class VaultDB extends Dexie {
     (this as any).version(26).stores({
       medicos: 'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
       hospitais: 'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
+    });
+
+    // ==========================================================
+    // VERSÃO 27 — Tabela versiculos
+    // ==========================================================
+    (this as any).version(27).stores({
+      // Mantém as definições da versão 26
+      medicos: 'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
+      hospitais: 'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
+      // Nova tabela
+      versiculos: 'id, user_id, created_at',
     });
 
   } // <--- Fecha o constructor
@@ -2017,4 +2031,46 @@ export async function updateDefaultPersonId(userId: string, personId: string): P
 export async function getSettings(userId: string): Promise<AppSettings | null> {
   if (!userId) return null;
   return (await db.settings.where("user_id").equals(userId).first()) ?? null;
+}
+
+// ============================================================
+// VERSÍCULOS
+// ============================================================
+
+export async function safeAddVersiculo(
+  data: Omit<Versiculo, 'id' | 'created_at' | 'updated_at'>
+): Promise<string> {
+  const timestamp = nowIso();
+  const id = generateId();
+
+  const full: Versiculo = {
+    ...data,
+    id,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+
+  await db.versiculos.add(full);
+  return id;
+}
+
+export async function safeUpdateVersiculo(
+  id: string,
+  changes: Partial<Versiculo>
+): Promise<void> {
+  const timestamp = nowIso();
+
+  const existing = await db.versiculos.get(id);
+  if (!existing) {
+    throw new Error('Versículo não encontrado');
+  }
+
+  await db.versiculos.update(id, {
+    ...changes,
+    updated_at: timestamp,
+  });
+}
+
+export async function safeDeleteVersiculo(id: string): Promise<void> {
+  await db.versiculos.delete(id);
 }

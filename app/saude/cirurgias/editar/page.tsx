@@ -14,10 +14,10 @@ import {
   MapPin,
   Clock,
   Save,
+  Eraser,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -26,6 +26,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { SelectionModal } from "@/components/SelectionModal";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { cirurgiasRepository } from "@/lib/repositories/cirurgias";
 import type { Cirurgia, Medico, Hospital, LocalSaude } from "@/lib/types";
 
 const fadeUp = {
@@ -42,7 +43,7 @@ function formatDateToDisplay(isoStr: string): string {
 
 function parseDateToISO(displayStr: string): string {
   const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return ""; 
+  if (clean.length !== 8) return "";
   const day = clean.slice(0, 2);
   const month = clean.slice(2, 4);
   const year = clean.slice(4, 8);
@@ -90,7 +91,7 @@ function EditarCirurgiaContent() {
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
   const [dataDisplay, setDataDisplay] = useState("");
-  const [horario, setHorario] = useState(""); 
+  const [horario, setHorario] = useState("");
   const [status, setStatus] = useState<"agendada" | "realizada" | "cancelada">("agendada");
   const [observacoes, setObservacoes] = useState("");
 
@@ -102,7 +103,7 @@ function EditarCirurgiaContent() {
       return;
     }
     const loadCirurgia = async () => {
-      const data = await db.cirurgias.get(id);
+      const data = await cirurgiasRepository.getById(id);
       if (data) {
         setProcedimento(data.procedimento);
         setMedicoId(data.medico_id || "");
@@ -145,25 +146,15 @@ function EditarCirurgiaContent() {
         const dataISO = parseDateToISO(dataDisplay);
         if (!dataISO) throw new Error("Data inválida");
 
-        await db.transaction("rw", db.cirurgias, db.syncQueue, async () => {
-          const original = await db.cirurgias.get(id);
-          if (!original) throw new Error("Cirurgia não encontrada");
-
-          const cirurgiaAtualizada: Cirurgia = {
-            ...original,
-            procedimento: procedimento.trim(),
-            medico_id: medicoId || undefined,
-            hospital_id: hospitalId || undefined,
-            local_id: localId || undefined,
-            data: dataISO,
-            status,
-            observacoes: observacoes.trim() || undefined,
-            updated_at: new Date().toISOString(),
-            synced: false
-          };
-
-          await db.cirurgias.put(cirurgiaAtualizada);
-          await enfileirarOperacao("cirurgias", "update", cirurgiaAtualizada);
+        await cirurgiasRepository.update(id, {
+          procedimento: procedimento.trim(),
+          medico_id: medicoId || undefined,
+          hospital_id: hospitalId || undefined,
+          local_id: localId || undefined,
+          data: dataISO,
+          horario: horario || undefined,
+          status,
+          observacoes: observacoes.trim() || undefined,
         });
       },
       {
@@ -209,9 +200,24 @@ function EditarCirurgiaContent() {
             />
           </motion.div>
 
+          {/* 🔥 MÉDICO COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico / Cirurgião (Opcional)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Médico / Cirurgião (Opcional)</label>
+                {medicoId && selectedMedico && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setMedicoId("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
@@ -223,8 +229,24 @@ function EditarCirurgiaContent() {
                 </div>
               </button>
             </div>
+
+            {/* 🔥 HOSPITAL COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
+                {hospitalId && selectedHospital && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setHospitalId("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }}
@@ -236,8 +258,24 @@ function EditarCirurgiaContent() {
                 </div>
               </button>
             </div>
+
+            {/* 🔥 LOCAL COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Clínica / Ambulatório (Opcional)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Clínica / Ambulatório (Opcional)</label>
+                {localId && selectedLocal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setLocalId("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
@@ -363,7 +401,7 @@ function EditarCirurgiaContent() {
           onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
           createNewLabel="Cadastrar Novo Hospital"
         />
-        
+
         <SelectionModal
           isOpen={isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}

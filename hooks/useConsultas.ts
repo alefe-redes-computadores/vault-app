@@ -14,41 +14,25 @@ export function useConsultas() {
   const { activePersonId } = useActivePersonId();
 
   const consultas = useLiveQuery(
-    () => {
-      if (!activePersonId) return [];
-      return db.consultas
-        .where('person_id')
-        .equals(activePersonId)
-        .toArray();
-    },
+    () => activePersonId ? db.consultas.where('person_id').equals(activePersonId).toArray() : [],
     [activePersonId],
     []
   );
 
-  const getConsulta = useCallback((id: string) => {
-    return consultasRepository.getById(id);
-  }, []);
+  const getConsulta = useCallback((id: string) => consultasRepository.getById(id), []);
 
-  const addConsulta = useCallback(
-    async (data: Omit<Consulta, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return consultasRepository.create({ ...data, user_id: user?.id || "" });
-    },
-    [user]
-  );
+  const addConsulta = useCallback(async (data: Omit<Consulta, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    return await consultasRepository.create({ ...data, user_id: user.id });
+  }, [user]);
 
   const updateConsulta = useCallback(async (id: string, data: Partial<Consulta>) => {
-    return consultasRepository.update(id, data);
+    return await consultasRepository.update(id, data);
   }, []);
 
   const deleteConsulta = useCallback(async (id: string) => {
-    return consultasRepository.delete(id);
+    return await consultasRepository.delete(id);
   }, []);
 
-  return {
-    consultas,
-    getConsulta,
-    addConsulta,
-    updateConsulta,
-    deleteConsulta,
-  };
+  return { consultas, getConsulta, addConsulta, updateConsulta, deleteConsulta };
 }

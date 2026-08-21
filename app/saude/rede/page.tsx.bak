@@ -305,7 +305,7 @@ export default function RedeSaudePage() {
             </button>
 
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">REDE DE APOIO</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Minha Rede de Saúde
               </h1>

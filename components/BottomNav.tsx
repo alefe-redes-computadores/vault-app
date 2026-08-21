@@ -144,6 +144,7 @@ const PESSOAS_COMPOSE_OPTIONS: ComposeOption[] = [
 function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
   if (pathname === "/") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/documentos") return DOCUMENTOS_COMPOSE_OPTIONS;
+  if (pathname === "/saude/documentos") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/hoje") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/mais") return [];
 
@@ -183,6 +184,7 @@ const ALLOWED_NAV_PATHS = [
   "/",
   "/hoje",
   "/documentos",
+  "/saude/documentos",
   "/mais",
   "/pessoas",
   "/cartoes",
@@ -209,6 +211,15 @@ function shouldShowNav(pathname: string): boolean {
   return ALLOWED_NAV_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}?`)
   );
+}
+
+// Helper para dar cores bonitas aos ícones do modal baseado no ID
+function getOptionColorClass(id: string) {
+  if (['renovacao'].includes(id)) return 'bg-coral/10 text-coral border-coral/20';
+  if (['medicamento', 'farmacia'].includes(id)) return 'bg-amber-400/10 text-amber-400 border-amber-400/20';
+  if (['exame', 'local', 'cid'].includes(id)) return 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20';
+  if (['tratamento', 'cirurgia'].includes(id)) return 'bg-violet-400/10 text-violet-400 border-violet-400/20';
+  return 'bg-ice/10 text-ice border-ice/20'; // Padrão: Médico, Consulta, Hospital, etc.
 }
 
 export function BottomNav() {
@@ -289,41 +300,46 @@ export function BottomNav() {
       <AnimatePresence>
         {isComposeMenuOpen && showCompose && (
           <>
+            {/* Fundo escuro que fecha ao clicar fora */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.16 }}
+              transition={{ duration: 0.15 }}
               onClick={() => setIsComposeMenuOpen(false)}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
             />
 
             <motion.div
-              initial={{ opacity: 0, y: 16, scale: 0.96 }}
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.97 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="shadow-vault fixed bottom-[6.5rem] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[340px] -translate-x-1/2 overflow-hidden rounded-[26px] border border-surface-border/60 bg-surface"
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="shadow-[0_20px_50px_rgba(0,0,0,0.5)] fixed bottom-[6.5rem] left-1/2 z-50 w-[calc(100%-2rem)] max-w-[360px] -translate-x-1/2 overflow-hidden rounded-[30px] border border-surface-border/80 bg-surface/95 backdrop-blur-xl"
             >
-              <div className="px-4 pb-1 pt-3.5">
-                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-faint">
-                  Adicionar
+              <div className="px-4 pb-2 pt-4 flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-ink-muted">
+                  Adicionar Novo
                 </p>
               </div>
-              <div className="max-h-[380px] overflow-y-auto px-3 pb-3 pt-1">
-                <div className="grid grid-cols-2 gap-2">
+              
+              {/* max-h-[70vh] garante que o scroll respeite a altura da tela no mobile sem cortar */}
+              <div className="max-h-[70vh] overflow-y-auto px-4 pb-6 pt-2 scrollbar-hide">
+                <div className="grid grid-cols-3 gap-3">
                   {composeOptions.map((option) => {
                     const Icon = option.icon;
+                    const colorClass = getOptionColorClass(option.id);
+                    
                     return (
                       <button
                         key={option.id}
                         onClick={() => handleComposeOptionPress(option)}
-                        className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-center transition-all active:scale-95 hover:border-ice/30 hover:bg-surface-raised"
+                        className="flex flex-col items-center justify-start gap-2 rounded-2xl border border-surface-border/40 bg-surface-raised/40 p-2.5 text-center transition-all active:scale-95 hover:bg-surface-raised"
                       >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-full border ${colorClass}`}>
                           <Icon size={18} />
                         </div>
-                        <span className="line-clamp-1 text-[11px] font-medium text-ink-primary">
+                        <span className="text-[10px] font-medium leading-tight text-ink-primary line-clamp-2">
                           {option.label}
                         </span>
                       </button>
@@ -379,10 +395,10 @@ export function BottomNav() {
               <button
                 onClick={handleComposePress}
                 aria-label={composeOptions.length > 1 ? "Adicionar" : composeOptions[0].path}
-                className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_16px_32px_rgba(47,227,201,0.28)] transition-all duration-200 active:scale-95"
+                className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-[40%] items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_12px_24px_rgba(47,227,201,0.35)] transition-all duration-300 active:scale-90"
               >
-                <motion.div animate={{ rotate: isComposeMenuOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
-                  <Plus size={24} strokeWidth={2.6} />
+                <motion.div animate={{ rotate: isComposeMenuOpen ? 45 : 0 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+                  <Plus size={28} strokeWidth={2.5} />
                 </motion.div>
               </button>
             )}

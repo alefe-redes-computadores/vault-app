@@ -106,7 +106,7 @@ export default function ExamesPage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">Vault</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">REGISTROS CLÍNICOS</p>
               <h1 className="font-display text-xl font-semibold text-ink-primary truncate">Exames e Laudos</h1>
             </div>
           </div>

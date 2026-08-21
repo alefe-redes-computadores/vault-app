@@ -16,13 +16,13 @@ import {
   X,
   MapPin,
   Clock,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Eraser,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
 import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -33,6 +33,7 @@ import type { Attachment, Medico, Hospital, LocalSaude, Consulta } from "@/lib/t
 import { useToast } from "@/components/ToastProvider";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { consultasRepository } from "@/lib/repositories/consultas";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -48,7 +49,7 @@ function formatDateToDisplay(isoStr: string): string {
 
 function parseDateToISO(displayStr: string): string {
   const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return ""; 
+  if (clean.length !== 8) return "";
   const day = clean.slice(0, 2);
   const month = clean.slice(2, 4);
   const year = clean.slice(4, 8);
@@ -176,9 +177,7 @@ export default function NovaConsultaPage() {
         const dataISO = parseDateToISO(dataDisplay);
         if (!dataISO) throw new Error("Data inválida");
         
-        const novoId = crypto.randomUUID();
-        const novaConsulta: Consulta = {
-          id: novoId,
+        await consultasRepository.create({
           user_id: user.id,
           person_id: activePersonId || undefined,
           especialidade: selectedMedico?.especialidade || "Geral",
@@ -191,14 +190,7 @@ export default function NovaConsultaPage() {
           status,
           motivo: motivo.trim() || undefined,
           observacoes: observacoes.trim() || undefined,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: false
-        };
-
-        await db.transaction('rw', db.consultas, db.syncQueue, async () => {
-          await db.consultas.add(novaConsulta);
-          await enfileirarOperacao("consultas", "add", novaConsulta);
+          anexo_url: anexoUrl,
         });
       },
       { successMessage: "Consulta criada", errorMessage: "Erro ao salvar", goBackOnSuccess: true }
@@ -225,9 +217,28 @@ export default function NovaConsultaPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
+          {/* 🔥 MÉDICO COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico <span className="text-coral">*</span></label>
-            <button type="button" onClick={() => setIsMedicoModalOpen(true)} className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${errors.medicoId ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised flex items-center justify-between`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Médico <span className="text-coral">*</span></label>
+              {medicoId && selectedMedico && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setMedicoId("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsMedicoModalOpen(true)}
+              className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${errors.medicoId ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised flex items-center justify-between`}
+            >
               <div className="flex items-center gap-2.5 min-w-0">
                 <UserCheck size={16} className="text-ice shrink-0" />
                 <span className="truncate text-ink-primary">{selectedMedico ? `Dr(a). ${selectedMedico.nome} (${selectedMedico.especialidade || 'Geral'})` : "Selecionar médico"}</span>
@@ -236,10 +247,29 @@ export default function NovaConsultaPage() {
             {errors.medicoId && <p className="mt-1 text-xs text-coral ml-1">{errors.medicoId}</p>}
           </motion.div>
 
+          {/* 🔥 HOSPITAL E LOCAL COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
-              <button type="button" onClick={() => setIsHospitalModalOpen(true)} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between text-ink-primary">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
+                {hospitalId && selectedHospital && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setHospitalId("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHospitalModalOpen(true)}
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between text-ink-primary"
+              >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Building2 size={16} className="text-violet-400 shrink-0" />
                   <span className="truncate">{selectedHospital ? selectedHospital.nome : "Vincular hospital..."}</span>
@@ -247,8 +277,26 @@ export default function NovaConsultaPage() {
               </button>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Clínica / Posto (Opcional)</label>
-              <button type="button" onClick={() => setIsLocalModalOpen(true)} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between text-ink-primary">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Clínica / Posto (Opcional)</label>
+                {localId && selectedLocal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setLocalId("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLocalModalOpen(true)}
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between text-ink-primary"
+              >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <MapPin size={16} className="text-emerald-400 shrink-0" />
                   <span className="truncate">{selectedLocal ? selectedLocal.nome : "Vincular local / laboratório..."}</span>

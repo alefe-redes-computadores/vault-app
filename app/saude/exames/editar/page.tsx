@@ -18,7 +18,8 @@ import {
   HeartPulse,
   ShieldAlert,
   Calendar,
-  Clock
+  Clock,
+  Eraser,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -35,7 +36,7 @@ import { useMedicos } from "@/hooks/useMedicos";
 import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { examesRepository } from "@/lib/repositories/exames";
 import type { Medico, LocalSaude, Tratamento, Exame } from "@/lib/types";
 
 const fadeUp = {
@@ -56,7 +57,7 @@ function formatDateToDisplay(isoStr: string): string {
 
 function parseDateToISO(displayStr: string): string {
   const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return ""; 
+  if (clean.length !== 8) return "";
   const day = clean.slice(0, 2);
   const month = clean.slice(2, 4);
   const year = clean.slice(4, 8);
@@ -151,7 +152,7 @@ function EditarExameContent() {
     }
 
     const loadExame = async () => {
-      const data = await db.exames.get(id);
+      const data = await examesRepository.getById(id);
       if (data) {
         setPersonId(data.person_id || "");
         setNome(data.nome || "");
@@ -262,32 +263,20 @@ function EditarExameContent() {
 
         const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
 
-        await db.transaction("rw", db.exames, db.syncQueue, async () => {
-          const original = await db.exames.get(id);
-          if (!original) throw new Error("Exame não encontrado");
-
-          const exameAtualizado: Exame = {
-            ...original,
-            person_id: personId || undefined,
-            nome: nome.trim(),
-            laboratorio: laboratorio.trim() || undefined,
-            local_id: localId || undefined,
-            medico: medico.trim() || undefined,
-            medico_id: medicoId || undefined,
-            data: dataSolicitacaoISO,
-            data_retorno: dataRetornoISO,
-            motivo: motivo.trim() || undefined,
-            observacoes: observacoes.trim() || undefined,
-            anexo_url: anexoUrl.trim() || undefined,
-            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-            updated_at: new Date().toISOString(),
-            synced: false
-          };
-
-          (exameAtualizado as any).horario = horario || undefined;
-
-          await db.exames.put(exameAtualizado);
-          await enfileirarOperacao("exames", "update", exameAtualizado);
+        await examesRepository.update(id, {
+          person_id: personId || undefined,
+          nome: nome.trim(),
+          laboratorio: laboratorio.trim() || undefined,
+          local_id: localId || undefined,
+          medico: medico.trim() || undefined,
+          medico_id: medicoId || undefined,
+          data: dataSolicitacaoISO,
+          horario: horario || undefined,
+          data_retorno: dataRetornoISO,
+          motivo: motivo.trim() || undefined,
+          observacoes: observacoes.trim() || undefined,
+          anexo_url: anexoUrl.trim() || undefined,
+          tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
         });
       },
       {
@@ -319,12 +308,25 @@ function EditarExameContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
+          {/* 🔥 TRATAMENTOS COM LIMPAR (limpa todos de uma vez) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Activity size={16} className="text-violet-400" />
                 <label className="text-sm font-semibold text-ink-primary">Tratamentos / Motivos Vinculados</label>
               </div>
+              {tratamentosSelecionados.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setTratamentosSelecionados([]);
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar todos
+                </button>
+              )}
             </div>
 
             {tratamentosSelecionados.length > 0 && (
@@ -371,8 +373,24 @@ function EditarExameContent() {
               />
             </div>
 
+            {/* 🔥 LABORATÓRIO COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Laboratório / Hospital</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Laboratório / Hospital</label>
+                {localId && laboratorio && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setLocalId("");
+                      setLaboratorio("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
@@ -383,8 +401,24 @@ function EditarExameContent() {
               </button>
             </div>
 
+            {/* 🔥 MÉDICO COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico Solicitante</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Médico Solicitante</label>
+                {medicoId && medico && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setMedicoId("");
+                      setMedico("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }}

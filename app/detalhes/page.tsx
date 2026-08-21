@@ -37,6 +37,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { useMounted } from "@/hooks/useMounted";
 
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
@@ -111,6 +112,7 @@ export default function DocumentDetailPage() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
   const { showToast, showSuccess } = useToast();
+  const mounted = useMounted();
 
   const doc = useDocument(id || "");
   const { deleteDocument, favorite, updateDocument } = useSafeDb();
@@ -124,6 +126,49 @@ export default function DocumentDetailPage() {
   const [imageError, setImageError] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
+
+  if (!mounted) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen bg-void px-5 pt-6">
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-surface-border/40" />
+            <div className="mx-auto h-4 w-3/4 animate-pulse rounded bg-surface-border/40" />
+            <div className="mx-auto mt-2 h-3 w-1/2 animate-pulse rounded bg-surface-border/40" />
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (!doc) {
+    return (
+      <PageTransition>
+        <main className="flex min-h-screen items-center justify-center bg-void px-5">
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
+            <p className="text-sm text-ink-muted">Documento não encontrado</p>
+            <Button
+              variant="primary"
+              onClick={() => router.push("/")}
+              className="mt-4"
+            >
+              Voltar
+            </Button>
+          </div>
+        </main>
+      </PageTransition>
+    );
+  }
+
+  const categoryId = doc.category_id as CategoryId;
+  const category = CATEGORIES[categoryId];
+  const color = category?.color || "#6B7280";
+  const CategoryIcon = CATEGORY_ICONS[doc.category_id] || FolderOpen;
+  const hasMetadata = Object.keys(doc.metadata || {}).length > 0;
+  const hasAttachments = doc.attachments && doc.attachments.length > 0;
+  const FileIcon = selectedAttachment ? getFileIcon(selectedAttachment.type) : File;
+
+  const dateFields = ["issue_date", "expiry_date", "prescription_date", "renewal_date", "date", "data_nascimento", "data_exame", "validade"];
 
   const handleDelete = useCallback(async () => {
     if (!doc || !doc.id) {
@@ -248,35 +293,6 @@ export default function DocumentDetailPage() {
     },
     [selectedAttachment, doc, updateDocument, trigger, showToast]
   );
-
-  if (!doc) {
-    return (
-      <PageTransition>
-        <main className="flex min-h-screen items-center justify-center bg-void px-5">
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
-            <p className="text-sm text-ink-muted">Documento não encontrado</p>
-            <Button
-              variant="primary"
-              onClick={() => router.push("/")}
-              className="mt-4"
-            >
-              Voltar
-            </Button>
-          </div>
-        </main>
-      </PageTransition>
-    );
-  }
-
-  const categoryId = doc.category_id as CategoryId;
-  const category = CATEGORIES[categoryId];
-  const color = category?.color || "#6B7280";
-  const CategoryIcon = CATEGORY_ICONS[doc.category_id] || FolderOpen;
-  const hasMetadata = Object.keys(doc.metadata || {}).length > 0;
-  const hasAttachments = doc.attachments && doc.attachments.length > 0;
-  const FileIcon = selectedAttachment ? getFileIcon(selectedAttachment.type) : File;
-
-  const dateFields = ["issue_date", "expiry_date", "prescription_date", "renewal_date", "date", "data_nascimento", "data_exame", "validade"];
 
   return (
     <PageTransition>

@@ -7,13 +7,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Edit3, ShieldCheck, Copy, Check, Landmark, Loader2, Trash2, Plus,
 } from "lucide-react";
-import { db } from "@/lib/db";
 import { useCards } from "@/hooks/useCards";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { getBankLogoUrl } from "@/lib/utils/card-helper";
 import { PageTransition } from "@/components/PageTransition";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
+import { useMounted } from "@/hooks/useMounted";
 import type { BankCard } from "@/lib/types";
 
 const fadeUp = {
@@ -42,7 +43,8 @@ function AccountDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { deleteCard } = useCards();
+  const { deleteCard, getCard } = useCards();
+  const mounted = useMounted();
 
   const [account, setAccount] = useState<BankCard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,8 +56,8 @@ function AccountDetailsContent() {
     async function loadAccount() {
       if (!id) return;
       try {
-        // CORRIGIDO: db.bankCards em vez de db.cards
-        const item = await db.bankCards.get(id);
+        // Usando o repositório via hook
+        const item = await getCard(id);
         if (item) setAccount(item);
       } catch (error) {
         console.error("Erro ao carregar detalhes da conta:", error);
@@ -64,7 +66,9 @@ function AccountDetailsContent() {
       }
     }
     loadAccount();
-  }, [id]);
+  }, [id, getCard]);
+
+  if (!mounted) return <DetailSkeleton />;
 
   const handleCopy = async (text: string, fieldName: string) => {
     trigger("vibrate");
@@ -105,11 +109,7 @@ function AccountDetailsContent() {
   };
 
   if (loading || !account) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-void">
-        <Loader2 size={32} className="animate-spin text-ice" />
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   const logoUrl = getBankLogoUrl(account.bank_name);
@@ -291,7 +291,7 @@ function AccountDetailsContent() {
 
 export default function AccountDetailsPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-void"><Loader2 size={32} className="animate-spin text-ice" /></div>}>
+    <Suspense fallback={<DetailSkeleton />}>
       <AccountDetailsContent />
     </Suspense>
   );

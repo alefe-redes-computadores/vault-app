@@ -21,7 +21,8 @@ import {
   Clock,
   Image as ImageIcon,
   Upload,
-  Camera
+  Camera,
+  Eraser,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -32,7 +33,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { examesRepository } from "@/lib/repositories/exames";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useLocais } from "@/hooks/useLocais";
@@ -61,7 +62,7 @@ function formatDateToDisplay(isoStr: string): string {
 
 function parseDateToISO(displayStr: string): string {
   const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return ""; 
+  if (clean.length !== 8) return "";
   const day = clean.slice(0, 2);
   const month = clean.slice(2, 4);
   const year = clean.slice(4, 8);
@@ -286,35 +287,23 @@ export default function NovoExamePage() {
           }
         }
 
-        await db.transaction("rw", db.exames, db.syncQueue, async () => {
-          for (const nomeExame of listaExames) {
-            const novoId = crypto.randomUUID();
-            const novoExame: Exame = {
-              id: novoId,
-              user_id: user.id,
-              person_id: activePersonId,
-              nome: nomeExame,
-              laboratorio: localRealizacao.trim() || undefined,
-              local_id: localId || undefined,
-              medico: medicoSolicitante.trim() || undefined,
-              medico_id: medicoId || undefined,
-              data: dataSolicitacaoISO,
-              data_retorno: dataRetornoISO,
-              motivo: motivo.trim() || undefined,
-              observacoes: observacoes.trim() || undefined,
-              anexo_url: urlUpload.trim() || undefined,
-              tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              synced: false
-            };
-
-            (novoExame as any).horario = horario || undefined;
-
-            await db.exames.add(novoExame);
-            await enfileirarOperacao("exames", "add", novoExame);
-          }
-        });
+        for (const nomeExame of listaExames) {
+          await examesRepository.create({
+            person_id: activePersonId,
+            nome: nomeExame,
+            laboratorio: localRealizacao.trim() || undefined,
+            local_id: localId || undefined,
+            medico: medicoSolicitante.trim() || undefined,
+            medico_id: medicoId || undefined,
+            data: dataSolicitacaoISO,
+            horario: horario || undefined,
+            data_retorno: dataRetornoISO,
+            motivo: motivo.trim() || undefined,
+            observacoes: observacoes.trim() || undefined,
+            anexo_url: urlUpload.trim() || undefined,
+            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+          });
+        }
       },
       {
         successMessage: "Exame(s) cadastrado(s)",
@@ -346,12 +335,25 @@ export default function NovoExamePage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
+          {/* 🔥 TRATAMENTOS COM LIMPAR (limpa todos de uma vez) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Activity size={16} className="text-violet-400" />
                 <label className="text-sm font-semibold text-ink-primary">Motivo / Tratamento (Opcional)</label>
               </div>
+              {tratamentosSelecionados.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setTratamentosSelecionados([]);
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar todos
+                </button>
+              )}
             </div>
 
             {tratamentosSelecionados.length > 0 && (
@@ -398,8 +400,24 @@ export default function NovoExamePage() {
               {errors.nomes && <p className="mt-1 text-xs text-coral">{errors.nomes}</p>}
             </div>
 
+            {/* 🔥 LABORATÓRIO COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Laboratório / Hospital</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Laboratório / Hospital</label>
+                {localId && localRealizacao && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setLocalId("");
+                      setLocalRealizacao("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
@@ -410,8 +428,24 @@ export default function NovoExamePage() {
               </button>
             </div>
 
+            {/* 🔥 MÉDICO COM LIMPAR */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico Solicitante</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-ink-primary">Médico Solicitante</label>
+                {medicoId && medicoSolicitante && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setMedicoId("");
+                      setMedicoSolicitante("");
+                    }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  >
+                    <Eraser size={12} /> Limpar
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }}

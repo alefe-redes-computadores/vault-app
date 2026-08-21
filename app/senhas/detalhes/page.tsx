@@ -13,10 +13,11 @@ import { useSecureScreen } from "@/hooks/useSecureScreen";
 import { decryptPassword } from "@/lib/crypto";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
-import { db } from "@/lib/db";
+import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import type { Credential } from "@/lib/types";
 import { useToast } from "@/components/ToastProvider";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { useMounted } from "@/hooks/useMounted";
 
 function CredentialDetailsContent() {
   const { trigger } = useHapticFeedback();
@@ -24,9 +25,10 @@ function CredentialDetailsContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { showToast } = useToast();
+  const mounted = useMounted();
 
   const { isLocked } = useSecureScreen();
-  const { deleteCredential } = useCredentials();
+  const { deleteCredential, getCredential } = useCredentials();
 
   const { authenticate } = useBiometric({
     title: "Revelar Senha",
@@ -48,7 +50,8 @@ function CredentialDetailsContent() {
     async function loadCredential() {
       if (!id) return;
       try {
-        const item = await db.credentials.get(id);
+        // Usando o repositório via hook
+        const item = await getCredential(id);
         if (item) setCredential(item);
       } catch (error) {
         console.error("Erro:", error);
@@ -62,7 +65,9 @@ function CredentialDetailsContent() {
       if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
       setPlainPassword("");
     };
-  }, [id]);
+  }, [id, getCredential]);
+
+  if (!mounted) return <DetailSkeleton />;
 
   const handleRevealPassword = async () => {
     trigger("vibrate");
@@ -136,11 +141,7 @@ function CredentialDetailsContent() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-void">
-        <Loader2 className="animate-spin text-ice" />
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (!credential) {
@@ -268,7 +269,7 @@ function CredentialDetailsContent() {
 
 export default function CredentialDetailsPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-void"><Loader2 className="animate-spin text-ice" /></div>}>
+    <Suspense fallback={<DetailSkeleton />}>
       <CredentialDetailsContent />
     </Suspense>
   );

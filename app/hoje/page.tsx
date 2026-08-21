@@ -52,7 +52,8 @@ type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
 type FiltroCompromisso = "todos" | "consultas" | "cirurgias" | "exames";
 
 function getPeriodoDoDia(horario: string) {
-  const [h] = horario.split(":").map(Number);
+  const safeHorario = horario || "00:00";
+  const [h] = safeHorario.split(":").map(Number);
   if (h >= 5 && h < 12) return { key: "manha", label: "Manhã", sub: "Comece o dia com foco" };
   if (h >= 12 && h < 18) return { key: "tarde", label: "Tarde", sub: "Manutenção e constância" };
   return { key: "noite", label: "Noite", sub: "Encerramento e descanso" };

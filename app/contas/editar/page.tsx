@@ -5,7 +5,6 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
-import { db } from "@/lib/db";
 import { useCards } from "@/hooks/useCards";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
@@ -28,7 +27,7 @@ function EditAccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { updateCard } = useCards();
+  const { getCard, updateCard } = useCards();
   const { run, isSubmitting } = useSubmitAction();
 
   const [loading, setLoading] = useState(true);
@@ -47,7 +46,7 @@ function EditAccountContent() {
     async function loadAccount() {
       if (!id) return;
       try {
-        const item = await db.bankCards.get(id);
+        const item = await getCard(id);
         if (item) {
           setFormData({
             title: item.title || "",
@@ -65,7 +64,7 @@ function EditAccountContent() {
       }
     }
     loadAccount();
-  }, [id]);
+  }, [id, getCard]);
 
   const logoUrl = getBankLogoUrl(formData.bank_name);
 

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { getBankLogoUrl } from "@/lib/utils/card-helper";
@@ -14,8 +13,7 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { useCards } from "@/hooks/useCards";
 import type { CardType } from "@/lib/types";
 
 const fadeUp = {
@@ -27,7 +25,7 @@ export default function NewAccountPage() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const router = useRouter();
-  const { user } = useAuth();
+  const { addCard } = useCards();
   const { run, isSubmitting } = useSubmitAction();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -48,7 +46,7 @@ export default function NewAccountPage() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     trigger("vibrate");
 
     const newErrors: Record<string, string> = {};
@@ -63,31 +61,16 @@ export default function NewAccountPage() {
       return;
     }
 
-    if (!user?.id) {
-      showToast("Usuário não autenticado", "error");
-      return;
-    }
-
-    await run(
+    run(
       async () => {
-        const id = crypto.randomUUID();
-        const payload = {
-          id,
-          user_id: user.id,
+        // O repositório/hook cuida de id, user_id, created_at, updated_at, synced e enfileiramento
+        await addCard({
           title: formData.title.trim(),
           bank_name: formData.bank_name.trim(),
           type: formData.type,
           agency: formData.agency.trim(),
           account: formData.account.trim(),
           notes: formData.notes.trim(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: false
-        };
-
-        await db.transaction("rw", db.bankCards, db.syncQueue, async () => {
-            await db.bankCards.add(payload);
-            await enfileirarOperacao("bankCards" as any, "add", payload);
         });
       },
       {

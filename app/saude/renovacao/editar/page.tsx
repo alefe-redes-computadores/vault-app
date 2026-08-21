@@ -18,6 +18,7 @@ import {
   Store,
   Building2,
   MapPin,
+  Eraser,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
@@ -34,8 +35,7 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { renovacoesRepository } from "@/lib/repositories/renovacoes";
 import type {
   Renovacao,
   Medicamento,
@@ -181,28 +181,17 @@ function EditarRenovacaoContent() {
           ? parseFloat(preco.replace(/\./g, "").replace(",", "."))
           : undefined;
 
-        await db.transaction("rw", db.renovacoes, db.syncQueue, async () => {
-          const original = await db.renovacoes.get(id);
-          if (!original) throw new Error("Renovação não encontrada");
-
-          const renovacaoAtualizada: Renovacao = {
-            ...original,
-            person_id: activePersonId || undefined,
-            medicamento_id: medicamentoId || original.medicamento_id,
-            medico_id: medicoId || undefined,
-            farmacia_id: farmaciaId || undefined,
-            hospital_id: hospitalId || undefined,
-            local_id: localId || undefined,
-            data: dataISO || original.data,
-            preco: precoNum,
-            observacoes: observacoes.trim() || undefined,
-            anexo_url: anexoUrl.trim() || undefined,
-            updated_at: new Date().toISOString(),
-            synced: false
-          };
-
-          await db.renovacoes.put(renovacaoAtualizada);
-          await enfileirarOperacao("renovacoes", "update", renovacaoAtualizada);
+        await renovacoesRepository.update(id, {
+          person_id: activePersonId || undefined,
+          medicamento_id: medicamentoId || undefined,
+          medico_id: medicoId || undefined,
+          farmacia_id: farmaciaId || undefined,
+          hospital_id: hospitalId || undefined,
+          local_id: localId || undefined,
+          data: dataISO || undefined,
+          preco: precoNum,
+          observacoes: observacoes.trim() || undefined,
+          anexo_url: anexoUrl.trim() || undefined,
         });
       },
       {
@@ -216,10 +205,7 @@ function EditarRenovacaoContent() {
   const handleDelete = () => {
     runDelete(
       async () => {
-        await db.transaction("rw", db.renovacoes, db.syncQueue, async () => {
-          await db.renovacoes.delete(id!);
-          await enfileirarOperacao("renovacoes", "delete", { id: id! });
-        });
+        await renovacoesRepository.delete(id!);
         router.replace("/saude/renovacao");
       },
       {
@@ -289,6 +275,7 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
+          {/* 🔥 MÉDICO COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -296,7 +283,21 @@ function EditarRenovacaoContent() {
             transition={{ delay: 0.02 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico Prescritor</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Médico Prescritor</label>
+              {medicoId && selectedMedico && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setMedicoId("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => {
                 trigger("vibrate");
@@ -312,6 +313,7 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
+          {/* 🔥 FARMÁCIA COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -319,7 +321,21 @@ function EditarRenovacaoContent() {
             transition={{ delay: 0.03 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Farmácia</label>
+              {farmaciaId && selectedFarmacia && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setFarmaciaId("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => {
                 trigger("vibrate");
@@ -335,6 +351,7 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
+          {/* 🔥 HOSPITAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -342,7 +359,21 @@ function EditarRenovacaoContent() {
             transition={{ delay: 0.04 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Hospital</label>
+              {hospitalId && selectedHospital && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setHospitalId("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => {
                 trigger("vibrate");
@@ -358,6 +389,7 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
+          {/* 🔥 LOCAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -365,7 +397,21 @@ function EditarRenovacaoContent() {
             transition={{ delay: 0.05 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Local / Posto</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Local / Posto</label>
+              {localId && selectedLocal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setLocalId("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => {
                 trigger("vibrate");

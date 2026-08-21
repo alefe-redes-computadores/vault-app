@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { useMounted } from "@/hooks/useMounted";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   home: Home,
@@ -36,13 +37,16 @@ function VaultDetailContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
   const { user } = useAuth();
-  const { deleteVault } = useVaults();
+  const { deleteVault, getVault } = useVaults();
+  const mounted = useMounted();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const vault = useLiveQuery(() => db.vaults.get(id), [id], null);
+  const vault = useLiveQuery(() => getVault(id), [id, getVault], null);
   const members = useLiveQuery(() => db.vaultMembers.where("vault_id").equals(id).toArray(), [id], []);
   const documents = useLiveQuery(() => db.documents.where("vault_id").equals(id).toArray(), [id], []);
+
+  if (!mounted) return <DetailSkeleton />;
 
   if (vault === undefined) {
     return <DetailSkeleton />;

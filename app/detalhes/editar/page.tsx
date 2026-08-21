@@ -1,3 +1,4 @@
+// app/detalhes/editar/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -26,8 +27,9 @@ import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { useMounted } from "@/hooks/useMounted";
+import { documentsRepository } from "@/lib/repositories/documents";
 
 // ---- CONSTANTES LOCAIS PARA EVITAR ERROS DE IMPORT ----
 const TYPE_CATEGORY_MAP: Record<string, CategoryId[]> = {
@@ -83,6 +85,7 @@ export default function EditarDetalhePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
+  const mounted = useMounted();
 
   const { user } = useAuth();
   const doc = useDocument(id);
@@ -151,6 +154,21 @@ export default function EditarDetalhePage() {
       });
     }
   }, [doc]);
+
+  // Previne hydration mismatch: só renderiza o conteúdo depois de montado
+  if (!mounted) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen bg-void px-5 pt-6">
+          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-surface-border/40" />
+            <div className="mx-auto h-4 w-3/4 animate-pulse rounded bg-surface-border/40" />
+            <div className="mx-auto mt-2 h-3 w-1/2 animate-pulse rounded bg-surface-border/40" />
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
 
   const fields = useMemo(() => getFieldsForType(formData.type), [formData.type]);
   const availableTypes = useMemo(() => {
@@ -314,8 +332,8 @@ export default function EditarDetalhePage() {
     if (!id) return;
     deleteAction.run(
       async () => {
-        await db.documents.delete(id);
-        await enfileirarOperacao("documents", "delete", { id });
+        // Usando o repositório para padronizar a exclusão
+        await documentsRepository.delete(id);
         router.replace("/");
       },
       {

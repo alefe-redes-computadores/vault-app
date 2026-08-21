@@ -16,10 +16,11 @@ import { SelectionModal } from "@/components/SelectionModal";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
+import { tratamentosRepository } from "@/lib/repositories/tratamentos";
+import { medicamentosRepository } from "@/lib/repositories/medicamentos";
 import type { Tratamento, Cid, Person } from "@/lib/types";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { cancelDoseNotifications } from "@/lib/dose-notifications";
+import { db } from "@/lib/db";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
@@ -105,56 +106,42 @@ function EditarTratamentoContent() {
 
     await saveAction.run(
       async () => {
-        await db.transaction("rw", db.tratamentos, db.medicamentos, db.syncQueue, async () => {
-          const original = await db.tratamentos.get(id);
-          if (!original) throw new Error("Tratamento não encontrado");
+        // Repositório cuida de updated_at, synced e enfileiramento
+        await tratamentosRepository.update(id, {
+          person_id: personId,
+          nome: nome.trim(),
+          cid_ids: cleanCids,
+          cor,
+          status,
+          observacoes: observacoes.trim() || undefined,
+        });
 
-          const tratamentoAtualizado: Tratamento = {
-            ...original,
-            person_id: personId,
-            nome: nome.trim(),
-            cid_ids: cleanCids,
-            cor,
-            status,
-            observacoes: observacoes.trim() || undefined,
-            updated_at: new Date().toISOString(),
-            synced: false,
-          };
+        // Se o tratamento foi concluído ou suspenso, descontinuamos os medicamentos vinculados
+        if (status === 'concluido' || status === 'suspenso') {
+          // 🔥 Substituído método inexistente por consulta Dexie
+          const medicamentosAfetados = await db.medicamentos
+            .where('tratamento_ids')
+            .anyOf(id)
+            .toArray();
 
-          await db.tratamentos.put(tratamentoAtualizado);
-          await enfileirarOperacao("tratamentos", "update", tratamentoAtualizado);
+          for (const med of medicamentosAfetados) {
+            if (med.id && med.status !== 'descontinuado') {
+              await medicamentosRepository.update(med.id, {
+                status: 'descontinuado',
+                motivo_descontinuacao: `Tratamento original marcado como ${status}`,
+              });
 
-          if (status === 'concluido' || status === 'suspenso') {
-            const medicamentosAfetados = await db.medicamentos
-              .where('tratamento_ids')
-              .equals(id)
-              .toArray();
-
-            for (const med of medicamentosAfetados) {
-              if (med.id && med.status !== 'descontinuado') {
-                const medOriginal = await db.medicamentos.get(med.id);
-                if (medOriginal) {
-                  const medAtualizado = {
-                    ...medOriginal,
-                    status: 'descontinuado' as const,
-                    motivo_descontinuacao: `Tratamento original marcado como ${status}`,
-                    updated_at: new Date().toISOString(),
-                    synced: false,
-                  };
-                  await db.medicamentos.put(medAtualizado);
-                  await enfileirarOperacao("medicamentos", "update", medAtualizado);
-
-                  if (med.estoque_horarios && med.estoque_horarios.length > 0) {
-                    await cancelDoseNotifications({
-                      id: med.id,
-                      estoque_horarios: med.estoque_horarios
-                    } as any);
-                  }
-                }
+              if (med.estoque_horarios && med.estoque_horarios.length > 0) {
+                await cancelDoseNotifications({
+                  id: med.id,
+                  nome: med.nome,
+                  dosagem: med.dosagem,
+                  estoque_horarios: med.estoque_horarios,
+                });
               }
             }
           }
-        });
+        }
       },
       {
         successMessage: "Tratamento atualizado com sucesso!",

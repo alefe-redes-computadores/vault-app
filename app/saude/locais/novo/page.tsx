@@ -6,14 +6,12 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocais } from "@/hooks/useLocais";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { locaisRepository } from "@/lib/repositories/locais";
 import type { LocalSaude } from "@/lib/types";
 
 const fadeUp = {
@@ -65,22 +63,12 @@ export default function NovoLocalPage() {
 
     await run(
       async () => {
-        const novoId = crypto.randomUUID();
-        const novoLocal: LocalSaude = {
-          id: novoId,
+        await locaisRepository.create({
           user_id: user.id,
           nome: nome.trim(),
           tipo: tipo || undefined,
           endereco: endereco.trim() || undefined,
           telefone: telefone.trim() || undefined,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: false,
-        };
-
-        await db.transaction("rw", db.locais, db.syncQueue, async () => {
-          await db.locais.add(novoLocal);
-          await enfileirarOperacao("locais", "add", novoLocal);
         });
       },
       {

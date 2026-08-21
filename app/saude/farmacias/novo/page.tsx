@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { farmaciasRepository } from "@/lib/repositories/farmacias";
 import type { Farmacia } from "@/lib/types";
 
 const fadeUp = {
@@ -58,21 +57,11 @@ export default function NovaFarmaciaPage() {
 
     await run(
       async () => {
-        const novoId = crypto.randomUUID();
-        const novaFarmacia: Farmacia = {
-          id: novoId,
+        await farmaciasRepository.create({
           user_id: user.id,
           nome: nome.trim(),
           endereco: endereco.trim() || undefined,
           telefone: telefone.trim() || undefined,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: false,
-        };
-
-        await db.transaction("rw", db.farmacias, db.syncQueue, async () => {
-          await db.farmacias.add(novaFarmacia);
-          await enfileirarOperacao("farmacias", "add", novaFarmacia);
         });
       },
       {

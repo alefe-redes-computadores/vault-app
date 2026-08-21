@@ -137,44 +137,49 @@ export async function pullAllData(userId: string): Promise<void> {
       return await supabase.from('settings').select('*').eq('user_id', userId);
     });
 
-    // ---- TRATAMENTOS (ADICIONADO) ----
+    // ---- TRATAMENTOS ----
     await processTable('tratamentos', db.tratamentos, async () => {
       return await supabase.from('tratamentos').select('*').eq('user_id', userId);
     });
 
-    // ---- CIDs (ADICIONADO) ----
+    // ---- CIDs ----
     await processTable('cids', db.cids, async () => {
       return await supabase.from('cids').select('*').eq('user_id', userId);
     });
 
-    // ---- EXAMES (ADICIONADO) ----
+    // ---- EXAMES ----
     await processTable('exames', db.exames, async () => {
       return await supabase.from('exames').select('*').eq('user_id', userId);
     });
 
-    // ---- CONSULTAS (ADICIONADO) ----
+    // ---- CONSULTAS ----
     await processTable('consultas', db.consultas, async () => {
       return await supabase.from('consultas').select('*').eq('user_id', userId);
     });
 
-    // ---- CIRURGIAS (ADICIONADO) ----
+    // ---- CIRURGIAS ----
     await processTable('cirurgias', db.cirurgias, async () => {
       return await supabase.from('cirurgias').select('*').eq('user_id', userId);
     });
 
-    // ---- DOSE LOGS (ADICIONADO) ----
+    // ---- DOSE LOGS ----
     await processTable('dose_logs', db.doseLogs, async () => {
       return await supabase.from('dose_logs').select('*').eq('user_id', userId);
     });
 
-    // ---- ANEXOS CLÍNICOS (ADICIONADO) ----
+    // ---- ANEXOS CLÍNICOS ----
     await processTable('anexos_clinicos', db.anexos_clinicos, async () => {
       return await supabase.from('anexos_clinicos').select('*').eq('user_id', userId);
     });
 
-    // ---- INSTITUIÇÕES (ADICIONADO) ----
+    // ---- INSTITUIÇÕES ----
     await processTable('instituicoes', db.instituicoes, async () => {
       return await supabase.from('instituicoes').select('*').eq('user_id', userId);
+    });
+
+    // 🔥 ---- VERSÍCULOS (ADICIONADO) ----
+    await processTable('versiculos', db.versiculos, async () => {
+      return await supabase.from('versiculos').select('*').eq('user_id', userId);
     });
 
     window.dispatchEvent(new Event('sync:end'));

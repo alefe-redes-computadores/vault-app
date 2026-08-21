@@ -1,3 +1,4 @@
+// app/(app)/page.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -21,13 +22,12 @@ import {
   MapPin,
   Calendar,
   DollarSign,
-  CalendarCheck2,
   FileHeart,
   Plus,
-  Users,
   X,
   Bell,
   AlertCircle,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
@@ -56,6 +56,16 @@ import {
 } from "@/lib/health-utils";
 import { sugerirRenovacao } from "@/lib/health-insights";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { PendingDosesModal } from "@/components/PendingDosesModal";
+
+// 🔧 NOVA FUNÇÃO: Filtro por mês atual
+function isMesAtual(dataStr: string): boolean {
+  if (!dataStr) return false;
+  const data = new Date(dataStr);
+  if (isNaN(data.getTime())) return false;
+  const hoje = new Date();
+  return data.getMonth() === hoje.getMonth() && data.getFullYear() === hoje.getFullYear();
+}
 
 function getTratamentoIcon(nome: string) {
   const n = (nome || "").toLowerCase();
@@ -99,9 +109,7 @@ function AlertRow({ alert }: { alert: HealthAlert }) {
           )}
         </div>
         <div className="min-w-0 flex-1 pr-2">
-          <p className="truncate text-sm font-semibold text-ink-primary">
-            {alert.title}
-          </p>
+          <p className="truncate text-sm font-semibold text-ink-primary">{alert.title}</p>
           <p className="truncate text-xs text-ink-muted">{alert.subtitle}</p>
         </div>
       </button>
@@ -250,11 +258,47 @@ export default function HomePage() {
   const { locais = [] } = useLocais();
   const { doseLogs, marcarComoTomada: marcarDose } = useDoseLogs(hoje);
 
-  const tratamentosTodas = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const examesTodas = useLiveQuery(() => db.exames.toArray(), []) || [];
-  const renovacoesTodas = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
-  const consultasTodas = useLiveQuery(() => db.consultas.toArray(), []) || [];
-  const cirurgiasTodas = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
+  const tratamentos = useLiveQuery(
+    () => (activePersonId ? db.tratamentos.where('person_id').equals(activePersonId).toArray() : []),
+    [activePersonId]
+  ) || [];
+
+  // 🔧 CORRIGIDO: queries filtradas por mês atual
+  const exames = useLiveQuery(
+    () => activePersonId 
+      ? db.exames.where('person_id').equals(activePersonId)
+          .filter(e => isMesAtual(e.data ?? '') || isMesAtual(e.created_at ?? ''))
+          .toArray() 
+      : [],
+    [activePersonId]
+  ) || [];
+
+  const renovacoes = useLiveQuery(
+    () => activePersonId 
+      ? db.renovacoes.where('person_id').equals(activePersonId)
+          .filter(e => isMesAtual(e.data ?? '') || isMesAtual(e.created_at ?? ''))
+          .toArray() 
+      : [],
+    [activePersonId]
+  ) || [];
+
+  const consultas = useLiveQuery(
+    () => activePersonId 
+      ? db.consultas.where('person_id').equals(activePersonId)
+          .filter(e => isMesAtual(e.data ?? '') || isMesAtual(e.created_at ?? ''))
+          .toArray() 
+      : [],
+    [activePersonId]
+  ) || [];
+
+  const cirurgias = useLiveQuery(
+    () => activePersonId 
+      ? db.cirurgias.where('person_id').equals(activePersonId)
+          .filter(e => isMesAtual(e.data ?? '') || isMesAtual(e.created_at ?? ''))
+          .toArray() 
+      : [],
+    [activePersonId]
+  ) || [];
 
   const activePerson = useMemo(() => {
     return persons.find((p) => p.id === activePersonId) || persons[0] || null;
@@ -267,41 +311,22 @@ export default function HomePage() {
     "Usuário";
   const avatarUrl = activePerson?.avatar_url || user?.user_metadata?.avatar_url;
 
-  // Filtros afrouxados (aceita null/indefinido se for dado antigo, ou vincula ao activePerson)
   const medicamentos = useMemo(
     () => (activePersonId ? (medicamentosTodas || []).filter((m) => m.person_id === activePersonId || !m.person_id) : []),
     [medicamentosTodas, activePersonId]
   );
-  const tratamentos = useMemo(
-    () => (activePersonId ? tratamentosTodas.filter((t) => t.person_id === activePersonId || !t.person_id) : []),
-    [tratamentosTodas, activePersonId]
-  );
-  const exames = useMemo(
-    () => (activePersonId ? examesTodas.filter((e) => e.person_id === activePersonId || !e.person_id) : []),
-    [examesTodas, activePersonId]
-  );
-  const renovacoes = useMemo(
-    () => (activePersonId ? renovacoesTodas.filter((r) => r.person_id === activePersonId || !r.person_id) : []),
-    [renovacoesTodas, activePersonId]
-  );
-  const consultas = useMemo(
-    () => (activePersonId ? consultasTodas.filter((c) => c.person_id === activePersonId || !c.person_id) : []),
-    [consultasTodas, activePersonId]
-  );
-  const cirurgiasHoje = useMemo(
-    () =>
-      activePersonId
-        ? cirurgiasTodas.filter((c) => (c.person_id === activePersonId || !c.person_id) && c.data === hoje)
-        : [],
-    [cirurgiasTodas, activePersonId, hoje]
-  );
+
   const consultasHoje = useMemo(
-    () => (consultas || []).filter((c) => c.data === hoje),
+    () => consultas.filter((c) => c.data === hoje),
     [consultas, hoje]
   );
   const examesHoje = useMemo(
-    () => (exames || []).filter((e) => e.data === hoje),
+    () => exames.filter((e) => e.data === hoje),
     [exames, hoje]
+  );
+  const cirurgiasHoje = useMemo(
+    () => cirurgias.filter((c) => c.data === hoje),
+    [cirurgias, hoje]
   );
 
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
@@ -313,7 +338,6 @@ export default function HomePage() {
     minute: "2-digit",
   });
 
-  // CORREÇÃO: Leitura blindada de datas e valores numéricos
   const metricasFinanceiras = useMemo(() => {
     const dataAtual = new Date();
     const mesAtual = dataAtual.getMonth();
@@ -325,19 +349,15 @@ export default function HomePage() {
     let gastoMesAnterior = 0;
 
     (renovacoes || []).forEach((r) => {
-      const precoNumerico = Number(r.preco); // Converte de string para número caso precise
+      const precoNumerico = Number(r.preco);
       if (!isNaN(precoNumerico) && precoNumerico > 0 && r.data) {
-        
         let dataR = new Date(r.data);
-        
-        // Tratamento para data no formato brasileiro (DD/MM/YYYY)
         if (isNaN(dataR.getTime()) && r.data.includes("/")) {
           const partes = r.data.split("/");
           if (partes.length === 3) {
             dataR = new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00`);
           }
         }
-
         if (!isNaN(dataR.getTime())) {
           if (dataR.getMonth() === mesAtual && dataR.getFullYear() === anoAtual) {
             gastoMesAtual += precoNumerico;
@@ -348,9 +368,23 @@ export default function HomePage() {
       }
     });
 
+    (medicamentos || []).forEach((m: any) => {
+      const custoIni = Number(m.preco || 0);
+      if (custoIni > 0 && m.created_at) {
+        const dataM = new Date(m.created_at);
+        if (!isNaN(dataM.getTime())) {
+          if (dataM.getMonth() === mesAtual && dataM.getFullYear() === anoAtual) {
+            gastoMesAtual += custoIni;
+          } else if (dataM.getMonth() === mesAnterior && dataM.getFullYear() === anoDoMesAnterior) {
+            gastoMesAnterior += custoIni;
+          }
+        }
+      }
+    });
+
     const diff = gastoMesAtual - gastoMesAnterior;
     return { gastoMesAtual, gastoMesAnterior, diff };
-  }, [renovacoes]);
+  }, [renovacoes, medicamentos]);
 
   const dosesPendentesAtrasadas = useMemo(() => {
     if (!medicamentos || !doseLogs) return [];
@@ -455,7 +489,7 @@ export default function HomePage() {
   );
 
   const isLoading =
-    authLoading || documents === undefined || medicamentosTodas === undefined || examesTodas === undefined;
+    authLoading || documents === undefined || medicamentosTodas === undefined || exames === undefined;
 
   if (isLoading) return <SimpleSpinner />;
 
@@ -571,32 +605,6 @@ export default function HomePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-5">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.01 }}
-            onClick={() => {
-              trigger("vibrate");
-              router.push("/hoje");
-            }}
-            className="flex items-center justify-between rounded-[24px] border border-ice/40 bg-gradient-to-r from-ice/10 via-surface to-surface p-4 shadow-sm cursor-pointer hover:border-ice/60 transition-all active:scale-[0.985]"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-ice/20 text-ice">
-                <CalendarCheck2 size={22} />
-              </div>
-              <div>
-                <p className="text-xs uppercase font-mono text-ice font-bold">
-                  Rotina e Doses de Hoje
-                </p>
-                <p className="text-sm font-semibold text-ink-primary mt-0.5">
-                  Ver cronograma, horários e compromissos
-                </p>
-              </div>
-            </div>
-            <ChevronRight size={18} className="text-ice" />
-          </motion.div>
-
           {alertasAgrupados.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -908,6 +916,58 @@ export default function HomePage() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.11 }}
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <FolderHeart size={15} className="text-ice" />
+              <h2 className="font-display text-sm font-semibold text-ink-primary">
+                Meus Arquivos
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push("/saude/documentos");
+                }}
+                className="flex flex-col items-start gap-2 rounded-[22px] border border-ice/20 bg-gradient-to-br from-ice/5 to-surface p-4 text-left shadow-sm transition-all active:scale-[0.97] hover:border-ice/40"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                  <HeartPulse size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-ink-primary">Saúde</p>
+                  <p className="text-[10px] text-ink-muted leading-tight">
+                    Receitas, laudos e exames
+                  </p>
+                </div>
+                <ChevronRight size={16} className="text-ice/70 self-end mt-1" />
+              </button>
+
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push("/documentos");
+                }}
+                className="flex flex-col items-start gap-2 rounded-[22px] border border-ice/20 bg-gradient-to-br from-ice/5 to-surface p-4 text-left shadow-sm transition-all active:scale-[0.97] hover:border-ice/40"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                  <Shield size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-ink-primary">Pessoal</p>
+                  <p className="text-[10px] text-ink-muted leading-tight">
+                    RGs, CNHs, contratos e certidões
+                  </p>
+                </div>
+                <ChevronRight size={16} className="text-ice/70 self-end mt-1" />
+              </button>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24, delay: 0.12 }}
             className="rounded-[24px] border border-surface-border/50 bg-surface p-4"
           >
@@ -957,144 +1017,26 @@ export default function HomePage() {
                   </button>
                 );
               })}
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-                  router.push("/saude/rede");
-                }}
-                className="col-span-2 rounded-2xl bg-gradient-to-br from-ice/10 to-violet-400/10 py-3 px-2 transition-all active:scale-95 hover:from-ice/20 hover:to-violet-400/20 border border-ice/20 cursor-pointer flex flex-col items-center justify-center"
-              >
-                <Users size={16} className="text-ice" />
-                <p className="font-display text-base font-semibold text-ink-primary mt-1">
-                  Rede Completa
-                </p>
-                <p className="text-[10px] text-ink-muted">Visualizar todos os locais</p>
-              </button>
             </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, delay: 0.14 }}
-            className="pb-4"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-sm font-semibold text-ink-primary">
-                Arquivo Clínico
-              </h2>
-            </div>
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.push("/documentos");
-              }}
-              className="flex w-full items-center justify-between rounded-[22px] border border-ice/30 bg-gradient-to-r from-ice/5 to-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:border-ice/50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                  <FileHeart size={20} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-ink-primary">
-                    Documentos de Saúde
-                  </p>
-                  <p className="text-[10px] text-ink-muted">
-                    Receitas, laudos e exames arquivados
-                  </p>
-                </div>
-              </div>
-              <ChevronRight size={18} className="text-ice" />
-            </button>
           </motion.div>
         </section>
 
-        <AnimatePresence>
-          {modalPendenciasAberto && (
-            <div
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-void/80 backdrop-blur-md"
-              onClick={() => {
-                trigger("vibrate");
-                setModalPendenciasAberto(false);
-              }}
-            >
-              <motion.div
-                initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md bg-surface rounded-[32px] p-6 shadow-2xl space-y-5 border border-surface-border"
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-display text-lg font-bold text-ink-primary">
-                      Doses Pendentes
-                    </h3>
-                    <p className="text-xs text-ink-muted">Gerencie suas pendências de hoje</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      trigger("vibrate");
-                      setModalPendenciasAberto(false);
-                    }}
-                    className="h-8 w-8 flex items-center justify-center rounded-full bg-surface-raised hover:bg-surface-border transition-colors active:scale-95"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-                  {dosesPendentesAtrasadas.map((d: any, index: number) => {
-                    const isProcessingThisDose =
-                      processandoDoseId === `${d.medicamentoId}-${d.horario}`;
-                    return (
-                      <div
-                        key={`${d.medicamentoId}-${index}`}
-                        className={`flex items-center justify-between p-3.5 bg-surface-raised rounded-2xl border border-surface-border/50 ${
-                          isProcessingThisDose ? "opacity-50 pointer-events-none" : ""
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-ink-primary truncate">
-                            {d.nome}
-                          </p>
-                          <p className="text-[10px] text-ink-muted font-mono">{d.horario}</p>
-                        </div>
-                        <button
-                          onClick={() => handleTomarDosePendente(d)}
-                          disabled={isProcessingThisDose || isProcessandoTudo}
-                          className="text-emerald-400 font-bold text-xs px-3 py-1.5 rounded-lg bg-emerald-400/10 active:scale-95 transition-all disabled:opacity-50"
-                        >
-                          {isProcessingThisDose ? "Salvando..." : "Tomar"}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <button
-                    onClick={() => {
-                      trigger("vibrate");
-                      setModalPendenciasAberto(false);
-                      router.push("/hoje");
-                    }}
-                    className="p-3.5 text-xs font-semibold rounded-2xl bg-surface-raised hover:bg-surface-border transition-all active:scale-95"
-                  >
-                    Expandir Cronograma
-                  </button>
-                  <button
-                    onClick={handleTomarTodasAtrasadas}
-                    disabled={isProcessandoTudo || dosesPendentesAtrasadas.length === 0}
-                    className="p-3.5 text-xs font-semibold rounded-2xl bg-coral text-white shadow-md shadow-coral/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isProcessandoTudo ? "Processando..." : "Tomar Tudo Agora"}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        <PendingDosesModal
+          isOpen={modalPendenciasAberto}
+          onClose={() => {
+            trigger("vibrate");
+            setModalPendenciasAberto(false);
+          }}
+          doses={dosesPendentesAtrasadas}
+          onTomarDose={handleTomarDosePendente}
+          onTomarTodas={handleTomarTodasAtrasadas}
+          isProcessingDose={processandoDoseId}
+          isProcessingAll={isProcessandoTudo}
+          onExpand={() => {
+            setModalPendenciasAberto(false);
+            router.push("/hoje");
+          }}
+        />
       </main>
     </PageTransition>
   );

@@ -5,19 +5,16 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, Loader2, ShieldCheck, Landmark } from "lucide-react";
-import { db } from "@/lib/db";
+import { useCards } from "@/hooks/useCards";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
-import { encryptPassword, decryptPassword } from "@/lib/crypto";
 import { detectCardBrand, formatCardNumber, formatExpiryDate, getBankLogoUrl, getBrandLabel } from "@/lib/utils/card-helper";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { CardType } from "@/lib/types";
-import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -30,6 +27,7 @@ function EditCardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const { getCard, updateCard } = useCards();
   const { run, isSubmitting } = useSubmitAction();
 
   const [loading, setLoading] = useState(true);
@@ -52,16 +50,17 @@ function EditCardContent() {
     async function loadCard() {
       if (!id) return;
       try {
-        const item = await db.bankCards.get(id);
+        const item = await getCard(id);
         if (item) {
+          const typedItem = item as any;
           setFormData({
             title: item.title || "",
             bank_name: item.bank_name || "",
             type: item.type || "cartao_credito",
-            card_number: item.card_number_encrypted ? decryptPassword(item.card_number_encrypted) : "",
+            card_number: typedItem.card_number || "", 
             card_holder: item.card_holder || "",
             expiry_date: item.expiry_date || "",
-            cvv: item.cvv_encrypted ? decryptPassword(item.cvv_encrypted) : "",
+            cvv: typedItem.cvv || "", 
             agency: item.agency || "",
             account: item.account || "",
             notes: item.notes || "",
@@ -74,7 +73,7 @@ function EditCardContent() {
       }
     }
     loadCard();
-  }, [id]);
+  }, [id, getCard]);
 
   const detectedBrand = detectCardBrand(formData.card_number);
   const logoUrl = getBankLogoUrl(formData.bank_name);
@@ -105,33 +104,19 @@ function EditCardContent() {
     }
 
     run(
-      async () => {
-        const cardNumberEncrypted = formData.card_number ? encryptPassword(formData.card_number) : undefined;
-        const cvvEncrypted = formData.cvv ? encryptPassword(formData.cvv) : undefined;
-        
-        const payload = {
+      () =>
+        updateCard(id, {
           title: formData.title.trim(),
           bank_name: formData.bank_name.trim(),
           type: formData.type,
-          card_number_encrypted: cardNumberEncrypted,
+          card_number: formData.card_number.trim(),
           card_holder: formData.card_holder.trim(),
-          brand: detectedBrand,
           expiry_date: formData.expiry_date.trim(),
-          cvv_encrypted: cvvEncrypted,
+          cvv: formData.cvv.trim(),
           agency: formData.agency.trim(),
           account: formData.account.trim(),
           notes: formData.notes.trim(),
-          updated_at: new Date().toISOString(),
-          synced: false
-        };
-
-        await db.transaction("rw", db.bankCards, db.syncQueue, async () => {
-            const original = await db.bankCards.get(id);
-            if (!original) throw new Error("Não encontrado");
-            await db.bankCards.put({ ...original, ...payload });
-            await enfileirarOperacao("bankCards" as any, "update", { id, ...payload });
-        });
-      },
+        } as any),
       {
         successMessage: "Registro atualizado",
         errorMessage: "Erro ao atualizar",

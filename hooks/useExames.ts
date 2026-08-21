@@ -14,41 +14,24 @@ export function useExames() {
   const { activePersonId } = useActivePersonId();
 
   const exames = useLiveQuery(
-    () => {
-      if (!activePersonId) return [];
-      return db.exames
-        .where('person_id')
-        .equals(activePersonId)
-        .toArray();
-    },
+    () => activePersonId ? db.exames.where('person_id').equals(activePersonId).toArray() : [],
     [activePersonId],
     []
   );
 
-  const getExame = useCallback((id: string) => {
-    return examesRepository.getById(id);
-  }, []);
+  const getExame = useCallback((id: string) => examesRepository.getById(id), []);
 
-  const addExame = useCallback(
-    async (data: Omit<Exame, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return examesRepository.create({ ...data, user_id: user?.id || "" });
-    },
-    [user]
-  );
+  const addExame = useCallback(async (data: Omit<Exame, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
+    return await examesRepository.create({ ...data, user_id: user?.id });
+  }, [user]);
 
   const updateExame = useCallback(async (id: string, data: Partial<Exame>) => {
-    return examesRepository.update(id, data);
+    return await examesRepository.update(id, data);
   }, []);
 
   const deleteExame = useCallback(async (id: string) => {
-    return examesRepository.delete(id);
+    return await examesRepository.delete(id);
   }, []);
 
-  return {
-    exames,
-    getExame,
-    addExame,
-    updateExame,
-    deleteExame,
-  };
+  return { exames, getExame, addExame, updateExame, deleteExame };
 }

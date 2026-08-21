@@ -34,7 +34,8 @@ import {
   Upload,
   FileText,
   TrendingUp,
-  HeartPulse
+  HeartPulse,
+  Eraser,
 } from "lucide-react";
 
 import { usePersons } from "@/hooks/usePersons";
@@ -45,7 +46,6 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { useAuth } from "@/hooks/useAuth";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
@@ -81,7 +81,10 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
-import { db } from "@/lib/db";
+import { medicamentosRepository } from "@/lib/repositories/medicamentos";
+import { documentsRepository } from "@/lib/repositories/documents";
+import { hospitaisRepository } from "@/lib/repositories/hospitais";
+import { locaisRepository } from "@/lib/repositories/locais";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
 import { SeletorReceita } from "@/components/saude/SeletorReceita";
@@ -107,12 +110,16 @@ function handleCurrencyMask(value: string): string {
   const numberVal = parseInt(clean, 10) / 100;
   return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
 function handleTimeMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 4);
   if (clean.length > 2) {
     return `${clean.slice(0, 2)}:${clean.slice(2)}`;
   }
-  return clean;
+  if (clean.length > 0) {
+    return clean.padStart(2, '0');
+  }
+  return "";
 }
 
 const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
@@ -244,22 +251,6 @@ function EditarMedicamentoContent() {
 
   const markChanged = () => setHasChanges(true);
 
-  const addHospital = async (data: { nome: string; tipo: string }) => {
-    const newId = crypto.randomUUID();
-    const hObj = { id: newId, user_id: user?.id || "", ...data, synced: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    await db.hospitais.add(hObj as any);
-    await enfileirarOperacao("hospitais", "add", hObj);
-    return newId;
-  };
-
-  const addLocal = async (data: { nome: string; tipo: string }) => {
-    const newId = crypto.randomUUID();
-    const lObj = { id: newId, user_id: user?.id || "", ...data, synced: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    await db.locais.add(lObj as any);
-    await enfileirarOperacao("locais", "add", lObj);
-    return newId;
-  };
-
   useEffect(() => {
     if (!id) { setNotFound(true); setIsLoading(false); return; }
     getMedicamento(id)
@@ -298,7 +289,7 @@ function EditarMedicamentoContent() {
 
         if (item.document_id) {
           setDocumentId(item.document_id);
-          const doc = await db.documents.get(item.document_id);
+          const doc = await documentsRepository.getById(item.document_id);
           if (doc && doc.attachments && doc.attachments.length > 0) setAttachment(doc.attachments[0]);
         }
 
@@ -309,12 +300,12 @@ function EditarMedicamentoContent() {
         }
 
         if (item.hospital_id) {
-          const hospital = await db.hospitais.get(item.hospital_id);
+          const hospital = await hospitaisRepository.getById(item.hospital_id);
           if (hospital) setHospitalNome(hospital.nome);
         }
 
         if (item.local_id) {
-          const local = await db.locais.get(item.local_id);
+          const local = await locaisRepository.getById(item.local_id);
           if (local) setLocalNome(local.nome);
         }
 
@@ -467,8 +458,8 @@ function EditarMedicamentoContent() {
     }
     if (editIntent === "evolucao" && !novaDosagem.trim()) { newErrors.novaDosagem = "Obrigatória"; shakeList.push("novaDosagem"); }
 
-    if (dataReceitaTexto && dataReceitaTexto.length < 10) { newErrors.dataReceitaTexto = "Data inválida"; shakeList.push("dataReceitaTexto"); }
-    if (proximaRenovacaoTexto && proximaRenovacaoTexto.length < 10) { newErrors.proximaRenovacaoTexto = "Data inválida"; shakeList.push("proximaRenovacaoTexto"); }
+    if (dataReceitaTexto && dataReceitaTexto.length < 10 && dataReceitaTexto.length > 0) { newErrors.dataReceitaTexto = "Data inválida"; shakeList.push("dataReceitaTexto"); }
+    if (proximaRenovacaoTexto && proximaRenovacaoTexto.length < 10 && proximaRenovacaoTexto.length > 0) { newErrors.proximaRenovacaoTexto = "Data inválida"; shakeList.push("proximaRenovacaoTexto"); }
     if (!statusAtivo && !motivoDescontinuacao.trim()) { newErrors.motivoDescontinuacao = "Informe o motivo"; shakeList.push("motivoDescontinuacao"); }
 
     if (estoqueAtivo && editIntent === "compra") {
@@ -506,118 +497,87 @@ function EditarMedicamentoContent() {
 
         const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
 
-        await db.transaction("rw", db.documents, db.medicamentos, db.syncQueue, async () => {
-          let updatedDocId = documentId;
-          
-          if (!documentId && (dataReceitaISO || attachment)) {
-            const docId = crypto.randomUUID();
-            const novoDocumento: Document = {
-              id: docId,
-              user_id: user?.id || "",
-              person_id: personId,
-              category_id: "saude",
-              type: "receita",
-              title: `Receita — ${nome.trim()}`,
-              description: observacoes.trim() || undefined,
-              metadata: {
-                medication: nome.trim(),
-                dosage: dosagemFinal,
-                prescription_date: dataReceitaISO,
-                renewal_date: proximaRenovacaoISO,
-                tratamento_ids: tratamentosSelecionados,
-                tipo_receita: tipoReceita,
-                formato,
-                status: "ativo",
-              },
+        if (documentId && (dataReceitaISO || attachment)) {
+          const doc = await documentsRepository.getById(documentId);
+          if (doc) {
+            await documentsRepository.update(documentId, {
               attachments: attachment ? [attachment] : [],
-              is_favorite: false,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              synced: false
-            };
-            await db.documents.add(novoDocumento);
-            await enfileirarOperacao("documents", "add", novoDocumento);
-            updatedDocId = docId;
-          } else if (documentId) {
-            const doc = await db.documents.get(documentId);
-            if (doc) {
-              const docAtualizado: Document = {
-                ...doc,
-                attachments: attachment ? [attachment] : [],
-                metadata: {
-                  ...doc.metadata,
-                  dosage: dosagemFinal,
-                  tratamento_ids: tratamentosSelecionados,
-                  renewal_date: proximaRenovacaoISO,
-                },
-                updated_at: new Date().toISOString(),
-                synced: false
-              };
-              await db.documents.put(docAtualizado);
-              await enfileirarOperacao("documents", "update", docAtualizado);
-            }
+              metadata: {
+                ...doc.metadata,
+                dosage: dosagemFinal,
+                tratamento_ids: tratamentosSelecionados,
+                renewal_date: proximaRenovacaoISO,
+              },
+            });
           }
+        } else if (!documentId && (dataReceitaISO || attachment)) {
+  if (!user) throw new Error('Usuário não autenticado');
+  const newDoc = await documentsRepository.create({
+    user_id: user.id,
+    person_id: personId,
+    category_id: "saude",
+    type: "receita",
+    title: `Receita — ${nome.trim()}`,
+    description: observacoes.trim() || undefined,
+    metadata: {
+      medication: nome.trim(),
+      dosage: dosagemFinal,
+      prescription_date: dataReceitaISO,
+      renewal_date: proximaRenovacaoISO,
+      tratamento_ids: tratamentosSelecionados,
+      tipo_receita: tipoReceita,
+      formato,
+      status: "ativo",
+    },
+    attachments: attachment ? [attachment] : [],
+    is_favorite: false,
+  });
+  setDocumentId(newDoc);
+}
 
-          if (localFile && user && attachment && updatedDocId) {
-            const { url, error } = await uploadFile(user.id, localFile, "saude");
-            if (!error && url) {
-              const doc = await db.documents.get(updatedDocId);
-              if (doc) {
-                const docAtualizado: Document = {
-                  ...doc,
-                  attachments: [{ ...attachment, url }],
-                  updated_at: new Date().toISOString(),
-                  synced: false
-                };
-                await db.documents.put(docAtualizado);
-                await enfileirarOperacao("documents", "update", docAtualizado);
-              }
-            }
+        if (localFile && user && attachment && documentId) {
+          const { url, error } = await uploadFile(user.id, localFile, "saude");
+          if (!error && url) {
+            await documentsRepository.update(documentId, {
+              attachments: [{ ...attachment, url }],
+            });
           }
+        }
 
-          const originalMed = await db.medicamentos.get(id);
-          if (originalMed) {
-            const medicamentoAtualizado: Medicamento = {
-              ...originalMed,
-              person_id: personId,
-              document_id: updatedDocId || originalMed.document_id,
-              nome: nome.trim(),
-              dosagem: dosagemFinal,
-              formato,
-              cores,
-              tipo_uso: tipoUso,
-              historico_dosagens: historicoFinal,
-              medico: selectedMedico?.nome || medicoNome.trim(),
-              medico_id: medicoId || undefined,
-              hospital_id: hospitalId || undefined,
-              local_id: localId || undefined,
-              farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
-              farmacia_id: farmaciaId || undefined,
-              preco: precoNumerico,
-              data_receita: dataReceitaISO,
-              proxima_renovacao: proximaRenovacaoISO,
-              observacoes: observacoes.trim() || undefined,
-              tipo_receita: tipoReceita,
-              tratamento_ids: tratamentosSelecionados,
-              status: statusAtivo ? "ativo" : "descontinuado",
-              motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
-              medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
-              medico_descontinuacao_nome: !statusAtivo ? selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim() : undefined,
-              substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
-              data_descontinuacao: !statusAtivo ? getLocalTodayISO() : undefined,
-              estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
-              estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-              estoque_horarios: tipoUso === "continuo" && estoqueAtivo ? horariosFiltrados : undefined,
-              estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) || 1 : undefined,
-              estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
-              estoque_ml_total: isGotasCalcAtivo && formato === "gota" ? Number(mlTotal) : undefined,
-              estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : undefined,
-              updated_at: new Date().toISOString(),
-              synced: false
-            };
-            await db.medicamentos.put(medicamentoAtualizado);
-            await enfileirarOperacao("medicamentos", "update", medicamentoAtualizado);
-          }
+        await medicamentosRepository.update(id, {
+          person_id: personId,
+          document_id: documentId || undefined,
+          nome: nome.trim(),
+          dosagem: dosagemFinal,
+          formato,
+          cores,
+          tipo_uso: tipoUso,
+          historico_dosagens: historicoFinal,
+          medico: selectedMedico?.nome || medicoNome.trim(),
+          medico_id: medicoId || undefined,
+          hospital_id: hospitalId || undefined,
+          local_id: localId || undefined,
+          farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
+          farmacia_id: farmaciaId || undefined,
+          preco: precoNumerico,
+          data_receita: dataReceitaISO,
+          proxima_renovacao: proximaRenovacaoISO,
+          observacoes: observacoes.trim() || undefined,
+          tipo_receita: tipoReceita,
+          tratamento_ids: tratamentosSelecionados,
+          status: statusAtivo ? "ativo" : "descontinuado",
+          motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
+          medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
+          medico_descontinuacao_nome: !statusAtivo ? selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim() : undefined,
+          substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
+          data_descontinuacao: !statusAtivo ? getLocalTodayISO() : undefined,
+          estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
+          estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
+          estoque_horarios: tipoUso === "continuo" && estoqueAtivo ? horariosFiltrados : undefined,
+          estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) || 1 : undefined,
+          estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
+          estoque_ml_total: isGotasCalcAtivo && formato === "gota" ? Number(mlTotal) : undefined,
+          estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : undefined,
         });
 
         if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
@@ -644,10 +604,7 @@ function EditarMedicamentoContent() {
     runDelete(
       async () => {
         if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
-        await db.transaction('rw', db.medicamentos, db.syncQueue, async () => {
-          await db.medicamentos.delete(id);
-          await enfileirarOperacao("medicamentos", "delete", { id });
-        });
+        await medicamentosRepository.delete(id);
         router.replace("/saude/medicamentos");
       },
       {
@@ -815,7 +772,14 @@ function EditarMedicamentoContent() {
                     />
                   </div>
                   <div className="pt-4 border-t border-surface-border/40">
-                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Quem alterou a dose?</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-ink-muted">Quem alterou a dose?</label>
+                      {medicoEvolucaoId && (
+                        <button type="button" onClick={() => { setMedicoEvolucaoId(""); setMedicoEvolucaoNome(""); markChanged(); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsDoctorEvolucaoModalOpen(true)}
@@ -902,7 +866,14 @@ function EditarMedicamentoContent() {
                     <h3 className="text-sm font-semibold text-ink-primary">Aquisição Expressa</h3>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-ink-primary">Farmácia</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-ink-primary">Farmácia</label>
+                      {farmaciaId && (
+                        <button type="button" onClick={() => { setFarmaciaId(""); setFarmaciaNome(""); markChanged(); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsPharmacyModalOpen(true)}
@@ -1035,16 +1006,18 @@ function EditarMedicamentoContent() {
                             value={vezesAoDia}
                             onChange={(e) => setVezesAoDia(e.target.value)}
                             error={errors.vezesAoDia}
+                            className="h-12"
                           />
                         </div>
-                        <div className={`transition-all ${shakeFields.includes("primeiroHorario") ? "animate-shake" : ""}`}>
-                          <Input
-                            label="1º Horário"
+                        <div className="relative">
+                          <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                          <input
                             type="text"
                             placeholder="00:00"
                             maxLength={5}
                             value={primeiroHorario}
                             onChange={(e) => setPrimeiroHorario(handleTimeMask(e.target.value))}
+                            className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3.5 text-ink-primary font-mono text-sm outline-none focus:border-ice/50 h-12"
                           />
                         </div>
                       </div>
@@ -1102,7 +1075,14 @@ function EditarMedicamentoContent() {
                     <h3 className="text-sm font-semibold text-ink-primary">Profissional & Local</h3>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Médico Prescritor</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-ink-muted">Médico Prescritor</label>
+                      {medicoId && (
+                        <button type="button" onClick={() => { setMedicoId(""); setMedicoNome(""); markChanged(); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsDoctorModalOpen(true)}
@@ -1113,7 +1093,14 @@ function EditarMedicamentoContent() {
                     </button>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Hospital</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-ink-muted">Hospital</label>
+                      {hospitalId && (
+                        <button type="button" onClick={() => { setHospitalId(""); setHospitalNome(""); markChanged(); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsHospitalModalOpen(true)}
@@ -1127,7 +1114,14 @@ function EditarMedicamentoContent() {
                     </button>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-ink-muted">Local / Posto</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-ink-muted">Local / Posto</label>
+                      {localId && (
+                        <button type="button" onClick={() => { setLocalId(""); setLocalNome(""); markChanged(); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsLocalModalOpen(true)}
@@ -1259,10 +1253,17 @@ function EditarMedicamentoContent() {
                             />
                           </div>
                           <div>
-                            <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2">
-                              <Stethoscope size={14} className="text-ink-muted" />
-                              Médico que ordenou a parada
-                            </label>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="block text-sm font-medium text-ink-primary flex items-center gap-2">
+                                <Stethoscope size={14} className="text-ink-muted" />
+                                Médico que ordenou a parada
+                              </label>
+                              {medicoDescontinuacaoId && (
+                                <button type="button" onClick={() => { setMedicoDescontinuacaoId(""); setMedicoDescontinuacaoNome(""); markChanged(); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                                  <Eraser size={12} /> Limpar
+                                </button>
+                              )}
+                            </div>
                             <button
                               onClick={() => setIsDoctorDescontinuacaoModalOpen(true)}
                               className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left"
@@ -1442,8 +1443,9 @@ function EditarMedicamentoContent() {
           getItemLabel={(i) => i.nome}
           enableQuickCreate
           onQuickCreate={async (name) => {
-            const newId = await addHospital({ nome: name, tipo: "hospital" });
-            return { id: newId, nome: name, tipo: "hospital" } as Hospital;
+            if (!user) throw new Error('Usuário não       autenticado');
+            const newHosp = await hospitaisRepository.create({ user_id: user.id, nome: name, tipo: "hospital" });
+            return { id: newHosp, nome: name, tipo: "hospital" } as Hospital;
           }}
           onSelect={(item) => {
             setHospitalId(item.id!);
@@ -1473,8 +1475,9 @@ function EditarMedicamentoContent() {
           getItemLabel={(i) => i.nome}
           enableQuickCreate
           onQuickCreate={async (name) => {
-            const newId = await addLocal({ nome: name, tipo: "outro" });
-            return { id: newId, nome: name, tipo: "outro" } as LocalSaude;
+            if (!user) throw new Error('Usuário não autenticado');
+            const newLocal = await locaisRepository.create({ user_id: user.id, nome: name, tipo: "outro" });
+            return { id: newLocal, nome: name, tipo: "outro" } as LocalSaude;
           }}
           onSelect={(item) => {
             setLocalId(item.id!);

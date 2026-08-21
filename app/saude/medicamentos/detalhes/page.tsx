@@ -26,6 +26,7 @@ import { ptBR } from "date-fns/locale";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import type { Medicamento, Tratamento, Renovacao, Medico, Farmacia, Hospital } from "@/lib/types";
+import { useMounted } from "@/hooks/useMounted";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
 
@@ -58,6 +59,7 @@ function MedicamentoDetalhesContent() {
   const { trigger } = useHapticFeedback();
   const { updateMedicamento, deleteMedicamento } = useMedicamentos();
   const { activePersonId } = useActivePersonId();
+  const mounted = useMounted();
 
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [showAllRenovacoes, setShowAllRenovacoes] = useState(false);
@@ -102,6 +104,9 @@ function MedicamentoDetalhesContent() {
     setIsMenuFlutuanteOpen(false);
     router.push(path);
   };
+
+  // Previne hydration mismatch: só renderiza o conteúdo depois de montado
+  if (!mounted) return <DetailSkeleton />;
 
   // ============================================================
   // AÇÃO: TOMAR DOSE

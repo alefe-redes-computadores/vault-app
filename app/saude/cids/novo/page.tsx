@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Save, Loader2, Stethoscope, Building2, MapPin, Upload, X,
+  ArrowLeft, Save, Loader2, Stethoscope, Building2, MapPin, Upload, X, Eraser,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -22,8 +22,7 @@ import { uploadFile } from "@/lib/supabase/storage";
 import type { Medico, Hospital, LocalSaude, Cid } from "@/lib/types";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { db } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import { cidsRepository } from "@/lib/repositories/cids";
 
 function handleDateMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 8);
@@ -105,10 +104,8 @@ export default function NovoCidPage() {
         const dataISO = dataDiagnostico
           ? dataDiagnostico.split("/").reverse().join("-")
           : undefined;
-        const novoId = crypto.randomUUID();
 
-        const novoCid: Cid = {
-          id: novoId,
+        await cidsRepository.create({
           user_id: user.id,
           person_id: activePersonId || undefined,
           codigo: codigo.trim(),
@@ -119,14 +116,6 @@ export default function NovoCidPage() {
           local_id: localId || undefined,
           observacoes: observacoes.trim() || undefined,
           anexo_url: anexoUrl || undefined,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: false
-        };
-
-        await db.transaction("rw", db.cids, db.syncQueue, async () => {
-          await db.cids.add(novoCid);
-          await enfileirarOperacao("cids", "add", novoCid);
         });
       },
       {
@@ -198,13 +187,28 @@ export default function NovoCidPage() {
             </div>
           </motion.div>
 
+          {/* 🔥 MÉDICO COM LIMPAR */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.06 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Médico que diagnosticou</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Médico que diagnosticou</label>
+              {medicoId && selectedMedico && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setMedicoId("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
@@ -217,13 +221,28 @@ export default function NovoCidPage() {
             </button>
           </motion.div>
 
+          {/* 🔥 HOSPITAL COM LIMPAR */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Hospital</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Hospital</label>
+              {hospitalId && selectedHospital && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setHospitalId("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
@@ -236,13 +255,28 @@ export default function NovoCidPage() {
             </button>
           </motion.div>
 
+          {/* 🔥 LOCAL COM LIMPAR */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Local / Posto</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-ink-primary">Local / Posto</label>
+              {localId && selectedLocal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setLocalId("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar
+                </button>
+              )}
+            </div>
             <button
               onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"

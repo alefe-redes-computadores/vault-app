@@ -1,3 +1,4 @@
+// hooks/useHospitais.ts
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
@@ -16,36 +17,19 @@ export function useHospitais() {
     []
   );
 
-  const getHospital = useCallback((id: string) => {
-    return hospitaisRepository.getById(id);
-  }, []);
-
-  const addHospital = useCallback(
-    async (data: Omit<Hospital, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-      return hospitaisRepository.create({ ...data, user_id: user?.id || "" });
-    },
-    [user]
-  );
-
+  const getHospital = useCallback((id: string) => hospitaisRepository.getById(id), []);
+  
+  const addHospital = useCallback(async (data: Omit<Hospital, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    return await hospitaisRepository.create({ ...data, user_id: user.id });
+  }, [user]);
+  
   const updateHospital = useCallback(async (id: string, data: Partial<Hospital>) => {
-    return hospitaisRepository.update(id, data);
+    return await hospitaisRepository.update(id, data);
   }, []);
+  
+  const deleteHospital = useCallback(async (id: string) => await hospitaisRepository.delete(id), []);
+  const deleteHospitalSafe = useCallback(async (id: string) => await hospitaisRepository.deleteSafe(id), []);
 
-  const deleteHospital = useCallback(async (id: string) => {
-    return hospitaisRepository.delete(id);
-  }, []);
-
-  // ✅ Versão com cascade delete (limpa referências em documentos, consultas, cirurgias, exames)
-  const deleteHospitalSafe = useCallback(async (id: string) => {
-    return hospitaisRepository.deleteSafe(id);
-  }, []);
-
-  return {
-    hospitais,
-    getHospital,
-    addHospital,
-    updateHospital,
-    deleteHospital,
-    deleteHospitalSafe,
-  };
+  return { hospitais, getHospital, addHospital, updateHospital, deleteHospital, deleteHospitalSafe };
 }

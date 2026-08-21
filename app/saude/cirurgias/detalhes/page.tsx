@@ -31,6 +31,7 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { Cirurgia, Medico, Hospital, Medicamento, Exame } from "@/lib/types";
 import { useCirurgias } from "@/hooks/useCirurgias";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import { useMounted } from "@/hooks/useMounted";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -50,6 +51,7 @@ function DetalhesCirurgiaContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { activePersonId } = useActivePersonId();
+  const mounted = useMounted();
 
   const [cirurgia, setCirurgia] = useState<Cirurgia | null>(null);
   const [medico, setMedico] = useState<Medico | null>(null);
@@ -94,6 +96,8 @@ function DetalhesCirurgiaContent() {
 
     fetchData();
   }, [id, router, getCirurgia]);
+
+  if (!mounted) return <DetailSkeleton />;
 
   const cirurgiaVencida = useMemo(() => {
     return cirurgia?.data ? isReceitaVencidaSegura(cirurgia.data) : false;
