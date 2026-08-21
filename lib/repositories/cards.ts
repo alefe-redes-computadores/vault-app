@@ -21,8 +21,12 @@ export const cardsRepository = {
       updated_at: now,
       synced: false,
     };
-    await db.bankCards.add(card);
-    await enfileirarOperacao('cards', 'add', card);
+
+    await db.transaction('rw', [db.bankCards, db.syncQueue], async () => {
+      await db.bankCards.add(card);
+      await enfileirarOperacao('cards', 'add', card);
+    });
+
     return card;
   },
 
@@ -44,8 +48,12 @@ export const cardsRepository = {
       updated_at: now,
       synced: false,
     };
-    await db.bankCards.put(updated);
-    await enfileirarOperacao('cards', 'update', updated);
+
+    await db.transaction('rw', [db.bankCards, db.syncQueue], async () => {
+      await db.bankCards.put(updated);
+      await enfileirarOperacao('cards', 'update', updated);
+    });
+
     return updated;
   },
 
@@ -56,8 +64,11 @@ export const cardsRepository = {
     const existing = await db.bankCards.get(id);
     if (!existing) throw new Error('Cartão não encontrado');
     if (existing.user_id !== user.id) throw new Error('Acesso negado');
-    await db.bankCards.delete(id);
-    await enfileirarOperacao('cards', 'delete', { id });
+
+    await db.transaction('rw', [db.bankCards, db.syncQueue], async () => {
+      await db.bankCards.delete(id);
+      await enfileirarOperacao('cards', 'delete', { id });
+    });
   },
 
   async getAll(): Promise<BankCard[]> {

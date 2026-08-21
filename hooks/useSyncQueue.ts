@@ -1335,7 +1335,8 @@ export function useSyncQueue() {
     const settings = item.payload as unknown as AppSettings;
 
     switch (item.operation) {
-      case "add": {
+      case "add":
+      case "update": {
         const { error } = await client.from("settings").upsert(
           {
             id: settings.id,
@@ -1345,18 +1346,7 @@ export function useSyncQueue() {
           },
           { onConflict: "id" }
         );
-        if (error) throw new Error(`Settings insert error: ${error.message}`);
-        break;
-      }
-      case "update": {
-        const { error } = await client
-          .from("settings")
-          .update({
-            default_person_id: settings.default_person_id || null,
-            updated_at: settings.updated_at || new Date().toISOString(),
-          })
-          .eq("id", settings.id);
-        if (error) throw new Error(`Settings update error: ${error.message}`);
+        if (error) throw new Error(`Settings sync error: ${error.message}`);
         break;
       }
       case "delete": {

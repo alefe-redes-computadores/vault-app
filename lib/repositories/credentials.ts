@@ -20,8 +20,12 @@ export const credentialsRepository = {
       updated_at: now,
       synced: false,
     };
-    await db.credentials.add(credential);
-    await enfileirarOperacao('credentials', 'add', credential);
+
+    await db.transaction('rw', [db.credentials, db.syncQueue], async () => {
+      await db.credentials.add(credential);
+      await enfileirarOperacao('credentials', 'add', credential);
+    });
+
     return credential;
   },
 
@@ -43,8 +47,12 @@ export const credentialsRepository = {
       updated_at: now,
       synced: false,
     };
-    await db.credentials.put(updated);
-    await enfileirarOperacao('credentials', 'update', updated);
+
+    await db.transaction('rw', [db.credentials, db.syncQueue], async () => {
+      await db.credentials.put(updated);
+      await enfileirarOperacao('credentials', 'update', updated);
+    });
+
     return updated;
   },
 
@@ -55,8 +63,11 @@ export const credentialsRepository = {
     const existing = await db.credentials.get(id);
     if (!existing) throw new Error('Credencial não encontrada');
     if (existing.user_id !== user.id) throw new Error('Acesso negado');
-    await db.credentials.delete(id);
-    await enfileirarOperacao('credentials', 'delete', { id });
+
+    await db.transaction('rw', [db.credentials, db.syncQueue], async () => {
+      await db.credentials.delete(id);
+      await enfileirarOperacao('credentials', 'delete', { id });
+    });
   },
 
   async getAll(): Promise<Credential[]> {

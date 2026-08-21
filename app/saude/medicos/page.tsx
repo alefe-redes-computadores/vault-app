@@ -17,6 +17,9 @@ import {
   X,
   Filter,
   Phone,
+  Edit3,
+  Clock,
+  User,
 } from "lucide-react";
 import { Hospital as HospitalIcon } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -34,6 +37,7 @@ import { useConsultas } from "@/hooks/useConsultas";
 import { useCirurgias } from "@/hooks/useCirurgias";
 import { useHospitais } from "@/hooks/useHospitais";
 import { sugerirRenovacao } from "@/lib/health-insights";
+import { AvatarMedico } from "@/components/ui/AvatarMedico";
 import type {
   Medico,
   Medicamento,
@@ -334,61 +338,67 @@ export default function MedicosPage() {
                   : personAccent;
 
               return (
-                <motion.button
+                <motion.div
                   key={medico.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${medico.id}`); }}
-                  className="flex w-full items-start gap-3.5 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
+                  className="group rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm transition-all hover:border-surface-border/80 hover:bg-surface-raised/30 active:scale-[0.99]"
                   style={{ borderLeft: `6px solid ${primaryColor}` }}
                 >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1 relative">
-                    <Stethoscope size={22} className="text-ice" />
-                    {medico.temAlertaUrgente && (
-                      <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-coral text-[9px] text-white shadow" title="Alerta de estoque/receita pendente">
-                        !
-                      </span>
-                    )}
-                  </div>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-start gap-4">
+                      <AvatarMedico nome={medico.nome} tamanho={14} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h2 className="truncate text-lg font-bold text-ink-primary">
+                            Dr(a). {medico.nome}
+                          </h2>
+                          {medico.especialidade && (
+                            <span className="shrink-0 rounded-full border border-ice/20 bg-ice/10 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ice">
+                              {medico.especialidade}
+                            </span>
+                          )}
+                          {medico.temAlertaUrgente && (
+                            <span className="flex shrink-0 items-center gap-1 rounded-full bg-coral/10 px-2 py-0.5 text-[9px] font-bold text-coral">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-coral" />
+                              Alerta
+                            </span>
+                          )}
+                        </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-base font-semibold text-ink-primary">{medico.nome}</p>
-                      {medico.especialidade && (
-                        <span className="shrink-0 rounded-full border border-ice/20 bg-ice/10 px-2.5 py-0.5 text-[10px] font-semibold text-ice uppercase tracking-wide">
-                          {medico.especialidade}
-                        </span>
-                      )}
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
+                          {medico.telefone && (
+                            <span className="flex items-center gap-1">
+                              <Phone size={11} className="text-ink-faint" />
+                              {medico.telefone}
+                            </span>
+                          )}
+                          {medico.crm && (
+                            <span className="flex items-center gap-1 font-mono text-[10px] text-ink-faint">
+                              CRM: {medico.crm}
+                            </span>
+                          )}
+                          {medico.ultimoHospital && (
+                            <span className="flex items-center gap-1 rounded-full bg-violet-400/10 px-2 py-0.5 text-[10px] font-medium text-violet-400">
+                              <Building2 size={11} />
+                              {medico.ultimoHospital.nome}
+                            </span>
+                          )}
+                          {medico.ultimaConsulta && (
+                            <span className="flex items-center gap-1">
+                              <Calendar size={11} className="text-ice" />
+                              Última: {formatDateDisplay(medico.ultimaConsulta.data)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-                      {medico.telefone && (
-                        <span className="flex items-center gap-1">
-                          <Phone size={11} className="text-ink-faint" />
-                          {medico.telefone}
-                        </span>
-                      )}
-
-                      {medico.ultimoHospital && (
-                        <span className="flex items-center gap-1 text-[10px] font-medium bg-coral/10 text-coral px-2 py-0.5 rounded-full">
-                          <Building2 size={11} />
-                          {medico.ultimoHospital.nome}
-                        </span>
-                      )}
-
-                      {medico.ultimaConsulta && (
-                        <span className="flex items-center gap-1">
-                          <Calendar size={11} className="text-ice" />
-                          Última: {formatDateDisplay(medico.ultimaConsulta.data)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 border-t border-surface-border/30 pt-3">
                       {medico.tratamentos.map((t) => (
                         <span
                           key={t.id}
-                          className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md border"
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-bold uppercase"
                           style={{
                             backgroundColor: `${t.color}15`,
                             borderColor: `${t.color}40`,
@@ -399,34 +409,59 @@ export default function MedicosPage() {
                         </span>
                       ))}
 
-                      {medico.consultasCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted">
-                          <Calendar size={11} className="text-ice" /> {medico.consultasCount} cons.
-                        </span>
-                      )}
+                      <div className="ml-auto flex flex-wrap items-center gap-2">
+                        {medico.consultasCount > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-0.5 text-[10px] font-medium text-ice">
+                            <Calendar size={12} /> {medico.consultasCount}
+                          </span>
+                        )}
+                        {medico.cirurgiasCount > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-medium text-coral">
+                            <Activity size={12} /> {medico.cirurgiasCount}
+                          </span>
+                        )}
+                        {medico.medicamentosCount > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                            <Pill size={12} /> {medico.medicamentosCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-                      {medico.cirurgiasCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted">
-                          <Activity size={11} className="text-coral" /> {medico.cirurgiasCount} cirurg.
-                        </span>
-                      )}
-
-                      {medico.medicamentosCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted">
-                          <Pill size={11} className="text-emerald-400" /> {medico.medicamentosCount} med(s)
-                        </span>
-                      )}
-
-                      {medico.documentosCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted">
-                          <FileText size={11} className="text-amber-400" /> {medico.documentosCount} doc(s)
-                        </span>
-                      )}
+                    <div className="flex flex-wrap items-center gap-2 pt-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trigger("vibrate");
+                          router.push(`/saude/consultas/nova?medico_id=${medico.id}`);
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl border border-ice/20 bg-ice/5 px-3 py-1.5 text-[10px] font-semibold text-ice transition-all hover:bg-ice/10 active:scale-95"
+                      >
+                        <Calendar size={13} /> Agendar
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trigger("vibrate");
+                          router.push(`/saude/medicos/editar?id=${medico.id}`);
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl border border-surface-border/40 bg-surface-raised px-3 py-1.5 text-[10px] font-medium text-ink-muted transition-all hover:bg-surface-border/30 active:scale-95"
+                      >
+                        <Edit3 size={13} /> Editar
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trigger("vibrate");
+                          router.push(`/saude/medicos/detalhes?id=${medico.id}`);
+                        }}
+                        className="ml-auto flex items-center gap-1 rounded-xl bg-ice/10 px-3 py-1.5 text-[10px] font-semibold text-ink-primary transition-all hover:bg-ice/20 active:scale-95"
+                      >
+                        Ver Perfil <ChevronRight size={13} />
+                      </button>
                     </div>
                   </div>
-
-                  <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
-                </motion.button>
+                </motion.div>
               );
             })
           )}

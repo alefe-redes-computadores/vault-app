@@ -21,8 +21,12 @@ export const personsRepository = {
       updated_at: now,
       synced: false,
     };
-    await db.persons.add(person);
-    await enfileirarOperacao('persons', 'add', person);
+
+    await db.transaction('rw', [db.persons, db.syncQueue], async () => {
+      await db.persons.add(person);
+      await enfileirarOperacao('persons', 'add', person);
+    });
+
     return person;
   },
 
@@ -44,8 +48,12 @@ export const personsRepository = {
       updated_at: now,
       synced: false,
     };
-    await db.persons.put(updated);
-    await enfileirarOperacao('persons', 'update', updated);
+
+    await db.transaction('rw', [db.persons, db.syncQueue], async () => {
+      await db.persons.put(updated);
+      await enfileirarOperacao('persons', 'update', updated);
+    });
+
     return updated;
   },
 
@@ -57,7 +65,6 @@ export const personsRepository = {
     if (!existing) throw new Error('Pessoa não encontrada');
     if (existing.user_id !== user.id) throw new Error('Acesso negado');
 
-    // Remover todos os dados vinculados à pessoa (documentos, medicamentos, etc.)
     await db.transaction('rw', [
       db.persons,
       db.documents,
@@ -69,6 +76,7 @@ export const personsRepository = {
       db.cids,
       db.doseLogs,
       db.renovacoes,
+      db.syncQueue,
     ], async () => {
       await db.documents.where('person_id').equals(id).delete();
       await db.medicamentos.where('person_id').equals(id).delete();
@@ -80,9 +88,8 @@ export const personsRepository = {
       await db.doseLogs.where('person_id').equals(id).delete();
       await db.renovacoes.where('person_id').equals(id).delete();
       await db.persons.delete(id);
+      await enfileirarOperacao('persons', 'delete', { id });
     });
-
-    await enfileirarOperacao('persons', 'delete', { id });
   },
 
   async getAll(): Promise<Person[]> {
