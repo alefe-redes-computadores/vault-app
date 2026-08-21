@@ -46,6 +46,7 @@ function VaultDetailContent() {
   const members = useLiveQuery(() => db.vaultMembers.where("vault_id").equals(id).toArray(), [id], []);
   const documents = useLiveQuery(() => db.documents.where("vault_id").equals(id).toArray(), [id], []);
 
+  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
   if (!mounted) return <DetailSkeleton />;
 
   if (vault === undefined) {

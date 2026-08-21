@@ -40,6 +40,7 @@ import { personsRepository } from "@/lib/repositories/persons";
 import type { Person, Document, Medicamento, Consulta, Exame, Cirurgia, Tratamento, Cid } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
+import { useMounted } from "@/hooks/useMounted";
 
 function getTratamentoIcon(nome: string) {
   const n = (nome || "").toLowerCase();
@@ -76,6 +77,7 @@ export default function PessoaDetalhesPage() {
   const { showToast } = useToast();
   const { activePersonId, changePerson } = useActivePersonId();
   const { user } = useAuth();
+  const mounted = useMounted();
 
   const [isLoading, setIsLoading] = useState(true);
   const [showDefaultModal, setShowDefaultModal] = useState(false);
@@ -139,6 +141,9 @@ export default function PessoaDetalhesPage() {
       return;
     }
   }, [id, router]);
+
+  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
+  if (!mounted) return <DetailSkeleton />;
 
   const handleSetDefault = async () => {
     if (!id || !person || !user) return;

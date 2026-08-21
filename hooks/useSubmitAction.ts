@@ -14,7 +14,7 @@ export function useSubmitAction() {
 
   const run = useCallback(
     async (
-      action: () => Promise<any>, // <-- CORRIGIDO AQUI (antes era void)
+      action: () => Promise<any>,
       opts: {
         successMessage: string;
         errorMessage: string;
@@ -34,7 +34,9 @@ export function useSubmitAction() {
       } catch (err) {
         console.error(err);
         trigger("error");
-        showToast(opts.errorMessage, "error");
+        // Mostra o erro técnico real no toast para facilitar o debug
+        const errorDetail = err instanceof Error ? err.message : String(err);
+        showToast(`${opts.errorMessage}: ${errorDetail}`, "error");
       } finally {
         setIsSubmitting(false);
       }

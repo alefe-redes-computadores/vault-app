@@ -31,7 +31,6 @@ import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useMounted } from "@/hooks/useMounted";
 import { documentsRepository } from "@/lib/repositories/documents";
 
-// ---- CONSTANTES LOCAIS PARA EVITAR ERROS DE IMPORT ----
 const TYPE_CATEGORY_MAP: Record<string, CategoryId[]> = {
   rg: ["pessoal"], cpf: ["pessoal"], cnh: ["pessoal"], certidao_nascimento: ["pessoal"],
   titulo_eleitor: ["pessoal"], certificado: ["pessoal", "empresa"],
@@ -64,7 +63,6 @@ const getFieldsForType = (type: string): DocField[] => {
   return map[type] || map.outro;
 };
 
-// ---- FUNÇÕES UTILITÁRIAS ----
 const applyMask = (value: string, type: string): string => {
   const digits = value.replace(/\D/g, "");
   if (type === "cpf") return digits.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})/, "$1-$2").slice(0, 14);
@@ -81,6 +79,9 @@ const getMaskType = (fieldKey: string, fieldType: string): string | null => {
 };
 
 export default function EditarDetalhePage() {
+  // ==========================================
+  // TODOS OS HOOKS NO TOPO (REGRA DE OURO REACT)
+  // ==========================================
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -155,7 +156,9 @@ export default function EditarDetalhePage() {
     }
   }, [doc]);
 
-  // Previne hydration mismatch: só renderiza o conteúdo depois de montado
+  // ==========================================
+  // RETORNOS CONDICIONAIS APÓS OS HOOKS
+  // ==========================================
   if (!mounted) {
     return (
       <PageTransition>
@@ -170,12 +173,10 @@ export default function EditarDetalhePage() {
     );
   }
 
-  const fields = useMemo(() => getFieldsForType(formData.type), [formData.type]);
-  const availableTypes = useMemo(() => {
-    return (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).filter(
-      type => TYPE_CATEGORY_MAP[type].includes(formData.category_id)
-    );
-  }, [formData.category_id]);
+  const fields = getFieldsForType(formData.type);
+  const availableTypes = (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).filter(
+    type => TYPE_CATEGORY_MAP[type].includes(formData.category_id)
+  );
 
   const handleChange = (field: keyof typeof formData, value: any) => {
     if (field === "category_id") {
@@ -332,7 +333,6 @@ export default function EditarDetalhePage() {
     if (!id) return;
     deleteAction.run(
       async () => {
-        // Usando o repositório para padronizar a exclusão
         await documentsRepository.delete(id);
         router.replace("/");
       },

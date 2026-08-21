@@ -19,6 +19,7 @@ import { formatDateDisplay } from "@/lib/health-utils";
 import { calcularEconomia } from "@/lib/health-insights";
 import type { LocalSaude, Renovacao, Medicamento } from "@/lib/types";
 import { useLocais } from "@/hooks/useLocais";
+import { useMounted } from "@/hooks/useMounted";
 
 function formatCurrency(value: number | undefined | null): string {
   const val = typeof value === 'number' ? value : 0;
@@ -37,6 +38,7 @@ function DetalhesLocalContent() {
   const { trigger } = useHapticFeedback();
   const { deleteLocal } = useLocais();
   const { activePersonId } = useActivePersonId();
+  const mounted = useMounted();
 
   const [local, setLocal] = useState<LocalSaude | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,6 +116,9 @@ function DetalhesLocalContent() {
       setIsLoading(false);
     });
   }, [id, router]);
+
+  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
+  if (!mounted) return <DetailSkeleton />;
 
   const handleDelete = async () => {
     trigger("vibrate");

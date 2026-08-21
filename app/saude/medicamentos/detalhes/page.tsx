@@ -1,16 +1,16 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
 
-import { Suspense, useMemo, useState, useCallback } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Pill, Circle, Droplet, Syringe, StickyNote,
-  ChevronRight, Edit3, Package, Stethoscope, Store,
+  Edit3, Package, Stethoscope, Store,
   FileText, Calendar, Activity, AlertTriangle, DollarSign,
   CheckCircle2, Building2, Info, MapPin, Zap, Clock, TrendingUp,
-  LineChart, Check, ExternalLink, Share2, Phone, Copy, ChevronDown, ChevronUp,
-  Plus, FileWarning, Gift, AlertCircle, Trash2
+  LineChart, Check, ExternalLink, Share2, Copy, ChevronDown, ChevronUp,
+  Plus, FileWarning, Gift, AlertCircle, Trash2, Phone
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -25,10 +25,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import type { Medicamento, Tratamento, Renovacao, Medico, Farmacia, Hospital } from "@/lib/types";
+import type { Medicamento, Tratamento, Renovacao } from "@/lib/types";
 import { useMounted } from "@/hooks/useMounted";
-
-const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
 
 function formatDate(isoStr?: string) {
   if (!isoStr) return "—";
@@ -53,6 +51,10 @@ const FORMATOS = [
 interface HistDosagem { dosagem_antiga: string; data_mudanca: string; medico_responsavel: string; }
 
 function MedicamentoDetalhesContent() {
+  // ============================================================
+  // 1. TODOS OS HOOKS DO COMPONENTE DEVEM FICAR AQUI NO TOPO,
+  //    SEMPRE NA MESMA ORDEM E ANTES DE QUALQUER CONDICIONAL/RETURN
+  // ============================================================
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -68,10 +70,7 @@ function MedicamentoDetalhesContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // ============================================================
-  // CONSULTAS DEXIE (REATIVAS)
-  // ============================================================
-
+  // Consultas Dexie Reativas (também são hooks)
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);
   const medico = useLiveQuery(() => med?.medico_id ? db.medicos.get(med.medico_id) : undefined, [med?.medico_id]);
   const hospital = useLiveQuery(() => med?.hospital_id ? db.hospitais.get(med.hospital_id) : undefined, [med?.hospital_id]);
@@ -93,6 +92,12 @@ function MedicamentoDetalhesContent() {
     []
   ) || new Map<string, string>();
 
+  // ============================================================
+  // 2. AGORA SIM, APÓS TODOS OS HOOKS DECLARADOS, PODEMOS USAR RETURNS CONDICIONAIS
+  // ============================================================
+  if (!mounted || med === undefined) return <DetailSkeleton />;
+  if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
+
   const menuOptions = [
     { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?medicamento_id=${id}` },
     { id: "duplicar-medicamento", label: "Duplicar Medicamento", icon: Copy, path: `/saude/medicamentos/novo?duplicar=${id}` },
@@ -105,14 +110,7 @@ function MedicamentoDetalhesContent() {
     router.push(path);
   };
 
-  // Previne hydration mismatch: só renderiza o conteúdo depois de montado
-  if (!mounted) return <DetailSkeleton />;
-
-  // ============================================================
-  // AÇÃO: TOMAR DOSE
-  // ============================================================
-
-  const handleTomarAgora = useCallback(async () => {
+  const handleTomarAgora = async () => {
     if (!med || !med.id) return;
     trigger("success");
 
@@ -158,7 +156,7 @@ function MedicamentoDetalhesContent() {
       setToastMessage({ text: "Erro ao registrar dose.", type: 'error' });
       setTimeout(() => setToastMessage(null), 3000);
     }
-  }, [med, updateMedicamento, trigger]);
+  };
 
   const handleDelete = async () => {
     if (!med?.id) return;
@@ -175,9 +173,6 @@ function MedicamentoDetalhesContent() {
       setShowDeleteModal(false);
     }
   };
-
-  if (med === undefined) return <DetailSkeleton />;
-  if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
 
   const estoqueInfo = computeEstoqueInfo(med);
   const qtd = estoqueInfo?.quantidadeRestante ?? 0;
@@ -216,19 +211,13 @@ function MedicamentoDetalhesContent() {
 
   const compartilharWhatsApp = () => {
     trigger("vibrate");
-    const texto = `*${med.nome}*
-Dosagem: ${med.dosagem}
-Próxima renovação: ${formatDate(med.proxima_renovacao)}
-Estoque Atual: ${qtd} doses`;
+    const texto = `*${med.nome}*\nDosagem: ${med.dosagem}\nPróxima renovação: ${formatDate(med.proxima_renovacao)}\nEstoque Atual: ${qtd} doses`;
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
   };
 
   const copiarInfo = () => {
     trigger("vibrate");
-    const texto = `${med.nome}
-Dosagem: ${med.dosagem}
-Próxima renovação: ${formatDate(med.proxima_renovacao)}
-Estoque: ${qtd} doses`;
+    const texto = `${med.nome}\nDosagem: ${med.dosagem}\nPróxima renovação: ${formatDate(med.proxima_renovacao)}\nEstoque: ${qtd} doses`;
     navigator.clipboard.writeText(texto);
     setToastMessage({ text: "Informações copiadas!", type: 'success' });
     setTimeout(() => setToastMessage(null), 3000);
@@ -256,13 +245,11 @@ Estoque: ${qtd} doses`;
 
   const SelectedFormatIcon = FORMATOS.find(f => f.id === med.formato)?.icon || Pill;
   const color1 = med.cores?.[0] || "#60A5FA";
-
   const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28 relative">
-
         <AnimatePresence>
           {toastMessage && (
             <motion.div
@@ -289,56 +276,24 @@ Estoque: ${qtd} doses`;
             <h2 className="font-semibold text-ink-primary">Prontuário</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={copiarInfo} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ink-muted hover:text-ice">
-              <Copy size={18} />
-            </button>
-            <button onClick={compartilharWhatsApp} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-emerald-400">
-              <Share2 size={18} />
-            </button>
+            <button onClick={copiarInfo} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ink-muted hover:text-ice"><Copy size={18} /></button>
+            <button onClick={compartilharWhatsApp} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-emerald-400"><Share2 size={18} /></button>
 
             <div className="relative">
-              <button
-                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
-                className="h-10 w-10 flex items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
-              >
-                <Plus size={18} />
-              </button>
+              <button onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }} className="h-10 w-10 flex items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"><Plus size={18} /></button>
               <AnimatePresence>
                 {isMenuFlutuanteOpen && (
                   <>
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.16 }}
-                      onClick={() => setIsMenuFlutuanteOpen(false)}
-                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
-                    >
-                      <div className="px-3 pb-2 pt-3.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
-                      </div>
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMenuFlutuanteOpen(false)} className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
+                    <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl">
+                      <div className="px-3 pb-2 pt-3.5"><p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p></div>
                       <div className="px-1.5 pb-2">
                         {menuOptions.map((option) => {
                           const Icon = option.icon;
                           return (
-                            <button
-                              key={option.id}
-                              onClick={() => handleMenuOptionClick(option.path)}
-                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
-                            >
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                                <Icon size={15} />
-                              </div>
-                              <span className="text-sm font-medium text-ink-primary">
-                                {option.label}
-                              </span>
+                            <button key={option.id} onClick={() => handleMenuOptionClick(option.path)} className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice"><Icon size={15} /></div>
+                              <span className="text-sm font-medium text-ink-primary">{option.label}</span>
                             </button>
                           );
                         })}
@@ -349,15 +304,8 @@ Estoque: ${qtd} doses`;
               </AnimatePresence>
             </div>
 
-            <button onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${id}`); }} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ice">
-              <Edit3 size={18} />
-            </button>
-            <button
-              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
-              className="h-10 w-10 flex items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral active:scale-95 transition-transform"
-            >
-              <Trash2 size={18} />
-            </button>
+            <button onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${id}`); }} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ice"><Edit3 size={18} /></button>
+            <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="h-10 w-10 flex items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral active:scale-95 transition-transform"><Trash2 size={18} /></button>
           </div>
         </header>
 

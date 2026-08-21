@@ -108,7 +108,7 @@ function DetalhesRenovacaoContent() {
     fetchData();
   }, [id, router]);
 
-  // Previne hydration mismatch: só renderiza o conteúdo depois de montado
+  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
   if (!mounted) return <DetailSkeleton />;
 
   const handleDelete = async () => {

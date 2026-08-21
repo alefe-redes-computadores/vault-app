@@ -50,7 +50,6 @@ function CredentialDetailsContent() {
     async function loadCredential() {
       if (!id) return;
       try {
-        // Usando o repositório via hook
         const item = await getCredential(id);
         if (item) setCredential(item);
       } catch (error) {
@@ -67,6 +66,7 @@ function CredentialDetailsContent() {
     };
   }, [id, getCredential]);
 
+  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
   if (!mounted) return <DetailSkeleton />;
 
   const handleRevealPassword = async () => {
