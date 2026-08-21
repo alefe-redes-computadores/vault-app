@@ -51,10 +51,6 @@ const FORMATOS = [
 interface HistDosagem { dosagem_antiga: string; data_mudanca: string; medico_responsavel: string; }
 
 function MedicamentoDetalhesContent() {
-  // ============================================================
-  // 1. TODOS OS HOOKS DO COMPONENTE DEVEM FICAR AQUI NO TOPO,
-  //    SEMPRE NA MESMA ORDEM E ANTES DE QUALQUER CONDICIONAL/RETURN
-  // ============================================================
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -70,7 +66,7 @@ function MedicamentoDetalhesContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Consultas Dexie Reativas (também são hooks)
+  // Consultas Dexie Reativas
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);
   const medico = useLiveQuery(() => med?.medico_id ? db.medicos.get(med.medico_id) : undefined, [med?.medico_id]);
   const hospital = useLiveQuery(() => med?.hospital_id ? db.hospitais.get(med.hospital_id) : undefined, [med?.hospital_id]);
@@ -92,11 +88,9 @@ function MedicamentoDetalhesContent() {
     []
   ) || new Map<string, string>();
 
-  // ============================================================
-  // 2. AGORA SIM, APÓS TODOS OS HOOKS DECLARADOS, PODEMOS USAR RETURNS CONDICIONAIS
-  // ============================================================
+  // TRAVA DE SEGURANÇA CONTRA TELA PRETA AO EXCLUIR
   if (!mounted || med === undefined) return <DetailSkeleton />;
-  if (!med) return <p className="text-center mt-20 text-ink-muted">Medicamento não encontrado.</p>;
+  if (isDeleting || !med) return <div className="min-h-screen bg-void" />;
 
   const menuOptions = [
     { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?medicamento_id=${id}` },
@@ -158,7 +152,7 @@ function MedicamentoDetalhesContent() {
     }
   };
 
-    const handleDelete = async () => {
+  const handleDelete = async () => {
     if (!med?.id) return;
     setIsDeleting(true);
     setToastMessage({ text: "Excluindo medicamento...", type: 'loading' });
@@ -168,7 +162,7 @@ function MedicamentoDetalhesContent() {
       setToastMessage({ text: "Excluído com sucesso!", type: 'success' });
       setTimeout(() => {
         router.replace("/saude/medicamentos");
-      }, 700);
+      }, 400);
     } catch (error) {
       console.error("Erro ao excluir medicamento:", error);
       trigger("error");
@@ -178,7 +172,6 @@ function MedicamentoDetalhesContent() {
       setShowDeleteModal(false);
     }
   };
-
 
   const estoqueInfo = computeEstoqueInfo(med);
   const qtd = estoqueInfo?.quantidadeRestante ?? 0;

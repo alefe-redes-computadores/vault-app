@@ -26,7 +26,7 @@ export const renovacoesRepository = {
 
     const { user_id: _, ...renovacaoData } = data;
 
-    const renovacaoCompleta: Renovacao = {
+    const renovacaoCompleta: any = {
       ...renovacaoData,
       user_id: user.id,
       created_at: now,
@@ -34,6 +34,13 @@ export const renovacoesRepository = {
       synced: false,
       id: renovacaoId,
     };
+
+    // A MÁGICA: Limpamos todos os campos 'undefined' explícitos para o IndexedDB não surtar
+    Object.keys(renovacaoCompleta).forEach(key => {
+      if (renovacaoCompleta[key] === undefined) {
+        delete renovacaoCompleta[key];
+      }
+    });
 
     await db.transaction("rw", [db.renovacoes, db.syncQueue], async () => {
       await db.renovacoes.add(renovacaoCompleta);
@@ -45,7 +52,14 @@ export const renovacoesRepository = {
 
   async update(id: string, data: Partial<Renovacao>) {
     const now = new Date().toISOString();
-    const payload = { ...data, updated_at: now, synced: false };
+    const payload: any = { ...data, updated_at: now, synced: false };
+
+    // Limpeza também na atualização por segurança
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === undefined) {
+        delete payload[key];
+      }
+    });
 
     await db.transaction("rw", [db.renovacoes, db.syncQueue], async () => {
       await db.renovacoes.update(id, payload);

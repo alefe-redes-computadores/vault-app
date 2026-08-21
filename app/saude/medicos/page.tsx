@@ -78,40 +78,34 @@ export default function MedicosPage() {
   const { consultas = [] } = useConsultas();
   const { cirurgias = [] } = useCirurgias();
   const { hospitais = [] } = useHospitais();
-  const documentos = useLiveQuery(() => db.documents.toArray(), []) as Document[];
+  const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
 
   const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
-  // 🔥 FILTRO POR INFERÊNCIA: apenas médicos vinculados à pessoa ativa
   const medicosFiltradosPorPessoa = useMemo<Medico[]>(() => {
-    if (!activePersonId) return [];
+    if (!activePersonId) return medicos || [];
 
-    // Coletar IDs de médicos que aparecem nos dados da pessoa ativa
     const medicoIdsSet = new Set<string>();
 
-    // 1. Medicamentos da pessoa ativa (já filtrados pelo hook)
-    medicamentos.forEach((m) => {
-      if (m.medico_id) medicoIdsSet.add(m.medico_id);
+    (medicamentos || []).forEach((m) => {
+      if (m?.medico_id) medicoIdsSet.add(m.medico_id);
     });
 
-    // 2. Consultas da pessoa ativa
-    consultas.forEach((c) => {
-      if (c.medico_id) medicoIdsSet.add(c.medico_id);
+    (consultas || []).forEach((c) => {
+      if (c?.medico_id) medicoIdsSet.add(c.medico_id);
     });
 
-    // 3. Cirurgias da pessoa ativa
-    cirurgias.forEach((c) => {
-      if (c.medico_id) medicoIdsSet.add(c.medico_id);
+    (cirurgias || []).forEach((c) => {
+      if (c?.medico_id) medicoIdsSet.add(c.medico_id);
     });
 
-    // 4. Documentos que tenham referência a médico
-    documentos.forEach((d) => {
-      const doctorId = d.metadata?.doctor_id || d.metadata?.medico_id;
+    (documentos || []).forEach((d) => {
+      const doctorId = d?.metadata?.doctor_id || d?.metadata?.medico_id;
       if (doctorId && typeof doctorId === 'string') medicoIdsSet.add(doctorId);
     });
 
-    // Filtrar a lista global de médicos
-    return medicos.filter((medico) => medico.id && medicoIdsSet.has(medico.id));
+    const filtrados = (medicos || []).filter((medico) => medico?.id && medicoIdsSet.has(medico.id));
+    return filtrados.length > 0 ? filtrados : (medicos || []);
   }, [activePersonId, medicamentos, consultas, cirurgias, documentos, medicos]);
 
   const tratamentoMap = useMemo(() => new Map((tratamentos || []).map((t) => [t.id, t])), [tratamentos]);
@@ -120,7 +114,7 @@ export default function MedicosPage() {
   const medicosComMetadados = useMemo<MedicoComMetadados[]>(() => {
     return (medicosFiltradosPorPessoa || []).map((medico) => {
       const medsDoMedico = (medicamentos || []).filter(
-        (m) => m.medico_id === medico.id || m.medico === medico.nome
+        (m) => m?.medico_id === medico.id || m?.medico === medico.nome
       );
 
       const temAlertaUrgente = medsDoMedico.some((m) => {
@@ -130,26 +124,26 @@ export default function MedicosPage() {
 
       const tratamentoIdsSet = new Set<string>();
       medsDoMedico.forEach((m) => {
-        if (m.tratamento_ids && Array.isArray(m.tratamento_ids)) {
+        if (m?.tratamento_ids && Array.isArray(m.tratamento_ids)) {
           m.tratamento_ids.forEach((id) => tratamentoIdsSet.add(id));
         }
       });
 
-      const consultasDoMedico = (consultas || []).filter((c) => c.medico_id === medico.id);
-      const cirurgiasDoMedico = (cirurgias || []).filter((c) => c.medico_id === medico.id);
+      const consultasDoMedico = (consultas || []).filter((c) => c?.medico_id === medico.id);
+      const cirurgiasDoMedico = (cirurgias || []).filter((c) => c?.medico_id === medico.id);
 
       const docsDoMedico = (documentos || []).filter(
         (d) =>
-          d.metadata?.doctor_id === medico.id ||
-          String(d.metadata?.doctor || "").toLowerCase() === medico.nome.toLowerCase()
+          d?.metadata?.doctor_id === medico.id ||
+          String(d?.metadata?.doctor || "").toLowerCase() === medico.nome.toLowerCase()
       );
 
       const hospitalIdsSet = new Set<string>();
       consultasDoMedico.forEach((c) => {
-        if (c.hospital_id) hospitalIdsSet.add(c.hospital_id);
+        if (c?.hospital_id) hospitalIdsSet.add(c.hospital_id);
       });
       cirurgiasDoMedico.forEach((c) => {
-        if (c.hospital_id) hospitalIdsSet.add(c.hospital_id);
+        if (c?.hospital_id) hospitalIdsSet.add(c.hospital_id);
       });
 
       const hospitaisRelacionados = Array.from(hospitalIdsSet)
@@ -188,7 +182,7 @@ export default function MedicosPage() {
   }, [medicosFiltradosPorPessoa, medicamentos, documentos, consultas, cirurgias, tratamentoMap, hospitalMap]);
 
   const filteredMedicos = useMemo(() => {
-    let result = medicosComMetadados;
+    let result = medicosComMetadados || [];
 
     if (search) {
       const term = search.toLowerCase();
@@ -216,16 +210,16 @@ export default function MedicosPage() {
 
   const tratamentosUnicos = useMemo(() => {
     const map = new Map<string, Tratamento & { color: string }>();
-    medicosComMetadados.forEach((med) => {
-      med.tratamentos.forEach((t) => map.set(t.id!, t));
+    (medicosComMetadados || []).forEach((med) => {
+      (med.tratamentos || []).forEach((t) => map.set(t.id!, t));
     });
     return Array.from(map.values());
   }, [medicosComMetadados]);
 
   const hospitaisUnicos = useMemo(() => {
     const map = new Map<string, Hospital>();
-    medicosComMetadados.forEach((med) => {
-      med.hospitais.forEach((h) => map.set(h.id!, h));
+    (medicosComMetadados || []).forEach((med) => {
+      (med.hospitais || []).forEach((h) => map.set(h.id!, h));
     });
     return Array.from(map.values());
   }, [medicosComMetadados]);
@@ -255,7 +249,7 @@ export default function MedicosPage() {
               placeholder="Buscar por nome ou especialidade..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="border-surface-border/50 bg-surface-raised pl-9"
+              className="border-surface-border/50 bg-surface-raised pl-9 text-sm"
             />
           </div>
 
@@ -329,20 +323,8 @@ export default function MedicosPage() {
           {filteredMedicos.length === 0 ? (
             <EmptyState
               icon={Stethoscope}
-              title={
-                search || filtroTratamento || filtroHospital
-                  ? "Nenhum médico encontrado"
-                  : activePersonId
-                  ? "Nenhum médico vinculado a esta pessoa"
-                  : "Nenhum médico cadastrado"
-              }
-              description={
-                search || filtroTratamento || filtroHospital
-                  ? "Tente ajustar os filtros ou a busca."
-                  : activePersonId
-                  ? "Cadastre consultas ou medicamentos para vincular médicos."
-                  : "Cadastre profissionais para gerenciar suas prescrições."
-              }
+              title={search || filtroTratamento || filtroHospital ? "Nenhum médico encontrado" : "Nenhum médico cadastrado"}
+              description={search || filtroTratamento || filtroHospital ? "Tente ajustar os filtros ou a busca." : "Cadastre profissionais para gerenciar suas prescrições."}
             />
           ) : (
             filteredMedicos.map((medico) => {

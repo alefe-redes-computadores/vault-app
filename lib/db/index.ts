@@ -752,7 +752,7 @@ class VaultDB extends Dexie {
       hospitais: 'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
     });
 
-    // ==========================================================
+        // ==========================================================
     // VERSÃO 27 — Tabela versiculos
     // ==========================================================
     (this as any).version(27).stores({
@@ -763,8 +763,15 @@ class VaultDB extends Dexie {
       versiculos: 'id, user_id, created_at',
     });
 
-  } // <--- Fecha o constructor
-} // <--- Fecha a classe VaultDB
+    // ==========================================================
+    // VERSÃO 28 — Forçando a reconstrução da tabela renovacoes
+    // ==========================================================
+    (this as any).version(28).stores({
+      renovacoes: 'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, data, tipo_aquisicao, data_proxima_retirada, exige_nova_receita, synced, updated_at',
+    });
+
+  } // Fecha o constructor
+} // Fecha a classe VaultDB
 
 // ============================================================
 // INSTÂNCIA ÚNICA
