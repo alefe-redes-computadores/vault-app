@@ -763,15 +763,84 @@ class VaultDB extends Dexie {
       versiculos: 'id, user_id, created_at',
     });
 
-    // ==========================================================
+    //     // ==========================================================
     // VERSÃO 28 — Forçando a reconstrução da tabela renovacoes
     // ==========================================================
     (this as any).version(28).stores({
       renovacoes: 'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, data, tipo_aquisicao, data_proxima_retirada, exige_nova_receita, synced, updated_at',
     });
 
+    // ==========================================================
+    // VERSÃO 29 — Blindagem definitiva de todos os índices
+    // ==========================================================
+    (this as any).version(29).stores({
+      persons:
+        'id, user_id, name, synced, updated_at',
+
+      documents:
+        'id, user_id, person_id, category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id',
+
+      medicamentos:
+        'id, user_id, person_id, document_id, medico_id, farmacia_id, hospital_id, local_id, status, synced, updated_at, *tratamento_ids',
+
+      renovacoes:
+        'id, user_id, person_id, medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, data, tipo_aquisicao, data_proxima_retirada, exige_nova_receita, synced, updated_at',
+
+      medicos:
+        'id, user_id, person_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
+
+      farmacias:
+        'id, user_id, person_id, nome, synced, updated_at',
+
+      hospitais:
+        'id, user_id, person_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
+
+      locais:
+        'id, user_id, person_id, nome, synced, updated_at',
+
+      exames:
+        'id, user_id, person_id, medico_id, local_id, document_id, data, synced, updated_at, *tratamento_ids',
+
+      consultas:
+        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at',
+
+      cirurgias:
+        'id, user_id, person_id, medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at',
+
+      doseLogs:
+        'id, user_id, person_id, medicamento_id, data, horario, synced, updated_at',
+
+      credentials:
+        'id, user_id, vault_id, category, synced, updated_at',
+
+      bankCards:
+        'id, user_id, type, synced, updated_at',
+
+      instituicoes:
+        'id, user_id, nome, synced, updated_at',
+
+      tratamentos:
+        'id, user_id, person_id, nome, status, synced, updated_at, *cid_ids',
+
+      cids:
+        'id, user_id, person_id, codigo, medico_id, hospital_id, local_id, synced, updated_at',
+
+      anexos_clinicos:
+        'id, user_id, person_id, synced, updated_at',
+
+      syncQueue:
+        'id, chave, table, operation, created_at, retry_count, failed',
+
+      settings: 
+        'id, user_id, default_person_id, updated_at',
+
+      versiculos: 
+        'id, user_id, created_at',
+    });
+
   } // Fecha o constructor
 } // Fecha a classe VaultDB
+
 
 // ============================================================
 // INSTÂNCIA ÚNICA

@@ -8,7 +8,7 @@ import {
   Loader2, Save, Pill, Upload, X, FileText, Package, Plus, Clock,
   Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, AlertTriangle, Store,
   Building2, MapPin, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, Circle, Eraser,
-  FileSearch, Check
+  FileSearch, Check, RefreshCw
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -148,6 +148,9 @@ export default function NovoMedicamentoPage() {
   const [estoqueQuantidade, setEstoqueQuantidade] = useState("");
   const [estoqueDataReferenciaTexto, setEstoqueDataReferenciaTexto] = useState(isoParaBr(getLocalTodayISO()));
   const [estoqueUnidade, setEstoqueUnidade] = useState("comprimido(s)");
+
+  // 👇 NOVO ESTADO PARA GERENCIAMENTO DE RENOVAÇÃO
+  const [gerenciarRenovacao, setGerenciarRenovacao] = useState(false);
 
   const [tipoReceita, setTipoReceita] = useState<TipoReceita>("comum");
   const [dataReceitaTexto, setDataReceitaTexto] = useState("");
@@ -411,9 +414,10 @@ export default function NovoMedicamentoPage() {
         });
         const medicamentoId = createdMed;
 
-        if (precoNumerico !== undefined || (estoqueAtivo && quantidadeEstoqueFinal > 0)) {
+        // 👇 BLOCO NOVO: SÓ CRIA RENOVAÇÃO SE O USUÁRIO ATIVAR O INTERRUPTOR
+        if (gerenciarRenovacao) {
           if (!user) throw new Error('Usuário não autenticado');
-          
+
           await renovacoesRepository.create({
             user_id: user.id,
             person_id: activePersonId || undefined,
@@ -773,6 +777,28 @@ export default function NovoMedicamentoPage() {
             {/* ETAPA 3 */}
             {currentStep === 3 && (
               <motion.div key="step3" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
+
+                {/* 👇 INTERRUPTOR DE GERENCIAMENTO DE RENOVAÇÃO */}
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                        <RefreshCw size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-ink-primary">Gerenciar Renovação</h3>
+                        <p className="text-xs text-ink-muted">Ativar alertas automáticos e histórico oficial.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { trigger("vibrate"); setGerenciarRenovacao(!gerenciarRenovacao); }}
+                      className={`h-6 w-11 rounded-full p-0.5 transition-colors ${gerenciarRenovacao ? "bg-ice" : "bg-surface-raised border border-surface-border"}`}
+                    >
+                      <div className={`h-5 w-5 rounded-full bg-void shadow-sm transition-transform ${gerenciarRenovacao ? "translate-x-5" : ""}`} />
+                    </button>
+                  </div>
+                </div>
 
                 <CalculadoraGotas
                   isAtivo={isGotas}

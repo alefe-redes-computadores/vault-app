@@ -1,6 +1,7 @@
-// app/pessoas/novo/page.tsx
 "use client";
 
+
+import * as React from "react";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -13,6 +14,9 @@ import {
   Loader2,
   Check,
   Palette,
+  Camera,
+  X,
+  Sparkles,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +27,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { personsRepository } from "@/lib/repositories/persons";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { uploadFile } from "@/lib/supabase/storage";
 
 const PERSON_COLORS = [
   { name: "Azul", value: "#38BDF8" },
@@ -54,6 +59,9 @@ export default function NewPersonPage() {
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [localFile, setLocalFile] = useState<File | null>(null);
+
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
@@ -63,6 +71,39 @@ export default function NewPersonPage() {
     avatar_url: "",
     color: "#38BDF8",
   });
+
+    const handleImportGoogle = () => {
+    trigger("vibrate");
+    if (!user) return;
+    const meta = user.user_metadata || {};
+    setFormData((prev) => ({
+      ...prev,
+      name: meta.full_name || meta.name || prev.name,
+      email: user.email || prev.email,
+      avatar_url: meta.avatar_url || meta.picture || prev.avatar_url,
+    }));
+    showToast("Dados preenchidos com a conta Google!");
+  };
+
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      trigger("vibrate");
+      setLocalFile(file);
+      setFormData((prev) => ({ ...prev, avatar_url: URL.createObjectURL(file) }));
+    }
+    e.target.value = "";
+  };
+
+  const removeAvatar = () => {
+    trigger("vibrate");
+    if (formData.avatar_url.startsWith("blob:")) {
+      URL.revokeObjectURL(formData.avatar_url);
+    }
+    setFormData((prev) => ({ ...prev, avatar_url: "" }));
+    setLocalFile(null);
+  };
 
   const handleSelectColor = (color: string) => {
     trigger("vibrate");
@@ -89,13 +130,22 @@ export default function NewPersonPage() {
 
     run(
       async () => {
+        let finalAvatarUrl = formData.avatar_url;
+
+        if (localFile && user) {
+          const { url, error: uploadError } = await uploadFile(user.id, localFile, "avatars");
+          if (!uploadError && url) {
+            finalAvatarUrl = url;
+          }
+        }
+
         try {
           await personsRepository.create({
             user_id: user.id,
             name: formData.name.trim(),
             email: formData.email.trim() || undefined,
             phone: formData.phone.trim() || undefined,
-            avatar_url: formData.avatar_url || undefined,
+            avatar_url: finalAvatarUrl || undefined,
             color: formData.color,
           });
         } finally {
@@ -113,7 +163,9 @@ export default function NewPersonPage() {
   return (
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-32">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+
+        <header className="sticky top-0 z-25 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -126,18 +178,44 @@ export default function NewPersonPage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
                 Nova pessoa
               </h1>
               <p className="mt-1 text-sm text-ink-muted">
-                Cadastre uma pessoa para vincular documentos com mais rapidez
+                Cadastre uma pessoa para vincular documentos com rapidez
               </p>
             </div>
           </div>
         </header>
 
-        <section className="px-5 pt-6">
+        <section className="px-5 pt-6 space-y-4">
+          {/* Banner de Preenchimento Rápido Google */}
+          {user && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[24px] border border-ice/30 bg-ice/5 p-4 flex items-center justify-between gap-4 shadow-sm"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/15 text-ice">
+                  <Sparkles size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-ink-primary">Preencher com dados do Google?</p>
+                  <p className="text-[11px] text-ink-muted truncate">Use seu nome, e-mail e foto de perfil atuais.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleImportGoogle}
+                className="shrink-0 rounded-xl bg-ice text-void px-3.5 py-2 text-xs font-bold shadow-md shadow-ice/20 active:scale-95 transition-transform"
+              >
+                Preencher
+              </button>
+            </motion.div>
+          )}
+
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -145,23 +223,47 @@ export default function NewPersonPage() {
             className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm"
           >
             <div className="mb-6 flex items-center gap-4">
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-surface-border/50 shadow-sm transition-colors duration-200"
-                style={{
-                  backgroundColor: `${formData.color}18`,
-                  borderColor: `${formData.color}55`,
-                }}
-              >
-                <User size={28} style={{ color: formData.color }} />
+              <div className="relative group">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-16 w-16 cursor-pointer overflow-hidden items-center justify-center rounded-[20px] border border-surface-border/50 shadow-sm transition-colors duration-200"
+                  style={{
+                    backgroundColor: formData.avatar_url ? "transparent" : `${formData.color}18`,
+                    borderColor: `${formData.color}55`,
+                  }}
+                >
+                  {formData.avatar_url ? (
+                    <img src={formData.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <User size={28} style={{ color: formData.color }} />
+                  )}
+                </div>
+                {formData.avatar_url ? (
+                  <button
+                    type="button"
+                    onClick={removeAvatar}
+                    className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-coral text-void shadow-md"
+                  >
+                    <X size={12} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-ice text-void shadow-md"
+                  >
+                    <Camera size={12} />
+                  </button>
+                )}
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm text-ink-muted">Cadastro</p>
                 <h2 className="font-display text-lg font-semibold text-ink-primary">
                   Dados da pessoa
                 </h2>
                 <p className="mt-1 text-xs leading-5 text-ink-faint">
-                  Salve os dados principais para reutilizar em documentos e registros.
+                  Toque na foto para enviar uma imagem do seu dispositivo.
                 </p>
               </div>
             </div>

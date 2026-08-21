@@ -7,6 +7,7 @@ import { Sparkles, X, Check } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
+import { useHapticFeedback } from "@/lib/haptics";
 import type { Versiculo } from "@/lib/types";
 
 const STORAGE_KEY = "verse-hidden-date";
@@ -38,7 +39,6 @@ function getVersiculoDoDia(lista: Versiculo[]): Versiculo {
   return lista[index];
 }
 
-// 🔧 FUNÇÃO DE SAUDAÇÃO POR HORÁRIO
 function getSaudacao(): { icone: string; mensagem: string } {
   const hora = new Date().getHours();
   if (hora >= 5 && hora < 12) {
@@ -54,6 +54,7 @@ function getSaudacao(): { icone: string; mensagem: string } {
 }
 
 export function VersiculoDia() {
+  const { trigger } = useHapticFeedback();
   const { user } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -83,25 +84,29 @@ export function VersiculoDia() {
   }, [versiculosDb]);
 
   const handleDismiss = () => {
+    // 🔥 Feedback tátil imediato
+    trigger("success");
+
     const today = new Date().toDateString();
     localStorage.setItem(STORAGE_KEY, today);
     
     const saudacao = getSaudacao();
-    // Monta a mensagem com quebra de linha manual para melhor legibilidade
     const msg = `${saudacao.icone} "${versiculo.texto.slice(0, 45)}..." Guarde esta palavra no coração. Amanhã você receberá uma nova. ${saudacao.mensagem}`;
+    
+    // 🔥 Oculta o versículo e mostra o feedback imediatamente
+    setIsVisible(false);
     setFeedbackMessage(msg);
     setShowFeedback(true);
     
-    // Fecha o feedback após 4 segundos
+    // 🔥 Auto-fecha o feedback após 4 segundos
     setTimeout(() => {
       setShowFeedback(false);
-      setIsVisible(false);
     }, 4000);
   };
 
   const handleCloseFeedback = () => {
+    trigger("success");
     setShowFeedback(false);
-    setIsVisible(false);
   };
 
   if (!isInitialized || !versiculo) return null;
@@ -135,7 +140,6 @@ export function VersiculoDia() {
               </p>
             </div>
 
-            {/* 🔧 BOTÃO X ESTILIZADO */}
             <button
               onClick={handleDismiss}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-raised text-ink-muted/60 transition-all hover:bg-coral/10 hover:text-coral active:scale-95 border border-surface-border/30"
