@@ -235,7 +235,7 @@ export default function MedicamentosListPage() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      {/* TOPO: NOME E BADGES ESTRATÉGICOS */}
+                      {/* TOPO: NOME E ETIQUETAS */}
                       <div className="flex items-center gap-2 overflow-hidden flex-wrap">
                         <h3 className="font-display text-base font-bold text-ink-primary uppercase truncate">{med.nome}</h3>
                         <span className="text-[10px] font-medium text-ink-muted shrink-0">{med.dosagem}</span>
@@ -261,7 +261,7 @@ export default function MedicamentosListPage() {
                         )}
                       </div>
 
-                      {/* MEIO: INFORMAÇÕES DE REDE/MÉDICO */}
+                      {/* MEIO: REDE E MÉDICO */}
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5 truncate">
                           <Stethoscope size={11} className="text-ink-faint"/> {med.medico || "Médico não informado"}
@@ -297,7 +297,7 @@ export default function MedicamentosListPage() {
                         </div>
                       )}
 
-                      {/* RODAPÉ: ESTOQUE, TOMAR E RENOVAR COMBINADO */}
+                      {/* RODAPÉ: ESTOQUE, TOMAR E RENOVAR INTELIGENTE */}
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-surface-border/40">
                         <div className="flex items-center gap-2">
                           <span className={`text-[11px] font-bold ${insight?.urgencia === "alta" ? "text-coral animate-pulse" : "text-emerald-400"}`}>
@@ -319,7 +319,7 @@ export default function MedicamentosListPage() {
                           <div className="flex items-center rounded-lg border border-surface-border bg-surface-raised overflow-hidden">
                             <button
                                onClick={(e) => { e.stopPropagation(); trigger("vibrate"); router.push(`/saude/renovacao/nova?medicamento_id=${med.id}`); }}
-                               className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-ink-muted hover:text-ink-primary active:bg-surface-border transition-colors"
+                               className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-ink-muted hover:text-ink-primary active:bg-surface-border transition-colors"
                             >
                                <Calendar size={10} className={insight?.urgencia === 'alta' ? 'text-coral' : 'text-amber-400'} /> Renovar
                             </button>
