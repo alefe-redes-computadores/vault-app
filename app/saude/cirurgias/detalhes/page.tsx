@@ -27,10 +27,10 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { Cirurgia, Medico, Hospital, Medicamento, Exame } from "@/lib/types";
 import { useCirurgias } from "@/hooks/useCirurgias";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import { getDaysUntil } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
 
 const fadeUp = {
@@ -45,12 +45,18 @@ function formatDateDisplay(isoStr: string): string {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+function getDiasRestantesLabel(dias: number | null): string | null {
+  if (dias === null) return null;
+  if (dias === 0) return "Hoje";
+  if (dias < 0) return `Há ${Math.abs(dias)} dia${Math.abs(dias) > 1 ? 's' : ''}`;
+  return `Em ${dias} dia${dias > 1 ? 's' : ''}`;
+}
+
 function DetalhesCirurgiaContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { activePersonId } = useActivePersonId();
   const mounted = useMounted();
 
   const [cirurgia, setCirurgia] = useState<Cirurgia | null>(null);
@@ -103,6 +109,10 @@ function DetalhesCirurgiaContent() {
     return cirurgia?.data ? isReceitaVencidaSegura(cirurgia.data) : false;
   }, [cirurgia]);
 
+  const diasRestantes = useMemo(() => {
+    return cirurgia?.data ? getDaysUntil(cirurgia.data) : null;
+  }, [cirurgia]);
+
   const medicamentosPosOperatorios = useMemo(() => {
     if (!cirurgia) return [];
     return medicamentos.filter((m: Medicamento) => {
@@ -150,7 +160,6 @@ function DetalhesCirurgiaContent() {
     { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?medico_id=${cirurgia?.medico_id || ''}&hospital_id=${cirurgia?.hospital_id || ''}` },
     { id: "novo-exame", label: "Novo Exame", icon: FlaskConical, path: `/saude/exames/novo?medico_id=${cirurgia?.medico_id || ''}&hospital_id=${cirurgia?.hospital_id || ''}` },
     { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?medico_id=${cirurgia?.medico_id || ''}` },
-    { id: "editar-cirurgia", label: "Editar Cirurgia", icon: Edit3, path: `/saude/cirurgias/editar?id=${id}` },
   ];
 
   const handleMenuOptionClick = (path: string) => {
@@ -161,6 +170,9 @@ function DetalhesCirurgiaContent() {
 
   if (isLoading) return <DetailSkeleton />;
   if (!cirurgia) return null;
+
+  const corBorda = cirurgiaVencida ? "#EF4444" : cirurgia.status === "agendada" ? "#F59E0B" : cirurgia.status === "realizada" ? "#34D399" : "#EF4444";
+  const temHorario = cirurgia.horario && cirurgia.horario.trim().length > 0;
 
   return (
     <PageTransition>
@@ -254,9 +266,7 @@ function DetalhesCirurgiaContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4 relative overflow-hidden"
-            style={{ 
-              borderLeft: `6px solid ${cirurgiaVencida ? '#EF4444' : (activePersonId ? 'var(--person-accent, #F97316)' : '#F97316')}` 
-            }}
+            style={{ borderLeft: `6px solid ${corBorda}` }}
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-coral/5 rounded-bl-full pointer-events-none" />
 
@@ -269,9 +279,19 @@ function DetalhesCirurgiaContent() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <Calendar size={14} className="text-coral" />
                     <span className="font-mono text-sm font-bold text-coral">{formatDateDisplay(cirurgia.data)}</span>
+                    {temHorario && (
+                      <span className="font-mono text-sm text-ink-muted">• {cirurgia.horario}</span>
+                    )}
                     {cirurgiaVencida ? (
                       <span className="text-[8px] font-bold bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencida</span>
                     ) : null}
+                    {diasRestantes !== null && diasRestantes >= 0 && cirurgia.status === "agendada" && (
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                        diasRestantes <= 2 ? "bg-amber-400/20 text-amber-400" : "bg-ice/20 text-ice"
+                      }`}>
+                        {getDiasRestantesLabel(diasRestantes)}
+                      </span>
+                    )}
                   </div>
                   <h2 className="font-display text-xl font-bold text-ink-primary mt-1">
                     {cirurgia.procedimento}

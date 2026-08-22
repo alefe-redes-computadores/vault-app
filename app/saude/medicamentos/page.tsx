@@ -1,4 +1,3 @@
-// app/saude/medicamentos/page.tsx
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
@@ -22,6 +21,8 @@ import {
   Eye,
   Loader2,
   FileWarning,
+  Store,        // <-- NOVO
+  Building2,    // <-- NOVO
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { usePersons } from "@/hooks/usePersons";
@@ -34,7 +35,7 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { computeEstoqueInfo, getDaysUntil } from "@/lib/health-utils";
-import { sugerirRenovacao } from "@/lib/health-insights";
+import { sugerirRenovacao, isReceitaVencidaSegura } from "@/lib/health-insights"; // <-- NOVO
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Medicamento, Person, Tratamento } from "@/lib/types";
@@ -56,13 +57,21 @@ function formatDate(date?: string) {
   }
 }
 
-function getTratamentoStyle(nome: string) {
+// ALTERADO: agora aceita cor opcional e retorna objeto com classes dinâmicas
+function getTratamentoStyle(nome: string, cor?: string) {
+  if (cor) {
+    return {
+      bg: `${cor}20`,
+      border: `${cor}40`,
+      text: cor,
+    };
+  }
   const n = (nome || "").toLowerCase();
-  if (n.includes("tdah")) return "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
-  if (n.includes("dor")) return "bg-coral/10 border-coral/20 text-coral";
-  if (n.includes("depress")) return "bg-blue-500/10 border-blue-500/20 text-blue-400";
-  if (n.includes("ansied")) return "bg-amber-400/10 border-amber-400/20 text-amber-400";
-  return "bg-violet-500/10 border-violet-500/20 text-violet-400";
+  if (n.includes("tdah")) return { bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-400" };
+  if (n.includes("dor")) return { bg: "bg-coral/10", border: "border-coral/20", text: "text-coral" };
+  if (n.includes("depress")) return { bg: "bg-blue-500/10", border: "border-blue-500/20", text: "text-blue-400" };
+  if (n.includes("ansied")) return { bg: "bg-amber-400/10", border: "border-amber-400/20", text: "text-amber-400" };
+  return { bg: "bg-violet-500/10", border: "border-violet-500/20", text: "text-violet-400" };
 }
 
 export default function MedicamentosListPage() {
@@ -87,9 +96,9 @@ export default function MedicamentosListPage() {
   }, [medicamentosTodas, activePersonId]);
 
   const tratamentoMap = useMemo(() => {
-    const map = new Map<string, { nome: string }>();
+    const map = new Map<string, { nome: string; cor?: string }>();
     (tratamentos || []).forEach((t: Tratamento) => {
-      if (t.id) map.set(t.id, { nome: t.nome });
+      if (t.id) map.set(t.id, { nome: t.nome, cor: t.cor }); // <-- ALTERADO: guarda cor
     });
     return map;
   }, [tratamentos]);
@@ -165,17 +174,22 @@ export default function MedicamentosListPage() {
         return diasA - diasB;
       }
 
+      // NOVO: ordenação prioriza receita vencida
+      const aVencida = isReceitaVencidaSegura(a.proxima_renovacao);
+      const bVencida = isReceitaVencidaSegura(b.proxima_renovacao);
+      if (aVencida && !bVencida) return -1;
+      if (!aVencida && bVencida) return 1;
+
       const estoqueA = computeEstoqueInfo(a)?.quantidadeRestante ?? 9999;
       const estoqueB = computeEstoqueInfo(b)?.quantidadeRestante ?? 9999;
-      const diasA = getDaysUntil(a.proxima_renovacao) ?? 9999;
-      const diasB = getDaysUntil(b.proxima_renovacao) ?? 9999;
-
       const isCriticoA = estoqueA < 10;
       const isCriticoB = estoqueB < 10;
 
       if (isCriticoA && !isCriticoB) return -1;
       if (!isCriticoA && isCriticoB) return 1;
 
+      const diasA = getDaysUntil(a.proxima_renovacao) ?? 9999;
+      const diasB = getDaysUntil(b.proxima_renovacao) ?? 9999;
       return diasA - diasB;
     });
   }, [medicamentos, searchQuery, showDescontinuados, sortBy]);
@@ -271,8 +285,8 @@ export default function MedicamentosListPage() {
               const tIds = med.tratamento_ids || [];
               const isSuspenso = med.status === "descontinuado";
               const isControlado = med.tipo_receita === "amarela";
-
               const insight = isSuspenso ? null : sugerirRenovacao(med);
+              const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao); // <-- NOVO
 
               const SelectedFormatIcon =
                 FORMATOS.find((f) => f.id === med.formato)?.icon || Pill;
@@ -337,22 +351,41 @@ export default function MedicamentosListPage() {
                             Suspenso
                           </span>
                         )}
+                        {/* NOVO: badge "Vencida" */}
+                        {receitaVencida && !isSuspenso && (
+                          <span className="shrink-0 rounded-full bg-coral/20 px-2 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">
+                            Vencida
+                          </span>
+                        )}
                       </div>
 
-                      <p className="text-xs font-medium text-ink-muted mt-0.5 truncate">
-                        {med.medico || "Médico não informado"}
-                      </p>
+                      {/* NOVO: ícones sutis de farmácia e hospital */}
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <p className="text-xs font-medium text-ink-muted truncate">
+                          {med.medico || "Médico não informado"}
+                        </p>
+                        {med.farmacia && (
+                          <span className="flex items-center gap-0.5 text-[9px] text-ink-muted">
+                            <Store size={10} className="text-amber-400" />
+                          </span>
+                        )}
+                        {med.hospital_id && (
+                          <span className="flex items-center gap-0.5 text-[9px] text-ink-muted">
+                            <Building2 size={10} className="text-ice" />
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {tIds.map((tId: string) => {
                           const t = tratamentoMap.get(tId);
                           if (!t) return null;
+                          // ALTERADO: usa a cor do tratamento se disponível
+                          const style = getTratamentoStyle(t.nome, t.cor);
                           return (
                             <span
                               key={tId}
-                              className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide border ${getTratamentoStyle(
-                                t.nome
-                              )}`}
+                              className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide border ${style.bg} ${style.border} ${style.text}`}
                             >
                               {t.nome}
                             </span>

@@ -1,5 +1,3 @@
-// lib/health-insights.ts
-
 import { computeEstoqueInfo, getDaysUntil } from "./health-utils";
 import type { Medicamento, Renovacao, Consulta, Exame, Cirurgia, Tratamento, Cid } from "./types";
 
@@ -65,7 +63,6 @@ export function sugerirRenovacao(medicamento: Medicamento) {
 
 // ============================================================
 // 3. ANALISAR MELHOR FARMÁCIA (INSIGHT DE ECONOMIA)
-//    RETORNA media_preco (para compatibilidade com a tela de farmácias)
 // ============================================================
 export function analisarMelhorFarmacia(renovacoes: Renovacao[]) {
   const farmaciasPrecos: Record<string, number[]> = {};
@@ -80,7 +77,7 @@ export function analisarMelhorFarmacia(renovacoes: Renovacao[]) {
   return Object.entries(farmaciasPrecos)
     .map(([id, precos]) => ({
       farmacia_id: id,
-      media_preco: precos.reduce((a, b) => a + b, 0) / precos.length, // ALTERADO: media → media_preco
+      media_preco: precos.reduce((a, b) => a + b, 0) / precos.length,
       total_compras: precos.length,
     }))
     .sort((a, b) => a.media_preco - b.media_preco);
@@ -255,7 +252,7 @@ export function analisarFarmaciaDetalhada(farmaciaContexto: {
 export interface AlertaVisaoGeral {
   tipo: 'estoque' | 'receita' | 'consulta' | 'exame' | 'cirurgia';
   mensagem: string;
-  urgencia: 'alta' | 'media' | 'baixa' | 'nenhuma'; // ✅ JÁ INCLUI "nenhuma"
+  urgencia: 'alta' | 'media' | 'baixa' | 'nenhuma';
   link: string;
 }
 
@@ -355,12 +352,7 @@ export function gerarAlertasVisaoGeral(contexto: {
 
   // Ordenar por urgência
   return alerts.sort((a, b) => {
-    const ordem = {
-      alta: 0,
-      media: 1,
-      baixa: 2,
-      nenhuma: 3,
-    };
+    const ordem = { alta: 0, media: 1, baixa: 2, nenhuma: 3 };
     return ordem[a.urgencia] - ordem[b.urgencia];
   });
 }
@@ -504,4 +496,42 @@ export function getCidInsights(codigo: string): CidInsight {
     tratamentosSugeridos: ["Acompanhamento Médico Regular", "Manutenção de Prontuários e Laudos atualizados"],
     alertaClinico: "Certifique-se de manter os exames e receitas associados a este CID salvos no cofre do paciente."
   };
+}
+
+// ============================================================
+// 14. ANÁLISE DE ADESÃO (MEDICAMENTOS) – NOVA FUNÇÃO
+// ============================================================
+export function analisarAdesaoMedicamento(
+  medicamento: Medicamento,
+  doseLogs: Array<{ data: string; horario: string; quantidade: number }>,
+  ultimosDias: number = 7
+): { adesao: number; status: 'boa' | 'media' | 'baixa'; mensagem: string } {
+  const horarios = medicamento.estoque_horarios || [];
+  if (horarios.length === 0) {
+    return { adesao: 100, status: 'boa', mensagem: 'Sem horários configurados' };
+  }
+
+  const hoje = new Date();
+  const dataLimite = new Date(hoje);
+  dataLimite.setDate(dataLimite.getDate() - ultimosDias);
+
+  const dosesEsperadas = horarios.length * ultimosDias;
+  const dosesTomadas = doseLogs.filter(d => new Date(d.data) >= dataLimite).length;
+
+  const adesao = Math.min(100, Math.round((dosesTomadas / dosesEsperadas) * 100));
+  let status: 'boa' | 'media' | 'baixa';
+  let mensagem: string;
+
+  if (adesao >= 80) {
+    status = 'boa';
+    mensagem = 'Ótima adesão! Continue assim.';
+  } else if (adesao >= 50) {
+    status = 'media';
+    mensagem = 'Atenção: você perdeu algumas doses recentemente.';
+  } else {
+    status = 'baixa';
+    mensagem = 'Baixa adesão. Reavalie sua rotina de medicamentos.';
+  }
+
+  return { adesao, status, mensagem };
 }

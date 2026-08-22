@@ -20,6 +20,7 @@ import {
   Edit3,
   Clock,
   User,
+  MapPin,
 } from "lucide-react";
 import { Hospital as HospitalIcon } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -30,14 +31,13 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useMedicos } from "@/hooks/useMedicos";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { useConsultas } from "@/hooks/useConsultas";
 import { useCirurgias } from "@/hooks/useCirurgias";
 import { useHospitais } from "@/hooks/useHospitais";
+import { useLocais } from "@/hooks/useLocais";
 import { sugerirRenovacao } from "@/lib/health-insights";
-import { AvatarMedico } from "@/components/ui/AvatarMedico";
 import type {
   Medico,
   Medicamento,
@@ -46,6 +46,7 @@ import type {
   Consulta,
   Cirurgia,
   Hospital,
+  LocalSaude,
 } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
@@ -62,6 +63,7 @@ type MedicoComMetadados = Medico & {
   documentosCount: number;
   tratamentos: Array<Tratamento & { color: string }>;
   hospitais: Hospital[];
+  locais: LocalSaude[];
   ultimaConsulta: Consulta | null;
   ultimoHospital: Hospital | null;
   temAlertaUrgente: boolean;
@@ -70,11 +72,11 @@ type MedicoComMetadados = Medico & {
 export default function MedicosPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { activePersonId } = useActivePersonId();
   const [search, setSearch] = useState("");
 
   const [filtroTratamento, setFiltroTratamento] = useState<string | null>(null);
   const [filtroHospital, setFiltroHospital] = useState<string | null>(null);
+  const [filtroLocal, setFiltroLocal] = useState<string | null>(null);
 
   const { medicos = [] } = useMedicos();
   const { medicamentos = [] } = useMedicamentos();
@@ -82,46 +84,21 @@ export default function MedicosPage() {
   const { consultas = [] } = useConsultas();
   const { cirurgias = [] } = useCirurgias();
   const { hospitais = [] } = useHospitais();
+  const { locais = [] } = useLocais();
   const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
 
-  const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
+  const medicoMap = useMemo(() => new Map(medicos.map((m) => [m.id, m])), [medicos]);
 
-  const medicosFiltradosPorPessoa = useMemo<Medico[]>(() => {
-    if (!medicos || medicos.length === 0) return [];
-    if (!activePersonId) return medicos;
-
-    const medicoIdsSet = new Set<string>();
-
-    (medicamentos || []).forEach((m) => {
-      if (m?.medico_id) medicoIdsSet.add(m.medico_id);
-    });
-
-    (consultas || []).forEach((c) => {
-      if (c?.medico_id) medicoIdsSet.add(c.medico_id);
-    });
-
-    (cirurgias || []).forEach((c) => {
-      if (c?.medico_id) medicoIdsSet.add(c.medico_id);
-    });
-
-    (documentos || []).forEach((d) => {
-      const doctorId = d?.metadata?.doctor_id || d?.metadata?.medico_id;
-      if (doctorId && typeof doctorId === 'string') medicoIdsSet.add(doctorId);
-    });
-
-    return medicos.filter((medico) => {
-      const pertenceAoPerfil = !medico.person_id || medico.person_id === activePersonId;
-      const temVinculo = medico.id ? medicoIdsSet.has(medico.id) : false;
-      
-      return pertenceAoPerfil || temVinculo;
-    });
-  }, [activePersonId, medicamentos, consultas, cirurgias, documentos, medicos]);
+  const medicosFiltrados = useMemo<Medico[]>(() => {
+    return medicos || [];
+  }, [medicos]);
 
   const tratamentoMap = useMemo(() => new Map((tratamentos || []).map((t) => [t.id, t])), [tratamentos]);
   const hospitalMap = useMemo(() => new Map((hospitais || []).map((h) => [h.id, h])), [hospitais]);
+  const localMap = useMemo(() => new Map((locais || []).map((l) => [l.id, l])), [locais]);
 
   const medicosComMetadados = useMemo<MedicoComMetadados[]>(() => {
-    return (medicosFiltradosPorPessoa || []).map((medico) => {
+    return (medicosFiltrados || []).map((medico) => {
       const medsDoMedico = (medicamentos || []).filter(
         (m) => m?.medico_id === medico.id || m?.medico === medico.nome
       );
@@ -147,17 +124,13 @@ export default function MedicosPage() {
           String(d?.metadata?.doctor || "").toLowerCase() === medico.nome.toLowerCase()
       );
 
-      const hospitalIdsSet = new Set<string>();
-      consultasDoMedico.forEach((c) => {
-        if (c?.hospital_id) hospitalIdsSet.add(c.hospital_id);
-      });
-      cirurgiasDoMedico.forEach((c) => {
-        if (c?.hospital_id) hospitalIdsSet.add(c.hospital_id);
-      });
-
-      const hospitaisRelacionados = Array.from(hospitalIdsSet)
-        .map((id) => hospitalMap.get(id))
+      const hospitaisDiretos = (medico.hospital_ids || [])
+        .map((hid) => hospitalMap.get(hid))
         .filter((h): h is Hospital => h !== undefined);
+
+      const locaisDiretos = (medico.local_ids || [])
+        .map((lid) => localMap.get(lid))
+        .filter((l): l is LocalSaude => l !== undefined);
 
       const ultimaConsulta = consultasDoMedico.length > 0
         ? consultasDoMedico.reduce((a, b) => (a.data > b.data ? a : b))
@@ -182,13 +155,14 @@ export default function MedicosPage() {
         cirurgiasCount: cirurgiasDoMedico.length,
         documentosCount: docsDoMedico.length,
         tratamentos: tratamentosRelacionados,
-        hospitais: hospitaisRelacionados,
+        hospitais: hospitaisDiretos,
+        locais: locaisDiretos,
         ultimaConsulta,
         ultimoHospital,
         temAlertaUrgente,
       };
     });
-  }, [medicosFiltradosPorPessoa, medicamentos, documentos, consultas, cirurgias, tratamentoMap, hospitalMap]);
+  }, [medicosFiltrados, medicamentos, documentos, consultas, cirurgias, tratamentoMap, hospitalMap, localMap]);
 
   const filteredMedicos = useMemo(() => {
     let result = medicosComMetadados || [];
@@ -214,8 +188,14 @@ export default function MedicosPage() {
       );
     }
 
+    if (filtroLocal) {
+      result = result.filter((med) =>
+        med.locais.some((l) => l.id === filtroLocal)
+      );
+    }
+
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [medicosComMetadados, search, filtroTratamento, filtroHospital]);
+  }, [medicosComMetadados, search, filtroTratamento, filtroHospital, filtroLocal]);
 
   const tratamentosUnicos = useMemo(() => {
     const map = new Map<string, Tratamento & { color: string }>();
@@ -229,6 +209,14 @@ export default function MedicosPage() {
     const map = new Map<string, Hospital>();
     (medicosComMetadados || []).forEach((med) => {
       (med.hospitais || []).forEach((h) => map.set(h.id!, h));
+    });
+    return Array.from(map.values());
+  }, [medicosComMetadados]);
+
+  const locaisUnicos = useMemo(() => {
+    const map = new Map<string, LocalSaude>();
+    (medicosComMetadados || []).forEach((med) => {
+      (med.locais || []).forEach((l) => map.set(l.id!, l));
     });
     return Array.from(map.values());
   }, [medicosComMetadados]);
@@ -313,12 +301,35 @@ export default function MedicosPage() {
               </div>
             )}
 
-            {(filtroTratamento || filtroHospital) && (
+            {locaisUnicos.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 ml-1">
+                {locaisUnicos.slice(0, 2).map((l) => (
+                  <button
+                    key={l.id}
+                    onClick={() => {
+                      trigger("vibrate");
+                      setFiltroLocal(filtroLocal === l.id ? null : l.id!);
+                    }}
+                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all ${
+                      filtroLocal === l.id
+                        ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
+                        : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                    }`}
+                  >
+                    <MapPin size={10} className="inline mr-1" />
+                    {l.nome.length > 12 ? l.nome.slice(0, 12) + "…" : l.nome}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {(filtroTratamento || filtroHospital || filtroLocal) && (
               <button
                 onClick={() => {
                   trigger("vibrate");
                   setFiltroTratamento(null);
                   setFiltroHospital(null);
+                  setFiltroLocal(null);
                 }}
                 className="text-[9px] font-medium text-coral bg-coral/10 px-2 py-1 rounded-full flex items-center gap-1"
               >
@@ -332,27 +343,34 @@ export default function MedicosPage() {
           {filteredMedicos.length === 0 ? (
             <EmptyState
               icon={Stethoscope}
-              title={search || filtroTratamento || filtroHospital ? "Nenhum médico encontrado" : "Nenhum médico cadastrado"}
-              description={search || filtroTratamento || filtroHospital ? "Tente ajustar os filtros ou a busca." : "Cadastre profissionais para gerenciar suas prescrições."}
+              title={search || filtroTratamento || filtroHospital || filtroLocal ? "Nenhum médico encontrado" : "Nenhum médico cadastrado"}
+              description={search || filtroTratamento || filtroHospital || filtroLocal ? "Tente ajustar os filtros ou a busca." : "Cadastre profissionais para gerenciar suas prescrições."}
             />
           ) : (
             filteredMedicos.map((medico) => {
               const primaryColor =
                 medico.tratamentos.length > 0
                   ? medico.tratamentos[0].color
-                  : personAccent;
+                  : "#38BDF8";
 
               return (
                 <motion.div
                   key={medico.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="group rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm transition-all hover:border-surface-border/80 hover:bg-surface-raised/30 active:scale-[0.99]"
+                  className="group rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm transition-all hover:border-surface-border/80 hover:bg-surface-raised/30 active:scale-[0.99] relative overflow-hidden"
                   style={{ borderLeft: `6px solid ${primaryColor}` }}
                 >
                   <div className="flex flex-col gap-4">
                     <div className="flex items-start gap-4">
-                      <AvatarMedico nome={medico.nome} tamanho={14} />
+                      {/* ÍCONE SVG DINÂMICO UNIFICADO */}
+                      <div 
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ml-0.5"
+                        style={{ backgroundColor: `${primaryColor}15`, color: primaryColor, borderColor: `${primaryColor}30` }}
+                      >
+                        <Stethoscope size={22} />
+                      </div>
+
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <h2 className="truncate text-lg font-bold text-ink-primary">
@@ -413,6 +431,18 @@ export default function MedicosPage() {
                           <Activity size={10} /> {t.nome}
                         </span>
                       ))}
+
+                      {medico.hospitais.length > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised">
+                          <Building2 size={10} /> {medico.hospitais.map(h => h.nome).join(', ')}
+                        </span>
+                      )}
+
+                      {medico.locais.length > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised">
+                          <MapPin size={10} /> {medico.locais.map(l => l.nome).join(', ')}
+                        </span>
+                      )}
 
                       <div className="ml-auto flex flex-wrap items-center gap-2">
                         {medico.consultasCount > 0 && (

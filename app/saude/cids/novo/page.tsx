@@ -23,6 +23,7 @@ import type { Medico, Hospital, LocalSaude, Cid } from "@/lib/types";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { cidsRepository } from "@/lib/repositories/cids";
+import { getClinicalTheme } from "@/lib/health-utils"; // INJEÇÃO DO UTILITÁRIO VISUAL
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
@@ -136,6 +137,10 @@ export default function NovoCidPage() {
     }
   };
 
+  // LÓGICA DE PRÉVIA VISUAL (LIVE PREVIEW)
+  const theme = getClinicalTheme(descricao || codigo || "Geral");
+  const PreviewIcon = theme.icon;
+
   return (
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
@@ -157,10 +162,34 @@ export default function NovoCidPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
+          {/* CARD DE PRÉVIA EM TEMPO REAL */}
           <motion.div
             variants={fadeUp}
             initial="initial"
             animate="animate"
+            className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300 ${theme.borderClass}`}
+            style={{ borderLeft: `6px solid ${theme.hex}` }}
+          >
+            <div className="flex items-center gap-4">
+              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
+                <PreviewIcon size={24} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme.textClass}`}>
+                  {codigo || "CÓDIGO CID"}
+                </p>
+                <h2 className="font-display text-base font-semibold text-ink-primary mt-0.5 line-clamp-2">
+                  {descricao || "A prévia do seu diagnóstico aparecerá aqui"}
+                </h2>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.02 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4"
           >
             <Input

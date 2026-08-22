@@ -68,12 +68,12 @@ function VaultMembersContent() {
     try {
       await addMember({
         vault_id: vaultId,
-        user_id: email,
+        user_id: "", 
         email: email.trim(),
         name: email.split("@")[0],
         permission,
         status: "pending",
-        invited_at: new Date().toISOString(), // Enviando a data aqui resolve o erro!
+        invited_at: new Date().toISOString(),
       });
       trigger("success");
       showToast("Membro convidado com sucesso!", "success");

@@ -6,11 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
-  Brain, 
-  Flame, 
-  HeartPulse, 
-  ShieldAlert, 
-  Activity, 
   Edit3, 
   FolderHeart, 
   Pill, 
@@ -19,12 +14,10 @@ import {
   Sparkles, 
   ChevronRight, 
   Trash2,
-  CheckCircle2,
-  AlertCircle,
-  X,
   Building2,
   MapPin,
   Plus,
+  DollarSign
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -32,9 +25,9 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useToast } from "@/components/ToastProvider";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
-import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document } from "@/lib/types";
+import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document, Renovacao } from "@/lib/types";
 import { getCidInsights } from "@/lib/health-insights";
+import { getClinicalTheme, formatCurrency } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
 
 const fadeUp = {
@@ -42,32 +35,12 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-function getCidTheme(codigo: string, descricao: string) {
-  const text = `${codigo} ${descricao}`.toLowerCase();
-  
-  if (text.includes("f9") || text.includes("f3") || text.includes("neuro") || text.includes("transtorno") || text.includes("psi")) {
-    return { icon: Brain, text: "text-violet-400", bg: "bg-violet-400/10", border: "border-violet-400/30", borderLeft: "border-l-[6px] border-l-violet-400", tag: "bg-violet-400/10 border-violet-400/20 text-violet-400" };
-  }
-  if (text.includes("dor") || text.includes("inflama") || text.includes("m5") || text.includes("plexo") || text.includes("g5")) {
-    return { icon: Flame, text: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/30", borderLeft: "border-l-[6px] border-l-amber-400", tag: "bg-amber-400/10 border-amber-400/20 text-amber-400" };
-  }
-  if (text.includes("cardio") || text.includes("corac") || text.includes("i10") || text.includes("pressao")) {
-    return { icon: HeartPulse, text: "text-coral", bg: "bg-coral/10", border: "border-coral/30", borderLeft: "border-l-[6px] border-l-coral", tag: "bg-coral/10 border-coral/20 text-coral" };
-  }
-  if (text.includes("ansied") || text.includes("f4") || text.includes("panico")) {
-    return { icon: ShieldAlert, text: "text-ice", bg: "bg-ice/10", border: "border-ice/30", borderLeft: "border-l-[6px] border-l-ice", tag: "bg-ice/10 border-ice/20 text-ice" };
-  }
-  
-  return { icon: Activity, text: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/30", borderLeft: "border-l-[6px] border-l-emerald-400", tag: "bg-emerald-400/10 border-emerald-400/20 text-emerald-400" };
-}
-
 function CidDetalhesContent() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { activePersonId } = useActivePersonId();
   const mounted = useMounted();
 
   const [cid, setCid] = useState<Cid | null>(null);
@@ -81,6 +54,7 @@ function CidDetalhesContent() {
   const [hospitais, setHospitais] = useState<Hospital[]>([]);
   const [farmacias, setFarmacias] = useState<Farmacia[]>([]);
   const [documentos, setDocumentos] = useState<Document[]>([]);
+  const [custoTotal, setCustoTotal] = useState(0);
 
   useEffect(() => {
     if (!id) {
@@ -97,33 +71,46 @@ function CidDetalhesContent() {
         }
         setCid(cidData);
 
-        // 1. Tratamentos
+        // 1. Tratamentos vinculados
         const tratData = await db.tratamentos.toArray();
         const tratsVinculados = tratData.filter(t => t.cid_ids?.includes(id));
         setTratamentos(tratsVinculados);
         const tratIds = new Set(tratsVinculados.map(t => t.id).filter(Boolean));
 
-        // 2. Medicamentos
+        // 2. Medicamentos vinculados
         const medsData = await db.medicamentos.toArray();
         const medsVinculados = medsData.filter(m => m.tratamento_ids && m.tratamento_ids.some(tid => tratIds.has(tid)));
         setMedicamentos(medsVinculados);
 
-        // 3. Médicos
+        // 3. Custos Atrelados ao CID (Soma das Renovações dos Medicamentos vinculados)
+        const medIdsVinculados = new Set(medsVinculados.map(m => m.id).filter(Boolean));
+        if (medIdsVinculados.size > 0) {
+          const renovacoesData = await db.renovacoes.toArray();
+          const renovacoesDoCid = renovacoesData.filter((r: Renovacao) => medIdsVinculados.has(r.medicamento_id));
+          
+          let total = 0;
+          renovacoesDoCid.forEach(r => {
+            if (typeof r.preco === "number" && r.preco > 0) total += r.preco;
+          });
+          setCustoTotal(total);
+        }
+
+        // 4. Médicos
         const medicoIds = new Set(medsVinculados.map(m => m.medico_id).filter(Boolean));
         const medsList = await db.medicos.toArray();
         setMedicos(medsList.filter(med => med.id && medicoIds.has(med.id)));
 
-        // 4. Locais / Hospitais (Acompanhamento)
+        // 5. Locais / Hospitais
         const hospIds = new Set(medsVinculados.map(m => m.hospital_id || m.local_id || m.farmacia_id).filter(Boolean));
         const hospList = await db.hospitais.toArray();
         setHospitais(hospList.filter(h => h.id && hospIds.has(h.id)));
 
-        // 5. Farmácias (Onde compra)
+        // 6. Farmácias
         const farmaciaIds = new Set(medsVinculados.map(m => m.farmacia_id).filter(Boolean));
         const farmList = await db.farmacias.toArray();
         setFarmacias(farmList.filter(f => f.id && farmaciaIds.has(f.id)));
 
-        // 6. Laudos / Anexos
+        // 7. Laudos / Anexos
         const docsList = await db.documents.toArray();
         setDocumentos(docsList.filter(d => {
           const meta = d.metadata as { cid_id?: string; tratamento_id?: string };
@@ -176,7 +163,8 @@ function CidDetalhesContent() {
   if (isLoading) return <DetailSkeleton />;
   if (!cid) return null;
 
-  const theme = getCidTheme(cid.codigo, cid.descricao);
+  // UTILIZANDO A INTELIGÊNCIA VISUAL GLOBAL
+  const theme = getClinicalTheme(cid.descricao || cid.codigo);
   const IconComp = theme.icon;
 
   return (
@@ -191,7 +179,7 @@ function CidDetalhesContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <p className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.text}`}>Diagnóstico CID-10</p>
+              <p className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.textClass}`}>Diagnóstico CID-10</p>
               <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">Detalhes da Condição</h1>
             </div>
           </div>
@@ -270,22 +258,20 @@ function CidDetalhesContent() {
             variants={fadeUp} 
             initial="initial" 
             animate="animate" 
-            className={`relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm ${theme.border} ${theme.borderLeft}`}
-            style={{ 
-              borderLeftColor: activePersonId ? 'var(--person-accent, #8B5CF6)' : theme.borderLeft.split(' ')[2] || '#8B5CF6'
-            }}
+            className={`relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm ${theme.borderClass}`}
+            style={{ borderLeft: `6px solid ${theme.hex}` }}
           >
-            <div className={`absolute -right-4 -top-4 opacity-5 pointer-events-none ${theme.text}`}>
+            <div className={`absolute -right-4 -top-4 opacity-5 pointer-events-none ${theme.textClass}`}>
               <IconComp size={140} />
             </div>
 
             <div className="relative z-10 flex items-start gap-4">
-              <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-sm border ${theme.bg} ${theme.border} ${theme.text}`}>
+              <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border ${theme.bgClass} ${theme.borderClass} ${theme.textClass}`}>
                 <IconComp size={28} />
               </div>
               <div className="min-w-0 pt-1">
                 <div className="flex items-center gap-2">
-                  <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md border ${theme.tag}`}>
+                  <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md border ${theme.tagClass}`}>
                     {cid.codigo}
                   </span>
                 </div>
@@ -295,7 +281,7 @@ function CidDetalhesContent() {
 
             {cidInsight && (
               <div className="relative z-10 mt-5 rounded-2xl bg-surface-raised/60 border border-surface-border/50 p-4 space-y-2">
-                <div className={`flex items-center gap-2 text-xs font-semibold ${theme.text}`}>
+                <div className={`flex items-center gap-2 text-xs font-semibold ${theme.textClass}`}>
                   <Sparkles size={14} />
                   <span>Categoria: {cidInsight.categoria}</span>
                 </div>
@@ -330,6 +316,28 @@ function CidDetalhesContent() {
             </div>
           </motion.div>
 
+          {/* INSIGHT FINANCEIRO: Custo Total do Diagnóstico */}
+          {custoTotal > 0 && (
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.03 }}
+              className="rounded-2xl border border-surface-border/40 bg-surface-raised p-4 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                  <DollarSign size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-ink-primary">Custo Estimado do Diagnóstico</p>
+                  <p className="text-[11px] text-ink-muted">Soma de compras de medicamentos vinculados</p>
+                </div>
+              </div>
+              <p className="text-base font-bold text-emerald-400">{formatCurrency(custoTotal)}</p>
+            </motion.div>
+          )}
+
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <div className="flex items-center gap-2 pl-1">
               <FolderHeart size={16} className="text-violet-400" />
@@ -341,24 +349,28 @@ function CidDetalhesContent() {
               </div>
             ) : (
               <div className="space-y-2">
-                {tratamentos.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${t.id}`); }}
-                    className="w-full flex items-center justify-between p-4 rounded-2xl border border-surface-border/50 bg-surface shadow-sm hover:border-ice/30 transition-all active:scale-[0.98]"
-                  >
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="h-10 w-10 rounded-xl bg-violet-400/10 flex items-center justify-center text-violet-400">
-                        <FolderHeart size={18} />
+                {tratamentos.map(t => {
+                  const tTheme = getClinicalTheme(t.nome);
+                  const TIcon = tTheme.icon;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${t.id}`); }}
+                      className="w-full flex items-center justify-between p-4 rounded-2xl border border-surface-border/50 bg-surface shadow-sm hover:border-ice/30 transition-all active:scale-[0.98]"
+                    >
+                      <div className="flex items-center gap-3 text-left">
+                        <div className={`h-10 w-10 rounded-xl border flex items-center justify-center ${tTheme.bgClass} ${tTheme.textClass} ${tTheme.borderClass}`}>
+                          <TIcon size={18} />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-ink-primary">{t.nome}</p>
+                          <p className="text-xs text-ink-muted capitalize">{t.status}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm text-ink-primary">{t.nome}</p>
-                        <p className="text-xs text-ink-muted capitalize">{t.status}</p>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="text-ink-faint" />
-                  </button>
-                ))}
+                      <ChevronRight size={16} className="text-ink-faint" />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </motion.div>

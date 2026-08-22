@@ -778,6 +778,7 @@ export interface Exame {
   observacoes?: string;
   anexo_url?: string;
   tratamento_ids?: string[];
+  cid_ids?: string[]; // ✅ ADICIONADO
   synced?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -796,6 +797,8 @@ export interface Cirurgia {
   local_id?: string;
   status: 'agendada' | 'realizada' | 'cancelada';
   observacoes?: string;
+  tratamento_ids?: string[]; // ✅ ADICIONADO
+  cid_ids?: string[]; // ✅ ADICIONADO
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -817,6 +820,8 @@ export interface Consulta {
   observacoes?: string;
   anexo_url?: string;
   status: 'agendada' | 'realizada' | 'cancelada';
+  tratamento_ids?: string[]; // ✅ ADICIONADO
+  cid_ids?: string[]; // ✅ ADICIONADO
   created_at?: string;
   updated_at?: string;
   synced?: boolean;

@@ -6,13 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
-  Activity, 
   Pill, 
   Edit3,
-  Brain,
-  Flame,
-  HeartPulse,
-  ShieldAlert,
   ChevronRight,
   History,
   FileText,
@@ -46,6 +41,7 @@ import {
   sugerirRenovacao
 } from "@/lib/health-insights";
 import { getCidInsights } from "@/lib/health-insights";
+import { getClinicalTheme, formatCurrency } from "@/lib/health-utils"; // INJEÇÃO DO TEMA VISUAL
 import { useMounted } from "@/hooks/useMounted";
 
 const listVariants = {
@@ -75,35 +71,6 @@ function formatDateDisplay(isoStr: string): string {
   const parts = isoStr.split("-");
   if (parts.length !== 3) return isoStr;
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
-
-function formatCurrency(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
-}
-
-const CORES_PADRAO = [
-  "#8B5CF6",
-  "#EC4899",
-  "#3B82F6",
-  "#F59E0B",
-  "#10B981",
-  "#EF4444",
-  "#F97316",
-  "#06B6D4",
-];
-
-function getTratamentoIcon(nome: string) {
-  const n = (nome || "").toLowerCase();
-  if (n.includes("tdah")) return Brain;
-  if (n.includes("dor") || n.includes("neuropática")) return Flame;
-  if (n.includes("depress")) return HeartPulse;
-  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
-  return Activity;
-}
-
-function getCorPorIndex(index: number): string {
-  if (!Number.isFinite(index) || index < 0) return CORES_PADRAO[0];
-  return CORES_PADRAO[index % CORES_PADRAO.length];
 }
 
 interface MedicamentoComAlertas extends Medicamento {
@@ -172,7 +139,6 @@ function TratamentoContent() {
     fetchTratamento();
   }, [id, router]);
 
-  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
   if (!mounted) return <DetailSkeleton />;
 
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
@@ -266,8 +232,9 @@ function TratamentoContent() {
   if (isLoading) return <DetailSkeleton />;
   if (!tratamento) return null;
 
-  const IconComp = getTratamentoIcon(tratamento.nome);
-  const tratamentoCor = tratamento.cor || getCorPorIndex(0);
+  // TEMA VISUAL DINÂMICO
+  const theme = getClinicalTheme(tratamento.nome);
+  const IconComp = theme.icon;
   
   const medicamentosAtivos = medicamentosComAlertas.filter((m) => m.status !== "descontinuado");
   const medicamentosDescontinuados = medicamentosComAlertas.filter((m) => m.status === "descontinuado");
@@ -288,7 +255,7 @@ function TratamentoContent() {
               </button>
               
               <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em]" style={{ color: tratamentoCor }}>Painel Clínico</p>
+                <p className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.textClass}`}>Painel Clínico</p>
                 <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">Visão Geral</h1>
               </div>
             </div>
@@ -360,25 +327,20 @@ function TratamentoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
+          {/* HERO CARD DINÂMICO DO TRATAMENTO */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 
             animate="animate" 
-            className="relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm"
-            style={{ 
-              borderColor: `${tratamentoCor}40`,
-              borderLeft: `6px solid ${tratamentoCor}` 
-            }}
+            className={`relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm ${theme.borderClass}`}
+            style={{ borderLeft: `6px solid ${theme.hex}` }}
           >
-            <div className="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+            <div className={`absolute -right-4 -top-4 opacity-5 pointer-events-none ${theme.textClass}`}>
               <IconComp size={140} />
             </div>
             
             <div className="relative z-10 flex items-start gap-4">
-              <div 
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-sm border"
-                style={{ backgroundColor: `${tratamentoCor}15`, borderColor: `${tratamentoCor}30`, color: tratamentoCor }}
-              >
+              <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-sm border ${theme.bgClass} ${theme.borderClass} ${theme.textClass}`}>
                 <IconComp size={28} />
               </div>
               <div className="min-w-0 pt-1">
@@ -402,15 +364,18 @@ function TratamentoContent() {
                   <FolderHeart size={14} className="text-violet-400" /> Diagnósticos vinculados:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {cidsInsights.map((cid) => (
-                    <div key={cid.id} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-2.5 py-1">
-                      <span className="text-[10px] font-semibold text-violet-300">{cid.codigo}</span>
-                      <span className="text-[10px] text-ink-muted">- {cid.descricao}</span>
-                      {cid.insight && (
-                        <Sparkles size={12} className="text-ice" />
-                      )}
-                    </div>
-                  ))}
+                  {cidsInsights.map((cid) => {
+                    const cidTheme = getClinicalTheme(cid.descricao || cid.codigo);
+                    const CidIcon = cidTheme.icon;
+                    return (
+                      <div key={cid.id} className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${cidTheme.tagClass}`}>
+                        <CidIcon size={12} />
+                        <span className="text-[10px] font-semibold">{cid.codigo}</span>
+                        <span className="text-[10px] opacity-80">- {cid.descricao}</span>
+                        {cid.insight && <Sparkles size={12} className="opacity-80" />}
+                      </div>
+                    );
+                  })}
                 </div>
                 {cidsInsights.some(c => c.insight) && (
                   <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-400/5 border border-amber-400/20 p-2.5">

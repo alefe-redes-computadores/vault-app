@@ -8,10 +8,6 @@ import {
   ArrowLeft,
   ChevronRight,
   Activity,
-  Brain,
-  Flame,
-  HeartPulse,
-  ShieldAlert,
   Pill,
   Filter,
   X,
@@ -27,21 +23,9 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import type { Tratamento, Medicamento, Renovacao } from "@/lib/types";
+import { getClinicalTheme, formatCurrency } from "@/lib/health-utils"; // INJEÇÃO DO TEMA VISUAL
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
-
-function getTratamentoIcon(nome: string) {
-  const n = (nome || "").toLowerCase();
-  if (n.includes("tdah")) return Brain;
-  if (n.includes("dor") || n.includes("neuropática")) return Flame;
-  if (n.includes("depress")) return HeartPulse;
-  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
-  return Activity;
-}
-
-function formatCurrency(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
-}
 
 type TratamentoEnriquecido = Tratamento & {
   medicamentosCount: number;
@@ -59,9 +43,7 @@ function TratamentoListContent() {
   const { medicamentos = [] } = useMedicamentos();
   const { renovacoes = [] } = useRenovacoes();
 
-  const personAccent = activePersonId ? 'var(--person-accent, #8B5CF6)' : '#8B5CF6';
-
-    const listaEnriquecida = useMemo<TratamentoEnriquecido[]>(() => {
+  const listaEnriquecida = useMemo<TratamentoEnriquecido[]>(() => {
     // 🔥 FILTRO ROBUSTO: Exibe apenas tratamentos da pessoa ativa (activePersonId)
     const filtrados = (tratamentos || []).filter((t) => {
       return !activePersonId || !t.person_id || t.person_id === activePersonId;
@@ -186,8 +168,10 @@ function TratamentoListContent() {
             />
           ) : (
             filteredList.map((t) => {
-              const IconComp = getTratamentoIcon(t.nome);
-              const cor = t.cor || personAccent;
+              // TEMA VISUAL DINÂMICO
+              const theme = getClinicalTheme(t.nome);
+              const IconComp = theme.icon;
+              
               return (
                 <motion.button
                   key={t.id}
@@ -196,9 +180,9 @@ function TratamentoListContent() {
                   animate="animate"
                   onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${t.id}`); }}
                   className="relative w-full flex items-center gap-4 rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.98] hover:bg-surface-raised overflow-hidden"
-                  style={{ borderLeft: `6px solid ${cor}` }}
+                  style={{ borderLeft: `6px solid ${theme.hex}` }}
                 >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: `${cor}15`, color: cor }}>
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
                     <IconComp size={22} />
                   </div>
                   <div className="min-w-0 flex-1 text-left">

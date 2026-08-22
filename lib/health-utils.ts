@@ -1,4 +1,18 @@
 import type { Document, Medicamento, TipoReceita } from "@/lib/types";
+import { 
+  Brain, 
+  Flame, 
+  HeartPulse, 
+  ShieldAlert, 
+  Activity, 
+  Moon, 
+  Eye,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Stethoscope
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 export type AlertLevel = "vencido" | "urgente" | "atencao" | "ok";
 
@@ -265,4 +279,123 @@ export function formatDateDisplay(isoStr: string): string {
   const parts = isoStr.split("-");
   if (parts.length !== 3) return isoStr;
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+// ==========================================
+// NOVAS FUNÇÕES UTILITÁRIAS GLOBAIS ADICIONADAS
+// ==========================================
+
+export function formatCurrency(value: number | undefined | null): string {
+  const val = typeof value === 'number' ? value : 0;
+  return `R$ ${val.toFixed(2).replace(".", ",")}`;
+}
+
+export function getStatusConfig(status: string): { color: string; icon: LucideIcon } {
+  switch (status?.toLowerCase()) {
+    case "agendada":
+      return { color: "#F59E0B", icon: Clock }; // Âmbar
+    case "realizada":
+      return { color: "#34D399", icon: CheckCircle2 }; // Verde
+    case "cancelada":
+      return { color: "#EF4444", icon: XCircle }; // Vermelho
+    default:
+      return { color: "#38BDF8", icon: Stethoscope }; // Azul padrão
+  }
+}
+
+/**
+ * Utilitário centralizado para definir ícones e cores de CIDs e Tratamentos.
+ * Ele escaneia a string recebida em busca de palavras-chave.
+ */
+export function getClinicalTheme(text: string): { 
+  icon: LucideIcon; 
+  hex: string;
+  textClass: string; 
+  bgClass: string; 
+  borderClass: string; 
+  tagClass: string; 
+} {
+  const lower = (text || "").toLowerCase();
+
+  // 1. Oftalmologia / Olhos
+  if (lower.includes("ceratocone") || lower.includes("estrabismo") || lower.includes("olho") || lower.includes("visão")) {
+    return { 
+      icon: Eye, 
+      hex: "#06B6D4", // Ciano
+      textClass: "text-cyan-500", 
+      bgClass: "bg-cyan-500/10", 
+      borderClass: "border-cyan-500/30", 
+      tagClass: "bg-cyan-500/10 border-cyan-500/20 text-cyan-500" 
+    };
+  }
+
+  // 2. Sono / Insônia
+  if (lower.includes("insônia") || lower.includes("sono")) {
+    return { 
+      icon: Moon, 
+      hex: "#6366F1", // Índigo
+      textClass: "text-indigo-400", 
+      bgClass: "bg-indigo-400/10", 
+      borderClass: "border-indigo-400/30", 
+      tagClass: "bg-indigo-400/10 border-indigo-400/20 text-indigo-400" 
+    };
+  }
+
+  // 3. Neurologia / Psiquiatria / TDAH
+  if (lower.includes("tdah") || lower.includes("f33") || lower.includes("f43") || lower.includes("neuro") || lower.includes("psi") || lower.includes("transtorno") || lower.includes("bipolar")) {
+    return { 
+      icon: Brain, 
+      hex: "#8B5CF6", // Roxo / Violeta
+      textClass: "text-violet-400", 
+      bgClass: "bg-violet-400/10", 
+      borderClass: "border-violet-400/30", 
+      tagClass: "bg-violet-400/10 border-violet-400/20 text-violet-400" 
+    };
+  }
+
+  // 4. Humor / Afeto / Depressão
+  if (lower.includes("depressão") || lower.includes("depress")) {
+    return { 
+      icon: HeartPulse, 
+      hex: "#EF4444", // Vermelho Coral
+      textClass: "text-coral", 
+      bgClass: "bg-coral/10", 
+      borderClass: "border-coral/30", 
+      tagClass: "bg-coral/10 border-coral/20 text-coral" 
+    };
+  }
+
+  // 5. Ansiedade / Pânico
+  if (lower.includes("ansied") || lower.includes("f4") || lower.includes("pânico") || lower.includes("estresse")) {
+    return { 
+      icon: ShieldAlert, 
+      hex: "#38BDF8", // Azul Gelo
+      textClass: "text-ice", 
+      bgClass: "bg-ice/10", 
+      borderClass: "border-ice/30", 
+      tagClass: "bg-ice/10 border-ice/20 text-ice" 
+    };
+  }
+
+  // 6. Dor Crônica / Lesões Neurológicas, Ortopédicas e Múltiplas
+  if (lower.includes("dor") || lower.includes("lesão") || lower.includes("plexo") || lower.includes("monoplegia") || lower.includes("artrose") || lower.includes("s89") || lower.includes("s14") || lower.includes("g83") || lower.includes("inflama")) {
+    return { 
+      icon: Flame, 
+      hex: "#F59E0B", // Âmbar
+      textClass: "text-amber-400", 
+      bgClass: "bg-amber-400/10", 
+      borderClass: "border-amber-400/30", 
+      tagClass: "bg-amber-400/10 border-amber-400/20 text-amber-400" 
+    };
+  }
+
+  // 7. Padrão (Fallback)
+  return { 
+    icon: Activity, 
+    hex: "#34D399", // Esmeralda / Verde
+    textClass: "text-emerald-400", 
+    bgClass: "bg-emerald-400/10", 
+    borderClass: "border-emerald-400/30", 
+    tagClass: "bg-emerald-400/10 border-emerald-400/20 text-emerald-400" 
+  };
 }

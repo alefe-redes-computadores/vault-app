@@ -1,7 +1,6 @@
-// app/saude/medicamentos/detalhes/page.tsx
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,7 +9,8 @@ import {
   FileText, Calendar, Activity, AlertTriangle, DollarSign,
   CheckCircle2, Building2, Info, MapPin, Zap, Clock, TrendingUp,
   LineChart, Check, ExternalLink, Share2, Copy, ChevronDown, ChevronUp,
-  Plus, FileWarning, Gift, AlertCircle, Trash2, Phone
+  Plus, FileWarning, Gift, AlertCircle, Trash2, Phone,
+  Award,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -19,24 +19,31 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { computeEstoqueInfo, TIPO_RECEITA_LABELS, VALIDADE_RECEITA_DIAS, getDaysUntil } from "@/lib/health-utils";
-import { sugerirRenovacao } from "@/lib/health-insights";
+import {
+  computeEstoqueInfo,
+  TIPO_RECEITA_LABELS,
+  VALIDADE_RECEITA_DIAS,
+  getDaysUntil,
+  getClinicalTheme,
+} from "@/lib/health-utils";
+import {
+  sugerirRenovacao,
+  isReceitaVencidaSegura,
+  analisarComportamentoUso,
+  analisarMelhorFarmacia,
+  getCidInsights,
+} from "@/lib/health-insights";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import type { Medicamento, Tratamento, Renovacao } from "@/lib/types";
+import type { Medicamento, Tratamento, Renovacao, Cid } from "@/lib/types";
 import { useMounted } from "@/hooks/useMounted";
 
 function formatDate(isoStr?: string) {
   if (!isoStr) return "—";
   try { return format(new Date(isoStr), "dd MMM yyyy", { locale: ptBR }); }
   catch { return isoStr; }
-}
-
-function isReceitaVencida(dataRenovacao?: string) {
-  if (!dataRenovacao) return false;
-  return new Date(dataRenovacao) < new Date();
 }
 
 const FORMATOS = [
@@ -82,6 +89,11 @@ function MedicamentoDetalhesContent() {
     if (!med?.tratamento_ids || med.tratamento_ids.length === 0) return [];
     return db.tratamentos.where('id').anyOf(med.tratamento_ids).toArray();
   }, [med?.tratamento_ids]) || [];
+
+  const cids = useLiveQuery(() => {
+    if (!med?.cid_ids || med.cid_ids.length === 0) return [];
+    return db.cids.where('id').anyOf(med.cid_ids).toArray();
+  }, [med?.cid_ids]) || [];
 
   const farmaciasMap = useLiveQuery(() =>
     db.farmacias.toArray().then(f => new Map(f.map(item => [item.id, item.nome]))),
@@ -175,9 +187,19 @@ function MedicamentoDetalhesContent() {
 
   const estoqueInfo = computeEstoqueInfo(med);
   const qtd = estoqueInfo?.quantidadeRestante ?? 0;
-  const isVencida = isReceitaVencida(med.proxima_renovacao);
+  const isVencida = isReceitaVencidaSegura(med.proxima_renovacao);
   const alertaInteligente = sugerirRenovacao(med);
   const diasRestantes = getDaysUntil(med.proxima_renovacao);
+
+  // Comportamento de uso
+  const doseLogs = useLiveQuery(() => db.doseLogs.where('medicamento_id').equals(id || '').toArray(), [id]) || [];
+  const comportamento = analisarComportamentoUso(med, doseLogs);
+
+  // Melhor farmácia
+  const melhorFarmacia = useMemo(() => {
+    const resultado = analisarMelhorFarmacia(renovacoes);
+    return resultado.length > 0 ? resultado[0] : null;
+  }, [renovacoes]);
 
   const getEstoqueStyle = () => {
     if (qtd <= 9) return { color: "text-coral animate-pulse font-bold", icon: AlertTriangle, label: "CRÍTICO", bg: "bg-coral/10", border: "border-coral/20" };
@@ -332,6 +354,19 @@ function MedicamentoDetalhesContent() {
             )}
           </AnimatePresence>
 
+          {comportamento && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
+              <div className={`p-4 rounded-2xl border ${comportamento.tipo === 'alerta_adesao' ? 'bg-amber-400/10 border-amber-400/30' : 'bg-violet-400/10 border-violet-400/30'} flex items-start gap-3`}>
+                <Activity size={20} className={`mt-0.5 shrink-0 ${comportamento.tipo === 'alerta_adesao' ? 'text-amber-400' : 'text-violet-400'}`} />
+                <div className="flex-1">
+                  <p className={`text-sm font-bold ${comportamento.tipo === 'alerta_adesao' ? 'text-amber-400' : 'text-violet-400'}`}>{comportamento.titulo}</p>
+                  <p className="text-xs text-ink-muted mt-1">{comportamento.mensagem}</p>
+                  <p className="text-[10px] text-ink-faint mt-0.5">Sugestão: {comportamento.acaoSugerida}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           <div className="rounded-[32px] bg-surface p-6 border border-surface-border shadow-lg relative overflow-hidden">
             <div className={`absolute left-0 top-0 bottom-0 w-2 ${med.status === 'descontinuado' ? 'bg-coral' : med.tipo_receita === 'amarela' ? 'bg-amber-400' : med.tipo_receita === 'azul' ? 'bg-blue-400' : personAccent}`} />
 
@@ -352,6 +387,23 @@ function MedicamentoDetalhesContent() {
                      </span>
                    ))}
                 </div>
+                {cids.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {cids.map((cid: Cid) => {
+                      const theme = getClinicalTheme(cid.descricao || cid.codigo);
+                      const Icon = theme.icon;
+                      return (
+                        <span
+                          key={cid.id}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide border ${theme.tagClass}`}
+                        >
+                          <Icon size={10} />
+                          {cid.codigo}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -383,6 +435,16 @@ function MedicamentoDetalhesContent() {
                    <span>Última contagem: <b>{formatDate(med.estoque_data_referencia)}</b></span>
                  </div>
                </div>
+            </div>
+          )}
+
+          {melhorFarmacia && (
+            <div className="rounded-xl bg-emerald-400/10 border border-emerald-400/20 p-3 flex items-center gap-2 text-xs">
+              <Award size={14} className="text-emerald-400" />
+              <span className="text-ink-primary">
+                Melhor preço médio: <span className="font-bold text-emerald-400">R$ {melhorFarmacia.media_preco.toFixed(2)}</span>
+                {melhorFarmacia.total_compras > 0 && ` (${melhorFarmacia.total_compras} compra${melhorFarmacia.total_compras > 1 ? 's' : ''})`}
+              </span>
             </div>
           )}
 

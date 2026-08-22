@@ -15,9 +15,9 @@ import {
   Filter,
   X,
   Plus,
-  Stethoscope,
+  FlaskConical,
   Building2,
-  Store,
+  PlusCircle,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -25,7 +25,6 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocais } from "@/hooks/useLocais";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import type { LocalSaude, Renovacao } from "@/lib/types";
 
@@ -40,6 +39,14 @@ function formatCurrency(value: number): string {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
 
+// Mapeamento de cor e ícone por tipo de local (com PlusCircle para posto de saúde)
+const LOCAL_TYPE_STYLE: Record<string, { color: string; icon: any; label: string }> = {
+  posto_saude: { color: "#34D399", icon: PlusCircle, label: "Posto de Saúde" },
+  laboratorio: { color: "#A78BFA", icon: FlaskConical, label: "Laboratório" },
+  clinica: { color: "#38BDF8", icon: Building2, label: "Clínica" },
+  outro: { color: "#F59E0B", icon: MapPin, label: "Outro" },
+};
+
 type LocalComHistorico = LocalSaude & {
   historicoCount: number;
   totalGasto: number;
@@ -49,38 +56,15 @@ type LocalComHistorico = LocalSaude & {
 export default function LocaisPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-  const { activePersonId } = useActivePersonId();
   const [search, setSearch] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState<string>("todos");
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "com_registros" | "sem_registros">("todos");
 
   const { locais = [] } = useLocais();
   const { renovacoes = [] } = useRenovacoes();
 
-  const personAccent = activePersonId ? 'var(--person-accent, #34D399)' : '#34D399';
-
-   // 🔥 FILTRO ROBUSTO: Respeita o person_id ativo, mas mantém compatibilidade com históricos e locais novos
-  const locaisFiltradosPorPessoa = useMemo<LocalSaude[]>(() => {
-    if (!locais || locais.length === 0) return [];
-    if (!activePersonId) return locais;
-
-    const localIdsSet = new Set<string>();
-
-    renovacoes.forEach((r) => {
-      if (r.local_id) localIdsSet.add(r.local_id);
-    });
-
-    return locais.filter((local) => {
-      const pertenceAoPerfil = !local.person_id || local.person_id === activePersonId;
-      const temHistorico = localIdsSet.has(local.id!);
-
-      // Exibe se pertencer ao perfil ativo OU se tiver histórico de renovações vinculado
-      return pertenceAoPerfil || temHistorico;
-    });
-  }, [activePersonId, renovacoes, locais]);
-
-
   const locaisEnriquecidos = useMemo<LocalComHistorico[]>(() => {
-    return locaisFiltradosPorPessoa.map((local) => {
+    return locais.map((local) => {
       const historico = renovacoes.filter((r: Renovacao) => r.local_id === local.id);
 
       const totalGasto = historico.reduce((acc, r) => {
@@ -101,7 +85,7 @@ export default function LocaisPage() {
         ultimaRenovacao,
       };
     });
-  }, [locaisFiltradosPorPessoa, renovacoes]);
+  }, [locais, renovacoes]);
 
   const filteredLocais = useMemo(() => {
     let result = locaisEnriquecidos;
@@ -115,6 +99,10 @@ export default function LocaisPage() {
       );
     }
 
+    if (filtroTipo !== "todos") {
+      result = result.filter((local) => local.tipo === filtroTipo);
+    }
+
     if (filtroStatus === "com_registros") {
       result = result.filter((local) => local.historicoCount > 0);
     } else if (filtroStatus === "sem_registros") {
@@ -122,7 +110,7 @@ export default function LocaisPage() {
     }
 
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [locaisEnriquecidos, search, filtroStatus]);
+  }, [locaisEnriquecidos, search, filtroTipo, filtroStatus]);
 
   if (!locais || !renovacoes) return <CardListSkeleton />;
 
@@ -158,6 +146,39 @@ export default function LocaisPage() {
             <Filter size={14} className="text-ink-muted" />
 
             <button
+              onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "todos" ? "posto_saude" : "posto_saude"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroTipo === "posto_saude"
+                  ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Postos
+            </button>
+
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "todos" ? "laboratorio" : "laboratorio"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroTipo === "laboratorio"
+                  ? "border-violet-400 bg-violet-400/20 text-violet-300"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Laboratórios
+            </button>
+
+            <button
+              onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "todos" ? "clinica" : "clinica"); }}
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+                filtroTipo === "clinica"
+                  ? "border-ice bg-ice/20 text-ice"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              }`}
+            >
+              Clínicas
+            </button>
+
+            <button
               onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "com_registros" ? "todos" : "com_registros"); }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
                 filtroStatus === "com_registros"
@@ -179,9 +200,9 @@ export default function LocaisPage() {
               Sem Registros
             </button>
 
-            {filtroStatus !== "todos" && (
+            {(filtroTipo !== "todos" || filtroStatus !== "todos") && (
               <button
-                onClick={() => { trigger("vibrate"); setFiltroStatus("todos"); }}
+                onClick={() => { trigger("vibrate"); setFiltroTipo("todos"); setFiltroStatus("todos"); }}
                 className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
               >
                 <X size={12} /> Limpar
@@ -191,7 +212,6 @@ export default function LocaisPage() {
         </header>
 
         <section className="px-5 pt-5 space-y-3">
-          {/* Banner CTA Adicionar Local */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -210,10 +230,10 @@ export default function LocaisPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-ink-primary">
-                    Adicionar posto, laboratório, hospital ou farmácia
+                    Adicionar posto, laboratório ou clínica
                   </p>
                   <p className="mt-0.5 text-xs text-ink-muted">
-                    Centralize os locais onde você consulta, retira medicamentos e faz exames.
+                    Centralize os locais de atendimento, consultas e exames.
                   </p>
                 </div>
                 <ChevronRight size={18} className="shrink-0 text-emerald-400 group-hover:translate-x-1 transition-transform" />
@@ -224,67 +244,66 @@ export default function LocaisPage() {
           {filteredLocais.length === 0 ? (
             <EmptyState
               icon={MapPin}
-              title={
-                activePersonId
-                  ? "Nenhum local vinculado a esta pessoa"
-                  : "Nenhum local encontrado"
-              }
+              title="Nenhum local cadastrado"
               description={
-                search || filtroStatus !== "todos"
+                search || filtroTipo !== "todos" || filtroStatus !== "todos"
                   ? "Tente ajustar os filtros aplicados."
-                  : activePersonId
-                  ? "Cadastre renovações para vincular locais de retirada."
-                  : "Cadastre postos do SUS, laboratórios ou clínicas para acompanhar retiradas e atendimentos."
+                  : "Cadastre postos de saúde, laboratórios ou clínicas para organizar sua rede de atendimento."
               }
             />
           ) : (
-            filteredLocais.map((local) => (
-              <motion.div
-                key={local.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={() => { trigger("vibrate"); router.push(`/saude/locais/detalhes?id=${local.id}`); }}
-                className="flex w-full items-start gap-3.5 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden cursor-pointer"
-                style={{ borderLeft: `6px solid ${local.historicoCount > 0 ? personAccent : "#6B7280"}` }}
-              >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">
-                  <MapPin size={22} className={local.historicoCount > 0 ? "text-emerald-400" : "text-ink-muted"} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-base text-ink-primary truncate">{local.nome}</p>
-                    {local.tipo && (
+            filteredLocais.map((local) => {
+              const style = LOCAL_TYPE_STYLE[local.tipo || "outro"] || LOCAL_TYPE_STYLE.outro;
+              const IconComponent = style.icon;
+              return (
+                <motion.div
+                  key={local.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={() => { trigger("vibrate"); router.push(`/saude/locais/detalhes?id=${local.id}`); }}
+                  className="flex w-full items-start gap-3.5 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden cursor-pointer"
+                  style={{ borderLeft: `6px solid ${style.color}` }}
+                >
+                  <div 
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ml-1"
+                    style={{ backgroundColor: `${style.color}15`, color: style.color, borderColor: `${style.color}30` }}
+                  >
+                    <IconComponent size={22} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-base text-ink-primary truncate">{local.nome}</p>
                       <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border border-surface-border/40 bg-surface-raised text-ink-muted">
-                        {local.tipo}
+                        {style.label}
                       </span>
-                    )}
-                  </div>
-                  {local.endereco && <p className="text-xs text-ink-muted mt-1 truncate">{local.endereco}</p>}
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    {local.historicoCount > 0 ? (
-                      <>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
-                          <FileText size={11} className="text-amber-400" /> {local.historicoCount} registro(s)
-                        </span>
-                        {local.totalGasto > 0 && (
+                    </div>
+                    {local.endereco && <p className="text-xs text-ink-muted mt-1 truncate">{local.endereco}</p>}
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {local.historicoCount > 0 ? (
+                        <>
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
-                            <DollarSign size={11} className="text-emerald-400" /> {formatCurrency(local.totalGasto)}
+                            <FileText size={11} className="text-amber-400" /> {local.historicoCount} registro(s)
                           </span>
-                        )}
-                        {local.ultimaRenovacao && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
-                            <Calendar size={11} className="text-ice" /> {formatDateDisplay(local.ultimaRenovacao.data)}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-[10px] text-ink-muted">Sem registros</span>
-                    )}
+                          {local.totalGasto > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
+                              <DollarSign size={11} className="text-emerald-400" /> {formatCurrency(local.totalGasto)}
+                            </span>
+                          )}
+                          {local.ultimaRenovacao && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
+                              <Calendar size={11} className="text-ice" /> {formatDateDisplay(local.ultimaRenovacao.data)}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-ink-muted">Sem registros</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
-              </motion.div>
-            ))
+                  <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
+                </motion.div>
+              );
+            })
           )}
         </section>
       </main>

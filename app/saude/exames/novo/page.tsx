@@ -42,7 +42,9 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { uploadFile } from "@/lib/supabase/storage";
-import type { Medico, LocalSaude, Tratamento, Attachment, Exame } from "@/lib/types";
+import { getClinicalTheme } from "@/lib/health-utils";
+import { cidsRepository } from "@/lib/repositories/cids";
+import type { Medico, LocalSaude, Tratamento, Attachment, Exame, Cid } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -143,12 +145,22 @@ export default function NovoExamePage() {
     () => activePersonId ? db.tratamentos.where('person_id').equals(activePersonId).toArray() : Promise.resolve([]),
     [activePersonId]
   ) || [];
+  const cids = useLiveQuery<Cid[]>(
+    () => activePersonId ? db.cids.where('person_id').equals(activePersonId).toArray() : Promise.resolve([]),
+    [activePersonId]
+  ) || [];
 
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
+  const [cidsSelecionados, setCidsSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
+  const [isCidModalOpen, setIsCidModalOpen] = useState(false);
   const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
   const [newTratamentoName, setNewTratamentoName] = useState("");
   const [isSavingTratamento, setIsSavingTratamento] = useState(false);
+
+  const [isCreatingCid, setIsCreatingCid] = useState(false);
+  const [newCidCodigo, setNewCidCodigo] = useState("");
+  const [newCidDescricao, setNewCidDescricao] = useState("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -191,7 +203,6 @@ export default function NovoExamePage() {
     trigger("vibrate");
   };
 
-  // ✅ NOVO handleCreateDoctor usando addMedico do hook
   const handleCreateDoctor = async () => {
     if (!newDocName.trim()) return;
     trigger("vibrate");
@@ -213,7 +224,6 @@ export default function NovoExamePage() {
     }
   };
 
-  // ✅ NOVO handleCreateLocal usando addLocal do hook
   const handleCreateLocal = async () => {
     if (!newLocalName.trim()) return;
     trigger("vibrate");
@@ -253,6 +263,27 @@ export default function NovoExamePage() {
       showToast("Erro ao cadastrar tratamento", "error");
     } finally {
       setIsSavingTratamento(false);
+    }
+  };
+
+  const handleCreateCid = async () => {
+    if (!newCidCodigo.trim() || !newCidDescricao.trim() || !activePersonId) return;
+    trigger("vibrate");
+    try {
+      const newId = await cidsRepository.create({
+        user_id: user?.id || "",
+        person_id: activePersonId,
+        codigo: newCidCodigo.trim(),
+        descricao: newCidDescricao.trim(),
+      });
+      setCidsSelecionados((prev) => [...prev, newId]);
+      showToast("CID cadastrado", "success");
+      setIsCreatingCid(false);
+      setNewCidCodigo("");
+      setNewCidDescricao("");
+    } catch (error) {
+      console.error(error);
+      showToast("Erro ao cadastrar CID", "error");
     }
   };
 
@@ -309,6 +340,7 @@ export default function NovoExamePage() {
               observacoes: observacoes.trim() || undefined,
               anexo_url: urlUpload.trim() || undefined,
               tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+              cid_ids: cidsSelecionados.length > 0 ? cidsSelecionados : undefined,
             });
           }
         } finally {
@@ -345,19 +377,20 @@ export default function NovoExamePage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* TRATAMENTOS COM LIMPAR */}
+          {/* TRATAMENTOS E CIDs COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Activity size={16} className="text-violet-400" />
-                <label className="text-sm font-semibold text-ink-primary">Motivo / Tratamento (Opcional)</label>
+                <label className="text-sm font-semibold text-ink-primary">Tratamentos e CIDs Relacionados</label>
               </div>
-              {tratamentosSelecionados.length > 0 && (
+              {(tratamentosSelecionados.length > 0 || cidsSelecionados.length > 0) && (
                 <button
                   type="button"
                   onClick={() => {
                     trigger("vibrate");
                     setTratamentosSelecionados([]);
+                    setCidsSelecionados([]);
                   }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
                 >
@@ -366,18 +399,19 @@ export default function NovoExamePage() {
               )}
             </div>
 
+            {/* Tratamentos selecionados */}
             {tratamentosSelecionados.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
-                {tratamentosSelecionados.map((id) => {
-                  const t = tratamentos.find((x: Tratamento) => x.id === id);
+                {tratamentosSelecionados.map((tId) => {
+                  const t = tratamentos.find((x) => x.id === tId);
                   if (!t) return null;
                   const IconComp = getTratamentoIcon(t.nome);
                   return (
-                    <div key={id} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
+                    <div key={tId} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
                       <IconComp size={14} className="text-violet-400" />
                       <span className="text-xs font-medium text-violet-300">{t.nome}</span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== id)); }}
+                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== tId)); }}
                         className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
                       >
                         <X size={14} />
@@ -388,10 +422,46 @@ export default function NovoExamePage() {
               </div>
             )}
 
-            <button onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10">
-              <Plus size={16} />
-              <span className="text-sm font-medium">Vincular Tratamento</span>
-            </button>
+            {/* CIDs selecionados */}
+            {cidsSelecionados.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {cidsSelecionados.map((cId) => {
+                  const c = cids.find((x) => x.id === cId);
+                  if (!c) return null;
+                  const theme = getClinicalTheme(c.descricao || c.codigo);
+                  const IconComp = theme.icon;
+                  return (
+                    <div key={cId} className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}>
+                      <IconComp size={14} />
+                      <span className="text-xs font-medium">{c.codigo}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setCidsSelecionados((prev) => prev.filter((item) => item !== cId)); }}
+                        className="ml-1 text-current/60 hover:text-coral transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
+              >
+                <Plus size={16} />
+                <span className="text-sm font-medium">Vincular Tratamento</span>
+              </button>
+              <button
+                onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300 transition-colors hover:bg-emerald-400/10"
+              >
+                <Plus size={16} />
+                <span className="text-sm font-medium">Vincular CID</span>
+              </button>
+            </div>
           </motion.div>
 
           <motion.div
@@ -558,6 +628,78 @@ export default function NovoExamePage() {
           createNewLabel="Cadastrar Novo Médico"
         />
 
+        <SelectionModal<Tratamento>
+          isOpen={isTratamentoModalOpen}
+          onClose={() => setIsTratamentoModalOpen(false)}
+          onSelect={(item) => {
+            trigger("vibrate");
+            if (!tratamentosSelecionados.includes(item.id!)) {
+              setTratamentosSelecionados((prev) => [...prev, item.id!]);
+            }
+          }}
+          items={tratamentos}
+          title="Vincular Tratamentos"
+          placeholder="Buscar tratamento..."
+          renderItem={(item) => {
+            const IconComp = getTratamentoIcon(item.nome);
+            const isSelected = tratamentosSelecionados.includes(item.id!);
+            return (
+              <div className="flex items-center gap-2 w-full">
+                <IconComp size={16} className="text-violet-400" />
+                <span className={`text-sm font-medium ${isSelected ? "text-violet-400" : "text-ink-primary"}`}>
+                  {item.nome}
+                </span>
+                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
+              </div>
+            );
+          }}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }}
+          createNewLabel="Cadastrar Novo Tratamento"
+        />
+
+        <SelectionModal<Cid>
+          isOpen={isCidModalOpen}
+          onClose={() => setIsCidModalOpen(false)}
+          onSelect={(item) => {
+            trigger("vibrate");
+            if (!cidsSelecionados.includes(item.id!)) {
+              setCidsSelecionados((prev) => [...prev, item.id!]);
+            }
+          }}
+          items={cids}
+          title="Vincular CIDs"
+          placeholder="Buscar CID..."
+          renderItem={(item) => {
+            const theme = getClinicalTheme(item.descricao || item.codigo);
+            const IconComp = theme.icon;
+            const isSelected = cidsSelecionados.includes(item.id!);
+            return (
+              <div className="flex items-center gap-2 w-full">
+                <IconComp size={16} className={theme.textClass} />
+                <span className={`text-sm font-medium ${isSelected ? theme.textClass : "text-ink-primary"}`}>
+                  {item.codigo} - {item.descricao}
+                </span>
+                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
+              </div>
+            );
+          }}
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => `${item.codigo} - ${item.descricao}`}
+          onCreateNew={() => { setIsCidModalOpen(false); trigger("vibrate"); setIsCreatingCid(true); }}
+          createNewLabel="Cadastrar Novo CID"
+        />
+
+        <BottomSheet isOpen={isCreatingTratamento} onClose={() => setIsCreatingTratamento(false)} title="Novo Tratamento">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Nome do Tratamento" value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus />
+            <Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={!newTratamentoName.trim() || isSavingTratamento}>
+              {isSavingTratamento ? <Loader2 size={16} className="animate-spin" /> : "Salvar e Selecionar"}
+            </Button>
+          </div>
+        </BottomSheet>
+
         <BottomSheet isOpen={isCreatingDoctor} onClose={() => setIsCreatingDoctor(false)} title="Novo Médico">
           <div className="space-y-4 px-1 pb-2">
             <Input label="Nome" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} autoFocus />
@@ -570,6 +712,16 @@ export default function NovoExamePage() {
           <div className="space-y-4 px-1 pb-2">
             <Input label="Nome" value={newLocalName} onChange={(e) => setNewLocalName(e.target.value)} autoFocus />
             <Button variant="primary" fullWidth onClick={handleCreateLocal} disabled={!newLocalName.trim()}>Salvar e Selecionar</Button>
+          </div>
+        </BottomSheet>
+
+        <BottomSheet isOpen={isCreatingCid} onClose={() => setIsCreatingCid(false)} title="Novo CID">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Código CID" placeholder="Ex: F90.0" value={newCidCodigo} onChange={(e) => setNewCidCodigo(e.target.value)} autoFocus />
+            <Input label="Descrição" placeholder="Ex: Transtorno de déficit de atenção" value={newCidDescricao} onChange={(e) => setNewCidDescricao(e.target.value)} />
+            <Button variant="primary" fullWidth onClick={handleCreateCid} disabled={!newCidCodigo.trim() || !newCidDescricao.trim()}>
+              Salvar e Selecionar
+            </Button>
           </div>
         </BottomSheet>
       </main>

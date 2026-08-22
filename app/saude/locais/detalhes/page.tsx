@@ -9,15 +9,13 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import {
   ArrowLeft, FileText, MapPin, Edit3, Trash2, 
-  Clock, Plus, Pill, FileWarning, Calendar, Stethoscope, FlaskConical, ExternalLink
+  Clock, Plus, Pill, FileWarning, Calendar, Stethoscope, FlaskConical, ExternalLink, DollarSign, Building2, PlusCircle
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { formatDateDisplay } from "@/lib/health-utils";
-import { calcularEconomia } from "@/lib/health-insights";
-import type { LocalSaude, Renovacao, Medicamento, Consulta, Exame } from "@/lib/types";
+import type { LocalSaude, Renovacao, Consulta, Exame } from "@/lib/types";
 import { useLocais } from "@/hooks/useLocais";
 import { useMounted } from "@/hooks/useMounted";
 
@@ -31,19 +29,27 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+// Mapeamento de estilo por tipo de local (com PlusCircle para posto de saúde)
+const LOCAL_TYPE_STYLE: Record<string, { color: string; icon: any }> = {
+  posto_saude: { color: "#34D399", icon: PlusCircle },
+  laboratorio: { color: "#A78BFA", icon: FlaskConical },
+  clinica: { color: "#38BDF8", icon: Building2 },
+  outro: { color: "#F59E0B", icon: MapPin },
+};
+
 function DetalhesLocalContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { trigger } = useHapticFeedback();
   const { deleteLocal } = useLocais();
-  const { activePersonId } = useActivePersonId();
   const mounted = useMounted();
 
   const [local, setLocal] = useState<LocalSaude | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
+  const [showAllRetiradas, setShowAllRetiradas] = useState(false);
 
   const renovacoes = useLiveQuery(
     () => (id ? db.renovacoes.where("local_id").equals(id).toArray() : Promise.resolve([] as Renovacao[])),
@@ -58,9 +64,7 @@ function DetalhesLocalContent() {
     if (!id || !renovacoes || !medicamentos) {
       return {
         totalGasto: 0,
-        precoMedio: 0,
         ultimaRenovacao: null as Renovacao | null,
-        economia: null,
         medicamentosCount: 0,
         renovacoesComMed: [] as Array<Renovacao & { medicamento_nome: string }>,
         consultasLocal: [] as Consulta[],
@@ -83,24 +87,18 @@ function DetalhesLocalContent() {
         if (typeof r.preco === "number" && r.preco > 0) totalGasto += r.preco;
       });
 
-      const precos = renovacoes
-        .filter((r) => typeof r.preco === "number" && r.preco > 0)
-        .map((r) => r.preco as number);
-      
-      const precoMedio = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
       const ultimaRenovacao = ordenadas.length > 0 ? ordenadas[0] : null;
-      const economia = calcularEconomia(renovacoes);
       const medIds = new Set(renovacoes.map((r) => r.medicamento_id).filter(Boolean));
 
-      // Cruzamento de Consultas e Exames neste Local
-      const consultasLocal = consultas.filter((c) => c.local_id === id || c.hospital_id === id).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-      const examesLocal = exames.filter((e) => e.local_id === id).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+      const consultasLocal = consultas.filter((c) => c.local_id === id)
+        .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+
+      const examesLocal = exames.filter((e) => e.local_id === id)
+        .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
 
       return {
         totalGasto,
-        precoMedio,
         ultimaRenovacao,
-        economia,
         medicamentosCount: medIds.size,
         renovacoesComMed: ordenadas,
         consultasLocal,
@@ -110,9 +108,7 @@ function DetalhesLocalContent() {
       console.error("Erro na análise do local:", e);
       return {
         totalGasto: 0,
-        precoMedio: 0,
         ultimaRenovacao: null as Renovacao | null,
-        economia: null,
         medicamentosCount: 0,
         renovacoesComMed: [],
         consultasLocal: [],
@@ -144,9 +140,8 @@ function DetalhesLocalContent() {
   };
 
   const menuOptions = [
-    { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?local_id=${id}` },
+    { id: "nova-renovacao", label: "Nova Retirada/Renovação", icon: FileWarning, path: `/saude/renovacao/nova?local_id=${id}` },
     { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?local_id=${id}` },
-    { id: "editar-local", label: "Editar Local", icon: Edit3, path: `/saude/locais/editar?id=${id}` },
   ];
 
   const handleMenuOptionClick = (path: string) => {
@@ -158,6 +153,13 @@ function DetalhesLocalContent() {
   if (isLoading) return <DetailSkeleton />;
   if (!local) return null;
 
+  const localStyle = LOCAL_TYPE_STYLE[local.tipo || "outro"] || LOCAL_TYPE_STYLE.outro;
+  const LocalIcon = localStyle.icon;
+
+  const retiradasVisiveis = showAllRetiradas
+    ? analiseLocal.renovacoesComMed
+    : analiseLocal.renovacoesComMed.slice(0, 5);
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
@@ -167,7 +169,7 @@ function DetalhesLocalContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">Unidade</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">Unidade de Saúde</p>
               <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Detalhes do Local</h1>
             </div>
           </div>
@@ -196,10 +198,10 @@ function DetalhesLocalContent() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                      className="absolute right-0 top-12 z-50 w-60 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
                     >
                       <div className="px-3 pb-2 pt-3.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Ações</p>
                       </div>
                       <div className="px-1.5 pb-2">
                         {menuOptions.map((option) => {
@@ -238,12 +240,14 @@ function DetalhesLocalContent() {
             animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
             style={{ 
-              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #34D399)' : '#34D399'}` 
+              borderLeft: `6px solid ${localStyle.color}` 
             }}
           >
             <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
-                <MapPin size={24} />
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border"
+                style={{ backgroundColor: `${localStyle.color}15`, color: localStyle.color, borderColor: `${localStyle.color}30` }}
+              >
+                <LocalIcon size={24} />
               </div>
               <div className="min-w-0 pt-1">
                 <h2 className="font-display text-xl font-bold text-ink-primary truncate">{local.nome}</h2>
@@ -254,41 +258,40 @@ function DetalhesLocalContent() {
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-surface-border/40">
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Consultas</p>
-                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseLocal.consultasLocal.length}</p>
+                <p className="mt-0.5 text-base font-semibold text-ink-primary">{analiseLocal.consultasLocal.length}</p>
               </div>
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Total Gasto</p>
-                <p className="mt-0.5 text-sm font-semibold text-emerald-400">{formatCurrency(analiseLocal.totalGasto)}</p>
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Exames</p>
+                <p className="mt-0.5 text-base font-semibold text-ink-primary">{analiseLocal.examesLocal.length}</p>
               </div>
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Preço Médio</p>
-                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{formatCurrency(analiseLocal.precoMedio)}</p>
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Insumos</p>
+                <p className="mt-0.5 text-base font-semibold text-ink-primary">{analiseLocal.medicamentosCount}</p>
               </div>
             </div>
 
             {analiseLocal.ultimaRenovacao && (
               <div className="pt-2 border-t border-surface-border/40">
                 <div className="flex items-center gap-2 text-xs text-ink-muted">
-                  <Clock size={14} className="text-emerald-400" />
-                  <span>Última retirada: <span className="font-medium text-ink-primary">{formatDateDisplay(analiseLocal.ultimaRenovacao.data)}</span></span>
+                  <Clock size={14} style={{ color: localStyle.color }} />
+                  <span>Última movimentação/retirada: <span className="font-medium text-ink-primary">{formatDateDisplay(analiseLocal.ultimaRenovacao.data)}</span></span>
                 </div>
               </div>
             )}
           </motion.div>
 
-          {/* CONSULTAS REALIZADAS NO LOCAL (NOVO CRUZAMENTO) */}
           {analiseLocal.consultasLocal.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3">
               <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
                 <Stethoscope size={16} className="text-ice" /> Consultas na Unidade ({analiseLocal.consultasLocal.length})
               </h3>
               <div className="space-y-2">
-                {analiseLocal.consultasLocal.slice(0, 3).map((con) => (
+                {analiseLocal.consultasLocal.map((con) => (
                   <div key={con.id} onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-ice/30 transition-all">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice"><Calendar size={16} /></div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ink-primary truncate">{con.especialidade}</p>
+                        <p className="text-sm font-semibold text-ink-primary truncate">{con.especialidade || "Consulta"}</p>
                         <p className="text-[11px] text-ink-muted">{formatDateDisplay(con.data)}</p>
                       </div>
                     </div>
@@ -299,14 +302,13 @@ function DetalhesLocalContent() {
             </motion.div>
           )}
 
-          {/* EXAMES REALIZADOS NO LOCAL (NOVO CRUZAMENTO) */}
           {analiseLocal.examesLocal.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3">
               <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
                 <FlaskConical size={16} className="text-violet-400" /> Exames na Unidade ({analiseLocal.examesLocal.length})
               </h3>
               <div className="space-y-2">
-                {analiseLocal.examesLocal.slice(0, 3).map((ex) => (
+                {analiseLocal.examesLocal.map((ex) => (
                   <div key={ex.id} onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${ex.id}`); }} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-violet-400/30 transition-all">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400"><FlaskConical size={16} /></div>
@@ -324,32 +326,70 @@ function DetalhesLocalContent() {
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 pt-2">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">
-              Histórico de Retiradas ({analiseLocal.renovacoesComMed?.length || 0})
+              Histórico de Retiradas / Insumos ({analiseLocal.renovacoesComMed?.length || 0})
             </h3>
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
               {(!analiseLocal.renovacoesComMed || analiseLocal.renovacoesComMed.length === 0) ? (
-                <p className="text-xs text-ink-muted py-2">Nenhum registro encontrado.</p>
+                <p className="text-xs text-ink-muted py-2">Nenhum registro de retirada vinculado a este local.</p>
               ) : (
-                analiseLocal.renovacoesComMed.slice(0, 10).map((r) => (
-                  <div key={r.id} onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }} className="flex items-center justify-between rounded-xl bg-surface-raised p-3.5 border border-surface-border/40 cursor-pointer">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface border border-surface-border/40">
-                        <FileText size={14} className="text-ink-muted" />
+                <>
+                  {retiradasVisiveis.map((r) => (
+                    <div key={r.id} onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }} className="flex items-center justify-between rounded-xl bg-surface-raised p-3.5 border border-surface-border/40 cursor-pointer">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface border border-surface-border/40">
+                          <FileText size={14} className="text-ink-muted" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-ink-primary truncate">{r.medicamento_nome}</p>
+                          <p className="text-[11px] text-ink-muted">{formatDateDisplay(r.data)}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ink-primary truncate">{r.medicamento_nome}</p>
-                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(r.data)}</p>
-                      </div>
+                      {typeof r.preco === "number" && r.preco > 0 ? (
+                        <span className="text-sm font-semibold text-emerald-400">{formatCurrency(r.preco)}</span>
+                      ) : (
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-emerald-400/10 text-emerald-400">Gratuito (SUS)</span>
+                      )}
                     </div>
-                    <span className="text-sm font-semibold text-emerald-400">{formatCurrency(r.preco)}</span>
-                  </div>
-                ))
+                  ))}
+
+                  {analiseLocal.renovacoesComMed.length > 5 && (
+                    <button
+                      onClick={() => {
+                        trigger("vibrate");
+                        setShowAllRetiradas(!showAllRetiradas);
+                      }}
+                      className="w-full py-2 text-center text-xs font-bold text-ice hover:text-ice-light transition-colors"
+                    >
+                      {showAllRetiradas ? "Ver menos" : `Ver todas (${analiseLocal.renovacoesComMed.length})`}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
+
+          {analiseLocal.totalGasto > 0 && (
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              className="rounded-2xl border border-surface-border/40 bg-surface-raised p-4 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                  <DollarSign size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-ink-primary">Investimento / Custos Eventuais</p>
+                  <p className="text-[11px] text-ink-muted">Gastos particulares registrados nesta unidade</p>
+                </div>
+              </div>
+              <p className="text-base font-bold text-emerald-400">{formatCurrency(analiseLocal.totalGasto)}</p>
+            </motion.div>
+          )}
         </section>
 
-        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir Local" message="Tem certeza que deseja excluir este posto/clínica? Os registros de renovação não serão apagados, mas perderão a associação com este nome." />
+        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir Local" message="Tem certeza que deseja excluir este posto/clínica? Os registros associados não serão apagados, mas perderão a referência a este local." />
       </main>
     </PageTransition>
   );

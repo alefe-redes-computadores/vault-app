@@ -15,6 +15,12 @@ import {
   Clock,
   Save,
   Eraser,
+  Brain,
+  Flame,
+  HeartPulse,
+  ShieldAlert,
+  Plus,
+  X,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
@@ -25,9 +31,14 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { SelectionModal } from "@/components/SelectionModal";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { cirurgiasRepository } from "@/lib/repositories/cirurgias";
-import type { Cirurgia, Medico, Hospital, LocalSaude } from "@/lib/types";
+import { getClinicalTheme } from "@/lib/health-utils";
+import { useToast } from "@/components/ToastProvider";
+import { tratamentosRepository } from "@/lib/repositories/tratamentos";
+import { cidsRepository } from "@/lib/repositories/cids";
+import type { Cirurgia, Medico, Hospital, LocalSaude, Tratamento, Cid } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -69,8 +80,18 @@ function handleTimeMask(value: string): string {
   return clean;
 }
 
+function getTratamentoIcon(nome: string) {
+  const n = nome.toLowerCase();
+  if (n.includes("tdah")) return Brain;
+  if (n.includes("dor") || n.includes("neuropática")) return Flame;
+  if (n.includes("depress")) return HeartPulse;
+  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
+  return Activity;
+}
+
 function EditarCirurgiaContent() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -80,6 +101,8 @@ function EditarCirurgiaContent() {
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
   const locais = useLiveQuery(() => db.locais.toArray(), []) || [];
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const cids = useLiveQuery(() => db.cids.toArray(), []) || [];
 
   const [isLoading, setIsLoading] = useState(true);
   const [procedimento, setProcedimento] = useState("");
@@ -90,6 +113,21 @@ function EditarCirurgiaContent() {
   const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
+
+  // Múltipla seleção
+  const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
+  const [cidsSelecionados, setCidsSelecionados] = useState<string[]>([]);
+  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
+  const [isCidModalOpen, setIsCidModalOpen] = useState(false);
+
+  // Criação rápida
+  const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
+  const [newTratamentoName, setNewTratamentoName] = useState("");
+  const [isSavingTratamento, setIsSavingTratamento] = useState(false);
+
+  const [isCreatingCid, setIsCreatingCid] = useState(false);
+  const [newCidCodigo, setNewCidCodigo] = useState("");
+  const [newCidDescricao, setNewCidDescricao] = useState("");
 
   const [dataDisplay, setDataDisplay] = useState("");
   const [horario, setHorario] = useState("");
@@ -114,6 +152,8 @@ function EditarCirurgiaContent() {
         setHorario((data as any).horario || "");
         setStatus(data.status || "agendada");
         setObservacoes(data.observacoes || "");
+        setTratamentosSelecionados(data.tratamento_ids || []);
+        setCidsSelecionados(data.cid_ids || []);
       } else {
         router.push("/saude/cirurgias");
       }
@@ -125,6 +165,46 @@ function EditarCirurgiaContent() {
   const selectedMedico = medicos.find((m: any) => m.id === medicoId);
   const selectedHospital = hospitais.find((h: any) => h.id === hospitalId);
   const selectedLocal = locais.find((l: any) => l.id === localId);
+
+  const handleCreateTratamento = async () => {
+    if (!newTratamentoName.trim()) return;
+    setIsSavingTratamento(true);
+    trigger("vibrate");
+    try {
+      const newId = await tratamentosRepository.create({
+        nome: newTratamentoName.trim(),
+        status: "ativo",
+      });
+      setTratamentosSelecionados((prev) => [...prev, newId]);
+      showToast("Tratamento cadastrado", "success");
+      setIsCreatingTratamento(false);
+      setNewTratamentoName("");
+    } catch (error) {
+      console.error(error);
+      showToast("Erro ao cadastrar tratamento", "error");
+    } finally {
+      setIsSavingTratamento(false);
+    }
+  };
+
+  const handleCreateCid = async () => {
+    if (!newCidCodigo.trim() || !newCidDescricao.trim()) return;
+    trigger("vibrate");
+    try {
+      const newId = await cidsRepository.create({
+        codigo: newCidCodigo.trim(),
+        descricao: newCidDescricao.trim(),
+      });
+      setCidsSelecionados((prev) => [...prev, newId]);
+      showToast("CID cadastrado", "success");
+      setIsCreatingCid(false);
+      setNewCidCodigo("");
+      setNewCidDescricao("");
+    } catch (error) {
+      console.error(error);
+      showToast("Erro ao cadastrar CID", "error");
+    }
+  };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -160,6 +240,8 @@ function EditarCirurgiaContent() {
             horario: horario || undefined,
             status,
             observacoes: observacoes.trim() || undefined,
+            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+            cid_ids: cidsSelecionados.length > 0 ? cidsSelecionados : undefined,
           });
         },
         {
@@ -208,7 +290,94 @@ function EditarCirurgiaContent() {
             />
           </motion.div>
 
-          {/* 🔥 MÉDICO COM LIMPAR */}
+          {/* TRATAMENTOS E CIDs COM LIMPAR */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Activity size={16} className="text-violet-400" />
+                <label className="text-sm font-semibold text-ink-primary">Tratamentos e CIDs Relacionados</label>
+              </div>
+              {(tratamentosSelecionados.length > 0 || cidsSelecionados.length > 0) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setTratamentosSelecionados([]);
+                    setCidsSelecionados([]);
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                >
+                  <Eraser size={12} /> Limpar todos
+                </button>
+              )}
+            </div>
+
+            {/* Tratamentos selecionados */}
+            {tratamentosSelecionados.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {tratamentosSelecionados.map((tId) => {
+                  const t = tratamentos.find((x) => x.id === tId);
+                  if (!t) return null;
+                  const IconComp = getTratamentoIcon(t.nome);
+                  return (
+                    <div key={tId} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
+                      <IconComp size={14} className="text-violet-400" />
+                      <span className="text-xs font-medium text-violet-300">{t.nome}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== tId)); }}
+                        className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* CIDs selecionados */}
+            {cidsSelecionados.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {cidsSelecionados.map((cId) => {
+                  const c = cids.find((x) => x.id === cId);
+                  if (!c) return null;
+                  const theme = getClinicalTheme(c.descricao || c.codigo);
+                  const IconComp = theme.icon;
+                  return (
+                    <div key={cId} className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}>
+                      <IconComp size={14} />
+                      <span className="text-xs font-medium">{c.codigo}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setCidsSelecionados((prev) => prev.filter((item) => item !== cId)); }}
+                        className="ml-1 text-current/60 hover:text-coral transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
+              >
+                <Plus size={16} />
+                <span className="text-sm font-medium">Vincular Tratamento</span>
+              </button>
+              <button
+                onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300 transition-colors hover:bg-emerald-400/10"
+              >
+                <Plus size={16} />
+                <span className="text-sm font-medium">Vincular CID</span>
+              </button>
+            </div>
+          </motion.div>
+
+          {/* MÉDICO COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -238,7 +407,7 @@ function EditarCirurgiaContent() {
               </button>
             </div>
 
-            {/* 🔥 HOSPITAL COM LIMPAR */}
+            {/* HOSPITAL COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
@@ -267,7 +436,7 @@ function EditarCirurgiaContent() {
               </button>
             </div>
 
-            {/* 🔥 LOCAL COM LIMPAR */}
+            {/* LOCAL COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Clínica / Ambulatório (Opcional)</label>
@@ -374,10 +543,11 @@ function EditarCirurgiaContent() {
           </Button>
         </div>
 
+        {/* Modais - mesmos do novo */}
         <SelectionModal
           isOpen={isMedicoModalOpen}
           onClose={() => setIsMedicoModalOpen(false)}
-          onSelect={(item: any) => setMedicoId(item.id!)}
+          onSelect={(item: any) => { trigger("vibrate"); setMedicoId(item.id!); }}
           items={medicos}
           title="Selecionar Cirurgião"
           renderItem={(item: any) => (
@@ -395,7 +565,7 @@ function EditarCirurgiaContent() {
         <SelectionModal
           isOpen={isHospitalModalOpen}
           onClose={() => setIsHospitalModalOpen(false)}
-          onSelect={(item: any) => setHospitalId(item.id!)}
+          onSelect={(item: any) => { trigger("vibrate"); setHospitalId(item.id!); }}
           items={hospitais}
           title="Selecionar Hospital"
           renderItem={(item: any) => (
@@ -413,7 +583,7 @@ function EditarCirurgiaContent() {
         <SelectionModal
           isOpen={isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}
-          onSelect={(item: any) => setLocalId(item.id!)}
+          onSelect={(item: any) => { trigger("vibrate"); setLocalId(item.id!); }}
           items={locais}
           title="Selecionar Local / Clínica"
           renderItem={(item: any) => (
@@ -427,6 +597,88 @@ function EditarCirurgiaContent() {
           onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }}
           createNewLabel="Cadastrar Novo Local"
         />
+
+        <SelectionModal
+          isOpen={isTratamentoModalOpen}
+          onClose={() => setIsTratamentoModalOpen(false)}
+          onSelect={(item: Tratamento) => {
+            trigger("vibrate");
+            if (!tratamentosSelecionados.includes(item.id!)) {
+              setTratamentosSelecionados((prev) => [...prev, item.id!]);
+            }
+          }}
+          items={tratamentos}
+          title="Vincular Tratamentos"
+          placeholder="Buscar tratamento..."
+          renderItem={(item: Tratamento) => {
+            const IconComp = getTratamentoIcon(item.nome);
+            const isSelected = tratamentosSelecionados.includes(item.id!);
+            return (
+              <div className="flex items-center gap-2 w-full">
+                <IconComp size={16} className="text-violet-400" />
+                <span className={`text-sm font-medium ${isSelected ? "text-violet-400" : "text-ink-primary"}`}>
+                  {item.nome}
+                </span>
+                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
+              </div>
+            );
+          }}
+          getItemId={(item: Tratamento) => item.id!}
+          getItemLabel={(item: Tratamento) => item.nome}
+          onCreateNew={() => { setIsTratamentoModalOpen(false); setIsCreatingTratamento(true); }}
+          createNewLabel="Cadastrar Novo Tratamento"
+        />
+
+        <SelectionModal
+          isOpen={isCidModalOpen}
+          onClose={() => setIsCidModalOpen(false)}
+          onSelect={(item: Cid) => {
+            trigger("vibrate");
+            if (!cidsSelecionados.includes(item.id!)) {
+              setCidsSelecionados((prev) => [...prev, item.id!]);
+            }
+          }}
+          items={cids}
+          title="Vincular CIDs"
+          placeholder="Buscar CID..."
+          renderItem={(item: Cid) => {
+            const theme = getClinicalTheme(item.descricao || item.codigo);
+            const IconComp = theme.icon;
+            const isSelected = cidsSelecionados.includes(item.id!);
+            return (
+              <div className="flex items-center gap-2 w-full">
+                <IconComp size={16} className={theme.textClass} />
+                <span className={`text-sm font-medium ${isSelected ? theme.textClass : "text-ink-primary"}`}>
+                  {item.codigo} - {item.descricao}
+                </span>
+                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
+              </div>
+            );
+          }}
+          getItemId={(item: Cid) => item.id!}
+          getItemLabel={(item: Cid) => `${item.codigo} - ${item.descricao}`}
+          onCreateNew={() => { setIsCidModalOpen(false); setIsCreatingCid(true); }}
+          createNewLabel="Cadastrar Novo CID"
+        />
+
+        <BottomSheet isOpen={isCreatingTratamento} onClose={() => setIsCreatingTratamento(false)} title="Novo Tratamento">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Nome do Tratamento" value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus />
+            <Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={!newTratamentoName.trim() || isSavingTratamento}>
+              {isSavingTratamento ? <Loader2 size={16} className="animate-spin" /> : "Salvar e Selecionar"}
+            </Button>
+          </div>
+        </BottomSheet>
+
+        <BottomSheet isOpen={isCreatingCid} onClose={() => setIsCreatingCid(false)} title="Novo CID">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Código CID" placeholder="Ex: F90.0" value={newCidCodigo} onChange={(e) => setNewCidCodigo(e.target.value)} autoFocus />
+            <Input label="Descrição" placeholder="Ex: Transtorno de déficit de atenção" value={newCidDescricao} onChange={(e) => setNewCidDescricao(e.target.value)} />
+            <Button variant="primary" fullWidth onClick={handleCreateCid} disabled={!newCidCodigo.trim() || !newCidDescricao.trim()}>
+              Salvar e Selecionar
+            </Button>
+          </div>
+        </BottomSheet>
       </main>
     </PageTransition>
   );

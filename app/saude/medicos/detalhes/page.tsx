@@ -27,6 +27,7 @@ import {
   ExternalLink,
   FlaskConical,
   DollarSign,
+  MapPin,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -45,9 +46,9 @@ import type {
   DoseLog,
   Document,
   Exame,
+  LocalSaude,
 } from "@/lib/types";
 import { useMedicos } from "@/hooks/useMedicos";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { sugerirRenovacao, isReceitaVencidaSegura, analisarComportamentoUso } from "@/lib/health-insights";
 import { useMounted } from "@/hooks/useMounted";
 
@@ -102,7 +103,6 @@ function DetalhesMedicoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { activePersonId } = useActivePersonId();
   const mounted = useMounted();
 
   const [medico, setMedico] = useState<Medico | null>(null);
@@ -112,7 +112,6 @@ function DetalhesMedicoContent() {
 
   const { deleteMedico } = useMedicos();
 
-  // Queries base
   const consultas = useLiveQuery(
     () => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as Consulta[])),
     [id]
@@ -134,7 +133,6 @@ function DetalhesMedicoContent() {
     [id]
   ) ?? [];
 
-  // Proteção contra loops infinitos: convertendo dependências para strings
   const medIdsStr = useMemo(() => medicamentos.map((m) => m.id).filter(Boolean).sort().join(','), [medicamentos]);
   const doseLogs = useLiveQuery(() => {
     const validMedIds = medIdsStr ? medIdsStr.split(',') : [];
@@ -178,12 +176,18 @@ function DetalhesMedicoContent() {
     return db.hospitais.where('id').anyOf(ids).toArray();
   }, [medicoHospIdsStr]) ?? [];
 
+  const medicoLocalIdsStr = useMemo(() => (medico?.local_ids || []).sort().join(','), [medico?.local_ids]);
+  const locaisVinculados = useLiveQuery(() => {
+    const ids = medicoLocalIdsStr ? medicoLocalIdsStr.split(',') : [];
+    if (ids.length === 0) return Promise.resolve([] as LocalSaude[]);
+    return db.locais.where('id').anyOf(ids).toArray();
+  }, [medicoLocalIdsStr]) ?? [];
+
   const documentosDoMedico = useLiveQuery(
     () => (id ? db.documents.where("medico_id").equals(id).reverse().sortBy("created_at") : Promise.resolve([] as Document[])),
     [id]
   ) ?? [];
 
-  // Cálculos de insights
   const proximaConsulta = useMemo(() => {
     const futuras = consultas.filter((c) => isDateInFuture(c.data));
     if (futuras.length === 0) return null;
@@ -234,7 +238,6 @@ function DetalhesMedicoContent() {
     { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?medico_id=${id}` },
     { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: `/saude/cirurgias/nova?medico_id=${id}` },
     { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?medico_id=${id}` },
-    { id: "editar-medico", label: "Editar Médico", icon: Edit3, path: `/saude/medicos/editar?id=${id}` },
   ];
 
   const handleMenuOptionClick = (path: string) => {
@@ -321,7 +324,7 @@ function DetalhesMedicoContent() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                      className="absolute right-0 top-12 z-50 w-60 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
                     >
                       <div className="px-3 pb-2 pt-3.5">
                         <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
@@ -373,13 +376,18 @@ function DetalhesMedicoContent() {
             animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
             style={{
-              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}`
+              borderLeft: `6px solid #38BDF8`
             }}
           >
             <div className="flex items-start gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/20">
-                <User size={28} />
+              {/* ÍCONE SVG UNIFICADO NO CABEÇALHO */}
+              <div 
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
+                style={{ backgroundColor: "#38BDF815", color: "#38BDF8", borderColor: "#38BDF830" }}
+              >
+                <Stethoscope size={28} />
               </div>
+
               <div className="min-w-0 pt-1">
                 <h2 className="font-display text-xl font-bold text-ink-primary truncate">
                   Dr(a). {medico.nome}
@@ -443,12 +451,27 @@ function DetalhesMedicoContent() {
             {hospitaisVinculados.length > 0 && (
               <div className="pt-4 border-t border-surface-border/40">
                 <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
-                  <Building2 size={14} className="text-ice" /> Atende em:
+                  <Building2 size={14} className="text-ice" /> Hospitais onde atende:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {hospitaisVinculados.map((h) => (
                     <span key={h.id} className="text-xs bg-surface-raised border border-surface-border/40 px-3 py-1.5 rounded-full text-ink-primary">
                       {h.nome}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {locaisVinculados.length > 0 && (
+              <div className="pt-4 border-t border-surface-border/40">
+                <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
+                  <MapPin size={14} className="text-emerald-400" /> Locais de atendimento:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {locaisVinculados.map((l) => (
+                    <span key={l.id} className="text-xs bg-surface-raised border border-surface-border/40 px-3 py-1.5 rounded-full text-ink-primary">
+                      {l.nome}
                     </span>
                   ))}
                 </div>

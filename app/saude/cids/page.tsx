@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/Input";
 import { useCids } from "@/hooks/useCids";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { getCidInsights } from "@/lib/health-insights";
+import { getClinicalTheme } from "@/lib/health-utils"; // UTILITÁRIO IMPORTADO
 import { EmptyState } from "@/components/EmptyState";
 
 export default function CidsPage() {
@@ -33,12 +34,10 @@ export default function CidsPage() {
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const medicosMap = useMemo(() => new Map(medicos.map((m) => [m.id, m])), [medicos]);
 
-  const personAccent = activePersonId ? 'var(--person-accent, #8B5CF6)' : '#8B5CF6';
-
-    const filteredCids = useMemo(() => {
+  const filteredCids = useMemo(() => {
     if (!cids) return [];
     
-    // 🔥 FILTRO ROBUSTO: Respeita o perfil ativo ou mantém compatibilidade com registros antigos sem ID
+    // FILTRO ROBUSTO MANTIDO INTACTO
     let result = cids.filter((c) => {
       return !activePersonId || !c.person_id || c.person_id === activePersonId;
     });
@@ -53,8 +52,6 @@ export default function CidsPage() {
     }
     return result.sort((a, b) => a.codigo.localeCompare(b.codigo));
   }, [cids, search, activePersonId]);
-
-
 
   if (!cids) return <CardListSkeleton />;
 
@@ -104,6 +101,11 @@ export default function CidsPage() {
             filteredCids.map((cid) => {
               const insight = getCidInsights(cid.codigo);
               const medico = cid.medico_id ? medicosMap.get(cid.medico_id) : null;
+              
+              // TEMA DINÂMICO APLICADO
+              const theme = getClinicalTheme(cid.descricao || cid.codigo);
+              const IconComp = theme.icon;
+
               return (
                 <motion.button
                   key={cid.id}
@@ -114,10 +116,10 @@ export default function CidsPage() {
                     router.push(`/saude/cids/detalhes?id=${cid.id}`);
                   }}
                   className="flex w-full items-start gap-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
-                  style={{ borderLeft: `4px solid ${personAccent}` }}
+                  style={{ borderLeft: `6px solid ${theme.hex}` }}
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400 border border-violet-400/20">
-                    <FileText size={20} />
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
+                    <IconComp size={22} />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -125,7 +127,7 @@ export default function CidsPage() {
                       <p className="truncate text-sm font-semibold text-ink-primary">
                         {cid.codigo}
                       </p>
-                      <span className="shrink-0 rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[9px] font-semibold text-violet-300 uppercase tracking-wide">
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${theme.tagClass}`}>
                         CID
                       </span>
                       {insight && (

@@ -5,29 +5,22 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Building2, MapPin, Phone, Edit3, Trash2,
-  Activity, FlaskConical, ExternalLink, Stethoscope, Calendar,
+  ArrowLeft, Hospital as HospitalIcon, MapPin, Phone, Edit3, Trash2,
+  Activity, ExternalLink, Stethoscope, Calendar,
   Clock, Plus, FolderHeart, FileWarning, DollarSign,
+  AlertTriangle,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHospitais } from "@/hooks/useHospitais";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useMounted } from "@/hooks/useMounted";
-import type {
-  Hospital,
-  Exame,
-  Consulta,
-  Medico,
-  Cirurgia,
-  Tratamento,
-  Renovacao,
-} from "@/lib/types";
+import { isReceitaVencidaSegura, gerarAlertasVisaoGeral } from "@/lib/health-insights";
+import type { Hospital, Consulta, Medico, Cirurgia, Tratamento, Renovacao } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -41,10 +34,8 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-// Definição explícita do retorno do analiseHospital
 interface AnaliseHospital {
   cirurgias: Cirurgia[];
-  exames: Exame[];
   consultas: Consulta[];
   medicos: Medico[];
   renovacoes: Renovacao[];
@@ -58,7 +49,6 @@ function DetalhesHospitalContent() {
   const id = searchParams.get("id");
   const { trigger } = useHapticFeedback();
   const { getHospital, deleteHospital } = useHospitais();
-  const { activePersonId } = useActivePersonId();
   const deleteAction = useSubmitAction();
   const mounted = useMounted();
 
@@ -67,7 +57,6 @@ function DetalhesHospitalContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
-  const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const cirurgias = useLiveQuery(
@@ -106,7 +95,6 @@ function DetalhesHospitalContent() {
     if (!id || !hospital) {
       return {
         cirurgias: [],
-        exames: [],
         consultas: [],
         medicos: [],
         renovacoes: [],
@@ -114,52 +102,33 @@ function DetalhesHospitalContent() {
         totalGastoRenovacoes: 0,
       };
     }
-
-    const examesDoHospital = exames
-      .filter((e) => e.local_id === id)
-      .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-
     const consultasDoHospital = consultas
       .filter((c) => c.hospital_id === id)
       .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-
-    const cirurgiasDoHospital = [...cirurgias]
-      .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-
-    const renovacoesDoHospital = [...renovacoes]
-      .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-
-    // Médicos vinculados diretamente pelo novo campo
+    const cirurgiasDoHospital = [...cirurgias].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+    const renovacoesDoHospital = [...renovacoes].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
     const medicoIdsDiretos = hospital.medico_ids || [];
     const medicosDiretos = medicos.filter((m) => m.id && medicoIdsDiretos.includes(m.id));
-
-    // Inferência por consultas
     const medicoIdsInferidos = new Set(consultasDoHospital.map((c) => c.medico_id).filter(Boolean));
     const medicosInferidos = medicos.filter((m) => m.id && medicoIdsInferidos.has(m.id));
-
-    // Junta sem duplicar
     const medicosUnicos = new Map<string, Medico>();
     [...medicosDiretos, ...medicosInferidos].forEach((m) => {
       if (m.id) medicosUnicos.set(m.id, m);
     });
-
     const ultimaConsulta = consultasDoHospital.length > 0 ? consultasDoHospital[0] : null;
-
     const totalGastoRenovacoes = renovacoesDoHospital.reduce((acc, r) => {
       const preco = typeof r.preco === "number" ? r.preco : Number(r.preco) || 0;
       return acc + preco;
     }, 0);
-
     return {
       cirurgias: cirurgiasDoHospital,
-      exames: examesDoHospital,
       consultas: consultasDoHospital,
       medicos: Array.from(medicosUnicos.values()),
       renovacoes: renovacoesDoHospital,
       ultimaConsulta,
       totalGastoRenovacoes,
     };
-  }, [id, hospital, exames, consultas, medicos, cirurgias, renovacoes]);
+  }, [id, hospital, consultas, medicos, cirurgias, renovacoes]);
 
   const handleDelete = () => {
     deleteAction.run(
@@ -177,9 +146,7 @@ function DetalhesHospitalContent() {
 
   const menuOptions = [
     { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Activity, path: `/saude/cirurgias/nova?hospital_id=${id}` },
-    { id: "novo-exame", label: "Novo Exame", icon: FlaskConical, path: `/saude/exames/novo?hospital_id=${id}` },
     { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?hospital_id=${id}` },
-    { id: "editar-hospital", label: "Editar Hospital", icon: Edit3, path: `/saude/hospitais/editar?id=${id}` },
   ];
 
   const handleMenuOptionClick = (path: string) => {
@@ -191,7 +158,18 @@ function DetalhesHospitalContent() {
   if (isLoading) return <DetailSkeleton />;
   if (!hospital) return null;
 
-  const cor = hospital.tipo === 'clinica' ? '#34D399' : '#38BDF8';
+  const cor = "#38BDF8";
+  const todosAlertas = useMemo(() => {
+    const contexto = {
+      medicamentos: [],
+      consultas: consultas.filter((c) => c.hospital_id === id),
+      exames: [],
+      cirurgias: cirurgias.filter((c) => c.hospital_id === id),
+    };
+    return gerarAlertasVisaoGeral(contexto);
+  }, [consultas, cirurgias, id]);
+
+  const alertasRelevantes = todosAlertas.slice(0, 3);
 
   return (
     <PageTransition>
@@ -206,11 +184,10 @@ function DetalhesHospitalContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em]" style={{ color: cor }}>Unidade Clínica</p>
-              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Detalhes da Unidade</h1>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Unidade Hospitalar</p>
+              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Detalhes do Hospital</h1>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             <div className="relative">
               <button
@@ -235,7 +212,7 @@ function DetalhesHospitalContent() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                      className="absolute right-0 top-12 z-50 w-60 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
                     >
                       <div className="px-3 pb-2 pt-3.5">
                         <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
@@ -252,9 +229,7 @@ function DetalhesHospitalContent() {
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                 <Icon size={15} />
                               </div>
-                              <span className="text-sm font-medium text-ink-primary">
-                                {option.label}
-                              </span>
+                              <span className="text-sm font-medium text-ink-primary">{option.label}</span>
                             </button>
                           );
                         })}
@@ -264,17 +239,14 @@ function DetalhesHospitalContent() {
                 )}
               </AnimatePresence>
             </div>
-
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/hospitais/editar?id=${hospital.id}`); }}
-              aria-label="Editar hospital"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95 hover:text-ice hover:border-ice/30"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary hover:text-ice hover:border-ice/30 transition-all active:scale-95"
             >
               <Edit3 size={16} />
             </button>
             <button
               onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
-              aria-label="Excluir hospital"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
             >
               <Trash2 size={16} />
@@ -283,32 +255,44 @@ function DetalhesHospitalContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
+          {alertasRelevantes.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle size={16} className="text-amber-400" />
+                <h4 className="text-sm font-semibold text-ink-primary">Alertas</h4>
+              </div>
+              <div className="space-y-2">
+                {alertasRelevantes.map((alerta, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs border-b border-amber-400/10 pb-2 last:border-0">
+                    <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-ink-primary">{alerta.mensagem}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           <motion.div
             variants={fadeUp}
             initial="initial"
             animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{
-              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}`
-            }}
+            style={{ borderLeft: `6px solid ${cor}` }}
           >
             <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/20">
-                <Building2 size={24} />
+              <div
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
+                style={{ backgroundColor: `${cor}15`, color: cor, borderColor: `${cor}30` }}
+              >
+                <HospitalIcon size={28} />
               </div>
               <div className="min-w-0 pt-1">
-                <h2 className="font-display text-xl font-bold text-ink-primary truncate">
-                  {hospital.nome}
-                </h2>
-                {hospital.tipo && (
-                  <span className={`inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border mt-1 ${
-                    hospital.tipo === 'clinica'
-                      ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-400'
-                      : 'border-ice/30 bg-ice/10 text-ice'
-                  }`}>
-                    {hospital.tipo === 'clinica' ? 'Clínica' : 'Hospital'}
-                  </span>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-display text-2xl font-bold text-ink-primary truncate">{hospital.nome}</h2>
+                  <span className="shrink-0 rounded-full border border-ice/30 bg-ice/10 px-2 py-0.5 text-[9px] font-bold uppercase text-ice">Hospital</span>
+                </div>
                 {hospital.endereco && (
                   <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5 truncate">
                     <MapPin size={13} className="shrink-0 text-ink-faint" /> {hospital.endereco}
@@ -321,16 +305,14 @@ function DetalhesHospitalContent() {
                 )}
               </div>
             </div>
-
             {analiseHospital.ultimaConsulta && (
               <div className="pt-2 border-t border-surface-border/40">
                 <div className="flex items-center gap-2 text-xs text-ink-muted">
-                  <Clock size={14} className={cor === '#38BDF8' ? 'text-ice' : 'text-emerald-400'} />
+                  <Clock size={14} className="text-ice" />
                   <span>Última consulta: <span className="font-medium text-ink-primary">{formatDateDisplay(analiseHospital.ultimaConsulta.data)}</span></span>
                 </div>
               </div>
             )}
-
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-surface-border/40">
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Consultas</p>
@@ -341,8 +323,8 @@ function DetalhesHospitalContent() {
                 <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseHospital.cirurgias.length}</p>
               </div>
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Exames</p>
-                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseHospital.exames.length}</p>
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Renovações</p>
+                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseHospital.renovacoes.length}</p>
               </div>
             </div>
           </motion.div>
@@ -375,18 +357,12 @@ function DetalhesHospitalContent() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {tratamentos.map((t) => (
-                  <span
-                    key={t.id}
-                    className="rounded-full bg-violet-400/10 border border-violet-400/20 px-4 py-2 text-sm font-medium text-violet-300"
-                  >
-                    {t.nome}
-                  </span>
+                  <span key={t.id} className="rounded-full bg-violet-400/10 border border-violet-400/20 px-4 py-2 text-sm font-medium text-violet-300">{t.nome}</span>
                 ))}
               </div>
             </motion.div>
           )}
 
-          {/* CONSULTAS REALIZADAS */}
           {analiseHospital.consultas.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
               <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
@@ -418,29 +394,36 @@ function DetalhesHospitalContent() {
             </motion.div>
           )}
 
-          {/* RENOVAÇÕES/RETIRADAS */}
           {analiseHospital.renovacoes.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-3">
               <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
                 <FileWarning size={16} className="text-amber-400" /> Retiradas / Renovações ({analiseHospital.renovacoes.length})
               </h3>
               <div className="space-y-2">
-                {analiseHospital.renovacoes.slice(0, 3).map((ren) => (
-                  <div key={ren.id} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
-                        <FileWarning size={16} />
+                {analiseHospital.renovacoes.slice(0, 3).map((ren) => {
+                  const vencida = isReceitaVencidaSegura(ren.data_proxima_retirada || ren.data);
+                  return (
+                    <div key={ren.id} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
+                          <FileWarning size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-ink-primary truncate">{formatDateDisplay(ren.data)}</p>
+                          <p className="text-[11px] text-ink-muted">{ren.observacoes || "Retirada de medicamento"}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ink-primary truncate">{formatDateDisplay(ren.data)}</p>
-                        <p className="text-[11px] text-ink-muted">{ren.observacoes || "Retirada de medicamento"}</p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {vencida && (
+                          <span className="text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencida</span>
+                        )}
+                        <span className="text-xs font-semibold text-emerald-400">
+                          {typeof ren.preco === "number" && ren.preco > 0 ? `R$ ${ren.preco.toFixed(2).replace(".", ",")}` : "Gratuito"}
+                        </span>
                       </div>
                     </div>
-                    <span className="text-xs font-semibold text-emerald-400 shrink-0">
-                      {typeof ren.preco === "number" && ren.preco > 0 ? `R$ ${ren.preco.toFixed(2).replace(".", ",")}` : "Gratuito"}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
                 {analiseHospital.totalGastoRenovacoes > 0 && (
                   <div className="mt-3 pt-3 border-t border-surface-border/40 flex items-center justify-between">
                     <span className="text-xs text-ink-muted">Total com retiradas</span>
@@ -455,7 +438,6 @@ function DetalhesHospitalContent() {
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
               <Activity size={16} className="text-ice" /> Cirurgias ({analiseHospital.cirurgias.length})
             </h3>
-
             {analiseHospital.cirurgias.length === 0 ? (
               <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
                 <p className="text-xs text-ink-muted">Nenhum procedimento registrado nesta unidade.</p>
@@ -475,39 +457,6 @@ function DetalhesHospitalContent() {
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-ink-primary truncate">{cir.procedimento}</p>
                         <p className="text-[11px] text-ink-muted">{cir.data ? formatDateDisplay(cir.data) : "Data não informada"}</p>
-                      </div>
-                    </div>
-                    <ExternalLink size={15} className="text-ink-faint shrink-0" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.08 }} className="space-y-3">
-            <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
-              <FlaskConical size={16} className="text-violet-400" /> Exames Realizados ({analiseHospital.exames.length})
-            </h3>
-
-            {analiseHospital.exames.length === 0 ? (
-              <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
-                <p className="text-xs text-ink-muted">Nenhum exame vinculado a esta unidade.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {analiseHospital.exames.map((exame) => (
-                  <div
-                    key={exame.id}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }}
-                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 transition-all active:scale-[0.98] hover:border-violet-400/30 cursor-pointer shadow-sm"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
-                        <FlaskConical size={16} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ink-primary truncate">{exame.nome}</p>
-                        <p className="text-[11px] text-ink-muted">{exame.data ? formatDateDisplay(exame.data) : "Data não informada"}</p>
                       </div>
                     </div>
                     <ExternalLink size={15} className="text-ink-faint shrink-0" />

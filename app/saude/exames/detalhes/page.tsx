@@ -28,7 +28,8 @@ import {
   CheckCircle2,
   Plus,
   Copy,
-  X
+  X,
+  Clock,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -39,22 +40,14 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useExames } from "@/hooks/useExames";
 import { useToast } from "@/components/ToastProvider";
 import { SelectionModal } from "@/components/SelectionModal";
-import { safeAddMedico, safeAddLocal } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { Button } from "@/components/ui/Button";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
-import type { Exame, Medico, Hospital, Tratamento } from "@/lib/types";
-
-function getTratamentoIcon(nome: string) {
-  const n = nome.toLowerCase();
-  if (n.includes("tdah")) return Brain;
-  if (n.includes("dor") || n.includes("neuropática")) return Flame;
-  if (n.includes("depress")) return HeartPulse;
-  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
-  return Activity;
-}
+import { useMedicos } from "@/hooks/useMedicos";
+import { useLocais } from "@/hooks/useLocais";
+import type { Exame, Medico, Hospital, Tratamento, Cid } from "@/lib/types";
 
 function formatDate(isoStr?: string) {
   if (!isoStr) return "—";
@@ -69,7 +62,6 @@ function DetalhesExameContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
   const mounted = useMounted();
 
   const [deleting, setDeleting] = useState(false);
@@ -87,10 +79,20 @@ function DetalhesExameContent() {
   const [newLocalNome, setNewLocalNome] = useState("");
 
   const { getExame, deleteExame, updateExame } = useExames();
+  const { addMedico } = useMedicos();
+  const { addLocal } = useLocais();
 
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const locais = useLiveQuery(() => db.locais.toArray(), []) || [];
   const persons = useLiveQuery(() => db.persons.toArray(), []) || [];
+  const tratamentos = useLiveQuery(() => {
+    if (!exame?.tratamento_ids || exame.tratamento_ids.length === 0) return [];
+    return db.tratamentos.where('id').anyOf(exame.tratamento_ids).toArray();
+  }, [exame?.tratamento_ids]) || [];
+  const cids = useLiveQuery(() => {
+    if (!exame?.cid_ids || exame.cid_ids.length === 0) return [];
+    return db.cids.where('id').anyOf(exame.cid_ids).toArray();
+  }, [exame?.cid_ids]) || [];
 
   useEffect(() => {
     if (!id) {
@@ -119,11 +121,6 @@ function DetalhesExameContent() {
   const medico = useLiveQuery(() => exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined, [exame?.medico_id]);
   const local = useLiveQuery(() => exame?.local_id ? db.locais.get(exame.local_id) : undefined, [exame?.local_id]);
 
-  const tratamentos = useLiveQuery(() => {
-    if (!exame?.tratamento_ids || exame.tratamento_ids.length === 0) return [];
-    return db.tratamentos.where('id').anyOf(exame.tratamento_ids).toArray();
-  }, [exame?.tratamento_ids]);
-
   const historicoExames = useLiveQuery(() => {
     if (!exame) return [];
     return db.exames
@@ -137,9 +134,15 @@ function DetalhesExameContent() {
     return exame?.data_retorno ? isReceitaVencidaSegura(exame.data_retorno) : false;
   }, [exame]);
 
+  const diasParaApresentacao = useMemo(() => {
+    if (!exame?.data_retorno) return null;
+    return getDaysUntil(exame.data_retorno);
+  }, [exame]);
+
+  const temHorario = exame?.horario && exame.horario.trim().length > 0;
+
   const menuOptions = [
     { id: "duplicar-exame", label: "Solicitar Novamente", icon: Copy, path: `/saude/exames/novo?duplicar=${id}` },
-    { id: "editar-exame", label: "Editar Exame", icon: Edit3, path: `/saude/exames/editar?id=${id}` },
   ];
 
   const handleMenuOptionClick = (path: string) => {
@@ -170,8 +173,7 @@ function DetalhesExameContent() {
     }
     trigger("vibrate");
     try {
-      const newId = await safeAddMedico({
-        user_id: user?.id || "",
+      const newId = await addMedico({
         nome: newMedicoNome.trim(),
         especialidade: newMedicoEspecialidade.trim() || undefined,
       });
@@ -199,8 +201,7 @@ function DetalhesExameContent() {
     }
     trigger("vibrate");
     try {
-      const newId = await safeAddLocal({
-        user_id: user?.id || "",
+      const newId = await addLocal({
         nome: newLocalNome.trim(),
         tipo: "laboratorio",
       });
@@ -269,16 +270,9 @@ function DetalhesExameContent() {
     }
   };
 
-  let diasParaApresentacao = null;
-  if (exame.data_retorno) {
-    try {
-      const dataRetornoObj = new Date(exame.data_retorno);
-      const hoje = new Date();
-      diasParaApresentacao = Math.ceil((dataRetornoObj.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-    } catch {}
-  }
-
   const personName = person?.name || persons.find(p => p.id === exame.person_id)?.name || "Pessoa não encontrada";
+
+  const corBorda = exameVencido ? "#EF4444" : (diasParaApresentacao !== null && diasParaApresentacao <= 3) ? "#F59E0B" : "#10B981";
 
   return (
     <PageTransition>
@@ -413,7 +407,7 @@ function DetalhesExameContent() {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4"
             style={{
-              borderLeft: `6px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}`
+              borderLeft: `6px solid ${corBorda}`
             }}
           >
             <div className="flex items-center gap-3.5 pb-4 border-b border-surface-border/40">
@@ -422,7 +416,12 @@ function DetalhesExameContent() {
               </div>
               <div className="min-w-0">
                 <h2 className="text-base font-semibold text-ink-primary">{exame.nome}</h2>
-                <p className="text-xs text-ink-muted">Registrado em {formatDate(exame.data)}</p>
+                <p className="text-xs text-ink-muted flex items-center gap-2">
+                  Registrado em {formatDate(exame.data)}
+                  {temHorario && (
+                    <span className="text-[10px] font-mono text-ink-muted">• {exame.horario}</span>
+                  )}
+                </p>
               </div>
             </div>
 
@@ -499,20 +498,44 @@ function DetalhesExameContent() {
             {tratamentos && tratamentos.length > 0 && (
               <div className="pt-2">
                 <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
-                  <Activity size={14} className="text-violet-400" /> Motivo da Solicitação
+                  <Activity size={14} className="text-violet-400" /> Tratamentos Relacionados
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {tratamentos.map((t: Tratamento) => {
-                    const Icon = getTratamentoIcon(t.nome);
+                    const theme = getClinicalTheme(t.nome);
+                    const Icon = theme.icon;
                     return (
                       <button
                         key={t.id}
                         onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${t.id}`); }}
-                        className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5 hover:bg-violet-400/20 transition-colors"
+                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 hover:opacity-80 transition-opacity ${theme.tagClass}`}
                       >
-                        <Icon size={14} className="text-violet-400" />
-                        <span className="text-xs font-medium text-violet-300">{t.nome}</span>
+                        <Icon size={14} />
+                        <span className="text-xs font-medium">{t.nome}</span>
                       </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {cids && cids.length > 0 && (
+              <div className="pt-2">
+                <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
+                  <Activity size={14} className="text-violet-400" /> CIDs Relacionados
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {cids.map((cid: Cid) => {
+                    const theme = getClinicalTheme(cid.descricao || cid.codigo);
+                    const Icon = theme.icon;
+                    return (
+                      <span
+                        key={cid.id}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}
+                      >
+                        <Icon size={14} />
+                        <span className="text-xs font-medium">{cid.codigo}</span>
+                      </span>
                     );
                   })}
                 </div>

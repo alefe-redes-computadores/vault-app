@@ -20,6 +20,8 @@ import type { Cirurgia } from "@/lib/types";
 import { useCirurgias } from "@/hooks/useCirurgias";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { EmptyState } from "@/components/EmptyState";
+import { getDaysUntil } from "@/lib/health-utils";
+import { isReceitaVencidaSegura } from "@/lib/health-insights";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -31,6 +33,26 @@ function formatDateDisplay(isoStr: string): string {
   const parts = isoStr.split("-");
   if (parts.length !== 3) return isoStr;
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function getStatusColor(status: string): string {
+  switch (status) {
+    case "agendada":
+      return "#F59E0B";
+    case "realizada":
+      return "#34D399";
+    case "cancelada":
+      return "#EF4444";
+    default:
+      return "#F59E0B";
+  }
+}
+
+function getDiasRestantesLabel(dias: number | null): string | null {
+  if (dias === null) return null;
+  if (dias === 0) return "Hoje";
+  if (dias < 0) return `Há ${Math.abs(dias)} dia${Math.abs(dias) > 1 ? 's' : ''}`;
+  return `Em ${dias} dia${dias > 1 ? 's' : ''}`;
 }
 
 export default function CirurgiasPage() {
@@ -45,16 +67,13 @@ export default function CirurgiasPage() {
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
-  const personAccent = activePersonId ? 'var(--person-accent, #F97316)' : '#F97316';
-
   const hojeISO = new Date().toISOString().slice(0, 10);
 
-    const { proximas, historico } = useMemo(() => {
+  const { proximas, historico } = useMemo(() => {
     const prox: Cirurgia[] = [];
     const hist: Cirurgia[] = [];
 
     (cirurgias || []).forEach((c) => {
-      // 🔥 FILTRO ROBUSTO: Respeita o perfil ativo ou mantém compatibilidade com registros antigos
       const pertenceAoPerfil = !activePersonId || !c.person_id || c.person_id === activePersonId;
       if (!pertenceAoPerfil) return;
 
@@ -73,7 +92,6 @@ export default function CirurgiasPage() {
 
     return { proximas: prox, historico: hist };
   }, [cirurgias, hojeISO, activePersonId]);
-
 
   const listaBase = abaAtiva === "proximas" ? proximas : historico;
 
@@ -205,6 +223,10 @@ export default function CirurgiasPage() {
             <div className="space-y-3">
               {listaExibida.map((cir, index) => {
                 const hospitalNome = getHospitalNome(cir.hospital_id);
+                const corBorda = getStatusColor(cir.status);
+                const diasRestantes = getDaysUntil(cir.data);
+                const vencida = isReceitaVencidaSegura(cir.data);
+                const temHorario = cir.horario && cir.horario.trim().length > 0;
                 return (
                   <motion.div
                     key={cir.id}
@@ -214,7 +236,7 @@ export default function CirurgiasPage() {
                     transition={{ delay: index * 0.04 }}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
                     className="group cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.98] hover:border-coral/30 relative overflow-hidden"
-                    style={{ borderLeft: `4px solid ${personAccent}` }}
+                    style={{ borderLeft: `4px solid ${corBorda}` }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3.5 min-w-0">
@@ -226,6 +248,11 @@ export default function CirurgiasPage() {
                             <span className="font-mono text-xs font-semibold text-coral">
                               {formatDateDisplay(cir.data)}
                             </span>
+                            {temHorario && (
+                              <span className="text-[10px] font-mono text-ink-muted">
+                                • {cir.horario}
+                              </span>
+                            )}
                             <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
                               cir.status === "agendada" ? "bg-amber-400/10 text-amber-400 border border-amber-400/20" :
                               cir.status === "realizada" ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" :
@@ -233,6 +260,19 @@ export default function CirurgiasPage() {
                             }`}>
                               {cir.status}
                             </span>
+                            {vencida && cir.status !== "realizada" && cir.status !== "cancelada" && (
+                              <span className="rounded-full bg-coral/20 px-2 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">
+                                Vencida
+                              </span>
+                            )}
+                            {diasRestantes !== null && diasRestantes >= 0 && cir.status === "agendada" && (
+                              <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase border ${
+                                diasRestantes <= 2 ? "bg-amber-400/20 text-amber-400 border-amber-400/30" :
+                                "bg-ice/10 text-ice border-ice/20"
+                              }`}>
+                                {getDiasRestantesLabel(diasRestantes)}
+                              </span>
+                            )}
                           </div>
 
                           <h3 className="truncate font-semibold text-ink-primary text-base mt-1">

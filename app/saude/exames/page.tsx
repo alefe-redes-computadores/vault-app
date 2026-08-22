@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Clock,
   UserRound,
+  Activity,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -28,8 +29,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { useExames } from "@/hooks/useExames";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
-import { getDaysUntil } from "@/lib/health-utils";
-import type { Exame, Person } from "@/lib/types";
+import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
+import type { Exame, Person, Tratamento } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -47,10 +48,10 @@ export default function ExamesPage() {
 
   const { exames: allExames } = useExames();
   const persons = useLiveQuery(() => db.persons.toArray(), []) as Person[];
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
 
   const personMap = useMemo(() => new Map((persons || []).map((p) => [p.id!, p.name])), [persons]);
-
-  const personAccent = activePersonId ? 'var(--person-accent, #10B981)' : '#10B981';
+  const tratamentoMap = useMemo(() => new Map(tratamentos.map((t) => [t.id, t])), [tratamentos]);
 
   const exames = useMemo(() => {
     if (!activePersonId) return allExames || [];
@@ -186,6 +187,14 @@ export default function ExamesPage() {
           ) : (
             filteredExames.map((exame) => {
               const personName = personMap.get(exame.person_id || "");
+              const corBorda = exame.vencido ? "#EF4444" : exame.proximo ? "#F59E0B" : "#10B981";
+              const temHorario = exame.horario && exame.horario.trim().length > 0;
+
+              const primeirosTratamentos = (exame.tratamento_ids || [])
+                .slice(0, 2)
+                .map((id) => tratamentoMap.get(id))
+                .filter(Boolean) as Tratamento[];
+
               return (
                 <motion.button
                   key={exame.id}
@@ -196,7 +205,7 @@ export default function ExamesPage() {
                 >
                   <div
                     className="absolute left-0 top-0 bottom-0 w-1.5"
-                    style={{ backgroundColor: exame.vencido ? "#EF4444" : exame.proximo ? "#F59E0B" : personAccent }}
+                    style={{ backgroundColor: corBorda }}
                   />
 
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-raised border border-surface-border/50 ml-1">
@@ -233,12 +242,34 @@ export default function ExamesPage() {
                           <Building2 size={12} className="text-ink-faint" /> {exame.laboratorio}
                         </span>
                       )}
-                      {exame.data && (
-                        <span className="flex items-center gap-1">
-                          <Calendar size={12} className="text-ink-faint" /> {formatDateDisplay(exame.data)}
-                        </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={12} className="text-ink-faint" /> {formatDateDisplay(exame.data)}
+                      </span>
+                      {temHorario && (
+                        <span className="text-[10px] font-mono text-ink-muted">• {exame.horario}</span>
                       )}
                     </div>
+
+                    {primeirosTratamentos.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {primeirosTratamentos.map((t) => {
+                          const theme = getClinicalTheme(t.nome);
+                          const Icon = theme.icon;
+                          return (
+                            <span
+                              key={t.id}
+                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide border ${theme.tagClass}`}
+                            >
+                              <Icon size={9} />
+                              {t.nome.length > 12 ? t.nome.slice(0, 12) + "…" : t.nome}
+                            </span>
+                          );
+                        })}
+                        {(exame.tratamento_ids?.length || 0) > 2 && (
+                          <span className="text-[8px] text-ink-muted">+{(exame.tratamento_ids?.length || 0) - 2}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <ChevronRight size={16} className="mt-1 shrink-0 text-ink-faint" />
                 </motion.button>

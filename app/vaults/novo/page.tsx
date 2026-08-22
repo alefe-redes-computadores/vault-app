@@ -1,273 +1,276 @@
-// app/vaults/novo/page.tsx
+// app/vaults/membros/page.tsx
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
-  Home,
-  Heart,
-  Briefcase,
-  BookOpen,
-  Plane,
-  Car,
-  PawPrint,
-  Users,
-  LucideIcon,
-  Lock,
-  Loader2,
+  ArrowLeft, UserPlus, X, Loader2, Check, Users, Shield, Edit, Eye, Mail,
 } from "lucide-react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import { useVaults } from "@/hooks/useVaults";
 import { useAuth } from "@/hooks/useAuth";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
-import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { vaultsRepository } from "@/lib/repositories/vaults";
+import { useToast } from "@/components/ToastProvider";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { motion } from "framer-motion";
 
-const ICON_OPTIONS: { label: string; icon: LucideIcon; value: string }[] = [
-  { label: "Casa", icon: Home, value: "home" },
-  { label: "Saúde", icon: Heart, value: "heart" },
-  { label: "Trabalho", icon: Briefcase, value: "briefcase" },
-  { label: "Estudos", icon: BookOpen, value: "book-open" },
-  { label: "Viagens", icon: Plane, value: "plane" },
-  { label: "Carro", icon: Car, value: "car" },
-  { label: "Pet", icon: PawPrint, value: "paw-print" },
-  { label: "Pessoas", icon: Users, value: "users" },
-];
+const PERMISSION_OPTIONS = [
+  { id: "view", label: "Visualizar", icon: Eye },
+  { id: "edit", label: "Editar", icon: Edit },
+  { id: "admin", label: "Admin", icon: Shield },
+] as const;
 
-const COLOR_OPTIONS = [
-  "#7DD3FC",
-  "#EC4899",
-  "#3B82F6",
-  "#F59E0B",
-  "#10B981",
-  "#8B5CF6",
-  "#F472B6",
-  "#34D399",
-];
-
-export default function NewVaultPage() {
+function VaultMembersContent() {
   const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const vaultId = searchParams.get("cofre_id") || "";
   const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
-  const { run, isSubmitting } = useSubmitAction();
-  const isSubmitLocked = useRef(false);
+  const { showToast } = useToast();
+  const { addMember, updateMember } = useVaults();
 
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    icon: "home",
-    color: "#7DD3FC",
-  });
+  const [email, setEmail] = useState("");
+  const [permission, setPermission] = useState<"view" | "edit" | "admin">("view");
+  const [isAdding, setIsAdding] = useState(false);
 
-  const handleSubmit = async () => {
-    trigger("vibrate");
+  const vault = useLiveQuery(() => db.vaults.get(vaultId), [vaultId], null);
+  const members = useLiveQuery(() => db.vaultMembers.where("vault_id").equals(vaultId).toArray(), [vaultId], []);
 
-    if (!formData.name.trim()) {
+  if (vault === undefined) {
+    return <CardListSkeleton />;
+  }
+
+  if (!vault) {
+    return (
+      <PageTransition>
+        <main className="flex min-h-screen items-center justify-center bg-void px-5">
+          <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
+            <p className="text-sm text-ink-muted">Cofre não encontrado</p>
+            <Button variant="primary" onClick={() => router.push("/vaults")} className="mt-4">Voltar</Button>
+          </div>
+        </main>
+      </PageTransition>
+    );
+  }
+
+  const handleAddMember = async () => {
+    if (!email.trim() || !user) {
       trigger("error");
-      showToast("Informe o nome do cofre", "error");
+      showToast("Digite um e-mail válido", "error");
       return;
     }
 
-    if (!user?.id) {
-      trigger("error");
-      showToast("Usuário não autenticado", "error");
-      return;
-    }
-
-    if (isSubmitLocked.current || isSubmitting) return;
-    isSubmitLocked.current = true;
-
+    setIsAdding(true);
     try {
-      await run(
-        async () => {
-          await vaultsRepository.create({
-          name: formData.name.trim(),
-          user_id: user.id,
-          description: formData.description.trim() || undefined,
-          icon: formData.icon,
-          color: formData.color,
-        });
-        },
-        {
-          successMessage: "Cofre criado com sucesso",
-          errorMessage: "Erro ao criar cofre",
-          goBackOnSuccess: true,
-        }
-      );
+      await addMember({
+        vault_id: vaultId,
+        user_id: "", // ✅ CORRIGIDO: string vazia, pois o ID real será preenchido ao aceitar
+        email: email.trim(),
+        name: email.split("@")[0],
+        permission,
+        status: "pending",
+        invited_at: new Date().toISOString(),
+      });
+      trigger("success");
+      showToast("Membro convidado com sucesso!", "success");
+      setEmail("");
+    } catch (error) {
+      console.error(error);
+      trigger("error");
+      showToast("Erro ao adicionar membro", "error");
     } finally {
-      isSubmitLocked.current = false;
+      setIsAdding(false);
     }
   };
 
-  const selectedIcon = ICON_OPTIONS.find((opt) => opt.value === formData.icon);
-  const SelectedIcon = selectedIcon?.icon || Lock;
+  const handleUpdateStatus = async (memberId: string, status: "accepted" | "rejected") => {
+    try {
+      await updateMember(memberId, { status });
+      trigger("vibrate");
+      showToast(status === "accepted" ? "Membro aceito!" : "Convite rejeitado", "info");
+    } catch (error) {
+      console.error(error);
+      trigger("error");
+      showToast("Erro ao atualizar status", "error");
+    }
+  };
+
+  const permissionTone = {
+    view: "bg-surface-raised text-ink-muted",
+    edit: "bg-ice/10 text-ice",
+    admin: "bg-violet-500/15 text-violet-300",
+  };
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              aria-label="Voltar"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-            >
+            <button onClick={() => { trigger("vibrate"); router.back(); }} aria-label="Voltar" className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
-            <div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Novo cofre</h1>
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
+              <h1 className="max-w-[220px] truncate font-display text-xl font-semibold text-ink-primary">Membros</h1>
+              <p className="truncate text-sm text-ink-muted">{vault.name}</p>
             </div>
           </div>
         </header>
 
         <section className="space-y-5 px-5 pt-6">
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-6 shadow-sm">
-            <div className="mb-6 flex flex-col items-center text-center">
-              <div
-                className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/5 shadow-sm"
-                style={{ backgroundColor: `${formData.color}1F` }}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.26 }} className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                <UserPlus size={18} />
+              </div>
+              <div>
+                <h3 className="font-display text-sm font-semibold text-ink-primary">Convidar membro</h3>
+                <p className="mt-1 text-xs leading-5 text-ink-muted">Envie acesso com a permissão correta para visualizar, editar ou administrar este cofre.</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="relative">
+                <Mail size={16} className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted" />
+                <Input
+                  label="E-mail do convidado"
+                  placeholder="nome@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Permissão</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {PERMISSION_OPTIONS.map((option) => {
+                    const Icon = option.icon;
+                    const isSelected = permission === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => { trigger("vibrate"); setPermission(option.id); }}
+                        className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 text-xs font-medium transition-all active:scale-95 ${
+                          isSelected ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                        }`}
+                      >
+                        <Icon size={16} />
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAddMember}
+                disabled={isAdding}
+                className="flex items-center gap-2"
               >
-                <SelectedIcon size={34} style={{ color: formData.color }} />
+                {isAdding ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Convidando...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={14} />
+                    Convidar membro
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.26, delay: 0.04 }}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 font-display text-sm font-semibold text-ink-primary">
+                <Users size={16} className="text-ink-muted" />
+                Membros
+              </h3>
+              <span className="text-xs text-ink-muted">{members?.length || 0} total</span>
+            </div>
+
+            {members && members.length > 0 ? (
+              <div className="space-y-2">
+                {members.map((member, index) => {
+                  const perm = PERMISSION_OPTIONS.find((p) => p.id === member.permission) || PERMISSION_OPTIONS[0];
+                  const PermIcon = perm.icon;
+
+                  return (
+                    <motion.div
+                      key={member.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.2) }}
+                      className="rounded-[22px] border border-surface-border/50 bg-surface px-4 py-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-semibold text-ink-muted">
+                            {member.name?.charAt(0).toUpperCase() || "?"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-ink-primary">{member.name || member.email}</p>
+                            <p className="truncate text-xs text-ink-muted">{member.email}</p>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${permissionTone[member.permission as keyof typeof permissionTone] || permissionTone.view}`}>
+                                <PermIcon size={10} />
+                                {perm.label}
+                              </span>
+                              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                                member.status === "accepted" ? "bg-emerald-500/15 text-emerald-300" :
+                                member.status === "pending" ? "bg-ice/10 text-ice" :
+                                "bg-coral/15 text-coral"
+                              }`}>
+                                {member.status === "accepted" ? "Aceito" : member.status === "pending" ? "Pendente" : "Rejeitado"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {member.status === "pending" && (
+                          <div className="flex shrink-0 items-center gap-1">
+                            <button onClick={() => handleUpdateStatus(member.id!, "accepted")} aria-label="Aceitar convite" className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-300 transition-colors active:scale-95 hover:bg-surface-raised">
+                              <Check size={15} />
+                            </button>
+                            <button onClick={() => handleUpdateStatus(member.id!, "rejected")} aria-label="Rejeitar convite" className="flex h-9 w-9 items-center justify-center rounded-full text-coral transition-colors active:scale-95 hover:bg-surface-raised">
+                              <X size={15} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
-              <h2 className="mt-4 font-display text-lg font-semibold text-ink-primary">
-                Configure seu cofre
-              </h2>
-              <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
-                Escolha um nome, uma cor e um ícone para identificar rapidamente este espaço.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <Input
-                label="Nome do cofre"
-                placeholder="Ex: Família Gomes, Saúde, Empresa"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
-                required
-              />
-              <TextArea
-                label="Descrição"
-                placeholder="O que será guardado neste cofre?"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, description: e.target.value }))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm">
-            <div className="mb-3">
-              <p className="text-sm font-semibold text-ink-primary">Ícone</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                Escolha o símbolo que melhor representa este cofre.
-              </p>
-            </div>
-            <div className="grid grid-cols-4 gap-2.5">
-              {ICON_OPTIONS.map((option) => {
-                const Icon = option.icon;
-                const isSelected = formData.icon === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, icon: option.value }))
-                    }
-                    className={`flex min-h-[74px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-3 transition-all duration-200 active:scale-95 ${
-                      isSelected
-                        ? "border-ice bg-ice/10 text-ice shadow-[0_0_0_1px_rgba(125,211,252,0.08)]"
-                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    <Icon size={20} />
-                    <span className="text-[10px] font-medium">{option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm">
-            <div className="mb-3">
-              <p className="text-sm font-semibold text-ink-primary">Cor</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                Use uma cor para diferenciar cofres com mais rapidez.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {COLOR_OPTIONS.map((color) => {
-                const selected = formData.color === color;
-                return (
-                  <button
-                    key={color}
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, color }))
-                    }
-                    aria-label={`Selecionar cor ${color}`}
-                    className={`relative h-10 w-10 rounded-full border-2 transition-all duration-200 active:scale-95 ${
-                      selected ? "border-white shadow-lg" : "border-transparent"
-                    }`}
-                    style={{ backgroundColor: color }}
-                  >
-                    {selected && (
-                      <span className="absolute inset-0 rounded-full ring-4 ring-white/10" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-              Prévia
-            </p>
-            <div className="mt-4 flex items-center gap-4 rounded-[24px] border border-surface-border/50 bg-surface-raised/60 px-4 py-4">
-              <div
-                className="flex h-14 w-14 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: `${formData.color}22` }}
-              >
-                <SelectedIcon size={22} style={{ color: formData.color }} />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate font-display text-base font-semibold text-ink-primary">
-                  {formData.name || "Nome do cofre"}
-                </p>
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-muted">
-                  {formData.description || "Descrição opcional do cofre"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="mt-1 flex items-center justify-center gap-2"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 size={16} className="animate-spin" /> Criando...
-              </>
             ) : (
-              "Criar cofre"
+              <div className="rounded-[24px] border border-surface-border/50 bg-surface px-5 py-10 text-center">
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-raised text-ink-muted">
+                  <Users size={20} />
+                </div>
+                <p className="text-sm font-medium text-ink-primary">Nenhum membro neste cofre</p>
+                <p className="mt-1 text-xs leading-5 text-ink-muted">Convide pessoas para compartilhar documentos com segurança.</p>
+              </div>
             )}
-          </Button>
+          </motion.div>
         </section>
       </main>
     </PageTransition>
+  );
+}
+
+export default function VaultMembersPage() {
+  return (
+    <Suspense fallback={<CardListSkeleton />}>
+      <VaultMembersContent />
+    </Suspense>
   );
 }

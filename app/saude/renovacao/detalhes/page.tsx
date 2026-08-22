@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, FileWarning, Calendar, DollarSign, ExternalLink, 
   Trash2, Pill, FileText, Edit3, AlertCircle, CheckCircle2, Clock,
-  History, ChevronRight, Plus,
+  History, ChevronRight, Plus, Receipt
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -16,7 +16,7 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
-import { getDaysUntil } from "@/lib/health-utils";
+import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils"; // INJEÇÃO VISUAL
 import type { Renovacao, Medicamento, Medico, Farmacia } from "@/lib/types";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useMounted } from "@/hooks/useMounted";
@@ -108,7 +108,6 @@ function DetalhesRenovacaoContent() {
     fetchData();
   }, [id, router]);
 
-  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
   if (!mounted) return <DetailSkeleton />;
 
   const handleDelete = async () => {
@@ -148,6 +147,9 @@ function DetalhesRenovacaoContent() {
   const vencida = medicamento ? isReceitaVencidaSegura(medicamento.proxima_renovacao) : isReceitaVencidaSegura(renovacao.data);
   const diasRestantes = getDaysUntil(medicamento?.proxima_renovacao || renovacao.data);
 
+  // TEMA DINÂMICO
+  const theme = getClinicalTheme(medicamento?.nome || "Renovação");
+
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
@@ -160,7 +162,7 @@ function DetalhesRenovacaoContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Vault</p>
+              <p className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.textClass}`}>Vault</p>
               <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Detalhes da Renovação</h1>
             </div>
           </div>
@@ -242,12 +244,12 @@ function DetalhesRenovacaoContent() {
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
             style={{ 
-              borderLeft: `6px solid ${vencida ? '#EF4444' : (activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8')}` 
+              borderLeft: `6px solid ${vencida ? '#EF4444' : theme.hex}` 
             }}
           >
             <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/20">
-                <FileWarning size={24} />
+              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
+                <Receipt size={24} />
               </div>
               <div className="min-w-0 pt-1">
                 <div className="flex items-center gap-2">
@@ -264,7 +266,7 @@ function DetalhesRenovacaoContent() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm font-medium text-ice mt-0.5">
+                <p className={`text-sm font-medium mt-0.5 ${theme.textClass}`}>
                   {medicamento?.dosagem || ""}
                 </p>
                 {medico && (

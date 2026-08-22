@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowLeft, Loader2, Trash2, ChevronRight, X, Check, FolderHeart, 
+  ArrowLeft, Loader2, Trash2, ChevronRight, X, FolderHeart, 
   Stethoscope, Building2, MapPin, Pill, FlaskConical, Plus, ExternalLink 
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -24,22 +24,13 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { tratamentosRepository } from "@/lib/repositories/tratamentos";
 import { medicamentosRepository } from "@/lib/repositories/medicamentos";
-import type { Tratamento, Cid, Person, Medico, Hospital, LocalSaude, Medicamento, Exame } from "@/lib/types";
+import type { Tratamento, Cid, Person, Medico, Hospital, LocalSaude } from "@/lib/types";
 import { cancelDoseNotifications } from "@/lib/dose-notifications";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { getClinicalTheme } from "@/lib/health-utils";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
-
-const CORES_TRATAMENTO = [
-  { label: "Roxo", hex: "#8B5CF6" },
-  { label: "Azul", hex: "#3B82F6" },
-  { label: "Esmeralda", hex: "#10B981" },
-  { label: "Amarelo", hex: "#F59E0B" },
-  { label: "Coral", hex: "#EF4444" },
-  { label: "Rosa", hex: "#EC4899" },
-  { label: "Ciano", hex: "#06B6D4" },
-];
 
 function EditarTratamentoContent() {
   const { trigger } = useHapticFeedback();
@@ -47,17 +38,14 @@ function EditarTratamentoContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
-  // Hooks de Dados Base
   const { getTratamento, deleteTratamentoSafe } = useTratamentos();
   const { cids } = useCids();
   const persons = usePersons() as Person[];
 
-  // Hooks para Vínculos
   const { medicos = [] } = useMedicos();
   const { hospitais = [] } = useHospitais();
   const { locais = [] } = useLocais();
   
-  // Consultas Indiretas no Dexie (Medicamentos e Exames associados ao tratamento)
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), [], []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), [], []) || [];
 
@@ -68,15 +56,12 @@ function EditarTratamentoContent() {
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Estados do Formulário
   const [personId, setPersonId] = useState<string>("");
   const [nome, setNome] = useState("");
   const [cidIds, setCidIds] = useState<string[]>([]);
-  const [cor, setCor] = useState("#8B5CF6");
   const [status, setStatus] = useState<"ativo" | "concluido" | "suspenso">("ativo");
   const [observacoes, setObservacoes] = useState("");
   
-  // Estados de Relacionamento Direto M:N
   const [medicoIds, setMedicoIds] = useState<string[]>([]);
   const [hospitalIds, setHospitalIds] = useState<string[]>([]);
   const [localIds, setLocalIds] = useState<string[]>([]);
@@ -84,7 +69,6 @@ function EditarTratamentoContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [error, setError] = useState("");
   
-  // Modais de Seleção
   const [isCidModalOpen, setIsCidModalOpen] = useState(false);
   const [showAddCidPrompt, setShowAddCidPrompt] = useState(false);
   const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
@@ -104,11 +88,9 @@ function EditarTratamentoContent() {
           setPersonId(data.person_id || "");
           setNome(data.nome || "");
           setCidIds(data.cid_ids || []);
-          setCor(data.cor || "#8B5CF6");
           setStatus(data.status || "ativo");
           setObservacoes(data.observacoes || "");
           
-          // Carregar Vínculos
           setMedicoIds(data.medico_ids || []);
           setHospitalIds(data.hospital_ids || []);
           setLocalIds(data.local_ids || []);
@@ -124,13 +106,11 @@ function EditarTratamentoContent() {
     loadData();
   }, [id, router, getTratamento]);
 
-  // OBJETOS VINCULADOS DIRETAMENTE (M:N)
   const selectedCids = useMemo(() => cids?.filter((c: Cid) => c.id && cidIds.includes(c.id)) || [], [cids, cidIds]);
   const medicosVinculados = useMemo(() => medicos.filter(m => medicoIds.includes(m.id!)), [medicos, medicoIds]);
   const hospitaisVinculados = useMemo(() => hospitais.filter(h => hospitalIds.includes(h.id!)), [hospitais, hospitalIds]);
   const locaisVinculados = useMemo(() => locais.filter(l => localIds.includes(l.id!)), [locais, localIds]);
 
-  // OBJETOS INDIRETOS (Históricos associados a este tratamento)
   const medicamentosVinculados = useMemo(() => {
     return medicamentos.filter(m => m.tratamento_ids?.includes(id!));
   }, [medicamentos, id]);
@@ -138,6 +118,9 @@ function EditarTratamentoContent() {
   const examesVinculados = useMemo(() => {
     return exames.filter(e => e.tratamento_ids?.includes(id!));
   }, [exames, id]);
+
+  const theme = getClinicalTheme(nome || "Editar Tratamento");
+  const PreviewIcon = theme.icon;
 
   const handleSubmit = async () => {
     trigger("vibrate");
@@ -157,7 +140,7 @@ function EditarTratamentoContent() {
             person_id: personId,
             nome: nome.trim(),
             cid_ids: cleanCids,
-            cor,
+            cor: theme.hex,
             status,
             observacoes: observacoes.trim() || undefined,
             medico_ids: medicoIds,
@@ -165,7 +148,6 @@ function EditarTratamentoContent() {
             local_ids: localIds,
           });
 
-          // Se o tratamento foi concluído/suspenso, desativa medicamentos
           if (status === 'concluido' || status === 'suspenso') {
             const medicamentosAfetados = await db.medicamentos.where('tratamento_ids').anyOf(id).toArray();
             for (const med of medicamentosAfetados) {
@@ -200,11 +182,9 @@ function EditarTratamentoContent() {
     );
   };
 
-  // Handlers CIDs
   const handleAddCid = (cidId: string) => { trigger("vibrate"); if (!cidIds.includes(cidId)) setCidIds([...cidIds, cidId]); setIsCidModalOpen(false); setShowAddCidPrompt(true); };
   const handleRemoveCid = (cidId: string) => { trigger("vibrate"); setCidIds(cidIds.filter((item) => item !== cidId)); };
 
-  // Handlers Vínculos M:N
   const handleAddMedico = (m: Medico) => { if (m.id && !medicoIds.includes(m.id)) setMedicoIds(p => [...p, m.id!]); };
   const handleRemoveMedico = (id: string) => { trigger("vibrate"); setMedicoIds(p => p.filter(i => i !== id)); };
 
@@ -235,7 +215,28 @@ function EditarTratamentoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* PESSOA */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300 ${theme.borderClass}`}
+            style={{ borderLeft: `6px solid ${theme.hex}` }}
+          >
+            <div className="flex items-center gap-4">
+              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
+                <PreviewIcon size={24} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme.textClass}`}>
+                  IDENTIFICAÇÃO
+                </p>
+                <h2 className="font-display text-base font-semibold text-ink-primary mt-0.5 line-clamp-2">
+                  {nome || "A prévia visual aparecerá aqui..."}
+                </h2>
+              </div>
+            </div>
+          </motion.div>
+
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Para quem? <span className="text-coral">*</span></p>
             <div className="flex flex-wrap gap-2">
@@ -248,12 +249,11 @@ function EditarTratamentoContent() {
             {error && !personId && <p className="mt-2 text-xs text-coral">Selecione uma pessoa</p>}
           </motion.div>
 
-          {/* DADOS DO TRATAMENTO */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="space-y-5 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input label="Nome do Tratamento" placeholder="Ex: TDAH, Dor Crônica..." value={nome} onChange={(e) => { setNome(e.target.value); if (error) setError(""); }} error={error} required />
+            <Input label="Nome do Tratamento *" placeholder="Ex: TDAH, Dor Crônica..." value={nome} onChange={(e) => { setNome(e.target.value); if (error) setError(""); }} error={error} required />
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-ink-primary">Diagnósticos (CIDs)</label>
+              <label className="block text-sm font-medium text-ink-primary">Diagnósticos (CIDs Associados)</label>
               {selectedCids.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {selectedCids.map((c: Cid) => (
@@ -265,27 +265,16 @@ function EditarTratamentoContent() {
                 </div>
               )}
               <button type="button" onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left transition-all active:scale-95">
-                <span className="text-ink-muted">{selectedCids.length > 0 ? "Adicionar outro CID" : "Toque para adicionar CID (opcional)"}</span>
+                <span className="text-ink-muted">{selectedCids.length > 0 ? "Adicionar outro CID" : "Toque para vincular CIDs"}</span>
                 <ChevronRight size={18} className="text-ink-muted shrink-0 ml-2" />
               </button>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-ink-primary">Identificação Visual</label>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                {CORES_TRATAMENTO.map((item) => (
-                  <button key={item.hex} type="button" onClick={() => { trigger("vibrate"); setCor(item.hex); }} className={`relative h-10 w-10 shrink-0 rounded-full border-2 transition-all active:scale-95 ${cor === item.hex ? "border-ice scale-110 shadow-md" : "border-transparent"}`} style={{ backgroundColor: item.hex }} title={item.label}>
-                    {cor === item.hex && <Check size={16} className="absolute inset-0 m-auto text-void" strokeWidth={3} />}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-ink-primary">Status</label>
               <div className="grid grid-cols-3 gap-2">
                 {(["ativo", "concluido", "suspenso"] as const).map((s) => (
-                  <button key={s} onClick={() => { trigger("vibrate"); setStatus(s); }} className={`rounded-2xl border px-1 py-2.5 text-xs font-medium capitalize transition-all active:scale-95 text-center ${status === s ? `border-[${cor}] bg-[${cor}]/10 text-[${cor}]` : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"}`} style={status === s ? { borderColor: cor, color: cor, backgroundColor: `${cor}20` } : {}}>
+                  <button key={s} onClick={() => { trigger("vibrate"); setStatus(s); }} className={`rounded-2xl border px-1 py-2.5 text-xs font-medium capitalize transition-all active:scale-95 text-center ${status === s ? `border-[${theme.hex}] bg-[${theme.hex}]/10 text-[${theme.hex}]` : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"}`} style={status === s ? { borderColor: theme.hex, color: theme.hex, backgroundColor: `${theme.hex}20` } : {}}>
                     {s === "ativo" ? "Em andamento" : s === "concluido" ? "Concluído" : "Suspenso"}
                   </button>
                 ))}
@@ -298,10 +287,7 @@ function EditarTratamentoContent() {
             </div>
           </motion.div>
 
-          {/* EQUIPE MÉDICA E LOCAIS (DIRETOS) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            
-            {/* Médicos */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Stethoscope size={14} className="text-ice" /> Médicos Responsáveis</h2>
@@ -318,7 +304,6 @@ function EditarTratamentoContent() {
               )}
             </div>
 
-            {/* Hospitais */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Building2 size={14} className="text-violet-400" /> Hospitais / Clínicas</h2>
@@ -335,7 +320,6 @@ function EditarTratamentoContent() {
               )}
             </div>
 
-            {/* Locais */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><MapPin size={14} className="text-emerald-400" /> Postos de Saúde / C.A.P.S</h2>
@@ -351,15 +335,12 @@ function EditarTratamentoContent() {
                 </div>
               )}
             </div>
-
           </motion.div>
 
-          {/* HISTÓRICO CLÍNICO (INDIRETOS) */}
           {(medicamentosVinculados.length > 0 || examesVinculados.length > 0) && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
               <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5 px-1"><FolderHeart size={14} className="text-coral" /> Histórico Clínico do Tratamento</h2>
               
-              {/* Medicamentos Associados */}
               {medicamentosVinculados.length > 0 && (
                 <div>
                   <h3 className="text-[10px] font-bold text-ink-muted uppercase tracking-wider mb-2 flex items-center gap-1"><Pill size={12} className="text-emerald-400" /> Prescrições</h3>
@@ -377,7 +358,6 @@ function EditarTratamentoContent() {
                 </div>
               )}
 
-              {/* Exames Associados */}
               {examesVinculados.length > 0 && (
                 <div>
                   <h3 className="text-[10px] font-bold text-ink-muted uppercase tracking-wider mb-2 mt-3 flex items-center gap-1"><FlaskConical size={12} className="text-ice" /> Avaliações / Exames</h3>
@@ -394,30 +374,26 @@ function EditarTratamentoContent() {
                   </div>
                 </div>
               )}
-
             </motion.div>
           )}
-
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saveAction.isSubmitting} className="shadow-lg shadow-ice/10">
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saveAction.isSubmitting} className="shadow-lg">
             {saveAction.isSubmitting ? <Loader2 size={18} className="animate-spin" /> : "Salvar alterações"}
           </Button>
         </div>
 
         <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir Tratamento" message="Tem certeza que deseja excluir este tratamento? O histórico de medicamentos e exames não será apagado, mas perderão este vínculo." isLoading={deleteAction.isSubmitting} />
 
-        {/* MODAIS DE SELEÇÃO */}
-        <SelectionModal<Cid> isOpen={isCidModalOpen} onClose={() => setIsCidModalOpen(false)} onSelect={(item) => handleAddCid(item.id!)} items={cids || []} title="Adicionar CID" placeholder="Buscar..." getItemId={i => i.id!} getItemLabel={i => i.descricao} renderItem={(item) => (<div><p className="font-medium text-ink-primary">{item.descricao}</p>{item.codigo && <p className="text-xs text-ink-muted">CID: {item.codigo}</p>}</div>)} onCreateNew={() => { setIsCidModalOpen(false); router.push("/saude/cids/novo"); }} createNewLabel="Cadastrar Novo CID" />
+        <SelectionModal<Cid> isOpen={isCidModalOpen} onClose={() => setIsCidModalOpen(false)} onSelect={(item) => handleAddCid(item.id!)} items={cids || []} title="Vincular Diagnóstico (CID)" placeholder="Buscar por código ou descrição..." getItemId={i => i.id!} getItemLabel={i => i.descricao} renderItem={(item) => (<div><p className="font-medium text-ink-primary">{item.descricao}</p>{item.codigo && item.codigo !== "N/A" && <p className="text-xs text-ink-muted">CID: {item.codigo}</p>}</div>)} onCreateNew={() => { setIsCidModalOpen(false); router.push("/saude/cids/novo"); }} createNewLabel="Cadastrar Novo CID" />
 
-        <SelectionModal<Medico> isOpen={isMedicoModalOpen} onClose={() => setIsMedicoModalOpen(false)} onSelect={handleAddMedico} items={medicos.filter(m => !medicoIds.includes(m.id!))} title="Vincular Médico" placeholder="Buscar médico..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Stethoscope size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">Dr(a). {item.nome}</p></div></div>)} />
+        <SelectionModal<Medico> isOpen={isMedicoModalOpen} onClose={() => setIsMedicoModalOpen(false)} onSelect={handleAddMedico} items={medicos.filter(m => !medicoIds.includes(m.id!))} title="Vincular Médico" placeholder="Buscar médico..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Stethoscope size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">Dr(a). {item.nome}</p></div></div>)} onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }} createNewLabel="Cadastrar Novo Médico" />
 
-        <SelectionModal<Hospital> isOpen={isHospitalModalOpen} onClose={() => setIsHospitalModalOpen(false)} onSelect={handleAddHospital} items={hospitais.filter(h => !hospitalIds.includes(h.id!))} title="Vincular Hospital" placeholder="Buscar hospital..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/10 text-violet-400"><Building2 size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} />
+        <SelectionModal<Hospital> isOpen={isHospitalModalOpen} onClose={() => setIsHospitalModalOpen(false)} onSelect={handleAddHospital} items={hospitais.filter(h => !hospitalIds.includes(h.id!))} title="Vincular Hospital" placeholder="Buscar hospital..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/10 text-violet-400"><Building2 size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }} createNewLabel="Cadastrar Novo Hospital" />
 
-        <SelectionModal<LocalSaude> isOpen={isLocalModalOpen} onClose={() => setIsLocalModalOpen(false)} onSelect={handleAddLocal} items={locais.filter(l => !localIds.includes(l.id!))} title="Vincular Posto/Local" placeholder="Buscar local..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><MapPin size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} />
+        <SelectionModal<LocalSaude> isOpen={isLocalModalOpen} onClose={() => setIsLocalModalOpen(false)} onSelect={handleAddLocal} items={locais.filter(l => !localIds.includes(l.id!))} title="Vincular Posto/Local" placeholder="Buscar local..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><MapPin size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }} createNewLabel="Cadastrar Novo Local" />
 
-        {/* PROMPT PARA ADICIONAR MAIS CIDS */}
         <AnimatePresence>
           {showAddCidPrompt && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm" onClick={() => setShowAddCidPrompt(false)}>

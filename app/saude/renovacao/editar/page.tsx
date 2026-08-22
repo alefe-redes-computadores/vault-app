@@ -19,6 +19,7 @@ import {
   Building2,
   MapPin,
   Eraser,
+  Receipt,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
@@ -36,6 +37,7 @@ import { useLocais } from "@/hooks/useLocais";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
 import { renovacoesRepository } from "@/lib/repositories/renovacoes";
+import { getClinicalTheme } from "@/lib/health-utils";
 import type {
   Renovacao,
   Medicamento,
@@ -130,6 +132,8 @@ function EditarRenovacaoContent() {
   const selectedFarmacia = farmacias.find((f) => f.id === farmaciaId);
   const selectedHospital = hospitais.find((h) => h.id === hospitalId);
   const selectedLocal = locais.find((l) => l.id === localId);
+
+  const theme = getClinicalTheme(selectedMedicamento?.nome || "Editar Renovação");
 
   useEffect(() => {
     if (!id) {
@@ -261,6 +265,28 @@ function EditarRenovacaoContent() {
             variants={fadeUp}
             initial="initial"
             animate="animate"
+            className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300 ${theme.borderClass}`}
+            style={{ borderLeft: `6px solid ${theme.hex}` }}
+          >
+            <div className="flex items-center gap-4">
+              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
+                <Receipt size={24} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme.textClass}`}>
+                  AQUISIÇÃO
+                </p>
+                <h2 className="font-display text-base font-semibold text-ink-primary mt-0.5 line-clamp-2">
+                  {selectedMedicamento ? selectedMedicamento.nome : "Aguardando seleção..."}
+                </h2>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <label className="mb-1.5 block text-sm font-medium text-ink-primary">Medicamento</label>
@@ -281,7 +307,6 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* MÉDICO COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -319,7 +344,6 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* FARMÁCIA COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -357,7 +381,6 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* HOSPITAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -395,7 +418,6 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* LOCAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"

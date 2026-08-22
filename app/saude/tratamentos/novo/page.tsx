@@ -4,7 +4,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Check, Stethoscope, Building2, MapPin, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Stethoscope, Building2, MapPin, Plus } from "lucide-react";
 import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,21 +19,12 @@ import { tratamentosRepository } from "@/lib/repositories/tratamentos";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import type { Cid, Person, Medico, Hospital, LocalSaude } from "@/lib/types";
+import { getClinicalTheme } from "@/lib/health-utils";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
 };
-
-const CORES_TRATAMENTO = [
-  { label: "Roxo", hex: "#8B5CF6" },
-  { label: "Azul", hex: "#3B82F6" },
-  { label: "Esmeralda", hex: "#10B981" },
-  { label: "Amarelo", hex: "#F59E0B" },
-  { label: "Coral", hex: "#EF4444" },
-  { label: "Rosa", hex: "#EC4899" },
-  { label: "Ciano", hex: "#06B6D4" },
-];
 
 export default function NovoTratamentoPage() {
   const { trigger } = useHapticFeedback();
@@ -53,7 +44,6 @@ export default function NovoTratamentoPage() {
   const [nome, setNome] = useState("");
   const [cidIds, setCidIds] = useState<string[]>([]);
   const [status, setStatus] = useState<"ativo" | "concluido" | "suspenso">("ativo");
-  const [cor, setCor] = useState("#8B5CF6");
   const [observacoes, setObservacoes] = useState("");
   
   const [medicoIds, setMedicoIds] = useState<string[]>([]);
@@ -71,6 +61,9 @@ export default function NovoTratamentoPage() {
   const medicosVinculados = medicos.filter(m => medicoIds.includes(m.id!));
   const hospitaisVinculados = hospitais.filter(h => hospitalIds.includes(h.id!));
   const locaisVinculados = locais.filter(l => localIds.includes(l.id!));
+
+  const theme = getClinicalTheme(nome || "Novo Tratamento");
+  const PreviewIcon = theme.icon;
 
   const handleSubmit = async () => {
     trigger("vibrate");
@@ -104,7 +97,7 @@ export default function NovoTratamentoPage() {
             nome: nome.trim(),
             cid_ids: cleanCids,
             status,
-            cor,
+            cor: theme.hex,
             observacoes: observacoes.trim() || undefined,
             medico_ids: medicoIds,
             hospital_ids: hospitalIds,
@@ -165,6 +158,28 @@ export default function NovoTratamentoPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300 ${theme.borderClass}`}
+            style={{ borderLeft: `6px solid ${theme.hex}` }}
+          >
+            <div className="flex items-center gap-4">
+              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
+                <PreviewIcon size={24} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme.textClass}`}>
+                  IDENTIFICAÇÃO
+                </p>
+                <h2 className="font-display text-base font-semibold text-ink-primary mt-0.5 line-clamp-2">
+                  {nome || "A prévia visual aparecerá aqui..."}
+                </h2>
+              </div>
+            </div>
+          </motion.div>
+
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <p className="mb-3 text-sm font-medium text-ink-primary">Para quem? <span className="text-coral">*</span></p>
             <div className="flex flex-wrap gap-2">
@@ -187,7 +202,7 @@ export default function NovoTratamentoPage() {
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="space-y-5 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <Input
-              label="Nome do Tratamento"
+              label="Nome do Tratamento *"
               placeholder="Ex: TDAH, Dor Crônica, Depressão..."
               value={nome}
               onChange={(e) => {
@@ -200,7 +215,7 @@ export default function NovoTratamentoPage() {
             />
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-ink-primary">Diagnósticos (CIDs)</label>
+              <label className="block text-sm font-medium text-ink-primary">Diagnósticos (CIDs Associados)</label>
               {selectedCids.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {selectedCids.map((c: Cid) => (
@@ -221,30 +236,10 @@ export default function NovoTratamentoPage() {
                 className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left transition-all active:scale-95"
               >
                 <span className="text-ink-muted">
-                  {selectedCids.length > 0 ? "Adicionar outro CID" : "Toque para adicionar CID (opcional)"}
+                  {selectedCids.length > 0 ? "Adicionar outro CID" : "Toque para vincular CIDs"}
                 </span>
                 <ChevronRight size={18} className="text-ink-muted shrink-0 ml-2" />
               </button>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-ink-primary">Identificação Visual</label>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                {CORES_TRATAMENTO.map((item) => (
-                  <button
-                    key={item.hex}
-                    type="button"
-                    onClick={() => { trigger("vibrate"); setCor(item.hex); }}
-                    className={`relative h-10 w-10 shrink-0 rounded-full border-2 transition-all active:scale-95 ${
-                      cor === item.hex ? "border-ice scale-110 shadow-md" : "border-transparent"
-                    }`}
-                    style={{ backgroundColor: item.hex }}
-                    title={item.label}
-                  >
-                    {cor === item.hex && <Check size={16} className="absolute inset-0 m-auto text-void" strokeWidth={3} />}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div>
@@ -255,8 +250,9 @@ export default function NovoTratamentoPage() {
                     key={s}
                     onClick={() => { trigger("vibrate"); setStatus(s); }}
                     className={`rounded-2xl border px-1 py-2.5 text-xs font-medium capitalize transition-all active:scale-95 text-center ${
-                      status === s ? "border-violet-400 bg-violet-400/12 text-violet-300" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                      status === s ? `border-[${theme.hex}] bg-[${theme.hex}]/10 text-[${theme.hex}]` : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                     }`}
+                    style={status === s ? { borderColor: theme.hex, color: theme.hex, backgroundColor: `${theme.hex}20` } : {}}
                   >
                     {s === "ativo" ? "Em andamento" : s === "concluido" ? "Concluído" : "Suspenso"}
                   </button>
@@ -276,10 +272,7 @@ export default function NovoTratamentoPage() {
             </div>
           </motion.div>
 
-          {/* EQUIPE MÉDICA E LOCAIS (DIRETOS) */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            
-            {/* Médicos */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Stethoscope size={14} className="text-ice" /> Médicos Responsáveis</h2>
@@ -296,7 +289,6 @@ export default function NovoTratamentoPage() {
               )}
             </div>
 
-            {/* Hospitais */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Building2 size={14} className="text-violet-400" /> Hospitais / Clínicas</h2>
@@ -313,7 +305,6 @@ export default function NovoTratamentoPage() {
               )}
             </div>
 
-            {/* Locais */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><MapPin size={14} className="text-emerald-400" /> Postos de Saúde / C.A.P.S</h2>
@@ -329,7 +320,6 @@ export default function NovoTratamentoPage() {
                 </div>
               )}
             </div>
-
           </motion.div>
         </section>
 
@@ -340,7 +330,7 @@ export default function NovoTratamentoPage() {
             fullWidth
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex items-center justify-center gap-2 shadow-lg shadow-violet-400/10"
+            className="flex items-center justify-center gap-2 shadow-lg"
           >
             {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar tratamento</>}
           </Button>
@@ -351,7 +341,7 @@ export default function NovoTratamentoPage() {
           onClose={() => setIsCidModalOpen(false)}
           onSelect={(item) => handleAddCid(item.id!)}
           items={cids || []}
-          title="Adicionar Diagnóstico (CID)"
+          title="Vincular Diagnóstico (CID)"
           placeholder="Buscar por código ou descrição..."
           renderItem={(item: Cid) => (
             <div>
@@ -444,7 +434,6 @@ export default function NovoTratamentoPage() {
                     <p className="text-xs text-ink-muted">Você pode vincular múltiplos diagnósticos</p>
                   </div>
                 </div>
-                <p className="text-sm text-ink-muted leading-relaxed">Deseja adicionar outro CID a este tratamento?</p>
                 <div className="flex gap-2 pt-2">
                   <button
                     onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); }}

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Loader2, FileWarning, Upload, Camera, X, Save, DollarSign,
   Calendar, Store, PackagePlus, Stethoscope, TrendingDown, TrendingUp, Building2, MapPin, Check, AlertTriangle, Eraser,
+  Receipt,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -19,6 +20,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { uploadFile } from "@/lib/supabase/storage";
 import { getLocalTodayISO, getDaysUntil, VALIDADE_RECEITA_DIAS } from "@/lib/health-utils";
+import { getClinicalTheme } from "@/lib/health-utils"; // INJEÇÃO VISUAL
 import type { Attachment, TipoReceita, Medicamento, Medico, Farmacia, Hospital, LocalSaude, Renovacao } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
@@ -75,8 +77,8 @@ function NovaRenovacaoContent() {
   const searchParams = useSearchParams();
   const autoSelectMedId = searchParams.get("medicamento_id");
   const { run, isSubmitting } = useSubmitAction();
-  
-  // TRAVA SÍNCRONA CONTRA DUPLO CLIQUE (Bug do preço/dado duplicado)
+
+  // TRAVA SÍNCRONA CONTRA DUPLO CLIQUE
   const isSubmitLocked = useRef(false);
 
   const { user } = useAuth();
@@ -139,6 +141,9 @@ function NovaRenovacaoContent() {
     farmaciaId,
     preco
   );
+
+  // TEMA DINÂMICO PARA A PRÉVIA VISUAL
+  const theme = getClinicalTheme(selectedMedicamento?.nome || "Nova Renovação");
 
   useEffect(() => {
     if (autoSelectMedId && medicamentos.length > 0 && !medicamentoId) {
@@ -244,8 +249,8 @@ function NovaRenovacaoContent() {
       if (!isSubmitLocked.current) trigger("error");
       return;
     }
-    
-    isSubmitLocked.current = true; // Trava síncrona ativada
+
+    isSubmitLocked.current = true;
 
     run(
       async () => {
@@ -277,7 +282,7 @@ function NovaRenovacaoContent() {
         // 1. Cria a renovação via repositório de forma segura
         await renovacoesRepository.create({
           user_id: user.id,
-          person_id: activePersonId || undefined, // 👈 Garante o vínculo na raiz com o perfil ativo
+          person_id: activePersonId || undefined,
           medicamento_id: medicamentoId,
           medico_id: medicoId || undefined,
           farmacia_id: farmaciaId || undefined,
@@ -294,7 +299,6 @@ function NovaRenovacaoContent() {
           anexo_url: finalAnexoUrl,
           observacoes: observacoes.trim() || undefined,
         });
-
 
         // 2. Atualiza o medicamento vinculado com segurança
         const dadosUpdate: Partial<Medicamento> = {
@@ -322,7 +326,6 @@ function NovaRenovacaoContent() {
         goBackOnSuccess: true,
       }
     ).finally(() => {
-      // Destrava o botão com segurança absoluta ao finalizar
       isSubmitLocked.current = false;
     });
   };
@@ -356,6 +359,29 @@ function NovaRenovacaoContent() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
+          {/* PRÉVIA VISUAL (LIVE PREVIEW) */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300 ${theme.borderClass}`}
+            style={{ borderLeft: `6px solid ${theme.hex}` }}
+          >
+            <div className="flex items-center gap-4">
+              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
+                <Receipt size={24} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme.textClass}`}>
+                  AQUISIÇÃO
+                </p>
+                <h2 className="font-display text-base font-semibold text-ink-primary mt-0.5 line-clamp-2">
+                  {selectedMedicamento ? selectedMedicamento.nome : "Aguardando seleção..."}
+                </h2>
+              </div>
+            </div>
+          </motion.div>
+
           <motion.div
             variants={fadeUp}
             initial="initial"

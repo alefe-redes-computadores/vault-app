@@ -18,7 +18,9 @@ import {
   Pill,
   Activity,
   Plus,
-  X
+  X,
+  Clock,
+  XCircle
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -26,10 +28,10 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { Consulta, Medico, Hospital, Medicamento, Exame } from "@/lib/types";
 import { useConsultas } from "@/hooks/useConsultas";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import { getDaysUntil } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
 
 const fadeUp = {
@@ -44,12 +46,31 @@ function formatDateDisplay(isoStr: string): string {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+function getStatusConfig(status: string): { color: string; icon: any } {
+  switch (status) {
+    case "agendada":
+      return { color: "#34D399", icon: Clock };
+    case "realizada":
+      return { color: "#38BDF8", icon: CheckCircle2 };
+    case "cancelada":
+      return { color: "#EF4444", icon: XCircle };
+    default:
+      return { color: "#38BDF8", icon: Stethoscope };
+  }
+}
+
+function getDiasRestantesLabel(dias: number | null): string | null {
+  if (dias === null) return null;
+  if (dias === 0) return "Hoje";
+  if (dias < 0) return `Há ${Math.abs(dias)} dia${Math.abs(dias) > 1 ? 's' : ''}`;
+  return `Em ${dias} dia${dias > 1 ? 's' : ''}`;
+}
+
 function DetalhesConsultaContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { activePersonId } = useActivePersonId();
   const mounted = useMounted();
 
   const [consulta, setConsulta] = useState<Consulta | null>(null);
@@ -100,6 +121,10 @@ function DetalhesConsultaContent() {
 
   const consultaVencida = useMemo(() => {
     return consulta?.data ? isReceitaVencidaSegura(consulta.data) : false;
+  }, [consulta]);
+
+  const diasRestantes = useMemo(() => {
+    return consulta?.data ? getDaysUntil(consulta.data) : null;
   }, [consulta]);
 
   const medicamentosRelacionados = useMemo(() => {
@@ -159,6 +184,10 @@ function DetalhesConsultaContent() {
 
   if (isLoading) return <DetailSkeleton />;
   if (!consulta) return null;
+
+  const { color: corBorda, icon: StatusIcon } = getStatusConfig(consulta.status);
+  const finalCorBorda = consultaVencida ? "#EF4444" : corBorda;
+  const temHorario = consulta.horario && consulta.horario.trim().length > 0;
 
   return (
     <PageTransition>
@@ -252,22 +281,33 @@ function DetalhesConsultaContent() {
             initial="initial" 
             animate="animate" 
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ 
-              borderLeft: `6px solid ${consultaVencida ? '#EF4444' : (activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8')}` 
-            }}
+            style={{ borderLeft: `6px solid ${finalCorBorda}` }}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-ice/10 text-ice border border-ice/10">
-                  <Stethoscope size={24} />
+                <div 
+                  className="flex h-14 w-14 items-center justify-center rounded-2xl border"
+                  style={{ backgroundColor: `${finalCorBorda}15`, color: finalCorBorda, borderColor: `${finalCorBorda}30` }}
+                >
+                  <StatusIcon size={24} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Calendar size={14} className="text-ice" />
-                    <span className="font-mono text-sm font-bold text-ice">{formatDateDisplay(consulta.data)}</span>
+                    <Calendar size={14} style={{ color: finalCorBorda }} />
+                    <span className="font-mono text-sm font-bold" style={{ color: finalCorBorda }}>{formatDateDisplay(consulta.data)}</span>
+                    {temHorario && (
+                      <span className="font-mono text-sm text-ink-muted">• {consulta.horario}</span>
+                    )}
                     {consultaVencida ? (
                       <span className="text-[8px] font-bold bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencida</span>
                     ) : null}
+                    {diasRestantes !== null && diasRestantes >= 0 && consulta.status === "agendada" && (
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                        diasRestantes <= 2 ? "bg-amber-400/20 text-amber-400" : "bg-ice/20 text-ice"
+                      }`}>
+                        {getDiasRestantesLabel(diasRestantes)}
+                      </span>
+                    )}
                   </div>
                   <h2 className="font-display text-xl font-bold text-ink-primary mt-1">
                     {medico ? `Dr(a). ${medico.nome}` : "Médico não vinculado"}
