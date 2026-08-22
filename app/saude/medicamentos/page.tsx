@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Pill, Circle, Droplet, Syringe, StickyNote, ChevronRight,
   Activity, Calendar, AlertTriangle, Search, Check, Zap, EyeOff, Eye,
-  Loader2, FileWarning, Store, Building2,
+  Loader2, FileWarning, Store, Building2, Stethoscope,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { usePersons } from "@/hooks/usePersons";
@@ -89,7 +89,6 @@ export default function MedicamentosListPage() {
       const isSOS = med.tipo_uso !== "continuo";
       const estoqueInfo = computeEstoqueInfo(med);
       
-      // Matemática corrigida: se for SOS puxa direto da raiz, se não usa a função complexa
       const atual = isSOS ? (med.estoque_quantidade ?? 0) : (estoqueInfo?.quantidadeRestante ?? med.estoque_quantidade ?? 0);
       const doseGasta = Number(med.estoque_unidade_por_dose) || 1;
 
@@ -209,13 +208,11 @@ export default function MedicamentosListPage() {
             filteredAndSorted.map((med: Medicamento) => {
               const isSOS = med.tipo_uso !== "continuo";
               const estoqueInfo = computeEstoqueInfo(med);
-              
-              // Visualização corrigida pro SOS
               const qtd = isSOS ? (med.estoque_quantidade ?? null) : (estoqueInfo?.quantidadeRestante ?? med.estoque_quantidade ?? null);
               
               const tIds = med.tratamento_ids || [];
               const isSuspenso = med.status === "descontinuado";
-              const isControlado = med.tipo_receita === "amarela";
+              const isControlado = med.tipo_receita === "amarela" || med.tipo_receita === "azul";
               const insight = isSuspenso ? null : sugerirRenovacao(med);
               const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
 
@@ -238,18 +235,47 @@ export default function MedicamentosListPage() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2 overflow-hidden flex-wrap">
-                        <p className="font-display text-base font-bold text-ink-primary uppercase truncate">{med.nome}</p>
-                        <p className="text-[10px] font-medium text-ink-muted shrink-0 truncate">{med.dosagem}</p>
-                        {isControlado && <span className="shrink-0 rounded-full bg-amber-400/10 px-2 py-0.5 text-[9px] font-bold text-amber-400 border border-amber-400/20 uppercase">Controlado</span>}
-                        {isSuspenso && <span className="shrink-0 rounded-full bg-coral/10 px-2 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">Suspenso</span>}
-                        {receitaVencida && !isSuspenso && <span className="shrink-0 rounded-full bg-coral/20 px-2 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">Vencida</span>}
+                      {/* TOPO: NOME E BADGES ESTRATÉGICOS */}
+                      <div className="flex items-center gap-2 overflow-hidden flex-wrap">
+                        <h3 className="font-display text-base font-bold text-ink-primary uppercase truncate">{med.nome}</h3>
+                        <span className="text-[10px] font-medium text-ink-muted shrink-0">{med.dosagem}</span>
+                        {isSOS && (
+                          <span className="shrink-0 rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-400 border border-amber-400/20 uppercase flex items-center gap-0.5">
+                            <Zap size={8} fill="currentColor"/> SOS
+                          </span>
+                        )}
+                        {isControlado && (
+                          <span className="shrink-0 rounded-md bg-blue-400/10 px-1.5 py-0.5 text-[9px] font-bold text-blue-400 border border-blue-400/20 uppercase">
+                            Controlado
+                          </span>
+                        )}
+                        {receitaVencida && !isSuspenso && (
+                          <span className="shrink-0 rounded-md bg-coral/10 px-1.5 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">
+                            Vencida
+                          </span>
+                        )}
+                        {isSuspenso && (
+                          <span className="shrink-0 rounded-md bg-coral/10 px-1.5 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">
+                            Suspenso
+                          </span>
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <p className="text-xs font-medium text-ink-muted truncate">{med.medico || "Médico não informado"}</p>
-                        {med.farmacia && <span className="flex items-center gap-0.5 text-[9px] text-ink-muted"><Store size={10} className="text-amber-400" /></span>}
-                        {med.hospital_id && <span className="flex items-center gap-0.5 text-[9px] text-ink-muted"><Building2 size={10} className="text-ice" /></span>}
+                      {/* MEIO: INFORMAÇÕES DE REDE/MÉDICO */}
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5 truncate">
+                          <Stethoscope size={11} className="text-ink-faint"/> {med.medico || "Médico não informado"}
+                        </p>
+                        {med.farmacia && (
+                          <span className="flex items-center gap-1 text-[10px] text-ink-muted border-l border-surface-border/60 pl-2">
+                            <Store size={10} className="text-emerald-400/80" /> {med.farmacia}
+                          </span>
+                        )}
+                        {med.hospital_id && !med.farmacia && (
+                          <span className="flex items-center gap-1 text-[10px] text-ink-muted border-l border-surface-border/60 pl-2">
+                            <Building2 size={10} className="text-violet-400/80" /> Hospital
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap gap-1.5 mt-2">
@@ -271,37 +297,41 @@ export default function MedicamentosListPage() {
                         </div>
                       )}
 
+                      {/* RODAPÉ: ESTOQUE, TOMAR E RENOVAR COMBINADO */}
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-surface-border/40">
                         <div className="flex items-center gap-2">
                           <span className={`text-[11px] font-bold ${insight?.urgencia === "alta" ? "text-coral animate-pulse" : "text-emerald-400"}`}>
-                            {qtd !== null ? `${qtd} ${estoqueInfo?.unidade || "doses"}` : "Sem estoque"}
+                            {qtd !== null ? `${qtd} ${med.estoque_unidade_medida || "unidades"}` : "Sem estoque"}
                           </span>
 
                           {qtd !== null && qtd > 0 && !isSuspenso && (
                             <button
                               onClick={(e) => handleTomarAgora(e, med)}
                               disabled={tomandoDoseId === med.id}
-                              className="flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-lg text-[10px] font-bold active:scale-95 transition-all disabled:opacity-50"
+                              className="flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-lg text-[10px] font-bold active:scale-95 transition-all disabled:opacity-50"
                             >
-                              {tomandoDoseId === med.id ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />} Tomar
+                              {tomandoDoseId === med.id ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} fill="currentColor" />} Tomar
                             </button>
                           )}
+                        </div>
 
-                          {!isSuspenso && (
+                        {!isSuspenso && (
+                          <div className="flex items-center rounded-lg border border-surface-border bg-surface-raised overflow-hidden">
                             <button
-                              onClick={(e) => { e.stopPropagation(); trigger("vibrate"); router.push(`/saude/renovacao/nova?medicamento_id=${med.id}`); }}
-                              className="flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-lg text-[10px] font-bold active:scale-95 transition-all"
+                               onClick={(e) => { e.stopPropagation(); trigger("vibrate"); router.push(`/saude/renovacao/nova?medicamento_id=${med.id}`); }}
+                               className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-ink-muted hover:text-ink-primary active:bg-surface-border transition-colors"
                             >
-                              <Calendar size={10} /> Renovar
+                               <Calendar size={10} className={insight?.urgencia === 'alta' ? 'text-coral' : 'text-amber-400'} /> Renovar
                             </button>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1 text-[11px] text-ink-muted font-mono">
-                          <Calendar size={12} className="text-ink-faint" />
-                          <span>Renova: {formatDate(med.proxima_renovacao) || "—"}</span>
-                        </div>
+                            {med.proxima_renovacao && (
+                              <span className="px-2 py-1 text-[9px] font-bold text-ink-muted border-l border-surface-border bg-surface">
+                                {formatDate(med.proxima_renovacao)}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
+
                     </div>
                   </div>
                 </motion.button>
