@@ -5,39 +5,10 @@ import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
-  Loader2,
-  Save,
-  Pill,
-  Trash2,
-  AlertTriangle,
-  Package,
-  Plus,
-  Clock,
-  Activity,
-  Stethoscope,
-  Droplet,
-  Syringe,
-  StickyNote,
-  Palette,
-  Info,
-  Store,
-  ArrowRightLeft,
-  X,
-  Circle,
-  ChevronRight,
-  Building2,
-  MapPin,
-  DollarSign,
-  Ban,
-  Settings2,
-  Upload,
-  FileText,
-  TrendingUp,
-  HeartPulse,
-  Eraser,
-  FileSearch,
-  Check,
+  ArrowLeft, Loader2, Save, Pill, Trash2, AlertTriangle, Package, Plus, Clock,
+  Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, Info, Store,
+  ArrowRightLeft, X, Circle, ChevronRight, Building2, MapPin, DollarSign, Ban,
+  Settings2, Upload, FileText, TrendingUp, HeartPulse, Eraser, FileSearch, Check,
 } from "lucide-react";
 
 import { db } from "@/lib/db";
@@ -50,34 +21,14 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { useAuth } from "@/hooks/useAuth";
-import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { uploadFile } from "@/lib/supabase/storage";
-import {
-  suggestRenewalDate,
-  VALIDADE_RECEITA_DIAS,
-  getLocalTodayISO,
-} from "@/lib/health-utils";
-import {
-  scheduleDoseNotifications,
-  cancelDoseNotifications,
-  requestNotificationPermission,
-} from "@/lib/dose-notifications";
+import { suggestRenewalDate, VALIDADE_RECEITA_DIAS, getLocalTodayISO } from "@/lib/health-utils";
+import { scheduleDoseNotifications, cancelDoseNotifications, requestNotificationPermission } from "@/lib/dose-notifications";
 import { sugerirHorarios } from "@/lib/health-insights";
-import type {
-  TipoReceita,
-  Attachment,
-  Document,
-  Person,
-  Medico,
-  Farmacia,
-  Hospital,
-  LocalSaude,
-  Medicamento,
-  Tratamento,
-} from "@/lib/types";
+import type { TipoReceita, Attachment, Person, Medico, Farmacia, Hospital, LocalSaude, Medicamento } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -85,46 +36,21 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
-import { medicamentosRepository } from "@/lib/repositories/medicamentos";
-import { documentsRepository } from "@/lib/repositories/documents";
 import { hospitaisRepository } from "@/lib/repositories/hospitais";
 import { locaisRepository } from "@/lib/repositories/locais";
+import { medicamentosRepository } from "@/lib/repositories/medicamentos";
+import { documentsRepository } from "@/lib/repositories/documents";
 import { CalculadoraGotas } from "@/components/saude/CalculadoraGotas";
 import { SeletorTratamentoModal } from "@/components/saude/SeletorTratamentoModal";
 import { SeletorReceita } from "@/components/saude/SeletorReceita";
 
 const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -15 } };
 
-function mascaraData(value: string) {
-  return value.replace(/\D/g, "").replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{4})\d+?$/, "$1");
-}
-function isoParaBr(iso: string) {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
-function brParaIso(br: string) {
-  const parts = br.split("/");
-  if (parts.length !== 3 || parts[2].length !== 4) return "";
-  return `${parts[2]}-${parts[1]}-${parts[0]}`;
-}
-function handleCurrencyMask(value: string): string {
-  const clean = value.replace(/\D/g, "");
-  if (!clean) return "";
-  const numberVal = parseInt(clean, 10) / 100;
-  return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function handleTimeMask(value: string): string {
-  const clean = value.replace(/\D/g, "").slice(0, 4);
-  if (clean.length > 2) {
-    return `${clean.slice(0, 2)}:${clean.slice(2)}`;
-  }
-  if (clean.length > 0) {
-    return clean.padStart(2, '0');
-  }
-  return "";
-}
+function mascaraData(value: string) { return value.replace(/\D/g, "").replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{4})\d+?$/, "$1"); }
+function isoParaBr(iso: string) { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; }
+function brParaIso(br: string) { const parts = br.split("/"); if (parts.length !== 3 || parts[2].length !== 4) return ""; return `${parts[2]}-${parts[1]}-${parts[0]}`; }
+function handleCurrencyMask(value: string): string { const clean = value.replace(/\D/g, ""); if (!clean) return ""; const numberVal = parseInt(clean, 10) / 100; return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function handleTimeMask(value: string): string { const clean = value.replace(/\D/g, "").slice(0, 4); if (clean.length > 2) { return `${clean.slice(0, 2)}:${clean.slice(2)}`; } if (clean.length > 0) { return clean.padStart(2, '0'); } return ""; }
 
 const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -158,8 +84,6 @@ function EditarMedicamentoContent() {
   const [editIntent, setEditIntent] = useState<EditIntent>(intentParam || "menu");
 
   const { user } = useAuth();
-  const persons = usePersons() as Person[];
-
   const { run: runSave, isSubmitting: isSaving } = useSubmitAction();
   const { run: runDelete, isSubmitting: isDeleting } = useSubmitAction();
 
@@ -170,7 +94,6 @@ function EditarMedicamentoContent() {
   const { locais, addLocal } = useLocais();
 
   const cids = useLiveQuery(() => db.cids?.toArray() || []) ?? [];
-
   const medicamentosAtivos = medicamentosList.filter((m) => m.id !== id && m.status !== "descontinuado");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isSubmitLocked = useRef(false);
@@ -322,7 +245,6 @@ function EditarMedicamentoContent() {
 
         setTratamentosSelecionados(item.tratamento_ids || []);
 
-        // 🔥 LÓGICA CORRIGIDA: Não exige mais horários para ligar o estoque (Permite Uso SOS)
         if (typeof item.estoque_quantidade === "number" && item.estoque_data_referencia) {
           setEstoqueAtivo(true);
           setEstoqueQuantidade(String(item.estoque_quantidade));
@@ -561,9 +483,9 @@ function EditarMedicamentoContent() {
           }
         }
 
-        // 🔥 PAYLOAD BLINDADO: Usando null explícito no lugar de undefined
+        // 🔥 TIPAGEM 'ANY' PERMITE O NULL PARA APAGAR OS CAMPOS OPCIONAIS DO SUPABASE E DEXIE
         const updatePayload: any = {
-          person_id: personId,
+          person_id: personId || undefined,
           document_id: documentId || null,
           nome: nome.trim(),
           dosagem: dosagemFinal,
@@ -572,11 +494,11 @@ function EditarMedicamentoContent() {
           cores,
           tipo_uso: tipoUso,
           historico_dosagens: historicoFinal,
-          medico: selectedMedico?.nome || medicoNome.trim() || null,
+          medico: selectedMedico?.nome || medicoNome.trim() || "",
           medico_id: medicoId || null,
           hospital_id: hospitalId || null,
           local_id: localId || null,
-          farmacia: selectedFarmacia?.nome || farmaciaNome.trim() || null,
+          farmacia: selectedFarmacia?.nome || farmaciaNome.trim() || "",
           farmacia_id: farmaciaId || null,
           preco: precoNumerico !== undefined ? precoNumerico : null,
           data_receita: dataReceitaISO || null,
@@ -587,7 +509,7 @@ function EditarMedicamentoContent() {
           status: statusAtivo ? "ativo" : "descontinuado",
           motivo_descontinuacao: !statusAtivo ? (motivoDescontinuacao.trim() || null) : null,
           medico_descontinuacao_id: !statusAtivo ? (medicoDescontinuacaoId || null) : null,
-          medico_descontinuacao_nome: !statusAtivo ? (selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim() || null) : null,
+          medico_descontinuacao_nome: !statusAtivo ? (selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim() || "") : null,
           substituido_por_id: !statusAtivo ? (substituidoPorId || null) : null,
           data_descontinuacao: !statusAtivo ? getLocalTodayISO() : null,
           

@@ -32,7 +32,6 @@ import {
   isReceitaVencidaSegura,
   analisarComportamentoUso,
   analisarMelhorFarmacia,
-  getCidInsights,
 } from "@/lib/health-insights";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -74,7 +73,6 @@ function MedicamentoDetalhesContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Consultas Dexie Reativas (todas no topo, antes de qualquer retorno)
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);
   const medico = useLiveQuery(() => med?.medico_id ? db.medicos.get(med.medico_id) : undefined, [med?.medico_id]);
   const hospital = useLiveQuery(() => med?.hospital_id ? db.hospitais.get(med.hospital_id) : undefined, [med?.hospital_id]);
@@ -85,6 +83,7 @@ function MedicamentoDetalhesContent() {
 
   const ultimaDose = useLiveQuery(() => db.doseLogs.where('medicamento_id').equals(id || '').reverse().first(), [id]);
   const todosMedicamentosAtivos = useLiveQuery(() => db.medicamentos.where("status").notEqual("descontinuado").toArray(), []) || [];
+  const doseLogs = useLiveQuery(() => db.doseLogs.where('medicamento_id').equals(id || '').toArray(), [id]) || [];
 
   const tratamentos = useLiveQuery(() => {
     if (!med?.tratamento_ids || med.tratamento_ids.length === 0) return [];
@@ -101,18 +100,18 @@ function MedicamentoDetalhesContent() {
     []
   ) || new Map<string, string>();
 
-  // Hook adicionado: doseLogs (movido para o topo)
-  const doseLogs = useLiveQuery(() => db.doseLogs.where('medicamento_id').equals(id || '').toArray(), [id]) || [];
-
-  // Hook adicionado: melhorFarmacia (movido para o topo)
   const melhorFarmacia = useMemo(() => {
     const resultado = analisarMelhorFarmacia(renovacoes);
     return resultado.length > 0 ? resultado[0] : null;
   }, [renovacoes]);
 
-  // TRAVA DE SEGURANÇA CONTRA TELA PRETA AO EXCLUIR
   if (!mounted || med === undefined) return <DetailSkeleton />;
   if (isDeleting || !med) return <div className="min-h-screen bg-void" />;
+
+  // 🔥 MATEMÁTICA VISUAL DO SOS CORRIGIDA
+  const isSOS = med.tipo_uso !== "continuo";
+  const estoqueInfo = computeEstoqueInfo(med);
+  const qtd = isSOS ? (med.estoque_quantidade ?? 0) : (estoqueInfo?.quantidadeRestante ?? med.estoque_quantidade ?? 0);
 
   const menuOptions = [
     { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?medicamento_id=${id}` },
@@ -130,9 +129,10 @@ function MedicamentoDetalhesContent() {
     if (!med || !med.id) return;
     trigger("success");
 
-    const estoqueInfo = computeEstoqueInfo(med);
-    const atual = estoqueInfo?.quantidadeRestante ?? 0;
     const doseGasta = Number(med.estoque_unidade_por_dose) || 1;
+
+    // Lógica protegida usando a nova visualização bruta pro SOS
+    const atual = isSOS ? (med.estoque_quantidade ?? 0) : (estoqueInfo?.quantidadeRestante ?? med.estoque_quantidade ?? 0);
 
     if (atual <= 0) {
       trigger("error");
@@ -182,9 +182,7 @@ function MedicamentoDetalhesContent() {
       await deleteMedicamento(med.id);
       trigger("success");
       setToastMessage({ text: "Excluído com sucesso!", type: 'success' });
-      setTimeout(() => {
-        router.replace("/saude/medicamentos");
-      }, 400);
+      setTimeout(() => { router.replace("/saude/medicamentos"); }, 400);
     } catch (error) {
       console.error("Erro ao excluir medicamento:", error);
       trigger("error");
@@ -195,13 +193,9 @@ function MedicamentoDetalhesContent() {
     }
   };
 
-  const estoqueInfo = computeEstoqueInfo(med);
-  const qtd = estoqueInfo?.quantidadeRestante ?? 0;
   const isVencida = isReceitaVencidaSegura(med.proxima_renovacao);
   const alertaInteligente = sugerirRenovacao(med);
   const diasRestantes = getDaysUntil(med.proxima_renovacao);
-
-  // Comportamento de uso (agora doseLogs já está no topo)
   const comportamento = analisarComportamentoUso(med, doseLogs);
 
   const getEstoqueStyle = () => {
