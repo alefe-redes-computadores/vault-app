@@ -14,6 +14,7 @@ import { ToastProvider } from "./ToastProvider";
 import { pullAllData } from "@/lib/sync/pull";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
+import { db } from "@/lib/db"; // 👈 Importação do db adicionada
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -28,6 +29,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useDoseNotificationActions();
 
   useEffect(() => {
+    // 👈 Injeção do db no window para o Eruda / debug
+    if (typeof window !== "undefined") {
+      (window as any).db = db;
+    }
+
     if (Capacitor.isNativePlatform()) {
       try {
         StatusBar.setOverlaysWebView({ overlay: true });

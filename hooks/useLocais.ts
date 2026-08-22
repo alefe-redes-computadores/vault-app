@@ -5,17 +5,15 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { locaisRepository } from "@/lib/repositories/locais";
 import { useAuth } from "./useAuth";
-import { useActivePersonId } from "./useActivePersonId";
 import { useCallback } from "react";
 import type { LocalSaude } from "@/lib/types";
 
 export function useLocais() {
   const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
 
   const locais = useLiveQuery(
-    () => activePersonId ? db.locais.where('person_id').equals(activePersonId).toArray() : [],
-    [activePersonId],
+    () => db.locais.toArray(),
+    [],
     []
   );
 
@@ -25,10 +23,9 @@ export function useLocais() {
     if (!user) throw new Error('Usuário não autenticado');
     return await locaisRepository.create({ 
       ...data, 
-      user_id: user.id,
-      person_id: activePersonId || undefined 
+      user_id: user.id
     });
-  }, [user, activePersonId]);
+  }, [user]);
   
   const updateLocal = useCallback(async (id: string, data: Partial<LocalSaude>) => {
     return await locaisRepository.update(id, data);

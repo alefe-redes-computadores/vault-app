@@ -5,17 +5,15 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { medicosRepository } from "@/lib/repositories/medicos";
 import { useAuth } from "./useAuth";
-import { useActivePersonId } from "./useActivePersonId";
 import { useCallback } from "react";
 import type { Medico } from "@/lib/types";
 
 export function useMedicos() {
   const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
 
   const medicos = useLiveQuery(
-    () => activePersonId ? db.medicos.where('person_id').equals(activePersonId).toArray() : [],
-    [activePersonId],
+    () => db.medicos.toArray(),
+    [],
     []
   );
 
@@ -28,11 +26,10 @@ export function useMedicos() {
       if (!user) throw new Error('Usuário não autenticado');
       return medicosRepository.create({ 
         ...data, 
-        user_id: user.id,
-        person_id: activePersonId || undefined 
+        user_id: user.id
       });
     },
-    [user, activePersonId]
+    [user]
   );
 
   const updateMedico = useCallback(async (id: string, data: Partial<Medico>) => {
