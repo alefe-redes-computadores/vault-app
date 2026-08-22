@@ -166,8 +166,8 @@ function EditarMedicamentoContent() {
   const { getMedicamento, medicamentos: medicamentosList } = useMedicamentos();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
-  const { hospitais: hospitaisLocais, addHospital } = useHospitais(); // ✅ ALTERADO
-  const { locais, addLocal } = useLocais(); // ✅ ALTERADO
+  const { hospitais: hospitaisLocais, addHospital } = useHospitais();
+  const { locais, addLocal } = useLocais();
 
   const cids = useLiveQuery(() => db.cids?.toArray() || []) ?? [];
 
@@ -322,14 +322,17 @@ function EditarMedicamentoContent() {
 
         setTratamentosSelecionados(item.tratamento_ids || []);
 
-        if (typeof item.estoque_quantidade === "number" && item.estoque_data_referencia && Array.isArray(item.estoque_horarios) && item.estoque_horarios.length > 0) {
+        // 🔥 LÓGICA CORRIGIDA: Não exige mais horários para ligar o estoque (Permite Uso SOS)
+        if (typeof item.estoque_quantidade === "number" && item.estoque_data_referencia) {
           setEstoqueAtivo(true);
           setEstoqueQuantidade(String(item.estoque_quantidade));
           setEstoqueDataReferenciaTexto(isoParaBr(item.estoque_data_referencia));
           setEstoqueUnidade(item.estoque_unidade_medida || "comprimido(s)");
           setEstoqueUnidadePorDose(String(item.estoque_unidade_por_dose || 1));
-          setHorarios(item.estoque_horarios);
-          setHorariosOriginais(item.estoque_horarios);
+          if (Array.isArray(item.estoque_horarios) && item.estoque_horarios.length > 0) {
+            setHorarios(item.estoque_horarios);
+            setHorariosOriginais(item.estoque_horarios);
+          }
         } else {
           setEstoqueDataReferenciaTexto(isoParaBr(getLocalTodayISO()));
         }
@@ -520,7 +523,7 @@ function EditarMedicamentoContent() {
                 ...doc.metadata,
                 dosage: dosagemFinal,
                 tratamento_ids: tratamentosSelecionados,
-                renewal_date: proximaRenovacaoISO,
+                renewal_date: proximaRenovacaoISO || null,
               },
             });
           }
@@ -536,8 +539,8 @@ function EditarMedicamentoContent() {
             metadata: {
               medication: nome.trim(),
               dosage: dosagemFinal,
-              prescription_date: dataReceitaISO,
-              renewal_date: proximaRenovacaoISO,
+              prescription_date: dataReceitaISO || null,
+              renewal_date: proximaRenovacaoISO || null,
               tratamento_ids: tratamentosSelecionados,
               tipo_receita: tipoReceita,
               formato,
@@ -558,9 +561,10 @@ function EditarMedicamentoContent() {
           }
         }
 
-        await medicamentosRepository.update(id, {
+        // 🔥 PAYLOAD BLINDADO: Usando null explícito no lugar de undefined
+        const updatePayload: any = {
           person_id: personId,
-          document_id: documentId || undefined,
+          document_id: documentId || null,
           nome: nome.trim(),
           dosagem: dosagemFinal,
           cid_ids: cidIds,
@@ -568,32 +572,35 @@ function EditarMedicamentoContent() {
           cores,
           tipo_uso: tipoUso,
           historico_dosagens: historicoFinal,
-          medico: selectedMedico?.nome || medicoNome.trim(),
-          medico_id: medicoId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          farmacia: selectedFarmacia?.nome || farmaciaNome.trim(),
-          farmacia_id: farmaciaId || undefined,
-          preco: precoNumerico,
-          data_receita: dataReceitaISO,
-          proxima_renovacao: proximaRenovacaoISO,
-          observacoes: observacoes.trim() || undefined,
+          medico: selectedMedico?.nome || medicoNome.trim() || null,
+          medico_id: medicoId || null,
+          hospital_id: hospitalId || null,
+          local_id: localId || null,
+          farmacia: selectedFarmacia?.nome || farmaciaNome.trim() || null,
+          farmacia_id: farmaciaId || null,
+          preco: precoNumerico !== undefined ? precoNumerico : null,
+          data_receita: dataReceitaISO || null,
+          proxima_renovacao: proximaRenovacaoISO || null,
+          observacoes: observacoes.trim() || null,
           tipo_receita: tipoReceita,
           tratamento_ids: tratamentosSelecionados,
           status: statusAtivo ? "ativo" : "descontinuado",
-          motivo_descontinuacao: !statusAtivo ? motivoDescontinuacao.trim() : undefined,
-          medico_descontinuacao_id: !statusAtivo ? medicoDescontinuacaoId || undefined : undefined,
-          medico_descontinuacao_nome: !statusAtivo ? selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim() : undefined,
-          substituido_por_id: !statusAtivo ? substituidoPorId || undefined : undefined,
-          data_descontinuacao: !statusAtivo ? getLocalTodayISO() : undefined,
-          estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : undefined,
-          estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-          estoque_horarios: tipoUso === "continuo" && estoqueAtivo ? horariosFiltrados : undefined,
-          estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) || 1 : undefined,
-          estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
-          estoque_ml_total: isGotasCalcAtivo && formato === "gota" ? Number(mlTotal) : undefined,
-          estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : undefined,
-        });
+          motivo_descontinuacao: !statusAtivo ? (motivoDescontinuacao.trim() || null) : null,
+          medico_descontinuacao_id: !statusAtivo ? (medicoDescontinuacaoId || null) : null,
+          medico_descontinuacao_nome: !statusAtivo ? (selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome.trim() || null) : null,
+          substituido_por_id: !statusAtivo ? (substituidoPorId || null) : null,
+          data_descontinuacao: !statusAtivo ? getLocalTodayISO() : null,
+          
+          estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : null,
+          estoque_data_referencia: estoqueAtivo && estoqueDataReferenciaISO ? estoqueDataReferenciaISO : null,
+          estoque_horarios: tipoUso === "continuo" && estoqueAtivo && horariosFiltrados.length > 0 ? horariosFiltrados : null,
+          estoque_unidade_por_dose: estoqueAtivo ? (Number(estoqueUnidadePorDose) || 1) : null,
+          estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : null,
+          estoque_ml_total: isGotasCalcAtivo && formato === "gota" ? Number(mlTotal) : null,
+          estoque_gotas_por_ml: isGotasCalcAtivo && formato === "gota" ? Number(gotasPorMl) : null,
+        };
+
+        await medicamentosRepository.update(id, updatePayload);
 
         if (horariosOriginais.length > 0) await cancelDoseNotifications({ id, estoque_horarios: horariosOriginais } as DoseNotificationPayload);
         if (estoqueAtivo && tipoUso === "continuo" && horariosFiltrados.length > 0 && statusAtivo) {
@@ -1518,7 +1525,7 @@ function EditarMedicamentoContent() {
           getItemLabel={(i) => i.nome}
           enableQuickCreate
           onQuickCreate={async (name) => {
-            const newHosp = await addHospital({ nome: name, tipo: "hospital" }); // ✅ ALTERADO
+            const newHosp = await addHospital({ nome: name, tipo: "hospital" });
             return { id: newHosp, nome: name, tipo: "hospital" } as any;
           }}
           onSelect={(item) => {
@@ -1549,7 +1556,7 @@ function EditarMedicamentoContent() {
           getItemLabel={(i) => i.nome}
           enableQuickCreate
           onQuickCreate={async (name) => {
-            const newLocal = await addLocal({ nome: name, tipo: "outro" }); // ✅ ALTERADO
+            const newLocal = await addLocal({ nome: name, tipo: "outro" });
             return { id: newLocal, nome: name, tipo: "outro" };
           }}
           onSelect={(item) => {
