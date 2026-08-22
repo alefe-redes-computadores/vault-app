@@ -12,12 +12,12 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import {
   ArrowLeft, FileText, MapPin, Edit3, Trash2, 
-  Clock, Plus, Pill, FileWarning
+  Clock, Plus, Pill, FileWarning, Calendar, Stethoscope, FlaskConical, ExternalLink
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { formatDateDisplay } from "@/lib/health-utils";
 import { calcularEconomia } from "@/lib/health-insights";
-import type { LocalSaude, Renovacao, Medicamento } from "@/lib/types";
+import type { LocalSaude, Renovacao, Medicamento, Consulta, Exame } from "@/lib/types";
 import { useLocais } from "@/hooks/useLocais";
 import { useMounted } from "@/hooks/useMounted";
 
@@ -51,6 +51,8 @@ function DetalhesLocalContent() {
   ) || [];
 
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
+  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+  const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
   const analiseLocal = useMemo(() => {
     if (!id || !renovacoes || !medicamentos) {
@@ -61,6 +63,8 @@ function DetalhesLocalContent() {
         economia: null,
         medicamentosCount: 0,
         renovacoesComMed: [] as Array<Renovacao & { medicamento_nome: string }>,
+        consultasLocal: [] as Consulta[],
+        examesLocal: [] as Exame[],
       };
     }
 
@@ -88,6 +92,10 @@ function DetalhesLocalContent() {
       const economia = calcularEconomia(renovacoes);
       const medIds = new Set(renovacoes.map((r) => r.medicamento_id).filter(Boolean));
 
+      // Cruzamento de Consultas e Exames neste Local
+      const consultasLocal = consultas.filter((c) => c.local_id === id || c.hospital_id === id).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+      const examesLocal = exames.filter((e) => e.local_id === id).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+
       return {
         totalGasto,
         precoMedio,
@@ -95,6 +103,8 @@ function DetalhesLocalContent() {
         economia,
         medicamentosCount: medIds.size,
         renovacoesComMed: ordenadas,
+        consultasLocal,
+        examesLocal,
       };
     } catch (e) {
       console.error("Erro na análise do local:", e);
@@ -105,9 +115,11 @@ function DetalhesLocalContent() {
         economia: null,
         medicamentosCount: 0,
         renovacoesComMed: [],
+        consultasLocal: [],
+        examesLocal: [],
       };
     }
-  }, [id, renovacoes, medicamentos]);
+  }, [id, renovacoes, medicamentos, consultas, exames]);
 
   useEffect(() => {
     if (!id) { router.push("/saude/locais"); return; }
@@ -117,7 +129,6 @@ function DetalhesLocalContent() {
     });
   }, [id, router]);
 
-  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
   if (!mounted) return <DetailSkeleton />;
 
   const handleDelete = async () => {
@@ -146,8 +157,6 @@ function DetalhesLocalContent() {
 
   if (isLoading) return <DetailSkeleton />;
   if (!local) return null;
-
-  const hasHistory = Array.isArray(analiseLocal.renovacoesComMed) && analiseLocal.renovacoesComMed.length > 0;
 
   return (
     <PageTransition>
@@ -244,8 +253,8 @@ function DetalhesLocalContent() {
 
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-surface-border/40">
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Medicamentos</p>
-                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseLocal.medicamentosCount}</p>
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Consultas</p>
+                <p className="mt-0.5 text-sm font-semibold text-ink-primary">{analiseLocal.consultasLocal.length}</p>
               </div>
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Total Gasto</p>
@@ -267,9 +276,55 @@ function DetalhesLocalContent() {
             )}
           </motion.div>
 
+          {/* CONSULTAS REALIZADAS NO LOCAL (NOVO CRUZAMENTO) */}
+          {analiseLocal.consultasLocal.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3">
+              <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
+                <Stethoscope size={16} className="text-ice" /> Consultas na Unidade ({analiseLocal.consultasLocal.length})
+              </h3>
+              <div className="space-y-2">
+                {analiseLocal.consultasLocal.slice(0, 3).map((con) => (
+                  <div key={con.id} onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-ice/30 transition-all">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice"><Calendar size={16} /></div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink-primary truncate">{con.especialidade}</p>
+                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(con.data)}</p>
+                      </div>
+                    </div>
+                    <ExternalLink size={15} className="text-ink-faint shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* EXAMES REALIZADOS NO LOCAL (NOVO CRUZAMENTO) */}
+          {analiseLocal.examesLocal.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3">
+              <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
+                <FlaskConical size={16} className="text-violet-400" /> Exames na Unidade ({analiseLocal.examesLocal.length})
+              </h3>
+              <div className="space-y-2">
+                {analiseLocal.examesLocal.slice(0, 3).map((ex) => (
+                  <div key={ex.id} onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${ex.id}`); }} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-violet-400/30 transition-all">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400"><FlaskConical size={16} /></div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink-primary truncate">{ex.nome}</p>
+                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(ex.data)}</p>
+                      </div>
+                    </div>
+                    <ExternalLink size={15} className="text-ink-faint shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 pt-2">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">
-              Histórico no Local ({analiseLocal.renovacoesComMed?.length || 0})
+              Histórico de Retiradas ({analiseLocal.renovacoesComMed?.length || 0})
             </h3>
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
               {(!analiseLocal.renovacoesComMed || analiseLocal.renovacoesComMed.length === 0) ? (

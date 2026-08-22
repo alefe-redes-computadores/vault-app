@@ -24,6 +24,8 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { cidsRepository } from "@/lib/repositories/cids";
 
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
+
 function handleDateMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 8);
   if (clean.length > 4) {
@@ -110,9 +112,9 @@ export default function NovoCidPage() {
             ? dataDiagnostico.split("/").reverse().join("-")
             : undefined;
 
-            await cidsRepository.create({
+          await cidsRepository.create({
             user_id: user.id,
-            person_id: activePersonId || undefined, // 👈 Garante o vínculo na raiz com o perfil ativo
+            person_id: activePersonId || undefined,
             codigo: codigo.trim(),
             descricao: descricao.trim(),
             data_diagnostico: dataISO,
@@ -122,7 +124,6 @@ export default function NovoCidPage() {
             observacoes: observacoes.trim() || undefined,
             anexo_url: anexoUrl || undefined,
           });
-
         },
         {
           successMessage: "CID cadastrado com sucesso",
@@ -157,8 +158,9 @@ export default function NovoCidPage() {
 
         <section className="px-5 pt-6 space-y-4">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4"
           >
             <Input
@@ -178,8 +180,9 @@ export default function NovoCidPage() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.04 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
@@ -196,10 +199,11 @@ export default function NovoCidPage() {
             </div>
           </motion.div>
 
-          {/* 🔥 MÉDICO COM LIMPAR */}
+          {/* MÉDICO COM LIMPAR */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.06 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
@@ -230,10 +234,11 @@ export default function NovoCidPage() {
             </button>
           </motion.div>
 
-          {/* 🔥 HOSPITAL COM LIMPAR */}
+          {/* HOSPITAL COM LIMPAR */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.08 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
@@ -264,10 +269,11 @@ export default function NovoCidPage() {
             </button>
           </motion.div>
 
-          {/* 🔥 LOCAL COM LIMPAR */}
+          {/* LOCAL COM LIMPAR */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.1 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
@@ -299,8 +305,9 @@ export default function NovoCidPage() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.12 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3"
           >
@@ -366,6 +373,8 @@ export default function NovoCidPage() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }}
+          createNewLabel="Cadastrar Novo Médico"
         />
 
         <SelectionModal<Hospital>
@@ -382,6 +391,8 @@ export default function NovoCidPage() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
+          createNewLabel="Cadastrar Novo Hospital"
         />
 
         <SelectionModal<LocalSaude>
@@ -398,6 +409,8 @@ export default function NovoCidPage() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
+          onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }}
+          createNewLabel="Cadastrar Novo Local"
         />
       </main>
     </PageTransition>

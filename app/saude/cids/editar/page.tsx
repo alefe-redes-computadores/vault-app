@@ -1,11 +1,12 @@
 // app/saude/cids/editar/page.tsx
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Save, Loader2, Stethoscope, Building2, MapPin, Upload, X, Eraser,
+  FolderHeart, Pill, Calendar, FlaskConical, ExternalLink
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -22,7 +23,11 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { cidsRepository } from "@/lib/repositories/cids";
-import type { Medico, Hospital, LocalSaude, Cid } from "@/lib/types";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import type { Medico, Hospital, LocalSaude, Cid, Tratamento, Medicamento, Consulta, Exame } from "@/lib/types";
+
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
 function handleDateMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 8);
@@ -66,10 +71,17 @@ function EditarCidContent() {
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
   const [localFile, setLocalFile] = useState<File | null>(null);
+
   const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Live Queries para o Hub Relacional do CID
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), [], []) || [];
+  const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), [], []) || [];
+  const consultas = useLiveQuery(() => db.consultas.toArray(), [], []) || [];
+  const exames = useLiveQuery(() => db.exames.toArray(), [], []) || [];
 
   useEffect(() => {
     if (!id) {
@@ -99,6 +111,30 @@ function EditarCidContent() {
   const selectedMedico = medicos.find((m) => m.id === medicoId);
   const selectedHospital = hospitais.find((h) => h.id === hospitalId);
   const selectedLocal = locais.find((l) => l.id === localId);
+
+  // Cruzamentos Relacionais Corrigidos (Tipagem Array cid_ids e cruzamentos seguros)
+  const tratamentosVinculados = useMemo(() => {
+    if (!id) return [];
+    return tratamentos.filter((t: Tratamento) => t.cid_ids && t.cid_ids.includes(id));
+  }, [tratamentos, id]);
+
+  const medicamentosVinculados = useMemo(() => {
+    if (!id || tratamentosVinculados.length === 0) return [];
+    const tratIds = new Set(tratamentosVinculados.map(t => t.id));
+    return medicamentos.filter((m: Medicamento) => m.tratamento_ids && m.tratamento_ids.some(tid => tratIds.has(tid)));
+  }, [medicamentos, tratamentosVinculados]);
+
+  const consultasVinculadas = useMemo(() => {
+    if (!id) return [];
+    const tratIds = new Set(tratamentosVinculados.map(t => t.id));
+    return consultas.filter((c: Consulta) => (c.medico_id && selectedMedico && c.medico_id === selectedMedico.id)).sort((a, b) => b.data.localeCompare(a.data));
+  }, [consultas, tratamentosVinculados, selectedMedico]);
+
+  const examesVinculados = useMemo(() => {
+    if (!id) return [];
+    const tratIds = new Set(tratamentosVinculados.map(t => t.id));
+    return exames.filter((e: Exame) => e.tratamento_ids && e.tratamento_ids.some(tid => tratIds.has(tid))).sort((a, b) => b.data.localeCompare(a.data));
+  }, [exames, tratamentosVinculados]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -181,7 +217,7 @@ function EditarCidContent() {
             </button>
             <div className="min-w-0 flex-1">
               <h1 className="font-display text-xl font-semibold text-ink-primary truncate">
-                Editar CID
+                Editar CID ({codigo})
               </h1>
             </div>
           </div>
@@ -189,8 +225,9 @@ function EditarCidContent() {
 
         <section className="px-5 pt-6 space-y-4">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4"
           >
             <Input
@@ -210,8 +247,9 @@ function EditarCidContent() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.04 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
@@ -228,10 +266,11 @@ function EditarCidContent() {
             </div>
           </motion.div>
 
-          {/* 🔥 MÉDICO COM LIMPAR */}
+          {/* MÉDICO COM LIMPAR */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.06 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
@@ -240,10 +279,7 @@ function EditarCidContent() {
               {medicoId && selectedMedico && (
                 <button
                   type="button"
-                  onClick={() => {
-                    trigger("vibrate");
-                    setMedicoId("");
-                  }}
+                  onClick={() => { trigger("vibrate"); setMedicoId(""); }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
                 >
                   <Eraser size={12} /> Limpar
@@ -262,10 +298,11 @@ function EditarCidContent() {
             </button>
           </motion.div>
 
-          {/* 🔥 HOSPITAL COM LIMPAR */}
+          {/* HOSPITAL COM LIMPAR */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.08 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
@@ -274,10 +311,7 @@ function EditarCidContent() {
               {hospitalId && selectedHospital && (
                 <button
                   type="button"
-                  onClick={() => {
-                    trigger("vibrate");
-                    setHospitalId("");
-                  }}
+                  onClick={() => { trigger("vibrate"); setHospitalId(""); }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
                 >
                   <Eraser size={12} /> Limpar
@@ -296,10 +330,11 @@ function EditarCidContent() {
             </button>
           </motion.div>
 
-          {/* 🔥 LOCAL COM LIMPAR */}
+          {/* LOCAL COM LIMPAR */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.1 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
@@ -308,10 +343,7 @@ function EditarCidContent() {
               {localId && selectedLocal && (
                 <button
                   type="button"
-                  onClick={() => {
-                    trigger("vibrate");
-                    setLocalId("");
-                  }}
+                  onClick={() => { trigger("vibrate"); setLocalId(""); }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
                 >
                   <Eraser size={12} /> Limpar
@@ -330,9 +362,85 @@ function EditarCidContent() {
             </button>
           </motion.div>
 
+          {/* HUB RELACIONAL: ITENS VINCULADOS A ESTE CID */}
+          {(tratamentosVinculados.length > 0 || medicamentosVinculados.length > 0 || consultasVinculadas.length > 0 || examesVinculados.length > 0) && (
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.11 }}
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4"
+            >
+              <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">
+                Hub de Condição (Vinculados)
+              </h2>
+
+              {tratamentosVinculados.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-violet-400 uppercase">Tratamentos ({tratamentosVinculados.length})</p>
+                  {tratamentosVinculados.map((t) => (
+                    <div key={t.id} onClick={() => router.push(`/saude/tratamentos/detalhes?id=${t.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div className="flex items-center gap-2.5">
+                        <FolderHeart size={14} className="text-violet-400" />
+                        <span className="text-xs font-semibold text-ink-primary">{t.nome}</span>
+                      </div>
+                      <ExternalLink size={14} className="text-ink-faint" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {medicamentosVinculados.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-amber-400 uppercase">Medicamentos ({medicamentosVinculados.length})</p>
+                  {medicamentosVinculados.map((m) => (
+                    <div key={m.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${m.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div className="flex items-center gap-2.5">
+                        <Pill size={14} className="text-amber-400" />
+                        <span className="text-xs font-semibold text-ink-primary">{m.nome}</span>
+                      </div>
+                      <ExternalLink size={14} className="text-ink-faint" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {consultasVinculadas.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-ice uppercase">Consultas ({consultasVinculadas.length})</p>
+                  {consultasVinculadas.map((c) => (
+                    <div key={c.id} onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div className="flex items-center gap-2.5">
+                        <Calendar size={14} className="text-ice" />
+                        <span className="text-xs font-semibold text-ink-primary">{c.especialidade} ({formatDateToDisplay(c.data)})</span>
+                      </div>
+                      <ExternalLink size={14} className="text-ink-faint" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {examesVinculados.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-emerald-400 uppercase">Exames ({examesVinculados.length})</p>
+                  {examesVinculados.map((e) => (
+                    <div key={e.id} onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div className="flex items-center gap-2.5">
+                        <FlaskConical size={14} className="text-emerald-400" />
+                        <span className="text-xs font-semibold text-ink-primary">{e.nome} ({formatDateToDisplay(e.data)})</span>
+                      </div>
+                      <ExternalLink size={14} className="text-ink-faint" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.12 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3"
           >

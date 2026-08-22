@@ -1,21 +1,22 @@
 // app/saude/medicos/novo/page.tsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Building2, MapPin, FolderHeart, Check, X, Plus, Eraser } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft, Loader2, Save, Building2, MapPin, FolderHeart, Plus, Eraser, X, Stethoscope } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
+import { SelectionModal } from "@/components/SelectionModal";
 import { medicosRepository } from "@/lib/repositories/medicos";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
-import { useActivePersonId } from "@/hooks/useActivePersonId"; // 👈 1. IMPORTADO AQUI
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { db } from "@/lib/db";
-import type { Medico, Tratamento, Hospital, LocalSaude } from "@/lib/types";
+import type { Hospital, LocalSaude, Tratamento } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
@@ -31,17 +32,13 @@ export default function NovoMedicoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
-  const { activePersonId } = useActivePersonId(); // 👈 2. CAPTURADO O ID DA PESSOA ATIVA
+  const { activePersonId } = useActivePersonId();
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), [], []) || [];
   const locais = useLiveQuery(() => db.locais.toArray(), [], []) || [];
-  const tratamentos = useLiveQuery(
-    () => user ? db.tratamentos.where('user_id').equals(user.id).toArray() : [],
-    [user?.id],
-    []
-  ) || [];
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), [], []) || [];
 
   const [nome, setNome] = useState("");
   const [especialidade, setEspecialidade] = useState("");
@@ -51,12 +48,25 @@ export default function NovoMedicoPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [hospitalIds, setHospitalIds] = useState<string[]>([]);
-  const [tratamentoIds, setTratamentoIds] = useState<string[]>([]);
   const [localIds, setLocalIds] = useState<string[]>([]);
+  const [tratamentoIds, setTratamentoIds] = useState<string[]>([]);
 
-  const [isHospModalOpen, setIsHospModalOpen] = useState(false);
-  const [isTratModalOpen, setIsTratModalOpen] = useState(false);
+  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
+  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
+
+  const hospitaisVinculados = useMemo(() => hospitais.filter(h => hospitalIds.includes(h.id!)), [hospitais, hospitalIds]);
+  const locaisVinculados = useMemo(() => locais.filter(l => localIds.includes(l.id!)), [locais, localIds]);
+  const tratamentosVinculados = useMemo(() => tratamentos.filter(t => tratamentoIds.includes(t.id!)), [tratamentos, tratamentoIds]);
+
+  const handleAddHospital = (h: Hospital) => { if (h.id && !hospitalIds.includes(h.id)) setHospitalIds(p => [...p, h.id!]); };
+  const handleRemoveHospital = (id: string) => { trigger("vibrate"); setHospitalIds(p => p.filter(i => i !== id)); };
+
+  const handleAddLocal = (l: LocalSaude) => { if (l.id && !localIds.includes(l.id)) setLocalIds(p => [...p, l.id!]); };
+  const handleRemoveLocal = (id: string) => { trigger("vibrate"); setLocalIds(p => p.filter(i => i !== id)); };
+
+  const handleAddTratamento = (t: Tratamento) => { if (t.id && !tratamentoIds.includes(t.id)) setTratamentoIds(p => [...p, t.id!]); };
+  const handleRemoveTratamento = (id: string) => { trigger("vibrate"); setTratamentoIds(p => p.filter(i => i !== id)); };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -80,16 +90,16 @@ export default function NovoMedicoPage() {
       await run(
         async () => {
           await medicosRepository.create({
+            user_id: user.id,
+            person_id: activePersonId || undefined,
             nome: nome.trim(),
             especialidade: especialidade.trim() || undefined,
             crm: crm.trim() || undefined,
-            user_id: user?.id,
-            person_id: activePersonId || undefined, // 👈 3. INJETADO NA RAIZ AQUI!
             telefone: telefone.trim() || undefined,
             email: email.trim() || undefined,
             hospital_ids: hospitalIds,
-            tratamento_ids: tratamentoIds,
             local_ids: localIds,
+            tratamento_ids: tratamentoIds,
           });
         },
         {
@@ -103,50 +113,12 @@ export default function NovoMedicoPage() {
     }
   };
 
-  const MultiSelectModal = ({ isOpen, onClose, title, items, selectedIds, onChange, icon: Icon, onCreateNew, createLabel }: any) => {
-    const toggle = (id: string) => {
-      trigger("vibrate");
-      if (selectedIds.includes(id)) onChange(selectedIds.filter((i: string) => i !== id));
-      else onChange([...selectedIds, id]);
-    };
-    return (
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[85vh] flex-col rounded-t-[32px] bg-surface pb-safe shadow-2xl">
-              <div className="flex items-center justify-between border-b border-surface-border/50 px-6 py-4">
-                <h3 className="font-display text-lg font-semibold text-ink-primary flex items-center gap-2"><Icon size={18} className="text-ice"/> {title}</h3>
-                <button onClick={onClose} className="rounded-full bg-surface-raised p-2 active:scale-95"><X size={18} className="text-ink-muted" /></button>
-              </div>
-              <div className="overflow-y-auto p-4 space-y-2">
-                {items.length === 0 ? <p className="text-center text-sm text-ink-muted py-6">Nenhum registro encontrado.</p> : items.map((item: any) => {
-                  const isSelected = selectedIds.includes(item.id);
-                  return (
-                    <button key={item.id} onClick={() => toggle(item.id)} className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition-all active:scale-[0.98] ${isSelected ? "border-ice bg-ice/10" : "border-surface-border/50 bg-surface-raised"}`}>
-                      <span className={`font-medium ${isSelected ? "text-ice" : "text-ink-primary"}`}>{item.nome}</span>
-                      <div className={`flex h-6 w-6 items-center justify-center rounded-full border ${isSelected ? "border-ice bg-ice text-void" : "border-surface-border bg-transparent"}`}>
-                        {isSelected && <Check size={14} strokeWidth={3} />}
-                      </div>
-                    </button>
-                  );
-                })}
-                <button onClick={() => { onClose(); onCreateNew(); }} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-ice/40 bg-ice/5 py-4 text-sm font-semibold text-ice active:scale-95"><Plus size={18} /> {createLabel}</button>
-              </div>
-              <div className="p-4 border-t border-surface-border/50"><Button variant="primary" fullWidth onClick={onClose}>Confirmar {selectedIds.length} Selecionado(s)</Button></div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    );
-  };
-
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95" aria-label="Voltar">
+            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95" aria-label="Voltar">
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
@@ -156,94 +128,106 @@ export default function NovoMedicoPage() {
           </div>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
+        <section className="space-y-5 px-5 pt-6">
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Dados do Profissional</h2>
             <Input label="Nome *" placeholder="Dr(a). Nome completo" value={nome} onChange={(e) => setNome(e.target.value)} error={errors.nome} required />
-            <Input label="Especialidade" placeholder="Ex: Cardiologia, Ortopedia..." value={especialidade} onChange={(e) => setEspecialidade(e.target.value)} />
-            <Input label="CRM" placeholder="Ex: 12345-MG" value={crm} onChange={(e) => setCrm(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Especialidade" placeholder="Ex: Cardiologia..." value={especialidade} onChange={(e) => setEspecialidade(e.target.value)} />
+              <Input label="CRM" placeholder="Ex: 12345-MG" value={crm} onChange={(e) => setCrm(e.target.value)} />
+            </div>
             <Input label="Telefone" placeholder="(00) 00000-0000" value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} />
-            <Input label="E-mail" type="email" placeholder="opcional" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input label="E-mail" type="email" placeholder="medico@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Atuação e Relacionamento</h2>
 
+            {/* Hospitais */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between px-1 mb-2">
                 <label className="block text-sm font-medium text-ink-primary">Hospitais e Unidades que atende</label>
-                {hospitalIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => { trigger("vibrate"); setHospitalIds([]); }}
-                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
-                  >
-                    <Eraser size={12} /> Limpar
+                <div className="flex items-center gap-2">
+                  {hospitalIds.length > 0 && (
+                    <button type="button" onClick={() => { trigger("vibrate"); setHospitalIds([]); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                      <Eraser size={12} /> Limpar
+                    </button>
+                  )}
+                  <button onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+                    <Plus size={12} /> Adicionar
                   </button>
-                )}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => { trigger("vibrate"); setIsHospModalOpen(true); }}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
-              >
-                <span className="flex items-center gap-2">
-                  <Building2 size={16} className="text-violet-400" />
-                  {hospitalIds.length > 0 ? `${hospitalIds.length} hospital(is) vinculado(s)` : "Vincular hospitais..."}
-                </span>
-                <span className="text-xs text-ice font-medium">Alterar</span>
-              </button>
+              {hospitaisVinculados.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum hospital vinculado.</p></div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {hospitaisVinculados.map((h) => (
+                    <div key={h.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
+                      <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{h.nome}</span>
+                      <button onClick={() => handleRemoveHospital(h.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
+            {/* Locais */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between px-1 mb-2">
                 <label className="block text-sm font-medium text-ink-primary">Clínicas, Postos e Laboratórios</label>
-                {localIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => { trigger("vibrate"); setLocalIds([]); }}
-                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
-                  >
-                    <Eraser size={12} /> Limpar
+                <div className="flex items-center gap-2">
+                  {localIds.length > 0 && (
+                    <button type="button" onClick={() => { trigger("vibrate"); setLocalIds([]); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                      <Eraser size={12} /> Limpar
+                    </button>
+                  )}
+                  <button onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+                    <Plus size={12} /> Adicionar
                   </button>
-                )}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
-              >
-                <span className="flex items-center gap-2">
-                  <MapPin size={16} className="text-emerald-400" />
-                  {localIds.length > 0 ? `${localIds.length} local(is) vinculado(s)` : "Vincular locais de atendimento..."}
-                </span>
-                <span className="text-xs text-ice font-medium">Alterar</span>
-              </button>
+              {locaisVinculados.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum local vinculado.</p></div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {locaisVinculados.map((l) => (
+                    <div key={l.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
+                      <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{l.nome}</span>
+                      <button onClick={() => handleRemoveLocal(l.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
+            {/* Tratamentos */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between px-1 mb-2">
                 <label className="block text-sm font-medium text-ink-primary">Tratamentos acompanhados</label>
-                {tratamentoIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => { trigger("vibrate"); setTratamentoIds([]); }}
-                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
-                  >
-                    <Eraser size={12} /> Limpar
+                <div className="flex items-center gap-2">
+                  {tratamentoIds.length > 0 && (
+                    <button type="button" onClick={() => { trigger("vibrate"); setTratamentoIds([]); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                      <Eraser size={12} /> Limpar
+                    </button>
+                  )}
+                  <button onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+                    <Plus size={12} /> Adicionar
                   </button>
-                )}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => { trigger("vibrate"); setIsTratModalOpen(true); }}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
-              >
-                <span className="flex items-center gap-2">
-                  <FolderHeart size={16} className="text-coral" />
-                  {tratamentoIds.length > 0 ? `${tratamentoIds.length} tratamento(s) vinculado(s)` : "Vincular tratamentos..."}
-                </span>
-                <span className="text-xs text-ice font-medium">Alterar</span>
-              </button>
+              {tratamentosVinculados.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum tratamento vinculado.</p></div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {tratamentosVinculados.map((t) => (
+                    <div key={t.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1" style={{ borderLeft: `3px solid ${t.cor || '#8B5CF6'}` }}>
+                      <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{t.nome}</span>
+                      <button onClick={() => handleRemoveTratamento(t.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         </section>
@@ -254,9 +238,62 @@ export default function NovoMedicoPage() {
           </Button>
         </div>
 
-        <MultiSelectModal isOpen={isHospModalOpen} onClose={() => setIsHospModalOpen(false)} title="Hospitais Vinculados" items={hospitais} selectedIds={hospitalIds} onChange={setHospitalIds} icon={Building2} onCreateNew={() => router.push("/saude/hospitais/novo")} createLabel="Cadastrar Novo Hospital" />
-        <MultiSelectModal isOpen={isLocalModalOpen} onClose={() => setIsLocalModalOpen(false)} title="Locais e Clínicas" items={locais} selectedIds={localIds} onChange={setLocalIds} icon={MapPin} onCreateNew={() => router.push("/saude/locais/novo")} createLabel="Cadastrar Novo Local" />
-        <MultiSelectModal isOpen={isTratModalOpen} onClose={() => setIsTratModalOpen(false)} title="Tratamentos Acompanhados" items={tratamentos} selectedIds={tratamentoIds} onChange={setTratamentoIds} icon={FolderHeart} onCreateNew={() => router.push("/saude/tratamentos/novo")} createLabel="Cadastrar Novo Tratamento" />
+        <SelectionModal<Hospital>
+          isOpen={isHospitalModalOpen}
+          onClose={() => setIsHospitalModalOpen(false)}
+          onSelect={handleAddHospital}
+          items={hospitais.filter(h => !hospitalIds.includes(h.id!))}
+          title="Selecionar Hospital"
+          placeholder="Buscar hospital..."
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Building2 size={16} /></div>
+              <div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div>
+            </div>
+          )}
+          onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
+          createNewLabel="Cadastrar Novo Hospital"
+        />
+
+        <SelectionModal<LocalSaude>
+          isOpen={isLocalModalOpen}
+          onClose={() => setIsLocalModalOpen(false)}
+          onSelect={handleAddLocal}
+          items={locais.filter(l => !localIds.includes(l.id!))}
+          title="Selecionar Local"
+          placeholder="Buscar local..."
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><MapPin size={16} /></div>
+              <div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div>
+            </div>
+          )}
+          onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }}
+          createNewLabel="Cadastrar Novo Local"
+        />
+
+        <SelectionModal<Tratamento>
+          isOpen={isTratamentoModalOpen}
+          onClose={() => setIsTratamentoModalOpen(false)}
+          onSelect={handleAddTratamento}
+          items={tratamentos.filter(t => !tratamentoIds.includes(t.id!))}
+          title="Selecionar Tratamento"
+          placeholder="Buscar tratamento..."
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/10 text-violet-400"><FolderHeart size={16} /></div>
+              <div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div>
+            </div>
+          )}
+          onCreateNew={() => { setIsTratamentoModalOpen(false); router.push("/saude/tratamentos/novo"); }}
+          createNewLabel="Cadastrar Novo Tratamento"
+        />
       </main>
     </PageTransition>
   );

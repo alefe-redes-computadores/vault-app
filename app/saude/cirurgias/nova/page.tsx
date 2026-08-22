@@ -128,9 +128,9 @@ export default function NovaCirurgiaPage() {
           const dataISO = parseDateToISO(dataDisplay);
           if (!dataISO) throw new Error("Data inválida");
 
-            await cirurgiasRepository.create({
+          await cirurgiasRepository.create({
             user_id: user.id,
-            person_id: activePersonId || undefined, // 👈 Garante o vínculo na raiz com o perfil ativo
+            person_id: activePersonId || undefined,
             procedimento: procedimento.trim(),
             medico_id: medicoId || undefined,
             hospital_id: hospitalId || undefined,
@@ -140,7 +140,6 @@ export default function NovaCirurgiaPage() {
             status,
             observacoes: observacoes.trim() || undefined,
           });
-
         },
         {
           successMessage: "Cirurgia criada com sucesso",
@@ -186,7 +185,7 @@ export default function NovaCirurgiaPage() {
             />
           </motion.div>
 
-          {/* 🔥 MÉDICO COM LIMPAR */}
+          {/* MÉDICO COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -216,7 +215,7 @@ export default function NovaCirurgiaPage() {
               </button>
             </div>
 
-            {/* 🔥 HOSPITAL COM LIMPAR */}
+            {/* HOSPITAL COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
@@ -245,7 +244,7 @@ export default function NovaCirurgiaPage() {
               </button>
             </div>
 
-            {/* 🔥 LOCAL COM LIMPAR */}
+            {/* LOCAL COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Clínica / Ambulatório (Opcional)</label>
@@ -302,7 +301,7 @@ export default function NovaCirurgiaPage() {
                     maxLength={5}
                     value={horario}
                     onChange={(e) => setHorario(handleTimeMask(e.target.value))}
-                    className={`w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-coral/50`}
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-coral/50"
                   />
                 </div>
               </div>
@@ -389,7 +388,7 @@ export default function NovaCirurgiaPage() {
         />
 
         <SelectionModal
-          isOpen={isLocalModalOpen}
+          isOpen= {isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}
           onSelect={(item: any) => setLocalId(item.id!)}
           items={locais}

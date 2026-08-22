@@ -23,18 +23,19 @@ export function useTratamentos() {
 
   const getTratamento = useCallback((id: string) => tratamentosRepository.getById(id), []);
 
-  const addTratamento = useCallback(async (data: Omit<Tratamento, 'id' | 'user_id' | 'person_id' | 'created_at' | 'updated_at' | 'synced'>) => {
+  const addTratamento = useCallback(async (data: Omit<Tratamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { user_id?: string; person_id?: string }) => {
     if (!user) throw new Error('Usuário não autenticado');
-    // Injetando o person_id automaticamente
+    
     return await tratamentosRepository.create({ 
       ...data, 
-      user_id: user.id,
-      person_id: activePersonId || undefined 
+      user_id: data.user_id || user.id,
+      person_id: data.person_id || activePersonId || undefined 
     });
   }, [user, activePersonId]);
 
   const updateTratamento = useCallback(async (id: string, data: Partial<Tratamento>) => {
     await tratamentosRepository.update(id, data);
+    
     if (data.status === 'concluido' || data.status === 'suspenso') {
       const medicamentosAfetados = await db.medicamentos.where('tratamento_ids').equals(id).toArray();
       for (const med of medicamentosAfetados) {

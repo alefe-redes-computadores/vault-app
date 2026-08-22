@@ -914,6 +914,8 @@ export interface LocalSaude {
   nome: string;
   endereco?: string;
   telefone?: string;
+  medico_ids?: string[];
+  tratamento_ids?: string[];
   tipo?: string;
   observacoes?: string;
   created_at: string;
@@ -957,6 +959,9 @@ export interface Tratamento {
   nome: string;
   cid_ids?: string[];
   condicao?: string;
+  medico_ids?: string[];
+  hospital_ids?: string[];
+  local_ids?: string[];
   data_inicio?: string;
   status: 'ativo' | 'concluido' | 'suspenso';
   cor?: string;

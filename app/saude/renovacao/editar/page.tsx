@@ -281,7 +281,7 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* 🔥 MÉDICO COM LIMPAR */}
+          {/* MÉDICO COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -319,7 +319,7 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* 🔥 FARMÁCIA COM LIMPAR */}
+          {/* FARMÁCIA COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -357,7 +357,7 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* 🔥 HOSPITAL COM LIMPAR */}
+          {/* HOSPITAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -395,7 +395,7 @@ function EditarRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* 🔥 LOCAL COM LIMPAR */}
+          {/* LOCAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -539,8 +539,11 @@ function EditarRenovacaoContent() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => {}}
-          createNewLabel=""
+          onCreateNew={() => {
+            setIsMedModalOpen(false);
+            router.push("/saude/medicamentos/novo");
+          }}
+          createNewLabel="Cadastrar Novo Medicamento"
         />
 
         <SelectionModal<Medico>
@@ -560,8 +563,11 @@ function EditarRenovacaoContent() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => {}}
-          createNewLabel=""
+          onCreateNew={() => {
+            setIsDoctorModalOpen(false);
+            router.push("/saude/medicos/novo");
+          }}
+          createNewLabel="Cadastrar Novo Médico"
         />
 
         <SelectionModal<Farmacia>
@@ -581,8 +587,11 @@ function EditarRenovacaoContent() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => {}}
-          createNewLabel=""
+          onCreateNew={() => {
+            setIsPharmacyModalOpen(false);
+            router.push("/saude/farmacias/novo");
+          }}
+          createNewLabel="Cadastrar Nova Farmácia"
         />
 
         <SelectionModal<Hospital>
@@ -602,8 +611,11 @@ function EditarRenovacaoContent() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => {}}
-          createNewLabel=""
+          onCreateNew={() => {
+            setIsHospitalModalOpen(false);
+            router.push("/saude/hospitais/novo");
+          }}
+          createNewLabel="Cadastrar Novo Hospital"
         />
 
         <SelectionModal<LocalSaude>
@@ -623,8 +635,11 @@ function EditarRenovacaoContent() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => {}}
-          createNewLabel=""
+          onCreateNew={() => {
+            setIsLocalModalOpen(false);
+            router.push("/saude/locais/novo");
+          }}
+          createNewLabel="Cadastrar Novo Local"
         />
 
         <ConfirmationModal

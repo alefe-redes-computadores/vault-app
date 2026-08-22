@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Save,
@@ -20,6 +20,11 @@ import {
   Calendar,
   Clock,
   Eraser,
+  Upload,
+  Camera,
+  Image as ImageIcon,
+  FileText,
+  FlaskConical,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -35,18 +40,18 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useLocais } from "@/hooks/useLocais";
 import { useTratamentos } from "@/hooks/useTratamentos";
+import { useExames } from "@/hooks/useExames";
+import { useAuth } from "@/hooks/useAuth";
+import { uploadFile } from "@/lib/supabase/storage";
 import { db } from "@/lib/db";
 import { examesRepository } from "@/lib/repositories/exames";
-import type { Medico, LocalSaude, Tratamento, Exame } from "@/lib/types";
+import { safeAddMedico, safeAddLocal } from "@/lib/db";
+import type { Medico, LocalSaude, Tratamento, Attachment, Exame } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
 };
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function formatDateToDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -92,20 +97,34 @@ function getTratamentoIcon(nome: string) {
   return Activity;
 }
 
+export default function EditarExamePage() {
+  return (
+    <Suspense fallback={<DetailSkeleton />}>
+      <EditarExameContent />
+    </Suspense>
+  );
+}
+
 function EditarExameContent() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { showToast } = useToast();
+  const { user } = useAuth();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const { medicos, addMedico } = useMedicos();
   const { locais, addLocal } = useLocais();
-  const { addTratamento } = useTratamentos();
+  const { tratamentos: allTratamentos, addTratamento } = useTratamentos();
+  const { getExame, deleteExame, updateExame } = useExames();
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [exame, setExame] = useState<Exame | null>(null);
 
   const [personId, setPersonId] = useState("");
   const [nome, setNome] = useState("");
@@ -123,14 +142,16 @@ function EditarExameContent() {
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
 
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [localFile, setLocalFile] = useState<File | null>(null);
+
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
-  const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
-  const [newTratamentoName, setNewTratamentoName] = useState("");
-  const [isSavingTratamento, setIsSavingTratamento] = useState(false);
-
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
+
+  const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
+  const [newTratamentoName, setNewTratamentoName] = useState("");
 
   const [isCreatingDoctor, setIsCreatingDoctor] = useState(false);
   const [newDocName, setNewDocName] = useState("");
@@ -141,11 +162,6 @@ function EditarExameContent() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const tratamentos = useLiveQuery<Tratamento[]>(
-    () => personId ? db.tratamentos.where('person_id').equals(personId).toArray() : Promise.resolve([]),
-    [personId]
-  ) || [];
-
   useEffect(() => {
     if (!id) {
       router.push("/saude/exames");
@@ -153,17 +169,18 @@ function EditarExameContent() {
     }
 
     const loadExame = async () => {
-      const data = await examesRepository.getById(id);
+      const data = await getExame(id);
       if (data) {
+        setExame(data);
         setPersonId(data.person_id || "");
         setNome(data.nome || "");
         setLaboratorio(data.laboratorio || "");
         setLocalId(data.local_id || "");
         setMedico(data.medico || "");
         setMedicoId(data.medico_id || "");
-        setDataSolicitacaoDisplay(formatDateToDisplay(data.data || ""));
+        setDataSolicitacaoDisplay(data.data ? formatDateToDisplay(data.data) : "");
         setHorario((data as any).horario || "");
-        setDataRetornoDisplay(formatDateToDisplay(data.data_retorno || ""));
+        setDataRetornoDisplay(data.data_retorno ? formatDateToDisplay(data.data_retorno) : "");
         setMotivo(data.motivo || "");
         setObservacoes(data.observacoes || "");
         setAnexoUrl(data.anexo_url || "");
@@ -175,13 +192,54 @@ function EditarExameContent() {
     };
 
     loadExame();
-  }, [id, router]);
+  }, [id, router, getExame]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      trigger("vibrate");
+      setLocalFile(file);
+      setAttachment({
+        id: crypto.randomUUID(),
+        url: URL.createObjectURL(file),
+        name: file.name,
+        type: file.type.startsWith("image") ? "image" : "pdf",
+        uploaded_at: new Date().toISOString(),
+      });
+    }
+    e.target.value = "";
+  };
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      trigger("vibrate");
+      setLocalFile(file);
+      setAttachment({
+        id: crypto.randomUUID(),
+        url: URL.createObjectURL(file),
+        name: `exame_${Date.now()}.jpg`,
+        type: "image",
+        uploaded_at: new Date().toISOString(),
+      });
+    }
+    e.target.value = "";
+  };
+
+  const removeAttachment = () => {
+    if (attachment?.url.startsWith("blob:")) URL.revokeObjectURL(attachment.url);
+    setAttachment(null);
+    setLocalFile(null);
+    setAnexoUrl("");
+    trigger("vibrate");
+  };
 
   const handleCreateDoctor = async () => {
     if (!newDocName.trim()) return;
     trigger("vibrate");
     try {
-      const newId = await addMedico({
+      const newId = await safeAddMedico({
+        user_id: user?.id || "",
         nome: newDocName.trim(),
         especialidade: newDocEspecialidade.trim() || "Geral",
       });
@@ -202,7 +260,8 @@ function EditarExameContent() {
     if (!newLocalName.trim()) return;
     trigger("vibrate");
     try {
-      const newId = await addLocal({
+      const newId = await safeAddLocal({
+        user_id: user?.id || "",
         nome: newLocalName.trim(),
         tipo: "laboratorio",
       });
@@ -218,32 +277,29 @@ function EditarExameContent() {
     }
   };
 
-    const handleCreateTratamento = async () => {
-    if (!newTratamentoName.trim() || !personId) return;
-    setIsSavingTratamento(true);
+  const handleCreateTratamento = async () => {
+    if (!newTratamentoName.trim()) return;
     trigger("vibrate");
     try {
       const newId = await addTratamento({
+        person_id: personId || undefined,
         nome: newTratamentoName.trim(),
         status: "ativo",
       });
-      setTratamentosSelecionados((prev: string[]) => [...prev, newId]);
-      trigger("success");
-      showToast("Tratamento cadastrado", "success");
+      setTratamentosSelecionados((prev) => [...prev, newId]);
       setIsCreatingTratamento(false);
       setNewTratamentoName("");
+      trigger("success");
+      showToast("Tratamento cadastrado", "success");
     } catch (error) {
       trigger("error");
       showToast("Erro ao cadastrar tratamento", "error");
-    } finally {
-      setIsSavingTratamento(false);
     }
   };
 
-
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!nome.trim()) newErrors.nome = "Nome do exame é obrigatório";
+    if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
     if (!dataSolicitacaoDisplay || dataSolicitacaoDisplay.length < 10) newErrors.data = "Data inválida";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -262,44 +318,55 @@ function EditarExameContent() {
 
     run(
       async () => {
-        try {
-          const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
-          if (!dataSolicitacaoISO) throw new Error("Data inválida");
+        const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
+        if (!dataSolicitacaoISO) throw new Error("Data inválida");
 
-          const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
+        const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
 
-          await examesRepository.update(id, {
-            person_id: personId || undefined,
-            nome: nome.trim(),
-            laboratorio: laboratorio.trim() || undefined,
-            local_id: localId || undefined,
-            medico: medico.trim() || undefined,
-            medico_id: medicoId || undefined,
-            data: dataSolicitacaoISO,
-            horario: horario || undefined,
-            data_retorno: dataRetornoISO,
-            motivo: motivo.trim() || undefined,
-            observacoes: observacoes.trim() || undefined,
-            anexo_url: anexoUrl.trim() || undefined,
-            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-          });
-        } finally {
-          isSubmitLocked.current = false;
+        let urlUpload = anexoUrl;
+        if (localFile && user) {
+          const { url, error } = await uploadFile(user.id, localFile, "saude");
+          if (!error && url) {
+            urlUpload = url;
+            if (attachment?.url.startsWith("blob:")) URL.revokeObjectURL(attachment.url);
+          }
         }
+
+        await updateExame(id, {
+          person_id: personId || undefined,
+          nome: nome.trim(),
+          laboratorio: laboratorio.trim() || undefined,
+          local_id: localId || undefined,
+          medico: medico.trim() || undefined,
+          medico_id: medicoId || undefined,
+          data: dataSolicitacaoISO,
+          horario: horario || undefined,
+          data_retorno: dataRetornoISO,
+          motivo: motivo.trim() || undefined,
+          observacoes: observacoes.trim() || undefined,
+          anexo_url: urlUpload.trim() || undefined,
+          tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+        });
       },
       {
         successMessage: "Exame atualizado com sucesso",
         errorMessage: "Erro ao atualizar exame",
         goBackOnSuccess: false,
       }
-    ).then(() => router.replace(`/saude/exames/detalhes?id=${id}`)).catch(() => {});
+    ).then(() => router.replace(`/saude/exames/detalhes?id=${id}`)).catch(() => {}).finally(() => {
+      isSubmitLocked.current = false;
+    });
   };
 
   if (isLoading) return <DetailSkeleton />;
+  if (!exame) return null;
 
   return (
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+        <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
+
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -316,7 +383,7 @@ function EditarExameContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* 🔥 TRATAMENTOS COM LIMPAR (limpa todos de uma vez) */}
+          {/* TRATAMENTOS COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -340,7 +407,7 @@ function EditarExameContent() {
             {tratamentosSelecionados.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {tratamentosSelecionados.map((tId) => {
-                  const t = tratamentos.find((x: Tratamento) => x.id === tId);
+                  const t = allTratamentos.find((x: Tratamento) => x.id === tId);
                   if (!t) return null;
                   const IconComp = getTratamentoIcon(t.nome);
                   return (
@@ -381,7 +448,7 @@ function EditarExameContent() {
               />
             </div>
 
-            {/* 🔥 LABORATÓRIO COM LIMPAR */}
+            {/* LABORATÓRIO COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Laboratório / Hospital</label>
@@ -409,7 +476,7 @@ function EditarExameContent() {
               </button>
             </div>
 
-            {/* 🔥 MÉDICO COM LIMPAR */}
+            {/* MÉDICO COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Médico Solicitante</label>
@@ -470,7 +537,7 @@ function EditarExameContent() {
             </div>
 
             <div className="space-y-1.5 pt-2 border-t border-surface-border/30">
-              <label className="block text-sm font-medium text-ink-primary">Data Previsão / Retorno <span className="text-[10px] text-ink-faint">(Alerta)</span></label>
+              <label className="block text-sm font-medium text-ink-primary">Data Previsão / Retorno</label>
               <div className="relative">
                 <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                 <input
@@ -484,35 +551,31 @@ function EditarExameContent() {
               </div>
             </div>
 
-            <Input
-              label="Motivo da Solicitação"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-            />
+            <Input label="Motivo da Solicitação" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+            <TextArea label="Observações / Resultados" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
+            <Input label="Link Externo (URL)" value={anexoUrl} onChange={(e) => setAnexoUrl(e.target.value)} />
 
-            <TextArea
-              label="Observações / Resultados"
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-            />
-
-            <Input
-              label="Link Externo (URL)"
-              value={anexoUrl}
-              onChange={(e) => setAnexoUrl(e.target.value)}
-            />
+            {/* ANEXO / LAUDO */}
+            <div className="pt-2 border-t border-surface-border/30">
+              <div className="mb-2"><label className="block text-sm font-medium text-ink-primary">Comprovante / Laudo</label></div>
+              {!attachment && !anexoUrl ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <Button variant="secondary" onClick={() => fileInputRef.current?.click()}><Upload size={16} />Arquivo</Button>
+                  <Button variant="secondary" onClick={() => cameraInputRef.current?.click()}><Camera size={16} />Câmera</Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
+                  <ImageIcon size={16} className="text-ice" />
+                  <p className="truncate text-sm font-medium flex-1 text-ink-primary">{attachment?.name || anexoUrl}</p>
+                  <button onClick={() => { removeAttachment(); setAnexoUrl(""); }} className="text-ink-muted"><X size={14} /></button>
+                </div>
+              )}
+            </div>
           </motion.div>
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={handleSave}
-            disabled={isSubmitting}
-            className="flex items-center justify-center gap-2"
-          >
+          <Button variant="primary" size="lg" fullWidth onClick={handleSave} disabled={isSubmitting} className="flex items-center justify-center gap-2">
             {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             {isSubmitting ? "Salvando..." : "Salvar Alterações"}
           </Button>
@@ -528,8 +591,8 @@ function EditarExameContent() {
           renderItem={(item) => <p className="font-medium text-ink-primary">{item.nome}</p>}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsLocalModalOpen(false); trigger("vibrate"); }}
-          createNewLabel=""
+          onCreateNew={() => { setIsLocalModalOpen(false); trigger("vibrate"); setIsCreatingLocal(true); }}
+          createNewLabel="Cadastrar Novo Local"
         />
 
         <SelectionModal<Medico>
@@ -547,8 +610,8 @@ function EditarExameContent() {
           )}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsDoctorModalOpen(false); trigger("vibrate"); }}
-          createNewLabel=""
+          onCreateNew={() => { setIsDoctorModalOpen(false); trigger("vibrate"); setIsCreatingDoctor(true); }}
+          createNewLabel="Cadastrar Novo Médico"
         />
 
         <SelectionModal<Tratamento>
@@ -560,7 +623,7 @@ function EditarExameContent() {
               setTratamentosSelecionados((prev) => [...prev, item.id!]);
             }
           }}
-          items={tratamentos}
+          items={allTratamentos}
           title="Vincular a Tratamento/CID"
           placeholder="Buscar tratamento..."
           renderItem={(item) => {
@@ -574,14 +637,32 @@ function EditarExameContent() {
           }}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); }}
-          createNewLabel=""
+          onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }}
+          createNewLabel="Cadastrar Novo Tratamento"
         />
+
+        <BottomSheet isOpen={isCreatingTratamento} onClose={() => setIsCreatingTratamento(false)} title="Novo Tratamento">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Nome do Tratamento" value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus />
+            <Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={!newTratamentoName.trim()}>Salvar e Selecionar</Button>
+          </div>
+        </BottomSheet>
+
+        <BottomSheet isOpen={isCreatingDoctor} onClose={() => setIsCreatingDoctor(false)} title="Novo Médico">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Nome" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} autoFocus />
+            <Input label="Especialidade" value={newDocEspecialidade} onChange={(e) => setNewDocEspecialidade(e.target.value)} />
+            <Button variant="primary" fullWidth onClick={handleCreateDoctor} disabled={!newDocName.trim()}>Salvar e Selecionar</Button>
+          </div>
+        </BottomSheet>
+
+        <BottomSheet isOpen={isCreatingLocal} onClose={() => setIsCreatingLocal(false)} title="Novo Local">
+          <div className="space-y-4 px-1 pb-2">
+            <Input label="Nome" value={newLocalName} onChange={(e) => setNewLocalName(e.target.value)} autoFocus />
+            <Button variant="primary" fullWidth onClick={handleCreateLocal} disabled={!newLocalName.trim()}>Salvar e Selecionar</Button>
+          </div>
+        </BottomSheet>
       </main>
     </PageTransition>
   );
-}
-
-export default function EditarExamePage() {
-  return <Suspense fallback={<DetailSkeleton />}><EditarExameContent /></Suspense>;
 }

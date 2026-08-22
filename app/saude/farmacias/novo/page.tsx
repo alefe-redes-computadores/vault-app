@@ -6,20 +6,17 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Building2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useActivePersonId } from "@/hooks/useActivePersonId"; // 👈 1. IMPORTADO AQUI
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { farmaciasRepository } from "@/lib/repositories/farmacias";
-import type { Farmacia } from "@/lib/types";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-};
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
 function formatPhone(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 11);
@@ -34,13 +31,14 @@ export default function NovaFarmaciaPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
-  const { activePersonId } = useActivePersonId(); // 👈 2. CAPTURADO O ID DA PESSOA ATIVA
+  const { activePersonId } = useActivePersonId();
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
   const [nome, setNome] = useState("");
   const [endereco, setEndereco] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [observacoes, setObservacoes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
@@ -66,10 +64,11 @@ export default function NovaFarmaciaPage() {
         async () => {
           await farmaciasRepository.create({
             user_id: user.id,
-            person_id: activePersonId || undefined, // 👈 3. INJETADO NA RAIZ
+            person_id: activePersonId || undefined,
             nome: nome.trim(),
             endereco: endereco.trim() || undefined,
             telefone: telefone.trim() || undefined,
+            observacoes: observacoes.trim() || undefined,
           });
         },
         {
@@ -85,7 +84,7 @@ export default function NovaFarmaciaPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -96,24 +95,21 @@ export default function NovaFarmaciaPage() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <Building2 size={16} className="text-ice" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                  Vault
+                <Building2 size={16} className="text-amber-400" />
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber-400">
+                  Hub de Farmácia
                 </p>
               </div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
-                Nova farmácia
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary truncate">
+                Nova Farmácia
               </h1>
-              <p className="mt-1 text-sm text-ink-muted">
-                Cadastre pra vincular em receitas e renovações.
-              </p>
             </div>
           </div>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
+        <section className="space-y-5 px-5 pt-6">
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -121,6 +117,9 @@ export default function NovaFarmaciaPage() {
             transition={{ duration: 0.28 }}
             className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
+            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">
+              Informações do Local
+            </h2>
             <Input
               label="Nome *"
               placeholder="Ex: Farmácia Popular, Drogasil..."
@@ -140,6 +139,12 @@ export default function NovaFarmaciaPage() {
               placeholder="(00) 00000-0000"
               value={telefone}
               onChange={(e) => setTelefone(formatPhone(e.target.value))}
+            />
+            <TextArea
+              label="Observações"
+              placeholder="Horário de funcionamento, detalhes..."
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
             />
           </motion.div>
         </section>

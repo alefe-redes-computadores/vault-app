@@ -164,7 +164,6 @@ function EditarMedicamentoContent() {
   const { run: runDelete, isSubmitting: isDeleting } = useSubmitAction();
 
   const { getMedicamento, medicamentos: medicamentosList } = useMedicamentos();
-  const { addDocument, updateDocument } = useSafeDb();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
   const { hospitais: hospitaisLocais } = useHospitais();
@@ -1344,7 +1343,6 @@ function EditarMedicamentoContent() {
                     />
                   </div>
 
-                  {/* CAMPO DE CID DINÂMICO MODIFICADO - SELEÇÃO MÚLTIPLA E BOTÃO NO MODAL */}
                   <div>
                     <label className="block text-sm font-medium text-ink-primary mb-1.5">Diagnóstico / CID Relacionado</label>
                     <button

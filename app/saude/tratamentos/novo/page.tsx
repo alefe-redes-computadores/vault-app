@@ -4,7 +4,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Plus, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Check, Stethoscope, Building2, MapPin, Plus } from "lucide-react";
 import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +16,9 @@ import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 import { tratamentosRepository } from "@/lib/repositories/tratamentos";
-import type { Cid, Person, Tratamento } from "@/lib/types";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import type { Cid, Person, Medico, Hospital, LocalSaude } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -43,16 +45,32 @@ export default function NovoTratamentoPage() {
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
+  const medicos = useLiveQuery(() => db.medicos.toArray(), [], []) || [];
+  const hospitais = useLiveQuery(() => db.hospitais.toArray(), [], []) || [];
+  const locais = useLiveQuery(() => db.locais.toArray(), [], []) || [];
+
   const [personId, setPersonId] = useState<string>(persons[0]?.id || "");
   const [nome, setNome] = useState("");
   const [cidIds, setCidIds] = useState<string[]>([]);
   const [status, setStatus] = useState<"ativo" | "concluido" | "suspenso">("ativo");
   const [cor, setCor] = useState("#8B5CF6");
   const [observacoes, setObservacoes] = useState("");
+  
+  const [medicoIds, setMedicoIds] = useState<string[]>([]);
+  const [hospitalIds, setHospitalIds] = useState<string[]>([]);
+  const [localIds, setLocalIds] = useState<string[]>([]);
+
   const [error, setError] = useState("");
 
   const [isCidModalOpen, setIsCidModalOpen] = useState(false);
   const [showAddCidPrompt, setShowAddCidPrompt] = useState(false);
+  const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
+  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
+  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
+
+  const medicosVinculados = medicos.filter(m => medicoIds.includes(m.id!));
+  const hospitaisVinculados = hospitais.filter(h => hospitalIds.includes(h.id!));
+  const locaisVinculados = locais.filter(l => localIds.includes(l.id!));
 
   const handleSubmit = async () => {
     trigger("vibrate");
@@ -77,21 +95,22 @@ export default function NovoTratamentoPage() {
 
     try {
       await run(
-          async () => {
+        async () => {
           const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
 
           await tratamentosRepository.create({
             user_id: user.id,
-            // 👈 Garantia extra: usa o personId do seletor OU o activePersonId global como fallback
             person_id: personId || (activePersonId as string) || undefined,
             nome: nome.trim(),
             cid_ids: cleanCids,
             status,
             cor,
             observacoes: observacoes.trim() || undefined,
+            medico_ids: medicoIds,
+            hospital_ids: hospitalIds,
+            local_ids: localIds,
           });
         },
-
         {
           successMessage: "Tratamento cadastrado com sucesso",
           errorMessage: "Erro ao salvar tratamento",
@@ -117,11 +136,20 @@ export default function NovoTratamentoPage() {
     setCidIds(cidIds.filter((id) => id !== cidId));
   };
 
+  const handleAddMedico = (m: Medico) => { if (m.id && !medicoIds.includes(m.id)) setMedicoIds(p => [...p, m.id!]); };
+  const handleRemoveMedico = (id: string) => { trigger("vibrate"); setMedicoIds(p => p.filter(i => i !== id)); };
+
+  const handleAddHospital = (h: Hospital) => { if (h.id && !hospitalIds.includes(h.id)) setHospitalIds(p => [...p, h.id!]); };
+  const handleRemoveHospital = (id: string) => { trigger("vibrate"); setHospitalIds(p => p.filter(i => i !== id)); };
+
+  const handleAddLocal = (l: LocalSaude) => { if (l.id && !localIds.includes(l.id)) setLocalIds(p => [...p, l.id!]); };
+  const handleRemoveLocal = (id: string) => { trigger("vibrate"); setLocalIds(p => p.filter(i => i !== id)); };
+
   const selectedCids = cids?.filter((c: Cid) => c.id && cidIds.includes(c.id)) || [];
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -200,7 +228,7 @@ export default function NovoTratamentoPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-ink-primary">Cor de Identificação Dinâmica</label>
+              <label className="block text-sm font-medium text-ink-primary">Identificação Visual</label>
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {CORES_TRATAMENTO.map((item) => (
                   <button
@@ -247,6 +275,62 @@ export default function NovoTratamentoPage() {
               />
             </div>
           </motion.div>
+
+          {/* EQUIPE MÉDICA E LOCAIS (DIRETOS) */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            
+            {/* Médicos */}
+            <div>
+              <div className="flex items-center justify-between px-1 mb-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Stethoscope size={14} className="text-ice" /> Médicos Responsáveis</h2>
+                <button onClick={() => setIsMedicoModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all"><Plus size={12} /> Adicionar</button>
+              </div>
+              {medicosVinculados.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum médico vinculado.</p></div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {medicosVinculados.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1"><span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">Dr(a). {m.nome.split(' ')[0]}</span><button onClick={() => handleRemoveMedico(m.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button></div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Hospitais */}
+            <div>
+              <div className="flex items-center justify-between px-1 mb-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Building2 size={14} className="text-violet-400" /> Hospitais / Clínicas</h2>
+                <button onClick={() => setIsHospitalModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all"><Plus size={12} /> Adicionar</button>
+              </div>
+              {hospitaisVinculados.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum hospital vinculado.</p></div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {hospitaisVinculados.map((h) => (
+                    <div key={h.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1"><span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{h.nome}</span><button onClick={() => handleRemoveHospital(h.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button></div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Locais */}
+            <div>
+              <div className="flex items-center justify-between px-1 mb-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><MapPin size={14} className="text-emerald-400" /> Postos de Saúde / C.A.P.S</h2>
+                <button onClick={() => setIsLocalModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all"><Plus size={12} /> Adicionar</button>
+              </div>
+              {locaisVinculados.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum posto ou local vinculado.</p></div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {locaisVinculados.map((l) => (
+                    <div key={l.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1"><span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{l.nome}</span><button onClick={() => handleRemoveLocal(l.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button></div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </motion.div>
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
@@ -279,6 +363,63 @@ export default function NovoTratamentoPage() {
           getItemLabel={(item: Cid) => item.descricao}
           onCreateNew={() => { setIsCidModalOpen(false); router.push("/saude/cids/novo"); }}
           createNewLabel="Cadastrar Novo CID"
+        />
+
+        <SelectionModal<Medico>
+          isOpen={isMedicoModalOpen}
+          onClose={() => setIsMedicoModalOpen(false)}
+          onSelect={handleAddMedico}
+          items={medicos.filter(m => !medicoIds.includes(m.id!))}
+          title="Vincular Médico"
+          placeholder="Buscar médico..."
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Stethoscope size={16} /></div>
+              <div><p className="text-sm font-semibold text-ink-primary">Dr(a). {item.nome}</p></div>
+            </div>
+          )}
+          onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }}
+          createNewLabel="Cadastrar Novo Médico"
+        />
+
+        <SelectionModal<Hospital>
+          isOpen={isHospitalModalOpen}
+          onClose={() => setIsHospitalModalOpen(false)}
+          onSelect={handleAddHospital}
+          items={hospitais.filter(h => !hospitalIds.includes(h.id!))}
+          title="Vincular Hospital"
+          placeholder="Buscar hospital..."
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/10 text-violet-400"><Building2 size={16} /></div>
+              <div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div>
+            </div>
+          )}
+          onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
+          createNewLabel="Cadastrar Novo Hospital"
+        />
+
+        <SelectionModal<LocalSaude>
+          isOpen={isLocalModalOpen}
+          onClose={() => setIsLocalModalOpen(false)}
+          onSelect={handleAddLocal}
+          items={locais.filter(l => !localIds.includes(l.id!))}
+          title="Vincular Posto/Local"
+          placeholder="Buscar local..."
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><MapPin size={16} /></div>
+              <div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div>
+            </div>
+          )}
+          onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }}
+          createNewLabel="Cadastrar Novo Local"
         />
 
         <AnimatePresence>

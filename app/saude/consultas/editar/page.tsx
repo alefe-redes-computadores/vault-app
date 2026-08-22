@@ -14,6 +14,7 @@ import {
   MapPin,
   Clock,
   Eraser,
+  Save,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
@@ -26,7 +27,7 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { SelectionModal } from "@/components/SelectionModal";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { consultasRepository } from "@/lib/repositories/consultas";
-import type { Consulta } from "@/lib/types";
+import type { Consulta, Medico, Hospital, LocalSaude } from "@/lib/types";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -189,7 +190,7 @@ function EditarConsultaContent() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* 🔥 MÉDICO COM LIMPAR */}
+          {/* MÉDICO COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-sm font-medium text-ink-primary">Médico <span className="text-coral">*</span></label>
@@ -220,7 +221,7 @@ function EditarConsultaContent() {
             {error && <p className="mt-1 text-xs text-coral">{error}</p>}
           </motion.div>
 
-          {/* 🔥 HOSPITAL E LOCAL COM LIMPAR */}
+          {/* HOSPITAL E LOCAL COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -352,7 +353,7 @@ function EditarConsultaContent() {
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Salvar Alterações"}
+            {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar Alterações</>}
           </Button>
         </div>
 
@@ -415,5 +416,9 @@ function EditarConsultaContent() {
 }
 
 export default function EditarConsultaPage() {
-  return <Suspense fallback={<DetailSkeleton />}><EditarConsultaContent /></Suspense>;
+  return (
+    <Suspense fallback={<DetailSkeleton />}>
+      <EditarConsultaContent />
+    </Suspense>
+  );
 }
