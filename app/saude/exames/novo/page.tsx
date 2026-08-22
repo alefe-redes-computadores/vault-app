@@ -191,6 +191,7 @@ export default function NovoExamePage() {
     trigger("vibrate");
   };
 
+  // ✅ NOVO handleCreateDoctor usando addMedico do hook
   const handleCreateDoctor = async () => {
     if (!newDocName.trim()) return;
     trigger("vibrate");
@@ -212,6 +213,7 @@ export default function NovoExamePage() {
     }
   };
 
+  // ✅ NOVO handleCreateLocal usando addLocal do hook
   const handleCreateLocal = async () => {
     if (!newLocalName.trim()) return;
     trigger("vibrate");
@@ -232,7 +234,7 @@ export default function NovoExamePage() {
     }
   };
 
-    const handleCreateTratamento = async () => {
+  const handleCreateTratamento = async () => {
     if (!newTratamentoName.trim() || !activePersonId) return;
     setIsSavingTratamento(true);
     trigger("vibrate");
@@ -253,7 +255,6 @@ export default function NovoExamePage() {
       setIsSavingTratamento(false);
     }
   };
-
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -292,10 +293,10 @@ export default function NovoExamePage() {
             }
           }
 
-            for (const nomeExame of listaExames) {
+          for (const nomeExame of listaExames) {
             await examesRepository.create({
               person_id: activePersonId,
-              user_id: user.id, // 👈 Adicionada a propriedade para garantir o vínculo com o usuário logado
+              user_id: user.id,
               nome: nomeExame,
               laboratorio: localRealizacao.trim() || undefined,
               local_id: localId || undefined,
@@ -310,7 +311,6 @@ export default function NovoExamePage() {
               tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
             });
           }
-
         } finally {
           isSubmitLocked.current = false;
         }
@@ -328,7 +328,7 @@ export default function NovoExamePage() {
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
-        
+
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -345,7 +345,7 @@ export default function NovoExamePage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* 🔥 TRATAMENTOS COM LIMPAR (limpa todos de uma vez) */}
+          {/* TRATAMENTOS COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -410,7 +410,7 @@ export default function NovoExamePage() {
               {errors.nomes && <p className="mt-1 text-xs text-coral">{errors.nomes}</p>}
             </div>
 
-            {/* 🔥 LABORATÓRIO COM LIMPAR */}
+            {/* LABORATÓRIO COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Laboratório / Hospital</label>
@@ -438,7 +438,7 @@ export default function NovoExamePage() {
               </button>
             </div>
 
-            {/* 🔥 MÉDICO COM LIMPAR */}
+            {/* MÉDICO COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Médico Solicitante</label>

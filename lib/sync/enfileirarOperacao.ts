@@ -23,7 +23,11 @@ export async function enfileirarOperacao(
   const dadosObj = dados as { id?: string };
   const chave = `${tabela}:${dadosObj.id ?? ""}`;
   const agora = new Date().toISOString();
-  const payload = dados as Record<string, unknown>;
+  
+  // 🔥 A CORREÇÃO: Criamos uma cópia do payload e DELETAMOS a propriedade 'synced'
+  // antes de mandar para a fila, para não quebrar o Supabase.
+  const payload = { ...(dados as Record<string, unknown>) };
+  delete payload.synced;
 
   const existente = await db.syncQueue.where("chave").equals(chave).first();
 
@@ -40,14 +44,14 @@ export async function enfileirarOperacao(
     await db.syncQueue.update(existente.id!, atualizacao);
   } else {
     await db.syncQueue.add({
-      id: generateQueueId(), // ID injetado para satisfazer a chave primária do Dexie na syncQueue
+      id: generateQueueId(),
       chave,
       ...atualizacao,
       created_at: agora,
     });
   }
 
-  // 🔥 O ELO PERDIDO: Dispara o evento global para acordar o hook useSyncQueue imediatamente
+  // Dispara o evento global para acordar o hook useSyncQueue imediatamente
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("sync:process"));
   }

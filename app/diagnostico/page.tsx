@@ -30,7 +30,6 @@ interface TableCheck {
   error?: string;
 }
 
-// 1. LISTA CORRIGIDA COM AS CHAVES REAIS DO DEXIE E SUPABASE
 const TABLES: { key: string; remoteKey: string; label: string }[] = [
   { key: "persons", remoteKey: "persons", label: "Pessoas" },
   { key: "medicos", remoteKey: "medicos", label: "Médicos" },
@@ -127,7 +126,13 @@ export default function DiagnosticoPage() {
           const items = await (db as any)[table.key].toArray();
 
           if (items.length > 0) {
-            const { error } = await supabase.from(table.remoteKey).upsert(items);
+            // 🔥 A CORREÇÃO: Removemos o "synced" de todos os itens antes de forçar o envio
+            const sanitizedItems = items.map((item: any) => {
+              const { synced, ...rest } = item;
+              return rest;
+            });
+
+            const { error } = await supabase.from(table.remoteKey).upsert(sanitizedItems);
 
             if (error) {
               errorMsg = `Tabela ${table.label}: ${error.message || error.details}`;

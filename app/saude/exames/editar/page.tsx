@@ -45,7 +45,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { uploadFile } from "@/lib/supabase/storage";
 import { db } from "@/lib/db";
 import { examesRepository } from "@/lib/repositories/exames";
-import { safeAddMedico, safeAddLocal } from "@/lib/db";
+// ❌ REMOVIDO: import { safeAddMedico, safeAddLocal } from "@/lib/db";
 import type { Medico, LocalSaude, Tratamento, Attachment, Exame } from "@/lib/types";
 
 const fadeUp = {
@@ -234,12 +234,12 @@ function EditarExameContent() {
     trigger("vibrate");
   };
 
+  // ✅ NOVO handleCreateDoctor usando addMedico do hook
   const handleCreateDoctor = async () => {
     if (!newDocName.trim()) return;
     trigger("vibrate");
     try {
-      const newId = await safeAddMedico({
-        user_id: user?.id || "",
+      const newId = await addMedico({
         nome: newDocName.trim(),
         especialidade: newDocEspecialidade.trim() || "Geral",
       });
@@ -256,12 +256,12 @@ function EditarExameContent() {
     }
   };
 
+  // ✅ NOVO handleCreateLocal usando addLocal do hook
   const handleCreateLocal = async () => {
     if (!newLocalName.trim()) return;
     trigger("vibrate");
     try {
-      const newId = await safeAddLocal({
-        user_id: user?.id || "",
+      const newId = await addLocal({
         nome: newLocalName.trim(),
         tipo: "laboratorio",
       });

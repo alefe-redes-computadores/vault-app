@@ -166,8 +166,8 @@ function EditarMedicamentoContent() {
   const { getMedicamento, medicamentos: medicamentosList } = useMedicamentos();
   const { medicos } = useMedicos();
   const { farmacias } = useFarmacias();
-  const { hospitais: hospitaisLocais } = useHospitais();
-  const { locais } = useLocais();
+  const { hospitais: hospitaisLocais, addHospital } = useHospitais(); // ✅ ALTERADO
+  const { locais, addLocal } = useLocais(); // ✅ ALTERADO
 
   const cids = useLiveQuery(() => db.cids?.toArray() || []) ?? [];
 
@@ -1518,8 +1518,7 @@ function EditarMedicamentoContent() {
           getItemLabel={(i) => i.nome}
           enableQuickCreate
           onQuickCreate={async (name) => {
-            if (!user) throw new Error('Usuário não autenticado');
-            const newHosp = await hospitaisRepository.create({ user_id: user.id, nome: name, tipo: "hospital" });
+            const newHosp = await addHospital({ nome: name, tipo: "hospital" }); // ✅ ALTERADO
             return { id: newHosp, nome: name, tipo: "hospital" } as any;
           }}
           onSelect={(item) => {
@@ -1550,8 +1549,7 @@ function EditarMedicamentoContent() {
           getItemLabel={(i) => i.nome}
           enableQuickCreate
           onQuickCreate={async (name) => {
-            if (!user) throw new Error('Usuário não autenticado');
-            const newLocal = await locaisRepository.create({ user_id: user.id, nome: name, tipo: "outro" });
+            const newLocal = await addLocal({ nome: name, tipo: "outro" }); // ✅ ALTERADO
             return { id: newLocal, nome: name, tipo: "outro" };
           }}
           onSelect={(item) => {

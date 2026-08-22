@@ -3,7 +3,7 @@
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect } from "react";
-import { CloudOff, RefreshCw, CheckCircle2 } from "lucide-react";
+import { CloudOff, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import { db } from "@/lib/db";
 
 function useOnlineStatus() {
@@ -28,9 +28,15 @@ function useOnlineStatus() {
 export function SyncStatusIndicator() {
   const online = useOnlineStatus();
   
-  // 🔧 CORRIGIDO: Conta apenas os itens pendentes que não falharam usando a propriedade real 'failed'
+  // Conta itens pendentes normais
   const pendingCount = useLiveQuery(
     () => db.syncQueue.filter((item) => !item.failed).count(),
+    []
+  ) ?? 0;
+
+  // Conta itens que falharam (travados na fila)
+  const failedCount = useLiveQuery(
+    () => db.syncQueue.filter((item) => !!item.failed).count(),
     []
   ) ?? 0;
 
@@ -39,6 +45,16 @@ export function SyncStatusIndicator() {
       <div className="flex items-center gap-1.5 text-amber-400">
         <CloudOff size={14} />
         <span className="text-[11px] font-medium">Offline</span>
+      </div>
+    );
+  }
+
+  // Se tem itens falhos, mostramos o erro vermelho para não "mentir" que está sincronizado
+  if (failedCount > 0) {
+    return (
+      <div className="flex items-center gap-1.5 text-coral">
+        <AlertTriangle size={14} />
+        <span className="text-[11px] font-medium">Erro de Sinc.</span>
       </div>
     );
   }
