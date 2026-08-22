@@ -128,9 +128,9 @@ export default function NovaCirurgiaPage() {
           const dataISO = parseDateToISO(dataDisplay);
           if (!dataISO) throw new Error("Data inválida");
 
-          await cirurgiasRepository.create({
+            await cirurgiasRepository.create({
             user_id: user.id,
-            person_id: activePersonId || undefined,
+            person_id: activePersonId || undefined, // 👈 Garante o vínculo na raiz com o perfil ativo
             procedimento: procedimento.trim(),
             medico_id: medicoId || undefined,
             hospital_id: hospitalId || undefined,
@@ -140,6 +140,7 @@ export default function NovaCirurgiaPage() {
             status,
             observacoes: observacoes.trim() || undefined,
           });
+
         },
         {
           successMessage: "Cirurgia criada com sucesso",

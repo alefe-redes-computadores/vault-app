@@ -292,9 +292,10 @@ export default function NovoExamePage() {
             }
           }
 
-          for (const nomeExame of listaExames) {
+            for (const nomeExame of listaExames) {
             await examesRepository.create({
               person_id: activePersonId,
+              user_id: user.id, // 👈 Adicionada a propriedade para garantir o vínculo com o usuário logado
               nome: nomeExame,
               laboratorio: localRealizacao.trim() || undefined,
               local_id: localId || undefined,
@@ -309,6 +310,7 @@ export default function NovoExamePage() {
               tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
             });
           }
+
         } finally {
           isSubmitLocked.current = false;
         }

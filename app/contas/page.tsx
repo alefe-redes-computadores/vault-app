@@ -1,7 +1,7 @@
 // app/contas/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { usePaginatedCards } from "@/hooks/usePaginatedCards";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useToast } from "@/components/ToastProvider";
@@ -32,6 +33,7 @@ export default function ContasPage() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const router = useRouter();
+  const { activePersonId } = useActivePersonId();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -40,10 +42,17 @@ export default function ContasPage() {
 
   const { isPrivate, togglePrivacy } = usePrivacyMode();
 
-  const { cards, totalCount, hasMore, isLoadingMore, loadMore, deleteCard } = usePaginatedCards({
+  const { cards: rawCards, hasMore, isLoadingMore, loadMore, deleteCard } = usePaginatedCards({
     searchQuery: debouncedQuery,
     selectedType: "contas",
   });
+
+  const cards = useMemo(() => {
+    if (!rawCards) return [];
+    return rawCards.filter((c: any) => !activePersonId || !c.person_id || c.person_id === activePersonId);
+  }, [rawCards, activePersonId]);
+
+  const totalCount = cards.length;
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);

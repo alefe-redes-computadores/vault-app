@@ -21,6 +21,7 @@ import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { DocumentCard } from "@/components/DocumentCard";
 import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
 import { Input } from "@/components/ui/Input";
@@ -67,7 +68,15 @@ export default function DocumentsPage() {
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const [activeTab, setActiveTab] = useState<TabType>("receitas");
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  
+  // 🔥 Sincroniza perfeitamente o ID da pessoa ativa com o hook
+  const { activePersonId } = useActivePersonId();
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(activePersonId);
+
+  useEffect(() => {
+    setSelectedPersonId(activePersonId);
+  }, [activePersonId]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | "all">("all");
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("todos");
@@ -97,13 +106,13 @@ export default function DocumentsPage() {
 
   const medicamentoMap = useMemo(() => {
     const map = new Map();
-    medicamentos.forEach((m) => map.set(m.id, m));
+    (medicamentos || []).forEach((m) => map.set(m.id, m));
     return map;
   }, [medicamentos]);
 
   const renovacoesPorMedicamento = useMemo(() => {
     const map = new Map();
-    renovacoes.forEach((r) => {
+    (renovacoes || []).forEach((r) => {
       if (!map.has(r.medicamento_id)) map.set(r.medicamento_id, []);
       map.get(r.medicamento_id).push(r);
     });
@@ -111,7 +120,10 @@ export default function DocumentsPage() {
   }, [renovacoes]);
 
   const filteredDocsBase = useMemo(() => {
-    let result = paginatedDocs.filter((doc: any) => doc.category_id === "saude");
+    let result = (paginatedDocs || []).filter((doc: any) => {
+      const pertencePerfil = !selectedPersonId || !doc.person_id || doc.person_id === selectedPersonId;
+      return pertencePerfil && doc.category_id === "saude";
+    });
 
     if (activeTab === "receitas") {
       result = result.filter((doc: any) => doc.type === "receita");
@@ -133,7 +145,7 @@ export default function DocumentsPage() {
     }
 
     return result;
-  }, [paginatedDocs, activeTab, selectedMonth]);
+  }, [paginatedDocs, activeTab, selectedMonth, selectedPersonId]);
 
   const docsComAlertas = useMemo(() => {
     return filteredDocsBase.map((doc: any) => {

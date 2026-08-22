@@ -8,6 +8,7 @@ import { ArrowLeft, User, FolderOpen } from "lucide-react";
 import { usePersons } from "@/hooks/usePersons";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { CATEGORIES, type CategoryId, type Document, type Person } from "@/lib/types";
 import { DocumentCard } from "@/components/DocumentCard";
@@ -19,17 +20,19 @@ export default function CategoryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const categoryId = searchParams.get("nome") as CategoryId | null;
+  const { activePersonId } = useActivePersonId();
 
   const persons = usePersons() as Person[];
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (persons.length > 0 && selectedPersonId === null) {
+    if (activePersonId && selectedPersonId === null) {
+      setSelectedPersonId(activePersonId);
+    } else if (persons.length > 0 && selectedPersonId === null) {
       setSelectedPersonId(persons[0]?.id || null);
     }
-  }, [persons, selectedPersonId]);
+  }, [persons, selectedPersonId, activePersonId]);
 
-  // Busca todos os documentos e filtra localmente
   const allDocsRaw = useDocuments();
 
   const documents = useMemo(() => {

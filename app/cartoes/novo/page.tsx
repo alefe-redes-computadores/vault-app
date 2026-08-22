@@ -14,6 +14,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useCards } from "@/hooks/useCards";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import type { CardType } from "@/lib/types";
 
 const fadeUp = {
@@ -26,6 +27,7 @@ export default function NewCardPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const { addCard } = useCards();
+  const { activePersonId } = useActivePersonId();
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
@@ -88,6 +90,7 @@ export default function NewCardPage() {
             agency: formData.agency.trim(),
             account: formData.account.trim(),
             notes: formData.notes.trim(),
+            person_id: activePersonId || undefined,
           } as any);
         } finally {
           isSubmitLocked.current = false;

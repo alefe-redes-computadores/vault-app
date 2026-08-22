@@ -69,8 +69,13 @@ export default function RenovacoesPage() {
 
   const medicamentoMap = useMemo(() => new Map(medicamentos.map((m) => [m.id, m])), [medicamentos]);
 
-  const renovacoesEnriquecidas = useMemo<RenovacaoEnriquecida[]>(() => {
-    return renovacoes.map((r) => {
+    const renovacoesEnriquecidas = useMemo<RenovacaoEnriquecida[]>(() => {
+    // 🔥 FILTRO ROBUSTO: Respeita o perfil ativo ou mantém compatibilidade com registros antigos sem ID
+    const renovacoesFiltradas = renovacoes.filter((r) => {
+      return !activePersonId || !r.person_id || r.person_id === activePersonId;
+    });
+
+    return renovacoesFiltradas.map((r) => {
       const med = medicamentoMap.get(r.medicamento_id);
 
       const vencida = med?.proxima_renovacao ? isReceitaVencidaSegura(med.proxima_renovacao) : false;
@@ -84,7 +89,8 @@ export default function RenovacoesPage() {
         diasRestantes,
       };
     });
-  }, [renovacoes, medicamentoMap]);
+  }, [renovacoes, medicamentoMap, activePersonId]);
+
 
   const filteredRenovacoes = useMemo(() => {
     let result = renovacoesEnriquecidas;

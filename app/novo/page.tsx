@@ -35,6 +35,7 @@ import {
 
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
 import { db, safeAddPerson } from "@/lib/db";
@@ -144,6 +145,7 @@ export default function NovoDocumentoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
   const persons = usePersons() as Person[];
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
@@ -155,7 +157,7 @@ export default function NovoDocumentoPage() {
   const [slideDirection, setSlideDirection] = useState(0);
 
   const [formData, setFormData] = useState({
-    person_id: "",
+    person_id: activePersonId || "",
     category_id: "pessoal" as CategoryId,
     type: "rg" as DocumentType,
     title: "",
@@ -189,10 +191,12 @@ export default function NovoDocumentoPage() {
   const personColor = selectedPerson?.color || DEFAULT_PERSON_COLOR;
 
   useEffect(() => {
-    if (persons.length > 0 && !formData.person_id) {
+    if (activePersonId && !formData.person_id) {
+      setFormData((prev) => ({ ...prev, person_id: activePersonId }));
+    } else if (!formData.person_id && persons.length > 0) {
       setFormData((prev) => ({ ...prev, person_id: persons[0].id! }));
     }
-  }, [persons, formData.person_id]);
+  }, [activePersonId, persons]);
 
   useEffect(() => {
     const fields = DOCUMENT_FIELDS[formData.type] || [];
@@ -397,7 +401,6 @@ export default function NovoDocumentoPage() {
 
           let finalAttachments = [...formData.attachments];
 
-          // Upload de anexos, se houver
           if (localFiles.length > 0) {
             setUploadProgress(10);
             const uploadedAttachments: Attachment[] = [];
@@ -429,10 +432,9 @@ export default function NovoDocumentoPage() {
             }
           }
 
-          // 🚀 USANDO O REPOSITÓRIO COM user_id
           await documentsRepository.create({
             user_id: user.id,
-            person_id: formData.person_id,
+            person_id: formData.person_id || activePersonId || "",
             category_id: formData.category_id,
             type: formData.type,
             title: formData.title.trim(),
@@ -443,7 +445,6 @@ export default function NovoDocumentoPage() {
             vault_id: formData.vault_id || undefined,
           });
 
-          // Agendamento de notificação de vencimento (opcional)
           if (cleanMetadata.expiry_date) {
             await scheduleDocumentExpiryNotification(
               crypto.randomUUID(),
@@ -725,7 +726,6 @@ export default function NovoDocumentoPage() {
                   </div>
                 </div>
 
-                {/* Seção de Campos Customizados (Até 5 campos extras) */}
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -861,7 +861,6 @@ export default function NovoDocumentoPage() {
                   />
                 </div>
 
-                {/* Seleção de Vault (Compartilhamento) */}
                 {userVaults.length > 0 && (
                   <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
                     <label className="mb-3 block text-sm font-medium text-ink-primary">
@@ -908,7 +907,6 @@ export default function NovoDocumentoPage() {
           </AnimatePresence>
         </section>
 
-        {/* Modal de Seleção de Tipo de Documento */}
         <BottomSheet isOpen={isTypeModalOpen} onClose={() => setIsTypeModalOpen(false)} title="Selecionar tipo de documento">
           <p className="mb-4 px-1 text-sm text-ink-muted">Escolha o tipo para carregar os campos específicos corretos</p>
           <div className="grid grid-cols-2 gap-3 px-1 pb-4">
@@ -943,7 +941,6 @@ export default function NovoDocumentoPage() {
           </div>
         </BottomSheet>
 
-        {/* Modal de Seleção de Perfil */}
         <SelectionModal
           isOpen={isPersonModalOpen}
           onClose={() => setIsPersonModalOpen(false)}
@@ -966,7 +963,6 @@ export default function NovoDocumentoPage() {
           createNewLabel="Cadastrar Nova Pessoa"
         />
 
-        {/* BottomSheet de Criação Rápida de Perfil */}
         <BottomSheet isOpen={isCreatingPerson} onClose={() => { setIsCreatingPerson(false); setNewPersonName(""); }} title="Cadastrar nova pessoa">
           <div className="space-y-4 px-1 pb-2">
             <Input label="Nome completo" placeholder="Ex: Maria Silva..." value={newPersonName} onChange={(e) => setNewPersonName(e.target.value)} autoFocus />
@@ -982,7 +978,6 @@ export default function NovoDocumentoPage() {
           </div>
         </BottomSheet>
 
-        {/* Rodapé de Ações */}
         <div className="fixed inset-x-0 bottom-0 z-30 flex gap-3 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           {currentStep > 1 && (
             <Button variant="secondary" size="lg" onClick={prevStep} disabled={isSubmitting} className="flex w-1/3 items-center justify-center">

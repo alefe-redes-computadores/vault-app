@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId"; // 👈 1. IMPORTADO AQUI
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +39,7 @@ export default function NovoLocalPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId(); // 👈 2. CAPTURADO O ID DA PESSOA ATIVA
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
@@ -70,6 +72,7 @@ export default function NovoLocalPage() {
         async () => {
           await locaisRepository.create({
             user_id: user.id,
+            person_id: activePersonId || undefined, // 👈 3. INJETADO NA RAIZ
             nome: nome.trim(),
             tipo: tipo || undefined,
             endereco: endereco.trim() || undefined,

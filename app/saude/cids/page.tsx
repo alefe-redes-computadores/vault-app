@@ -35,9 +35,14 @@ export default function CidsPage() {
 
   const personAccent = activePersonId ? 'var(--person-accent, #8B5CF6)' : '#8B5CF6';
 
-  const filteredCids = useMemo(() => {
+    const filteredCids = useMemo(() => {
     if (!cids) return [];
-    let result = cids;
+    
+    // 🔥 FILTRO ROBUSTO: Respeita o perfil ativo ou mantém compatibilidade com registros antigos sem ID
+    let result = cids.filter((c) => {
+      return !activePersonId || !c.person_id || c.person_id === activePersonId;
+    });
+
     if (search) {
       const lower = search.toLowerCase();
       result = result.filter(
@@ -47,7 +52,9 @@ export default function CidsPage() {
       );
     }
     return result.sort((a, b) => a.codigo.localeCompare(b.codigo));
-  }, [cids, search]);
+  }, [cids, search, activePersonId]);
+
+
 
   if (!cids) return <CardListSkeleton />;
 

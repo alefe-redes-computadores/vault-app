@@ -182,9 +182,9 @@ export default function NovaConsultaPage() {
           const dataISO = parseDateToISO(dataDisplay);
           if (!dataISO) throw new Error("Data inválida");
           
-          await consultasRepository.create({
+            await consultasRepository.create({
             user_id: user.id,
-            person_id: activePersonId || undefined,
+            person_id: activePersonId || undefined, // 👈 Garante o vínculo na raiz com o perfil ativo
             especialidade: selectedMedico?.especialidade || "Geral",
             medico: selectedMedico?.nome || "Médico",
             medico_id: medicoId,
@@ -197,6 +197,7 @@ export default function NovaConsultaPage() {
             observacoes: observacoes.trim() || undefined,
             anexo_url: anexoUrl,
           });
+
         },
         { successMessage: "Consulta criada", errorMessage: "Erro ao salvar", goBackOnSuccess: true }
       );

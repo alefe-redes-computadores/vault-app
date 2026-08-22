@@ -49,11 +49,15 @@ export default function CirurgiasPage() {
 
   const hojeISO = new Date().toISOString().slice(0, 10);
 
-  const { proximas, historico } = useMemo(() => {
+    const { proximas, historico } = useMemo(() => {
     const prox: Cirurgia[] = [];
     const hist: Cirurgia[] = [];
 
     (cirurgias || []).forEach((c) => {
+      // 🔥 FILTRO ROBUSTO: Respeita o perfil ativo ou mantém compatibilidade com registros antigos
+      const pertenceAoPerfil = !activePersonId || !c.person_id || c.person_id === activePersonId;
+      if (!pertenceAoPerfil) return;
+
       const dataSegura = c.data || "";
       const isPassada = dataSegura < hojeISO || c.status === "realizada" || c.status === "cancelada";
       
@@ -68,7 +72,8 @@ export default function CirurgiasPage() {
     hist.sort((a, b) => (b.data || "").localeCompare(a.data || ""));
 
     return { proximas: prox, historico: hist };
-  }, [cirurgias, hojeISO]);
+  }, [cirurgias, hojeISO, activePersonId]);
+
 
   const listaBase = abaAtiva === "proximas" ? proximas : historico;
 

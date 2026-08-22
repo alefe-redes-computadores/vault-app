@@ -110,9 +110,9 @@ export default function NovoCidPage() {
             ? dataDiagnostico.split("/").reverse().join("-")
             : undefined;
 
-          await cidsRepository.create({
+            await cidsRepository.create({
             user_id: user.id,
-            person_id: activePersonId || undefined,
+            person_id: activePersonId || undefined, // 👈 Garante o vínculo na raiz com o perfil ativo
             codigo: codigo.trim(),
             descricao: descricao.trim(),
             data_diagnostico: dataISO,
@@ -122,6 +122,7 @@ export default function NovoCidPage() {
             observacoes: observacoes.trim() || undefined,
             anexo_url: anexoUrl || undefined,
           });
+
         },
         {
           successMessage: "CID cadastrado com sucesso",

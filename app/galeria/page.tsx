@@ -97,9 +97,9 @@ function GaleriaContent() {
     if (!allItems) return [];
 
     return allItems.filter((item: any) => {
-      if (activePersonId && item.person_id !== activePersonId) {
-        return false;
-      }
+      // 🔥 FILTRO ROBUSTO: Respeita estritamente o perfil ativo, aceitando legados sem ID
+      const pertenceAoPerfil = !activePersonId || !item.person_id || item.person_id === activePersonId;
+      if (!pertenceAoPerfil) return false;
 
       const category = item.category || item.category_id;
 

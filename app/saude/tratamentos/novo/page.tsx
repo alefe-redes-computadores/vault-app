@@ -9,6 +9,7 @@ import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -36,6 +37,7 @@ export default function NovoTratamentoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
   const { cids } = useCids();
   const persons = usePersons() as Person[];
   const { run, isSubmitting } = useSubmitAction();
@@ -75,12 +77,13 @@ export default function NovoTratamentoPage() {
 
     try {
       await run(
-        async () => {
+          async () => {
           const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
 
           await tratamentosRepository.create({
             user_id: user.id,
-            person_id: personId,
+            // 👈 Garantia extra: usa o personId do seletor OU o activePersonId global como fallback
+            person_id: personId || (activePersonId as string) || undefined,
             nome: nome.trim(),
             cid_ids: cleanCids,
             status,
@@ -88,6 +91,7 @@ export default function NovoTratamentoPage() {
             observacoes: observacoes.trim() || undefined,
           });
         },
+
         {
           successMessage: "Tratamento cadastrado com sucesso",
           errorMessage: "Erro ao salvar tratamento",

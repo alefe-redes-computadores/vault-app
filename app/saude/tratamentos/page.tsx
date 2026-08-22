@@ -61,8 +61,13 @@ function TratamentoListContent() {
 
   const personAccent = activePersonId ? 'var(--person-accent, #8B5CF6)' : '#8B5CF6';
 
-  const listaEnriquecida = useMemo<TratamentoEnriquecido[]>(() => {
-    return (tratamentos || []).map((t) => {
+    const listaEnriquecida = useMemo<TratamentoEnriquecido[]>(() => {
+    // 🔥 FILTRO ROBUSTO: Exibe apenas tratamentos da pessoa ativa (activePersonId)
+    const filtrados = (tratamentos || []).filter((t) => {
+      return !activePersonId || !t.person_id || t.person_id === activePersonId;
+    });
+
+    return filtrados.map((t) => {
       const meds = (medicamentos || []).filter((m: Medicamento) => {
         if (!t.id) return false;
         return m.tratamento_ids && m.tratamento_ids.includes(t.id);
@@ -85,7 +90,8 @@ function TratamentoListContent() {
         alertaSemMedicamento,
       };
     });
-  }, [tratamentos, medicamentos, renovacoes]);
+  }, [tratamentos, medicamentos, renovacoes, activePersonId]);
+
 
   const filteredList = useMemo(() => {
     let result = listaEnriquecida;

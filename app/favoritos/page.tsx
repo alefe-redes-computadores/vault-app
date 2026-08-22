@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePaginatedFavorites } from "@/hooks/usePaginatedFavorites";
 import { usePersons } from "@/hooks/usePersons";
 import { useSafeDb } from "@/hooks/useSafeDb";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { DocumentCard } from "@/components/DocumentCard";
 import { AreaTabs } from "@/components/AreaTabs";
@@ -22,15 +23,18 @@ export default function FavoritesPage() {
   const router = useRouter();
   const { favorite } = useSafeDb();
   const persons = usePersons() as Person[];
+  const { activePersonId } = useActivePersonId();
 
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
 
   useEffect(() => {
-    if (persons.length > 0 && selectedPersonId === null) {
+    if (activePersonId && selectedPersonId === null) {
+      setSelectedPersonId(activePersonId);
+    } else if (persons.length > 0 && selectedPersonId === null) {
       setSelectedPersonId(persons[0]?.id || null);
     }
-  }, [persons, selectedPersonId]);
+  }, [persons, selectedPersonId, activePersonId]);
 
   const { favorites, hasMore, isLoadingMore, loadMore } = usePaginatedFavorites({
     personId: selectedPersonId || undefined,

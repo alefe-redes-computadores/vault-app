@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Save, Building2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId"; // 👈 1. IMPORTADO AQUI
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
@@ -33,6 +34,7 @@ export default function NovaFarmaciaPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId(); // 👈 2. CAPTURADO O ID DA PESSOA ATIVA
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
@@ -64,6 +66,7 @@ export default function NovaFarmaciaPage() {
         async () => {
           await farmaciasRepository.create({
             user_id: user.id,
+            person_id: activePersonId || undefined, // 👈 3. INJETADO NA RAIZ
             nome: nome.trim(),
             endereco: endereco.trim() || undefined,
             telefone: telefone.trim() || undefined,

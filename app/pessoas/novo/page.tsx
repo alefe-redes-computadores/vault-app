@@ -1,3 +1,4 @@
+// app/pessoas/novo/page.tsx
 "use client";
 
 
@@ -72,7 +73,7 @@ export default function NewPersonPage() {
     color: "#38BDF8",
   });
 
-    const handleImportGoogle = () => {
+  const handleImportGoogle = () => {
     trigger("vibrate");
     if (!user) return;
     const meta = user.user_metadata || {};
@@ -84,7 +85,6 @@ export default function NewPersonPage() {
     }));
     showToast("Dados preenchidos com a conta Google!");
   };
-
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -190,7 +190,6 @@ export default function NewPersonPage() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* Banner de Preenchimento Rápido Google */}
           {user && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}

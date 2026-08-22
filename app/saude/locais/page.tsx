@@ -58,19 +58,26 @@ export default function LocaisPage() {
 
   const personAccent = activePersonId ? 'var(--person-accent, #34D399)' : '#34D399';
 
-  // 🔥 FILTRO POR INFERÊNCIA: apenas locais vinculados à pessoa ativa via renovações
+   // 🔥 FILTRO ROBUSTO: Respeita o person_id ativo, mas mantém compatibilidade com históricos e locais novos
   const locaisFiltradosPorPessoa = useMemo<LocalSaude[]>(() => {
-    if (!activePersonId) return [];
+    if (!locais || locais.length === 0) return [];
+    if (!activePersonId) return locais;
 
     const localIdsSet = new Set<string>();
 
-    // Renovações da pessoa ativa
     renovacoes.forEach((r) => {
       if (r.local_id) localIdsSet.add(r.local_id);
     });
 
-    return locais.filter((local) => local.id && localIdsSet.has(local.id));
+    return locais.filter((local) => {
+      const pertenceAoPerfil = !local.person_id || local.person_id === activePersonId;
+      const temHistorico = localIdsSet.has(local.id!);
+
+      // Exibe se pertencer ao perfil ativo OU se tiver histórico de renovações vinculado
+      return pertenceAoPerfil || temHistorico;
+    });
   }, [activePersonId, renovacoes, locais]);
+
 
   const locaisEnriquecidos = useMemo<LocalComHistorico[]>(() => {
     return locaisFiltradosPorPessoa.map((local) => {

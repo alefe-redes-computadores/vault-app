@@ -57,10 +57,8 @@ import {
 import { sugerirRenovacao } from "@/lib/health-insights";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { PendingDosesModal } from "@/components/PendingDosesModal";
-// 🆕 IMPORT DO VERSÍCULO
 import { VersiculoDia } from "@/components/VersiculoDia";
 
-// 🔧 NOVA FUNÇÃO: Filtro por mês atual
 function isMesAtual(dataStr: string): boolean {
   if (!dataStr) return false;
   const data = new Date(dataStr);
@@ -252,7 +250,12 @@ export default function HomePage() {
   const persons = usePersons();
   const { activePersonId } = useActivePersonId();
 
-  const documents = useDocuments();
+  const rawDocuments = useDocuments();
+  const documents = useMemo(() => {
+    if (!rawDocuments) return [];
+    return rawDocuments.filter((d: any) => !activePersonId || !d.person_id || d.person_id === activePersonId);
+  }, [rawDocuments, activePersonId]);
+
   const { medicamentos: medicamentosTodas } = useMedicamentos();
   const { medicos = [] } = useMedicos();
   const { farmacias = [] } = useFarmacias();
@@ -260,46 +263,30 @@ export default function HomePage() {
   const { locais = [] } = useLocais();
   const { doseLogs, marcarComoTomada: marcarDose } = useDoseLogs(hoje);
 
-  const tratamentos = useLiveQuery(
-    () => (activePersonId ? db.tratamentos.where('person_id').equals(activePersonId).toArray() : []),
-    [activePersonId]
-  ) || [];
+  const rawTratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const tratamentos = useMemo(() => {
+    return rawTratamentos.filter((t: any) => !activePersonId || !t.person_id || t.person_id === activePersonId);
+  }, [rawTratamentos, activePersonId]);
 
-  const exames = useLiveQuery(
-    () => activePersonId 
-      ? db.exames.where('person_id').equals(activePersonId)
-          .filter(e => isMesAtual(e.data ?? '') || isMesAtual(e.created_at ?? ''))
-          .toArray() 
-      : [],
-    [activePersonId]
-  ) || [];
+  const rawExames = useLiveQuery(() => db.exames.toArray(), []) || [];
+  const exames = useMemo(() => {
+    return rawExames.filter((e: any) => (!activePersonId || !e.person_id || e.person_id === activePersonId) && (isMesAtual(e.data ?? '') || isMesAtual(e.created_at ?? '')));
+  }, [rawExames, activePersonId]);
 
-  const renovacoes = useLiveQuery(
-    () => activePersonId 
-      ? db.renovacoes.where('person_id').equals(activePersonId)
-          .filter(e => isMesAtual(e.data ?? '') || isMesAtual(e.created_at ?? ''))
-          .toArray() 
-      : [],
-    [activePersonId]
-  ) || [];
+  const rawRenovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
+  const renovacoes = useMemo(() => {
+    return rawRenovacoes.filter((r: any) => (!activePersonId || !r.person_id || r.person_id === activePersonId) && (isMesAtual(r.data ?? '') || isMesAtual(r.created_at ?? '')));
+  }, [rawRenovacoes, activePersonId]);
 
-  const consultas = useLiveQuery(
-    () => activePersonId 
-      ? db.consultas.where('person_id').equals(activePersonId)
-          .filter(e => isMesAtual(e.data ?? '') || isMesAtual(e.created_at ?? ''))
-          .toArray() 
-      : [],
-    [activePersonId]
-  ) || [];
+  const rawConsultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+  const consultas = useMemo(() => {
+    return rawConsultas.filter((c: any) => (!activePersonId || !c.person_id || c.person_id === activePersonId) && (isMesAtual(c.data ?? '') || isMesAtual(c.created_at ?? '')));
+  }, [rawConsultas, activePersonId]);
 
-  const cirurgias = useLiveQuery(
-    () => activePersonId 
-      ? db.cirurgias.where('person_id').equals(activePersonId)
-          .filter(e => isMesAtual(e.data ?? '') || isMesAtual(e.created_at ?? ''))
-          .toArray() 
-      : [],
-    [activePersonId]
-  ) || [];
+  const rawCirurgias = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
+  const cirurgias = useMemo(() => {
+    return rawCirurgias.filter((cir: any) => (!activePersonId || !cir.person_id || cir.person_id === activePersonId) && (isMesAtual(cir.data ?? '') || isMesAtual(cir.created_at ?? '')));
+  }, [rawCirurgias, activePersonId]);
 
   const activePerson = useMemo(() => {
     return persons.find((p) => p.id === activePersonId) || persons[0] || null;
@@ -313,20 +300,20 @@ export default function HomePage() {
   const avatarUrl = activePerson?.avatar_url || user?.user_metadata?.avatar_url;
 
   const medicamentos = useMemo(
-    () => (activePersonId ? (medicamentosTodas || []).filter((m) => m.person_id === activePersonId || !m.person_id) : []),
+    () => (medicamentosTodas || []).filter((m: any) => !activePersonId || !m.person_id || m.person_id === activePersonId),
     [medicamentosTodas, activePersonId]
   );
 
   const consultasHoje = useMemo(
-    () => consultas.filter((c) => c.data === hoje),
+    () => consultas.filter((c: any) => c.data === hoje),
     [consultas, hoje]
   );
   const examesHoje = useMemo(
-    () => exames.filter((e) => e.data === hoje),
+    () => exames.filter((e: any) => e.data === hoje),
     [exames, hoje]
   );
   const cirurgiasHoje = useMemo(
-    () => cirurgias.filter((c) => c.data === hoje),
+    () => cirurgias.filter((c: any) => c.data === hoje),
     [cirurgias, hoje]
   );
 
@@ -349,7 +336,8 @@ export default function HomePage() {
     let gastoMesAtual = 0;
     let gastoMesAnterior = 0;
 
-    (renovacoes || []).forEach((r) => {
+    (rawRenovacoes || []).forEach((r: any) => {
+      if (activePersonId && r.person_id && r.person_id !== activePersonId) return;
       const precoNumerico = Number(r.preco);
       if (!isNaN(precoNumerico) && precoNumerico > 0 && r.data) {
         let dataR = new Date(r.data);
@@ -385,7 +373,7 @@ export default function HomePage() {
 
     const diff = gastoMesAtual - gastoMesAnterior;
     return { gastoMesAtual, gastoMesAnterior, diff };
-  }, [renovacoes, medicamentos]);
+  }, [rawRenovacoes, medicamentos, activePersonId]);
 
   const dosesPendentesAtrasadas = useMemo(() => {
     if (!medicamentos || !doseLogs) return [];
@@ -441,16 +429,16 @@ export default function HomePage() {
 
   const alertasConsultas = useMemo<HealthAlert[]>(() => {
     const medicosUnicosIds = Array.from(
-      new Set((consultas || []).map((c) => c.medico_id).filter(Boolean))
+      new Set((consultas || []).map((c: any) => c.medico_id).filter(Boolean))
     );
     const alertas: HealthAlert[] = [];
 
     medicosUnicosIds.forEach((medicoId) => {
       if (!medicoId) return;
-      const consMedico = (consultas || []).filter((c) => c.medico_id === medicoId);
-      const consFuturas = consMedico.filter((c) => c.data >= hoje);
+      const consMedico = (consultas || []).filter((c: any) => c.medico_id === medicoId);
+      const consFuturas = consMedico.filter((c: any) => c.data >= hoje);
       if (consFuturas.length === 0) {
-        const ultimaCons = [...consMedico].sort((a, b) => b.data.localeCompare(a.data))[0];
+        const ultimaCons = [...consMedico].sort((a: any, b: any) => b.data.localeCompare(a.data))[0];
         if (ultimaCons) {
           const diffDias = Math.floor(
             (new Date(hoje).getTime() - new Date(ultimaCons.data).getTime()) / (1000 * 3600 * 24)
@@ -605,7 +593,6 @@ export default function HomePage() {
           </motion.div>
         </header>
 
-        {/* 🆕 VERSÍCULO DO DIA */}
         <VersiculoDia />
 
         <section className="space-y-6 px-5 pt-5">

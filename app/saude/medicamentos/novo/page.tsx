@@ -378,9 +378,9 @@ export default function NovoMedicamentoPage() {
           }
         }
 
-        const medicamentoData = {
+          const medicamentoData = {
           document_id: docId || undefined,
-          person_id: activePersonId || "",
+          person_id: activePersonId || "", // 👈 Garante o vínculo na raiz com o perfil ativo do topo do app
           nome: nome.trim(),
           dosagem: dosagem.trim(),
           cid_ids: cidIds,
@@ -412,6 +412,7 @@ export default function NovoMedicamentoPage() {
           user_id: user.id,
           ...medicamentoData,
         });
+
         const medicamentoId = createdMed;
 
         // 👇 BLOCO NOVO: SÓ CRIA RENOVAÇÃO SE O USUÁRIO ATIVAR O INTERRUPTOR

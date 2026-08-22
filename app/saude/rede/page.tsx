@@ -110,38 +110,31 @@ export default function RedeSaudePage() {
   }, [tabFromUrl, activeTab]);
 
   const filteredMedicamentos = useMemo(() => {
-    if (!selectedPersonId) return [];
-    return (medicamentos || []).filter((m: Medicamento) => m.person_id === selectedPersonId);
+    return (medicamentos || []).filter((m: Medicamento) => !selectedPersonId || !m.person_id || m.person_id === selectedPersonId);
   }, [medicamentos, selectedPersonId]);
 
   const filteredTratamentos = useMemo(() => {
-    if (!selectedPersonId) return [];
-    return (tratamentos || []).filter((t: Tratamento) => t.person_id === selectedPersonId);
+    return (tratamentos || []).filter((t: Tratamento) => !selectedPersonId || !t.person_id || t.person_id === selectedPersonId);
   }, [tratamentos, selectedPersonId]);
 
   const filteredConsultas = useMemo(() => {
-    if (!selectedPersonId) return [];
-    return (consultas || []).filter((c: Consulta) => c.person_id === selectedPersonId);
+    return (consultas || []).filter((c: Consulta) => !selectedPersonId || !c.person_id || c.person_id === selectedPersonId);
   }, [consultas, selectedPersonId]);
 
   const filteredExames = useMemo(() => {
-    if (!selectedPersonId) return [];
-    return (exames || []).filter((e: Exame) => e.person_id === selectedPersonId);
+    return (exames || []).filter((e: Exame) => !selectedPersonId || !e.person_id || e.person_id === selectedPersonId);
   }, [exames, selectedPersonId]);
 
   const filteredCirurgias = useMemo(() => {
-    if (!selectedPersonId) return [];
-    return (cirurgias || []).filter((c: Cirurgia) => c.person_id === selectedPersonId);
+    return (cirurgias || []).filter((c: Cirurgia) => !selectedPersonId || !c.person_id || c.person_id === selectedPersonId);
   }, [cirurgias, selectedPersonId]);
 
   const filteredRenovacoes = useMemo(() => {
-    if (!selectedPersonId) return [];
     const medsIds = new Set(filteredMedicamentos.map(m => m.id).filter((id): id is string => Boolean(id)));
-    return (renovacoes || []).filter((r: Renovacao) => r.person_id === selectedPersonId || (r.medicamento_id && medsIds.has(r.medicamento_id)));
+    return (renovacoes || []).filter((r: Renovacao) => !selectedPersonId || !r.person_id || r.person_id === selectedPersonId || (r.medicamento_id && medsIds.has(r.medicamento_id)));
   }, [renovacoes, selectedPersonId, filteredMedicamentos]);
 
   const filteredMedicos = useMemo(() => {
-    if (!selectedPersonId) return [];
     const linked = new Set([
       ...filteredConsultas.map(c => c.medico_id),
       ...filteredCirurgias.map(c => c.medico_id),
@@ -149,20 +142,18 @@ export default function RedeSaudePage() {
     ].filter((id): id is string => Boolean(id)));
 
     return (medicos || []).filter((m: Medico) => m.id && linked.has(m.id));
-  }, [medicos, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
+  }, [medicos, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
 
   const filteredFarmacias = useMemo(() => {
-    if (!selectedPersonId) return [];
     const linked = new Set([
       ...filteredMedicamentos.map(m => m.farmacia_id),
       ...filteredRenovacoes.map(r => r.farmacia_id)
     ].filter((id): id is string => Boolean(id)));
 
     return (farmacias || []).filter((f: Farmacia) => f.id && linked.has(f.id));
-  }, [farmacias, selectedPersonId, filteredMedicamentos, filteredRenovacoes]);
+  }, [farmacias, filteredMedicamentos, filteredRenovacoes]);
 
   const filteredHospitais = useMemo(() => {
-    if (!selectedPersonId) return [];
     const linked = new Set([
       ...filteredConsultas.map(c => c.hospital_id),
       ...filteredCirurgias.map(c => c.hospital_id),
@@ -170,11 +161,9 @@ export default function RedeSaudePage() {
     ].filter((id): id is string => Boolean(id)));
 
     return (hospitais || []).filter((h: Hospital) => h.id && linked.has(h.id));
-  }, [hospitais, selectedPersonId, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
+  }, [hospitais, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
 
   const alertas = useMemo(() => {
-    if (!selectedPersonId) return [];
-
     const alerts: AlertaRede[] = [];
 
     filteredMedicamentos.forEach((med: Medicamento) => {
@@ -245,7 +234,7 @@ export default function RedeSaudePage() {
       const ordem = { alta: 0, media: 1, baixa: 2 };
       return ordem[a.urgencia] - ordem[b.urgencia];
     });
-  }, [filteredMedicamentos, filteredConsultas, filteredExames, selectedPersonId]);
+  }, [filteredMedicamentos, filteredConsultas, filteredExames]);
 
   const stats = useMemo(() => ({
     medicamentos: filteredMedicamentos.length,
@@ -396,7 +385,7 @@ export default function RedeSaudePage() {
                     value={stats.medicamentos}
                     sub={`${stats.medicamentosAtivos} ativos`}
                     color="#10B981"
-                    onClick={() => router.push(`/saude/medicamentos?person_id=${selectedPersonId}`)}
+                    onClick={() => router.push(`/saude/medicamentos`)}
                   />
                   <ResumoCard
                     icon={FolderHeart}
@@ -404,7 +393,7 @@ export default function RedeSaudePage() {
                     value={stats.tratamentos}
                     sub={`${stats.tratamentosAtivos} ativos`}
                     color="#8B5CF6"
-                    onClick={() => router.push(`/saude/tratamentos?person_id=${selectedPersonId}`)}
+                    onClick={() => router.push(`/saude/tratamentos`)}
                   />
                   <ResumoCard
                     icon={Calendar}
@@ -412,7 +401,7 @@ export default function RedeSaudePage() {
                     value={stats.consultas}
                     sub={`${stats.consultasProximas} próximas`}
                     color="#38BDF8"
-                    onClick={() => router.push(`/saude/consultas?person_id=${selectedPersonId}`)}
+                    onClick={() => router.push(`/saude/consultas`)}
                   />
                   <ResumoCard
                     icon={FlaskConical}
@@ -420,7 +409,7 @@ export default function RedeSaudePage() {
                     value={stats.exames}
                     sub="Registrados"
                     color="#10B981"
-                    onClick={() => router.push(`/saude/exames?person_id=${selectedPersonId}`)}
+                    onClick={() => router.push(`/saude/exames`)}
                   />
                   <ResumoCard
                     icon={Syringe}
@@ -428,7 +417,7 @@ export default function RedeSaudePage() {
                     value={stats.cirurgias}
                     sub="Histórico"
                     color="#EF4444"
-                    onClick={() => router.push(`/saude/cirurgias?person_id=${selectedPersonId}`)}
+                    onClick={() => router.push(`/saude/cirurgias`)}
                   />
                   <ResumoCard
                     icon={Users}

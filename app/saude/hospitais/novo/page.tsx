@@ -13,6 +13,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { hospitaisRepository } from "@/lib/repositories/hospitais";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId"; // 👈 1. IMPORTADO AQUI
 import { db } from "@/lib/db";
 import type { Tratamento, Hospital } from "@/lib/types";
 
@@ -30,6 +31,7 @@ export default function NovoHospitalPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId(); // 👈 2. CAPTURADO O ID DA PESSOA ATIVA
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
@@ -74,6 +76,7 @@ export default function NovoHospitalPage() {
         async () => {
           await hospitaisRepository.create({
             user_id: user.id,
+            person_id: activePersonId || undefined, // 👈 3. INJETADO NA RAIZ
             nome: nome.trim(),
             endereco: endereco.trim() || undefined,
             telefone: telefone.trim() || undefined,
@@ -159,17 +162,13 @@ export default function NovoHospitalPage() {
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Rede Relacional</h2>
 
-            {/* 🔥 MÉDICOS COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Médicos que atendem aqui</label>
                 {medicoIds.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setMedicoIds([]);
-                    }}
+                    onClick={() => { trigger("vibrate"); setMedicoIds([]); }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
                   >
                     <Eraser size={12} /> Limpar
@@ -186,17 +185,13 @@ export default function NovoHospitalPage() {
               </button>
             </div>
 
-            {/* 🔥 TRATAMENTOS COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Tratamentos realizados aqui</label>
                 {tratamentoIds.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setTratamentoIds([]);
-                    }}
+                    onClick={() => { trigger("vibrate"); setTratamentoIds([]); }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
                   >
                     <Eraser size={12} /> Limpar

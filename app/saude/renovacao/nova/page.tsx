@@ -277,7 +277,7 @@ function NovaRenovacaoContent() {
         // 1. Cria a renovação via repositório de forma segura
         await renovacoesRepository.create({
           user_id: user.id,
-          person_id: activePersonId || undefined,
+          person_id: activePersonId || undefined, // 👈 Garante o vínculo na raiz com o perfil ativo
           medicamento_id: medicamentoId,
           medico_id: medicoId || undefined,
           farmacia_id: farmaciaId || undefined,
@@ -294,6 +294,7 @@ function NovaRenovacaoContent() {
           anexo_url: finalAnexoUrl,
           observacoes: observacoes.trim() || undefined,
         });
+
 
         // 2. Atualiza o medicamento vinculado com segurança
         const dadosUpdate: Partial<Medicamento> = {

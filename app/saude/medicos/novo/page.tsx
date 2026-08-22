@@ -13,6 +13,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { medicosRepository } from "@/lib/repositories/medicos";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId"; // 👈 1. IMPORTADO AQUI
 import { db } from "@/lib/db";
 import type { Medico, Tratamento, Hospital, LocalSaude } from "@/lib/types";
 
@@ -30,6 +31,7 @@ export default function NovoMedicoPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId(); // 👈 2. CAPTURADO O ID DA PESSOA ATIVA
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
@@ -82,6 +84,7 @@ export default function NovoMedicoPage() {
             especialidade: especialidade.trim() || undefined,
             crm: crm.trim() || undefined,
             user_id: user?.id,
+            person_id: activePersonId || undefined, // 👈 3. INJETADO NA RAIZ AQUI!
             telefone: telefone.trim() || undefined,
             email: email.trim() || undefined,
             hospital_ids: hospitalIds,
@@ -165,17 +168,13 @@ export default function NovoMedicoPage() {
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Atuação e Relacionamento</h2>
 
-            {/* 🔥 HOSPITAIS COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Hospitais e Unidades que atende</label>
                 {hospitalIds.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setHospitalIds([]);
-                    }}
+                    onClick={() => { trigger("vibrate"); setHospitalIds([]); }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
                   >
                     <Eraser size={12} /> Limpar
@@ -195,17 +194,13 @@ export default function NovoMedicoPage() {
               </button>
             </div>
 
-            {/* 🔥 LOCAIS COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Clínicas, Postos e Laboratórios</label>
                 {localIds.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setLocalIds([]);
-                    }}
+                    onClick={() => { trigger("vibrate"); setLocalIds([]); }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
                   >
                     <Eraser size={12} /> Limpar
@@ -225,17 +220,13 @@ export default function NovoMedicoPage() {
               </button>
             </div>
 
-            {/* 🔥 TRATAMENTOS COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Tratamentos acompanhados</label>
                 {tratamentoIds.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setTratamentoIds([]);
-                    }}
+                    onClick={() => { trigger("vibrate"); setTratamentoIds([]); }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
                   >
                     <Eraser size={12} /> Limpar

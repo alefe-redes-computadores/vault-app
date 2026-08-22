@@ -1,7 +1,7 @@
 // app/senhas/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { usePaginatedCredentials } from "@/hooks/usePaginatedCredentials";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useBiometric } from "@/hooks/useBiometric";
 import { useSecureScreen } from "@/hooks/useSecureScreen";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -35,15 +36,21 @@ export default function PasswordsPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const { showToast } = useToast();
+  const { activePersonId } = useActivePersonId();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
-  const { credentials, totalCount, hasMore, isLoadingMore, loadMore } = usePaginatedCredentials({
+  const { credentials: rawCredentials, totalCount, hasMore, isLoadingMore, loadMore } = usePaginatedCredentials({
     searchQuery: debouncedQuery,
     category: selectedCategory,
   });
+
+  const credentials = useMemo(() => {
+    if (!rawCredentials) return [];
+    return rawCredentials.filter((c: any) => !activePersonId || !c.person_id || c.person_id === activePersonId);
+  }, [rawCredentials, activePersonId]);
 
   const { isLocked } = useSecureScreen();
   const { isPrivate, togglePrivacy } = usePrivacyMode();
@@ -112,7 +119,7 @@ export default function PasswordsPage() {
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
                 <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Senhas</h1>
                 <p className="mt-1 text-sm text-ink-muted">
-                  {totalCount} senha{totalCount !== 1 ? "s" : ""} encontrada{totalCount !== 1 ? "s" : ""}
+                  {credentials.length} senha{credentials.length !== 1 ? "s" : ""} encontrada{credentials.length !== 1 ? "s" : ""}
                 </p>
               </div>
             </div>

@@ -64,9 +64,10 @@ export default function FarmaciasPage() {
   const { medicamentos = [] } = useMedicamentos();
   const { renovacoes = [] } = useRenovacoes();
 
-  // 🔥 FILTRO POR INFERÊNCIA: apenas farmácias vinculadas à pessoa ativa
+    // 🔥 FILTRO ROBUSTO: Respeita o person_id ativo, mas mantém compatibilidade com medicamentos/renovações e farmácias novas
   const farmaciasFiltradasPorPessoa = useMemo<Farmacia[]>(() => {
-    if (!activePersonId) return [];
+    if (!farmacias || farmacias.length === 0) return [];
+    if (!activePersonId) return farmacias;
 
     const farmaciaIdsSet = new Set<string>();
 
@@ -80,7 +81,13 @@ export default function FarmaciasPage() {
       if (r.farmacia_id) farmaciaIdsSet.add(r.farmacia_id);
     });
 
-    return farmacias.filter((farmacia) => farmacia.id && farmaciaIdsSet.has(farmacia.id));
+    return farmacias.filter((farmacia) => {
+      const pertenceAoPerfil = !farmacia.person_id || farmacia.person_id === activePersonId;
+      const temVinculoHistorico = farmaciaIdsSet.has(farmacia.id!);
+
+      // Exibe se pertencer ao perfil ativo OU se possuir histórico/medicamento vinculado
+      return pertenceAoPerfil || temVinculoHistorico;
+    });
   }, [activePersonId, medicamentos, renovacoes, farmacias]);
 
   const rankingFarmacias = useMemo<RankingFarmacia[]>(() => {
@@ -91,6 +98,7 @@ export default function FarmaciasPage() {
       total_compras: item.total_compras,
     }));
   }, [renovacoes]);
+
 
   const rankingMap = useMemo(() => {
     const map = new Map<string, RankingFarmacia & { posicao: number }>();

@@ -107,9 +107,6 @@ const buildFullName = (baseName: string, extension: string): string => {
 };
 
 export default function DocumentDetailPage() {
-  // ==========================================
-  // TODOS OS HOOKS NO TOPO (REGRA DE OURO REACT)
-  // ==========================================
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -254,9 +251,6 @@ export default function DocumentDetailPage() {
     [selectedAttachment, doc, updateDocument, trigger, showToast]
   );
 
-  // ==========================================
-  // RETORNOS CONDICIONAIS APÓS OS HOOKS
-  // ==========================================
   if (!mounted) {
     return (
       <PageTransition>

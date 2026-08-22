@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useCredentials } from "@/hooks/useCredentials";
 import { useBiometric } from "@/hooks/useBiometric";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { guessWebsiteFromTitle, getFaviconUrl } from "@/lib/utils/credential-helper";
 import { Button } from "@/components/ui/Button";
@@ -47,6 +48,7 @@ export default function NewPasswordPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { addCredential } = useCredentials();
+  const { activePersonId } = useActivePersonId();
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
@@ -142,8 +144,6 @@ export default function NewPasswordPage() {
     run(
       async () => {
         try {
-          // O repositório já faz a transação, criptografia e enfileiramento.
-          // Basta chamar a hook.
           await addCredential({
             title: formData.title.trim(),
             username: formData.username.trim(),
@@ -151,7 +151,8 @@ export default function NewPasswordPage() {
             url: formData.url.trim(),
             notes: formData.notes.trim(),
             category: formData.category,
-          });
+            person_id: activePersonId || undefined,
+          } as any);
         } finally {
           isSubmitLocked.current = false;
         }

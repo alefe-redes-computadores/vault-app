@@ -87,7 +87,8 @@ export default function MedicosPage() {
   const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
   const medicosFiltradosPorPessoa = useMemo<Medico[]>(() => {
-    if (!activePersonId) return medicos || [];
+    if (!medicos || medicos.length === 0) return [];
+    if (!activePersonId) return medicos;
 
     const medicoIdsSet = new Set<string>();
 
@@ -108,8 +109,12 @@ export default function MedicosPage() {
       if (doctorId && typeof doctorId === 'string') medicoIdsSet.add(doctorId);
     });
 
-    const filtrados = (medicos || []).filter((medico) => medico?.id && medicoIdsSet.has(medico.id));
-    return filtrados.length > 0 ? filtrados : (medicos || []);
+    return medicos.filter((medico) => {
+      const pertenceAoPerfil = !medico.person_id || medico.person_id === activePersonId;
+      const temVinculo = medico.id ? medicoIdsSet.has(medico.id) : false;
+      
+      return pertenceAoPerfil || temVinculo;
+    });
   }, [activePersonId, medicamentos, consultas, cirurgias, documentos, medicos]);
 
   const tratamentoMap = useMemo(() => new Map((tratamentos || []).map((t) => [t.id, t])), [tratamentos]);

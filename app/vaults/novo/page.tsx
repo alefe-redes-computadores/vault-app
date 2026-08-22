@@ -18,6 +18,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { Button } from "@/components/ui/Button";
@@ -55,6 +56,7 @@ export default function NewVaultPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
@@ -86,14 +88,13 @@ export default function NewVaultPage() {
     try {
       await run(
         async () => {
-          // Repositório cuida de id, user_id, created_at, updated_at, synced e enfileiramento
           await vaultsRepository.create({
-            name: formData.name.trim(),
-            user_id: user?.id,
-            description: formData.description.trim() || undefined,
-            icon: formData.icon,
-            color: formData.color,
-          });
+          name: formData.name.trim(),
+          user_id: user.id,
+          description: formData.description.trim() || undefined,
+          icon: formData.icon,
+          color: formData.color,
+        });
         },
         {
           successMessage: "Cofre criado com sucesso",

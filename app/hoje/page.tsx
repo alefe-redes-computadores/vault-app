@@ -102,29 +102,36 @@ export default function HojePage() {
   const hoje = getLocalTodayISO();
   const { activePersonId } = useActivePersonId();
 
-  const { medicamentos } = useMedicamentos();
+  const { medicamentos: rawMedicamentos } = useMedicamentos();
+  const medicamentos = useMemo(() => {
+    if (!rawMedicamentos) return [];
+    return rawMedicamentos.filter((m: any) => !activePersonId || !m.person_id || m.person_id === activePersonId);
+  }, [rawMedicamentos, activePersonId]);
+
   const { doseLogs, marcarComoTomada: marcarDose, marcarComoIgnorada } = useDoseLogs(hoje);
 
   const tratamentos = useLiveQuery(
-    () => activePersonId ? db.tratamentos.where('person_id').equals(activePersonId).toArray() : [],
+    () => activePersonId ? db.tratamentos.where('person_id').equals(activePersonId).toArray() : db.tratamentos.toArray(),
     [activePersonId]
   ) || [];
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const farmacias = useLiveQuery(() => db.farmacias.toArray(), []) || [];
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
 
-  const consultas = useLiveQuery(
-    () => activePersonId ? db.consultas.where('person_id').equals(activePersonId).toArray() : [],
-    [activePersonId]
-  ) || [];
-  const cirurgias = useLiveQuery(
-    () => activePersonId ? db.cirurgias.where('person_id').equals(activePersonId).toArray() : [],
-    [activePersonId]
-  ) || [];
-  const exames = useLiveQuery(
-    () => activePersonId ? db.exames.where('person_id').equals(activePersonId).toArray() : [],
-    [activePersonId]
-  ) || [];
+  const rawConsultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+  const consultas = useMemo(() => {
+    return rawConsultas.filter((c: any) => !activePersonId || !c.person_id || c.person_id === activePersonId);
+  }, [rawConsultas, activePersonId]);
+
+  const rawCirurgias = useLiveQuery(() => db.cirurgias.toArray(), []) || [];
+  const cirurgias = useMemo(() => {
+    return rawCirurgias.filter((c: any) => !activePersonId || !c.person_id || c.person_id === activePersonId);
+  }, [rawCirurgias, activePersonId]);
+
+  const rawExames = useLiveQuery(() => db.exames.toArray(), []) || [];
+  const exames = useMemo(() => {
+    return rawExames.filter((e: any) => !activePersonId || !e.person_id || e.person_id === activePersonId);
+  }, [rawExames, activePersonId]);
 
   const consultasHoje = useMemo(
     () => consultas.filter((c: any) => c.data === hoje),
@@ -262,7 +269,7 @@ export default function HojePage() {
   const totalTomadas = doses.filter((d) => d.tomada).length;
   const totalPendentes = doses.filter((d) => !d.tomada && !d.ignorada).length;
 
-  const isLoading = medicamentos === undefined || doseLogs === undefined;
+  const isLoading = rawMedicamentos === undefined || doseLogs === undefined;
   if (isLoading) return <CardListSkeleton />;
 
   const handleToggle = async (item: DoseItemExt) => {

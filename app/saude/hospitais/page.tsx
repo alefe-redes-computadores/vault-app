@@ -58,29 +58,33 @@ export default function HospitaisPage() {
 
   const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
-  // 🔥 FILTRO POR INFERÊNCIA: apenas hospitais vinculados à pessoa ativa
+    // 🔥 FILTRO ROBUSTO: Respeita o person_id ativo, mas mantém compatibilidade com consultas/exames e unidades novas
   const hospitaisFiltradosPorPessoa = useMemo<Hospital[]>(() => {
-    if (!activePersonId) return [];
+    if (!hospitais || hospitais.length === 0) return [];
+    if (!activePersonId) return hospitais;
 
     const hospitalIdsSet = new Set<string>();
 
-    // 1. Consultas da pessoa ativa
     consultas.forEach((c) => {
       if (c.hospital_id) hospitalIdsSet.add(c.hospital_id);
     });
 
-    // 2. Cirurgias da pessoa ativa
     cirurgias.forEach((c) => {
       if (c.hospital_id) hospitalIdsSet.add(c.hospital_id);
     });
 
-    // 3. Exames da pessoa ativa (local_id = hospital_id)
     exames.forEach((e) => {
       if (e.local_id) hospitalIdsSet.add(e.local_id);
     });
 
-    return hospitais.filter((hospital) => hospital.id && hospitalIdsSet.has(hospital.id));
+    return hospitais.filter((hospital) => {
+      const pertenceAoPerfil = !hospital.person_id || hospital.person_id === activePersonId;
+      const temVinculoHistorico = hospitalIdsSet.has(hospital.id!);
+      // Exibe se pertencer ao perfil ativo OU se possuir histórico de atendimento vinculado
+      return pertenceAoPerfil || temVinculoHistorico;
+    });
   }, [activePersonId, consultas, cirurgias, exames, hospitais]);
+
 
   const hospitaisComCruzamento = useMemo<HospitalComCruzamento[]>(() => {
     return hospitaisFiltradosPorPessoa.map((hospital) => {
