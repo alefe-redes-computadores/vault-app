@@ -21,13 +21,6 @@ import type { Medico, Tratamento } from "@/lib/types";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
-const TIPOS_HOSPITAL = [
-  { id: "hospital", label: "Hospital" },
-  { id: "clinica", label: "Clínica" },
-  { id: "laboratorio", label: "Laboratório" },
-  { id: "outro", label: "Outro" },
-];
-
 function formatPhone(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 11);
   if (clean.length <= 2) return clean;
@@ -50,7 +43,6 @@ export default function NovoHospitalPage() {
   const [nome, setNome] = useState("");
   const [endereco, setEndereco] = useState("");
   const [telefone, setTelefone] = useState("");
-  const [tipo, setTipo] = useState("hospital");
   const [observacoes, setObservacoes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -96,10 +88,10 @@ export default function NovoHospitalPage() {
             nome: nome.trim(),
             endereco: endereco.trim() || undefined,
             telefone: telefone.trim() || undefined,
-            tipo: tipo || undefined,
             observacoes: observacoes.trim() || undefined,
             medico_ids: medicoIds,
             tratamento_ids: tratamentoIds,
+            tipo: "hospital", // Fixado estritamente como hospital para evitar inconsistências
           });
         },
         { successMessage: "Hospital cadastrado com sucesso", errorMessage: "Erro ao cadastrar hospital", goBackOnSuccess: true }
@@ -129,24 +121,7 @@ export default function NovoHospitalPage() {
             <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Dados da Unidade</h2>
             <Input label="Nome *" placeholder="Ex: Hospital Regional, Santa Casa..." value={nome} onChange={(e) => setNome(e.target.value)} error={errors.nome} required />
             
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Tipo</label>
-              <div className="flex flex-wrap gap-2">
-                {TIPOS_HOSPITAL.map((tipoOption) => (
-                  <button
-                    key={tipoOption.id}
-                    onClick={() => { trigger("vibrate"); setTipo(tipoOption.id); }}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${
-                      tipo === tipoOption.id
-                        ? "border-emerald-400 bg-emerald-400/10 text-emerald-400"
-                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    {tipoOption.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Seletor de tipo removido para focar puramente em Hospital */}
 
             <Input label="Endereço" placeholder="Rua, número, bairro" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
             <Input label="Telefone" placeholder="(00) 00000-0000" value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} />

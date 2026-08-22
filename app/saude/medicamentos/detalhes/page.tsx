@@ -1,3 +1,4 @@
+// app/saude/medicamentos/detalhes/page.tsx
 "use client";
 
 import { Suspense, useState, useMemo } from "react";
@@ -73,7 +74,7 @@ function MedicamentoDetalhesContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Consultas Dexie Reativas
+  // Consultas Dexie Reativas (todas no topo, antes de qualquer retorno)
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);
   const medico = useLiveQuery(() => med?.medico_id ? db.medicos.get(med.medico_id) : undefined, [med?.medico_id]);
   const hospital = useLiveQuery(() => med?.hospital_id ? db.hospitais.get(med.hospital_id) : undefined, [med?.hospital_id]);
@@ -99,6 +100,15 @@ function MedicamentoDetalhesContent() {
     db.farmacias.toArray().then(f => new Map(f.map(item => [item.id, item.nome]))),
     []
   ) || new Map<string, string>();
+
+  // Hook adicionado: doseLogs (movido para o topo)
+  const doseLogs = useLiveQuery(() => db.doseLogs.where('medicamento_id').equals(id || '').toArray(), [id]) || [];
+
+  // Hook adicionado: melhorFarmacia (movido para o topo)
+  const melhorFarmacia = useMemo(() => {
+    const resultado = analisarMelhorFarmacia(renovacoes);
+    return resultado.length > 0 ? resultado[0] : null;
+  }, [renovacoes]);
 
   // TRAVA DE SEGURANÇA CONTRA TELA PRETA AO EXCLUIR
   if (!mounted || med === undefined) return <DetailSkeleton />;
@@ -191,15 +201,8 @@ function MedicamentoDetalhesContent() {
   const alertaInteligente = sugerirRenovacao(med);
   const diasRestantes = getDaysUntil(med.proxima_renovacao);
 
-  // Comportamento de uso
-  const doseLogs = useLiveQuery(() => db.doseLogs.where('medicamento_id').equals(id || '').toArray(), [id]) || [];
+  // Comportamento de uso (agora doseLogs já está no topo)
   const comportamento = analisarComportamentoUso(med, doseLogs);
-
-  // Melhor farmácia
-  const melhorFarmacia = useMemo(() => {
-    const resultado = analisarMelhorFarmacia(renovacoes);
-    return resultado.length > 0 ? resultado[0] : null;
-  }, [renovacoes]);
 
   const getEstoqueStyle = () => {
     if (qtd <= 9) return { color: "text-coral animate-pulse font-bold", icon: AlertTriangle, label: "CRÍTICO", bg: "bg-coral/10", border: "border-coral/20" };

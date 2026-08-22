@@ -18,7 +18,13 @@ import {
   FlaskConical,
   Building2,
   PlusCircle,
+  Stethoscope,
+  Activity,
+  FolderHeart,
+  Clock,
 } from "lucide-react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -26,7 +32,7 @@ import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocais } from "@/hooks/useLocais";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
-import type { LocalSaude, Renovacao } from "@/lib/types";
+import type { LocalSaude, Renovacao, Medico, Tratamento, Consulta } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -39,7 +45,7 @@ function formatCurrency(value: number): string {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
 
-// Mapeamento de cor e ícone por tipo de local (com PlusCircle para posto de saúde)
+// Mapeamento de estilo por tipo de local
 const LOCAL_TYPE_STYLE: Record<string, { color: string; icon: any; label: string }> = {
   posto_saude: { color: "#34D399", icon: PlusCircle, label: "Posto de Saúde" },
   laboratorio: { color: "#A78BFA", icon: FlaskConical, label: "Laboratório" },
@@ -51,6 +57,9 @@ type LocalComHistorico = LocalSaude & {
   historicoCount: number;
   totalGasto: number;
   ultimaRenovacao: Renovacao | null;
+  medicosCount: number;
+  tratamentosCount: number;
+  proximasConsultasCount: number;
 };
 
 export default function LocaisPage() {
@@ -62,6 +71,17 @@ export default function LocaisPage() {
 
   const { locais = [] } = useLocais();
   const { renovacoes = [] } = useRenovacoes();
+
+  // Carregando vínculos relacionais (somente leitura)
+  const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
+  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
+  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+
+  const hoje = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   const locaisEnriquecidos = useMemo<LocalComHistorico[]>(() => {
     return locais.map((local) => {
@@ -78,14 +98,32 @@ export default function LocaisPage() {
         ? [...historico].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())[0]
         : null;
 
+      // Contagem de médicos vinculados ao local
+      const medicosNoLocal = medicos.filter((med: Medico) =>
+        (local.medico_ids || []).includes(med.id || "")
+      ).length;
+
+      // Contagem de tratamentos vinculados ao local
+      const tratamentosNoLocal = tratamentos.filter((trat: Tratamento) =>
+        (local.tratamento_ids || []).includes(trat.id || "")
+      ).length;
+
+      // Próximas consultas futuras vinculadas ao local
+      const proximasConsultas = consultas.filter((c: Consulta) =>
+        c.local_id === local.id && c.data && new Date(c.data) >= hoje
+      ).length;
+
       return {
         ...local,
         historicoCount: historico.length,
         totalGasto,
         ultimaRenovacao,
+        medicosCount: medicosNoLocal,
+        tratamentosCount: tratamentosNoLocal,
+        proximasConsultasCount: proximasConsultas,
       };
     });
-  }, [locais, renovacoes]);
+  }, [locais, renovacoes, medicos, tratamentos, consultas, hoje]);
 
   const filteredLocais = useMemo(() => {
     let result = locaisEnriquecidos;
@@ -146,7 +184,7 @@ export default function LocaisPage() {
             <Filter size={14} className="text-ink-muted" />
 
             <button
-              onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "todos" ? "posto_saude" : "posto_saude"); }}
+              onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "posto_saude" ? "todos" : "posto_saude"); }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
                 filtroTipo === "posto_saude"
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
@@ -157,7 +195,7 @@ export default function LocaisPage() {
             </button>
 
             <button
-              onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "todos" ? "laboratorio" : "laboratorio"); }}
+              onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "laboratorio" ? "todos" : "laboratorio"); }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
                 filtroTipo === "laboratorio"
                   ? "border-violet-400 bg-violet-400/20 text-violet-300"
@@ -168,7 +206,7 @@ export default function LocaisPage() {
             </button>
 
             <button
-              onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "todos" ? "clinica" : "clinica"); }}
+              onClick={() => { trigger("vibrate"); setFiltroTipo(filtroTipo === "clinica" ? "todos" : "clinica"); }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
                 filtroTipo === "clinica"
                   ? "border-ice bg-ice/20 text-ice"
@@ -255,6 +293,12 @@ export default function LocaisPage() {
             filteredLocais.map((local) => {
               const style = LOCAL_TYPE_STYLE[local.tipo || "outro"] || LOCAL_TYPE_STYLE.outro;
               const IconComponent = style.icon;
+
+              // Tratamentos vinculados para exibir chips coloridos (herdando cor do tratamento)
+              const tratamentosDoLocal = tratamentos.filter((t: Tratamento) =>
+                (local.tratamento_ids || []).includes(t.id || "")
+              );
+
               return (
                 <motion.div
                   key={local.id}
@@ -272,17 +316,56 @@ export default function LocaisPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-base text-ink-primary truncate">{local.nome}</p>
+                      <p className="font-display font-bold text-base text-ink-primary uppercase truncate">{local.nome}</p>
                       <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border border-surface-border/40 bg-surface-raised text-ink-muted">
                         {style.label}
                       </span>
                     </div>
                     {local.endereco && <p className="text-xs text-ink-muted mt-1 truncate">{local.endereco}</p>}
+
+                    {/* Chips de tratamentos com cores herdadas */}
+                    {tratamentosDoLocal.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {tratamentosDoLocal.slice(0, 3).map((t: Tratamento) => (
+                          <span
+                            key={t.id}
+                            className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md border"
+                            style={{
+                              backgroundColor: `${t.cor || "#38BDF8"}20`,
+                              borderColor: `${t.cor || "#38BDF8"}40`,
+                              color: t.cor || "#38BDF8",
+                            }}
+                          >
+                            <Activity size={10} /> {t.nome}
+                          </span>
+                        ))}
+                        {tratamentosDoLocal.length > 3 && (
+                          <span className="text-[9px] text-ink-muted">+{tratamentosDoLocal.length - 3}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Badges de contagens */}
                     <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {local.medicosCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
+                          <Stethoscope size={11} className="text-ice" /> {local.medicosCount} médico(s)
+                        </span>
+                      )}
+                      {local.tratamentosCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
+                          <FolderHeart size={11} className="text-violet-400" /> {local.tratamentosCount} tratamento(s)
+                        </span>
+                      )}
+                      {local.proximasConsultasCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
+                          <Calendar size={11} className="text-emerald-400" /> {local.proximasConsultasCount} próxima(s)
+                        </span>
+                      )}
                       {local.historicoCount > 0 ? (
                         <>
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
-                            <FileText size={11} className="text-amber-400" /> {local.historicoCount} registro(s)
+                            <FileText size={11} className="text-amber-400" /> {local.historicoCount} retirada(s)
                           </span>
                           {local.totalGasto > 0 && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
@@ -291,7 +374,7 @@ export default function LocaisPage() {
                           )}
                           {local.ultimaRenovacao && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-raised text-ink-muted border border-surface-border/40">
-                              <Calendar size={11} className="text-ice" /> {formatDateDisplay(local.ultimaRenovacao.data)}
+                              <Clock size={11} className="text-ice" /> {formatDateDisplay(local.ultimaRenovacao.data)}
                             </span>
                           )}
                         </>

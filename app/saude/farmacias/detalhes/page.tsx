@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Store, MapPin, Phone, Edit3, Trash2,
   Pill, ExternalLink, Clock, TrendingDown, TrendingUp,
-  Plus, FileWarning, AlertTriangle,
+  Plus, FileWarning, AlertTriangle, Navigation,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -70,8 +70,6 @@ function DetalhesFarmaciaContent() {
     });
   }, [id, getFarmacia, router]);
 
-  if (!mounted) return <DetailSkeleton />;
-
   const analiseFarmacia = useMemo(() => {
     if (!farmacia || !medicamentos) {
       return {
@@ -124,6 +122,9 @@ function DetalhesFarmaciaContent() {
     });
   }, [farmacia, analiseFarmacia]);
 
+  if (!mounted || isLoading) return <DetailSkeleton />;
+  if (!farmacia) return null;
+
   const menuOptions = [
     { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?farmacia_id=${id}` },
     { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?farmacia_id=${id}` },
@@ -148,9 +149,6 @@ function DetalhesFarmaciaContent() {
       }
     );
   };
-
-  if (isLoading) return <DetailSkeleton />;
-  if (!farmacia) return null;
 
   const cor = "#F59E0B";
 
@@ -254,27 +252,55 @@ function DetalhesFarmaciaContent() {
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
             style={{ borderLeft: `6px solid ${cor}` }}
           >
-            <div className="flex items-start gap-4">
-              <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
-                style={{ backgroundColor: `${cor}15`, color: cor, borderColor: `${cor}30` }}
-              >
-                <Store size={28} />
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4 min-w-0">
+                <div
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
+                  style={{ backgroundColor: `${cor}15`, color: cor, borderColor: `${cor}30` }}
+                >
+                  <Store size={28} />
+                </div>
+                <div className="min-w-0 pt-1">
+                  <h2 className="font-display text-2xl font-bold text-ink-primary truncate uppercase">{farmacia.nome}</h2>
+                  {farmacia.endereco && (
+                    <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5 truncate">
+                      <MapPin size={13} className="shrink-0 text-ink-faint" /> {farmacia.endereco}
+                    </p>
+                  )}
+                  {farmacia.telefone && (
+                    <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5">
+                      <Phone size={13} className="shrink-0 text-ink-faint" /> {farmacia.telefone}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="min-w-0 pt-1">
-                <h2 className="font-display text-2xl font-bold text-ink-primary truncate">{farmacia.nome}</h2>
-                {farmacia.endereco && (
-                  <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5 truncate">
-                    <MapPin size={13} className="shrink-0 text-ink-faint" /> {farmacia.endereco}
-                  </p>
-                )}
+
+              <div className="flex items-center gap-2 shrink-0 pt-1">
                 {farmacia.telefone && (
-                  <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5">
-                    <Phone size={13} className="shrink-0 text-ink-faint" /> {farmacia.telefone}
-                  </p>
+                  <a
+                    href={`tel:${farmacia.telefone}`}
+                    onClick={() => trigger("vibrate")}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-400 active:scale-95 transition-all"
+                    title="Ligar para farmácia"
+                  >
+                    <Phone size={16} />
+                  </a>
+                )}
+                {farmacia.endereco && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(farmacia.endereco)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trigger("vibrate")}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/30 bg-ice/10 text-ice active:scale-95 transition-all"
+                    title="Abrir no mapa"
+                  >
+                    <Navigation size={16} />
+                  </a>
                 )}
               </div>
             </div>
+
             {analiseFarmacia.ultimaCompra && (
               <div className="pt-2 border-t border-surface-border/40">
                 <div className="flex items-center gap-2 text-xs text-ink-muted">
@@ -300,19 +326,6 @@ function DetalhesFarmaciaContent() {
                 <p className="mt-0.5 text-sm font-semibold text-ink-primary leading-tight">{analiseFarmacia.precoMedio > 0 ? formatCurrency(analiseFarmacia.precoMedio) : "—"}</p>
               </div>
             </div>
-            {analiseFarmacia.economia && (
-              <div className={`pt-2 border-t border-surface-border/40 p-3 rounded-2xl ${analiseFarmacia.economia.economia > 0 ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-coral/10 border border-coral/20'}`}>
-                <div className={`flex items-center gap-2 text-xs ${analiseFarmacia.economia.economia > 0 ? 'text-emerald-400' : 'text-coral'}`}>
-                  {analiseFarmacia.economia.economia > 0 ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
-                  <span>
-                    {analiseFarmacia.economia.economia > 0
-                      ? `Economia de ${formatCurrency(Math.abs(analiseFarmacia.economia.economia))} (${Math.abs(analiseFarmacia.economia.percentual)}%) na última compra`
-                      : `Aumento de ${formatCurrency(Math.abs(analiseFarmacia.economia.economia))} (${Math.abs(analiseFarmacia.economia.percentual)}%) na última compra`
-                    }
-                  </span>
-                </div>
-              </div>
-            )}
           </motion.div>
 
           {analiseFarmacia.ultimasRenovacoes.length > 0 && (
@@ -324,7 +337,7 @@ function DetalhesFarmaciaContent() {
                 {analiseFarmacia.ultimasRenovacoes.map((ren) => (
                   <div key={ren.id} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm">
                     <div>
-                      <p className="text-sm font-semibold text-ink-primary">{ren.medicamento_nome}</p>
+                      <p className="text-sm font-semibold text-ink-primary uppercase">{ren.medicamento_nome}</p>
                       <div className="flex items-center gap-3 mt-0.5">
                         <p className="text-[11px] text-ink-muted">{formatDateDisplay(ren.data)}</p>
                         {ren.dosagem && (
@@ -361,7 +374,7 @@ function DetalhesFarmaciaContent() {
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-ink-primary truncate">{med.nome}</p>
+                          <p className="text-sm font-semibold text-ink-primary truncate uppercase">{med.nome}</p>
                           {med.receitaVencida && (
                             <span className="shrink-0 text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencida</span>
                           )}

@@ -15,6 +15,9 @@ import {
   Calendar,
   Activity,
   Stethoscope,
+  Syringe,
+  FlaskConical,
+  FileText,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -62,7 +65,7 @@ export default function HospitaisPage() {
         (c: Consulta) => c.hospital_id === hospital.id
       );
       const examesDoHospital = exames.filter(
-        (e: Exame) => e.local_id === hospital.id
+        (e: Exame) => e.local_id === hospital.id // Mantido local_id por segurança; ajustar se houver hospital_id
       );
       const medicoIds = new Set(
         consultasDoHospital.map((c) => c.medico_id).filter((id): id is string => Boolean(id))
@@ -151,7 +154,7 @@ export default function HospitaisPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="truncate text-lg font-bold text-ink-primary">{hospital.nome}</p>
+                        <p className="truncate text-lg font-bold text-ink-primary uppercase">{hospital.nome}</p>
                         <span className="shrink-0 rounded-full border border-ice/30 bg-ice/10 px-2 py-0.5 text-[9px] font-bold uppercase text-ice">Hospital</span>
                       </div>
                       <div className="mt-0.5 space-y-0.5 text-xs text-ink-muted">
@@ -191,19 +194,27 @@ export default function HospitaisPage() {
                 )}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-surface-border/40 text-center sm:grid-cols-4">
                   <div className="rounded-xl bg-surface-raised/60 p-2">
-                    <p className="text-[10px] uppercase font-mono text-ink-muted">Cirurgias</p>
+                    <p className="text-[10px] uppercase font-mono text-ink-muted flex items-center justify-center gap-1">
+                      <Syringe size={10} className="text-coral" /> Cirurgias
+                    </p>
                     <p className="mt-0.5 text-sm font-semibold text-ink-primary">{hospital.cirurgiasCount}</p>
                   </div>
                   <div className="rounded-xl bg-surface-raised/60 p-2">
-                    <p className="text-[10px] uppercase font-mono text-ink-muted">Exames</p>
+                    <p className="text-[10px] uppercase font-mono text-ink-muted flex items-center justify-center gap-1">
+                      <FlaskConical size={10} className="text-violet-400" /> Exames
+                    </p>
                     <p className="mt-0.5 text-sm font-semibold text-ink-primary">{hospital.examesCount}</p>
                   </div>
                   <div className="rounded-xl bg-surface-raised/60 p-2">
-                    <p className="text-[10px] uppercase font-mono text-ink-muted">Consultas</p>
+                    <p className="text-[10px] uppercase font-mono text-ink-muted flex items-center justify-center gap-1">
+                      <Stethoscope size={10} className="text-ice" /> Consultas
+                    </p>
                     <p className="mt-0.5 text-sm font-semibold text-ink-primary">{hospital.consultasCount}</p>
                   </div>
                   <div className="rounded-xl bg-surface-raised/60 p-2">
-                    <p className="text-[10px] uppercase font-mono text-ink-muted">Médicos</p>
+                    <p className="text-[10px] uppercase font-mono text-ink-muted flex items-center justify-center gap-1">
+                      <Activity size={10} className="text-emerald-400" /> Médicos
+                    </p>
                     <p className="mt-0.5 text-sm font-semibold text-ink-primary">{hospital.medicosCount}</p>
                   </div>
                 </div>

@@ -10,12 +10,16 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useHapticFeedback } from "@/lib/haptics";
 import {
-  ArrowLeft, FileText, MapPin, Edit3, Trash2, 
-  Clock, Plus, Pill, FileWarning, Calendar, Stethoscope, FlaskConical, ExternalLink, DollarSign, Building2, PlusCircle
+  ArrowLeft, FileText, MapPin, Edit3, Trash2,
+  Clock, Plus, Pill, FileWarning, Calendar, Stethoscope,
+  FlaskConical, ExternalLink, DollarSign, Building2, PlusCircle,
+  FolderHeart, Activity, AlertCircle, ChevronRight
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { formatDateDisplay } from "@/lib/health-utils";
-import type { LocalSaude, Renovacao, Consulta, Exame } from "@/lib/types";
+import type {
+  LocalSaude, Renovacao, Consulta, Exame, Medico, Tratamento
+} from "@/lib/types";
 import { useLocais } from "@/hooks/useLocais";
 import { useMounted } from "@/hooks/useMounted";
 
@@ -29,13 +33,48 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-// Mapeamento de estilo por tipo de local (com PlusCircle para posto de saúde)
+// Mapeamento de estilo por tipo de local
 const LOCAL_TYPE_STYLE: Record<string, { color: string; icon: any }> = {
   posto_saude: { color: "#34D399", icon: PlusCircle },
   laboratorio: { color: "#A78BFA", icon: FlaskConical },
   clinica: { color: "#38BDF8", icon: Building2 },
   outro: { color: "#F59E0B", icon: MapPin },
 };
+
+// Função de cor para tratamento (reaproveitada para consistência)
+function getTreatmentColor(nome: string): string {
+  const colors: Record<string, string> = {
+    "tdah": "#8B5CF6",
+    "ansiedade": "#F59E0B",
+    "depressão": "#EF4444",
+    "insônia": "#6366F1",
+    "enxaqueca": "#8B5CF6",
+    "neuropatia": "#EC4899",
+    "hipertensão": "#EF4444",
+    "colesterol": "#F59E0B",
+    "diabetes": "#3B82F6",
+    "tireoide": "#8B5CF6",
+    "dor crônica": "#EC4899",
+    "fibromialgia": "#F472B6",
+    "asma": "#06B6D4",
+    "dpoc": "#06B6D4",
+    "refluxo": "#F59E0B",
+    "gastrite": "#F59E0B",
+    "transtorno bipolar": "#8B5CF6",
+    "esquizofrenia": "#8B5CF6",
+    "lúpus": "#EC4899",
+    "esclerose múltipla": "#EC4899",
+    "artrite reumatoide": "#EC4899",
+    "câncer": "#EF4444",
+    "obesidade": "#F59E0B",
+    "alergia": "#06B6D4",
+  };
+  const lower = nome.toLowerCase();
+  for (const [key, color] of Object.entries(colors)) {
+    if (lower.includes(key)) return color;
+  }
+  return "#38BDF8";
+}
 
 function DetalhesLocalContent() {
   const router = useRouter();
@@ -45,12 +84,14 @@ function DetalhesLocalContent() {
   const { deleteLocal } = useLocais();
   const mounted = useMounted();
 
+  // === TODOS OS HOOKS AQUI, SEM RETORNO CONDICIONAL ANTES ===
   const [local, setLocal] = useState<LocalSaude | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
   const [showAllRetiradas, setShowAllRetiradas] = useState(false);
 
+  // Dados relacionados via useLiveQuery (incondicionais)
   const renovacoes = useLiveQuery(
     () => (id ? db.renovacoes.where("local_id").equals(id).toArray() : Promise.resolve([] as Renovacao[])),
     [id]
@@ -60,8 +101,24 @@ function DetalhesLocalContent() {
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
+  // Vínculos diretos (medicos e tratamentos) a partir dos IDs no local
+  const medicoIds = useMemo(() => (local?.medico_ids || []).sort().join(','), [local?.medico_ids]);
+  const medicosVinculados = useLiveQuery(() => {
+    const ids = medicoIds ? medicoIds.split(',') : [];
+    if (ids.length === 0) return Promise.resolve([] as Medico[]);
+    return db.medicos.where('id').anyOf(ids).toArray();
+  }, [medicoIds]) || [];
+
+  const tratamentoIds = useMemo(() => (local?.tratamento_ids || []).sort().join(','), [local?.tratamento_ids]);
+  const tratamentosVinculados = useLiveQuery(() => {
+    const ids = tratamentoIds ? tratamentoIds.split(',') : [];
+    if (ids.length === 0) return Promise.resolve([] as Tratamento[]);
+    return db.tratamentos.where('id').anyOf(ids).toArray();
+  }, [tratamentoIds]) || [];
+
+  // Análise dos dados do local
   const analiseLocal = useMemo(() => {
-    if (!id || !renovacoes || !medicamentos) {
+    if (!id || !renovacoes || !medicamentos || !consultas || !exames) {
       return {
         totalGasto: 0,
         ultimaRenovacao: null as Renovacao | null,
@@ -69,6 +126,8 @@ function DetalhesLocalContent() {
         renovacoesComMed: [] as Array<Renovacao & { medicamento_nome: string }>,
         consultasLocal: [] as Consulta[],
         examesLocal: [] as Exame[],
+        proximasConsultas: [] as Consulta[],
+        consultasPassadas: [] as Consulta[],
       };
     }
 
@@ -90,10 +149,21 @@ function DetalhesLocalContent() {
       const ultimaRenovacao = ordenadas.length > 0 ? ordenadas[0] : null;
       const medIds = new Set(renovacoes.map((r) => r.medicamento_id).filter(Boolean));
 
-      const consultasLocal = consultas.filter((c) => c.local_id === id)
+      const consultasLocal = consultas
+        .filter((c) => c.local_id === id)
         .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
 
-      const examesLocal = exames.filter((e) => e.local_id === id)
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const proximasConsultas = consultasLocal
+        .filter((c) => c.data && new Date(c.data) >= hoje)
+        .sort((a, b) => (a.data || "").localeCompare(b.data || ""));
+      const consultasPassadas = consultasLocal
+        .filter((c) => c.data && new Date(c.data) < hoje)
+        .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+
+      const examesLocal = exames
+        .filter((e) => e.local_id === id)
         .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
 
       return {
@@ -103,6 +173,8 @@ function DetalhesLocalContent() {
         renovacoesComMed: ordenadas,
         consultasLocal,
         examesLocal,
+        proximasConsultas,
+        consultasPassadas,
       };
     } catch (e) {
       console.error("Erro na análise do local:", e);
@@ -113,6 +185,8 @@ function DetalhesLocalContent() {
         renovacoesComMed: [],
         consultasLocal: [],
         examesLocal: [],
+        proximasConsultas: [],
+        consultasPassadas: [],
       };
     }
   }, [id, renovacoes, medicamentos, consultas, exames]);
@@ -234,14 +308,13 @@ function DetalhesLocalContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
+          {/* CARD PRINCIPAL */}
           <motion.div
             variants={fadeUp}
             initial="initial"
             animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ 
-              borderLeft: `6px solid ${localStyle.color}` 
-            }}
+            style={{ borderLeft: `6px solid ${localStyle.color}` }}
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border"
@@ -252,21 +325,50 @@ function DetalhesLocalContent() {
               <div className="min-w-0 pt-1">
                 <h2 className="font-display text-xl font-bold text-ink-primary truncate">{local.nome}</h2>
                 <p className="text-sm text-ink-muted mt-1 leading-relaxed">{local.endereco || "Endereço não informado."}</p>
+                {local.telefone && (
+                  <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5">
+                    <MapPin size={12} className="shrink-0" /> {local.telefone}
+                  </p>
+                )}
               </div>
             </div>
 
+            {/* Resumo de vínculos diretos */}
+            {(medicosVinculados.length > 0 || tratamentosVinculados.length > 0) && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {medicosVinculados.map((med) => (
+                  <span key={med.id} className="inline-flex items-center gap-1.5 text-xs bg-ice/10 text-ice px-2.5 py-1 rounded-full">
+                    <Stethoscope size={12} /> Dr(a). {med.nome.split(' ')[0]}
+                  </span>
+                ))}
+                {tratamentosVinculados.map((t) => (
+                  <span
+                    key={t.id}
+                    className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full"
+                    style={{
+                      backgroundColor: `${getTreatmentColor(t.nome)}20`,
+                      color: getTreatmentColor(t.nome),
+                    }}
+                  >
+                    <Activity size={10} /> {t.nome}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Métricas resumidas */}
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-surface-border/40">
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Consultas</p>
-                <p className="mt-0.5 text-base font-semibold text-ink-primary">{analiseLocal.consultasLocal.length}</p>
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Médicos</p>
+                <p className="mt-0.5 text-base font-semibold text-ink-primary">{medicosVinculados.length}</p>
               </div>
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Exames</p>
-                <p className="mt-0.5 text-base font-semibold text-ink-primary">{analiseLocal.examesLocal.length}</p>
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Tratamentos</p>
+                <p className="mt-0.5 text-base font-semibold text-ink-primary">{tratamentosVinculados.length}</p>
               </div>
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Insumos</p>
-                <p className="mt-0.5 text-base font-semibold text-ink-primary">{analiseLocal.medicamentosCount}</p>
+                <p className="text-[10px] uppercase font-mono text-ink-muted">Retiradas</p>
+                <p className="mt-0.5 text-base font-semibold text-ink-primary">{analiseLocal.renovacoesComMed.length}</p>
               </div>
             </div>
 
@@ -274,59 +376,141 @@ function DetalhesLocalContent() {
               <div className="pt-2 border-t border-surface-border/40">
                 <div className="flex items-center gap-2 text-xs text-ink-muted">
                   <Clock size={14} style={{ color: localStyle.color }} />
-                  <span>Última movimentação/retirada: <span className="font-medium text-ink-primary">{formatDateDisplay(analiseLocal.ultimaRenovacao.data)}</span></span>
+                  <span>Última retirada: <span className="font-medium text-ink-primary">{formatDateDisplay(analiseLocal.ultimaRenovacao.data)}</span></span>
                 </div>
               </div>
             )}
           </motion.div>
 
-          {analiseLocal.consultasLocal.length > 0 && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3">
-              <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
-                <Stethoscope size={16} className="text-ice" /> Consultas na Unidade ({analiseLocal.consultasLocal.length})
-              </h3>
-              <div className="space-y-2">
-                {analiseLocal.consultasLocal.map((con) => (
-                  <div key={con.id} onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-ice/30 transition-all">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice"><Calendar size={16} /></div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ink-primary truncate">{con.especialidade || "Consulta"}</p>
-                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(con.data)}</p>
-                      </div>
+          {/* MÉDICOS QUE ATENDEM AQUI */}
+          {medicosVinculados.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <Stethoscope size={16} className="text-ice" />
+                <h3 className="font-display text-base font-semibold text-ink-primary">Médicos que atendem aqui</h3>
+                <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{medicosVinculados.length}</span>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {medicosVinculados.map((med) => (
+                  <div
+                    key={med.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${med.id}`); }}
+                    className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-ice/30 transition-colors shadow-sm"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
+                      <Stethoscope size={18} />
                     </div>
-                    <ExternalLink size={15} className="text-ink-faint shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-ink-primary truncate">Dr(a). {med.nome}</p>
+                      {med.especialidade && (
+                        <p className="text-[11px] text-ink-muted">{med.especialidade}</p>
+                      )}
+                    </div>
+                    <ChevronRight size={16} className="text-ink-faint shrink-0" />
                   </div>
                 ))}
               </div>
             </motion.div>
           )}
 
+          {/* TRATAMENTOS VINCULADOS */}
+          {tratamentosVinculados.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <FolderHeart size={16} className="text-violet-400" />
+                <h4 className="text-sm font-semibold text-ink-primary">Tratamentos neste local</h4>
+                <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{tratamentosVinculados.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {tratamentosVinculados.map((t) => {
+                  const color = getTreatmentColor(t.nome);
+                  return (
+                    <span
+                      key={t.id}
+                      className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded-md border"
+                      style={{
+                        backgroundColor: `${color}20`,
+                        borderColor: `${color}40`,
+                        color: color,
+                      }}
+                    >
+                      <Activity size={10} /> {t.nome}
+                    </span>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {/* PRÓXIMAS CONSULTAS */}
+          {analiseLocal.proximasConsultas.length > 0 && (
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <Calendar size={16} className="text-emerald-400" />
+                <h3 className="font-display text-base font-semibold text-ink-primary">Próximas consultas</h3>
+                <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{analiseLocal.proximasConsultas.length}</span>
+              </div>
+              <div className="space-y-2">
+                {analiseLocal.proximasConsultas.map((con) => (
+                  <div
+                    key={con.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }}
+                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-emerald-400/30 transition-all shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                        <Calendar size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink-primary truncate">{con.especialidade || "Consulta"}</p>
+                        <p className="text-[11px] text-ink-muted">
+                          {formatDateDisplay(con.data)}
+                          {con.horario && ` às ${con.horario}`}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-ink-faint shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* EXAMES REALIZADOS */}
           {analiseLocal.examesLocal.length > 0 && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3">
-              <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
-                <FlaskConical size={16} className="text-violet-400" /> Exames na Unidade ({analiseLocal.examesLocal.length})
-              </h3>
+            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <FlaskConical size={16} className="text-violet-400" />
+                <h3 className="font-display text-base font-semibold text-ink-primary">Exames realizados</h3>
+                <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{analiseLocal.examesLocal.length}</span>
+              </div>
               <div className="space-y-2">
                 {analiseLocal.examesLocal.map((ex) => (
-                  <div key={ex.id} onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${ex.id}`); }} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-violet-400/30 transition-all">
+                  <div
+                    key={ex.id}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${ex.id}`); }}
+                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-violet-400/30 transition-all shadow-sm"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400"><FlaskConical size={16} /></div>
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                        <FlaskConical size={16} />
+                      </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-ink-primary truncate">{ex.nome}</p>
                         <p className="text-[11px] text-ink-muted">{formatDateDisplay(ex.data)}</p>
                       </div>
                     </div>
-                    <ExternalLink size={15} className="text-ink-faint shrink-0" />
+                    <ChevronRight size={16} className="text-ink-faint shrink-0" />
                   </div>
                 ))}
               </div>
             </motion.div>
           )}
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-4 pt-2">
+          {/* HISTÓRICO DE RETIRADAS */}
+          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-4 pt-2">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1">
-              Histórico de Retiradas / Insumos ({analiseLocal.renovacoesComMed?.length || 0})
+              Últimas retiradas ({analiseLocal.renovacoesComMed?.length || 0})
             </h3>
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
               {(!analiseLocal.renovacoesComMed || analiseLocal.renovacoesComMed.length === 0) ? (
@@ -334,9 +518,13 @@ function DetalhesLocalContent() {
               ) : (
                 <>
                   {retiradasVisiveis.map((r) => (
-                    <div key={r.id} onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }} className="flex items-center justify-between rounded-xl bg-surface-raised p-3.5 border border-surface-border/40 cursor-pointer">
+                    <div
+                      key={r.id}
+                      onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }}
+                      className="flex items-center justify-between rounded-xl bg-surface-raised p-3.5 border border-surface-border/40 cursor-pointer hover:border-emerald-400/30 transition-colors"
+                    >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface border border-surface-border/40">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface border border-surface-border/40">
                           <FileText size={14} className="text-ink-muted" />
                         </div>
                         <div className="min-w-0">
@@ -368,11 +556,13 @@ function DetalhesLocalContent() {
             </div>
           </motion.div>
 
+          {/* CUSTOS EVENTUAIS (FORA DO SUS) */}
           {analiseLocal.totalGasto > 0 && (
             <motion.div
               variants={fadeUp}
               initial="initial"
               animate="animate"
+              transition={{ delay: 0.07 }}
               className="rounded-2xl border border-surface-border/40 bg-surface-raised p-4 flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
@@ -380,7 +570,7 @@ function DetalhesLocalContent() {
                   <DollarSign size={18} />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-ink-primary">Investimento / Custos Eventuais</p>
+                  <p className="text-xs font-medium text-ink-primary">Custos eventuais (fora do SUS)</p>
                   <p className="text-[11px] text-ink-muted">Gastos particulares registrados nesta unidade</p>
                 </div>
               </div>
@@ -389,7 +579,15 @@ function DetalhesLocalContent() {
           )}
         </section>
 
-        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir Local" message="Tem certeza que deseja excluir este posto/clínica? Os registros associados não serão apagados, mas perderão a referência a este local." />
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir Local"
+          message="Tem certeza que deseja excluir este posto/clínica? Os registros associados não serão apagados, mas perderão a referência a este local."
+          confirmLabel="Excluir"
+          cancelLabel="Cancelar"
+        />
       </main>
     </PageTransition>
   );

@@ -8,7 +8,7 @@ import {
   ArrowLeft, Hospital as HospitalIcon, MapPin, Phone, Edit3, Trash2,
   Activity, ExternalLink, Stethoscope, Calendar,
   Clock, Plus, FolderHeart, FileWarning, DollarSign,
-  AlertTriangle,
+  AlertTriangle, Navigation,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -68,6 +68,13 @@ function DetalhesHospitalContent() {
     [id]
   ) || [];
 
+  // Hook para tratamentos vinculados ao hospital (movido para cima)
+  const tratamentoIds = useMemo(() => hospital?.tratamento_ids || [], [hospital]);
+  const tratamentos = useLiveQuery(
+    () => tratamentoIds.length > 0 ? db.tratamentos.where('id').anyOf(tratamentoIds).toArray() : Promise.resolve([] as Tratamento[]),
+    [tratamentoIds]
+  ) || [];
+
   useEffect(() => {
     if (!id) {
       router.push("/saude/hospitais");
@@ -82,14 +89,6 @@ function DetalhesHospitalContent() {
       setIsLoading(false);
     });
   }, [id, getHospital, router]);
-
-  if (!mounted) return <DetailSkeleton />;
-
-  const tratamentoIds = hospital?.tratamento_ids || [];
-  const tratamentos = useLiveQuery(
-    () => tratamentoIds.length > 0 ? db.tratamentos.where('id').anyOf(tratamentoIds).toArray() : Promise.resolve([] as Tratamento[]),
-    [tratamentoIds]
-  ) || [];
 
   const analiseHospital = useMemo<AnaliseHospital>(() => {
     if (!id || !hospital) {
@@ -130,6 +129,35 @@ function DetalhesHospitalContent() {
     };
   }, [id, hospital, consultas, medicos, cirurgias, renovacoes]);
 
+  // Alertas (useMemo movido para antes dos retornos)
+  const todosAlertas = useMemo(() => {
+    if (!id) return [];
+    const contexto = {
+      medicamentos: [],
+      consultas: consultas.filter((c) => c.hospital_id === id),
+      exames: [],
+      cirurgias: cirurgias.filter((c) => c.hospital_id === id),
+    };
+    return gerarAlertasVisaoGeral(contexto);
+  }, [consultas, cirurgias, id]);
+
+  const alertasRelevantes = todosAlertas.slice(0, 3);
+
+  if (!mounted) return <DetailSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
+  if (!hospital) return null;
+
+  const menuOptions = [
+    { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Activity, path: `/saude/cirurgias/nova?hospital_id=${id}` },
+    { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?hospital_id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
+
   const handleDelete = () => {
     deleteAction.run(
       async () => {
@@ -144,32 +172,7 @@ function DetalhesHospitalContent() {
     );
   };
 
-  const menuOptions = [
-    { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Activity, path: `/saude/cirurgias/nova?hospital_id=${id}` },
-    { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?hospital_id=${id}` },
-  ];
-
-  const handleMenuOptionClick = (path: string) => {
-    trigger("vibrate");
-    setIsMenuFlutuanteOpen(false);
-    router.push(path);
-  };
-
-  if (isLoading) return <DetailSkeleton />;
-  if (!hospital) return null;
-
   const cor = "#38BDF8";
-  const todosAlertas = useMemo(() => {
-    const contexto = {
-      medicamentos: [],
-      consultas: consultas.filter((c) => c.hospital_id === id),
-      exames: [],
-      cirurgias: cirurgias.filter((c) => c.hospital_id === id),
-    };
-    return gerarAlertasVisaoGeral(contexto);
-  }, [consultas, cirurgias, id]);
-
-  const alertasRelevantes = todosAlertas.slice(0, 3);
 
   return (
     <PageTransition>
@@ -281,30 +284,58 @@ function DetalhesHospitalContent() {
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
             style={{ borderLeft: `6px solid ${cor}` }}
           >
-            <div className="flex items-start gap-4">
-              <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
-                style={{ backgroundColor: `${cor}15`, color: cor, borderColor: `${cor}30` }}
-              >
-                <HospitalIcon size={28} />
-              </div>
-              <div className="min-w-0 pt-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-display text-2xl font-bold text-ink-primary truncate">{hospital.nome}</h2>
-                  <span className="shrink-0 rounded-full border border-ice/30 bg-ice/10 px-2 py-0.5 text-[9px] font-bold uppercase text-ice">Hospital</span>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4 min-w-0">
+                <div
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
+                  style={{ backgroundColor: `${cor}15`, color: cor, borderColor: `${cor}30` }}
+                >
+                  <HospitalIcon size={28} />
                 </div>
-                {hospital.endereco && (
-                  <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5 truncate">
-                    <MapPin size={13} className="shrink-0 text-ink-faint" /> {hospital.endereco}
-                  </p>
-                )}
+                <div className="min-w-0 pt-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-display text-2xl font-bold text-ink-primary truncate uppercase">{hospital.nome}</h2>
+                    <span className="shrink-0 rounded-full border border-ice/30 bg-ice/10 px-2 py-0.5 text-[9px] font-bold uppercase text-ice">Hospital</span>
+                  </div>
+                  {hospital.endereco && (
+                    <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5 truncate">
+                      <MapPin size={13} className="shrink-0 text-ink-faint" /> {hospital.endereco}
+                    </p>
+                  )}
+                  {hospital.telefone && (
+                    <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5">
+                      <Phone size={13} className="shrink-0 text-ink-faint" /> {hospital.telefone}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 pt-1">
                 {hospital.telefone && (
-                  <p className="text-xs text-ink-muted mt-1 flex items-center gap-1.5">
-                    <Phone size={13} className="shrink-0 text-ink-faint" /> {hospital.telefone}
-                  </p>
+                  <a
+                    href={`tel:${hospital.telefone}`}
+                    onClick={() => trigger("vibrate")}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-400 active:scale-95 transition-all"
+                    title="Ligar para hospital"
+                  >
+                    <Phone size={16} />
+                  </a>
+                )}
+                {hospital.endereco && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hospital.endereco)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trigger("vibrate")}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/30 bg-ice/10 text-ice active:scale-95 transition-all"
+                    title="Abrir no mapa"
+                  >
+                    <Navigation size={16} />
+                  </a>
                 )}
               </div>
             </div>
+
             {analiseHospital.ultimaConsulta && (
               <div className="pt-2 border-t border-surface-border/40">
                 <div className="flex items-center gap-2 text-xs text-ink-muted">

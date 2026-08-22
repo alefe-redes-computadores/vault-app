@@ -125,7 +125,7 @@ export default function FarmaciasPage() {
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [farmaciasComAnalise, search, filtroStatus]);
 
-  if (!farmacias.length && !medicamentos.length && !renovacoes.length) return <CardListSkeleton />;
+  if (!farmacias && !medicamentos) return <CardListSkeleton />;
 
   const corBase = "#F59E0B";
 
@@ -209,7 +209,7 @@ export default function FarmaciasPage() {
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="truncate text-lg font-bold text-ink-primary">{farmacia.nome}</p>
+                          <p className="truncate text-lg font-bold text-ink-primary uppercase">{farmacia.nome}</p>
                           {farmacia.isMaisEconomica && (
                             <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-400 px-2 py-0.5 text-[9px] font-bold uppercase text-void">
                               <Award size={10} /> Melhor Preço

@@ -112,7 +112,7 @@ export default function NovoMedicamentoPage() {
   const cids = useLiveQuery(() => db.cids?.toArray() || []) ?? [];
 
   const { run, isSubmitting } = useSubmitAction();
-  const isSubmitLocked = useRef(false); // Trava síncrona contra duplo clique
+  const isSubmitLocked = useRef(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -149,7 +149,6 @@ export default function NovoMedicamentoPage() {
   const [estoqueDataReferenciaTexto, setEstoqueDataReferenciaTexto] = useState(isoParaBr(getLocalTodayISO()));
   const [estoqueUnidade, setEstoqueUnidade] = useState("comprimido(s)");
 
-  // 👇 NOVO ESTADO PARA GERENCIAMENTO DE RENOVAÇÃO
   const [gerenciarRenovacao, setGerenciarRenovacao] = useState(false);
 
   const [tipoReceita, setTipoReceita] = useState<TipoReceita>("comum");
@@ -235,8 +234,6 @@ export default function NovoMedicamentoPage() {
   const handleDataReceitaChange = (val: string) => {
     const masked = mascaraData(val);
     setDataReceitaTexto(masked);
-    
-    // Autopreenchimento Inteligente: Ao bater 10 caracteres, já calcula o vencimento
     if (masked.length === 10) {
       const isoData = brParaIso(masked);
       if (isoData && VALIDADE_RECEITA_DIAS[tipoReceita]) {
@@ -318,8 +315,6 @@ export default function NovoMedicamentoPage() {
 
   const handleSubmit = () => {
     if (!validateStep(3)) return;
-    
-    // Trava física contra duplo-clique no celular
     if (isSubmitLocked.current || isSubmitting) return;
     isSubmitLocked.current = true;
 
@@ -342,7 +337,6 @@ export default function NovoMedicamentoPage() {
 
         if (dataReceitaISO || attachment) {
           if (!user) throw new Error('Usuário não autenticado');
-          
           const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced' | 'user_id'> = {
             person_id: activePersonId || "",
             category_id: "saude",
@@ -362,13 +356,11 @@ export default function NovoMedicamentoPage() {
             attachments: attachment ? [attachment] : [],
             is_favorite: false,
           };
-
           const createdDoc = await documentsRepository.create({
             user_id: user.id,
             ...docData,
           });
           docId = createdDoc;
-
           if (localFile && user && attachment) {
             const { url, error } = await uploadFile(user.id, localFile, "saude");
             if (!error && url) {
@@ -378,9 +370,10 @@ export default function NovoMedicamentoPage() {
           }
         }
 
-          const medicamentoData = {
+        // 🔥 CORREÇÃO: Envia estoque SEMPRE que houver quantidade
+        const medicamentoData = {
           document_id: docId || undefined,
-          person_id: activePersonId || "", // 👈 Garante o vínculo na raiz com o perfil ativo do topo do app
+          person_id: activePersonId || "",
           nome: nome.trim(),
           dosagem: dosagem.trim(),
           cid_ids: cidIds,
@@ -400,11 +393,12 @@ export default function NovoMedicamentoPage() {
           tipo_receita: tipoReceita,
           tratamento_ids: tratamentosSelecionados,
           status: "ativo" as const,
-          estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
-          estoque_data_referencia: estoqueAtivo ? estoqueDataReferenciaISO : undefined,
-          estoque_horarios: tipoUso === 'continuo' && estoqueAtivo ? horariosFiltrados : undefined,
-          estoque_unidade_por_dose: estoqueAtivo ? Number(estoqueUnidadePorDose) : undefined,
-          estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
+          // ✅ Agora sempre envia estoque se houver quantidade, independente do toggle
+          estoque_quantidade: quantidadeEstoqueFinal > 0 ? quantidadeEstoqueFinal : undefined,
+          estoque_data_referencia: quantidadeEstoqueFinal > 0 ? estoqueDataReferenciaISO : undefined,
+          estoque_horarios: tipoUso === 'continuo' && quantidadeEstoqueFinal > 0 ? horariosFiltrados : undefined,
+          estoque_unidade_por_dose: quantidadeEstoqueFinal > 0 ? Number(estoqueUnidadePorDose) : undefined,
+          estoque_unidade_medida: quantidadeEstoqueFinal > 0 ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
         };
 
         if (!user) throw new Error('Usuário não autenticado');
@@ -415,10 +409,8 @@ export default function NovoMedicamentoPage() {
 
         const medicamentoId = createdMed;
 
-        // 👇 BLOCO NOVO: SÓ CRIA RENOVAÇÃO SE O USUÁRIO ATIVAR O INTERRUPTOR
         if (gerenciarRenovacao) {
           if (!user) throw new Error('Usuário não autenticado');
-
           await renovacoesRepository.create({
             user_id: user.id,
             person_id: activePersonId || undefined,
@@ -428,7 +420,7 @@ export default function NovoMedicamentoPage() {
             hospital_id: hospitalId || undefined,
             local_id: localId || undefined,
             tipo_aquisicao: precoNumerico !== undefined ? "comprado" : "gratuito",
-            quantidade: estoqueAtivo ? quantidadeEstoqueFinal : undefined,
+            quantidade: quantidadeEstoqueFinal > 0 ? quantidadeEstoqueFinal : undefined,
             preco: precoNumerico,
             data: dataReceitaISO || getLocalTodayISO(),
           });
@@ -504,10 +496,8 @@ export default function NovoMedicamentoPage() {
         <section className="px-5 pt-6 space-y-6">
           <AnimatePresence mode="wait">
 
-            {/* ETAPA 1 */}
             {currentStep === 1 && (
               <motion.div key="step1" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
-
                 <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
                   <div className={`transition-all ${shakeFields.includes('nome') ? 'animate-shake' : ''}`}>
                     <Input
@@ -661,10 +651,8 @@ export default function NovoMedicamentoPage() {
               </motion.div>
             )}
 
-            {/* ETAPA 2 */}
             {currentStep === 2 && (
               <motion.div key="step2" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
-
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
                   <div className="mb-2 flex items-center gap-2">
                     <Store size={16} className="text-ice" />
@@ -775,11 +763,8 @@ export default function NovoMedicamentoPage() {
               </motion.div>
             )}
 
-            {/* ETAPA 3 */}
             {currentStep === 3 && (
               <motion.div key="step3" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
-
-                {/* 👇 INTERRUPTOR DE GERENCIAMENTO DE RENOVAÇÃO */}
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm mb-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -989,7 +974,6 @@ export default function NovoMedicamentoPage() {
           <FloatingSpinner label={uploadProgress > 0 ? `Enviando anexo... ${uploadProgress}%` : "Salvando medicamento..."} />
         )}
 
-        {/* MODAL DE CID (NOVO) */}
         <SelectionModal<any>
           isOpen={isCidModalOpen}
           onClose={() => setIsCidModalOpen(false)}
