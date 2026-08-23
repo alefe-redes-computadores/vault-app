@@ -13,7 +13,6 @@ import {
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
-import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
@@ -22,7 +21,6 @@ import { useTratamentos } from "@/hooks/useTratamentos";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { useToast } from "@/components/ToastProvider";
 import { uploadFile } from "@/lib/supabase/storage";
 import { suggestRenewalDate, VALIDADE_RECEITA_DIAS, getLocalTodayISO } from "@/lib/health-utils";
 import { scheduleDoseNotifications, requestNotificationPermission } from "@/lib/dose-notifications";
@@ -287,6 +285,8 @@ export default function NovoMedicamentoPage() {
 
   const handleSubmit = () => {
     if (!validateStep(3)) return;
+    
+    // 🛡️ TRAVA RIGIDA CONTRA DUPLO CLIQUE / DUPLICATA
     if (isSubmitLocked.current || isSubmitting) return;
     isSubmitLocked.current = true;
 
@@ -342,7 +342,6 @@ export default function NovoMedicamentoPage() {
           }
         }
 
-        // 🔥 LÓGICA BLINDADA PARA O TS: 'as any' em datas e campos opcionais para calar o TypeScript
         const medicamentoData = {
           document_id: docId || undefined,
           person_id: activePersonId || "",
@@ -359,8 +358,8 @@ export default function NovoMedicamentoPage() {
           farmacia: farmaciaNome?.trim() || "", 
           farmacia_id: farmaciaId || undefined,
           preco: precoNumerico,
-          data_receita: dataReceitaISO as any, // Cast pra ignorar a frescura do TS
-          proxima_renovacao: proximaRenovacaoISO as any, // Cast pra ignorar a frescura do TS
+          data_receita: dataReceitaISO as any,
+          proxima_renovacao: proximaRenovacaoISO as any,
           observacoes: observacoes?.trim() || undefined,
           tipo_receita: tipoReceita,
           tratamento_ids: tratamentosSelecionados,
@@ -418,6 +417,7 @@ export default function NovoMedicamentoPage() {
         goBackOnSuccess: true,
       }
     ).finally(() => {
+      // 🛡️ LIBERA A TRAVA APENAS NO FIM DO PROCESSO
       isSubmitLocked.current = false;
       setUploadProgress(0);
     });
