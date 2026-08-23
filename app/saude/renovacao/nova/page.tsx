@@ -331,69 +331,6 @@ function NovaRenovacaoContent() {
       isSubmitLocked.current = false;
     });
   };
-        const dataISO = parseDateToISO(dataDisplay);
-        const proximaISO = proximaDisplay.length === 10 ? parseDateToISO(proximaDisplay) : addDaysToISO(dataISO, 30);
-        const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
-        const quantidadeNum = registrarCompra ? Number(quantidadeAdicionar) || 0 : undefined;
-
-        if (!user) throw new Error('Usuário não autenticado');
-
-        // Validação de integridade: Garante que o medicamento pai existe antes de salvar a renovação filha
-        const medOriginal = await medicamentosRepository.getById(medicamentoId);
-        if (!medOriginal) {
-          throw new Error("Medicamento vinculado não encontrado no banco de dados.");
-        }
-
-        // 1. Cria a renovação via repositório de forma segura
-        await renovacoesRepository.create({
-          user_id: user.id,
-          person_id: activePersonId || undefined,
-          medicamento_id: medicamentoId,
-          medico_id: medicoId || undefined,
-          farmacia_id: farmaciaId || undefined,
-          hospital_id: hospitalId || undefined,
-          local_id: localId || undefined,
-          tipo_aquisicao: tipoAquisicao,
-          data_proxima_retirada: tipoAquisicao === "gratuito" ? parseDateToISO(dataProximaRetirada) : undefined,
-          exige_nova_receita: tipoAquisicao === "gratuito" ? exigeNovaReceita : undefined,
-          quantidade: quantidadeNum,
-          preco: precoNumerico,
-          lote: lote.trim() || undefined,
-          validade_produto: validadeProduto ? parseDateToISO(validadeProduto) : undefined,
-          data: dataISO,
-          anexo_url: finalAnexoUrl,
-          observacoes: observacoes.trim() || undefined,
-        });
-
-        // 2. Atualiza o medicamento vinculado com segurança
-        const dadosUpdate: Partial<Medicamento> = {
-          data_receita: dataISO,
-          proxima_renovacao: proximaISO,
-          medico_id: medicoId || undefined,
-          medico: medicoNome || undefined,
-        };
-
-        if (registrarCompra) {
-          const estoqueAtual = Number(medOriginal.estoque_quantidade) || 0;
-          dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
-          dadosUpdate.estoque_data_referencia = getLocalTodayISO();
-          if (selectedFarmacia) {
-            dadosUpdate.farmacia = selectedFarmacia.nome;
-            dadosUpdate.farmacia_id = selectedFarmacia.id;
-          }
-        }
-
-        await medicamentosRepository.update(medicamentoId, dadosUpdate);
-      },
-      {
-        successMessage: "Renovação registrada com sucesso",
-        errorMessage: "Erro ao salvar renovação",
-        goBackOnSuccess: true,
-      }
-    ).finally(() => {
-      isSubmitLocked.current = false;
-    });
-  };
 
   const calcDiasVencimento = proximaDisplay.length === 10 ? getDaysUntil(parseDateToISO(proximaDisplay)) : null;
 
