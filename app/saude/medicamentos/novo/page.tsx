@@ -286,7 +286,7 @@ export default function NovoMedicamentoPage() {
   const handleSubmit = () => {
     if (!validateStep(3)) return;
     
-    // 🛡️ TRAVA RIGIDA CONTRA DUPLO CLIQUE / DUPLICATA
+    // 🛡️ TRAVA ABSOLUTA CONTRA DUPLO DISPARO
     if (isSubmitLocked.current || isSubmitting) return;
     isSubmitLocked.current = true;
 
@@ -307,7 +307,8 @@ export default function NovoMedicamentoPage() {
 
         let docId: string | undefined = undefined;
 
-        if (dataReceitaISO || attachment) {
+        // 1. Criação do documento físico (se houver anexo)
+        if (attachment) {
           if (!user) throw new Error('Usuário não autenticado');
           const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced' | 'user_id'> = {
             person_id: activePersonId || "",
@@ -325,15 +326,16 @@ export default function NovoMedicamentoPage() {
               formato,
               status: "ativo",
             },
-            attachments: attachment ? [attachment] : [],
+            attachments: [attachment],
             is_favorite: false,
           };
-          const createdDoc = await documentsRepository.create({
+          
+          docId = await documentsRepository.create({
             user_id: user.id,
             ...docData,
           });
-          docId = createdDoc;
-          if (localFile && user && attachment) {
+          
+          if (localFile) {
             const { url, error } = await uploadFile(user.id, localFile, "saude");
             if (!error && url) {
               await documentsRepository.update(docId, { attachments: [{ ...attachment, url }] });
@@ -342,6 +344,7 @@ export default function NovoMedicamentoPage() {
           }
         }
 
+        // 2. Criação do Medicamento (O tronco principal)
         const medicamentoData = {
           document_id: docId || undefined,
           person_id: activePersonId || "",
@@ -375,13 +378,12 @@ export default function NovoMedicamentoPage() {
         };
 
         if (!user) throw new Error('Usuário não autenticado');
-        const createdMed = await medicamentosRepository.create({
+        const medicamentoId = await medicamentosRepository.create({
           user_id: user.id,
           ...medicamentoData,
         });
 
-        const medicamentoId = createdMed;
-
+        // 3. Criação da Renovação (Se ativada)
         if (gerenciarRenovacao) {
           if (!user) throw new Error('Usuário não autenticado');
           await renovacoesRepository.create({
@@ -399,6 +401,7 @@ export default function NovoMedicamentoPage() {
           });
         }
 
+        // 4. Notificações
         if (estoqueAtivo && tipoUso === 'continuo' && horariosFiltrados.length > 0) {
           const granted = await requestNotificationPermission();
           if (granted) {
@@ -417,7 +420,6 @@ export default function NovoMedicamentoPage() {
         goBackOnSuccess: true,
       }
     ).finally(() => {
-      // 🛡️ LIBERA A TRAVA APENAS NO FIM DO PROCESSO
       isSubmitLocked.current = false;
       setUploadProgress(0);
     });

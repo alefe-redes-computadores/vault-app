@@ -76,27 +76,47 @@ export default function FarmaciasPage() {
 
   const farmaciasComAnalise = useMemo<FarmaciaComAnalise[]>(() => {
     return farmacias.map((farmacia) => {
+      // Pega os medicamentos vinculados a esta farmácia
       const medsDaFarmacia = medicamentos.filter((m: Medicamento) => m.farmacia_id === farmacia.id);
-      const medIds = new Set(medsDaFarmacia.map((m) => m.id));
-      const renovacoesDaFarmacia = renovacoes.filter((r: Renovacao) => medIds.has(r.medicamento_id));
+      
+      // Pega as renovações feitas nesta farmácia
+      const renovacoesDaFarmacia = renovacoes.filter((r: Renovacao) => r.farmacia_id === farmacia.id);
+      
       const ultimaCompra = renovacoesDaFarmacia.length > 0
         ? [...renovacoesDaFarmacia].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())[0]
         : null;
+        
       const ultimosMedicamentos = renovacoesDaFarmacia
         .slice()
         .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
-        .slice(0, 3)
         .map((r) => {
           const med = medicamentos.find((m) => m.id === r.medicamento_id);
           return med ? med.nome : null;
         })
         .filter((nome): nome is string => Boolean(nome));
-      const totalGasto = renovacoesDaFarmacia.reduce((acc, r) => {
+
+      // Soma o total das renovações
+      let totalGasto = renovacoesDaFarmacia.reduce((acc, r) => {
         if (typeof r.preco === "number" && r.preco > 0) return acc + r.preco;
         return acc;
       }, 0);
+
+      // 🔥 MATEMÁTICA CORRIGIDA AQUI TAMBÉM: Adiciona a compra inicial do medicamento
+      medsDaFarmacia.forEach((m) => {
+        if (typeof m.preco === "number" && m.preco > 0) {
+          const jaTemRenovacaoIgual = renovacoesDaFarmacia.some(r => r.medicamento_id === m.id && r.preco === m.preco && (r.data === m.data_receita || r.data === m.estoque_data_referencia));
+          if (!jaTemRenovacaoIgual) {
+             totalGasto += m.preco;
+             if (!ultimosMedicamentos.includes(m.nome)) {
+               ultimosMedicamentos.push(m.nome);
+             }
+          }
+        }
+      });
+
       const estatisticaEconomia = rankingMap.get(farmacia.id!) || null;
       const isMaisEconomica = estatisticaEconomia?.posicao === 1;
+      
       return {
         ...farmacia,
         medicamentosCount: medsDaFarmacia.length,
@@ -104,7 +124,7 @@ export default function FarmaciasPage() {
         estatisticaEconomia,
         isMaisEconomica,
         ultimaCompra,
-        ultimosMedicamentos,
+        ultimosMedicamentos: ultimosMedicamentos.slice(0, 3), // Garante que exiba no máximo 3 nomes
       };
     });
   }, [farmacias, medicamentos, renovacoes, rankingMap]);
