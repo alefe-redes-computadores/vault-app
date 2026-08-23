@@ -14,6 +14,9 @@ export const medicamentosRepository = {
   },
 
   async create(data: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string }) {
+    // 🔥 RASTREADOR ADICIONADO PARA O CLAUDE
+    console.trace("🔍 medicamentosRepository.create() CHAMADO");
+
     if (data.tratamento_ids) {
       data.tratamento_ids = Array.from(new Set(data.tratamento_ids));
     }
