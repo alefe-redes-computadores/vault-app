@@ -284,11 +284,14 @@ export default function NovoMedicamentoPage() {
   };
 
   const handleSubmit = () => {
-    if (!validateStep(3)) return;
-    
-    // 🛡️ TRAVA ABSOLUTA CONTRA DUPLO DISPARO
+    // 🛡️ TRAVA SÍNCRONA DE CURTO-CIRCUITO IMEDIATA
     if (isSubmitLocked.current || isSubmitting) return;
     isSubmitLocked.current = true;
+
+    if (!validateStep(3)) {
+      isSubmitLocked.current = false;
+      return;
+    }
 
     run(
       async () => {
