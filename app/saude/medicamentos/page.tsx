@@ -25,8 +25,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Medicamento, Person, Tratamento } from "@/lib/types";
 
+// 🔥 Formatos atualizados para evitar bugs de ID no banco
 const FORMATOS = [
   { id: "comprimido", label: "Redondo", icon: Circle },
+  { id: "partido", label: "Partido", icon: Pill },
   { id: "capsula", label: "Cápsula", icon: Pill },
   { id: "gota", label: "Gotas", icon: Droplet },
   { id: "injecao", label: "Injeção", icon: Syringe },
@@ -216,9 +218,13 @@ export default function MedicamentosListPage() {
               const insight = isSuspenso ? null : sugerirRenovacao(med);
               const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
 
-              const SelectedFormatIcon = FORMATOS.find((f) => f.id === med.formato)?.icon || Pill;
-              const color1 = med.cores?.[0] || "#60A5FA";
-              const cardBorderColor = activePersonColor || color1;
+              // 🔥 LOGICA DO ÍCONE E COR BLINDADA AQUI:
+              const formatoBanco = med.formato?.toLowerCase().trim() || "comprimido";
+              const itemFormato = FORMATOS.find(f => f.id === formatoBanco) || FORMATOS[0];
+              const SelectedFormatIcon = itemFormato.icon;
+              
+              const cor1 = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
+              const cardBorderColor = activePersonColor || cor1;
 
               return (
                 <motion.button
@@ -230,8 +236,8 @@ export default function MedicamentosListPage() {
                   <div className={`absolute left-0 top-0 bottom-0 w-2 ${isSuspenso ? "bg-coral" : med.tipo_receita === "amarela" ? "bg-amber-400" : med.tipo_receita === "azul" ? "bg-blue-400" : cardBorderColor}`} />
 
                   <div className="flex items-start gap-4 ml-1">
-                    <div className="h-12 w-12 rounded-2xl flex items-center justify-center border border-surface-border shadow-inner shrink-0" style={{ backgroundColor: color1 + "15" }}>
-                      <SelectedFormatIcon size={24} stroke={color1} strokeWidth={2.4} fill={color1 + "44"} />
+                    <div className="h-12 w-12 rounded-2xl flex items-center justify-center border border-surface-border shadow-inner shrink-0" style={{ backgroundColor: cor1 + "15" }}>
+                      <SelectedFormatIcon size={24} stroke={cor1} strokeWidth={2.4} fill={cor1 + "44"} />
                     </div>
 
                     <div className="flex-1 min-w-0">

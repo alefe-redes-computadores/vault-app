@@ -46,9 +46,18 @@ function formatDate(isoStr?: string) {
   catch { return isoStr; }
 }
 
+// 🔥 Ícone de comprimido partido alinhado com o cadastro
+const SplitPillIcon = ({ size, fill = "currentColor", stroke = "currentColor", strokeWidth = 2 }: any) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" fill={fill} />
+    <line x1="12" y1="2" x2="12" y2="22" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
+  </svg>
+);
+
+// 🔥 Formatos atualizados para evitar bugs de ID no banco
 const FORMATOS = [
-  { id: "comprimido", label: "Redondo", icon: Circle },
-  { id: "partido", label: "Partido", icon: Pill },
+  { id: "comprimido", label: "Inteiro", icon: Circle },
+  { id: "partido", label: "Partido", icon: SplitPillIcon },
   { id: "capsula", label: "Cápsula", icon: Pill },
   { id: "gota", label: "Gotas", icon: Droplet },
   { id: "injecao", label: "Injeção", icon: Syringe },
@@ -108,7 +117,6 @@ function MedicamentoDetalhesContent() {
   if (!mounted || med === undefined) return <DetailSkeleton />;
   if (isDeleting || !med) return <div className="min-h-screen bg-void" />;
 
-  // 🔥 MATEMÁTICA VISUAL DO SOS CORRIGIDA
   const isSOS = med.tipo_uso !== "continuo";
   const estoqueInfo = computeEstoqueInfo(med);
   const qtd = isSOS ? (med.estoque_quantidade ?? 0) : (estoqueInfo?.quantidadeRestante ?? med.estoque_quantidade ?? 0);
@@ -130,8 +138,6 @@ function MedicamentoDetalhesContent() {
     trigger("success");
 
     const doseGasta = Number(med.estoque_unidade_por_dose) || 1;
-
-    // Lógica protegida usando a nova visualização bruta pro SOS
     const atual = isSOS ? (med.estoque_quantidade ?? 0) : (estoqueInfo?.quantidadeRestante ?? med.estoque_quantidade ?? 0);
 
     if (atual <= 0) {
@@ -261,8 +267,12 @@ function MedicamentoDetalhesContent() {
   const outrosMedsDesteMedico = todosMedicamentosAtivos.filter((m: Medicamento) => m.medico_id === med.medico_id && m.id !== med.id);
   const displayedRenovacoes = showAllRenovacoes ? renovacoes : renovacoes.slice(0, 3);
 
-  const SelectedFormatIcon = FORMATOS.find(f => f.id === med.formato)?.icon || Pill;
-  const color1 = med.cores?.[0] || "#60A5FA";
+  // 🔥 LÓGICA BLINDADA DO ÍCONE
+  const formatoBanco = med.formato?.toLowerCase().trim() || "comprimido";
+  const itemFormato = FORMATOS.find(f => f.id === formatoBanco) || FORMATOS[0];
+  const SelectedFormatIcon = itemFormato.icon;
+  
+  const color1 = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
   const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
   return (

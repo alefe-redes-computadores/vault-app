@@ -8,6 +8,7 @@ import {
   ArrowLeft, Store, MapPin, Phone, Edit3, Trash2,
   Pill, ExternalLink, Clock, TrendingDown, TrendingUp,
   Plus, FileWarning, AlertTriangle, Navigation,
+  Calendar, DollarSign, Gift
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -22,7 +23,7 @@ import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useMounted } from "@/hooks/useMounted";
 import type { Farmacia, Medicamento, Renovacao } from "@/lib/types";
 
-function formatDateDisplay(isoStr: string): string {
+function formatDateDisplay(isoStr?: string): string {
   if (!isoStr) return "";
   const parts = isoStr.split("-");
   if (parts.length !== 3) return isoStr;
@@ -85,14 +86,30 @@ function DetalhesFarmaciaContent() {
     const renovacoesDaFarmacia = renovacoes
       .filter((r) => r.farmacia_id === id)
       .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    
     let totalGasto = 0;
+    const precosParaMedia: number[] = [];
+
+    // Soma as renovações
     renovacoesDaFarmacia.forEach((r) => {
-      if (typeof r.preco === "number" && r.preco > 0) totalGasto += r.preco;
+      if (typeof r.preco === "number" && r.preco > 0) {
+        totalGasto += r.preco;
+        precosParaMedia.push(r.preco);
+      }
     });
-    const precos = renovacoesDaFarmacia
-      .filter((r) => typeof r.preco === "number" && r.preco > 0)
-      .map((r) => r.preco as number);
-    const precoMedio = precos.length > 0 ? precos.reduce((a, b) => a + b, 0) / precos.length : 0;
+
+    // SOMA O VALOR DE COMPRA INICIAL DO MEDICAMENTO (se ele não estiver listado como renovação no mesmo dia)
+    medicamentosVinculados.forEach((m) => {
+      if (typeof m.preco === "number" && m.preco > 0) {
+        const jaTemRenovacaoIgual = renovacoesDaFarmacia.some(r => r.medicamento_id === m.id && r.preco === m.preco && (r.data === m.data_receita || r.data === m.estoque_data_referencia));
+        if (!jaTemRenovacaoIgual) {
+           totalGasto += m.preco;
+           precosParaMedia.push(m.preco);
+        }
+      }
+    });
+
+    const precoMedio = precosParaMedia.length > 0 ? precosParaMedia.reduce((a, b) => a + b, 0) / precosParaMedia.length : 0;
     const ultimaCompra = renovacoesDaFarmacia.length > 0 ? renovacoesDaFarmacia[0] : null;
     const ultimasRenovacoes = renovacoesDaFarmacia.slice(0, 5).map((r) => {
       const med = medicamentosVinculados.find((m) => m.id === r.medicamento_id);
@@ -117,7 +134,7 @@ function DetalhesFarmaciaContent() {
     if (!farmacia) return null;
     return analisarFarmaciaDetalhada({
       totalGasto: analiseFarmacia.totalGasto,
-      comprasCount: analiseFarmacia.ultimasRenovacoes.length,
+      comprasCount: analiseFarmacia.medicamentosVinculados.length + analiseFarmacia.ultimasRenovacoes.length,
       isMaisEconomica: false,
     });
   }, [farmacia, analiseFarmacia]);
@@ -328,33 +345,9 @@ function DetalhesFarmaciaContent() {
             </div>
           </motion.div>
 
-          {analiseFarmacia.ultimasRenovacoes.length > 0 && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
-              <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
-                <Clock size={16} className="text-amber-400" /> Últimas Compras
-              </h3>
-              <div className="space-y-2">
-                {analiseFarmacia.ultimasRenovacoes.map((ren) => (
-                  <div key={ren.id} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm">
-                    <div>
-                      <p className="text-sm font-semibold text-ink-primary uppercase">{ren.medicamento_nome}</p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(ren.data)}</p>
-                        {ren.dosagem && (
-                          <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{ren.dosagem}</span>
-                        )}
-                      </div>
-                    </div>
-                    {ren.preco && <span className="text-sm font-semibold text-emerald-400">{formatCurrency(ren.preco)}</span>}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
             <h3 className="font-display text-base font-semibold text-ink-primary px-1 flex items-center gap-1.5">
-              <Pill size={16} className="text-amber-400" /> Medicamentos Retirados ({medicamentosComBadge.length})
+              <Pill size={16} className="text-amber-400" /> Medicamentos Vinculados ({medicamentosComBadge.length})
             </h3>
             {medicamentosComBadge.length === 0 ? (
               <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
@@ -366,26 +359,44 @@ function DetalhesFarmaciaContent() {
                   <div
                     key={med.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
-                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 transition-all active:scale-[0.98] hover:border-amber-400/30 cursor-pointer shadow-sm"
+                    className="flex flex-col justify-center rounded-2xl border border-surface-border/50 bg-surface p-3.5 transition-all active:scale-[0.98] hover:border-amber-400/30 cursor-pointer shadow-sm gap-3"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
-                        <Pill size={16} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-ink-primary truncate uppercase">{med.nome}</p>
-                          {med.receitaVencida && (
-                            <span className="shrink-0 text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencida</span>
-                          )}
-                          {med.deveRenovar && (
-                            <span className="shrink-0 text-[8px] font-bold uppercase bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded-full">Renovar</span>
-                          )}
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
+                          <Pill size={16} />
                         </div>
-                        <p className="text-[11px] text-ink-muted">{med.dosagem || "Uso contínuo"}</p>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-ink-primary truncate uppercase">{med.nome}</p>
+                            {med.receitaVencida && (
+                              <span className="shrink-0 text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencida</span>
+                            )}
+                            {med.deveRenovar && (
+                              <span className="shrink-0 text-[8px] font-bold uppercase bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded-full">Renovar</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-ink-muted">{med.dosagem || "Uso contínuo"}</p>
+                        </div>
                       </div>
+                      <ExternalLink size={15} className="text-ink-faint shrink-0" />
                     </div>
-                    <ExternalLink size={15} className="text-ink-faint shrink-0" />
+
+                    <div className="flex items-center justify-between border-t border-surface-border/40 pt-2 text-xs">
+                       <div className="flex items-center gap-1.5 text-ink-muted">
+                         <Calendar size={12} className="text-ink-faint" /> 
+                         <span>Vinculado em: <span className="font-semibold text-ink-primary">{formatDateDisplay(med.estoque_data_referencia || med.data_receita)}</span></span>
+                       </div>
+                       {med.preco ? (
+                         <div className="flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md text-emerald-400 font-bold border border-emerald-500/20">
+                           <DollarSign size={12} /> {formatCurrency(med.preco)}
+                         </div>
+                       ) : (
+                         <div className="flex items-center gap-1 bg-ice/10 px-2 py-0.5 rounded-md text-ice font-bold border border-ice/20">
+                           <Gift size={12} /> Gratuito
+                         </div>
+                       )}
+                    </div>
                   </div>
                 ))}
               </div>
