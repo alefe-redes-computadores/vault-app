@@ -54,19 +54,44 @@ export async function pullAllData(userId: string): Promise<void> {
         }
 
         const pendingIds = pendingTables.get(tableName) || new Set();
+        
+        // 🔥 LER TODOS OS ITENS LOCAIS PARA DEDUPLICAÇÃO LÓGICA
+        const localItems = await localTable.toArray();
+
         const toUpsert = data.filter((item) => {
           if (!item.id) return false;
-          return !pendingIds.has(item.id);
+          
+          // 1. Ignora se o exato ID já está na fila de envio (bloqueio padrão)
+          if (pendingIds.has(item.id)) return false;
+
+          // 2. 🛡️ BLINDAGEM CONTRA ECO (Fantasma de Sincronização)
+          // Se o item da nuvem tiver 'nome', e já existir um registro local aguardando envio (synced: false) 
+          // com o mesmo nome exato, bloqueamos o download para não gerar duplicação visual na tela.
+          if (item.nome) {
+            const hasLocalUnsyncedMatch = localItems.some((local: any) => 
+              local.synced === false && 
+              local.nome && 
+              local.nome.trim().toLowerCase() === item.nome.trim().toLowerCase()
+            );
+            
+            if (hasLocalUnsyncedMatch) {
+              console.warn(`🛡️ Fantasma evitado em ${tableName}: '${item.nome}' já existe localmente aguardando sync. Ignorando a versão da nuvem.`);
+              return false;
+            }
+          }
+
+          return true;
         });
 
         if (toUpsert.length > 0) {
           await db.transaction('rw', localTable, async () => {
             for (const item of toUpsert) {
-              await localTable.put(item);
+              // 🔥 Força a flag synced: true para todos os itens da nuvem, resolvendo o status 'undefined'
+              await localTable.put({ ...item, synced: true });
             }
           });
         }
-        console.log(`✅ ${toUpsert.length} registros de ${tableName} sincronizados (${data.length - toUpsert.length} pendentes preservados)`);
+        console.log(`✅ ${toUpsert.length} registros de ${tableName} sincronizados (${data.length - toUpsert.length} pendentes/ignorados)`);
       } catch (err) {
         console.error(`❌ Erro ao processar tabela ${tableName}:`, err);
       }
@@ -177,7 +202,7 @@ export async function pullAllData(userId: string): Promise<void> {
       return await supabase.from('instituicoes').select('*').eq('user_id', userId);
     });
 
-    // 🔥 ---- VERSÍCULOS (ADICIONADO) ----
+    // 🔥 ---- VERSÍCULOS ----
     await processTable('versiculos', db.versiculos, async () => {
       return await supabase.from('versiculos').select('*').eq('user_id', userId);
     });
