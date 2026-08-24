@@ -563,8 +563,8 @@ export function useSyncQueue() {
     }
   };
 
-  // ============================================================
-  // MEDICAMENTOS (BLINDADO)
+    // ============================================================
+  // MEDICAMENTOS (BLINDADO E SEPARADO POR OPERAÇÃO)
   // ============================================================
 
   const syncMedicamento = async (item: SyncQueueItem) => {
@@ -572,8 +572,7 @@ export function useSyncQueue() {
     const med = item.payload as unknown as Medicamento;
 
     switch (item.operation) {
-      case "add":
-      case "update": {
+      case "add": {
         const { error } = await client.from("medicamentos").upsert(
           {
             id: med.id,
@@ -588,8 +587,8 @@ export function useSyncQueue() {
             dosagem: med.dosagem,
             medico: med.medico || "",
             farmacia: med.farmacia || null,
-            data_receita: med.data_receita,
-            proxima_renovacao: med.proxima_renovacao,
+            data_receita: med.data_receita || null,
+            proxima_renovacao: med.proxima_renovacao || null,
             observacoes: med.observacoes || null,
             tipo_receita: med.tipo_receita || "comum",
             tipo_uso: med.tipo_uso || "continuo",
@@ -597,7 +596,7 @@ export function useSyncQueue() {
             cor_principal: med.cor_principal || null,
             cor_secundaria: med.cor_secundaria || null,
             status: med.status || "ativo",
-            estoque_quantidade: med.estoque_quantidade || 0,
+            estoque_quantidade: med.estoque_quantidade !== undefined ? med.estoque_quantidade : 0,
             estoque_data_referencia: med.estoque_data_referencia || null,
             estoque_horarios: med.estoque_horarios || [],
             estoque_unidade_por_dose: med.estoque_unidade_por_dose || null,
@@ -606,7 +605,7 @@ export function useSyncQueue() {
             estoque_gotas_por_ml: med.estoque_gotas_por_ml || null,
             formato: med.formato || null,
             cores: med.cores || [],
-            preco: med.preco || null,
+            preco: med.preco !== undefined ? med.preco : null,
             motivo_descontinuacao: med.motivo_descontinuacao || null,
             medico_descontinuacao_id: med.medico_descontinuacao_id || null,
             medico_descontinuacao_nome: med.medico_descontinuacao_nome || null,
@@ -618,7 +617,35 @@ export function useSyncQueue() {
           },
           { onConflict: "id" }
         );
-        if (error) throw new Error(`Medicamentos upsert error: ${error.message}`);
+        if (error) throw new Error(`Medicamentos insert error: ${error.message}`);
+        break;
+      }
+      case "update": {
+        // Envia dinamicamente apenas os campos presentes no payload para atualizar com segurança na nuvem
+        const updateData: Record<string, any> = {};
+        const fields = [
+          "person_id", "document_id", "medico_id", "farmacia_id", "hospital_id", "local_id",
+          "nome", "dosagem", "medico", "farmacia", "data_receita", "proxima_renovacao",
+          "observacoes", "tipo_receita", "tipo_uso", "forma_farmaceutica", "cor_principal",
+          "cor_secundaria", "status", "estoque_quantidade", "estoque_data_referencia",
+          "estoque_horarios", "estoque_unidade_por_dose", "estoque_unidade_medida",
+          "estoque_ml_total", "estoque_gotas_por_ml", "formato", "cores", "preco",
+          "motivo_descontinuacao", "medico_descontinuacao_id", "medico_descontinuacao_nome",
+          "substituido_por_id", "data_descontinuacao", "historico_dosagens", "updated_at"
+        ];
+
+        for (const field of fields) {
+          if ((med as any)[field] !== undefined) {
+            updateData[field] = (med as any)[field];
+          }
+        }
+
+        const { error } = await client
+          .from("medicamentos")
+          .update(updateData)
+          .eq("id", med.id);
+
+        if (error) throw new Error(`Medicamentos update error: ${error.message}`);
         break;
       }
       case "delete": {
@@ -635,10 +662,13 @@ export function useSyncQueue() {
     }
 
     if (item.operation !== "delete" && med.id) {
-      await syncMedicamentoTratamentos(med.id, med.tratamento_ids || []);
+      if (med.tratamento_ids) {
+        await syncMedicamentoTratamentos(med.id, med.tratamento_ids);
+      }
       await db.medicamentos.update(med.id, { synced: true });
     }
   };
+
 
   // ============================================================
   // DOCUMENTOS
