@@ -25,12 +25,14 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Medicamento, Person, Tratamento } from "@/lib/types";
 
-// 🔥 Formatos atualizados para evitar bugs de ID no banco
+// 🔥 Formatos atualizados mapeando rigorosamente com o fluxo de cadastro
 const FORMATOS = [
-  { id: "comprimido", label: "Redondo", icon: Circle },
+  { id: "inteiro", label: "Inteiro", icon: Circle },
+  { id: "comprimido", label: "Inteiro", icon: Circle },
   { id: "partido", label: "Partido", icon: Pill },
   { id: "capsula", label: "Cápsula", icon: Pill },
   { id: "gota", label: "Gotas", icon: Droplet },
+  { id: "gotas", label: "Gotas", icon: Droplet },
   { id: "injecao", label: "Injeção", icon: Syringe },
   { id: "adesivo", label: "Adesivo", icon: StickyNote },
 ];
@@ -218,13 +220,19 @@ export default function MedicamentosListPage() {
               const insight = isSuspenso ? null : sugerirRenovacao(med);
               const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
 
-              // 🔥 LOGICA DO ÍCONE E COR BLINDADA AQUI:
-              const formatoBanco = med.formato?.toLowerCase().trim() || "comprimido";
+              // 🔥 FORMATO E CORES DUPLAS (SUPORTE A BICOLOR / GRADIENTE)
+              const formatoBanco = med.formato?.toLowerCase().trim() || "inteiro";
               const itemFormato = FORMATOS.find(f => f.id === formatoBanco) || FORMATOS[0];
               const SelectedFormatIcon = itemFormato.icon;
               
               const cor1 = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
+              const cor2 = med.cores && med.cores.length > 1 ? med.cores[1] : null;
               const cardBorderColor = activePersonColor || cor1;
+
+              // Estilo de gradiente bicolor para o ícone se houver 2 cores
+              const iconContainerStyle = cor2
+                ? { background: `linear-gradient(135deg, ${cor1}25 50%, ${cor2}25 50%)`, borderColor: cor1 }
+                : { backgroundColor: `${cor1}15`, borderColor: `${cor1}40` };
 
               return (
                 <motion.button
@@ -235,16 +243,22 @@ export default function MedicamentosListPage() {
                 >
                   <div className={`absolute left-0 top-0 bottom-0 w-2 ${isSuspenso ? "bg-coral" : med.tipo_receita === "amarela" ? "bg-amber-400" : med.tipo_receita === "azul" ? "bg-blue-400" : cardBorderColor}`} />
 
-                  <div className="flex items-start gap-4 ml-1">
-                    <div className="h-12 w-12 rounded-2xl flex items-center justify-center border border-surface-border shadow-inner shrink-0" style={{ backgroundColor: cor1 + "15" }}>
-                      <SelectedFormatIcon size={24} stroke={cor1} strokeWidth={2.4} fill={cor1 + "44"} />
+                  <div className="flex items-start gap-3.5 ml-1">
+                    <div className="h-12 w-12 rounded-2xl flex items-center justify-center border shadow-inner shrink-0" style={iconContainerStyle}>
+                      <SelectedFormatIcon size={24} style={{ color: cor1 }} strokeWidth={2.4} />
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      {/* TOPO: NOME E ETIQUETAS */}
-                      <div className="flex items-center gap-2 overflow-hidden flex-wrap">
-                        <h3 className="font-display text-base font-bold text-ink-primary uppercase truncate">{med.nome}</h3>
-                        <span className="text-[10px] font-medium text-ink-muted shrink-0">{med.dosagem}</span>
+                      {/* TOPO: NOME, DOSAGEM E ETAGETAS ORGANIZADAS */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <h3 className="font-display text-base font-bold text-ink-primary uppercase truncate">{med.nome}</h3>
+                          <span className="text-xs font-semibold text-ink-muted shrink-0">{med.dosagem}</span>
+                        </div>
+                      </div>
+
+                      {/* BADGES / ETIQUETAS */}
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         {isSOS && (
                           <span className="shrink-0 rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-400 border border-amber-400/20 uppercase flex items-center gap-0.5">
                             <Zap size={8} fill="currentColor"/> SOS
@@ -267,8 +281,8 @@ export default function MedicamentosListPage() {
                         )}
                       </div>
 
-                      {/* MEIO: REDE E MÉDICO */}
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      {/* MEIO: MÉDICO E LOCAL / FARMÁCIA */}
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5 truncate">
                           <Stethoscope size={11} className="text-ink-faint"/> {med.medico || "Médico não informado"}
                         </p>
@@ -284,6 +298,7 @@ export default function MedicamentosListPage() {
                         )}
                       </div>
 
+                      {/* TRATAMENTOS VINCULADOS */}
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {tIds.map((tId: string) => {
                           const t = tratamentoMap.get(tId);
@@ -303,7 +318,7 @@ export default function MedicamentosListPage() {
                         </div>
                       )}
 
-                      {/* RODAPÉ: ESTOQUE, TOMAR E RENOVAR INTELIGENTE */}
+                      {/* RODAPÉ: ESTOQUE, TOMAR E RENOVAR INTELIGENTE LIMPO E ALINHADO */}
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-surface-border/40">
                         <div className="flex items-center gap-2">
                           <span className={`text-[11px] font-bold ${insight?.urgencia === "alta" ? "text-coral animate-pulse" : "text-emerald-400"}`}>
@@ -314,7 +329,7 @@ export default function MedicamentosListPage() {
                             <button
                               onClick={(e) => handleTomarAgora(e, med)}
                               disabled={tomandoDoseId === med.id}
-                              className="flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-lg text-[10px] font-bold active:scale-95 transition-all disabled:opacity-50"
+                              className="flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-[10px] font-bold active:scale-95 transition-all disabled:opacity-50"
                             >
                               {tomandoDoseId === med.id ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} fill="currentColor" />} Tomar
                             </button>

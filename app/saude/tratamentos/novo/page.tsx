@@ -4,13 +4,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Stethoscope, Building2, MapPin, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Stethoscope, Building2, MapPin, Plus, Pill } from "lucide-react";
 import { useCids } from "@/hooks/useCids";
 import { usePersons } from "@/hooks/usePersons";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageTransition } from "@/components/PageTransition";
@@ -18,7 +19,7 @@ import { SelectionModal } from "@/components/SelectionModal";
 import { tratamentosRepository } from "@/lib/repositories/tratamentos";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
-import type { Cid, Person, Medico, Hospital, LocalSaude } from "@/lib/types";
+import type { Cid, Person, Medico, Hospital, LocalSaude, Medicamento } from "@/lib/types";
 import { getClinicalTheme } from "@/lib/health-utils";
 
 const fadeUp = {
@@ -32,6 +33,7 @@ export default function NovoTratamentoPage() {
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
   const { cids } = useCids();
+  const { medicamentos: medicamentosTodas } = useMedicamentos();
   const persons = usePersons() as Person[];
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
@@ -40,10 +42,10 @@ export default function NovoTratamentoPage() {
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), [], []) || [];
   const locais = useLiveQuery(() => db.locais.toArray(), [], []) || [];
 
-  // Garante a definição automática da pessoa padrão (ativa ou primeira da lista)
   const [personId, setPersonId] = useState<string>("");
   const [nome, setNome] = useState("");
   const [cidIds, setCidIds] = useState<string[]>([]);
+  const [medicamentoIds, setMedicamentoIds] = useState<string[]>([]);
   const [status, setStatus] = useState<"ativo" | "concluido" | "suspenso">("ativo");
   const [observacoes, setObservacoes] = useState("");
   
@@ -55,11 +57,11 @@ export default function NovoTratamentoPage() {
 
   const [isCidModalOpen, setIsCidModalOpen] = useState(false);
   const [showAddCidPrompt, setShowAddCidPrompt] = useState(false);
+  const [isMedicamentoModalOpen, setIsMedicamentoModalOpen] = useState(false);
   const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
-  // Efeito para sincronizar a pessoa padrão automaticamente ao carregar os dados
   useEffect(() => {
     if (!personId) {
       if (activePersonId) {
@@ -70,6 +72,7 @@ export default function NovoTratamentoPage() {
     }
   }, [activePersonId, persons, personId]);
 
+  const medicamentosVinculados = (medicamentosTodas || []).filter(m => medicamentoIds.includes(m.id!));
   const medicosVinculados = medicos.filter(m => medicoIds.includes(m.id!));
   const hospitaisVinculados = hospitais.filter(h => hospitalIds.includes(h.id!));
   const locaisVinculados = locais.filter(l => localIds.includes(l.id!));
@@ -110,6 +113,7 @@ export default function NovoTratamentoPage() {
             person_id: resolvedPersonId as string,
             nome: nome.trim(),
             cid_ids: cleanCids,
+            medicamento_ids: medicamentoIds, // 🔥 Salva os medicamentos vinculados
             status,
             cor: theme.hex,
             observacoes: observacoes.trim() || undefined,
@@ -142,6 +146,9 @@ export default function NovoTratamentoPage() {
     trigger("vibrate");
     setCidIds(cidIds.filter((id) => id !== cidId));
   };
+
+  const handleAddMedicamento = (m: Medicamento) => { if (m.id && !medicamentoIds.includes(m.id)) setMedicamentoIds(p => [...p, m.id!]); };
+  const handleRemoveMedicamento = (id: string) => { trigger("vibrate"); setMedicamentoIds(p => p.filter(i => i !== id)); };
 
   const handleAddMedico = (m: Medico) => { if (m.id && !medicoIds.includes(m.id)) setMedicoIds(p => [...p, m.id!]); };
   const handleRemoveMedico = (id: string) => { trigger("vibrate"); setMedicoIds(p => p.filter(i => i !== id)); };
@@ -266,7 +273,24 @@ export default function NovoTratamentoPage() {
             </div>
           </motion.div>
 
+          {/* 🔥 SEÇÃO DE VÍNCULOS CLÍNICOS E MEDICAMENTOS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <div>
+              <div className="flex items-center justify-between px-1 mb-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Pill size={14} className="text-emerald-400" /> Medicamentos do Tratamento</h2>
+                <button onClick={() => setIsMedicamentoModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all"><Plus size={12} /> Adicionar</button>
+              </div>
+              {medicamentosVinculados.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum medicamento vinculado.</p></div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {medicamentosVinculados.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1"><span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{m.nome} ({m.dosagem})</span><button onClick={() => handleRemoveMedicamento(m.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button></div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Stethoscope size={14} className="text-ice" /> Médicos Responsáveis</h2>
@@ -330,6 +354,7 @@ export default function NovoTratamentoPage() {
           </Button>
         </div>
 
+        {/* MODAIS DE SELEÇÃO */}
         <SelectionModal<Cid>
           isOpen={isCidModalOpen}
           onClose={() => setIsCidModalOpen(false)}
@@ -347,6 +372,25 @@ export default function NovoTratamentoPage() {
           getItemLabel={(item: Cid) => item.descricao}
           onCreateNew={() => { setIsCidModalOpen(false); router.push("/saude/cids/novo"); }}
           createNewLabel="Cadastrar Novo CID"
+        />
+
+        <SelectionModal<Medicamento>
+          isOpen={isMedicamentoModalOpen}
+          onClose={() => setIsMedicamentoModalOpen(false)}
+          onSelect={handleAddMedicamento}
+          items={(medicamentosTodas || []).filter(m => !medicamentoIds.includes(m.id!))}
+          title="Vincular Medicamento"
+          placeholder="Buscar medicamento..."
+          getItemId={(item) => item.id!}
+          getItemLabel={(item) => item.nome}
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><Pill size={16} /></div>
+              <div><p className="text-sm font-semibold text-ink-primary">{item.nome} <span className="text-xs text-ink-muted">({item.dosagem})</span></p></div>
+            </div>
+          )}
+          onCreateNew={() => { setIsMedicamentoModalOpen(false); router.push("/saude/medicamentos/novo"); }}
+          createNewLabel="Cadastrar Novo Medicamento"
         />
 
         <SelectionModal<Medico>

@@ -1,6 +1,6 @@
+// lib/supabase/storage.ts
 import { supabase } from "./client";
 
-// 🔥 PADRONIZADO: Resolve o conflito de rotas e previne Erro 404
 const DEFAULT_BUCKET = "vault-attachments";
 
 // Gerador de UUID compatível
@@ -16,28 +16,35 @@ function generateId(): string {
 }
 
 /**
- * Faz upload de um arquivo para o Supabase Storage (suporta avatars ou documents)
+ * Tipos suportados de documentos clínicos para separação em pastas (aceita strings como 'saude')
+ */
+export type DocumentFolder = "receitas" | "laudos" | "prontuarios" | "exames" | "atestados" | "docs" | "avatars" | "saude" | string;
+
+/**
+ * Faz upload de um arquivo para o Supabase Storage direcionando para a pasta correta
  */
 export async function uploadFile(
   userId: string,
   file: File,
-  folder: string = "docs"
+  folder: DocumentFolder = "docs"
 ): Promise<{ url: string; error: Error | null }> {
   try {
-    // CORREÇÃO: Se a pasta for 'avatars', usamos o bucket 'avatars'. Caso contrário, usamos o DEFAULT_BUCKET.
     const bucketName = folder === "avatars" ? "avatars" : DEFAULT_BUCKET;
 
     const fileExt = file.name.split(".").pop();
     const fileName = `${generateId()}.${fileExt}`;
     
-    // Se for avatar, salvamos direto na pasta do usuário para simplificar o caminho
-    const filePath = folder === "avatars" ? `${userId}/${fileName}` : `${userId}/${folder}/${fileName}`;
+    // Organiza estruturadamente: {userId}/{categoria}/{fileName}
+    // Ex: userId/receitas/uuid.jpg, userId/laudos/uuid.pdf
+    const filePath = folder === "avatars" 
+      ? `${userId}/${fileName}` 
+      : `${userId}/${folder}/${fileName}`;
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from(bucketName)
       .upload(filePath, file, {
         cacheControl: "3600",
-        upsert: true, // Substitui se já existir
+        upsert: true,
       });
 
     if (error) throw error;
@@ -66,7 +73,7 @@ export async function deleteFile(url: string, bucket: string = DEFAULT_BUCKET): 
         path = parts[1];
         const pathParts = path.split('/');
         if (pathParts.length > 1 && (pathParts[0] === DEFAULT_BUCKET || pathParts[0] === 'avatars')) {
-          bucket = pathParts[0]; // Descobre o bucket pela URL
+          bucket = pathParts[0]; 
           pathParts.shift(); 
           path = pathParts.join('/');
         }
@@ -111,7 +118,7 @@ export async function deleteFiles(urls: string[]): Promise<{ errors: Error[] }> 
   return { errors };
 }
 
-export async function listFiles(userId: string, folder: string = "docs") {
+export async function listFiles(userId: string, folder: DocumentFolder = "docs") {
   const { data, error } = await supabase.storage
     .from(DEFAULT_BUCKET)
     .list(`${userId}/${folder}`);
@@ -119,7 +126,7 @@ export async function listFiles(userId: string, folder: string = "docs") {
   return { data, error };
 }
 
-export async function deleteFolder(userId: string, folder: string = "docs"): Promise<{ error: Error | null }> {
+export async function deleteFolder(userId: string, folder: DocumentFolder = "docs"): Promise<{ error: Error | null }> {
   try {
     const { data, error: listError } = await listFiles(userId, folder);
     if (listError) throw listError;

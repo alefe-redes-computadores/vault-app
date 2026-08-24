@@ -1015,6 +1015,7 @@ export interface Tratamento {
   person_id?: string;
   nome: string;
   cid_ids?: string[];
+  medicamento_ids?: string[]; // 🔥 Adicionado para suportar o vínculo de medicamentos
   condicao?: string;
   medico_ids?: string[];
   hospital_ids?: string[];

@@ -52,17 +52,31 @@ function brParaIso(br: string) { const parts = br.split("/"); if (parts.length !
 function handleCurrencyMask(value: string): string { const clean = value.replace(/\D/g, ""); if (!clean) return ""; const numberVal = parseInt(clean, 10) / 100; return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function handleTimeMask(value: string): string { const clean = value.replace(/\D/g, "").slice(0, 4); if (clean.length > 2) { return `${clean.slice(0, 2)}:${clean.slice(2)}`; } if (clean.length > 0) { return clean.padStart(2, '0'); } return ""; }
 
-const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" fill={fill} />
-    <line x1="12" y1="2" x2="12" y2="22" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
+// Ícones personalizados para suportar divisão bicolor exata (vertical)
+const CirclePillIcon = ({ size, fill = "currentColor", stroke = "none" }: { size: number; fill?: string; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
+    <circle cx="12" cy="12" r="9" />
+  </svg>
+);
+
+const SplitPillIcon = ({ size, fill = "currentColor", stroke = "none" }: { size: number; fill?: string; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
+    <circle cx="12" cy="12" r="9" />
+    <line x1="12" y1="3" x2="12" y2="21" stroke="rgba(0,0,0,0.35)" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+const CapsuleIcon = ({ size, fill = "currentColor", stroke = "none" }: { size: number; fill?: string; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
+    <rect x="4" y="7" width="16" height="10" rx="5" ry="5" />
+    <line x1="12" y1="7" x2="12" y2="17" stroke="rgba(0,0,0,0.35)" strokeWidth="2" />
   </svg>
 );
 
 const FORMATOS = [
-  { id: "comprimido", label: "Redondo", icon: Circle },
+  { id: "comprimido", label: "Comprimido", icon: CirclePillIcon },
   { id: "partido", label: "Partido", icon: SplitPillIcon },
-  { id: "capsula", label: "Cápsula", icon: Pill },
+  { id: "capsula", label: "Cápsula", icon: CapsuleIcon },
   { id: "gota", label: "Gotas", icon: Droplet },
   { id: "injecao", label: "Injeção", icon: Syringe },
   { id: "adesivo", label: "Adesivo", icon: StickyNote },
@@ -483,7 +497,6 @@ function EditarMedicamentoContent() {
           }
         }
 
-        // 🔥 TIPAGEM 'ANY' PERMITE O NULL PARA APAGAR OS CAMPOS OPCIONAIS DO SUPABASE E DEXIE
         const updatePayload: any = {
           person_id: personId || undefined,
           document_id: documentId || null,
@@ -580,17 +593,20 @@ function EditarMedicamentoContent() {
     );
 
   const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || Circle;
+  
+  // 🔥 CORREÇÃO: Adicionada a "capsula" para suportar 2 cores em formato bicolor
   const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido" || formato === "capsula");
-  const gradientId = `split-${id}`;
+  const gradientId = `split-edit-${id}`;
 
   return (
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
 
+        {/* 🔥 CORREÇÃO: Gradiente vertical limpo (metade esquerda / metade direita) */}
         <svg width="0" height="0" className="absolute">
           <defs>
-            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="50%" stopColor={cores[0] || "#9CA3AF"} />
               <stop offset="50%" stopColor={cores.length === 2 ? cores[1] : cores[0] || "#9CA3AF"} />
             </linearGradient>
@@ -868,7 +884,7 @@ function EditarMedicamentoContent() {
                               : "border-surface-border/40 bg-surface-raised text-ink-muted"
                           }`}
                         >
-                          <Icon size={20} fill={isActive ? "currentColor" : "none"} strokeWidth={isActive ? 0 : 2} />
+                          <Icon size={20} fill={isActive ? "currentColor" : "none"} stroke={isActive ? "none" : "currentColor"} />
                           <span className="text-[10px] font-medium">{f.label}</span>
                         </button>
                       );

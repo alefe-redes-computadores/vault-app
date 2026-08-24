@@ -41,7 +41,7 @@ import {
   sugerirRenovacao
 } from "@/lib/health-insights";
 import { getCidInsights } from "@/lib/health-insights";
-import { getClinicalTheme, formatCurrency } from "@/lib/health-utils"; // INJEÇÃO DO TEMA VISUAL
+import { getClinicalTheme, formatCurrency } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
 
 const listVariants = {
@@ -100,47 +100,14 @@ function TratamentoContent() {
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   const [dismissEconomia, setDismissEconomia] = useState(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && id) {
       const stored = localStorage.getItem(`dismissEconomia_${id}`);
       return stored === "true";
     }
     return false;
   });
 
-  useEffect(() => {
-    const handleClickOutside = () => setIsMenuFlutuanteOpen(false);
-    if (isMenuFlutuanteOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [isMenuFlutuanteOpen]);
-
-  useEffect(() => {
-    if (!id) {
-      router.push("/saude");
-      return;
-    }
-
-    const fetchTratamento = async () => {
-      try {
-        const data = await db.tratamentos.get(id);
-        if (data) {
-          setTratamento(data);
-        } else {
-          router.push("/saude");
-        }
-      } catch (error) {
-        console.error("Erro ao buscar tratamento:", error);
-        router.push("/saude");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchTratamento();
-  }, [id, router]);
-
-  if (!mounted) return <DetailSkeleton />;
-
+  // 🔥 TODOS OS HOOKS (useLiveQuery e useMemo) DEVEM FICAR AQUI NO TOPO, ANTES DE QUALQUER RETURN CONDICIONAL
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
   const allRenovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
@@ -205,13 +172,53 @@ function TratamentoContent() {
     });
   }, [cidsVinculados]);
 
+  // EFEITOS
+  useEffect(() => {
+    const handleClickOutside = () => setIsMenuFlutuanteOpen(false);
+    if (isMenuFlutuanteOpen) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [isMenuFlutuanteOpen]);
+
+  useEffect(() => {
+    if (!id) {
+      router.push("/saude");
+      return;
+    }
+
+    const fetchTratamento = async () => {
+      try {
+        const data = await db.tratamentos.get(id);
+        if (data) {
+          setTratamento(data);
+        } else {
+          router.push("/saude");
+        }
+      } catch (error) {
+        console.error("Erro ao buscar tratamento:", error);
+        router.push("/saude");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTratamento();
+  }, [id, router]);
+
+  // AGORA SIM: RETORNOS CONDICIONAIS APÓS TODOS OS HOOKS DECLARADOS
+  if (!mounted) return <DetailSkeleton />;
+  if (isLoading) return <DetailSkeleton />;
+  if (!tratamento) return null;
+
   const handleFavoriteToggle = async (docId: string) => {
     await favorite(docId);
     trigger("vibrate");
   };
 
   const handleDismissEconomia = () => {
-    localStorage.setItem(`dismissEconomia_${id}`, "true");
+    if (id) {
+      localStorage.setItem(`dismissEconomia_${id}`, "true");
+    }
     setDismissEconomia(true);
     trigger("vibrate");
   };
@@ -229,10 +236,6 @@ function TratamentoContent() {
     router.push(path);
   };
 
-  if (isLoading) return <DetailSkeleton />;
-  if (!tratamento) return null;
-
-  // TEMA VISUAL DINÂMICO
   const theme = getClinicalTheme(tratamento.nome);
   const IconComp = theme.icon;
   
@@ -327,7 +330,6 @@ function TratamentoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          {/* HERO CARD DINÂMICO DO TRATAMENTO */}
           <motion.div 
             variants={fadeUp} 
             initial="initial" 

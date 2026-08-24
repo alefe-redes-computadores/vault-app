@@ -73,17 +73,31 @@ function handleTimeMask(value: string): string {
   return "";
 }
 
-const SplitPillIcon = ({ size, fill = "currentColor" }: { size: number; fill?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" fill={fill} />
-    <line x1="12" y1="2" x2="12" y2="22" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
+// Ícones personalizados para suportar divisão bicolor exata
+const CirclePillIcon = ({ size, fill = "currentColor", stroke = "none" }: { size: number; fill?: string; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
+    <circle cx="12" cy="12" r="9" />
+  </svg>
+);
+
+const SplitPillIcon = ({ size, fill = "currentColor", stroke = "none" }: { size: number; fill?: string; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
+    <circle cx="12" cy="12" r="9" />
+    <line x1="12" y1="3" x2="12" y2="21" stroke="rgba(0,0,0,0.35)" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+const CapsuleIcon = ({ size, fill = "currentColor", stroke = "none" }: { size: number; fill?: string; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
+    <rect x="4" y="7" width="16" height="10" rx="5" ry="5" />
+    <line x1="12" y1="7" x2="12" y2="17" stroke="rgba(0,0,0,0.35)" strokeWidth="2" />
   </svg>
 );
 
 const FORMATOS = [
-  { id: "comprimido", label: "Inteiro", icon: Circle },
+  { id: "comprimido", label: "Comprimido", icon: CirclePillIcon },
   { id: "partido", label: "Partido", icon: SplitPillIcon },
-  { id: "capsula", label: "Cápsula", icon: Pill },
+  { id: "capsula", label: "Cápsula", icon: CapsuleIcon },
   { id: "gota", label: "Gotas", icon: Droplet },
   { id: "injecao", label: "Injeção", icon: Syringe },
   { id: "adesivo", label: "Adesivo", icon: StickyNote },
@@ -284,7 +298,6 @@ export default function NovoMedicamentoPage() {
   };
 
   const handleSubmit = () => {
-    // 🛡️ TRAVA SÍNCRONA DE CURTO-CIRCUITO IMEDIATA
     if (isSubmitLocked.current || isSubmitting) return;
     isSubmitLocked.current = true;
 
@@ -310,7 +323,6 @@ export default function NovoMedicamentoPage() {
 
         let docId: string | undefined = undefined;
 
-        // 1. Criação do documento físico (se houver anexo)
         if (attachment) {
           if (!user) throw new Error('Usuário não autenticado');
           const docData: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced' | 'user_id'> = {
@@ -347,7 +359,6 @@ export default function NovoMedicamentoPage() {
           }
         }
 
-        // 2. Criação do Medicamento (O tronco principal)
         const medicamentoData = {
           document_id: docId || undefined,
           person_id: activePersonId || "",
@@ -386,7 +397,6 @@ export default function NovoMedicamentoPage() {
           ...medicamentoData,
         });
 
-        // 3. Criação da Renovação (Se ativada)
         if (gerenciarRenovacao) {
           if (!user) throw new Error('Usuário não autenticado');
           await renovacoesRepository.create({
@@ -404,7 +414,6 @@ export default function NovoMedicamentoPage() {
           });
         }
 
-        // 4. Notificações
         if (estoqueAtivo && tipoUso === 'continuo' && horariosFiltrados.length > 0) {
           const granted = await requestNotificationPermission();
           if (granted) {
@@ -428,18 +437,21 @@ export default function NovoMedicamentoPage() {
     });
   };
 
-  const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || Pill;
-  const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido");
-  const gradientId = `split-novo`;
+  const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || CirclePillIcon;
+  
+  // 🔥 CORREÇÃO: Adicionada a "capsula" para suportar 2 cores (bicolor)
+  const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido" || formato === "capsula");
+  const gradientId = `split-novo-bicolor`;
 
   return (
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
 
+        {/* 🔥 CORREÇÃO: Gradiente vertical limpo (metade esquerda / metade direita) */}
         <svg width="0" height="0" className="absolute">
           <defs>
-            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="50%" stopColor={cores[0] || "#9CA3AF"} />
               <stop offset="50%" stopColor={cores.length === 2 ? cores[1] : (cores[0] || "#9CA3AF")} />
             </linearGradient>
@@ -533,14 +545,14 @@ export default function NovoMedicamentoPage() {
                           onClick={() => handleFormatoChange(item.id)}
                           className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 transition-all ${isActive ? "border-ice bg-ice/15 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}
                         >
-                          <Icon size={20} fill={isActive ? "currentColor" : "none"} strokeWidth={isActive ? 0 : 2} />
+                          <Icon size={20} fill={isActive ? "currentColor" : "none"} stroke={isActive ? "none" : "currentColor"} />
                           <span className="text-[10px] font-medium">{item.label}</span>
                         </button>
                       );
                     })}
                   </div>
 
-                  <p className="mb-2 text-xs font-medium text-ink-muted">Cores (Até 2 para pílulas)</p>
+                  <p className="mb-2 text-xs font-medium text-ink-muted">Cores (Até 2 para pílulas e cápsulas)</p>
                   <div className="flex flex-wrap gap-3">
                     {CORES_DISPONIVEIS.map((hex) => (
                       <button
@@ -650,7 +662,7 @@ export default function NovoMedicamentoPage() {
                     <button
                       type="button"
                       onClick={() => setIsPharmacyModalOpen(true)}
-                      className={`flex w-full items-center justify-between rounded-2xl border bg-surface-raised px-4 py-3.5 text-left transition-all border-surface-border/50 hover:border-ice/50`}
+                      className="flex w-full items-center justify-between rounded-2xl border bg-surface-raised px-4 py-3.5 text-left transition-all border-surface-border/50 hover:border-ice/50"
                     >
                       <span className="truncate font-medium text-ink-primary">{farmaciaNome || "Selecionar farmácia..."}</span>
                       <span className="text-xs font-bold text-ice">Selecionar</span>
