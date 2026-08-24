@@ -18,7 +18,7 @@ export async function pullAllData(userId: string): Promise<void> {
 
   isPulling = true;
   try {
-    console.log('🔄 Iniciando pull de dados (merge upsert)...');
+    console.log('🔄 Iniciando pull de dados (merge upsert com deduplicação avançada)...');
 
     const pendingItems = await db.syncQueue
       .toCollection()
@@ -55,12 +55,10 @@ export async function pullAllData(userId: string): Promise<void> {
 
         const pendingIds = pendingTables.get(tableName) || new Set();
         
-        // 🛡️ DEDUPLICAÇÃO ROBUSTA POR ID (UUID UNÍVOCO)
-        // Evita conflitos baseados em nome/texto (como medicamentos com o mesmo nome e dosagens diferentes).
+        // 🛡️ DEDUPLICAÇÃO ROBUSTA POR ID
         const toUpsert = data.filter((item) => {
           if (!item.id) return false;
           
-          // Se o ID exato já está pendente na fila de envio local, ignoramos a nuvem temporariamente
           if (pendingIds.has(item.id)) {
             console.log(`🛡️ [Sync] ID ${item.id} pendente na fila local (${tableName}). Versão da nuvem ignorada.`);
             return false;
@@ -72,7 +70,24 @@ export async function pullAllData(userId: string): Promise<void> {
         if (toUpsert.length > 0) {
           await db.transaction('rw', localTable, async () => {
             for (const item of toUpsert) {
-              // 🔥 Força a flag synced: true para todos os itens vindos da nuvem
+              // 🧬 BLINDAGEM ESPECÍFICA PARA MEDICAMENTOS (Evita duplicação por divergência de UUID local vs remoto)
+              if (tableName === 'medicamentos') {
+                const allLocalMeds = await localTable.toArray();
+                const duplicateByContent = allLocalMeds.find(
+                  (l: any) =>
+                    l.id !== item.id &&
+                    l.nome?.trim().toLowerCase() === item.nome?.trim().toLowerCase() &&
+                    l.dosagem?.trim().toLowerCase() === item.dosagem?.trim().toLowerCase() &&
+                    (l.person_id || null) === (item.person_id || null)
+                );
+
+                if (duplicateByContent) {
+                  console.log(`🧹 [Sync Dedup] Removendo medicamento duplicado local (ID antigo: ${duplicateByContent.id}) para unificar com o ID oficial da nuvem (${item.id})`);
+                  await localTable.delete(duplicateByContent.id);
+                }
+              }
+
+              // Grava o item atualizado com synced: true
               await localTable.put({ ...item, synced: true });
             }
           });
@@ -179,6 +194,7 @@ export async function pullAllData(userId: string): Promise<void> {
     });
 
     // ---- ANEXOS CLÍNICOS ----
+    assetProcessTable:
     await processTable('anexos_clinicos', db.anexos_clinicos, async () => {
       return await supabase.from('anexos_clinicos').select('*').eq('user_id', userId);
     });
