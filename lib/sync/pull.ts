@@ -8,15 +8,16 @@ import type {
   Tratamento, Cid, Exame, Consulta, Cirurgia, DoseLog, InstituicaoEnsino, LocalSaude, AppSettings, RegistroSaude
 } from '@/lib/types';
 
-let isPulling = false;
+// 🔒 TRAVA GLOBAL DE MÓDULO (Protege contra chamadas paralelas de qualquer tela, ex: tela Mais ou Providers)
+let isPullingGlobal = false;
 
 export async function pullAllData(userId: string): Promise<void> {
-  if (isPulling) {
-    console.log('⚠️ Pull já em andamento, ignorando nova chamada');
+  if (isPullingGlobal) {
+    console.warn('⚠️ [Pull] Tentativa de execução simultânea bloqueada pela trava global de módulo.');
     return;
   }
 
-  isPulling = true;
+  isPullingGlobal = true;
   try {
     console.log('🔄 Iniciando pull de dados (merge upsert com deduplicação avançada)...');
 
@@ -98,118 +99,95 @@ export async function pullAllData(userId: string): Promise<void> {
       }
     };
 
-    // ---- Persons ----
+    // ---- Execução das tabelas ----
     await processTable('persons', db.persons, async () => {
       return await supabase.from('persons').select('*').eq('user_id', userId);
     });
 
-    // ---- Documents ----
     await processTable('documents', db.documents, async () => {
       return await supabase.from('documents').select('*').eq('user_id', userId);
     });
 
-    // ---- Medicamentos ----
     await processTable('medicamentos', db.medicamentos, async () => {
       return await supabase.from('medicamentos').select('*').eq('user_id', userId);
     });
 
-    // ---- Renovacoes ----
     await processTable('renovacoes', db.renovacoes, async () => {
       return await supabase.from('renovacoes').select('*').eq('user_id', userId);
     });
 
-    // ---- Vaults ----
     await processTable('vaults', db.vaults, async () => {
       return await supabase.from('vaults').select('*').eq('user_id', userId);
     });
 
-    // ---- Vault Members ----
     await processTable('vault_members', db.vaultMembers, async () => {
       return await supabase.from('vault_members').select('*').eq('user_id', userId);
     });
 
-    // ---- Medicos ----
     await processTable('medicos', db.medicos, async () => {
       return await supabase.from('medicos').select('*').eq('user_id', userId);
     });
 
-    // ---- Farmacias ----
     await processTable('farmacias', db.farmacias, async () => {
       return await supabase.from('farmacias').select('*').eq('user_id', userId);
     });
 
-    // ---- Hospitais ----
     await processTable('hospitais', db.hospitais, async () => {
       return await supabase.from('hospitais').select('*').eq('user_id', userId);
     });
 
-    // ---- Locais ----
     await processTable('locais', db.locais, async () => {
       return await supabase.from('locais').select('*').eq('user_id', userId);
     });
 
-    // ---- Credentials ----
     await processTable('credentials', db.credentials, async () => {
       return await supabase.from('credentials').select('*').eq('user_id', userId);
     });
 
-    // ---- Cards (Bancos & Cartões) ----
     await processTable('cards', db.bankCards, async () => {
       return await supabase.from('cards').select('*').eq('user_id', userId);
     });
 
-    // ---- Settings ----
     await processTable('settings', db.settings, async () => {
       return await supabase.from('settings').select('*').eq('user_id', userId);
     });
 
-    // ---- TRATAMENTOS ----
     await processTable('tratamentos', db.tratamentos, async () => {
       return await supabase.from('tratamentos').select('*').eq('user_id', userId);
     });
 
-    // ---- CIDs ----
     await processTable('cids', db.cids, async () => {
       return await supabase.from('cids').select('*').eq('user_id', userId);
     });
 
-    // ---- EXAMES ----
     await processTable('exames', db.exames, async () => {
       return await supabase.from('exames').select('*').eq('user_id', userId);
     });
 
-    // ---- CONSULTAS ----
     await processTable('consultas', db.consultas, async () => {
       return await supabase.from('consultas').select('*').eq('user_id', userId);
     });
 
-    // ---- CIRURGIAS ----
     await processTable('cirurgias', db.cirurgias, async () => {
       return await supabase.from('cirurgias').select('*').eq('user_id', userId);
     });
 
-    // ---- DOSE LOGS ----
     await processTable('dose_logs', db.doseLogs, async () => {
       return await supabase.from('dose_logs').select('*').eq('user_id', userId);
     });
 
-    // ---- ANEXOS CLÍNICOS ----
-    assetProcessTable:
     await processTable('anexos_clinicos', db.anexos_clinicos, async () => {
       return await supabase.from('anexos_clinicos').select('*').eq('user_id', userId);
     });
 
-    // ---- INSTITUIÇÕES ----
     await processTable('instituicoes', db.instituicoes, async () => {
       return await supabase.from('instituicoes').select('*').eq('user_id', userId);
     });
 
-    // 🔥 ---- VERSÍCULOS ----
     await processTable('versiculos', db.versiculos, async () => {
       return await supabase.from('versiculos').select('*').eq('user_id', userId);
     });
 
-    // 🔥 ---- REGISTROS DE SAÚDE (SINTOMAS E MEDIÇÕES) ----
     await processTable('registros_saude', db.registros_saude, async () => {
       return await supabase.from('registros_saude').select('*').eq('user_id', userId);
     });
@@ -220,6 +198,6 @@ export async function pullAllData(userId: string): Promise<void> {
     console.error('❌ Erro fatal no pull de dados:', error);
     throw error;
   } finally {
-    isPulling = false;
+    isPullingGlobal = false;
   }
 }
