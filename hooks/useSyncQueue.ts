@@ -563,7 +563,7 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // MEDICAMENTOS
+  // MEDICAMENTOS (BLINDADO)
   // ============================================================
 
   const syncMedicamento = async (item: SyncQueueItem) => {
@@ -571,7 +571,8 @@ export function useSyncQueue() {
     const med = item.payload as unknown as Medicamento;
 
     switch (item.operation) {
-      case "add": {
+      case "add":
+      case "update": {
         const { error } = await client.from("medicamentos").upsert(
           {
             id: med.id,
@@ -616,55 +617,10 @@ export function useSyncQueue() {
           },
           { onConflict: "id" }
         );
-        if (error) throw new Error(`Medicamentos insert error: ${error.message}`);
+        if (error) throw new Error(`Medicamentos upsert error: ${error.message}`);
         break;
       }
-      case "update": {
-        const { error } = await client
-          .from("medicamentos")
-          .update({
-            person_id: med.person_id || null,
-            document_id: med.document_id || null,
-            medico_id: med.medico_id || null,
-            farmacia_id: med.farmacia_id || null,
-            hospital_id: med.hospital_id || null,
-            local_id: med.local_id || null,
-            nome: med.nome,
-            dosagem: med.dosagem,
-            medico: med.medico || "",
-            farmacia: med.farmacia || null,
-            data_receita: med.data_receita,
-            proxima_renovacao: med.proxima_renovacao,
-            observacoes: med.observacoes || null,
-            tipo_receita: med.tipo_receita || "comum",
-            tipo_uso: med.tipo_uso || "continuo",
-            forma_farmaceutica: med.forma_farmaceutica || null,
-            cor_principal: med.cor_principal || null,
-            cor_secundaria: med.cor_secundaria || null,
-            status: med.status || "ativo",
-            estoque_quantidade: med.estoque_quantidade || 0,
-            estoque_data_referencia: med.estoque_data_referencia || null,
-            estoque_horarios: med.estoque_horarios || [],
-            estoque_unidade_por_dose: med.estoque_unidade_por_dose || null,
-            estoque_unidade_medida: med.estoque_unidade_medida || null,
-            estoque_ml_total: med.estoque_ml_total || null,
-            estoque_gotas_por_ml: med.estoque_gotas_por_ml || null,
-            formato: med.formato || null,
-            cores: med.cores || [],
-            preco: med.preco || null,
-            motivo_descontinuacao: med.motivo_descontinuacao || null,
-            medico_descontinuacao_id: med.medico_descontinuacao_id || null,
-            medico_descontinuacao_nome: med.medico_descontinuacao_nome || null,
-            substituido_por_id: med.substituido_por_id || null,
-            data_descontinuacao: med.data_descontinuacao || null,
-            historico_dosagens: med.historico_dosagens || [],
-            updated_at: med.updated_at,
-          })
-          .eq("id", med.id);
-        if (error) throw new Error(`Medicamentos update error: ${error.message}`);
-        break;
-      }
-        case "delete": {
+      case "delete": {
         const payload = item.payload as unknown as { id: string };
         await client.from("medicamento_tratamentos").delete().eq("medicamento_id", payload.id);
         await client.from("renovacoes").delete().eq("medicamento_id", payload.id);
@@ -673,7 +629,6 @@ export function useSyncQueue() {
         if (error) throw new Error(`Medicamentos delete error: ${error.message}`);
         break;
       }
-
       default:
         throw new Error(`Operação não suportada em medicamentos: ${item.operation}`);
     }
