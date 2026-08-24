@@ -24,7 +24,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const { setUser, captureException } = useSentry();
   const { processQueue, isOnline } = useSyncQueue();
   const [isPullDone, setIsPullDone] = useState(false);
-  const [pullAttempted, setPullAttempted] = useState(false);
 
   useDoseNotificationActions();
 
@@ -44,33 +43,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // 🎯 Único ponto unificado de pull (elimina a condição de corrida do boot)
   useEffect(() => {
-    if (user && !loading && !isPullDone) {
-      console.log("🔵 Usuário logado, executando pullAllData...");
-      pullAllData(user.id)
-        .then(() => {
-          console.log("✅ Pull concluído com sucesso!");
-          setIsPullDone(true);
-        })
-        .catch((err) => {
-          console.error("❌ Erro no pull:", err);
-          setIsPullDone(true);
-        })
-        .finally(() => setPullAttempted(true));
-    }
-  }, [user, loading, isPullDone]);
+    if (!user || loading || !isOnline || isPullDone) return;
+    console.log("🔵 Executando pullAllData unificado...");
 
-  useEffect(() => {
-    if (isOnline && user && pullAttempted && !isPullDone) {
-      console.log("🔵 Reconectado, tentando pull novamente...");
-      pullAllData(user.id)
-        .then(() => {
-          console.log("✅ Pull concluído com sucesso!");
-          setIsPullDone(true);
-        })
-        .catch((err) => console.error("❌ Erro no pull após reconectar:", err));
-    }
-  }, [isOnline, user, pullAttempted, isPullDone]);
+    pullAllData(user.id)
+      .then(() => {
+        console.log("✅ Pull concluído com sucesso!");
+        setIsPullDone(true);
+      })
+      .catch((err) => {
+        console.error("❌ Erro no pull:", err);
+        // Mantém isPullDone como false para tentar novamente se houver reconexão
+      });
+  }, [user, loading, isOnline, isPullDone]);
 
   useEffect(() => {
     if (isOnline && user && isPullDone) {
