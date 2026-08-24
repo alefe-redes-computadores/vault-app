@@ -24,12 +24,7 @@ import {
   AlertOctagon,
   Info,
   Activity,
-  Droplet,
-  Syringe,
-  StickyNote,
-  Zap,
   Plus,
-  Search,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
@@ -39,7 +34,6 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, safeAddRenovacao, safeUpdateMedicamento } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
-import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
 import {
   computeEstoqueInfo,
@@ -54,48 +48,7 @@ import {
 } from "@/lib/health-insights";
 import { useToast } from "@/components/ToastProvider";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import type { Tratamento } from "@/lib/types";
-
-// Utilitários de Data/Hora Locais
-function formatDateToDisplay(isoStr: string): string {
-  if (!isoStr) return "";
-  const parts = isoStr.split("-");
-  if (parts.length !== 3) return isoStr;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
-
-function parseDateToISO(displayStr: string): string {
-  const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return "";
-  const day = clean.slice(0, 2);
-  const month = clean.slice(2, 4);
-  const year = clean.slice(4, 8);
-  return `${year}-${month}-${day}`;
-}
-
-function handleTimeMask(value: string): string {
-  const clean = value.replace(/\D/g, "").slice(0, 4);
-  if (clean.length > 2) return `${clean.slice(0, 2)}:${clean.slice(2)}`;
-  return clean;
-}
-
-// Ícone customizado para partido
-const SplitPillIcon = ({ size, fill = "currentColor", stroke = "currentColor", strokeWidth = 2 }: any) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" fill={fill} />
-    <line x1="12" y1="2" x2="12" y2="22" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
-  </svg>
-);
-
-function getMedicineIcon(formato?: string) {
-  const f = formato?.toLowerCase().trim();
-  if (f === 'partido') return SplitPillIcon;
-  if (f === 'gota') return Droplet;
-  if (f === 'injecao') return Syringe;
-  if (f === 'adesivo') return StickyNote;
-  if (f === 'comprimido') return Circle;
-  return Pill;
-}
+import { QuickDoseModal } from "@/components/saude/QuickDoseModal";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -118,17 +71,17 @@ function getDiasRestantesEstilo(dias: number | null | undefined) {
 }
 
 interface DoseItemExt {
-  medicamentoId: string;
-  medicamentoNome: string;
-  dosagem: string;
+  medicamentoId?: string;
+  medicamentoNome?: string;
+  dosagem?: string;
   horario: string;
   tomada: boolean;
   ignorada: boolean;
   cor: string;
-  estoqueRestante: number;
-  estoqueTotal: number;
-  unidadeMedida: string;
-  unidadePorDose: number;
+  estoqueRestante?: number;
+  estoqueTotal?: number;
+  unidadeMedida?: string;
+  unidadePorDose?: number;
   medicoNome?: string;
   medicoId?: string;
   tratamentoNome?: string;
@@ -143,17 +96,17 @@ interface DoseItemExt {
   insight?: { deveRenovar: boolean; mensagem: string; urgencia: "alta" | "media" | "nenhuma" };
   receitaVencida?: boolean;
   comportamento?: any;
+  isAvulsa?: boolean;
+  motivoAvulsa?: string;
+  logId?: string;
+  // Propriedades para Sintomas
+  isSintoma?: boolean;
+  sintomaId?: string;
+  sintomaNome?: string;
+  sintomaTipo?: string;
+  intensidade?: number;
+  observacoesSintoma?: string;
 }
-
-const MOTIVOS_SUGERIDOS = [
-  { label: "😰 Ansiedade", value: "Ansiedade" },
-  { label: "😴 Insônia", value: "Insônia" },
-  { label: "😣 Dor", value: "Dor" },
-  { label: "🤒 Febre", value: "Febre" },
-  { label: "🤢 Enjoo", value: "Enjoo" },
-  { label: "🛡️ Prevenção", value: "Prevenção" },
-  { label: "🚨 S.O.S", value: "S.O.S" },
-];
 
 export default function HojePage() {
   const router = useRouter();
@@ -168,10 +121,6 @@ export default function HojePage() {
     if (!rawMedicamentos) return [];
     return rawMedicamentos.filter((m: any) => !activePersonId || !m.person_id || m.person_id === activePersonId);
   }, [rawMedicamentos, activePersonId]);
-
-  const medicamentosAtivos = useMemo(() => {
-    return medicamentos.filter(m => m.status !== "descontinuado");
-  }, [medicamentos]);
 
   const { doseLogs, marcarComoTomada: marcarDose, marcarComoIgnorada } = useDoseLogs(hoje);
 
@@ -192,6 +141,15 @@ export default function HojePage() {
   const rawExames = useLiveQuery(() => db.exames.toArray(), []) || [];
   const exames = useMemo(() => rawExames.filter((e: any) => !activePersonId || !e.person_id || e.person_id === activePersonId), [rawExames, activePersonId]);
 
+  const rawRegistrosSaude = useLiveQuery(() => db.table('registros_saude').toArray(), []) || [];
+  const registrosHoje = useMemo(() => {
+    return rawRegistrosSaude.filter((r: any) => {
+      const matchPerson = !activePersonId || !r.person_id || r.person_id === activePersonId;
+      const matchDate = r.data === hoje;
+      return matchPerson && matchDate;
+    });
+  }, [rawRegistrosSaude, activePersonId, hoje]);
+
   const consultasHoje = useMemo(() => consultas.filter((c: any) => c.data === hoje), [consultas, hoje]);
   const cirurgiasHoje = useMemo(() => cirurgias.filter((c: any) => c.data === hoje), [cirurgias, hoje]);
   const examesHoje = useMemo(() => exames.filter((e: any) => e.data === hoje), [exames, hoje]);
@@ -207,15 +165,8 @@ export default function HojePage() {
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ESTADOS DA DOSE ÚNICA
+  // ESTADO DO MODAL UNIFICADO DE DOSE RÁPIDA
   const [isDoseModalOpen, setIsDoseModalOpen] = useState(false);
-  const [doseMedId, setDoseMedId] = useState("");
-  const [doseQtd, setDoseQtd] = useState(1);
-  const [doseData, setDoseData] = useState("");
-  const [doseHora, setDoseHora] = useState("");
-  const [doseMotivo, setDoseMotivo] = useState("");
-  const [isSavingDose, setIsSavingDose] = useState(false);
-  const [doseSearchQuery, setDoseSearchQuery] = useState("");
 
   // Escuta os parâmetros da URL para abrir os modais
   useEffect(() => {
@@ -224,28 +175,18 @@ export default function HojePage() {
       setIsDoseModalOpen(true);
       router.replace("/hoje");
     } else if (action === "sintoma") {
-      showToast("Registro de sintomas em breve!", "info");
-      router.replace("/hoje");
+      router.replace("/saude/registros/novo");
     }
-  }, [searchParams, router, showToast]);
-
-  // Preenche dados padrão ao abrir o modal de Dose
-  useEffect(() => {
-    if (isDoseModalOpen) {
-      setDoseData(formatDateToDisplay(hoje));
-      setDoseHora(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
-      setDoseMotivo("");
-      setDoseMedId("");
-      setDoseQtd(1);
-      setDoseSearchQuery("");
-    }
-  }, [isDoseModalOpen, hoje]);
+  }, [searchParams, router]);
 
   const historicoDosesCompleto = useLiveQuery(() => db.doseLogs.toArray(), []) || [];
   const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   const doses = useMemo<DoseItemExt[]>(() => {
     const list: DoseItemExt[] = [];
+    const chavesProgramadas = new Set<string>();
+
+    // 1. Processa os medicamentos contínuos programados para hoje
     for (const med of medicamentos || []) {
       if (!med.id || med.status === "descontinuado" || !med.estoque_horarios || med.estoque_horarios.length === 0) continue;
 
@@ -261,6 +202,7 @@ export default function HojePage() {
 
       for (const horario of med.estoque_horarios) {
         if (!horario) continue;
+        chavesProgramadas.add(`${med.id}-${horario}`);
         const log = (doseLogs || []).find((l) => l.medicamento_id === med.id && l.horario === horario);
         const tomada = !!log?.tomado_em;
         const ignorada = !!log?.ignorado_em;
@@ -291,11 +233,68 @@ export default function HojePage() {
           insight,
           receitaVencida,
           comportamento,
+          isAvulsa: false,
         });
       }
     }
+
+    // 2. Processa as doses avulsas / manuais registradas para hoje (doseLogs)
+    for (const log of (doseLogs || [])) {
+      if (!log.medicamento_id) continue;
+      const chave = `${log.medicamento_id}-${log.horario}`;
+      const med = medicamentos.find(m => m.id === log.medicamento_id);
+      if (!med) continue;
+
+      if (!chavesProgramadas.has(chave) || log.tomado_em) {
+        const jaExisteAvulsa = list.some(item => item.logId === log.id);
+        if (!jaExisteAvulsa && log.tomado_em) {
+          const tratamentoObj = tratamentos.find((t) => t.id === (med.tratamento_ids || [])[0]);
+          const medicoObj = medicos.find((m) => m.id === med.medico_id);
+
+          list.push({
+            medicamentoId: med.id!,
+            medicamentoNome: med.nome,
+            dosagem: med.dosagem,
+            horario: log.horario || "00:00",
+            tomada: true,
+            ignorada: false,
+            cor: tratamentoObj?.cor || med.cor_principal || "#8B5CF6",
+            estoqueRestante: med.estoque_quantidade ?? 0,
+            estoqueTotal: med.estoque_quantidade || 0,
+            unidadeMedida: med.estoque_unidade_medida || "unidades",
+            unidadePorDose: log.quantidade || med.estoque_unidade_por_dose || 1,
+            medicoNome: medicoObj?.nome || med.medico,
+            tratamentoNome: tratamentoObj?.nome,
+            tratamentoId: tratamentoObj?.id,
+            tratamentoCor: tratamentoObj?.cor,
+            isAvulsa: true,
+            motivoAvulsa: (log as any).observacoes || "Dose avulsa / SOS",
+            logId: log.id,
+          });
+        }
+      }
+    }
+
+    // 3. Processa os registros de sintomas para hoje
+    for (const reg of registrosHoje) {
+      if (reg.categoria === 'sintoma') {
+        list.push({
+          horario: reg.horario || "00:00",
+          tomada: true,
+          ignorada: false,
+          cor: "#F59E0B",
+          isSintoma: true,
+          sintomaId: reg.id,
+          sintomaNome: reg.nome || reg.tipo || "Sintoma registrado",
+          sintomaTipo: reg.tipo,
+          intensidade: reg.intensidade,
+          observacoesSintoma: reg.observacoes,
+        });
+      }
+    }
+
     return list.sort((a, b) => a.horario.localeCompare(b.horario));
-  }, [medicamentos, doseLogs, medicos, tratamentos, farmacias, hospitais, historicoDosesCompleto]);
+  }, [medicamentos, doseLogs, medicos, tratamentos, farmacias, hospitais, historicoDosesCompleto, registrosHoje]);
 
   const compromissosFiltrados = useMemo(() => {
     let items: any[] = [];
@@ -310,7 +309,7 @@ export default function HojePage() {
   const dosesFiltradas = useMemo(() => {
     let result = doses;
     if (filtroStatus === "tomados") result = result.filter((d) => d.tomada);
-    else if (filtroStatus === "pendentes") result = result.filter((d) => !d.tomada && !d.ignorada);
+    else if (filtroStatus === "pendentes") result = result.filter((d) => !d.tomada && !d.ignorada && !d.isSintoma);
     else if (filtroStatus === "ignorados") result = result.filter((d) => d.ignorada);
 
     if (filtroPeriodo !== "todos") result = result.filter((d) => getPeriodoDoDia(d.horario).key === filtroPeriodo);
@@ -331,40 +330,41 @@ export default function HojePage() {
   }, [dosesFiltradas]);
 
   const totalTomadas = doses.filter((d) => d.tomada).length;
-  const totalPendentes = doses.filter((d) => !d.tomada && !d.ignorada).length;
-
-  const filteredMedicamentos = useMemo(() => {
-    if (!doseSearchQuery.trim()) return medicamentosAtivos;
-    const q = doseSearchQuery.toLowerCase().trim();
-    return medicamentosAtivos.filter(m => m.nome.toLowerCase().includes(q));
-  }, [medicamentosAtivos, doseSearchQuery]);
+  const totalPendentes = doses.filter((d) => !d.tomada && !d.ignorada && !d.isSintoma).length;
 
   const isLoading = rawMedicamentos === undefined || doseLogs === undefined;
   if (isLoading) return <CardListSkeleton />;
 
   const handleToggle = async (item: DoseItemExt) => {
     if (processandoDoseId) return;
-    const chaveDose = `${item.medicamentoId}-${item.horario}`;
+    const chaveDose = item.logId ? `log-${item.logId}` : `${item.medicamentoId}-${item.horario}`;
     setProcessandoDoseId(chaveDose);
 
     const proximaTomada = !item.tomada;
     trigger(proximaTomada ? "success" : "vibrate");
 
     try {
-      await marcarDose(item.medicamentoId, hoje, item.horario);
-      const medOriginal = medicamentos?.find((m) => m.id === item.medicamentoId);
-      if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
-        const delta = proximaTomada ? -item.unidadePorDose : item.unidadePorDose;
-        const novoEstoque = Math.max(0, (medOriginal.estoque_quantidade || 0) + delta);
+      if (item.isAvulsa && item.logId) {
+        if (!proximaTomada) {
+          await db.doseLogs.delete(item.logId);
+          await enfileirarOperacao("doseLogs", "delete", { id: item.logId });
+        }
+      } else {
+        await marcarDose(item.medicamentoId!, hoje, item.horario);
+        const medOriginal = medicamentos?.find((m) => m.id === item.medicamentoId);
+        if (medOriginal && typeof medOriginal.estoque_quantidade === "number") {
+          const delta = proximaTomada ? -(item.unidadePorDose || 1) : (item.unidadePorDose || 1);
+          const novoEstoque = Math.max(0, (medOriginal.estoque_quantidade || 0) + delta);
 
-        await safeUpdateMedicamento(item.medicamentoId, {
-          estoque_quantidade: novoEstoque,
-          estoque_data_referencia: hoje,
-        });
+          await safeUpdateMedicamento(item.medicamentoId!, {
+            estoque_quantidade: novoEstoque,
+            estoque_data_referencia: hoje,
+          });
 
-        if (proximaTomada && novoEstoque <= 3) {
-          setMedicamentoSelecionado(medOriginal);
-          setModalAberto(true);
+          if (proximaTomada && novoEstoque <= 3) {
+            setMedicamentoSelecionado(medOriginal);
+            setModalAberto(true);
+          }
         }
       }
     } catch (e) {
@@ -375,7 +375,7 @@ export default function HojePage() {
   };
 
   const handleIgnorar = async (item: DoseItemExt) => {
-    if (processandoDoseId) return;
+    if (processandoDoseId || !item.medicamentoId) return;
     setProcessandoDoseId(`${item.medicamentoId}-${item.horario}`);
     trigger("vibrate");
     try {
@@ -418,58 +418,6 @@ export default function HojePage() {
     }
   };
 
-  const handleSalvarDoseUnica = async () => {
-    if (!doseMedId) { trigger("error"); showToast("Selecione um medicamento", "error"); return; }
-    if (!doseData || !doseHora) { trigger("error"); showToast("Data e horário são obrigatórios", "error"); return; }
-
-    setIsSavingDose(true);
-    trigger("success");
-
-    try {
-      const med = medicamentosAtivos.find(m => m.id === doseMedId);
-      if (!med) throw new Error("Medicamento não encontrado");
-
-      const dataISO = parseDateToISO(doseData);
-      const atual = med.estoque_quantidade ?? 0;
-      const novoEstoque = Math.max(0, atual - doseQtd);
-
-      await safeUpdateMedicamento(med.id!, {
-        estoque_quantidade: novoEstoque,
-        estoque_data_referencia: dataISO,
-      });
-
-      const logId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
-      const novoLog = {
-        id: logId,
-        user_id: med.user_id,
-        person_id: med.person_id,
-        medicamento_id: med.id,
-        data: dataISO,
-        horario: doseHora,
-        quantidade: doseQtd,
-        tomado_em: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        synced: false,
-        observacoes: doseMotivo || undefined,
-      };
-
-      await db.doseLogs.add(novoLog as any);
-      await enfileirarOperacao("doseLogs", "add", novoLog);
-
-      if (typeof window !== "undefined") window.dispatchEvent(new Event("sync:process"));
-
-      showToast("Dose registrada com sucesso!", "success");
-      setIsDoseModalOpen(false);
-
-    } catch (e) {
-      console.error(e);
-      trigger("error");
-      showToast("Erro ao registrar dose", "error");
-    } finally {
-      setIsSavingDose(false);
-    }
-  };
-
   const hasFiltrosAtivos = filtroStatus !== "todos" || filtroPeriodo !== "todos" || filtroCompromisso !== "todos";
 
   return (
@@ -490,7 +438,7 @@ export default function HojePage() {
             </div>
             <div className="text-right">
               <span className="font-mono text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full border border-ice/20">
-                {totalTomadas} / {doses.length} tomadas
+                {totalTomadas} registros hoje
               </span>
             </div>
           </div>
@@ -513,7 +461,7 @@ export default function HojePage() {
                 filtroStatus === "tomados" ? "border-emerald-400 bg-emerald-400/20 text-emerald-300" : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
             >
-              <CheckCircle2 size={12} /> Tomados
+              <CheckCircle2 size={12} /> Concluídos
             </button>
 
             <button
@@ -623,10 +571,10 @@ export default function HojePage() {
           {dosesFiltradas.length === 0 ? (
             <EmptyState
               icon={Pill}
-              title={hasFiltrosAtivos ? "Nada com esses filtros" : "Nenhuma dose programada"}
-              description={hasFiltrosAtivos ? "Tente ajustar os filtros para ver mais itens." : "Cadastre horários nos medicamentos para gerenciar sua rotina aqui."}
-              actionLabel={!hasFiltrosAtivos ? "Cadastrar Medicamento" : undefined}
-              onAction={!hasFiltrosAtivos ? () => { trigger("vibrate"); router.push("/saude/medicamentos/novo"); } : undefined}
+              title={hasFiltrosAtivos ? "Nada com esses filtros" : "Nenhum registro hoje"}
+              description={hasFiltrosAtivos ? "Tente ajustar os filtros para ver mais itens." : "Registre uma dose avulsa ou adicione um sintoma para ver sua linha do tempo preenchida."}
+              actionLabel={!hasFiltrosAtivos ? "Registrar Dose Avulsa" : undefined}
+              onAction={!hasFiltrosAtivos ? () => { trigger("vibrate"); setIsDoseModalOpen(true); } : undefined}
               iconClassName="bg-ice/10 border-ice/20 text-ice"
             />
           ) : (
@@ -651,12 +599,65 @@ export default function HojePage() {
                   </div>
                   <div className="space-y-2.5">
                     {grupo.items.map((item) => {
-                      const isAtrasado = !item.tomada && !item.ignorada && item.horario < horaAtual;
-                      const isProximo = !item.tomada && !item.ignorada && item.horario >= horaAtual;
-                      const isEstoqueCritico = item.estoqueRestante <= 3 && item.estoqueRestante > 0;
-                      const isEstoqueZerado = item.estoqueRestante <= 0;
+                      if (item.isSintoma) {
+                        return (
+                          <div
+                            key={`sintoma-${item.sintomaId}`}
+                            style={{ borderLeft: `6px solid ${item.cor}` }}
+                            onClick={() => { trigger("vibrate"); router.push(`/saude/registros/detalhes?id=${item.sintomaId}`); }}
+                            className="group relative flex w-full flex-col gap-2 rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-4 text-left shadow-sm cursor-pointer active:scale-[0.985] transition-all hover:border-amber-400/60"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 border border-amber-400/20 shadow-inner">
+                                  <Activity size={20} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 mb-0.5">
+                                    <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
+                                      ⚠️ Sintoma Registrado
+                                    </span>
+                                    <span className="text-[10px] text-ink-faint">•</span>
+                                    <span className="text-[10px] font-mono text-ink-faint">{item.horario}</span>
+                                  </div>
+                                  <p className="truncate text-sm font-semibold text-ink-primary">{item.sintomaNome}</p>
+                                  {item.intensidade && (
+                                    <div className="mt-1 flex items-center gap-2">
+                                      <span className="text-[10px] font-medium text-ink-muted">Intensidade:</span>
+                                      <div className="flex gap-0.5">
+                                        {[1, 2, 3, 4, 5].map((lvl) => (
+                                          <div
+                                            key={lvl}
+                                            className={`h-1.5 w-3.5 rounded-full ${
+                                              lvl <= (item.intensidade || 1) ? "bg-amber-400" : "bg-surface-border"
+                                            }`}
+                                          />
+                                        ))}
+                                      </div>
+                                      <span className="text-[10px] font-mono text-amber-400 font-bold">{item.intensidade}/5</span>
+                                    </div>
+                                  )}
+                                  {item.observacoesSintoma && (
+                                    <p className="text-xs text-ink-muted mt-1 italic line-clamp-2">
+                                      "{item.observacoesSintoma}"
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-2 py-1 rounded-full shrink-0">
+                                Ver Detalhes
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const isAtrasado = !item.tomada && !item.ignorada && item.horario < horaAtual && !item.isAvulsa;
+                      const isProximo = !item.tomada && !item.ignorada && item.horario >= horaAtual && !item.isAvulsa;
+                      const isEstoqueCritico = (item.estoqueRestante ?? 0) <= 3 && (item.estoqueRestante ?? 0) > 0;
+                      const isEstoqueZerado = (item.estoqueRestante ?? 0) <= 0;
                       const tratamentoCor = item.tratamentoCor || item.cor || "#8B5CF6";
-                      const isProcessando = processandoDoseId === `${item.medicamentoId}-${item.horario}`;
+                      const isProcessando = processandoDoseId === (item.logId ? `log-${item.logId}` : `${item.medicamentoId}-${item.horario}`);
 
                       const diasEstilo = getDiasRestantesEstilo(item.diasRestantes);
 
@@ -665,7 +666,7 @@ export default function HojePage() {
                       let statusColor = "";
                       if (item.tomada) {
                         statusIcon = <CheckCircle2 size={12} className="text-emerald-400" />;
-                        statusText = "Tomada";
+                        statusText = item.isAvulsa ? "Tomada (Avulsa)" : "Tomada";
                         statusColor = "text-emerald-400";
                       } else if (item.ignorada) {
                         statusIcon = <XCircle size={12} className="text-ink-muted" />;
@@ -687,10 +688,10 @@ export default function HojePage() {
 
                       return (
                         <div
-                          key={`${item.medicamentoId}-${item.horario}`}
+                          key={item.logId || `${item.medicamentoId}-${item.horario}`}
                           style={{ borderLeft: `6px solid ${tratamentoCor}` }}
                           className={`group relative flex w-full flex-col gap-2 rounded-[24px] border p-4 text-left shadow-sm transition-all active:scale-[0.985] ${
-                            item.tomada ? "border-emerald-400/30 bg-emerald-400/5 opacity-75" : item.ignorada ? "border-ink-muted/20 bg-surface-raised/50 opacity-60" : isAtrasado ? "border-coral/50 bg-coral/5" : isProximo ? "border-amber-400/20 bg-amber-400/5" : "border-surface-border/50 bg-surface"
+                            item.tomada ? "border-emerald-400/30 bg-emerald-400/5 opacity-85" : item.ignorada ? "border-ink-muted/20 bg-surface-raised/50 opacity-60" : isAtrasado ? "border-coral/50 bg-coral/5" : isProximo ? "border-amber-400/20 bg-amber-400/5" : "border-surface-border/50 bg-surface"
                           } ${isProcessando ? "opacity-50 pointer-events-none" : ""}`}
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -704,10 +705,22 @@ export default function HojePage() {
                                     </span>
                                     <span className="text-[10px] text-ink-faint">•</span>
                                     <span className="text-[10px] font-mono text-ink-faint">{item.horario}</span>
+                                    {item.isAvulsa && (
+                                      <span className="text-[9px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase border border-amber-400/20">
+                                        ⚡ SOS / Avulsa
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
-                                <p className={`truncate text-sm font-semibold ${item.tomada || item.ignorada ? "text-ink-muted line-through" : "text-ink-primary"}`}>{item.medicamentoNome}</p>
+                                <p className={`truncate text-sm font-semibold ${item.ignorada ? "text-ink-muted line-through" : "text-ink-primary"}`}>{item.medicamentoNome}</p>
                                 <p className="text-xs font-medium text-ink-muted">{item.dosagem}</p>
+                                
+                                {item.isAvulsa && item.motivoAvulsa && (
+                                  <p className="text-xs text-amber-300 font-medium mt-1 bg-amber-400/10 px-2.5 py-1 rounded-lg w-fit border border-amber-400/20">
+                                    Motivo: {item.motivoAvulsa}
+                                  </p>
+                                )}
+
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
                                   {item.tratamentoNome && item.tratamentoId && (
                                     <button
@@ -727,20 +740,19 @@ export default function HojePage() {
                                   )}
                                   {item.medicoNome && <span className="text-[10px] text-ink-muted flex items-center gap-1"><Stethoscope size={10} /> Dr(a). {item.medicoNome}</span>}
                                   {item.farmaciaNome && <span className="text-[10px] text-ink-muted flex items-center gap-1"><Building2 size={10} /> {item.farmaciaNome}</span>}
-                                  {item.estabelecimentoNome && <span className="text-[10px] text-ink-muted flex items-center gap-1"><MapPin size={10} /> {item.estabelecimentoNome}</span>}
                                 </div>
                                 <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px]">
-                                  {item.estoqueRestante >= 0 && <span className="text-ink-muted">Estoque: {item.estoqueRestante} {item.unidadeMedida}</span>}
-                                  {item.diasRestantes !== undefined && item.diasRestantes !== null && item.diasRestantes >= 0 && (
+                                  {!item.isAvulsa && (item.estoqueRestante ?? 0) >= 0 && <span className="text-ink-muted">Estoque: {item.estoqueRestante} {item.unidadeMedida}</span>}
+                                  {!item.isAvulsa && item.diasRestantes !== undefined && item.diasRestantes !== null && item.diasRestantes >= 0 && (
                                     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono font-bold ${diasEstilo.cor} ${diasEstilo.bg} ${diasEstilo.pulse ? "animate-pulse" : ""}`}>
                                       <Calendar size={12} />
                                       {item.diasRestantes} dias {diasEstilo.label !== "Indefinido" && `· ${diasEstilo.label}`}
                                     </span>
                                   )}
-                                  {item.insight?.deveRenovar && <span className="flex items-center gap-1 text-amber-400 font-semibold"><FileWarning size={12} /> Renovar</span>}
-                                  {item.receitaVencida && <span className="flex items-center gap-1 text-coral font-semibold"><AlertOctagon size={12} /> Receita vencida</span>}
+                                  {!item.isAvulsa && item.insight?.deveRenovar && <span className="flex items-center gap-1 text-amber-400 font-semibold"><FileWarning size={12} /> Renovar</span>}
+                                  {!item.isAvulsa && item.receitaVencida && <span className="flex items-center gap-1 text-coral font-semibold"><AlertOctagon size={12} /> Receita vencida</span>}
                                 </div>
-                                {isEstoqueZerado && (
+                                {!item.isAvulsa && isEstoqueZerado && (
                                   <div className="mt-1.5 flex items-center gap-2 text-[10px] font-bold text-coral animate-pulse">
                                     <AlertTriangle size={14} /> Estoque zerado!
                                     <button
@@ -756,19 +768,22 @@ export default function HojePage() {
                                     </button>
                                   </div>
                                 )}
-                                {isEstoqueCritico && <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-amber-400"><AlertTriangle size={12} /> Estoque crítico ({item.estoqueRestante} {item.unidadeMedida})</div>}
-                                {item.comportamento && <div className="mt-1.5 flex items-center gap-1 text-[10px] text-violet-400 bg-violet-400/10 px-2 py-1 rounded-full w-fit"><TrendingUp size={12} /> {item.comportamento.titulo}</div>}
+                                {!item.isAvulsa && isEstoqueCritico && <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-amber-400"><AlertTriangle size={12} /> Estoque crítico ({item.estoqueRestante} {item.unidadeMedida})</div>}
                               </div>
                             </div>
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
                               <div className="flex items-center gap-1.5">
-                                {!item.tomada && !item.ignorada && (
+                                {!item.tomada && !item.ignorada && !item.isAvulsa && (
                                   <>
                                     <button onClick={(e) => { e.stopPropagation(); handleIgnorar(item); }} disabled={isProcessando || isProcessing} className="text-[10px] font-medium text-ink-muted bg-surface-raised px-2.5 py-1.5 rounded-full border border-surface-border/50 hover:bg-ink-muted/10 active:scale-95 transition-all disabled:opacity-50">Ignorar</button>
                                     <button onClick={(e) => { e.stopPropagation(); handleToggle(item); }} disabled={isProcessando || isProcessing} className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full hover:bg-emerald-400/20 active:scale-95 transition-all disabled:opacity-50 shadow-sm">{isProcessando ? "..." : "✅ Tomar"}</button>
                                   </>
                                 )}
-                                {item.tomada && <button onClick={(e) => { e.stopPropagation(); handleToggle(item); }} className="text-[10px] font-medium text-ink-muted bg-surface-raised px-2.5 py-1.5 rounded-full border border-surface-border/50 hover:bg-ink-muted/10 active:scale-95 transition-all">↩️ Desfazer</button>}
+                                {item.tomada && (
+                                  <button onClick={(e) => { e.stopPropagation(); handleToggle(item); }} className="text-[10px] font-medium text-ink-muted bg-surface-raised px-2.5 py-1.5 rounded-full border border-surface-border/50 hover:bg-ink-muted/10 active:scale-95 transition-all">
+                                    {item.isAvulsa ? "🗑️ Excluir" : "↩️ Desfazer"}
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -782,113 +797,14 @@ export default function HojePage() {
           )}
         </section>
 
-        {/* MODAL: DOSE ÚNICA */}
-        <BottomSheet isOpen={isDoseModalOpen} onClose={() => setIsDoseModalOpen(false)} title="Adicionar Dose Única">
-          <div className="px-5 pb-5 space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-[11px] font-bold uppercase text-ink-muted tracking-wider">Selecione o Remédio</label>
-                <span className="text-[10px] text-ink-faint">{filteredMedicamentos.length} disponíveis</span>
-              </div>
-              
-              <div className="relative mb-3">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar medicamento..."
-                  value={doseSearchQuery}
-                  onChange={(e) => setDoseSearchQuery(e.target.value)}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-2.5 text-sm text-ink-primary outline-none focus:border-emerald-400/50"
-                />
-              </div>
-
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5">
-                {filteredMedicamentos.length === 0 ? (
-                  <p className="text-xs text-ink-muted px-5">Nenhum medicamento encontrado</p>
-                ) : (
-                  filteredMedicamentos.map(med => {
-                    const isSelected = doseMedId === med.id;
-                    const Icon = getMedicineIcon(med.formato);
-                    const color = med.cores?.[0] || "#8B5CF6";
-                    return (
-                      <button
-                        key={med.id}
-                        onClick={() => {
-                          trigger("vibrate");
-                          setDoseMedId(med.id!);
-                          setDoseQtd(med.estoque_unidade_por_dose || 1);
-                        }}
-                        className={`flex-shrink-0 flex flex-col items-center gap-2.5 p-3 rounded-[20px] border transition-all active:scale-95 ${isSelected ? 'border-emerald-400 bg-emerald-400/10 shadow-lg shadow-emerald-400/20' : 'border-surface-border/50 bg-surface-raised'}`}
-                        style={{ width: '88px' }}
-                      >
-                         <div className="w-11 h-11 rounded-full flex items-center justify-center border" style={{ backgroundColor: `${color}15`, borderColor: `${color}40`, color }}>
-                           <Icon size={22} />
-                         </div>
-                         <span className="text-[10px] font-semibold text-center truncate w-full text-ink-primary leading-tight">
-                           {med.nome.length > 12 ? med.nome.slice(0, 10) + '…' : med.nome}
-                         </span>
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase text-ink-muted tracking-wider block">Quantidade</label>
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-raised border border-surface-border/50">
-                  <button onClick={() => { trigger("vibrate"); setDoseQtd(Math.max(1, doseQtd - 1)); }} className="w-8 h-8 rounded-full bg-surface border flex items-center justify-center text-ink-primary active:scale-95">-</button>
-                  <span className="text-sm font-bold w-6 text-center">{doseQtd}</span>
-                  <button onClick={() => { trigger("vibrate"); setDoseQtd(doseQtd + 1); }} className="w-8 h-8 rounded-full bg-surface border flex items-center justify-center text-ink-primary active:scale-95">+</button>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase text-ink-muted tracking-wider block">Horário</label>
-                <div className="relative">
-                  <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-                  <input
-                    type="text"
-                    maxLength={5}
-                    value={doseHora}
-                    onChange={(e) => setDoseHora(handleTimeMask(e.target.value))}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-4 text-ink-primary font-mono text-sm outline-none focus:border-emerald-400/50"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-[11px] font-bold uppercase text-ink-muted tracking-wider block">Sintoma / Motivo da dose</label>
-              <div className="flex flex-wrap gap-2">
-                {MOTIVOS_SUGERIDOS.map(m => (
-                  <button
-                    key={m.value}
-                    onClick={() => { trigger("vibrate"); setDoseMotivo(m.value); }}
-                    className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all active:scale-95 ${doseMotivo === m.value ? 'border-amber-400 bg-amber-400/10 text-amber-400 shadow-sm' : 'border-surface-border/60 bg-surface-raised text-ink-muted hover:border-surface-border'}`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-              <input
-                type="text"
-                placeholder="Ou digite outro sintoma / observação..."
-                value={doseMotivo}
-                onChange={(e) => setDoseMotivo(e.target.value)}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-sm text-ink-primary outline-none focus:border-amber-400/50 mt-1"
-              />
-            </div>
-
-            <button
-              onClick={handleSalvarDoseUnica}
-              disabled={isSavingDose}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-void shadow-lg shadow-emerald-500/20 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all mt-4"
-            >
-              {isSavingDose ? <span className="animate-pulse">Registrando...</span> : <><Zap size={18} fill="currentColor" /> Registrar Dose</>}
-            </button>
-          </div>
-        </BottomSheet>
+        {/* MODAL UNIFICADO DE DOSE RÁPIDA (SUBSTITUI O ANTIGO BOTTOMSHEET) */}
+        <QuickDoseModal
+          isOpen={isDoseModalOpen}
+          onClose={() => setIsDoseModalOpen(false)}
+          onSuccess={() => {
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("sync:process"));
+          }}
+        />
 
         {/* MODAL: ESTOQUE BAIXO */}
         <AnimatePresence>

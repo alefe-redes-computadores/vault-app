@@ -40,7 +40,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import type { Medicamento, Tratamento, Renovacao, Cid } from "@/lib/types";
 import { useMounted } from "@/hooks/useMounted";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
-
+import { QuickDoseModal } from "@/components/saude/QuickDoseModal";
 
 function formatDate(isoStr?: string) {
   if (!isoStr) return "—";
@@ -83,6 +83,9 @@ function MedicamentoDetalhesContent() {
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // ESTADO DO MODAL DE DOSE RÁPIDA (INTEGRADO)
+  const [isQuickDoseOpen, setIsQuickDoseOpen] = useState(false);
 
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);
   const medico = useLiveQuery(() => med?.medico_id ? db.medicos.get(med.medico_id) : undefined, [med?.medico_id]);
@@ -135,69 +138,6 @@ function MedicamentoDetalhesContent() {
     router.push(path);
   };
 
-    const handleTomarAgora = async () => {
-    if (!med || !med.id) return;
-    trigger("success");
-
-    const doseGasta = Number(med.estoque_unidade_por_dose) || 1;
-    const atual = isSOS ? (med.estoque_quantidade ?? 0) : (estoqueInfo?.quantidadeRestante ?? med.estoque_quantidade ?? 0);
-
-    if (atual <= 0) {
-      trigger("error");
-      setToastMessage({ text: "Estoque esgotado!", type: 'error' });
-      setTimeout(() => setToastMessage(null), 3000);
-      return;
-    }
-
-    const novoEstoque = Math.max(0, atual - doseGasta);
-    setToastMessage({ text: "Registrando dose...", type: 'loading' });
-
-    try {
-      const now = new Date();
-      const hojeISO = now.toISOString().slice(0, 10);
-      const horario = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
-      // 1. Atualiza o estoque do medicamento
-      await updateMedicamento(med.id, {
-        estoque_quantidade: novoEstoque,
-        estoque_data_referencia: hojeISO,
-      });
-
-      // 2. Gera o ID único do log e monta o objeto
-      const logId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
-
-      const novoLog = {
-        id: logId,
-        user_id: med.user_id,
-        person_id: med.person_id,
-        medicamento_id: med.id,
-        data: hojeISO,
-        horario,
-        quantidade: doseGasta,
-        created_at: now.toISOString(),
-        synced: false,
-      };
-
-      // 3. Salva localmente no Dexie e enfileira na syncQueue
-      await db.doseLogs.add(novoLog);
-      await enfileirarOperacao("doseLogs", "add", novoLog);
-
-
-      // 4. Dispara o gatilho de sincronização
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("sync:process"));
-      }
-
-      setToastMessage({ text: `1 dose registrada às ${horario}!`, type: 'success' });
-      setTimeout(() => setToastMessage(null), 3000);
-    } catch (error) {
-      console.error('Erro ao registrar dose:', error);
-      trigger("error");
-      setToastMessage({ text: "Erro ao registrar dose.", type: 'error' });
-      setTimeout(() => setToastMessage(null), 3000);
-    }
-  };
-
   const handleDelete = async () => {
     if (!med?.id) return;
     setIsDeleting(true);
@@ -216,7 +156,6 @@ function MedicamentoDetalhesContent() {
       setShowDeleteModal(false);
     }
   };
-
 
   const isVencida = isReceitaVencidaSegura(med.proxima_renovacao);
   const alertaInteligente = sugerirRenovacao(med);
@@ -286,7 +225,6 @@ function MedicamentoDetalhesContent() {
   const outrosMedsDesteMedico = todosMedicamentosAtivos.filter((m: Medicamento) => m.medico_id === med.medico_id && m.id !== med.id);
   const displayedRenovacoes = showAllRenovacoes ? renovacoes : renovacoes.slice(0, 3);
 
-  // 🔥 LÓGICA BLINDADA DO ÍCONE
   const formatoBanco = med.formato?.toLowerCase().trim() || "comprimido";
   const itemFormato = FORMATOS.find(f => f.id === formatoBanco) || FORMATOS[0];
   const SelectedFormatIcon = itemFormato.icon;
@@ -450,7 +388,7 @@ function MedicamentoDetalhesContent() {
                      )}
                    </div>
                    {qtd > 0 && (
-                     <button onClick={handleTomarAgora} className="bg-emerald-500 hover:bg-emerald-600 text-void shadow-lg shadow-emerald-500/20 px-4 py-3 rounded-2xl flex items-center gap-2 font-bold active:scale-95 transition-all">
+                     <button onClick={() => setIsQuickDoseOpen(true)} className="bg-emerald-500 hover:bg-emerald-600 text-void shadow-lg shadow-emerald-500/20 px-4 py-3 rounded-2xl flex items-center gap-2 font-bold active:scale-95 transition-all">
                        <Zap size={18} fill="currentColor" /> Tomar 1 Dose
                      </button>
                    )}
@@ -686,6 +624,16 @@ function MedicamentoDetalhesContent() {
           </div>
 
         </div>
+
+        {/* MODAL DE DOSE RÁPIDA (QUICK DOSE) INTEGRADO */}
+        <QuickDoseModal
+          isOpen={isQuickDoseOpen}
+          onClose={() => setIsQuickDoseOpen(false)}
+          preselectedMedicamentoId={id || undefined}
+          onSuccess={() => {
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("sync:process"));
+          }}
+        />
 
         <BottomSheet isOpen={infoModalOpen} onClose={() => setInfoModalOpen(false)} title="Regulamentação da Receita">
           <div className="p-5 space-y-4 text-sm text-ink-muted">

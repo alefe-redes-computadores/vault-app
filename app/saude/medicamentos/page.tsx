@@ -24,8 +24,8 @@ import { sugerirRenovacao, isReceitaVencidaSegura } from "@/lib/health-insights"
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Medicamento, Person, Tratamento } from "@/lib/types";
+import { QuickDoseModal } from "@/components/saude/QuickDoseModal";
 
-// 🔥 Formatos atualizados mapeando rigorosamente com o fluxo de cadastro
 const FORMATOS = [
   { id: "inteiro", label: "Inteiro", icon: Circle },
   { id: "comprimido", label: "Inteiro", icon: Circle },
@@ -60,7 +60,7 @@ export default function MedicamentosListPage() {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
-  const { medicamentos: medicamentosTodas, updateMedicamento } = useMedicamentos();
+  const { medicamentos: medicamentosTodas } = useMedicamentos();
   const { activePersonId } = useActivePersonId();
   const persons = usePersons() as Person[];
   const { tratamentos = [] } = useTratamentos();
@@ -68,7 +68,9 @@ export default function MedicamentosListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDescontinuados, setShowDescontinuados] = useState(false);
   const [sortBy, setSortBy] = useState<"urgency" | "name" | "renewal">("urgency");
-  const [tomandoDoseId, setTomandoDoseId] = useState<string | null>(null);
+
+  // ESTADO PARA O MODAL DE DOSE RÁPIDA NA LISTAGEM
+  const [quickDoseMedId, setQuickDoseMedId] = useState<string | null>(null);
 
   const medicamentos = useMemo(() => {
     if (!activePersonId) return [];
@@ -83,45 +85,6 @@ export default function MedicamentosListPage() {
 
   const activePerson = (persons || []).find((p) => p.id === activePersonId);
   const activePersonColor = activePerson?.color || "#38BDF8";
-
-  const handleTomarAgora = useCallback(
-    async (e: React.MouseEvent, med: Medicamento) => {
-      e.stopPropagation();
-      trigger("success");
-      setTomandoDoseId(med.id!);
-
-      const isSOS = med.tipo_uso !== "continuo";
-      const estoqueInfo = computeEstoqueInfo(med);
-      
-      const atual = isSOS ? (med.estoque_quantidade ?? 0) : (estoqueInfo?.quantidadeRestante ?? med.estoque_quantidade ?? 0);
-      const doseGasta = Number(med.estoque_unidade_por_dose) || 1;
-
-      if (atual <= 0) {
-        trigger("error");
-        showToast(`Estoque de ${med.nome} esgotado!`, "error");
-        setTomandoDoseId(null);
-        return;
-      }
-
-      const novoEstoque = Math.max(0, atual - doseGasta);
-
-      try {
-        await updateMedicamento(med.id!, {
-          estoque_quantidade: novoEstoque,
-          estoque_data_referencia: new Date().toISOString().slice(0, 10),
-        });
-
-        const horaAtual = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-        showToast(`1 dose de ${med.nome} registrada às ${horaAtual}`, "success");
-      } catch {
-        trigger("error");
-        showToast(`Erro ao registrar dose de ${med.nome}`, "error");
-      } finally {
-        setTomandoDoseId(null);
-      }
-    },
-    [updateMedicamento, trigger, showToast]
-  );
 
   const filteredAndSorted = useMemo(() => {
     if (!medicamentos) return [];
@@ -220,7 +183,6 @@ export default function MedicamentosListPage() {
               const insight = isSuspenso ? null : sugerirRenovacao(med);
               const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
 
-              // 🔥 FORMATO E CORES DUPLAS (SUPORTE A BICOLOR / GRADIENTE)
               const formatoBanco = med.formato?.toLowerCase().trim() || "inteiro";
               const itemFormato = FORMATOS.find(f => f.id === formatoBanco) || FORMATOS[0];
               const SelectedFormatIcon = itemFormato.icon;
@@ -229,7 +191,6 @@ export default function MedicamentosListPage() {
               const cor2 = med.cores && med.cores.length > 1 ? med.cores[1] : null;
               const cardBorderColor = activePersonColor || cor1;
 
-              // Estilo de gradiente bicolor para o ícone se houver 2 cores
               const iconContainerStyle = cor2
                 ? { background: `linear-gradient(135deg, ${cor1}25 50%, ${cor2}25 50%)`, borderColor: cor1 }
                 : { backgroundColor: `${cor1}15`, borderColor: `${cor1}40` };
@@ -249,7 +210,6 @@ export default function MedicamentosListPage() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      {/* TOPO: NOME, DOSAGEM E ETAGETAS ORGANIZADAS */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <h3 className="font-display text-base font-bold text-ink-primary uppercase truncate">{med.nome}</h3>
@@ -257,7 +217,6 @@ export default function MedicamentosListPage() {
                         </div>
                       </div>
 
-                      {/* BADGES / ETIQUETAS */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         {isSOS && (
                           <span className="shrink-0 rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-400 border border-amber-400/20 uppercase flex items-center gap-0.5">
@@ -281,7 +240,6 @@ export default function MedicamentosListPage() {
                         )}
                       </div>
 
-                      {/* MEIO: MÉDICO E LOCAL / FARMÁCIA */}
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5 truncate">
                           <Stethoscope size={11} className="text-ink-faint"/> {med.medico || "Médico não informado"}
@@ -298,7 +256,6 @@ export default function MedicamentosListPage() {
                         )}
                       </div>
 
-                      {/* TRATAMENTOS VINCULADOS */}
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {tIds.map((tId: string) => {
                           const t = tratamentoMap.get(tId);
@@ -318,7 +275,6 @@ export default function MedicamentosListPage() {
                         </div>
                       )}
 
-                      {/* RODAPÉ: ESTOQUE, TOMAR E RENOVAR INTELIGENTE LIMPO E ALINHADO */}
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-surface-border/40">
                         <div className="flex items-center gap-2">
                           <span className={`text-[11px] font-bold ${insight?.urgencia === "alta" ? "text-coral animate-pulse" : "text-emerald-400"}`}>
@@ -327,11 +283,14 @@ export default function MedicamentosListPage() {
 
                           {qtd !== null && qtd > 0 && !isSuspenso && (
                             <button
-                              onClick={(e) => handleTomarAgora(e, med)}
-                              disabled={tomandoDoseId === med.id}
-                              className="flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-[10px] font-bold active:scale-95 transition-all disabled:opacity-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                trigger("vibrate");
+                                setQuickDoseMedId(med.id!);
+                              }}
+                              className="flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-[10px] font-bold active:scale-95 transition-all"
                             >
-                              {tomandoDoseId === med.id ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} fill="currentColor" />} Tomar
+                              <Zap size={10} fill="currentColor" /> Tomar
                             </button>
                           )}
                         </div>
@@ -360,6 +319,16 @@ export default function MedicamentosListPage() {
             })
           )}
         </section>
+
+        {/* MODAL DE DOSE RÁPIDA (QUICK DOSE) NA LISTAGEM */}
+        <QuickDoseModal
+          isOpen={!!quickDoseMedId}
+          onClose={() => setQuickDoseMedId(null)}
+          preselectedMedicamentoId={quickDoseMedId || undefined}
+          onSuccess={() => {
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("sync:process"));
+          }}
+        />
       </main>
     </PageTransition>
   );

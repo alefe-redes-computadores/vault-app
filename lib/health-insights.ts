@@ -1,4 +1,4 @@
-//lib/health-insights.ts
+// lib/health-insights.ts
 import { computeEstoqueInfo, getDaysUntil } from "./health-utils";
 import type { Medicamento, Renovacao, Consulta, Exame, Cirurgia, Tratamento, Cid } from "./types";
 
@@ -143,13 +143,14 @@ export function isReceitaVencidaSegura(dataRenovacao?: string): boolean {
 }
 
 // ============================================================
-// 7. COMPORTAMENTO DE USO (ALERTAS INTELIGENTES)
+// 7. COMPORTAMENTO DE USO & SEGURANÇA (VIGILÂNCIA DE DOSAGEM)
 // ============================================================
 export interface ComportamentoInsight {
-  tipo: 'padrao_esporadico' | 'alerta_adesao';
+  tipo: 'padrao_esporadico' | 'alerta_adesao' | 'risco_superdosagem';
   titulo: string;
   mensagem: string;
   acaoSugerida: string;
+  requerAtencaoUrgente?: boolean;
 }
 
 export function analisarComportamentoUso(
@@ -158,13 +159,25 @@ export function analisarComportamentoUso(
 ): ComportamentoInsight | null {
   if (!historicoDoses || historicoDoses.length === 0) return null;
 
-  const umaSemanaAtras = new Date();
-  umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7);
-  
+  const agora = new Date();
+  const umaHoraAtras = new Date(agora.getTime() - 60 * 60 * 1000);
+  const umaSemanaAtras = new Date(agora.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const dosesUltimaHora = historicoDoses.filter(d => new Date(d.timestamp || d.data || '') >= umaHoraAtras);
   const dosesRecentes = historicoDoses.filter(d => new Date(d.timestamp || d.data || '') >= umaSemanaAtras);
   const isEsporadico = medicamento.tipo_uso === 'esporadico' || medicamento.tipo_uso === 'sos';
 
-  // SOS usado com alta frequência
+  // Vigilância de Segurança: Múltiplas doses em curto espaço de tempo (Proteção contra superdosagem)
+  if (dosesUltimaHora.length >= 2) {
+    return {
+      tipo: 'risco_superdosagem',
+      titulo: '⚠️ Alerta de Segurança e Dosagem',
+      mensagem: `Você registrou ${dosesUltimaHora.length} doses de "${medicamento.nome}" na última hora. Verifique se está tudo bem ou se houve duplo registro.`,
+      acaoSugerida: 'Ligar para 188 ou orientações médicas',
+      requerAtencaoUrgente: true
+    };
+  }
+
   if (isEsporadico && dosesRecentes.length >= 4) {
     return {
       tipo: 'padrao_esporadico',
@@ -174,7 +187,6 @@ export function analisarComportamentoUso(
     };
   }
 
-  // Queda na adesão
   const dosesPerdidas = dosesRecentes.filter(d => d.status === 'perdido' || d.status === 'ignorado');
   if (dosesPerdidas.length >= 3) {
     return {

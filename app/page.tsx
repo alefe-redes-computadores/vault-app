@@ -924,13 +924,29 @@ export default function HomePage() {
     examesHoje.length +
     cirurgiasHoje.length;
 
+  // 🔥 CORREÇÃO: Unificação do contador para somar tanto as tomadas programadas quanto as doses avulsas / SOS
   const dosesTomadasHoje = useMemo(() => {
-    if (!doseLogs) return 0;
+    if (!doseLogs || !medicamentos) return 0;
 
-    return doseLogs.filter(
-      (log: any) => Boolean(log.tomado_em)
-    ).length;
-  }, [doseLogs]);
+    const chavesProgramadas = new Set<string>();
+    for (const med of medicamentos) {
+      if (!med.id || !med.estoque_horarios) continue;
+      for (const h of med.estoque_horarios) {
+        if (h) chavesProgramadas.add(`${med.id}-${h}`);
+      }
+    }
+
+    let contador = 0;
+    for (const log of doseLogs) {
+      if (!log.tomado_em) continue;
+      const chave = `${log.medicamento_id}-${log.horario}`;
+      // Se for programada ou avulsa/SOS, conta como tomada no dia
+      if (chavesProgramadas.has(chave) || (log.medicamento_id && log.horario)) {
+        contador++;
+      }
+    }
+    return contador;
+  }, [doseLogs, medicamentos]);
 
   const medicamentosAtivos = useMemo(
     () =>
