@@ -1,7 +1,7 @@
 // components/Providers.tsx
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const { setUser, captureException } = useSentry();
   const { processQueue, isOnline } = useSyncQueue();
   const [isPullDone, setIsPullDone] = useState(false);
+  const hasPulledRef = useRef(false); // 🔒 Trava absoluta anti-duplicidade
 
   useDoseNotificationActions();
 
@@ -43,9 +44,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // 🎯 Único ponto unificado de pull (elimina a condição de corrida do boot)
+  // 🎯 Ponto unificado de pull com trava useRef contra Strict Mode / re-renders
   useEffect(() => {
-    if (!user || loading || !isOnline || isPullDone) return;
+    if (!user || loading || !isOnline || isPullDone || hasPulledRef.current) return;
+    
+    hasPulledRef.current = true; // Sela a porta instantaneamente
     console.log("🔵 Executando pullAllData unificado...");
 
     pullAllData(user.id)
@@ -55,7 +58,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
       .catch((err) => {
         console.error("❌ Erro no pull:", err);
-        // Mantém isPullDone como false para tentar novamente se houver reconexão
+        hasPulledRef.current = false; // Libera caso precise tentar de novo em erro crítico
       });
   }, [user, loading, isOnline, isPullDone]);
 
