@@ -1,5 +1,9 @@
 // lib/types.ts
 
+// ============================================================
+// 1. CONFIGURAÇÕES E ENUMS
+// ============================================================
+
 export const PERSON_COLORS = [
   '#3B82F6',
   '#8B5CF6',
@@ -12,6 +16,56 @@ export const PERSON_COLORS = [
 ] as const;
 
 export type PersonColor = (typeof PERSON_COLORS)[number];
+
+export type CategoryId = 'saude' | 'pessoal' | 'empresa' | 'outros';
+
+export type DocumentType =
+  | 'rg'
+  | 'cpf'
+  | 'cnh'
+  | 'certidao_nascimento'
+  | 'titulo_eleitor'
+  | 'certificado'
+  | 'carteira_trabalho'
+  | 'passaporte'
+  | 'dispensa_militar'
+  | 'receita'
+  | 'prontuario'
+  | 'laudo'
+  | 'encaminhamento'
+  | 'consulta'
+  | 'cirurgia'
+  | 'exame_sangue'
+  | 'exame_imagem'
+  | 'credencial'
+  | 'outro';
+
+export type DocumentFieldType = 'text' | 'date' | 'select';
+
+export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
+
+export type VaultPermission = 'view' | 'edit' | 'admin';
+
+export type CardType =
+  | 'cartao_credito'
+  | 'cartao_debito'
+  | 'conta_corrente'
+  | 'conta_poupanca'
+  | 'conta_digital';
+
+export type CardBrand =
+  | 'visa'
+  | 'mastercard'
+  | 'elo'
+  | 'amex'
+  | 'hipercard'
+  | 'unknown';
+
+export type CategoriaRegistro = 'sintoma' | 'medicao' | 'humor';
+
+// ============================================================
+// 2. PESSOAS E CATEGORIAS
+// ============================================================
 
 export interface Person {
   id?: string;
@@ -26,8 +80,6 @@ export interface Person {
   updated_at: string;
   synced: boolean;
 }
-
-export type CategoryId = 'saude' | 'pessoal' | 'empresa' | 'outros';
 
 export interface Category {
   id: CategoryId;
@@ -71,26 +123,9 @@ export const CATEGORIES: Record<CategoryId, Category> = {
 export const AREAS = CATEGORIES;
 export const CATEGORY_META = CATEGORIES;
 
-export type DocumentType =
-  | 'rg'
-  | 'cpf'
-  | 'cnh'
-  | 'certidao_nascimento'
-  | 'titulo_eleitor'
-  | 'certificado'
-  | 'carteira_trabalho'
-  | 'passaporte'
-  | 'dispensa_militar'
-  | 'receita'
-  | 'prontuario'
-  | 'laudo'
-  | 'encaminhamento'
-  | 'consulta'
-  | 'cirurgia'
-  | 'exame_sangue'
-  | 'exame_imagem'
-  | 'credencial'
-  | 'outro';
+// ============================================================
+// 3. DOCUMENTOS E ANEXOS
+// ============================================================
 
 export interface Attachment {
   id: string;
@@ -142,8 +177,6 @@ export const TYPE_CATEGORY_MAP: Record<DocumentType, CategoryId[]> = {
   outro: ['pessoal', 'saude', 'empresa', 'outros'],
 };
 
-export type DocumentFieldType = 'text' | 'date' | 'select';
-
 export interface DocumentField {
   key: string;
   label: string;
@@ -190,7 +223,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   cpf: [
     {
       key: 'number',
@@ -199,7 +231,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   cnh: [
     {
       key: 'number',
@@ -227,7 +258,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   certidao_nascimento: [
     {
       key: 'nome_registrado',
@@ -268,7 +298,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   titulo_eleitor: [
     {
       key: 'number',
@@ -289,7 +318,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   certificado: [
     {
       key: 'institution',
@@ -315,7 +343,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       type: 'date',
     },
   ],
-
   carteira_trabalho: [
     {
       key: 'numero',
@@ -339,7 +366,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       type: 'text',
     },
   ],
-
   passaporte: [
     {
       key: 'numero',
@@ -366,7 +392,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   dispensa_militar: [
     {
       key: 'numero',
@@ -387,7 +412,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       type: 'date',
     },
   ],
-
   receita: [
     {
       key: 'medicamento_id',
@@ -425,7 +449,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   prontuario: [
     {
       key: 'hospital_id',
@@ -452,7 +475,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   laudo: [
     {
       key: 'medico_id',
@@ -479,7 +501,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   encaminhamento: [
     {
       key: 'from_medico_id',
@@ -505,7 +526,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   consulta: [
     {
       key: 'medico_id',
@@ -536,7 +556,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       type: 'text',
     },
   ],
-
   cirurgia: [
     {
       key: 'procedure',
@@ -563,7 +582,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   exame_sangue: [
     {
       key: 'laboratorio_id',
@@ -578,7 +596,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   exame_imagem: [
     {
       key: 'hospital_id',
@@ -599,7 +616,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   credencial: [
     {
       key: 'orgao',
@@ -614,7 +630,6 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
-
   outro: [
     {
       key: 'custom_field_1',
@@ -628,6 +643,11 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
     },
   ],
 };
+
+// ============================================================
+// 4. SINCRONIZAÇÃO E FILA
+// ============================================================
+
 export interface SyncQueueItem {
   id?: string;
   chave: string;
@@ -653,7 +673,8 @@ export interface SyncQueueItem {
     | 'cids'
     | 'anexos_clinicos'
     | 'settings'
-    | 'versiculos';
+    | 'versiculos'
+    | 'registros_saude';
   operation: 'add' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -663,7 +684,9 @@ export interface SyncQueueItem {
   next_retry_at?: string | null;
 }
 
-export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
+// ============================================================
+// 5. ENTIDADES DE SAÚDE
+// ============================================================
 
 export interface Medicamento {
   id?: string;
@@ -718,7 +741,6 @@ export interface Medicamento {
   synced?: boolean;
   cid_ids?: string[];
   cid_id?: string;
-
 }
 
 export interface Renovacao {
@@ -778,7 +800,7 @@ export interface Exame {
   observacoes?: string;
   anexo_url?: string;
   tratamento_ids?: string[];
-  cid_ids?: string[]; // ✅ ADICIONADO
+  cid_ids?: string[];
   synced?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -797,8 +819,8 @@ export interface Cirurgia {
   local_id?: string;
   status: 'agendada' | 'realizada' | 'cancelada';
   observacoes?: string;
-  tratamento_ids?: string[]; // ✅ ADICIONADO
-  cid_ids?: string[]; // ✅ ADICIONADO
+  tratamento_ids?: string[];
+  cid_ids?: string[];
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
@@ -820,14 +842,40 @@ export interface Consulta {
   observacoes?: string;
   anexo_url?: string;
   status: 'agendada' | 'realizada' | 'cancelada';
-  tratamento_ids?: string[]; // ✅ ADICIONADO
-  cid_ids?: string[]; // ✅ ADICIONADO
+  tratamento_ids?: string[];
+  cid_ids?: string[];
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
 }
 
-export type VaultPermission = 'view' | 'edit' | 'admin';
+// ============================================================
+// 6. REGISTROS DE SAÚDE DIÁRIOS
+// ============================================================
+
+export interface RegistroSaude {
+  id?: string;
+  user_id: string;
+  person_id?: string;
+  categoria: CategoriaRegistro;
+  tipo: string;
+  nome: string;
+  intensidade?: number;
+  valor_medicao?: string;
+  data: string;
+  horario: string;
+  observacoes?: string;
+  medicamento_id?: string;
+  tratamento_ids?: string[];
+  cid_ids?: string[];
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
+}
+
+// ============================================================
+// 7. VAULTS E COMPARTILHAMENTO
+// ============================================================
 
 export interface Vault {
   id?: string;
@@ -863,6 +911,10 @@ export interface VaultDocument {
   shared_at: string;
 }
 
+// ============================================================
+// 8. PROFISSIONAIS, LOCAIS E INSTITUIÇÕES
+// ============================================================
+
 export interface Medico {
   id?: string;
   user_id: string;
@@ -879,7 +931,6 @@ export interface Medico {
   updated_at: string;
   synced: boolean;
   person_id?: string;
-
 }
 
 export interface Farmacia {
@@ -893,7 +944,6 @@ export interface Farmacia {
   updated_at: string;
   synced: boolean;
   person_id?: string;
-
 }
 
 export interface Hospital {
@@ -910,7 +960,6 @@ export interface Hospital {
   updated_at: string;
   synced: boolean;
   person_id?: string;
-
 }
 
 export interface LocalSaude {
@@ -927,7 +976,6 @@ export interface LocalSaude {
   updated_at: string;
   synced: boolean;
   person_id?: string;
-
 }
 
 export interface InstituicaoEnsino {
@@ -939,6 +987,10 @@ export interface InstituicaoEnsino {
   updated_at: string;
   synced: boolean;
 }
+
+// ============================================================
+// 9. CIDs E TRATAMENTOS
+// ============================================================
 
 export interface Cid {
   id?: string;
@@ -976,6 +1028,10 @@ export interface Tratamento {
   synced: boolean;
 }
 
+// ============================================================
+// 10. CREDENCIAIS E CARTÕES
+// ============================================================
+
 export interface Credential {
   id?: string;
   user_id: string;
@@ -995,39 +1051,6 @@ export interface Credential {
   synced: boolean;
 }
 
-export interface AppSettings {
-  id: string;
-  user_id: string;
-  default_person_id?: string;
-  created_at?: string;
-  updated_at?: string;
-  synced?: boolean;
-}
-
-export interface Versiculo {
-  id: string;
-  user_id: string;
-  texto: string;
-  referencia: string;
-  created_at: string;
-  updated_at?: string;
-}
-
-export type CardType =
-  | 'cartao_credito'
-  | 'cartao_debito'
-  | 'conta_corrente'
-  | 'conta_poupanca'
-  | 'conta_digital';
-
-export type CardBrand =
-  | 'visa'
-  | 'mastercard'
-  | 'elo'
-  | 'amex'
-  | 'hipercard'
-  | 'unknown';
-
 export interface BankCard {
   id?: string;
   user_id: string;
@@ -1045,4 +1068,26 @@ export interface BankCard {
   created_at: string;
   updated_at: string;
   synced: boolean;
+}
+
+// ============================================================
+// 11. CONFIGURAÇÕES E VERSÍCULOS
+// ============================================================
+
+export interface AppSettings {
+  id: string;
+  user_id: string;
+  default_person_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
+}
+
+export interface Versiculo {
+  id: string;
+  user_id: string;
+  texto: string;
+  referencia: string;
+  created_at: string;
+  updated_at?: string;
 }

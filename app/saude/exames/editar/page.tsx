@@ -330,6 +330,15 @@ function EditarExameContent() {
     const newErrors: Record<string, string> = {};
     if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
     if (!dataSolicitacaoDisplay || dataSolicitacaoDisplay.length < 10) newErrors.data = "Data inválida";
+
+    // Validação do Horário
+    if (horario) {
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(horario)) {
+        newErrors.horario = "Horário inválido (use HH:MM)";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -598,9 +607,10 @@ function EditarExameContent() {
                     maxLength={5}
                     value={horario}
                     onChange={(e) => setHorario(handleTimeMask(e.target.value))}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                    className={`w-full rounded-2xl border ${errors.horario ? "border-coral/50 text-coral" : "border-surface-border/50 text-ink-primary"} bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50`}
                   />
                 </div>
+                {errors.horario && <p className="text-xs text-coral ml-1">{errors.horario}</p>}
               </div>
             </div>
 

@@ -29,6 +29,8 @@ import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document
 import { getCidInsights } from "@/lib/health-insights";
 import { getClinicalTheme, formatCurrency } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
+import { cidsRepository } from "@/lib/repositories/cids";
+
 
 const fadeUp = {
   initial: { opacity: 0, y: 15 },
@@ -133,7 +135,14 @@ function CidDetalhesContent() {
     trigger("vibrate");
     if (!id) return;
     try {
-      await db.cids.delete(id);
+      // 👈 Bypass removido, passando pelo repositório oficial
+      await cidsRepository.delete(id);
+      
+      // Gatilho para iniciar o envio
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("sync:process"));
+      }
+
       trigger("success");
       showToast("Diagnóstico removido com sucesso.");
       setTimeout(() => router.replace("/saude/cids"), 800);

@@ -1,3 +1,4 @@
+//lib/health-insights.ts
 import { computeEstoqueInfo, getDaysUntil } from "./health-utils";
 import type { Medicamento, Renovacao, Consulta, Exame, Cirurgia, Tratamento, Cid } from "./types";
 
@@ -534,4 +535,249 @@ export function analisarAdesaoMedicamento(
   }
 
   return { adesao, status, mensagem };
+}
+
+// ============================================================
+// 15. MOTOR DE INTELIGÊNCIA CLÍNICA E SINAIS VITAIS (COMPLETO)
+// ============================================================
+export interface RegistroSaudeInsight {
+  status: 'normal' | 'atencao' | 'alerta' | 'critico';
+  titulo: string;
+  mensagem: string;
+  recomendacao: string;
+}
+
+export function analisarRegistroSaude(
+  tipo: string, 
+  valorMedicao?: string, 
+  intensidade?: number,
+  observacoes?: string
+): RegistroSaudeInsight | null {
+  if (!tipo) return null;
+  const t = tipo.toLowerCase().trim();
+
+  // 1. PRESSÃO ARTERIAL (Ex: "120/80")
+  if (t.includes('pressao') || t.includes('pressão') || t.includes('pa')) {
+    if (!valorMedicao) return null;
+    const [sisStr, diasStr] = valorMedicao.split('/');
+    const sis = Number(sisStr);
+    const dias = Number(diasStr);
+    if (isNaN(sis) || isNaN(dias)) return null;
+
+    if (sis >= 180 || dias >= 120) {
+      return {
+        status: 'critico',
+        titulo: 'Crise Hipertensiva',
+        mensagem: `Pressão muito alta (${sis}/${dias} mmHg). Risco iminente à saúde.`,
+        recomendacao: 'Procure atendimento médico de emergência imediatamente se houver sintomas associados.'
+      };
+    }
+    if (sis >= 140 || dias >= 90) {
+      return {
+        status: 'alerta',
+        titulo: 'Hipertensão Detectada',
+        mensagem: `Pressão arterial elevada (${sis}/${dias} mmHg).`,
+        recomendacao: 'Evite esforço físico intenso, descanse e registre novamente em 30 minutos. Consulte seu médico.'
+      };
+    }
+    if (sis >= 130 || dias >= 85) {
+      return {
+        status: 'atencao',
+        titulo: 'Pressão Limítrofe (Pré-hipertensão)',
+        mensagem: `Valores ligeiramente acima do ideal (${sis}/${dias} mmHg).`,
+        recomendacao: 'Monitore o consumo de sódio e mantenha-se hidratado ao longo do dia.'
+      };
+    }
+    if (sis < 90 || dias < 60) {
+      return {
+        status: 'atencao',
+        titulo: 'Hipotensão (Pressão Baixa)',
+        mensagem: `Pressão baixa (${sis}/${dias} mmHg). Pode causar tontura ou fraqueza.`,
+        recomendacao: 'Beba água, consuma uma pitada de sal ou alimento leve e deite-se se sentir vertigem.'
+      };
+    }
+    return {
+      status: 'normal',
+      titulo: 'Pressão Ideal',
+      mensagem: `Pressão arterial excelente (${sis}/${dias} mmHg).`,
+      recomendacao: 'Continue mantendo seus hábitos e rotina de cuidados.'
+    };
+  }
+
+  // 2. GLICEMIA (Ex: "99", "140")
+  if (t.includes('glicemia') || t.includes('acucar') || t.includes('açúcar') || t.includes('glicose')) {
+    if (!valorMedicao) return null;
+    const glic = Number(valorMedicao.replace(',', '.'));
+    if (isNaN(glic)) return null;
+
+    if (glic < 70) {
+      return {
+        status: 'alerta',
+        titulo: 'Hipoglicemia (Glicose Baixa)',
+        mensagem: `Glicemia em ${glic} mg/dL. Risco de tontura e tremores.`,
+        recomendacao: 'Ingira carboidratos de rápida absorção imediatamente (ex: 1 colher de açúcar, mel ou suco).'
+      };
+    }
+    if (glic > 200) {
+      return {
+        status: 'alerta',
+        titulo: 'Hiperglicemia Elevada',
+        mensagem: `Glicemia alta registrada (${glic} mg/dL).`,
+        recomendacao: 'Entre em contato com seu médico para reavaliar a medicação ou dieta recente.'
+      };
+    }
+    if (glic > 125) {
+      return {
+        status: 'atencao',
+        titulo: 'Glicemia Alterada (Jejum)',
+        mensagem: `Glicemia em ${glic} mg/dL, acima da faixa padrão.`,
+        recomendacao: 'Monitore com frequência e leve o histórico para sua próxima consulta médica.'
+      };
+    }
+    return {
+      status: 'normal',
+      titulo: 'Glicemia Estável',
+      mensagem: `Glicemia dentro dos parâmetros aceitáveis (${glic} mg/dL).`,
+      recomendacao: 'Mantenha sua rotina alimentar e hidratação.'
+    };
+  }
+
+  // 3. TEMPERATURA / FEBRE (Ex: "38.5")
+  if (t.includes('temperatura') || t.includes('febre')) {
+    if (!valorMedicao) return null;
+    const temp = Number(valorMedicao.replace(',', '.'));
+    if (isNaN(temp)) return null;
+
+    if (temp >= 39.5) {
+      return {
+        status: 'critico',
+        titulo: 'Febre Alta / Hipertermia',
+        mensagem: `Temperatura crítica de ${temp}°C.`,
+        recomendacao: 'Utilize antitérmico prescrito, faça compressas mornas e procure avaliação médica de prontidão.'
+      };
+    }
+    if (temp >= 38.0) {
+      return {
+        status: 'alerta',
+        titulo: 'Estado Febril',
+        mensagem: `Temperatura elevada (${temp}°C).`,
+        recomendacao: 'Mantenha-se hidratado, descanse e monitore a evolução da temperatura a cada 4 horas.'
+      };
+    }
+    if (temp >= 37.3) {
+      return {
+        status: 'atencao',
+        titulo: 'Febrícula (Estado Subfebril)',
+        mensagem: `Temperatura ligeiramente alta (${temp}°C).`,
+        recomendacao: 'Fique atento ao surgimento de outros sintomas associados (corpo mole, dor de cabeça).'
+      };
+    }
+    if (temp < 35.0) {
+      return {
+        status: 'alerta',
+        titulo: 'Hipotermia Leve',
+        mensagem: `Temperatura abaixo do normal (${temp}°C).`,
+        recomendacao: 'Aqueca-se com roupas adequadas, cobertores e bebidas mornas.'
+      };
+    }
+    return {
+      status: 'normal',
+      titulo: 'Temperatura Normal',
+      mensagem: `Temperatura corporal estável (${temp}°C).`,
+      recomendacao: 'Tudo dentro da normalidade.'
+    };
+  }
+
+  // 4. FREQUÊNCIA CARDÍACA / PULSO (Ex: "85")
+  if (t.includes('batimento') || t.includes('pulso') || t.includes('frequencia') || t.includes('cardíaca') || t.includes('bpm')) {
+    if (!valorMedicao) return null;
+    const bpm = Number(valorMedicao);
+    if (isNaN(bpm)) return null;
+
+    if (bpm > 120) {
+      return {
+        status: 'alerta',
+        titulo: 'Taquicardia (Batimento Acelerado)',
+        mensagem: `Frequência cardíaca alta (${bpm} bpm em repouso).`,
+        recomendacao: 'Sente-se, respire fundo de forma controlada. Se persistir com falta de ar, busque ajuda médica.'
+      };
+    }
+    if (bpm < 50) {
+      return {
+        status: 'atencao',
+        titulo: 'Bradicardia (Batimento Lento)',
+        mensagem: `Frequência cardíaca baixa (${bpm} bpm).`,
+        recomendacao: 'Se não for atleta condicionado e houver tontura associada, consulte um cardiologista.'
+      };
+    }
+    return {
+      status: 'normal',
+      titulo: 'Frequência Cardíaca Normal',
+      mensagem: `Ritmo cardíaco saudável (${bpm} bpm).`,
+      recomendacao: 'Parâmetro excelente para o seu dia a dia.'
+    };
+  }
+
+  // 5. ESCALA DE INTENSIDADE PARA SINTOMAS (DOR, ANSIEDADE, FADIGA, APATIA, NÁUSEA - 1 A 10)
+  if (intensidade !== undefined && intensidade !== null) {
+    if (intensidade >= 8) {
+      return {
+        status: 'critico',
+        titulo: 'Intensidade Severa / Crítica',
+        mensagem: `Nível ${intensidade}/10 relatado para "${t}". Impacto forte na rotina.`,
+        recomendacao: 'Utilize o medicamento de resgate SOS indicado pelo seu médico ou entre em contato com o especialista responsável.'
+      };
+    }
+    if (intensidade >= 5) {
+      return {
+        status: 'alerta',
+        titulo: 'Intensidade Moderada',
+        mensagem: `Nível ${intensidade}/10 para "${t}". Sintoma incômodo que merece monitoramento.`,
+        recomendacao: 'Descanse, observe se há gatilhos ambientais ou alimentares e avalie suporte de medicação leve.'
+      };
+    }
+    if (intensidade >= 1) {
+      return {
+        status: 'atencao',
+        titulo: 'Sintoma Leve',
+        mensagem: `Nível ${intensidade}/10. Desconforto sutil.`,
+        recomendacao: 'Acompanhe a evolução ao longo das próximas horas com hidratação ou repouso.'
+      };
+    }
+  }
+
+  // 6. CASOS ESPECÍFICOS DE SINTOMAS E CONTEXTOS (ANSIEDADE, SONO, APATIA, FADIGA)
+  if (t.includes('ansiedade') || t.includes('panico') || t.includes('pânico')) {
+    return {
+      status: 'atencao',
+      titulo: 'Apoio para Crise de Ansiedade',
+      mensagem: 'Momentos de ansiedade intensa exigem pausas para resgate emocional e regulação respiratória.',
+      recomendacao: 'Pratique respiração diafragmática profunda (inspire em 4s, segure por 4s, expire em 4s).'
+    };
+  }
+
+  if (t.includes('insonia') || t.includes('sono')) {
+    return {
+      status: 'atencao',
+      titulo: 'Monitoramento do Sono',
+      mensagem: 'Dificuldades para dormir afetam diretamente a disposição, o humor e a resposta imunológica.',
+      recomendacao: 'Evite telas 1 hora antes de deitar, mantenha o ambiente escuro e evite cafeína à tarde.'
+    };
+  }
+
+  if (t.includes('apatia') || t.includes('fadiga') || t.includes('desanimo') || t.includes('cansaço')) {
+    return {
+      status: 'atencao',
+      titulo: 'Avaliação de Fadiga e Energia',
+      mensagem: 'Cansaço ou desânimo persistente são sinais importantes para rastrear na rotina clínica.',
+      recomendacao: 'Anote os horários em que a apatia é mais forte e discuta esses picos com seu médico.'
+    };
+  }
+
+  return {
+    status: 'normal',
+    titulo: 'Registro Prontuário',
+    mensagem: `O sintoma "${tipo}" foi salvo no prontuário com sucesso.`,
+    recomendacao: 'Mantenha o registro contínuo para gerar um histórico detalhado para o seu acompanhamento.'
+  };
 }

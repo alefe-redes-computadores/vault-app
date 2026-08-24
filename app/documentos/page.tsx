@@ -1,3 +1,4 @@
+// app/documentos/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -11,7 +12,7 @@ import {
   LayoutList,
   Grid3X3,
   FileText,
-  Images, // 🔥 NOVO: ícone da galeria
+  Images,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
@@ -33,7 +34,7 @@ import {
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { HealthDocsBanner } from "@/components/HealthDocsBanner"; // 🔥 NOVO: banner inteligente
+import { HealthDocsBanner } from "@/components/HealthDocsBanner";
 
 function useDebounce(value: string, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -49,7 +50,6 @@ function useDebounce(value: string, delay = 300) {
   return debouncedValue;
 }
 
-// Apenas tipos do Vault (excluindo saúde)
 const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
   { id: "rg", label: "RG" },
   { id: "cpf", label: "CPF" },
@@ -117,7 +117,6 @@ export default function DocumentsPage() {
 
   const {
     documents: paginatedDocs,
-    totalCount,
     hasMore,
     isLoadingMore,
     loadMore,
@@ -128,7 +127,6 @@ export default function DocumentsPage() {
     excludeCategories: ["saude"],
   });
 
-  // Aplica filtros locais (tipo, validade)
   const filteredDocs = useMemo<Document[]>(() => {
     let result = paginatedDocs as Document[];
 
@@ -200,7 +198,7 @@ export default function DocumentsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-safe backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="font-display text-xl font-semibold text-ink-primary">
@@ -213,7 +211,6 @@ export default function DocumentsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* 🔥 NOVO: botão para a Galeria */}
               <button
                 type="button"
                 onClick={() => {
@@ -226,7 +223,6 @@ export default function DocumentsPage() {
                 <Images size={18} />
               </button>
 
-              {/* Alternância Lista ↔ Grid */}
               <button
                 type="button"
                 onClick={() => {
@@ -316,7 +312,6 @@ export default function DocumentsPage() {
                 className="overflow-hidden"
               >
                 <div className="mt-4 space-y-4 rounded-[26px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
-                  {/* Pessoa */}
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
                       Pessoa
@@ -350,7 +345,6 @@ export default function DocumentsPage() {
                     </div>
                   </div>
 
-                  {/* Categoria - apenas Vault */}
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
                       Categoria
@@ -387,7 +381,6 @@ export default function DocumentsPage() {
                     </div>
                   </div>
 
-                  {/* Tipo */}
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
                       Tipo
@@ -421,7 +414,6 @@ export default function DocumentsPage() {
                     </div>
                   </div>
 
-                  {/* Validade */}
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
                       Validade
@@ -470,7 +462,6 @@ export default function DocumentsPage() {
           </AnimatePresence>
         </header>
 
-        {/* 🔥 NOVO: Banner inteligente para documentos de saúde */}
         <HealthDocsBanner />
 
         <section className="px-5 pt-5">
@@ -506,40 +497,42 @@ export default function DocumentsPage() {
               </motion.div>
             </InfiniteScrollTrigger>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {filteredDocs.map((doc) => {
-                const firstAttachment = doc.attachments?.[0];
-                return (
-                  <motion.div
-                    key={doc.id}
-                    variants={cardVariants}
-                    initial="hidden"
-                    animate="show"
-                    onClick={() => {
-                      trigger("vibrate");
-                      router.push(`/detalhes?id=${doc.id}`);
-                    }}
-                    className="group relative overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface p-3 transition-all active:scale-[0.98] hover:border-ice/30 cursor-pointer shadow-sm"
-                  >
-                    <div className="h-28 w-full overflow-hidden rounded-xl bg-surface-raised flex items-center justify-center">
-                      {firstAttachment?.type === "image" ? (
-                        <img
-                          src={firstAttachment.url}
-                          alt={doc.title}
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <FileText size={32} className="text-ice/50" />
-                      )}
-                    </div>
-                    <div className="mt-2.5 min-w-0">
-                      <p className="truncate text-xs font-semibold text-ink-primary">{doc.title}</p>
-                      <p className="text-[10px] text-ink-muted capitalize">{doc.type.replace("_", " ")}</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+            <InfiniteScrollTrigger onLoadMore={loadMore} hasMore={hasMore} isLoading={isLoadingMore}>
+              <div className="grid grid-cols-2 gap-3">
+                {filteredDocs.map((doc) => {
+                  const firstAttachment = doc.attachments?.[0];
+                  return (
+                    <motion.div
+                      key={doc.id}
+                      variants={cardVariants}
+                      initial="hidden"
+                      animate="show"
+                      onClick={() => {
+                        trigger("vibrate");
+                        router.push(`/detalhes?id=${doc.id}`);
+                      }}
+                      className="group relative overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface p-3 transition-all active:scale-[0.98] hover:border-ice/30 cursor-pointer shadow-sm"
+                    >
+                      <div className="h-28 w-full overflow-hidden rounded-xl bg-surface-raised flex items-center justify-center">
+                        {firstAttachment?.type === "image" ? (
+                          <img
+                            src={firstAttachment.url}
+                            alt={doc.title}
+                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <FileText size={32} className="text-ice/50" />
+                        )}
+                      </div>
+                      <div className="mt-2.5 min-w-0">
+                        <p className="truncate text-xs font-semibold text-ink-primary">{doc.title}</p>
+                        <p className="text-[10px] text-ink-muted capitalize">{doc.type.replace("_", " ")}</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </InfiniteScrollTrigger>
           )}
         </section>
 

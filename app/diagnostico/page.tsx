@@ -43,7 +43,8 @@ const TABLES: { key: string; remoteKey: string; label: string }[] = [
   { key: "exames", remoteKey: "exames", label: "Exames" },
   { key: "medicamentos", remoteKey: "medicamentos", label: "Medicamentos" },
   { key: "renovacoes", remoteKey: "renovacoes", label: "Renovações" },
-  { key: "doseLogs", remoteKey: "doseLogs", label: "Registro de Doses" },
+  { key: "doseLogs", remoteKey: "dose_logs", label: "Registro de Doses" },
+  { key: "registros_saude", remoteKey: "registros_saude", label: "Sintomas e Medições" }, // 👈 Adicionado aqui!
   { key: "documents", remoteKey: "documents", label: "Documentos" },
   { key: "anexos_clinicos", remoteKey: "anexos_clinicos", label: "Anexos Clínicos" },
   { key: "credentials", remoteKey: "credentials", label: "Senhas e Acessos" },
@@ -126,7 +127,6 @@ export default function DiagnosticoPage() {
           const items = await (db as any)[table.key].toArray();
 
           if (items.length > 0) {
-            // 🔥 A CORREÇÃO: Removemos o "synced" de todos os itens antes de forçar o envio
             const sanitizedItems = items.map((item: any) => {
               const { synced, ...rest } = item;
               return rest;

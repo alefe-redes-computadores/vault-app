@@ -136,6 +136,7 @@ function EditarConsultaContent() {
   const [observacoes, setObservacoes] = useState("");
 
   const [error, setError] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!id) {
@@ -207,10 +208,26 @@ function EditarConsultaContent() {
     }
   };
 
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!medicoId) newErrors.medicoId = "Selecione o médico";
+    if (!dataDisplay || dataDisplay.length < 10) newErrors.data = "Data inválida";
+
+    // Validação de horário com Regex
+    if (horario) {
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(horario)) {
+        newErrors.horario = "Horário inválido (use HH:MM)";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async () => {
     trigger("vibrate");
-    if (!medicoId) {
-      setError("Selecione o médico");
+    if (!validate()) {
       trigger("error");
       return;
     }
@@ -381,14 +398,14 @@ function EditarConsultaContent() {
             <button
               type="button"
               onClick={() => setIsMedicoModalOpen(true)}
-              className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${error ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised flex items-center justify-between`}
+              className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${errors.medicoId ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised flex items-center justify-between`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <UserCheck size={16} className="text-ice shrink-0" />
                 <span className="truncate text-ink-primary">{selectedMedico ? `Dr(a). ${selectedMedico.nome} (${selectedMedico.especialidade || 'Geral'})` : "Selecionar médico"}</span>
               </div>
             </button>
-            {error && <p className="mt-1 text-xs text-coral">{error}</p>}
+            {errors.medicoId && <p className="mt-1 text-xs text-coral">{errors.medicoId}</p>}
           </motion.div>
 
           {/* HOSPITAL E LOCAL COM LIMPAR */}
@@ -461,9 +478,10 @@ function EditarConsultaContent() {
                     maxLength={10}
                     value={dataDisplay}
                     onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                    className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50`}
                   />
                 </div>
+                {errors.data && <p className="text-xs text-coral ml-1">{errors.data}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Horário</label>
@@ -475,9 +493,10 @@ function EditarConsultaContent() {
                     maxLength={5}
                     value={horario}
                     onChange={(e) => setHorario(handleTimeMask(e.target.value))}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                    className={`w-full rounded-2xl border ${errors.horario ? "border-coral/50 text-coral" : "border-surface-border/50 text-ink-primary"} bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50`}
                   />
                 </div>
+                {errors.horario && <p className="text-xs text-coral ml-1">{errors.horario}</p>}
               </div>
             </div>
 

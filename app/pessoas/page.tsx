@@ -25,8 +25,10 @@ import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { personsRepository } from "@/lib/repositories/persons";
+import { documentsRepository } from "@/lib/repositories/documents";
+
 
 export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
@@ -75,27 +77,23 @@ export default function PessoasPage() {
     setIsDeleting(id);
 
     try {
-      await db.transaction(
-        "rw",
-        [db.persons, db.documents],
-        async () => {
-          const documents = await db.documents
-            .where("person_id")
-            .equals(id)
-            .toArray();
+      // 1. Busca os documentos vinculados (leitura direto no db tá liberado)
+      const documents = await db.documents
+        .where("person_id")
+        .equals(id)
+        .toArray();
 
-          for (const document of documents) {
-            if (document.id) {
-              await enfileirarOperacao("documents", "delete", { id: document.id });
-            }
-          }
-
-          await db.documents.where("person_id").equals(id).delete();
-          await db.persons.delete(id);
-          await enfileirarOperacao("persons", "delete", { id });
+      // 2. Deleta os documentos em cascata passando pelo repositório (garante a syncQueue)
+      for (const document of documents) {
+        if (document.id) {
+          await documentsRepository.delete(document.id);
         }
-      );
+      }
 
+      // 3. Deleta a pessoa passando pelo repositório
+      await personsRepository.delete(id);
+
+      // Dispara o push para a nuvem
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("sync:process"));
       }

@@ -27,6 +27,7 @@ import type {
   InstituicaoEnsino,
   SyncQueueItem,
   AppSettings,
+  RegistroSaude,
 } from "@/lib/types";
 
 const MAX_RETRIES = 5;
@@ -1107,6 +1108,56 @@ export function useSyncQueue() {
   };
 
   // ============================================================
+  // REGISTROS DE SAÚDE (SINTOMAS E MEDIÇÕES)
+  // ============================================================
+
+  const syncRegistroSaude = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const reg = item.payload as unknown as RegistroSaude;
+
+    switch (item.operation) {
+      case "add":
+      case "update": {
+        const { error } = await client.from("registros_saude").upsert(
+          {
+            id: reg.id,
+            user_id: reg.user_id,
+            person_id: reg.person_id || null,
+            categoria: reg.categoria,
+            tipo: reg.tipo || null,
+            nome: reg.nome,
+            intensidade: reg.intensidade !== undefined ? reg.intensidade : null,
+            valor_medicao: reg.valor_medicao || null,
+            data: reg.data,
+            horario: reg.horario || null,
+            observacoes: reg.observacoes || null,
+            medicamento_id: reg.medicamento_id || null,
+            tratamento_ids: reg.tratamento_ids || [],
+            cid_ids: reg.cid_ids || [],
+            created_at: reg.created_at,
+            updated_at: reg.updated_at,
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw new Error(`Registros_saude upsert error: ${error.message}`);
+        break;
+      }
+      case "delete": {
+        const payload = item.payload as unknown as { id: string };
+        const { error } = await client.from("registros_saude").delete().eq("id", payload.id);
+        if (error) throw new Error(`Registros_saude delete error: ${error.message}`);
+        break;
+      }
+      default:
+        throw new Error(`Operação não suportada em registros_saude: ${item.operation}`);
+    }
+
+    if (item.operation !== "delete" && reg.id) {
+      await db.registros_saude.update(reg.id, { synced: true });
+    }
+  };
+
+  // ============================================================
   // VAULTS
   // ============================================================
 
@@ -1491,6 +1542,7 @@ export function useSyncQueue() {
         "renovacoes",
         "doseLogs",
         "anexos_clinicos",
+        "registros_saude",
         "vaults",
         "vaultMembers",
         "credentials",
@@ -1567,6 +1619,9 @@ export function useSyncQueue() {
               break;
             case "anexos_clinicos":
               await syncAnexoClinico(item);
+              break;
+            case "registros_saude":
+              await syncRegistroSaude(item);
               break;
             case "vaults":
               await syncVault(item);

@@ -39,6 +39,8 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import type { Medicamento, Tratamento, Renovacao, Cid } from "@/lib/types";
 import { useMounted } from "@/hooks/useMounted";
+import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+
 
 function formatDate(isoStr?: string) {
   if (!isoStr) return "—";
@@ -133,7 +135,7 @@ function MedicamentoDetalhesContent() {
     router.push(path);
   };
 
-  const handleTomarAgora = async () => {
+    const handleTomarAgora = async () => {
     if (!med || !med.id) return;
     trigger("success");
 
@@ -155,12 +157,17 @@ function MedicamentoDetalhesContent() {
       const hojeISO = now.toISOString().slice(0, 10);
       const horario = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
+      // 1. Atualiza o estoque do medicamento
       await updateMedicamento(med.id, {
         estoque_quantidade: novoEstoque,
         estoque_data_referencia: hojeISO,
       });
 
-      await db.doseLogs.add({
+      // 2. Gera o ID único do log e monta o objeto
+      const logId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+
+      const novoLog = {
+        id: logId,
         user_id: med.user_id,
         person_id: med.person_id,
         medicamento_id: med.id,
@@ -168,7 +175,18 @@ function MedicamentoDetalhesContent() {
         horario,
         quantidade: doseGasta,
         created_at: now.toISOString(),
-      });
+        synced: false,
+      };
+
+      // 3. Salva localmente no Dexie e enfileira na syncQueue
+      await db.doseLogs.add(novoLog);
+      await enfileirarOperacao("doseLogs", "add", novoLog);
+
+
+      // 4. Dispara o gatilho de sincronização
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("sync:process"));
+      }
 
       setToastMessage({ text: `1 dose registrada às ${horario}!`, type: 'success' });
       setTimeout(() => setToastMessage(null), 3000);
@@ -198,6 +216,7 @@ function MedicamentoDetalhesContent() {
       setShowDeleteModal(false);
     }
   };
+
 
   const isVencida = isReceitaVencidaSegura(med.proxima_renovacao);
   const alertaInteligente = sugerirRenovacao(med);

@@ -1,3 +1,4 @@
+// components/EmptyState.tsx
 "use client";
 
 import { motion } from "framer-motion";
@@ -6,14 +7,26 @@ import { Button } from "@/components/ui/Button";
 import { useHapticFeedback } from "@/lib/haptics";
 
 interface EmptyStateProps {
+  /** Ícone principal (Lucide) */
   icon: LucideIcon;
+  /** Título principal */
   title: string;
+  /** Descrição do estado vazio */
   description: string;
+  /** Rótulo do botão principal */
   actionLabel?: string;
+  /** Ação do botão principal */
   onAction?: () => void;
+  /** Rótulo do botão secundário */
   secondaryActionLabel?: string;
+  /** Ação do botão secundário */
   onSecondaryAction?: () => void;
+  /** Versão compacta para espaços menores */
   compact?: boolean;
+  /** Classe adicional para o ícone (permite sobrescrever cores/tamanhos) */
+  iconClassName?: string;
+  /** Desabilita a animação de entrada */
+  disableAnimation?: boolean;
 }
 
 export function EmptyState({
@@ -25,6 +38,8 @@ export function EmptyState({
   secondaryActionLabel,
   onSecondaryAction,
   compact = false,
+  iconClassName = "",
+  disableAnimation = false,
 }: EmptyStateProps) {
   const { trigger } = useHapticFeedback();
 
@@ -38,19 +53,12 @@ export function EmptyState({
     onSecondaryAction?.();
   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 14, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.28 }}
-      className={`flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface text-center shadow-sm ${
-        compact ? "px-4 py-8" : "px-6 py-14"
-      }`}
-    >
+  const Content = () => (
+    <>
       <div
         className={`glow-ice flex items-center justify-center rounded-full border border-ice/15 bg-surface-raised ${
           compact ? "mb-3 h-16 w-16" : "mb-5 h-24 w-24"
-        }`}
+        } ${iconClassName}`}
       >
         <Icon size={compact ? 26 : 34} className="text-ice/55" />
       </div>
@@ -96,6 +104,19 @@ export function EmptyState({
           )}
         </div>
       )}
+    </>
+  );
+
+  return (
+    <motion.div
+      initial={!disableAnimation ? { opacity: 0, y: 14, scale: 0.98 } : false}
+      animate={!disableAnimation ? { opacity: 1, y: 0, scale: 1 } : {}}
+      transition={!disableAnimation ? { duration: 0.28 } : {}}
+      className={`flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface text-center shadow-sm ${
+        compact ? "px-4 py-8" : "px-6 py-14"
+      }`}
+    >
+      <Content />
     </motion.div>
   );
 }

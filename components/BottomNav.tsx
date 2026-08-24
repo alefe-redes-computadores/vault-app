@@ -23,6 +23,8 @@ import {
   User,
   Clock,
   FolderOpen,
+  Zap,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -67,6 +69,13 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "consulta", label: "Consulta", icon: Calendar, path: "/saude/consultas/nova" },
   { id: "cirurgia", label: "Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
   { id: "cid", label: "CID", icon: FileText, path: "/saude/cids/novo" },
+  { id: "sintoma", label: "Sintoma / Medição", icon: Activity, path: "/saude/registros/novo" }, // 👈 Adicionado aqui também no menu raiz!
+];
+
+// OPÇÕES EXCLUSIVAS DA ABA "HOJE"
+const HOJE_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "dose-unica", label: "Dose Única", icon: Zap, path: "/hoje?action=dose" },
+  { id: "sintoma", label: "Novo Sintoma", icon: Activity, path: "/saude/registros/novo" }, // 👈 Aponta direto para a tela de novo registro
 ];
 
 const DOCUMENTOS_COMPOSE_OPTIONS: ComposeOption[] = [
@@ -145,7 +154,7 @@ function getComposeOptions(pathname: string, searchParams: URLSearchParams): Com
   if (pathname === "/") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/documentos") return DOCUMENTOS_COMPOSE_OPTIONS;
   if (pathname === "/saude/documentos") return SAUDE_COMPOSE_OPTIONS;
-  if (pathname === "/hoje") return SAUDE_COMPOSE_OPTIONS;
+  if (pathname === "/hoje") return HOJE_COMPOSE_OPTIONS;
   if (pathname === "/mais") return [];
 
   if (pathname === "/pessoas") return PESSOAS_COMPOSE_OPTIONS;
@@ -205,6 +214,10 @@ const ALLOWED_NAV_PATHS = [
   "/saude/cirurgias",
   "/saude/cids",
   "/saude/rede",
+  "/saude/registros", // 👈 Adicionadas rotas de registros para manter o BottomNav ativo
+  "/saude/registros/novo",
+  "/saude/registros/detalhes",
+  "/saude/registros/editar",
 ];
 
 function shouldShowNav(pathname: string): boolean {
@@ -213,13 +226,14 @@ function shouldShowNav(pathname: string): boolean {
   );
 }
 
-// Helper para dar cores bonitas aos ícones do modal baseado no ID
 function getOptionColorClass(id: string) {
+  if (['dose-unica'].includes(id)) return 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20';
+  if (['sintoma'].includes(id)) return 'bg-amber-400/10 text-amber-400 border-amber-400/20'; // 👈 Cor do sintoma
   if (['renovacao'].includes(id)) return 'bg-coral/10 text-coral border-coral/20';
   if (['medicamento', 'farmacia'].includes(id)) return 'bg-amber-400/10 text-amber-400 border-amber-400/20';
   if (['exame', 'local', 'cid'].includes(id)) return 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20';
   if (['tratamento', 'cirurgia'].includes(id)) return 'bg-violet-400/10 text-violet-400 border-violet-400/20';
-  return 'bg-ice/10 text-ice border-ice/20'; // Padrão: Médico, Consulta, Hospital, etc.
+  return 'bg-ice/10 text-ice border-ice/20';
 }
 
 export function BottomNav() {
@@ -300,7 +314,6 @@ export function BottomNav() {
       <AnimatePresence>
         {isComposeMenuOpen && showCompose && (
           <>
-            {/* Fundo escuro que fecha ao clicar fora */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -323,7 +336,6 @@ export function BottomNav() {
                 </p>
               </div>
               
-              {/* Layout horizontal compacto em 2 colunas para economizar altura e evitar cortes */}
               <div className="max-h-[60vh] overflow-y-auto px-3 pb-4 pt-1 scrollbar-hide">
                 <div className="grid grid-cols-2 gap-2">
                   {composeOptions.map((option) => {

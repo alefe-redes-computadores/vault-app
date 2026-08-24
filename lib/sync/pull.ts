@@ -5,14 +5,14 @@ import { db } from '@/lib/db';
 import type {
   Person, Document, Medicamento, Renovacao, Vault,
   VaultMember, Medico, Farmacia, Hospital, Credential, BankCard,
-  Tratamento, Cid, Exame, Consulta, Cirurgia, DoseLog, InstituicaoEnsino, LocalSaude, AppSettings
+  Tratamento, Cid, Exame, Consulta, Cirurgia, DoseLog, InstituicaoEnsino, LocalSaude, AppSettings, RegistroSaude
 } from '@/lib/types';
 
 let isPulling = false;
 
 export async function pullAllData(userId: string): Promise<void> {
   if (isPulling) {
-    console.warn('⚠️ Pull já em andamento, ignorando nova chamada');
+    console.log('⚠️ Pull já em andamento, ignorando nova chamada');
     return;
   }
 
@@ -55,29 +55,15 @@ export async function pullAllData(userId: string): Promise<void> {
 
         const pendingIds = pendingTables.get(tableName) || new Set();
         
-        // 🔥 LER TODOS OS ITENS LOCAIS PARA DEDUPLICAÇÃO LÓGICA
-        const localItems = await localTable.toArray();
-
+        // 🛡️ DEDUPLICAÇÃO ROBUSTA POR ID (UUID UNÍVOCO)
+        // Evita conflitos baseados em nome/texto (como medicamentos com o mesmo nome e dosagens diferentes).
         const toUpsert = data.filter((item) => {
           if (!item.id) return false;
           
-          // 1. Ignora se o exato ID já está na fila de envio (bloqueio padrão)
-          if (pendingIds.has(item.id)) return false;
-
-          // 2. 🛡️ BLINDAGEM CONTRA ECO (Fantasma de Sincronização)
-          // Se o item da nuvem tiver 'nome', e já existir um registro local aguardando envio (synced: false) 
-          // com o mesmo nome exato, bloqueamos o download para não gerar duplicação visual na tela.
-          if (item.nome) {
-            const hasLocalUnsyncedMatch = localItems.some((local: any) => 
-              local.synced === false && 
-              local.nome && 
-              local.nome.trim().toLowerCase() === item.nome.trim().toLowerCase()
-            );
-            
-            if (hasLocalUnsyncedMatch) {
-              console.warn(`🛡️ Fantasma evitado em ${tableName}: '${item.nome}' já existe localmente aguardando sync. Ignorando a versão da nuvem.`);
-              return false;
-            }
+          // Se o ID exato já está pendente na fila de envio local, ignoramos a nuvem temporariamente
+          if (pendingIds.has(item.id)) {
+            console.log(`🛡️ [Sync] ID ${item.id} pendente na fila local (${tableName}). Versão da nuvem ignorada.`);
+            return false;
           }
 
           return true;
@@ -86,7 +72,7 @@ export async function pullAllData(userId: string): Promise<void> {
         if (toUpsert.length > 0) {
           await db.transaction('rw', localTable, async () => {
             for (const item of toUpsert) {
-              // 🔥 Força a flag synced: true para todos os itens da nuvem, resolvendo o status 'undefined'
+              // 🔥 Força a flag synced: true para todos os itens vindos da nuvem
               await localTable.put({ ...item, synced: true });
             }
           });
@@ -205,6 +191,11 @@ export async function pullAllData(userId: string): Promise<void> {
     // 🔥 ---- VERSÍCULOS ----
     await processTable('versiculos', db.versiculos, async () => {
       return await supabase.from('versiculos').select('*').eq('user_id', userId);
+    });
+
+    // 🔥 ---- REGISTROS DE SAÚDE (SINTOMAS E MEDIÇÕES) ----
+    await processTable('registros_saude', db.registros_saude, async () => {
+      return await supabase.from('registros_saude').select('*').eq('user_id', userId);
     });
 
     window.dispatchEvent(new Event('sync:end'));

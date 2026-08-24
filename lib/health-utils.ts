@@ -1,3 +1,4 @@
+//lib/health-utils.ts
 import type { Document, Medicamento, TipoReceita } from "@/lib/types";
 import { 
   Brain, 
@@ -7,6 +8,7 @@ import {
   Activity, 
   Moon, 
   Eye,
+  Droplet,
   CheckCircle2,
   Clock,
   XCircle,
@@ -397,5 +399,90 @@ export function getClinicalTheme(text: string): {
     bgClass: "bg-emerald-400/10", 
     borderClass: "border-emerald-400/30", 
     tagClass: "bg-emerald-400/10 border-emerald-400/20 text-emerald-400" 
+  };
+}
+
+// ==========================================
+// TEMAS E ÍCONES PARA REGISTROS DE SAÚDE (SINTOMAS E SINAIS VITAIS)
+// ==========================================
+
+export function getRegistroTheme(tipo: string): {
+  icon: LucideIcon;
+  hex: string;
+  textClass: string;
+  bgClass: string;
+  borderClass: string;
+  tagClass: string;
+} {
+  const lower = (tipo || "").toLowerCase();
+
+  // 1. Pressão Arterial
+  if (lower.includes("pressao") || lower.includes("pressão") || lower.includes("pa")) {
+    return {
+      icon: HeartPulse,
+      hex: "#EF4444", // Vermelho / Coral
+      textClass: "text-coral",
+      bgClass: "bg-coral/10",
+      borderClass: "border-coral/30",
+      tagClass: "bg-coral/10 border-coral/20 text-coral",
+    };
+  }
+
+  // 2. Glicemia / Glicose
+  if (lower.includes("glicemia") || lower.includes("glicose") || lower.includes("açúcar")) {
+    return {
+      icon: Droplet,
+      hex: "#34D399", // Esmeralda
+      textClass: "text-emerald-400",
+      bgClass: "bg-emerald-400/10",
+      borderClass: "border-emerald-400/30",
+      tagClass: "bg-emerald-400/10 border-emerald-400/20 text-emerald-400",
+    };
+  }
+
+  // 3. Temperatura / Febre
+  if (lower.includes("temperatura") || lower.includes("febre")) {
+    return {
+      icon: Flame,
+      hex: "#F59E0B", // Âmbar
+      textClass: "text-amber-400",
+      bgClass: "bg-amber-400/10",
+      borderClass: "border-amber-400/30",
+      tagClass: "bg-amber-400/10 border-amber-400/20 text-amber-400",
+    };
+  }
+
+  // 4. Batimentos / Pulso / BPM
+  if (lower.includes("batimento") || lower.includes("pulso") || lower.includes("bpm")) {
+    return {
+      icon: Activity,
+      hex: "#38BDF8", // Azul Gelo
+      textClass: "text-ice",
+      bgClass: "bg-ice/10",
+      borderClass: "border-ice/30",
+      tagClass: "bg-ice/10 border-ice/20 text-ice",
+    };
+  }
+
+  // 5. Ansiedade / Humor / Mental
+  if (lower.includes("ansiedade") || lower.includes("humor") || lower.includes("panico")) {
+    return {
+      icon: ShieldAlert,
+      hex: "#8B5CF6", // Violeta
+      textClass: "text-violet-400",
+      bgClass: "bg-violet-400/10",
+      borderClass: "border-violet-400/30",
+      tagClass: "bg-violet-400/10 border-violet-400/20 text-violet-400",
+    };
+  }
+
+  // 6. Fallback padrão para Dor / Sintomas Gerais
+  return {
+    icon: Activity,
+    hex: "#7C9CB5",
+    textClass: "text-ink-muted",
+    bgClass: "bg-surface-raised",
+    borderClass: "border-surface-border",
+    tagClass: "bg-surface-raised border-surface-border text-ink-muted",
   };
 }
