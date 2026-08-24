@@ -1,7 +1,7 @@
 // app/saude/tratamentos/novo/page.tsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, Save, FolderHeart, ChevronRight, X, Stethoscope, Building2, MapPin, Plus } from "lucide-react";
@@ -40,7 +40,8 @@ export default function NovoTratamentoPage() {
   const hospitais = useLiveQuery(() => db.hospitais.toArray(), [], []) || [];
   const locais = useLiveQuery(() => db.locais.toArray(), [], []) || [];
 
-  const [personId, setPersonId] = useState<string>(persons[0]?.id || "");
+  // Garante a definição automática da pessoa padrão (ativa ou primeira da lista)
+  const [personId, setPersonId] = useState<string>("");
   const [nome, setNome] = useState("");
   const [cidIds, setCidIds] = useState<string[]>([]);
   const [status, setStatus] = useState<"ativo" | "concluido" | "suspenso">("ativo");
@@ -58,6 +59,17 @@ export default function NovoTratamentoPage() {
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
+  // Efeito para sincronizar a pessoa padrão automaticamente ao carregar os dados
+  useEffect(() => {
+    if (!personId) {
+      if (activePersonId) {
+        setPersonId(activePersonId as string);
+      } else if (persons && persons.length > 0 && persons[0]?.id) {
+        setPersonId(persons[0].id);
+      }
+    }
+  }, [activePersonId, persons, personId]);
+
   const medicosVinculados = medicos.filter(m => medicoIds.includes(m.id!));
   const hospitaisVinculados = hospitais.filter(h => hospitalIds.includes(h.id!));
   const locaisVinculados = locais.filter(l => localIds.includes(l.id!));
@@ -67,8 +79,10 @@ export default function NovoTratamentoPage() {
 
   const handleSubmit = async () => {
     trigger("vibrate");
-    if (!personId) {
-      setError("Selecione uma pessoa");
+    
+    const resolvedPersonId = personId || activePersonId || persons[0]?.id;
+    if (!resolvedPersonId) {
+      setError("Nenhuma pessoa padrão selecionada ou encontrada");
       trigger("error");
       return;
     }
@@ -93,7 +107,7 @@ export default function NovoTratamentoPage() {
 
           await tratamentosRepository.create({
             user_id: user.id,
-            person_id: personId || (activePersonId as string) || undefined,
+            person_id: resolvedPersonId as string,
             nome: nome.trim(),
             cid_ids: cleanCids,
             status,
@@ -178,26 +192,6 @@ export default function NovoTratamentoPage() {
                 </h2>
               </div>
             </div>
-          </motion.div>
-
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <p className="mb-3 text-sm font-medium text-ink-primary">Para quem? <span className="text-coral">*</span></p>
-            <div className="flex flex-wrap gap-2">
-              {persons.map((p: Person) => (
-                <button
-                  key={p.id}
-                  onClick={() => { trigger("vibrate"); setPersonId(p.id!); }}
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                    personId === p.id
-                      ? "border-ice bg-ice/12 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-            {error && !personId && <p className="mt-2 text-xs text-coral">Selecione uma pessoa</p>}
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="space-y-5 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
