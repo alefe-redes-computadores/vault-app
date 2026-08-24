@@ -84,7 +84,7 @@ function MedicamentoDetalhesContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // ESTADO DO MODAL DE DOSE RÁPIDA (INTEGRADO)
+  // ESTADO DO MODAL DE DOSE RÁPIDA (QUICK DOSE)
   const [isQuickDoseOpen, setIsQuickDoseOpen] = useState(false);
 
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);

@@ -99,7 +99,6 @@ interface DoseItemExt {
   isAvulsa?: boolean;
   motivoAvulsa?: string;
   logId?: string;
-  // Propriedades para Sintomas
   isSintoma?: boolean;
   sintomaId?: string;
   sintomaNome?: string;
@@ -165,10 +164,8 @@ export default function HojePage() {
   const [processandoDoseId, setProcessandoDoseId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ESTADO DO MODAL UNIFICADO DE DOSE RÁPIDA
   const [isDoseModalOpen, setIsDoseModalOpen] = useState(false);
 
-  // Escuta os parâmetros da URL para abrir os modais
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "dose") {
@@ -186,7 +183,6 @@ export default function HojePage() {
     const list: DoseItemExt[] = [];
     const chavesProgramadas = new Set<string>();
 
-    // 1. Processa os medicamentos contínuos programados para hoje
     for (const med of medicamentos || []) {
       if (!med.id || med.status === "descontinuado" || !med.estoque_horarios || med.estoque_horarios.length === 0) continue;
 
@@ -238,7 +234,6 @@ export default function HojePage() {
       }
     }
 
-    // 2. Processa as doses avulsas / manuais registradas para hoje (doseLogs)
     for (const log of (doseLogs || [])) {
       if (!log.medicamento_id) continue;
       const chave = `${log.medicamento_id}-${log.horario}`;
@@ -275,7 +270,6 @@ export default function HojePage() {
       }
     }
 
-    // 3. Processa os registros de sintomas para hoje
     for (const reg of registrosHoje) {
       if (reg.categoria === 'sintoma') {
         list.push({
@@ -301,7 +295,7 @@ export default function HojePage() {
     if (filtroCompromisso === "todos" || filtroCompromisso === "consultas") items = [...items, ...consultasHoje.map(c => ({ ...c, tipo: "consulta" }))];
     if (filtroCompromisso === "todos" || filtroCompromisso === "cirurgias") items = [...items, ...cirurgiasHoje.map(c => ({ ...c, tipo: "cirurgia" }))];
     if (filtroCompromisso === "todos" || filtroCompromisso === "exames") items = [...items, ...examesHoje.map(e => ({ ...e, tipo: "exame" }))];
-    return items;
+    return items.sort((a, b) => (a.horario || "00:00").localeCompare(b.horario || "00:00"));
   }, [consultasHoje, cirurgiasHoje, examesHoje, filtroCompromisso]);
 
   const assistenteDiario = useMemo(() => analisarRotinaDiaria(doses, compromissosFiltrados), [doses, compromissosFiltrados]);
@@ -554,7 +548,7 @@ export default function HojePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {item.horario && <span className="text-[10px] font-mono text-ink-faint">{item.horario}</span>}
+                        {item.horario && <span className="text-xs font-mono font-bold text-coral bg-coral/10 px-2 py-1 rounded-lg">{item.horario}</span>}
                         <span className={`text-[10px] font-bold ${
                           item.tipo === "consulta" ? "text-ice" :
                           item.tipo === "cirurgia" ? "text-coral" : "text-emerald-400"
@@ -797,7 +791,6 @@ export default function HojePage() {
           )}
         </section>
 
-        {/* MODAL UNIFICADO DE DOSE RÁPIDA (SUBSTITUI O ANTIGO BOTTOMSHEET) */}
         <QuickDoseModal
           isOpen={isDoseModalOpen}
           onClose={() => setIsDoseModalOpen(false)}
