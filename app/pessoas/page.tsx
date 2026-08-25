@@ -14,6 +14,7 @@ import {
   User,
   CheckCircle,
   Info,
+  ChevronRight,
 } from "lucide-react";
 
 import { usePersons } from "@/hooks/usePersons";
@@ -28,7 +29,6 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { personsRepository } from "@/lib/repositories/persons";
 import { documentsRepository } from "@/lib/repositories/documents";
-
 
 export default function PessoasPage() {
   const { trigger } = useHapticFeedback();
@@ -77,23 +77,19 @@ export default function PessoasPage() {
     setIsDeleting(id);
 
     try {
-      // 1. Busca os documentos vinculados (leitura direto no db tá liberado)
       const documents = await db.documents
         .where("person_id")
         .equals(id)
         .toArray();
 
-      // 2. Deleta os documentos em cascata passando pelo repositório (garante a syncQueue)
       for (const document of documents) {
         if (document.id) {
           await documentsRepository.delete(document.id);
         }
       }
 
-      // 3. Deleta a pessoa passando pelo repositório
       await personsRepository.delete(id);
 
-      // Dispara o push para a nuvem
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("sync:process"));
       }
@@ -173,107 +169,98 @@ export default function PessoasPage() {
                 return (
                   <motion.article
                     key={personId}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      duration: 0.22,
-                      delay: Math.min(index * 0.04, 0.28),
-                    }}
-                    className="group flex items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm transition-all duration-200 hover:border-surface-border active:scale-[0.99]"
+                    transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
+                    className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
                     style={{
-                      borderLeft: isDefault ? `4px solid ${person.color || "#38BDF8"}` : undefined,
+                      borderColor: isDefault ? `${person.color || "#38BDF8"}40` : "var(--surface-border)",
+                      borderLeft: isDefault ? `6px solid ${person.color || "#38BDF8"}` : undefined,
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => handlePersonClick(personId)}
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                    >
-                      {person.avatar_url ? (
-                        <img
-                          src={person.avatar_url}
-                          alt={person.name}
-                          className="h-12 w-12 shrink-0 rounded-full border border-surface-border/50 object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-surface-border/50 text-sm font-semibold text-white"
-                          style={{
-                            backgroundColor: person.color || "#38BDF8",
-                          }}
-                        >
-                          {person.name?.charAt(0).toUpperCase() || "P"}
-                        </div>
-                      )}
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
-                            {person.name}
-                          </h3>
-                          {isDefault && (
-                            <span className="flex items-center gap-0.5 rounded-full bg-ice/15 px-2 py-0.5 text-[9px] font-bold uppercase text-ice border border-ice/20">
-                              <CheckCircle size={10} />
-                              Ativa
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mt-1 space-y-1">
-                          {person.email && (
-                            <p className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
-                              <Mail size={12} strokeWidth={1.8} className="shrink-0" />
-                              <span className="truncate">{person.email}</span>
-                            </p>
-                          )}
-                          {person.phone && (
-                            <p className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
-                              <Phone size={12} strokeWidth={1.8} className="shrink-0" />
-                              <span className="truncate">{person.phone}</span>
-                            </p>
-                          )}
-                          {!person.email && !person.phone && (
-                            <p className="flex items-center gap-1.5 text-xs text-ink-faint">
-                              <User size={12} strokeWidth={1.8} className="shrink-0" />
-                              <span>Sem informações adicionais</span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-
-                    <div className="ml-3 flex shrink-0 items-center gap-1">
+                    <div className="p-4 pl-5">
                       <button
                         type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          trigger("vibrate");
-                          router.push(`/pessoas/editar?id=${personId}`);
-                        }}
-                        aria-label={`Editar ${person.name}`}
-                        className="flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-all duration-200 hover:bg-surface-raised hover:text-ice active:scale-95"
+                        onClick={() => handlePersonClick(personId)}
+                        className="flex w-full items-start gap-3.5 text-left outline-none"
                       >
-                        <Edit size={16} strokeWidth={1.9} />
-                      </button>
-
-                      {!isDefault && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleDeleteClick(personId, person.name);
+                        <div
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
+                          style={{
+                            backgroundColor: `${person.color || "#38BDF8"}15`,
+                            borderColor: `${person.color || "#38BDF8"}30`,
+                            color: person.color || "#38BDF8",
                           }}
-                          disabled={isDeleting === personId}
-                          aria-label={`Remover ${person.name}`}
-                          className="flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-all duration-200 hover:bg-surface-raised hover:text-coral active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {isDeleting === personId ? (
-                            <Loader2 size={16} className="animate-spin text-coral" />
+                          {person.avatar_url ? (
+                            <img src={person.avatar_url} alt={person.name} className="h-full w-full rounded-2xl object-cover" />
                           ) : (
-                            <Trash2 size={16} strokeWidth={1.9} />
+                            <span className="text-lg font-bold">{person.name?.charAt(0).toUpperCase() || "P"}</span>
                           )}
-                        </button>
-                      )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-baseline gap-2">
+                            <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
+                              {person.name}
+                            </h3>
+                            {isDefault && (
+                              <span className="shrink-0 whitespace-nowrap flex items-center gap-0.5 rounded-full bg-ice/15 px-2 py-0.5 text-[9px] font-bold uppercase text-ice border border-ice/20">
+                                <CheckCircle size={10} />
+                                Ativa
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-1 space-y-1">
+                            {person.email && (
+                              <p className="flex items-center gap-1.5 text-xs text-ink-muted truncate">
+                                <Mail size={12} strokeWidth={1.8} className="shrink-0" />
+                                <span className="truncate">{person.email}</span>
+                              </p>
+                            )}
+                            {person.phone && (
+                              <p className="flex items-center gap-1.5 text-xs text-ink-muted truncate">
+                                <Phone size={12} strokeWidth={1.8} className="shrink-0" />
+                                <span className="truncate">{person.phone}</span>
+                              </p>
+                            )}
+                            {!person.email && !person.phone && (
+                              <p className="flex items-center gap-1.5 text-xs text-ink-faint">
+                                <User size={12} strokeWidth={1.8} className="shrink-0" />
+                                <span>Sem informações adicionais</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); trigger("vibrate"); router.push(`/pessoas/editar?id=${personId}`); }}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted transition-colors hover:text-ice active:scale-95"
+                            aria-label={`Editar ${person.name}`}
+                          >
+                            <Edit size={14} />
+                          </button>
+                          {!isDefault && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteClick(personId, person.name); }}
+                              disabled={isDeleting === personId}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted transition-colors hover:text-coral hover:border-coral/30 active:scale-95 disabled:opacity-50"
+                              aria-label={`Remover ${person.name}`}
+                            >
+                              {isDeleting === personId ? (
+                                <Loader2 size={14} className="animate-spin text-coral" />
+                              ) : (
+                                <Trash2 size={14} />
+                              )}
+                            </button>
+                          )}
+                          <ChevronRight size={16} className="text-ink-faint" />
+                        </div>
+                      </button>
                     </div>
                   </motion.article>
                 );

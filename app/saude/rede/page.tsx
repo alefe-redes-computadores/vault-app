@@ -282,24 +282,38 @@ export default function RedeSaudePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              aria-label="Voltar"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
+      <main className="relative min-h-screen bg-void pb-28">
+        {/* ======================================================
+            HEADER
+            ====================================================== */}
 
-            <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">REDE DE APOIO</p>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
-                Minha Rede de Saúde
-              </h1>
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
+              >
+                <ArrowLeft size={18} />
+              </button>
+
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">REDE DE APOIO</p>
+                <h1 className="truncate font-display text-xl font-semibold text-ink-primary">
+                  Minha Rede de Saúde
+                </h1>
+              </div>
             </div>
           </div>
+
+          {/* ----------------------------------------------------
+              TABS
+              ---------------------------------------------------- */}
 
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {tabs.map((t) => {
@@ -308,6 +322,7 @@ export default function RedeSaudePage() {
               return (
                 <button
                   key={t.id}
+                  type="button"
                   onClick={() => handleTabChange(t.id)}
                   className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
                     active
@@ -322,6 +337,10 @@ export default function RedeSaudePage() {
             })}
           </div>
 
+          {/* ----------------------------------------------------
+              BUSCA (para tabs que não são visão geral)
+              ---------------------------------------------------- */}
+
           {activeTab !== 'visao-geral' && (
             <div className="relative mt-4">
               <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -329,13 +348,17 @@ export default function RedeSaudePage() {
                 placeholder={`Buscar ${activeTab === 'medicos' ? 'médico' : activeTab === 'farmacias' ? 'farmácia' : activeTab === 'hospitais' ? 'hospital' : 'tratamento'}...`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="border-surface-border/50 bg-surface-raised pl-9"
+                className="h-11 w-full rounded-2xl bg-surface-raised/60 pl-9 text-sm"
               />
             </div>
           )}
         </header>
 
-        <section className="px-5 pt-5 space-y-4">
+        {/* ======================================================
+            CONTEÚDO
+            ====================================================== */}
+
+        <section className="space-y-3.5 px-5 pt-4">
           <AnimatePresence mode="wait">
             {activeTab === 'visao-geral' && (
               <motion.div
@@ -357,6 +380,7 @@ export default function RedeSaudePage() {
                       {alertas.slice(0, 5).map((alerta, idx) => (
                         <button
                           key={idx}
+                          type="button"
                           onClick={() => { trigger("vibrate"); router.push(alerta.link); }}
                           className={`flex items-start gap-2 text-xs w-full text-left p-2 rounded-xl transition-colors hover:bg-surface-raised/50 ${
                             alerta.urgencia === 'alta' ? 'border-l-2 border-coral pl-2' :
@@ -436,6 +460,7 @@ export default function RedeSaudePage() {
                 key="medicos"
                 items={filteredMedicosSearch}
                 icon={Stethoscope}
+                color="#38BDF8"
                 emptyMessage="Nenhum médico vinculado a esta pessoa (adicione uma consulta ou medicamento para vincular)."
                 onItemClick={(item) => router.push(`/saude/medicos/detalhes?id=${item.id}`)}
                 renderItem={(item) => (
@@ -459,6 +484,7 @@ export default function RedeSaudePage() {
                 key="farmacias"
                 items={filteredFarmaciasSearch}
                 icon={Pill}
+                color="#F59E0B"
                 emptyMessage="Nenhuma farmácia vinculada (adicione uma renovação de remédio para vincular)."
                 onItemClick={(item) => router.push(`/saude/farmacias/detalhes?id=${item.id}`)}
                 renderItem={(item) => (
@@ -480,6 +506,7 @@ export default function RedeSaudePage() {
                 key="hospitais"
                 items={filteredHospitaisSearch}
                 icon={Building2}
+                color="#8B5CF6"
                 emptyMessage="Nenhum hospital vinculado (adicione uma cirurgia ou consulta para vincular)."
                 onItemClick={(item) => router.push(`/saude/hospitais/detalhes?id=${item.id}`)}
                 renderItem={(item) => (
@@ -501,6 +528,7 @@ export default function RedeSaudePage() {
                 key="tratamentos"
                 items={filteredTratamentosSearch}
                 icon={FolderHeart}
+                color="#8B5CF6"
                 emptyMessage="Nenhum tratamento cadastrado para esta pessoa."
                 onItemClick={(item) => router.push(`/saude/tratamentos/detalhes?id=${item.id}`)}
                 renderItem={(item) => {
@@ -534,6 +562,10 @@ export default function RedeSaudePage() {
   );
 }
 
+/* ============================================================
+   COMPONENTES INTERNOS
+   ============================================================ */
+
 interface ResumoCardProps {
   icon: React.ElementType;
   label: string;
@@ -544,9 +576,12 @@ interface ResumoCardProps {
 }
 
 function ResumoCard({ icon: Icon, label, value, sub, color, onClick }: ResumoCardProps) {
+  const { trigger } = useHapticFeedback();
+
   return (
     <button
-      onClick={onClick}
+      type="button"
+      onClick={() => { trigger("vibrate"); onClick(); }}
       className="flex flex-col items-start justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.98] hover:bg-surface-raised/80"
     >
       <div 
@@ -567,12 +602,20 @@ function ResumoCard({ icon: Icon, label, value, sub, color, onClick }: ResumoCar
 interface TabListProps<T> {
   items: T[];
   icon: React.ElementType;
+  color?: string;
   emptyMessage: string;
   onItemClick: (item: T) => void;
   renderItem: (item: T) => React.ReactNode;
 }
 
-function TabList<T extends { id?: string }>({ items, icon: Icon, emptyMessage, onItemClick, renderItem }: TabListProps<T>) {
+function TabList<T extends { id?: string }>({ 
+  items, 
+  icon: Icon, 
+  color = "#38BDF8",
+  emptyMessage, 
+  onItemClick, 
+  renderItem 
+}: TabListProps<T>) {
   const { trigger } = useHapticFeedback();
 
   if (items.length === 0) {
@@ -599,22 +642,42 @@ function TabList<T extends { id?: string }>({ items, icon: Icon, emptyMessage, o
   return (
     <div className="space-y-3">
       {items.map((item, index) => (
-        <motion.button
-          key={item.id}
-          initial={{ opacity: 0, y: 10 }}
+        <motion.article
+          key={item.id || index}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.3) }}
-          onClick={() => { trigger("vibrate"); onItemClick(item); }}
-          className="flex w-full items-start gap-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+          transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
+          className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
+          style={{
+            borderColor: `${color}40`,
+            borderLeft: `6px solid ${color}`,
+          }}
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-            <Icon size={18} />
+          <div className="p-4 pl-5">
+            <button
+              type="button"
+              onClick={() => { trigger("vibrate"); onItemClick(item); }}
+              className="flex w-full items-start gap-3.5 text-left outline-none"
+            >
+              <div
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
+                style={{
+                  backgroundColor: `${color}15`,
+                  borderColor: `${color}30`,
+                  color: color,
+                }}
+              >
+                <Icon size={22} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                {renderItem(item)}
+              </div>
+
+              <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
+            </button>
           </div>
-          <div className="min-w-0 flex-1">
-            {renderItem(item)}
-          </div>
-          <ChevronRight size={16} className="mt-1 shrink-0 text-ink-faint" />
-        </motion.button>
+        </motion.article>
       ))}
     </div>
   );

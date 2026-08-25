@@ -27,8 +27,12 @@ import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
-import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils"; // INJEÇÃO VISUAL
+import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
 import type { Renovacao, Medicamento } from "@/lib/types";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -50,6 +54,10 @@ type RenovacaoEnriquecida = Renovacao & {
   diasRestantes: number | null;
 };
 
+/* ============================================================
+   PÁGINA
+   ============================================================ */
+
 export default function RenovacoesPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -62,8 +70,6 @@ export default function RenovacoesPage() {
   const { medicamentos: rawMedicamentos } = useMedicamentos();
   const renovacoes = rawRenovacoes ?? [];
   const medicamentos = rawMedicamentos ?? [];
-
-  const personAccent = activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8';
 
   const medicamentoMap = useMemo(() => new Map(medicamentos.map((m) => [m.id, m])), [medicamentos]);
 
@@ -87,7 +93,6 @@ export default function RenovacoesPage() {
       };
     });
   }, [renovacoes, medicamentoMap, activePersonId]);
-
 
   const filteredRenovacoes = useMemo(() => {
     let result = renovacoesEnriquecidas;
@@ -136,20 +141,36 @@ export default function RenovacoesPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-            <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">HISTÓRICO FINANCEIRO</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary truncate">Histórico de Renovações</h1>
+      <main className="relative min-h-screen bg-void pb-28">
+        {/* ======================================================
+            HEADER
+            ====================================================== */}
+
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
+              >
+                <ArrowLeft size={18} />
+              </button>
+
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">HISTÓRICO FINANCEIRO</p>
+                <h1 className="truncate font-display text-xl font-semibold text-ink-primary">Histórico de Renovações</h1>
+              </div>
             </div>
           </div>
+
+          {/* ----------------------------------------------------
+              BUSCA
+              ---------------------------------------------------- */}
 
           <div className="relative mt-4">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -157,16 +178,21 @@ export default function RenovacoesPage() {
               placeholder="Buscar por medicamento ou notas..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="border-surface-border/50 bg-surface-raised pl-9"
+              className="h-11 w-full rounded-2xl bg-surface-raised/60 pl-9 text-sm"
             />
           </div>
 
+          {/* ----------------------------------------------------
+              FILTROS
+              ---------------------------------------------------- */}
+
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Filter size={14} className="text-ink-muted" />
+            <Filter size={14} className="text-ink-muted shrink-0" />
 
             <button
+              type="button"
               onClick={() => { trigger("vibrate"); setFiltroPeriodo(filtroPeriodo === "30dias" ? "todos" : "30dias"); }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroPeriodo === "30dias"
                   ? "border-ice bg-ice/20 text-ice"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
@@ -176,8 +202,9 @@ export default function RenovacoesPage() {
             </button>
 
             <button
+              type="button"
               onClick={() => { trigger("vibrate"); setFiltroPeriodo(filtroPeriodo === "60dias" ? "todos" : "60dias"); }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroPeriodo === "60dias"
                   ? "border-ice bg-ice/20 text-ice"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
@@ -189,33 +216,34 @@ export default function RenovacoesPage() {
             <div className="w-px h-5 bg-surface-border/40 mx-1" />
 
             <button
+              type="button"
               onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "vencida" ? "todos" : "vencida"); }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroStatus === "vencida"
                   ? "border-coral bg-coral/20 text-coral"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
-              title="Filtrar remédios com receita atualmente vencida"
             >
               Receita Vencida
             </button>
 
             <button
+              type="button"
               onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "valida" ? "todos" : "valida"); }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroStatus === "valida"
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
-              title="Filtrar remédios com receita atualmente válida"
             >
               Receita Válida
             </button>
 
             {(filtroPeriodo !== "todos" || filtroStatus !== "todos") && (
               <button
+                type="button"
                 onClick={() => { trigger("vibrate"); setFiltroPeriodo("todos"); setFiltroStatus("todos"); }}
-                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1 transition-all active:scale-95"
+                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
               >
                 <X size={12} /> Limpar
               </button>
@@ -223,7 +251,11 @@ export default function RenovacoesPage() {
           </div>
         </header>
 
-        <section className="px-5 pt-5 space-y-3">
+        {/* ======================================================
+            LISTA
+            ====================================================== */}
+
+        <section className="space-y-3.5 px-5 pt-4">
           {filteredRenovacoes.length === 0 ? (
             <EmptyState
               icon={FileWarning}
@@ -235,71 +267,96 @@ export default function RenovacoesPage() {
               }
             />
           ) : (
-            filteredRenovacoes.map((renovacao) => {
-              // TEMA DINÂMICO
+            filteredRenovacoes.map((renovacao, index) => {
               const theme = getClinicalTheme(renovacao.medicamentoNome);
+              const borderColor = renovacao.vencida ? "#EF4444" : theme.hex;
 
               return (
-                <motion.div
+                <motion.article
                   key={renovacao.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${renovacao.id}`); }}
-                  className="flex w-full items-start gap-3.5 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden cursor-pointer"
-                  style={{ borderLeft: `6px solid ${renovacao.vencida ? "#EF4444" : theme.hex}` }}
+                  transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
+                  className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
+                  style={{
+                    borderColor: `${borderColor}40`,
+                    borderLeft: `6px solid ${borderColor}`,
+                  }}
                 >
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${theme.bgClass} ${theme.borderClass} ${theme.textClass} ml-1`}>
-                    <Pill size={22} />
+                  <div className="p-4 pl-5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        router.push(`/saude/renovacao/detalhes?id=${renovacao.id}`);
+                      }}
+                      className="flex w-full items-start gap-3.5 text-left outline-none"
+                    >
+                      <div
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
+                        style={{
+                          backgroundColor: `${theme.hex}15`,
+                          borderColor: `${theme.hex}30`,
+                          color: theme.hex,
+                        }}
+                      >
+                        <Pill size={22} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-baseline gap-2">
+                          <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
+                            {renovacao.medicamentoNome}
+                          </h3>
+                          <span className="shrink-0 whitespace-nowrap text-xs font-mono font-medium text-emerald-400">
+                            {renovacao.preco ? formatCurrency(renovacao.preco) : "SUS / Gratuito"}
+                          </span>
+                        </div>
+
+                        <p className="mt-0.5 text-xs text-ink-muted">{renovacao.medicamentoDosagem}</p>
+
+                        {/* Status e metadados */}
+
+                        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+                          <span className="flex items-center gap-1 font-mono">
+                            <Calendar size={12} className="text-ice" /> {formatDateDisplay(renovacao.data)}
+                          </span>
+
+                          {renovacao.vencida ? (
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-coral/20 text-coral px-2 py-0.5 rounded-full border border-coral/30">
+                              <AlertCircle size={10} /> Rec. Vencida
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-400/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-400/30">
+                              <CheckCircle2 size={10} /> Rec. Válida
+                            </span>
+                          )}
+
+                          {renovacao.diasRestantes !== null && !renovacao.vencida && renovacao.diasRestantes >= 0 && (
+                            <span
+                              className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                                renovacao.diasRestantes <= 7
+                                  ? "bg-amber-400/20 text-amber-400 border border-amber-400/30"
+                                  : "bg-surface-raised text-ink-muted border border-surface-border/40"
+                              }`}
+                            >
+                              <Clock size={10} /> Faltam {renovacao.diasRestantes} dias
+                            </span>
+                          )}
+
+                          {renovacao.observacoes && (
+                            <span className="truncate max-w-[150px] text-ink-muted flex items-center gap-1">
+                              <MessageCircle size={11} className="shrink-0" />
+                              {renovacao.observacoes}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
+                    </button>
                   </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-base font-semibold text-ink-primary">{renovacao.medicamentoNome}</p>
-                      <span className="shrink-0 text-xs font-mono font-medium text-emerald-400">
-                        {renovacao.preco ? formatCurrency(renovacao.preco) : "SUS / Gratuito"}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-ink-muted mt-0.5">{renovacao.medicamentoDosagem}</p>
-
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                      <span className="flex items-center gap-1 font-mono">
-                        <Calendar size={12} className="text-ice" /> {formatDateDisplay(renovacao.data)}
-                      </span>
-
-                      {renovacao.vencida ? (
-                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-coral/20 text-coral px-2 py-0.5 rounded-full border border-coral/30">
-                          <AlertCircle size={10} /> Rec. Vencida
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-400/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-400/30">
-                          <CheckCircle2 size={10} /> Rec. Válida
-                        </span>
-                      )}
-
-                      {renovacao.diasRestantes !== null && !renovacao.vencida && renovacao.diasRestantes >= 0 && (
-                        <span
-                          className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                            renovacao.diasRestantes <= 7
-                              ? "bg-amber-400/20 text-amber-400 border border-amber-400/30"
-                              : "bg-surface-raised text-ink-muted border border-surface-border/40"
-                          }`}
-                        >
-                          <Clock size={10} /> Faltam {renovacao.diasRestantes} dias
-                        </span>
-                      )}
-
-                      {renovacao.observacoes && (
-                        <span className="truncate max-w-[150px] text-ink-muted flex items-center gap-1">
-                          <MessageCircle size={11} className="shrink-0" />
-                          {renovacao.observacoes}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
-                </motion.div>
+                </motion.article>
               );
             })
           )}

@@ -1678,9 +1678,11 @@ export function useSyncQueue() {
 
           const errorMessage = error instanceof Error ? error.message : String(error);
 
+          // 🛡️ ADICIONADO: Salva a mensagem exata do erro no Dexie para exibir na interface
           await db.syncQueue.update(item.id!, {
             retry_count: nextRetryCount,
             failed,
+            error: errorMessage,
           });
 
           if (failed) {
@@ -1689,6 +1691,7 @@ export function useSyncQueue() {
             addLog(`⚠️ Erro em ${item.table} (tentativa ${nextRetryCount}/${MAX_RETRIES}): ${errorMessage}`, "error");
           }
         }
+
       }
 
       if (successCount > 0) {

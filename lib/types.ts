@@ -682,7 +682,9 @@ export interface SyncQueueItem {
   retry_count?: number;
   failed?: boolean;
   next_retry_at?: string | null;
+  error?: string | null; 
 }
+
 
 // ============================================================
 // 5. ENTIDADES DE SAÚDE

@@ -1,111 +1,101 @@
+// components/VaultCard.tsx
 "use client";
 
-import { Vault } from "@/lib/types";
-import {
-  Users,
-  ChevronRight,
-  Home,
-  Heart,
-  Briefcase,
-  BookOpen,
-  Plane,
-  Car,
-  PawPrint,
-  LucideIcon,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { ChevronRight, Users, Lock, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useHapticFeedback } from "@/lib/haptics";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  home: Home,
-  heart: Heart,
-  briefcase: Briefcase,
-  "book-open": BookOpen,
-  plane: Plane,
-  car: Car,
-  "paw-print": PawPrint,
-  users: Users,
-};
+import type { Vault } from "@/lib/types";
 
 interface VaultCardProps {
   vault: Vault;
-  memberCount?: number;
+  memberCount: number;
 }
 
-export function VaultCard({ vault, memberCount = 0 }: VaultCardProps) {
+const VAULT_COLORS = {
+  purple: "#8B5CF6",
+  blue: "#38BDF8",
+  green: "#34D399",
+  amber: "#F59E0B",
+  coral: "#EF4444",
+  pink: "#EC4899",
+  indigo: "#6366F1",
+  teal: "#14B8A6",
+};
+
+function getVaultColor(colorKey?: string): string {
+  if (colorKey && colorKey in VAULT_COLORS) {
+    return VAULT_COLORS[colorKey as keyof typeof VAULT_COLORS];
+  }
+  return VAULT_COLORS.purple;
+}
+
+export function VaultCard({ vault, memberCount }: VaultCardProps) {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
-
-  const handlePress = () => {
-    trigger("vibrate");
-    router.push(`/vaults/detalhes?id=${vault.id}`);
-  };
-
-  const Icon = ICON_MAP[vault.icon] || Home;
-  // Fallback agora usa o teal da identidade nova em vez do sky-blue antigo
-  const accent = vault.color || "#2FE3C9";
+  const color = getVaultColor(vault.color);
 
   return (
-    <button
-      onClick={handlePress}
-      className="group relative w-full overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface text-left shadow-sm transition-all duration-200 active:scale-[0.985] hover:border-ice/20 hover:shadow-lg"
+    <motion.article
+      className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
+      style={{
+        borderColor: `${color}40`,
+        borderLeft: `6px solid ${color}`,
+      }}
     >
-      <div
-        className="absolute inset-y-0 left-0 w-[3px]"
-        style={{ backgroundColor: accent }}
-      />
-
-      <div
-        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-        style={{
-          background: `linear-gradient(135deg, ${accent}10 0%, transparent 55%)`,
-        }}
-      />
-
-      <div className="relative flex items-start gap-3 p-4 pl-5">
-        <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-          style={{
-            background: `linear-gradient(135deg, ${accent}26, ${accent}0d)`,
+      <div className="p-4 pl-5">
+        <button
+          type="button"
+          onClick={() => {
+            trigger("vibrate");
+            router.push(`/vaults/detalhes?id=${vault.id}`);
           }}
+          className="flex w-full items-start gap-3.5 text-left outline-none"
         >
-          <Icon size={22} style={{ color: accent }} />
-        </div>
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
+            style={{
+              backgroundColor: `${color}15`,
+              borderColor: `${color}30`,
+              color,
+            }}
+          >
+            <Lock size={22} />
+          </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="truncate font-display text-[15px] font-semibold text-ink-primary">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-baseline gap-2">
+              <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
                 {vault.name}
               </h3>
-
-              {vault.description && (
-                <p className="mt-1 line-clamp-2 text-sm leading-5 text-ink-muted">
-                  {vault.description}
-                </p>
-              )}
+              {/* {vault.isDefault && (
+             <span className="shrink-0 whitespace-nowrap                  rounded-full bg-ice/10 px-2 py-0.5 text-[9px] font-        bold uppercase text-ice border border-ice/20">
+            Principal
+            </span>
+          )} */
+              }
             </div>
 
-            <ChevronRight
-              size={18}
-              className="mt-0.5 shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-ink-muted"
-            />
+            {vault.description && (
+              <p className="mt-1 text-sm text-ink-muted line-clamp-2">{vault.description}</p>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="flex items-center gap-1.5 text-xs text-ink-muted">
+                <Users size={14} className="text-ice" />
+                {memberCount} membro{memberCount !== 1 ? "s" : ""}
+              </span>
+              {memberCount > 1 && (
+                <span className="text-[10px] font-medium text-ice bg-ice/10 px-2 py-0.5 rounded-full border border-ice/20">
+                  Compartilhado
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
-              style={{
-                color: accent,
-                backgroundColor: `${accent}14`,
-              }}
-            >
-              <Users size={12} />
-              {memberCount} membro{memberCount !== 1 ? "s" : ""}
-            </span>
-          </div>
-        </div>
+          <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
+        </button>
       </div>
-    </button>
+    </motion.article>
   );
 }

@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -828,21 +829,35 @@ export default function MaisPage() {
             <div className="space-y-2">
               {/* Sincronizar */}
 
+                            {/* Sincronizar */}
               <button
-                onClick={handleSync}
-                disabled={!isOnline || isSyncing}
+                onClick={() => {
+                  if (pendingQueueCount > 0) {
+                    trigger("vibrate");
+                    router.push("/diagnostico");
+                  } else {
+                    handleSync();
+                  }
+                }}
+                disabled={!isOnline && pendingQueueCount === 0}
                 className={`flex w-full items-center gap-4 rounded-[22px] border p-3.5 text-left shadow-sm transition-all active:scale-[0.985] ${
-                  !isOnline || isSyncing
+                  !isOnline
                     ? "border-surface-border/50 bg-surface/50 opacity-60"
+                    : pendingQueueCount > 0
+                    ? "border-coral/40 bg-coral/5 hover:bg-coral/10"
                     : "border-surface-border/50 bg-surface hover:bg-surface-raised/80"
                 }`}
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border ${
+                  pendingQueueCount > 0 ? "border-coral/20 bg-coral/10 text-coral" : "border-ice/20 bg-ice/10 text-ice"
+                }`}>
                   {isSyncing ? (
                     <Loader2
                       size={18}
                       className="animate-spin"
                     />
+                  ) : pendingQueueCount > 0 ? (
+                    <AlertTriangle size={18} />
                   ) : (
                     <RefreshCw size={18} />
                   )}
@@ -850,7 +865,7 @@ export default function MaisPage() {
 
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-ink-primary">
-                    Sincronizar agora
+                    {pendingQueueCount > 0 ? "Fila com pendências" : "Sincronizar agora"}
                   </p>
 
                   <p className="truncate text-xs text-ink-muted">
@@ -859,11 +874,7 @@ export default function MaisPage() {
                       : isSyncing
                       ? "Baixando e enviando dados..."
                       : pendingQueueCount > 0
-                      ? `${pendingQueueCount} ${
-                          pendingQueueCount === 1
-                            ? "item pendente"
-                            : "itens pendentes"
-                        } na fila`
+                      ? `⚠️ ${pendingQueueCount} ${pendingQueueCount === 1 ? "item travado" : "itens travados"} — Clique para ver`
                       : `${totalLocalItems} registros locais · Sincronizado`}
                   </p>
                 </div>
@@ -873,6 +884,7 @@ export default function MaisPage() {
                   className="shrink-0 text-ink-faint"
                 />
               </button>
+
 
               {/* Exportar */}
 

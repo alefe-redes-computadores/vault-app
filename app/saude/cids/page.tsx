@@ -21,8 +21,12 @@ import { Input } from "@/components/ui/Input";
 import { useCids } from "@/hooks/useCids";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { getCidInsights } from "@/lib/health-insights";
-import { getClinicalTheme } from "@/lib/health-utils"; // UTILITÁRIO IMPORTADO
+import { getClinicalTheme } from "@/lib/health-utils";
 import { EmptyState } from "@/components/EmptyState";
+
+/* ============================================================
+   PÁGINA
+   ============================================================ */
 
 export default function CidsPage() {
   const { trigger } = useHapticFeedback();
@@ -37,7 +41,6 @@ export default function CidsPage() {
   const filteredCids = useMemo(() => {
     if (!cids) return [];
     
-    // FILTRO ROBUSTO MANTIDO INTACTO
     let result = cids.filter((c) => {
       return !activePersonId || !c.person_id || c.person_id === activePersonId;
     });
@@ -57,23 +60,37 @@ export default function CidsPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-            <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-violet-400">REGISTROS CLÍNICOS</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary truncate">
-                CIDs e Diagnósticos
-              </h1>
-              <p className="text-xs text-ink-muted">{filteredCids.length} registros</p>
+      <main className="relative min-h-screen bg-void pb-28">
+        {/* ======================================================
+            HEADER
+            ====================================================== */}
+
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
+              >
+                <ArrowLeft size={18} />
+              </button>
+
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-violet-400">REGISTROS CLÍNICOS</p>
+                <h1 className="truncate font-display text-xl font-semibold text-ink-primary">CIDs e Diagnósticos</h1>
+                <p className="text-xs text-ink-muted">{filteredCids.length} registros</p>
+              </div>
             </div>
           </div>
+
+          {/* ----------------------------------------------------
+              BUSCA
+              ---------------------------------------------------- */}
 
           <div className="relative mt-4">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -81,12 +98,16 @@ export default function CidsPage() {
               placeholder="Buscar por código ou descrição..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="border-surface-border/50 bg-surface-raised pl-9"
+              className="h-11 w-full rounded-2xl bg-surface-raised/60 pl-9 text-sm"
             />
           </div>
         </header>
 
-        <section className="px-5 pt-5 space-y-3">
+        {/* ======================================================
+            LISTA
+            ====================================================== */}
+
+        <section className="space-y-3.5 px-5 pt-4">
           {filteredCids.length === 0 ? (
             <EmptyState
               icon={FileText}
@@ -98,64 +119,81 @@ export default function CidsPage() {
               }
             />
           ) : (
-            filteredCids.map((cid) => {
+            filteredCids.map((cid, index) => {
               const insight = getCidInsights(cid.codigo);
               const medico = cid.medico_id ? medicosMap.get(cid.medico_id) : null;
-              
-              // TEMA DINÂMICO APLICADO
               const theme = getClinicalTheme(cid.descricao || cid.codigo);
               const IconComp = theme.icon;
 
               return (
-                <motion.button
+                <motion.article
                   key={cid.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  onClick={() => {
-                    trigger("vibrate");
-                    router.push(`/saude/cids/detalhes?id=${cid.id}`);
+                  transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
+                  className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
+                  style={{
+                    borderColor: `${theme.hex}40`,
+                    borderLeft: `6px solid ${theme.hex}`,
                   }}
-                  className="flex w-full items-start gap-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80 relative overflow-hidden"
-                  style={{ borderLeft: `6px solid ${theme.hex}` }}
                 >
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
-                    <IconComp size={22} />
+                  <div className="p-4 pl-5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        router.push(`/saude/cids/detalhes?id=${cid.id}`);
+                      }}
+                      className="flex w-full items-start gap-3.5 text-left outline-none"
+                    >
+                      <div
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
+                        style={{
+                          backgroundColor: `${theme.hex}15`,
+                          borderColor: `${theme.hex}30`,
+                          color: theme.hex,
+                        }}
+                      >
+                        <IconComp size={22} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-baseline gap-2">
+                          <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
+                            {cid.codigo}
+                          </h3>
+                          <span className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${theme.tagClass}`}>
+                            CID
+                          </span>
+                          {insight && (
+                            <span className="shrink-0 whitespace-nowrap text-[9px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">
+                              {insight.categoria}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="truncate text-xs text-ink-muted mt-0.5">{cid.descricao}</p>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
+                          {cid.data_diagnostico && (
+                            <span className="flex items-center gap-1">
+                              <Calendar size={12} className="text-ink-faint" />
+                              {new Date(cid.data_diagnostico).toLocaleDateString("pt-BR")}
+                            </span>
+                          )}
+                          {medico && (
+                            <span className="flex items-center gap-1">
+                              <Stethoscope size={12} className="text-ice" />
+                              Dr(a). {medico.nome}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
+                    </button>
                   </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-ink-primary">
-                        {cid.codigo}
-                      </p>
-                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${theme.tagClass}`}>
-                        CID
-                      </span>
-                      {insight && (
-                        <span className="shrink-0 text-[9px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">
-                          {insight.categoria}
-                        </span>
-                      )}
-                    </div>
-                    <p className="truncate text-xs text-ink-muted mt-0.5">{cid.descricao}</p>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-                      {cid.data_diagnostico && (
-                        <span className="flex items-center gap-1">
-                          <Calendar size={12} className="text-ink-faint" />
-                          {new Date(cid.data_diagnostico).toLocaleDateString("pt-BR")}
-                        </span>
-                      )}
-                      {medico && (
-                        <span className="flex items-center gap-1">
-                          <Stethoscope size={12} className="text-ice" />
-                          Dr(a). {medico.nome}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <ChevronRight size={16} className="mt-1 shrink-0 text-ink-faint" />
-                </motion.button>
+                </motion.article>
               );
             })
           )}

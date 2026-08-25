@@ -27,7 +27,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { getBankLogoUrl } from "@/lib/utils/card-helper";
 import { ScrollToTop } from "@/components/ScrollToTop";
 
-const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
+const CONTA_COLOR = "#34D399";
 
 export default function ContasPage() {
   const { trigger } = useHapticFeedback();
@@ -143,48 +143,63 @@ export default function ContasPage() {
             />
           ) : (
             <div className="space-y-3">
-              {cards.map((item) => {
+              {cards.map((item, index) => {
                 const logoUrl = getBankLogoUrl(item.bank_name);
 
                 return (
-                  <motion.div
+                  <motion.article
                     key={item.id}
-                    variants={fadeUp}
-                    initial="initial"
-                    animate="animate"
-                    onClick={() => { trigger("vibrate"); router.push(`/contas/detalhes?id=${item.id}`); }}
-                    className="group flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 transition-all active:scale-[0.99] hover:border-ice/30 shadow-sm"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
+                    className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
+                    style={{
+                      borderColor: `${CONTA_COLOR}40`,
+                      borderLeft: `6px solid ${CONTA_COLOR}`,
+                    }}
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised overflow-hidden">
-                        {logoUrl ? (
-                          <img src={logoUrl} alt={item.bank_name} className="h-7 w-7 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                        ) : (
-                          <Landmark size={20} className="text-ice" />
-                        )}
-                      </div>
-
-                      <div className="min-w-0">
-                        <h2 className="font-display text-sm font-semibold truncate text-ink-primary">
-                          {isPrivate ? "••••••••••••" : item.title}
-                        </h2>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-ink-muted capitalize">{isPrivate ? "••••••" : item.bank_name}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
+                    <div className="p-4 pl-5">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id!); }}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-faint hover:bg-coral/10 hover:text-coral transition-colors"
-                        aria-label="Excluir conta"
+                        type="button"
+                        onClick={() => { trigger("vibrate"); router.push(`/contas/detalhes?id=${item.id}`); }}
+                        className="flex w-full items-start gap-3.5 text-left outline-none"
                       >
-                        <Trash2 size={16} />
+                        <div
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
+                          style={{
+                            backgroundColor: `${CONTA_COLOR}15`,
+                            borderColor: `${CONTA_COLOR}30`,
+                            color: CONTA_COLOR,
+                          }}
+                        >
+                          <Landmark size={22} />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-baseline gap-2">
+                            <h2 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
+                              {isPrivate ? "••••••••••••" : item.title}
+                            </h2>
+                          </div>
+                          <p className="mt-1 text-sm text-ink-muted truncate">
+                            {isPrivate ? "••••••" : item.bank_name}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDelete(item.id!); }}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted transition-colors hover:text-coral hover:border-coral/30 active:scale-95"
+                            aria-label="Excluir conta"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          <ChevronRight size={16} className="text-ink-faint" />
+                        </div>
                       </button>
-                      <ChevronRight size={16} className="text-ink-faint" />
                     </div>
-                  </motion.div>
+                  </motion.article>
                 );
               })}
 

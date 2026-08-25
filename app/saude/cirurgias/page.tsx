@@ -18,15 +18,15 @@ import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Cirurgia } from "@/lib/types";
 import { useCirurgias } from "@/hooks/useCirurgias";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { EmptyState } from "@/components/EmptyState";
 import { getDaysUntil } from "@/lib/health-utils";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
 
-const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-};
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -54,6 +54,10 @@ function getDiasRestantesLabel(dias: number | null): string | null {
   if (dias < 0) return `Há ${Math.abs(dias)} dia${Math.abs(dias) > 1 ? 's' : ''}`;
   return `Em ${dias} dia${dias > 1 ? 's' : ''}`;
 }
+
+/* ============================================================
+   PÁGINA
+   ============================================================ */
 
 export default function CirurgiasPage() {
   const { trigger } = useHapticFeedback();
@@ -112,30 +116,47 @@ export default function CirurgiasPage() {
     return hosp ? hosp.nome : null;
   };
 
+  if (!cirurgias) return <CardListSkeleton />;
+
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+      <main className="relative min-h-screen bg-void pb-28">
+        {/* ======================================================
+            HEADER
+            ====================================================== */}
+
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
               <button
-                onClick={() => { trigger("vibrate"); router.back(); }}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
               >
-                <ArrowLeft size={18} className="text-ink-primary" />
+                <ArrowLeft size={18} />
               </button>
+
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <Activity size={16} className="text-coral" />
                   <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-coral/90">Clínico</p>
                 </div>
-                <h1 className="mt-1 truncate font-display text-xl font-semibold text-ink-primary">Cirurgias</h1>
+                <h1 className="truncate font-display text-xl font-semibold text-ink-primary">Cirurgias</h1>
               </div>
             </div>
           </div>
 
+          {/* ----------------------------------------------------
+              ABAS
+              ---------------------------------------------------- */}
+
           <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-surface-raised p-1 border border-surface-border/40">
             <button
+              type="button"
               onClick={() => { trigger("vibrate"); setAbaAtiva("proximas"); }}
               className={`rounded-xl py-2.5 text-xs font-medium transition-all ${
                 abaAtiva === "proximas"
@@ -146,6 +167,7 @@ export default function CirurgiasPage() {
               Agendadas ({proximas.length})
             </button>
             <button
+              type="button"
               onClick={() => { trigger("vibrate"); setAbaAtiva("historico"); }}
               className={`rounded-xl py-2.5 text-xs font-medium transition-all ${
                 abaAtiva === "historico"
@@ -157,12 +179,17 @@ export default function CirurgiasPage() {
             </button>
           </div>
 
+          {/* ----------------------------------------------------
+              FILTROS
+              ---------------------------------------------------- */}
+
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Filter size={14} className="text-ink-muted" />
+            <Filter size={14} className="text-ink-muted shrink-0" />
             
             <button
+              type="button"
               onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "agendada" ? "todos" : "agendada"); }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroStatus === "agendada"
                   ? "border-amber-400 bg-amber-400/20 text-amber-300"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
@@ -172,8 +199,9 @@ export default function CirurgiasPage() {
             </button>
 
             <button
+              type="button"
               onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "realizada" ? "todos" : "realizada"); }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroStatus === "realizada"
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
@@ -183,8 +211,9 @@ export default function CirurgiasPage() {
             </button>
 
             <button
+              type="button"
               onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "cancelada" ? "todos" : "cancelada"); }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
+              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroStatus === "cancelada"
                   ? "border-coral bg-coral/20 text-coral"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
@@ -195,6 +224,7 @@ export default function CirurgiasPage() {
 
             {filtroStatus !== "todos" && (
               <button
+                type="button"
                 onClick={() => { trigger("vibrate"); setFiltroStatus("todos"); }}
                 className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
               >
@@ -204,7 +234,11 @@ export default function CirurgiasPage() {
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
+        {/* ======================================================
+            LISTA
+            ====================================================== */}
+
+        <section className="space-y-3.5 px-5 pt-4">
           {listaExibida.length === 0 ? (
             <EmptyState
               icon={Activity}
@@ -220,86 +254,99 @@ export default function CirurgiasPage() {
               }
             />
           ) : (
-            <div className="space-y-3">
-              {listaExibida.map((cir, index) => {
-                const hospitalNome = getHospitalNome(cir.hospital_id);
-                const corBorda = getStatusColor(cir.status);
-                const diasRestantes = getDaysUntil(cir.data);
-                const vencida = isReceitaVencidaSegura(cir.data);
-                const temHorario = cir.horario && cir.horario.trim().length > 0;
-                return (
-                  <motion.div
-                    key={cir.id}
-                    variants={fadeUp}
-                    initial="initial"
-                    animate="animate"
-                    transition={{ delay: index * 0.04 }}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
-                    className="group cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.98] hover:border-coral/30 relative overflow-hidden"
-                    style={{ borderLeft: `4px solid ${corBorda}` }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3.5 min-w-0">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-coral/10 text-coral border border-coral/10">
-                          <Activity size={20} />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono text-xs font-semibold text-coral">
-                              {formatDateDisplay(cir.data)}
-                            </span>
-                            {temHorario && (
-                              <span className="text-[10px] font-mono text-ink-muted">
-                                • {cir.horario}
-                              </span>
-                            )}
-                            <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                              cir.status === "agendada" ? "bg-amber-400/10 text-amber-400 border border-amber-400/20" :
-                              cir.status === "realizada" ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" :
-                              "bg-coral/10 text-coral border border-coral/20"
-                            }`}>
-                              {cir.status}
-                            </span>
-                            {vencida && cir.status !== "realizada" && cir.status !== "cancelada" && (
-                              <span className="rounded-full bg-coral/20 px-2 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">
-                                Vencida
-                              </span>
-                            )}
-                            {diasRestantes !== null && diasRestantes >= 0 && cir.status === "agendada" && (
-                              <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase border ${
-                                diasRestantes <= 2 ? "bg-amber-400/20 text-amber-400 border-amber-400/30" :
-                                "bg-ice/10 text-ice border-ice/20"
-                              }`}>
-                                {getDiasRestantesLabel(diasRestantes)}
-                              </span>
-                            )}
-                          </div>
+            listaExibida.map((cir, index) => {
+              const hospitalNome = getHospitalNome(cir.hospital_id);
+              const corBorda = getStatusColor(cir.status);
+              const diasRestantes = getDaysUntil(cir.data);
+              const vencida = isReceitaVencidaSegura(cir.data);
+              const temHorario = cir.horario && cir.horario.trim().length > 0;
 
-                          <h3 className="truncate font-semibold text-ink-primary text-base mt-1">
-                            {cir.procedimento}
-                          </h3>
+              return (
+                <motion.article
+                  key={cir.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
+                  className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
+                  style={{
+                    borderColor: `${corBorda}40`,
+                    borderLeft: `6px solid ${corBorda}`,
+                  }}
+                >
+                  <div className="p-4 pl-5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        router.push(`/saude/cirurgias/detalhes?id=${cir.id}`);
+                      }}
+                      className="flex w-full items-start gap-3.5 text-left outline-none"
+                    >
+                      <div
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
+                        style={{
+                          backgroundColor: `${corBorda}15`,
+                          borderColor: `${corBorda}30`,
+                          color: corBorda,
+                        }}
+                      >
+                        <Activity size={22} />
+                      </div>
 
-                          {hospitalNome && (
-                            <div className="flex items-center gap-1.5 text-xs text-ink-muted mt-1">
-                              <Building2 size={13} className="text-ink-faint shrink-0" />
-                              <span className="truncate">{hospitalNome}</span>
-                            </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-baseline gap-2 flex-wrap">
+                          <span className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold" style={{ color: corBorda }}>
+                            {formatDateDisplay(cir.data)}
+                          </span>
+                          {temHorario && (
+                            <span className="shrink-0 whitespace-nowrap text-[10px] font-mono text-ink-muted">
+                              • {cir.horario}
+                            </span>
                           )}
-
-                          <p className="text-xs text-ink-faint mt-1.5 line-clamp-1">
-                            {getMedicoNome(cir.medico_id)}
-                          </p>
+                          <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                            cir.status === "agendada" ? "bg-amber-400/10 text-amber-400 border border-amber-400/20" :
+                            cir.status === "realizada" ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" :
+                            "bg-coral/10 text-coral border border-coral/20"
+                          }`}>
+                            {cir.status}
+                          </span>
+                          {vencida && cir.status !== "realizada" && cir.status !== "cancelada" && (
+                            <span className="shrink-0 whitespace-nowrap rounded-full bg-coral/20 px-2 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">
+                              Vencida
+                            </span>
+                          )}
+                          {diasRestantes !== null && diasRestantes >= 0 && cir.status === "agendada" && (
+                            <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase border ${
+                              diasRestantes <= 2 ? "bg-amber-400/20 text-amber-400 border-amber-400/30" :
+                              "bg-ice/10 text-ice border-ice/20"
+                            }`}>
+                              {getDiasRestantesLabel(diasRestantes)}
+                            </span>
+                          )}
                         </div>
+
+                        <h3 className="truncate font-semibold text-ink-primary text-base mt-1">
+                          {cir.procedimento}
+                        </h3>
+
+                        {hospitalNome && (
+                          <div className="flex items-center gap-1.5 text-xs text-ink-muted mt-1">
+                            <Building2 size={13} className="text-ink-faint shrink-0" />
+                            <span className="truncate">{hospitalNome}</span>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-ink-faint mt-1.5 truncate">
+                          {getMedicoNome(cir.medico_id)}
+                        </p>
                       </div>
 
-                      <div className="self-center flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-raised text-ink-muted group-hover:text-coral transition-colors">
-                        <ChevronRight size={16} />
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                      <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
+                    </button>
+                  </div>
+                </motion.article>
+              );
+            })
           )}
         </section>
       </main>

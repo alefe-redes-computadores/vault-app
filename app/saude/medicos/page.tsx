@@ -49,6 +49,10 @@ import type {
   LocalSaude,
 } from "@/lib/types";
 
+/* ============================================================
+   HELPERS
+   ============================================================ */
+
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
   const parts = isoStr.split("-");
@@ -69,6 +73,10 @@ type MedicoComMetadados = Medico & {
   temAlertaUrgente: boolean;
 };
 
+/* ============================================================
+   PÁGINA
+   ============================================================ */
+
 export default function MedicosPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -87,18 +95,16 @@ export default function MedicosPage() {
   const { locais = [] } = useLocais();
   const documentos = useLiveQuery(() => db.documents.toArray(), []) || [];
 
-  const medicoMap = useMemo(() => new Map(medicos.map((m) => [m.id, m])), [medicos]);
-
-  const medicosFiltrados = useMemo<Medico[]>(() => {
-    return medicos || [];
-  }, [medicos]);
-
   const tratamentoMap = useMemo(() => new Map((tratamentos || []).map((t) => [t.id, t])), [tratamentos]);
   const hospitalMap = useMemo(() => new Map((hospitais || []).map((h) => [h.id, h])), [hospitais]);
   const localMap = useMemo(() => new Map((locais || []).map((l) => [l.id, l])), [locais]);
 
+  /* ============================================================
+     ENRIQUECIMENTO DOS MÉDICOS
+     ============================================================ */
+
   const medicosComMetadados = useMemo<MedicoComMetadados[]>(() => {
-    return (medicosFiltrados || []).map((medico) => {
+    return (medicos || []).map((medico) => {
       const medsDoMedico = (medicamentos || []).filter(
         (m) => m?.medico_id === medico.id || m?.medico === medico.nome
       );
@@ -162,7 +168,11 @@ export default function MedicosPage() {
         temAlertaUrgente,
       };
     });
-  }, [medicosFiltrados, medicamentos, documentos, consultas, cirurgias, tratamentoMap, hospitalMap, localMap]);
+  }, [medicos, medicamentos, documentos, consultas, cirurgias, tratamentoMap, hospitalMap, localMap]);
+
+  /* ============================================================
+     FILTRAGEM
+     ============================================================ */
 
   const filteredMedicos = useMemo(() => {
     let result = medicosComMetadados || [];
@@ -197,6 +207,10 @@ export default function MedicosPage() {
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [medicosComMetadados, search, filtroTratamento, filtroHospital, filtroLocal]);
 
+  /* ============================================================
+     FILTROS PARA O HEADER
+     ============================================================ */
+
   const tratamentosUnicos = useMemo(() => {
     const map = new Map<string, Tratamento & { color: string }>();
     (medicosComMetadados || []).forEach((med) => {
@@ -221,24 +235,48 @@ export default function MedicosPage() {
     return Array.from(map.values());
   }, [medicosComMetadados]);
 
+  /* ============================================================
+     LOADING
+     ============================================================ */
+
   if (!medicos) return <CardListSkeleton />;
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-            <div className="min-w-0 flex-1">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Rede de Apoio</p>
-              <h1 className="font-display text-xl font-semibold text-ink-primary truncate">Médicos Prescritores</h1>
+      <main className="relative min-h-screen bg-void pb-28">
+        {/* ======================================================
+            HEADER
+            ====================================================== */}
+
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
+              >
+                <ArrowLeft size={18} />
+              </button>
+
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Rede de Apoio</p>
+                <h1 className="truncate font-display text-xl font-semibold text-ink-primary">Médicos Prescritores</h1>
+              </div>
             </div>
           </div>
+
+          {/* ----------------------------------------------------
+              BUSCA
+              ---------------------------------------------------- */}
 
           <div className="relative mt-4">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -246,23 +284,28 @@ export default function MedicosPage() {
               placeholder="Buscar por nome ou especialidade..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="border-surface-border/50 bg-surface-raised pl-9 text-sm"
+              className="h-11 w-full rounded-2xl bg-surface-raised/60 pl-9 text-sm"
             />
           </div>
 
+          {/* ----------------------------------------------------
+              FILTROS
+              ---------------------------------------------------- */}
+
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Filter size={14} className="text-ink-muted" />
+            <Filter size={14} className="text-ink-muted shrink-0" />
 
             {tratamentosUnicos.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {tratamentosUnicos.slice(0, 4).map((t) => (
                   <button
                     key={t.id}
+                    type="button"
                     onClick={() => {
                       trigger("vibrate");
                       setFiltroTratamento(filtroTratamento === t.id ? null : t.id!);
                     }}
-                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all ${
+                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all shrink-0 ${
                       filtroTratamento === t.id
                         ? "border-ice bg-ice/20 text-ice"
                         : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
@@ -284,18 +327,19 @@ export default function MedicosPage() {
                 {hospitaisUnicos.slice(0, 2).map((h) => (
                   <button
                     key={h.id}
+                    type="button"
                     onClick={() => {
                       trigger("vibrate");
                       setFiltroHospital(filtroHospital === h.id ? null : h.id!);
                     }}
-                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all ${
+                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all shrink-0 ${
                       filtroHospital === h.id
                         ? "border-ice bg-ice/20 text-ice"
                         : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                     }`}
                   >
                     <HospitalIcon size={10} className="inline mr-1" />
-                    {h.nome.length > 12 ? h.nome.slice(0, 12) + "…" : h.nome}
+                    <span className="truncate max-w-[80px]">{h.nome}</span>
                   </button>
                 ))}
               </div>
@@ -306,18 +350,19 @@ export default function MedicosPage() {
                 {locaisUnicos.slice(0, 2).map((l) => (
                   <button
                     key={l.id}
+                    type="button"
                     onClick={() => {
                       trigger("vibrate");
                       setFiltroLocal(filtroLocal === l.id ? null : l.id!);
                     }}
-                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all ${
+                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all shrink-0 ${
                       filtroLocal === l.id
                         ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
                         : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                     }`}
                   >
                     <MapPin size={10} className="inline mr-1" />
-                    {l.nome.length > 12 ? l.nome.slice(0, 12) + "…" : l.nome}
+                    <span className="truncate max-w-[80px]">{l.nome}</span>
                   </button>
                 ))}
               </div>
@@ -325,6 +370,7 @@ export default function MedicosPage() {
 
             {(filtroTratamento || filtroHospital || filtroLocal) && (
               <button
+                type="button"
                 onClick={() => {
                   trigger("vibrate");
                   setFiltroTratamento(null);
@@ -339,45 +385,71 @@ export default function MedicosPage() {
           </div>
         </header>
 
-        <section className="px-5 pt-5 space-y-3">
+        {/* ======================================================
+            LISTA
+            ====================================================== */}
+
+        <section className="space-y-3.5 px-5 pt-4">
           {filteredMedicos.length === 0 ? (
             <EmptyState
               icon={Stethoscope}
-              title={search || filtroTratamento || filtroHospital || filtroLocal ? "Nenhum médico encontrado" : "Nenhum médico cadastrado"}
-              description={search || filtroTratamento || filtroHospital || filtroLocal ? "Tente ajustar os filtros ou a busca." : "Cadastre profissionais para gerenciar suas prescrições."}
+              title={
+                search || filtroTratamento || filtroHospital || filtroLocal
+                  ? "Nenhum médico encontrado"
+                  : "Nenhum médico cadastrado"
+              }
+              description={
+                search || filtroTratamento || filtroHospital || filtroLocal
+                  ? "Tente ajustar os filtros ou a busca."
+                  : "Cadastre profissionais para gerenciar suas prescrições."
+              }
             />
           ) : (
-            filteredMedicos.map((medico) => {
+            filteredMedicos.map((medico, index) => {
               const primaryColor =
                 medico.tratamentos.length > 0
                   ? medico.tratamentos[0].color
                   : "#38BDF8";
 
               return (
-                <motion.div
+                <motion.article
                   key={medico.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="group rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm transition-all hover:border-surface-border/80 hover:bg-surface-raised/30 active:scale-[0.99] relative overflow-hidden"
-                  style={{ borderLeft: `6px solid ${primaryColor}` }}
+                  transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
+                  className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
+                  style={{
+                    borderColor: `${primaryColor}40`,
+                    borderLeft: `6px solid ${primaryColor}`,
+                  }}
                 >
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-start gap-4">
-                      {/* ÍCONE SVG DINÂMICO UNIFICADO */}
-                      <div 
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ml-0.5"
-                        style={{ backgroundColor: `${primaryColor}15`, color: primaryColor, borderColor: `${primaryColor}30` }}
+                  <div className="p-4 pl-5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        router.push(`/saude/medicos/detalhes?id=${medico.id}`);
+                      }}
+                      className="flex w-full items-start gap-3.5 text-left outline-none"
+                    >
+                      <div
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
+                        style={{
+                          backgroundColor: `${primaryColor}15`,
+                          borderColor: `${primaryColor}30`,
+                          color: primaryColor,
+                        }}
                       >
                         <Stethoscope size={22} />
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <h2 className="truncate text-lg font-bold text-ink-primary">
+                        <div className="flex min-w-0 items-baseline gap-2">
+                          <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
                             Dr(a). {medico.nome}
-                          </h2>
+                          </h3>
                           {medico.especialidade && (
-                            <span className="shrink-0 rounded-full border border-ice/20 bg-ice/10 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ice">
+                            <span className="shrink-0 whitespace-nowrap rounded-full border border-ice/20 bg-ice/10 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ice">
                               {medico.especialidade}
                             </span>
                           )}
@@ -388,6 +460,8 @@ export default function MedicosPage() {
                             </span>
                           )}
                         </div>
+
+                        {/* Contato e última consulta */}
 
                         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
                           {medico.telefone && (
@@ -404,7 +478,7 @@ export default function MedicosPage() {
                           {medico.ultimoHospital && (
                             <span className="flex items-center gap-1 rounded-full bg-violet-400/10 px-2 py-0.5 text-[10px] font-medium text-violet-400">
                               <Building2 size={11} />
-                              {medico.ultimoHospital.nome}
+                              <span className="truncate max-w-[120px]">{medico.ultimoHospital.nome}</span>
                             </span>
                           )}
                           {medico.ultimaConsulta && (
@@ -414,57 +488,69 @@ export default function MedicosPage() {
                             </span>
                           )}
                         </div>
+
+                        {/* Tags de tratamentos, hospitais e locais */}
+
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          {medico.tratamentos.slice(0, 3).map((t) => (
+                            <span
+                              key={t.id}
+                              className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-0.5 text-[9px] font-bold uppercase max-w-[100px]"
+                              style={{
+                                backgroundColor: `${t.color}15`,
+                                borderColor: `${t.color}40`,
+                                color: t.color,
+                              }}
+                            >
+                              <Activity size={10} /> {t.nome}
+                            </span>
+                          ))}
+                          {medico.tratamentos.length > 3 && (
+                            <span className="text-[9px] text-ink-faint">+{medico.tratamentos.length - 3}</span>
+                          )}
+
+                          {medico.hospitais.length > 0 && (
+                            <span className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised max-w-[120px]">
+                              <Building2 size={10} /> {medico.hospitais.map(h => h.nome).join(', ')}
+                            </span>
+                          )}
+
+                          {medico.locais.length > 0 && (
+                            <span className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised max-w-[120px]">
+                              <MapPin size={10} /> {medico.locais.map(l => l.nome).join(', ')}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Métricas no canto */}
+
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {medico.consultasCount > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-0.5 text-[10px] font-medium text-ice">
+                              <Calendar size={12} /> {medico.consultasCount}
+                            </span>
+                          )}
+                          {medico.cirurgiasCount > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-medium text-coral">
+                              <Activity size={12} /> {medico.cirurgiasCount}
+                            </span>
+                          )}
+                          {medico.medicamentosCount > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                              <Pill size={12} /> {medico.medicamentosCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 border-t border-surface-border/30 pt-3">
-                      {medico.tratamentos.map((t) => (
-                        <span
-                          key={t.id}
-                          className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-bold uppercase"
-                          style={{
-                            backgroundColor: `${t.color}15`,
-                            borderColor: `${t.color}40`,
-                            color: t.color,
-                          }}
-                        >
-                          <Activity size={10} /> {t.nome}
-                        </span>
-                      ))}
+                      <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
+                    </button>
 
-                      {medico.hospitais.length > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised">
-                          <Building2 size={10} /> {medico.hospitais.map(h => h.nome).join(', ')}
-                        </span>
-                      )}
+                    {/* Ações rápidas (dentro do card, mas não conflitam com o clique principal) */}
 
-                      {medico.locais.length > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised">
-                          <MapPin size={10} /> {medico.locais.map(l => l.nome).join(', ')}
-                        </span>
-                      )}
-
-                      <div className="ml-auto flex flex-wrap items-center gap-2">
-                        {medico.consultasCount > 0 && (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-0.5 text-[10px] font-medium text-ice">
-                            <Calendar size={12} /> {medico.consultasCount}
-                          </span>
-                        )}
-                        {medico.cirurgiasCount > 0 && (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-medium text-coral">
-                            <Activity size={12} /> {medico.cirurgiasCount}
-                          </span>
-                        )}
-                        {medico.medicamentosCount > 0 && (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                            <Pill size={12} /> {medico.medicamentosCount}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-surface-border/40">
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           trigger("vibrate");
@@ -475,6 +561,7 @@ export default function MedicosPage() {
                         <Calendar size={13} /> Agendar
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           trigger("vibrate");
@@ -485,6 +572,7 @@ export default function MedicosPage() {
                         <Edit3 size={13} /> Editar
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           trigger("vibrate");
@@ -496,7 +584,7 @@ export default function MedicosPage() {
                       </button>
                     </div>
                   </div>
-                </motion.div>
+                </motion.article>
               );
             })
           )}

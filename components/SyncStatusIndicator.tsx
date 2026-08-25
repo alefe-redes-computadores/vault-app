@@ -25,7 +25,11 @@ function useOnlineStatus() {
   return online;
 }
 
-export function SyncStatusIndicator() {
+interface SyncStatusIndicatorProps {
+  onOpenDiagnostics?: () => void;
+}
+
+export function SyncStatusIndicator({ onOpenDiagnostics }: SyncStatusIndicatorProps) {
   const online = useOnlineStatus();
   
   // Conta itens pendentes normais
@@ -40,6 +44,18 @@ export function SyncStatusIndicator() {
     []
   ) ?? 0;
 
+  // Ação ao clicar no indicador quando houver pendências ou erros
+  const handleClick = () => {
+    if (failedCount > 0 || pendingCount > 0) {
+      if (onOpenDiagnostics) {
+        onOpenDiagnostics();
+      } else {
+        // Fallback: redireciona para a seção de diagnóstico na página Mais
+        window.location.hash = "#mais";
+      }
+    }
+  };
+
   if (!online) {
     return (
       <div className="flex items-center gap-1.5 text-amber-400">
@@ -49,22 +65,30 @@ export function SyncStatusIndicator() {
     );
   }
 
-  // Se tem itens falhos, mostramos o erro vermelho para não "mentir" que está sincronizado
+  // Se tem itens falhos, vira um botão clicável que avisa o erro exato
   if (failedCount > 0) {
     return (
-      <div className="flex items-center gap-1.5 text-coral">
+      <button 
+        onClick={handleClick}
+        className="flex items-center gap-1.5 text-coral hover:opacity-80 transition-opacity cursor-pointer bg-coral/10 px-2 py-0.5 rounded-full"
+        title="Clique para ver os erros de sincronização"
+      >
         <AlertTriangle size={14} />
-        <span className="text-[11px] font-medium">Erro de Sinc.</span>
-      </div>
+        <span className="text-[11px] font-medium">Erro ({failedCount})</span>
+      </button>
     );
   }
 
   if (pendingCount > 0) {
     return (
-      <div className="flex items-center gap-1.5 text-ice">
+      <button 
+        onClick={handleClick}
+        className="flex items-center gap-1.5 text-ice hover:opacity-80 transition-opacity cursor-pointer"
+        title="Itens na fila de envio"
+      >
         <RefreshCw size={14} className="animate-spin" />
-        <span className="text-[11px] font-medium">Sincronizando...</span>
-      </div>
+        <span className="text-[11px] font-medium">{pendingCount} na fila</span>
+      </button>
     );
   }
 
