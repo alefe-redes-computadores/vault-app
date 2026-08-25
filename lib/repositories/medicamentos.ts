@@ -56,7 +56,7 @@ export const medicamentosRepository = {
     return id;
   },
 
-  async update(id: string, data: Partial<Medicamento>) {
+    async update(id: string, data: Partial<Medicamento>) {
     if (data.tratamento_ids) {
       data.tratamento_ids = Array.from(new Set(data.tratamento_ids));
     }
@@ -71,11 +71,17 @@ export const medicamentosRepository = {
     // 1. Atualiza localmente
     await safeUpdateMedicamento(id, payload);
 
-    // 2. Enfileira para o Supabase
-    await enfileirarOperacao("medicamentos", "update", { id, ...payload });
+    // 🛡️ AUTO-HEALING: Pega o registro COMPLETO atualizado no Dexie para mandar pra fila
+    const registroCompleto = await db.medicamentos.get(id);
+    
+    if (registroCompleto) {
+      // 2. Enfileira para o Supabase enviando o objeto TUDO (permite Upsert curativo)
+      await enfileirarOperacao("medicamentos", "update", registroCompleto);
+    }
 
     return id;
   },
+
 
   async delete(id: string) {
     // 1. Exclui localmente

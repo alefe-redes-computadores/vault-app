@@ -563,8 +563,8 @@ export function useSyncQueue() {
     }
   };
 
-    // ============================================================
-  // MEDICAMENTOS (BLINDADO E SEPARADO POR OPERAÇÃO)
+  // ============================================================
+  // MEDICAMENTOS (BLINDADO AUTO-HEALING E SUS)
   // ============================================================
 
   const syncMedicamento = async (item: SyncQueueItem) => {
@@ -572,7 +572,9 @@ export function useSyncQueue() {
     const med = item.payload as unknown as Medicamento;
 
     switch (item.operation) {
-      case "add": {
+      case "add":
+      case "update": {
+        // 🛡️ UPSERT: Auto-healing. Se não existir na nuvem, cria. Se existir, atualiza.
         const { error } = await client.from("medicamentos").upsert(
           {
             id: med.id,
@@ -606,6 +608,8 @@ export function useSyncQueue() {
             formato: med.formato || null,
             cores: med.cores || [],
             preco: med.preco !== undefined ? med.preco : null,
+            tipo_aquisicao: med.tipo_aquisicao || null, // 🛡️ NOVO: SUS
+            data_retorno_sus: med.data_retorno_sus || null, // 🛡️ NOVO: SUS
             motivo_descontinuacao: med.motivo_descontinuacao || null,
             medico_descontinuacao_id: med.medico_descontinuacao_id || null,
             medico_descontinuacao_nome: med.medico_descontinuacao_nome || null,
@@ -617,35 +621,7 @@ export function useSyncQueue() {
           },
           { onConflict: "id" }
         );
-        if (error) throw new Error(`Medicamentos insert error: ${error.message}`);
-        break;
-      }
-      case "update": {
-        // Envia dinamicamente apenas os campos presentes no payload para atualizar com segurança na nuvem
-        const updateData: Record<string, any> = {};
-        const fields = [
-          "person_id", "document_id", "medico_id", "farmacia_id", "hospital_id", "local_id",
-          "nome", "dosagem", "medico", "farmacia", "data_receita", "proxima_renovacao",
-          "observacoes", "tipo_receita", "tipo_uso", "forma_farmaceutica", "cor_principal",
-          "cor_secundaria", "status", "estoque_quantidade", "estoque_data_referencia",
-          "estoque_horarios", "estoque_unidade_por_dose", "estoque_unidade_medida",
-          "estoque_ml_total", "estoque_gotas_por_ml", "formato", "cores", "preco",
-          "motivo_descontinuacao", "medico_descontinuacao_id", "medico_descontinuacao_nome",
-          "substituido_por_id", "data_descontinuacao", "historico_dosagens", "updated_at"
-        ];
-
-        for (const field of fields) {
-          if ((med as any)[field] !== undefined) {
-            updateData[field] = (med as any)[field];
-          }
-        }
-
-        const { error } = await client
-          .from("medicamentos")
-          .update(updateData)
-          .eq("id", med.id);
-
-        if (error) throw new Error(`Medicamentos update error: ${error.message}`);
+        if (error) throw new Error(`Medicamentos upsert error: ${error.message}`);
         break;
       }
       case "delete": {
@@ -661,6 +637,7 @@ export function useSyncQueue() {
         throw new Error(`Operação não suportada em medicamentos: ${item.operation}`);
     }
 
+    // 🛡️ MANTIDO INTOCÁVEL: É isso que resolveu o bug de duplicação
     if (item.operation !== "delete" && med.id) {
       if (med.tratamento_ids) {
         await syncMedicamentoTratamentos(med.id, med.tratamento_ids);
@@ -944,7 +921,7 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // RENOVAÇÕES
+  // RENOVAÇÕES (BLINDADO AUTO-HEALING)
   // ============================================================
 
   const syncRenovacao = async (item: SyncQueueItem) => {
@@ -952,7 +929,8 @@ export function useSyncQueue() {
     const renovacao = item.payload as unknown as Renovacao;
 
     switch (item.operation) {
-      case "add": {
+      case "add":
+      case "update": {
         const { error } = await client.from("renovacoes").upsert(
           {
             id: renovacao.id,
@@ -964,6 +942,9 @@ export function useSyncQueue() {
             hospital_id: renovacao.hospital_id || null,
             local_id: renovacao.local_id || null,
             document_id: renovacao.document_id || null,
+            tipo_aquisicao: renovacao.tipo_aquisicao || null, // Novo campo SUS
+            data_proxima_retirada: renovacao.data_proxima_retirada || null, // Novo campo SUS
+            exige_nova_receita: renovacao.exige_nova_receita || false,
             quantidade: renovacao.quantidade || null,
             preco: renovacao.preco || null,
             lote: renovacao.lote || null,
@@ -976,31 +957,7 @@ export function useSyncQueue() {
           },
           { onConflict: "id" }
         );
-        if (error) throw new Error(`Renovacoes insert error: ${error.message}`);
-        break;
-      }
-      case "update": {
-        const { error } = await client
-          .from("renovacoes")
-          .update({
-            person_id: renovacao.person_id || null,
-            medicamento_id: renovacao.medicamento_id,
-            medico_id: renovacao.medico_id || null,
-            farmacia_id: renovacao.farmacia_id || null,
-            hospital_id: renovacao.hospital_id || null,
-            local_id: renovacao.local_id || null,
-            document_id: renovacao.document_id || null,
-            quantidade: renovacao.quantidade || null,
-            preco: renovacao.preco || null,
-            lote: renovacao.lote || null,
-            validade_produto: renovacao.validade_produto || null,
-            data: renovacao.data,
-            anexo_url: renovacao.anexo_url || null,
-            observacoes: renovacao.observacoes || null,
-            updated_at: renovacao.updated_at,
-          })
-          .eq("id", renovacao.id);
-        if (error) throw new Error(`Renovacoes update error: ${error.message}`);
+        if (error) throw new Error(`Renovacoes upsert error: ${error.message}`);
         break;
       }
       case "delete": {
