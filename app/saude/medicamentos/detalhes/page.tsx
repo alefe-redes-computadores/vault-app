@@ -48,7 +48,6 @@ function formatDate(isoStr?: string) {
   catch { return isoStr; }
 }
 
-// 🔥 Ícone de comprimido partido alinhado com o cadastro
 const SplitPillIcon = ({ size, fill = "currentColor", stroke = "currentColor", strokeWidth = 2 }: any) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10" fill={fill} />
@@ -56,7 +55,6 @@ const SplitPillIcon = ({ size, fill = "currentColor", stroke = "currentColor", s
   </svg>
 );
 
-// 🔥 Formatos atualizados para evitar bugs de ID no banco
 const FORMATOS = [
   { id: "comprimido", label: "Inteiro", icon: Circle },
   { id: "partido", label: "Partido", icon: SplitPillIcon },
@@ -83,8 +81,6 @@ function MedicamentoDetalhesContent() {
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // ESTADO DO MODAL DE DOSE RÁPIDA (QUICK DOSE)
   const [isQuickDoseOpen, setIsQuickDoseOpen] = useState(false);
 
   const med = useLiveQuery(() => id ? db.medicamentos.get(id) : undefined, [id]);
@@ -255,29 +251,75 @@ function MedicamentoDetalhesContent() {
 
         <header className="sticky top-0 z-30 flex items-center justify-between px-5 pt-4 pb-3 bg-void/90 backdrop-blur-md border-b border-surface-border/40">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform">
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
+              className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform"
+              type="button"
+              aria-label="Voltar"
+            >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <h2 className="font-semibold text-ink-primary">Prontuário</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={copiarInfo} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ink-muted hover:text-ice"><Copy size={18} /></button>
-            <button onClick={compartilharWhatsApp} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-emerald-400"><Share2 size={18} /></button>
+            <button
+              onClick={copiarInfo}
+              className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ink-muted hover:text-ice"
+              type="button"
+              aria-label="Copiar informações"
+            >
+              <Copy size={18} />
+            </button>
+            <button
+              onClick={compartilharWhatsApp}
+              className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-emerald-400"
+              type="button"
+              aria-label="Compartilhar no WhatsApp"
+            >
+              <Share2 size={18} />
+            </button>
 
             <div className="relative">
-              <button onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }} className="h-10 w-10 flex items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"><Plus size={18} /></button>
+              <button
+                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                className="h-10 w-10 flex items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                type="button"
+                aria-label="Adicionar registro"
+              >
+                <Plus size={18} />
+              </button>
               <AnimatePresence>
                 {isMenuFlutuanteOpen && (
                   <>
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMenuFlutuanteOpen(false)} className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
-                    <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl">
-                      <div className="px-3 pb-2 pt-3.5"><p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p></div>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setIsMenuFlutuanteOpen(false)}
+                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                    >
+                      <div className="px-3 pb-2 pt-3.5">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                      </div>
                       <div className="px-1.5 pb-2">
                         {menuOptions.map((option) => {
                           const Icon = option.icon;
                           return (
-                            <button key={option.id} onClick={() => handleMenuOptionClick(option.path)} className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice"><Icon size={15} /></div>
+                            <button
+                              key={option.id}
+                              onClick={() => handleMenuOptionClick(option.path)}
+                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              type="button"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                <Icon size={15} />
+                              </div>
                               <span className="text-sm font-medium text-ink-primary">{option.label}</span>
                             </button>
                           );
@@ -289,8 +331,22 @@ function MedicamentoDetalhesContent() {
               </AnimatePresence>
             </div>
 
-            <button onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${id}`); }} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ice"><Edit3 size={18} /></button>
-            <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="h-10 w-10 flex items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral active:scale-95 transition-transform"><Trash2 size={18} /></button>
+            <button
+              onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${id}`); }}
+              className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border active:scale-95 transition-transform text-ice"
+              type="button"
+              aria-label="Editar medicamento"
+            >
+              <Edit3 size={18} />
+            </button>
+            <button
+              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
+              className="h-10 w-10 flex items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral active:scale-95 transition-transform"
+              type="button"
+              aria-label="Excluir medicamento"
+            >
+              <Trash2 size={18} />
+            </button>
           </div>
         </header>
 
@@ -298,19 +354,36 @@ function MedicamentoDetalhesContent() {
 
           <AnimatePresence>
             {alertaInteligente.deveRenovar && med.status !== 'descontinuado' && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="overflow-hidden"
+              >
                 <div className={`p-4 rounded-2xl border ${alertaInteligente.urgencia === 'alta' ? 'bg-coral/10 border-coral/30' : 'bg-amber-400/10 border-amber-400/30'} flex items-start gap-3`}>
-                  <AlertTriangle size={20} className={`mt-0.5 shrink-0 ${alertaInteligente.urgencia === 'alta' ? 'text-coral' : 'text-amber-400'}`} />
+                  <AlertTriangle
+                    size={20}
+                    className={`mt-0.5 shrink-0 ${alertaInteligente.urgencia === 'alta' ? 'text-coral' : 'text-amber-400'}`}
+                  />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <p className={`text-sm font-bold ${alertaInteligente.urgencia === 'alta' ? 'text-coral' : 'text-amber-400'}`}>Ação Necessária</p>
+                      <p className={`text-sm font-bold ${alertaInteligente.urgencia === 'alta' ? 'text-coral' : 'text-amber-400'}`}>
+                        Ação Necessária
+                      </p>
                       {diasRestantes !== null && diasRestantes > 0 && diasRestantes <= 30 && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md bg-void/30 ${alertaInteligente.urgencia === 'alta' ? 'text-coral' : 'text-amber-400'}`}>Faltam {diasRestantes} dias</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md bg-void/30 ${alertaInteligente.urgencia === 'alta' ? 'text-coral' : 'text-amber-400'}`}>
+                          Faltam {diasRestantes} dias
+                        </span>
                       )}
                     </div>
-                    <p className={`text-xs mt-1 ${alertaInteligente.urgencia === 'alta' ? 'text-coral/80' : 'text-amber-400/80'}`}>{alertaInteligente.mensagem}</p>
+                    <p className={`text-xs mt-1 ${alertaInteligente.urgencia === 'alta' ? 'text-coral/80' : 'text-amber-400/80'}`}>
+                      {alertaInteligente.mensagem}
+                    </p>
                   </div>
-                  <button onClick={() => router.push(`/saude/renovacao/nova?medicamento_id=${id}`)} className={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform ${alertaInteligente.urgencia === 'alta' ? 'bg-coral text-void' : 'bg-amber-400 text-void'}`}>
+                  <button
+                    onClick={() => router.push(`/saude/renovacao/nova?medicamento_id=${id}`)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform ${alertaInteligente.urgencia === 'alta' ? 'bg-coral text-void' : 'bg-amber-400 text-void'}`}
+                    type="button"
+                  >
                     Resolver
                   </button>
                 </div>
@@ -319,11 +392,20 @@ function MedicamentoDetalhesContent() {
           </AnimatePresence>
 
           {comportamento && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="overflow-hidden"
+            >
               <div className={`p-4 rounded-2xl border ${comportamento.tipo === 'alerta_adesao' ? 'bg-amber-400/10 border-amber-400/30' : 'bg-violet-400/10 border-violet-400/30'} flex items-start gap-3`}>
-                <Activity size={20} className={`mt-0.5 shrink-0 ${comportamento.tipo === 'alerta_adesao' ? 'text-amber-400' : 'text-violet-400'}`} />
+                <Activity
+                  size={20}
+                  className={`mt-0.5 shrink-0 ${comportamento.tipo === 'alerta_adesao' ? 'text-amber-400' : 'text-violet-400'}`}
+                />
                 <div className="flex-1">
-                  <p className={`text-sm font-bold ${comportamento.tipo === 'alerta_adesao' ? 'text-amber-400' : 'text-violet-400'}`}>{comportamento.titulo}</p>
+                  <p className={`text-sm font-bold ${comportamento.tipo === 'alerta_adesao' ? 'text-amber-400' : 'text-violet-400'}`}>
+                    {comportamento.titulo}
+                  </p>
                   <p className="text-xs text-ink-muted mt-1">{comportamento.mensagem}</p>
                   <p className="text-[10px] text-ink-faint mt-0.5">Sugestão: {comportamento.acaoSugerida}</p>
                 </div>
@@ -335,21 +417,33 @@ function MedicamentoDetalhesContent() {
             <div className={`absolute left-0 top-0 bottom-0 w-2 ${med.status === 'descontinuado' ? 'bg-coral' : med.tipo_receita === 'amarela' ? 'bg-amber-400' : med.tipo_receita === 'azul' ? 'bg-blue-400' : personAccent}`} />
 
             <div className="flex items-center gap-4 ml-2">
-              <div className="h-16 w-16 rounded-2xl flex items-center justify-center border border-surface-border shadow-inner" style={{ backgroundColor: color1 + '15' }}>
-                 <SelectedFormatIcon size={32} stroke={color1} strokeWidth={2} fill={color1 + '44'} />
+              <div
+                className="h-16 w-16 rounded-2xl flex items-center justify-center border border-surface-border shadow-inner"
+                style={{ backgroundColor: color1 + '15' }}
+              >
+                <SelectedFormatIcon size={32} stroke={color1} strokeWidth={2} fill={color1 + '44'} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl font-bold text-ink-primary uppercase tracking-wide truncate">{med.nome}</h1>
-                  {med.status === 'descontinuado' && <span className="bg-coral/10 text-coral text-[9px] px-2 py-0.5 rounded-full border border-coral/20 font-bold uppercase">Suspenso</span>}
+                  {med.status === 'descontinuado' && (
+                    <span className="bg-coral/10 text-coral text-[9px] px-2 py-0.5 rounded-full border border-coral/20 font-bold uppercase">
+                      Suspenso
+                    </span>
+                  )}
                 </div>
-                <p className="text-sm font-medium text-ink-muted mt-0.5">{med.dosagem} {med.tipo_uso === 'esporadico' ? '• Uso SOS' : ''}</p>
+                <p className="text-sm font-medium text-ink-muted mt-0.5">
+                  {med.dosagem} {med.tipo_uso === 'esporadico' ? '• Uso SOS' : ''}
+                </p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                   {tratamentos.map((t: Tratamento) => (
-                     <span key={t.id} className="text-[10px] font-bold uppercase tracking-wide rounded-full bg-surface-raised border border-surface-border px-2 py-0.5 text-ink-muted">
-                       {t.nome}
-                     </span>
-                   ))}
+                  {tratamentos.map((t: Tratamento) => (
+                    <span
+                      key={t.id}
+                      className="text-[10px] font-bold uppercase tracking-wide rounded-full bg-surface-raised border border-surface-border px-2 py-0.5 text-ink-muted"
+                    >
+                      {t.nome}
+                    </span>
+                  ))}
                 </div>
                 {cids.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
@@ -374,31 +468,40 @@ function MedicamentoDetalhesContent() {
 
           {med.status !== 'descontinuado' && typeof med.estoque_quantidade === 'number' && (
             <div className={`rounded-[32px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1 shadow-sm`}>
-               <div className="bg-surface rounded-[28px] p-5">
-                 <div className="flex justify-between items-start">
-                   <div>
-                     <p className="text-[11px] uppercase tracking-wider text-ink-muted font-bold flex items-center gap-1.5"><Package size={14}/> Estoque Atual</p>
-                     <p className={`text-3xl font-display font-bold mt-1 ${estoqueStatus.color}`}>
-                       {qtd} <span className="text-base font-medium text-ink-muted uppercase">{med.estoque_unidade_medida || "doses"}</span>
-                     </p>
-                     {ultimaDose && (
-                       <div className="flex items-center gap-1.5 mt-2 text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-1 rounded-lg border border-surface-border/50 inline-flex">
-                         <Clock size={10} className="text-ice" /> Última dose: {formatDate(ultimaDose.data)} às {ultimaDose.horario}
-                       </div>
-                     )}
-                   </div>
-                   {qtd > 0 && (
-                     <button onClick={() => setIsQuickDoseOpen(true)} className="bg-emerald-500 hover:bg-emerald-600 text-void shadow-lg shadow-emerald-500/20 px-4 py-3 rounded-2xl flex items-center gap-2 font-bold active:scale-95 transition-all">
-                       <Zap size={18} fill="currentColor" /> Tomar 1 Dose
-                     </button>
-                   )}
-                 </div>
+              <div className="bg-surface rounded-[28px] p-5">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-ink-muted font-bold flex items-center gap-1.5">
+                      <Package size={14}/> Estoque Atual
+                    </p>
+                    <p className={`text-3xl font-display font-bold mt-1 ${estoqueStatus.color}`}>
+                      {qtd}{" "}
+                      <span className="text-base font-medium text-ink-muted uppercase">
+                        {med.estoque_unidade_medida || "doses"}
+                      </span>
+                    </p>
+                    {ultimaDose && (
+                      <div className="flex items-center gap-1.5 mt-2 text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-1 rounded-lg border border-surface-border/50 inline-flex">
+                        <Clock size={10} className="text-ice" /> Última dose: {formatDate(ultimaDose.data)} às {ultimaDose.horario}
+                      </div>
+                    )}
+                  </div>
+                  {qtd > 0 && (
+                    <button
+                      onClick={() => setIsQuickDoseOpen(true)}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-void shadow-lg shadow-emerald-500/20 px-4 py-3 rounded-2xl flex items-center gap-2 font-bold active:scale-95 transition-all"
+                      type="button"
+                    >
+                      <Zap size={18} fill="currentColor" /> Tomar 1 Dose
+                    </button>
+                  )}
+                </div>
 
-                 <div className="mt-4 pt-4 border-t border-surface-border/50 flex justify-between items-center text-xs text-ink-muted">
-                   <span>Dosagem: <b>{med.estoque_unidade_por_dose || 1} {med.estoque_unidade_medida || "unidade(s)"}</b></span>
-                   <span>Última contagem: <b>{formatDate(med.estoque_data_referencia)}</b></span>
-                 </div>
-               </div>
+                <div className="mt-4 pt-4 border-t border-surface-border/50 flex justify-between items-center text-xs text-ink-muted">
+                  <span>Dosagem: <b>{med.estoque_unidade_por_dose || 1} {med.estoque_unidade_medida || "unidade(s)"}</b></span>
+                  <span>Última contagem: <b>{formatDate(med.estoque_data_referencia)}</b></span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -406,7 +509,8 @@ function MedicamentoDetalhesContent() {
             <div className="rounded-xl bg-emerald-400/10 border border-emerald-400/20 p-3 flex items-center gap-2 text-xs">
               <Award size={14} className="text-emerald-400" />
               <span className="text-ink-primary">
-                Melhor preço médio: <span className="font-bold text-emerald-400">R$ {melhorFarmacia.media_preco.toFixed(2)}</span>
+                Melhor preço médio:{" "}
+                <span className="font-bold text-emerald-400">R$ {melhorFarmacia.media_preco.toFixed(2)}</span>
                 {melhorFarmacia.total_compras > 0 && ` (${melhorFarmacia.total_compras} compra${melhorFarmacia.total_compras > 1 ? 's' : ''})`}
               </span>
             </div>
@@ -414,35 +518,54 @@ function MedicamentoDetalhesContent() {
 
           {med.historico_dosagens && med.historico_dosagens.length > 0 && (
             <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
-               <div className="flex items-center gap-2"><TrendingUp size={16} className="text-ice" /><h3 className="text-sm font-semibold text-ink-primary">Evolução Clínica</h3></div>
-               <div className="relative border-l-2 border-surface-border ml-3 space-y-5 pb-2">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={16} className="text-ice" />
+                <h3 className="text-sm font-semibold text-ink-primary">Evolução Clínica</h3>
+              </div>
+              <div className="relative border-l-2 border-surface-border ml-3 space-y-5 pb-2">
+                <div className="relative pl-5">
+                  <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-surface border-2 border-ice flex items-center justify-center">
+                    <div className="h-1.5 w-1.5 rounded-full bg-ice" />
+                  </div>
+                  <p className="text-sm font-bold text-ice">
+                    {med.dosagem}{" "}
+                    <span className="text-[10px] font-normal text-ink-muted ml-1 uppercase">(Atual)</span>
+                  </p>
+                  <p className="text-xs text-ink-muted mt-0.5">Desde a última alteração</p>
+                </div>
 
-                 <div className="relative pl-5">
-                   <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-surface border-2 border-ice flex items-center justify-center"><div className="h-1.5 w-1.5 rounded-full bg-ice" /></div>
-                   <p className="text-sm font-bold text-ice">{med.dosagem} <span className="text-[10px] font-normal text-ink-muted ml-1 uppercase">(Atual)</span></p>
-                   <p className="text-xs text-ink-muted mt-0.5">Desde a última alteração</p>
-                 </div>
-
-                 {[...med.historico_dosagens].reverse().map((hist: HistDosagem, index: number) => (
-                   <div key={index} className="relative pl-5 opacity-70">
-                     <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-surface border-2 border-surface-border flex items-center justify-center"><div className="h-1.5 w-1.5 rounded-full bg-surface-border" /></div>
-                     <p className="text-sm font-semibold text-ink-primary line-through decoration-ink-muted/50">{hist.dosagem_antiga}</p>
-                     <p className="text-xs text-ink-muted mt-0.5">Alterado em {formatDate(hist.data_mudanca)} por {hist.medico_responsavel}</p>
-                   </div>
-                 ))}
-               </div>
+                {[...med.historico_dosagens].reverse().map((hist: HistDosagem, index: number) => (
+                  <div key={index} className="relative pl-5 opacity-70">
+                    <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-surface border-2 border-surface-border flex items-center justify-center">
+                      <div className="h-1.5 w-1.5 rounded-full bg-surface-border" />
+                    </div>
+                    <p className="text-sm font-semibold text-ink-primary line-through decoration-ink-muted/50">
+                      {hist.dosagem_antiga}
+                    </p>
+                    <p className="text-xs text-ink-muted mt-0.5">
+                      Alterado em {formatDate(hist.data_mudanca)} por {hist.medico_responsavel}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {custoTotalAcumulado > 0 && (
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface rounded-3xl p-4 border border-surface-border shadow-sm">
-                <div className="flex items-center gap-1.5 text-emerald-400 mb-1"><LineChart size={14}/><span className="text-[10px] uppercase font-bold tracking-widest">Custo Acumulado</span></div>
+                <div className="flex items-center gap-1.5 text-emerald-400 mb-1">
+                  <LineChart size={14}/>
+                  <span className="text-[10px] uppercase font-bold tracking-widest">Custo Acumulado</span>
+                </div>
                 <p className="text-xl font-mono font-bold text-ink-primary mt-1">R$ {custoTotalAcumulado.toFixed(2)}</p>
                 <p className="text-[10px] text-ink-muted mt-1">Total investido no histórico</p>
               </div>
               <div className="bg-surface rounded-3xl p-4 border border-surface-border shadow-sm">
-                <div className="flex items-center gap-1.5 text-blue-400 mb-1"><DollarSign size={14}/><span className="text-[10px] uppercase font-bold tracking-widest">Preço Médio</span></div>
+                <div className="flex items-center gap-1.5 text-blue-400 mb-1">
+                  <DollarSign size={14}/>
+                  <span className="text-[10px] uppercase font-bold tracking-widest">Preço Médio</span>
+                </div>
                 <p className="text-xl font-mono font-bold text-ink-primary mt-1">R$ {precoMedio.toFixed(2)}</p>
                 <p className="text-[10px] text-ink-muted mt-1">Por caixa/compra ({qtdeCompras})</p>
               </div>
@@ -450,182 +573,229 @@ function MedicamentoDetalhesContent() {
           )}
 
           <div className="space-y-3">
-             <h3 className="text-sm font-semibold text-ink-primary">Rede de Prescrição & Aquisição</h3>
-             <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-ink-primary">Rede de Prescrição & Aquisição</h3>
+            <div className="space-y-2">
+              <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-start gap-4">
+                <div className="h-10 w-10 rounded-xl bg-ice/10 flex items-center justify-center text-ice shrink-0">
+                  <Stethoscope size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] uppercase text-ink-muted font-bold tracking-wider mb-0.5">Médico Responsável</p>
+                  <p className="text-sm font-bold text-ink-primary truncate">{medico?.nome || med.medico || "Não informado"}</p>
+                  {outrosMedsDesteMedico.length > 0 && (
+                    <p className="text-[10px] text-ice font-medium mt-1 bg-ice/10 inline-block px-2 py-0.5 rounded-md">
+                      Prescreve {outrosMedsDesteMedico.length} outros remédios seus.
+                    </p>
+                  )}
+                </div>
+              </div>
 
-               <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-start gap-4">
-                 <div className="h-10 w-10 rounded-xl bg-ice/10 flex items-center justify-center text-ice shrink-0"><Stethoscope size={20} /></div>
-                 <div className="flex-1 min-w-0">
-                   <p className="text-[10px] uppercase text-ink-muted font-bold tracking-wider mb-0.5">Médico Responsável</p>
-                   <p className="text-sm font-bold text-ink-primary truncate">{medico?.nome || med.medico || "Não informado"}</p>
-                   {outrosMedsDesteMedico.length > 0 && (
-                     <p className="text-[10px] text-ice font-medium mt-1 bg-ice/10 inline-block px-2 py-0.5 rounded-md">Prescreve {outrosMedsDesteMedico.length} outros remédios seus.</p>
-                   )}
-                 </div>
-               </div>
+              {(hospital || local) && (
+                <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-violet-400/10 flex items-center justify-center text-violet-400 shrink-0">
+                      <Building2 size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase text-ink-muted font-bold tracking-wider mb-0.5">Unidade / Hospital Emissor</p>
+                      <p className="text-sm font-bold text-ink-primary truncate">{hospital?.nome || local?.nome || "Não informado"}</p>
+                      {(hospital?.endereco || local?.endereco) && (
+                        <p className="text-[11px] text-ink-muted truncate mt-0.5">{hospital?.endereco || local?.endereco}</p>
+                      )}
+                    </div>
+                  </div>
+                  {(hospital?.endereco || local?.endereco) && (
+                    <button
+                      onClick={() => abrirNoMapa(hospital?.endereco || local?.endereco)}
+                      className="p-2.5 rounded-xl bg-violet-400/10 text-violet-400 hover:bg-violet-400/20 active:scale-95 transition-all shrink-0 flex items-center justify-center"
+                      type="button"
+                      aria-label="Abrir no mapa"
+                    >
+                      <MapPin size={18} />
+                    </button>
+                  )}
+                </div>
+              )}
 
-               {(hospital || local) && (
-                 <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-center justify-between gap-4">
-                   <div className="flex items-center gap-4 min-w-0">
-                     <div className="h-10 w-10 rounded-xl bg-violet-400/10 flex items-center justify-center text-violet-400 shrink-0"><Building2 size={20} /></div>
-                     <div className="min-w-0">
-                       <p className="text-[10px] uppercase text-ink-muted font-bold tracking-wider mb-0.5">Unidade / Hospital Emissor</p>
-                       <p className="text-sm font-bold text-ink-primary truncate">{hospital?.nome || local?.nome || "Não informado"}</p>
-                       {(hospital?.endereco || local?.endereco) && <p className="text-[11px] text-ink-muted truncate mt-0.5">{hospital?.endereco || local?.endereco}</p>}
-                     </div>
-                   </div>
-                   {(hospital?.endereco || local?.endereco) && (
-                     <button onClick={() => abrirNoMapa(hospital?.endereco || local?.endereco)} className="p-2.5 rounded-xl bg-violet-400/10 text-violet-400 hover:bg-violet-400/20 active:scale-95 transition-all shrink-0 flex items-center justify-center">
-                       <MapPin size={18} />
-                     </button>
-                   )}
-                 </div>
-               )}
+              {(farmacia || med.farmacia) && (
+                <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-400/10 flex items-center justify-center text-emerald-400 shrink-0">
+                      <Store size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase text-ink-muted font-bold tracking-wider mb-0.5">Última Aquisição</p>
+                      <p className="text-sm font-bold text-ink-primary truncate">{farmacia?.nome || med.farmacia}</p>
+                      {farmacia?.endereco && <p className="text-[11px] text-ink-muted truncate mt-0.5">{farmacia.endereco}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {farmacia?.telefone && (
+                      <button
+                        onClick={() => ligarFarmacia(farmacia.telefone)}
+                        className="p-2.5 rounded-xl bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20 active:scale-95 transition-all flex items-center justify-center"
+                        type="button"
+                        aria-label="Ligar para farmácia"
+                      >
+                        <Phone size={18} />
+                      </button>
+                    )}
+                    {farmacia?.endereco && (
+                      <button
+                        onClick={() => abrirNoMapa(farmacia.endereco)}
+                        className="p-2.5 rounded-xl bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20 active:scale-95 transition-all flex items-center justify-center"
+                        type="button"
+                        aria-label="Abrir no mapa"
+                      >
+                        <MapPin size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
-               {(farmacia || med.farmacia) && (
-                 <div className="bg-surface p-4 rounded-2xl border border-surface-border flex items-center justify-between gap-4">
-                   <div className="flex items-center gap-4 min-w-0">
-                     <div className="h-10 w-10 rounded-xl bg-emerald-400/10 flex items-center justify-center text-emerald-400 shrink-0"><Store size={20} /></div>
-                     <div className="min-w-0">
-                       <p className="text-[10px] uppercase text-ink-muted font-bold tracking-wider mb-0.5">Última Aquisição</p>
-                       <p className="text-sm font-bold text-ink-primary truncate">{farmacia?.nome || med.farmacia}</p>
-                       {farmacia?.endereco && <p className="text-[11px] text-ink-muted truncate mt-0.5">{farmacia.endereco}</p>}
-                     </div>
-                   </div>
-                   <div className="flex items-center gap-1.5 shrink-0">
-                     {farmacia?.telefone && (
-                       <button onClick={() => ligarFarmacia(farmacia.telefone)} className="p-2.5 rounded-xl bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20 active:scale-95 transition-all flex items-center justify-center">
-                         <Phone size={18} />
-                       </button>
-                     )}
-                     {farmacia?.endereco && (
-                       <button onClick={() => abrirNoMapa(farmacia.endereco)} className="p-2.5 rounded-xl bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20 active:scale-95 transition-all flex items-center justify-center">
-                         <MapPin size={18} />
-                       </button>
-                     )}
-                   </div>
-                 </div>
-               )}
-
-               {ultimaRenovacao && isUltimaRenovacaoGratuita && (
-                 <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl flex items-center gap-3">
-                   <Gift size={16} className="text-emerald-400" />
-                   <div className="flex-1 text-xs">
-                     <span className="font-medium text-emerald-400">Última renovação gratuita</span>
-                     {ultimaRenovacao.data_proxima_retirada && (
-                       <p className="text-ink-muted mt-0.5">Próxima retirada: {formatDate(ultimaRenovacao.data_proxima_retirada)}</p>
-                     )}
-                     {ultimaRenovacao.exige_nova_receita && (
-                       <p className="text-amber-400 flex items-center gap-1 mt-0.5">
-                         <AlertCircle size={12} /> Levar nova receita na próxima retirada
-                       </p>
-                     )}
-                   </div>
-                 </div>
-               )}
-             </div>
+              {ultimaRenovacao && isUltimaRenovacaoGratuita && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl flex items-center gap-3">
+                  <Gift size={16} className="text-emerald-400" />
+                  <div className="flex-1 text-xs">
+                    <span className="font-medium text-emerald-400">Última renovação gratuita</span>
+                    {ultimaRenovacao.data_proxima_retirada && (
+                      <p className="text-ink-muted mt-0.5">Próxima retirada: {formatDate(ultimaRenovacao.data_proxima_retirada)}</p>
+                    )}
+                    {ultimaRenovacao.exige_nova_receita && (
+                      <p className="text-amber-400 flex items-center gap-1 mt-0.5">
+                        <AlertCircle size={12} /> Levar nova receita na próxima retirada
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="space-y-3">
-             <div className="flex justify-between items-end mb-2">
-               <h3 className="text-sm font-semibold text-ink-primary">Status da Receita</h3>
-               <button onClick={() => { trigger("vibrate"); setInfoModalOpen(true); }} className="text-[10px] font-bold uppercase text-ink-muted flex items-center gap-1 bg-surface-raised px-2 py-1 rounded-full"><Info size={12}/> Regras</button>
-             </div>
+            <div className="flex justify-between items-end mb-2">
+              <h3 className="text-sm font-semibold text-ink-primary">Status da Receita</h3>
+              <button
+                onClick={() => { trigger("vibrate"); setInfoModalOpen(true); }}
+                className="text-[10px] font-bold uppercase text-ink-muted flex items-center gap-1 bg-surface-raised px-2 py-1 rounded-full"
+                type="button"
+              >
+                <Info size={12}/> Regras
+              </button>
+            </div>
 
-             <div className={`p-4 rounded-2xl border flex flex-col gap-3 ${getReceitaBadgeStyle()}`}>
-               <div className="flex justify-between items-center">
-                 <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5"><FileText size={14}/> {tipoReceitaLabel}</span>
-                 {isVencida ? <span className="text-[10px] bg-coral text-void px-2 py-0.5 rounded-full font-bold uppercase">Vencida</span> : <span className="text-[10px] bg-emerald-500 text-void px-2 py-0.5 rounded-full font-bold uppercase">No Prazo</span>}
-               </div>
+            <div className={`p-4 rounded-2xl border flex flex-col gap-3 ${getReceitaBadgeStyle()}`}>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5">
+                  <FileText size={14}/> {tipoReceitaLabel}
+                </span>
+                {isVencida ? (
+                  <span className="text-[10px] bg-coral text-void px-2 py-0.5 rounded-full font-bold uppercase">Vencida</span>
+                ) : (
+                  <span className="text-[10px] bg-emerald-500 text-void px-2 py-0.5 rounded-full font-bold uppercase">No Prazo</span>
+                )}
+              </div>
 
-               <div className="flex items-center justify-between border-t border-current/10 pt-3">
-                 <div>
-                   <p className="text-[10px] uppercase font-bold opacity-70">Válida até</p>
-                   <p className="text-sm font-bold mt-0.5">{formatDate(med.proxima_renovacao)}</p>
-                 </div>
-                 {documento?.attachments && documento.attachments.length > 0 ? (
-                   <button onClick={abrirAnexo} className="flex items-center gap-1.5 bg-current/10 hover:bg-current/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">
-                     <ExternalLink size={14} /> Ver Anexo
-                   </button>
-                 ) : (
-                   <button onClick={() => router.push(`/saude/medicamentos/editar?id=${id}`)} className="flex items-center gap-1.5 bg-current/10 hover:bg-current/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">
-                     <Plus size={14} /> Vincular receita
-                   </button>
-                 )}
-               </div>
-             </div>
+              <div className="flex items-center justify-between border-t border-current/10 pt-3">
+                <div>
+                  <p className="text-[10px] uppercase font-bold opacity-70">Válida até</p>
+                  <p className="text-sm font-bold mt-0.5">{formatDate(med.proxima_renovacao)}</p>
+                </div>
+                {documento?.attachments && documento.attachments.length > 0 ? (
+                  <button
+                    onClick={abrirAnexo}
+                    className="flex items-center gap-1.5 bg-current/10 hover:bg-current/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
+                    type="button"
+                  >
+                    <ExternalLink size={14} /> Ver Anexo
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => router.push(`/saude/medicamentos/editar?id=${id}`)}
+                    className="flex items-center gap-1.5 bg-current/10 hover:bg-current/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
+                    type="button"
+                  >
+                    <Plus size={14} /> Vincular receita
+                  </button>
+                )}
+              </div>
+            </div>
 
-             {renovacoes.length > 0 && (
-               <div className="space-y-2 mt-4">
-                 <div className="flex items-center justify-between ml-1 mb-2">
-                   <p className="text-[10px] uppercase font-bold text-ink-muted tracking-widest">Últimas Compras/Renovações</p>
-                   {renovacoes.length > 3 && (
-                     <button onClick={() => setShowAllRenovacoes(!showAllRenovacoes)} className="text-[10px] font-bold text-ice flex items-center gap-1 bg-ice/10 px-2 py-0.5 rounded-md">
-                       {showAllRenovacoes ? <><ChevronUp size={12}/> Ver menos</> : <><ChevronDown size={12}/> Ver todas ({renovacoes.length})</>}
-                     </button>
-                   )}
-                 </div>
-                 <AnimatePresence>
-                   {displayedRenovacoes.map((r: Renovacao, index: number) => {
-                     const farmaciaNome = r.farmacia_id ? farmaciasMap.get(r.farmacia_id) : null;
-                     const isGratuita = r.tipo_aquisicao === 'gratuito';
+            {renovacoes.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <div className="flex items-center justify-between ml-1 mb-2">
+                  <p className="text-[10px] uppercase font-bold text-ink-muted tracking-widest">Últimas Compras/Renovações</p>
+                  {renovacoes.length > 3 && (
+                    <button
+                      onClick={() => setShowAllRenovacoes(!showAllRenovacoes)}
+                      className="text-[10px] font-bold text-ice flex items-center gap-1 bg-ice/10 px-2 py-0.5 rounded-md"
+                      type="button"
+                    >
+                      {showAllRenovacoes ? <><ChevronUp size={12}/> Ver menos</> : <><ChevronDown size={12}/> Ver todas ({renovacoes.length})</>}
+                    </button>
+                  )}
+                </div>
+                <AnimatePresence>
+                  {displayedRenovacoes.map((r: Renovacao, index: number) => {
+                    const farmaciaNome = r.farmacia_id ? farmaciasMap.get(r.farmacia_id) : null;
+                    const isGratuita = r.tipo_aquisicao === 'gratuito';
 
-                     return (
-                       <motion.div
-                         initial={{ opacity: 0, height: 0 }}
-                         animate={{ opacity: 1, height: "auto" }}
-                         exit={{ opacity: 0, height: 0 }}
-                         key={r.id || index}
-                         className={`bg-surface p-3.5 rounded-2xl border shadow-sm ${
-                           isGratuita ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-surface-border'
-                         }`}
-                       >
-                         <div className="flex justify-between items-center">
-                           <div className="flex items-center gap-3">
-                             <div className="h-8 w-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted">
-                               <Calendar size={14} />
-                             </div>
-                             <div>
-                               <p className="text-xs font-bold text-ink-primary">{formatDate(r.data || r.created_at)}</p>
-                               <div className="flex items-center gap-1.5 mt-0.5">
-                                 {farmaciaNome && <p className="text-[10px] text-ink-muted">{farmaciaNome}</p>}
-                                 {isGratuita ? (
-                                   <span className="text-[8px] font-bold uppercase bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                     <Gift size={10} /> Gratuito
-                                   </span>
-                                 ) : (
-                                   <span className="text-[8px] font-bold uppercase bg-ice/10 text-ice px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                     <DollarSign size={10} /> Comprado
-                                   </span>
-                                 )}
-                                 {isGratuita && r.exige_nova_receita && (
-                                   <span className="text-[8px] font-bold uppercase bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                     <AlertCircle size={10} /> Nova Receita
-                                   </span>
-                                 )}
-                                 {isGratuita && r.data_proxima_retirada && (
-                                   <span className="text-[8px] font-bold uppercase bg-ice/10 text-ice px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                     <Calendar size={10} /> Retirada: {formatDate(r.data_proxima_retirada)}
-                                   </span>
-                                 )}
-                               </div>
-                             </div>
-                           </div>
-                           <p className="text-xs text-emerald-400 font-mono font-bold bg-emerald-400/10 px-2 py-1 rounded-lg">
-                             {isGratuita ? 'R$ 0,00' : `R$ ${Number(r.preco || 0).toFixed(2)}`}
-                           </p>
-                         </div>
-                       </motion.div>
-                     );
-                   })}
-                 </AnimatePresence>
-               </div>
-             )}
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        key={r.id || index}
+                        className={`bg-surface p-3.5 rounded-2xl border shadow-sm ${
+                          isGratuita ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-surface-border'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-surface-raised flex items-center justify-center text-ink-muted">
+                              <Calendar size={14} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-ink-primary">{formatDate(r.data || r.created_at)}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                {farmaciaNome && <p className="text-[10px] text-ink-muted">{farmaciaNome}</p>}
+                                {isGratuita ? (
+                                  <span className="text-[8px] font-bold uppercase bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                    <Gift size={10} /> Gratuito
+                                  </span>
+                                ) : (
+                                  <span className="text-[8px] font-bold uppercase bg-ice/10 text-ice px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                    <DollarSign size={10} /> Comprado
+                                  </span>
+                                )}
+                                {isGratuita && r.exige_nova_receita && (
+                                  <span className="text-[8px] font-bold uppercase bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                    <AlertCircle size={10} /> Nova Receita
+                                  </span>
+                                )}
+                                {isGratuita && r.data_proxima_retirada && (
+                                  <span className="text-[8px] font-bold uppercase bg-ice/10 text-ice px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                    <Calendar size={10} /> Retirada: {formatDate(r.data_proxima_retirada)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-emerald-400 font-mono font-bold bg-emerald-400/10 px-2 py-1 rounded-lg">
+                            {isGratuita ? 'R$ 0,00' : `R$ ${Number(r.preco || 0).toFixed(2)}`}
+                          </p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
 
         </div>
 
-        {/* MODAL DE DOSE RÁPIDA (QUICK DOSE) INTEGRADO */}
         <QuickDoseModal
           isOpen={isQuickDoseOpen}
           onClose={() => setIsQuickDoseOpen(false)}
@@ -637,13 +807,17 @@ function MedicamentoDetalhesContent() {
 
         <BottomSheet isOpen={infoModalOpen} onClose={() => setInfoModalOpen(false)} title="Regulamentação da Receita">
           <div className="p-5 space-y-4 text-sm text-ink-muted">
-             <div className="rounded-2xl bg-surface p-4 border border-surface-border space-y-2">
-               <p className="font-semibold text-ink-primary text-base">Controle: {tipoReceitaLabel}</p>
-               <p className="leading-relaxed">O prazo de validade legal para preenchimento e compra desta prescrição é de até <b>{VALIDADE_RECEITA_DIAS[(med.tipo_receita as keyof typeof VALIDADE_RECEITA_DIAS) || 'comum']} dias</b> contados a partir da data de emissão.</p>
-             </div>
-             <button onClick={() => { setInfoModalOpen(false); router.push(`/saude/renovacao/nova?medicamento_id=${id}`); }} className="w-full bg-ice text-void font-bold py-3.5 rounded-2xl shadow-lg shadow-ice/20 active:scale-95 transition-transform flex items-center justify-center gap-2">
-               <Calendar size={18} /> Registrar Nova Renovação
-             </button>
+            <div className="rounded-2xl bg-surface p-4 border border-surface-border space-y-2">
+              <p className="font-semibold text-ink-primary text-base">Controle: {tipoReceitaLabel}</p>
+              <p className="leading-relaxed">O prazo de validade legal para preenchimento e compra desta prescrição é de até <b>{VALIDADE_RECEITA_DIAS[(med.tipo_receita as keyof typeof VALIDADE_RECEITA_DIAS) || 'comum']} dias</b> contados a partir da data de emissão.</p>
+            </div>
+            <button
+              onClick={() => { setInfoModalOpen(false); router.push(`/saude/renovacao/nova?medicamento_id=${id}`); }}
+              className="w-full bg-ice text-void font-bold py-3.5 rounded-2xl shadow-lg shadow-ice/20 active:scale-95 transition-transform flex items-center justify-center gap-2"
+              type="button"
+            >
+              <Calendar size={18} /> Registrar Nova Renovação
+            </button>
           </div>
         </BottomSheet>
 

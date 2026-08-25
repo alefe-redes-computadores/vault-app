@@ -66,7 +66,6 @@ function CredentialDetailsContent() {
     };
   }, [id, getCredential]);
 
-  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
   if (!mounted) return <DetailSkeleton />;
 
   const handleRevealPassword = async () => {
@@ -151,6 +150,7 @@ function CredentialDetailsContent() {
         <button
           onClick={() => router.back()}
           className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void"
+          type="button"
         >
           Voltar
         </button>
@@ -166,6 +166,8 @@ function CredentialDetailsContent() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              type="button"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -186,6 +188,7 @@ function CredentialDetailsContent() {
                 router.push(`/senhas/editar?id=${id}`);
               }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
+              type="button"
               aria-label="Editar senha"
             >
               <Pencil size={18} />
@@ -194,6 +197,7 @@ function CredentialDetailsContent() {
               onClick={() => setShowDeleteModal(true)}
               disabled={isDeleting}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral transition-all active:scale-95"
+              type="button"
               aria-label="Excluir senha"
             >
               {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
@@ -213,6 +217,8 @@ function CredentialDetailsContent() {
               <button
                 onClick={() => handleCopy(credential.username!, "username")}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised"
+                type="button"
+                aria-label="Copiar usuário"
               >
                 {copiedField === "username" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
               </button>
@@ -234,6 +240,8 @@ function CredentialDetailsContent() {
                 <button
                   onClick={handleRevealPassword}
                   className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface"
+                  type="button"
+                  aria-label={revealed ? "Ocultar senha" : "Revelar senha"}
                 >
                   {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -243,6 +251,8 @@ function CredentialDetailsContent() {
                     handleCopy(val, "password");
                   }}
                   className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface"
+                  type="button"
+                  aria-label="Copiar senha"
                 >
                   {copiedField === "password" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
                 </button>

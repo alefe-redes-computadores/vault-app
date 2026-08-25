@@ -709,6 +709,11 @@ export interface Medicamento {
   observacoes?: string;
   tipo_receita?: TipoReceita;
   tipo_uso?: 'continuo' | 'esporadico' | 'sos';
+  
+  // 🛡️ NOVIDADES DO SUS / GOVERNO:
+  tipo_aquisicao?: 'comprado' | 'sus' | 'gratuito'; 
+  data_retorno_sus?: string; // Data em que deve voltar ao posto para nova retirada
+
   forma_farmaceutica?:
     | 'capsula'
     | 'comprimido'
@@ -745,6 +750,7 @@ export interface Medicamento {
   cid_id?: string;
 }
 
+
 export interface Renovacao {
   id?: string;
   user_id: string;
@@ -762,13 +768,16 @@ export interface Renovacao {
   data: string;
   anexo_url?: string;
   observacoes?: string;
-  tipo_aquisicao?: 'comprado' | 'gratuito';
+  
+  // 🛡️ Atualizado para aceitar 'sus' explicitamente:
+  tipo_aquisicao?: 'comprado' | 'sus' | 'gratuito'; 
   data_proxima_retirada?: string;
   exige_nova_receita?: boolean;
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
 }
+
 
 export interface DoseLog {
   id?: string;
@@ -942,11 +951,17 @@ export interface Farmacia {
   endereco?: string;
   telefone?: string;
   observacoes?: string;
+  
+  // 🛡️ NOVIDADE: Identifica se é uma UBS, Farmácia Popular ou Posto do Estado
+  tipo?: 'particular' | 'sus' | 'posto'; 
+  is_sus?: boolean; 
+
   created_at: string;
   updated_at: string;
   synced: boolean;
   person_id?: string;
 }
+
 
 export interface Hospital {
   id?: string;

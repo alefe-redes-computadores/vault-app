@@ -131,6 +131,8 @@ function EditAccountContent() {
           <button
             onClick={() => { trigger("vibrate"); router.back(); }}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95 transition-all"
+            type="button"
+            aria-label="Voltar"
           >
             <ArrowLeft size={18} className="text-ink-primary" />
           </button>
@@ -186,6 +188,8 @@ function EditAccountContent() {
                       ? "border-ice bg-ice/12 text-ice"
                       : "border-surface-border/50 bg-surface-raised text-ink-muted"
                   }`}
+                  type="button"
+                  aria-pressed={formData.type === typeItem.id}
                 >
                   {typeItem.label}
                 </button>

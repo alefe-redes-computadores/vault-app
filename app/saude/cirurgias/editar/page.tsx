@@ -114,13 +114,11 @@ function EditarCirurgiaContent() {
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
-  // Múltipla seleção
   const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
   const [cidsSelecionados, setCidsSelecionados] = useState<string[]>([]);
   const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
   const [isCidModalOpen, setIsCidModalOpen] = useState(false);
 
-  // Criação rápida
   const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
   const [newTratamentoName, setNewTratamentoName] = useState("");
   const [isSavingTratamento, setIsSavingTratamento] = useState(false);
@@ -211,7 +209,6 @@ function EditarCirurgiaContent() {
     if (!procedimento.trim()) newErrors.procedimento = "Obrigatório";
     if (!dataDisplay || dataDisplay.length < 10) newErrors.data = "Data inválida";
 
-    // Validação do Horário
     if (horario) {
       const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
       if (!timeRegex.test(horario)) {
@@ -274,6 +271,8 @@ function EditarCirurgiaContent() {
             <button
               onClick={() => { trigger("vibrate"); router.replace(`/saude/cirurgias/detalhes?id=${id}`); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              type="button"
+              aria-label="Voltar para detalhes"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -299,7 +298,6 @@ function EditarCirurgiaContent() {
             />
           </motion.div>
 
-          {/* TRATAMENTOS E CIDs COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -315,13 +313,13 @@ function EditarCirurgiaContent() {
                     setCidsSelecionados([]);
                   }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  aria-label="Limpar todos"
                 >
                   <Eraser size={12} /> Limpar todos
                 </button>
               )}
             </div>
 
-            {/* Tratamentos selecionados */}
             {tratamentosSelecionados.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {tratamentosSelecionados.map((tId) => {
@@ -335,6 +333,8 @@ function EditarCirurgiaContent() {
                       <button
                         onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== tId)); }}
                         className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
+                        type="button"
+                        aria-label={`Remover ${t.nome}`}
                       >
                         <X size={14} />
                       </button>
@@ -344,7 +344,6 @@ function EditarCirurgiaContent() {
               </div>
             )}
 
-            {/* CIDs selecionados */}
             {cidsSelecionados.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {cidsSelecionados.map((cId) => {
@@ -359,6 +358,8 @@ function EditarCirurgiaContent() {
                       <button
                         onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setCidsSelecionados((prev) => prev.filter((item) => item !== cId)); }}
                         className="ml-1 text-current/60 hover:text-coral transition-colors"
+                        type="button"
+                        aria-label={`Remover ${c.codigo}`}
                       >
                         <X size={14} />
                       </button>
@@ -372,6 +373,8 @@ function EditarCirurgiaContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
+                type="button"
+                aria-label="Vincular tratamento"
               >
                 <Plus size={16} />
                 <span className="text-sm font-medium">Vincular Tratamento</span>
@@ -379,6 +382,8 @@ function EditarCirurgiaContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300 transition-colors hover:bg-emerald-400/10"
+                type="button"
+                aria-label="Vincular CID"
               >
                 <Plus size={16} />
                 <span className="text-sm font-medium">Vincular CID</span>
@@ -386,7 +391,6 @@ function EditarCirurgiaContent() {
             </div>
           </motion.div>
 
-          {/* MÉDICO COM LIMPAR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -394,11 +398,9 @@ function EditarCirurgiaContent() {
                 {medicoId && selectedMedico && (
                   <button
                     type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setMedicoId("");
-                    }}
+                    onClick={() => { trigger("vibrate"); setMedicoId(""); }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                    aria-label="Limpar médico"
                   >
                     <Eraser size={12} /> Limpar
                   </button>
@@ -408,6 +410,7 @@ function EditarCirurgiaContent() {
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+                aria-label="Selecionar médico"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <UserCheck size={16} className="text-coral shrink-0" />
@@ -416,18 +419,15 @@ function EditarCirurgiaContent() {
               </button>
             </div>
 
-            {/* HOSPITAL COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
                 {hospitalId && selectedHospital && (
                   <button
                     type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setHospitalId("");
-                    }}
+                    onClick={() => { trigger("vibrate"); setHospitalId(""); }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                    aria-label="Limpar hospital"
                   >
                     <Eraser size={12} /> Limpar
                   </button>
@@ -437,6 +437,7 @@ function EditarCirurgiaContent() {
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+                aria-label="Selecionar hospital"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Building2 size={16} className="text-violet-400 shrink-0" />
@@ -445,18 +446,15 @@ function EditarCirurgiaContent() {
               </button>
             </div>
 
-            {/* LOCAL COM LIMPAR */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-ink-primary">Clínica / Ambulatório (Opcional)</label>
                 {localId && selectedLocal && (
                   <button
                     type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setLocalId("");
-                    }}
+                    onClick={() => { trigger("vibrate"); setLocalId(""); }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                    aria-label="Limpar local"
                   >
                     <Eraser size={12} /> Limpar
                   </button>
@@ -466,6 +464,7 @@ function EditarCirurgiaContent() {
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+                aria-label="Selecionar local"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <MapPin size={16} className="text-emerald-400 shrink-0" />
@@ -488,6 +487,7 @@ function EditarCirurgiaContent() {
                     value={dataDisplay}
                     onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
                     className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-coral/50`}
+                    aria-label="Data da cirurgia"
                   />
                 </div>
                 {errors.data && <p className="text-xs text-coral ml-1">{errors.data}</p>}
@@ -503,6 +503,7 @@ function EditarCirurgiaContent() {
                     value={horario}
                     onChange={(e) => setHorario(handleTimeMask(e.target.value))}
                     className={`w-full rounded-2xl border ${errors.horario ? "border-coral/50 text-coral" : "border-surface-border/50 text-ink-primary"} bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-coral/50`}
+                    aria-label="Horário"
                   />
                 </div>
                 {errors.horario && <p className="text-xs text-coral ml-1">{errors.horario}</p>}
@@ -522,6 +523,7 @@ function EditarCirurgiaContent() {
                         ? "bg-coral text-void shadow-sm"
                         : "bg-surface-raised text-ink-muted border border-surface-border/50"
                     }`}
+                    aria-pressed={status === st}
                   >
                     {st}
                   </button>
@@ -553,7 +555,6 @@ function EditarCirurgiaContent() {
           </Button>
         </div>
 
-        {/* Modais - mesmos do novo */}
         <SelectionModal
           isOpen={isMedicoModalOpen}
           onClose={() => setIsMedicoModalOpen(false)}

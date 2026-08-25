@@ -20,6 +20,7 @@ import {
   MapPin,
   Eraser,
   Receipt,
+  Check,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
@@ -118,6 +119,11 @@ function EditarRenovacaoContent() {
   const [localId, setLocalId] = useState("");
   const [dataDisplay, setDataDisplay] = useState("");
   const [preco, setPreco] = useState("");
+  
+  // 🛡️ Novos estados do SUS na edição
+  const [tipoAquisicao, setTipoAquisicao] = useState<"comprado" | "sus">("comprado");
+  const [dataProximaRetirada, setDataProximaRetirada] = useState("");
+
   const [observacoes, setObservacoes] = useState("");
   const [anexoUrl, setAnexoUrl] = useState("");
 
@@ -152,12 +158,15 @@ function EditarRenovacaoContent() {
           setHospitalId(data.hospital_id || "");
           setLocalId(data.local_id || "");
           setDataDisplay(formatDateToDisplay(data.data));
-          
+
+          setTipoAquisicao(data.tipo_aquisicao === "sus" ? "sus" : "comprado");
+          setDataProximaRetirada(data.data_proxima_retirada ? formatDateToDisplay(data.data_proxima_retirada) : "");
+
           if (data.preco !== undefined && data.preco !== null) {
-             const precoCents = Math.round(data.preco * 100).toString();
-             setPreco(handleCurrencyMask(precoCents));
+            const precoCents = Math.round(data.preco * 100).toString();
+            setPreco(handleCurrencyMask(precoCents));
           } else {
-             setPreco("");
+            setPreco("");
           }
 
           setObservacoes(data.observacoes || "");
@@ -185,8 +194,12 @@ function EditarRenovacaoContent() {
     runSave(
       async () => {
         const dataISO = parseDateToISO(dataDisplay);
-        const precoNum = preco
+        const precoNum = tipoAquisicao === "comprado" && preco
           ? parseFloat(preco.replace(/\./g, "").replace(",", "."))
+          : undefined;
+
+        const dataRetornoISO = tipoAquisicao === "sus" && dataProximaRetirada.length === 10 
+          ? parseDateToISO(dataProximaRetirada) 
           : undefined;
 
         await renovacoesRepository.update(id, {
@@ -196,6 +209,8 @@ function EditarRenovacaoContent() {
           farmacia_id: farmaciaId || undefined,
           hospital_id: hospitalId || undefined,
           local_id: localId || undefined,
+          tipo_aquisicao: tipoAquisicao,
+          data_proxima_retirada: dataRetornoISO,
           data: dataISO || undefined,
           preco: precoNum,
           observacoes: observacoes.trim() || undefined,
@@ -230,37 +245,46 @@ function EditarRenovacaoContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
+      <main className="relative min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+        {/* ===== HEADER ===== */}
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
+              >
+                <ArrowLeft size={18} />
+              </button>
+
+              <div className="min-w-0">
+                <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
+                  Editar Renovação
+                </h1>
+              </div>
+            </div>
+
             <button
+              type="button"
               onClick={() => {
                 trigger("vibrate");
-                router.back();
+                setShowDeleteModal(true);
               }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              aria-label="Excluir renovação"
             >
-              <ArrowLeft size={18} className="text-ink-primary" />
+              <Trash2 size={16} />
             </button>
-            <div className="min-w-0">
-              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
-                Editar Renovação
-              </h1>
-            </div>
           </div>
-
-          <button
-            onClick={() => {
-              trigger("vibrate");
-              setShowDeleteModal(true);
-            }}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
-          >
-            <Trash2 size={16} />
-          </button>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
+        {/* ===== CONTEÚDO ===== */}
+        <section className="space-y-4 px-5 pt-6">
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -269,14 +293,16 @@ function EditarRenovacaoContent() {
             style={{ borderLeft: `6px solid ${theme.hex}` }}
           >
             <div className="flex items-center gap-4">
-              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
+              <div
+                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}
+              >
                 <Receipt size={24} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme.textClass}`}>
                   AQUISIÇÃO
                 </p>
-                <h2 className="font-display text-base font-semibold text-ink-primary mt-0.5 line-clamp-2">
+                <h2 className="mt-0.5 line-clamp-2 font-display text-base font-semibold text-ink-primary">
                   {selectedMedicamento ? selectedMedicamento.nome : "Aguardando seleção..."}
                 </h2>
               </div>
@@ -289,13 +315,16 @@ function EditarRenovacaoContent() {
             animate="animate"
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <label className="mb-1.5 block text-sm font-medium text-ink-primary">Medicamento</label>
+            <label className="mb-1.5 block text-sm font-medium text-ink-primary">
+              Medicamento
+            </label>
             <button
+              type="button"
               onClick={() => {
                 trigger("vibrate");
                 setIsMedModalOpen(true);
               }}
-              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
             >
               <span className="flex items-center gap-2">
                 <Pill size={16} className="text-ice" />
@@ -303,7 +332,7 @@ function EditarRenovacaoContent() {
                   ? `${selectedMedicamento.nome} · ${selectedMedicamento.dosagem}`
                   : "Selecionar medicamento..."}
               </span>
-              <span className="text-xs text-ice font-medium">Alterar</span>
+              <span className="text-xs font-medium text-ice">Alterar</span>
             </button>
           </motion.div>
 
@@ -314,8 +343,10 @@ function EditarRenovacaoContent() {
             transition={{ delay: 0.02 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Médico Prescritor</label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-sm font-medium text-ink-primary">
+                Médico Prescritor
+              </label>
               {medicoId && selectedMedico && (
                 <button
                   type="button"
@@ -323,24 +354,25 @@ function EditarRenovacaoContent() {
                     trigger("vibrate");
                     setMedicoId("");
                   }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
                 >
                   <Eraser size={12} /> Limpar
                 </button>
               )}
             </div>
             <button
+              type="button"
               onClick={() => {
                 trigger("vibrate");
                 setIsDoctorModalOpen(true);
               }}
-              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
             >
               <span className="flex items-center gap-2">
                 <Stethoscope size={16} className="text-ice" />
                 {selectedMedico ? `Dr(a). ${selectedMedico.nome}` : "Selecionar médico..."}
               </span>
-              <span className="text-xs text-ice font-medium">Alterar</span>
+              <span className="text-xs font-medium text-ice">Alterar</span>
             </button>
           </motion.div>
 
@@ -351,8 +383,10 @@ function EditarRenovacaoContent() {
             transition={{ delay: 0.03 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Farmácia</label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-sm font-medium text-ink-primary">
+                Farmácia / Posto
+              </label>
               {farmaciaId && selectedFarmacia && (
                 <button
                   type="button"
@@ -360,24 +394,25 @@ function EditarRenovacaoContent() {
                     trigger("vibrate");
                     setFarmaciaId("");
                   }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
                 >
                   <Eraser size={12} /> Limpar
                 </button>
               )}
             </div>
             <button
+              type="button"
               onClick={() => {
                 trigger("vibrate");
                 setIsPharmacyModalOpen(true);
               }}
-              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
             >
               <span className="flex items-center gap-2">
                 <Store size={16} className="text-amber-400" />
-                {selectedFarmacia ? selectedFarmacia.nome : "Selecionar farmácia..."}
+                {selectedFarmacia ? selectedFarmacia.nome : "Selecionar farmácia / posto..."}
               </span>
-              <span className="text-xs text-ice font-medium">Alterar</span>
+              <span className="text-xs font-medium text-ice">Alterar</span>
             </button>
           </motion.div>
 
@@ -388,8 +423,10 @@ function EditarRenovacaoContent() {
             transition={{ delay: 0.04 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Hospital</label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-sm font-medium text-ink-primary">
+                Hospital
+              </label>
               {hospitalId && selectedHospital && (
                 <button
                   type="button"
@@ -397,24 +434,25 @@ function EditarRenovacaoContent() {
                     trigger("vibrate");
                     setHospitalId("");
                   }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
                 >
                   <Eraser size={12} /> Limpar
                 </button>
               )}
             </div>
             <button
+              type="button"
               onClick={() => {
                 trigger("vibrate");
                 setIsHospitalModalOpen(true);
               }}
-              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
             >
               <span className="flex items-center gap-2">
                 <Building2 size={16} className="text-violet-400" />
                 {selectedHospital ? selectedHospital.nome : "Selecionar hospital..."}
               </span>
-              <span className="text-xs text-ice font-medium">Alterar</span>
+              <span className="text-xs font-medium text-ice">Alterar</span>
             </button>
           </motion.div>
 
@@ -425,8 +463,10 @@ function EditarRenovacaoContent() {
             transition={{ delay: 0.05 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Local / Posto</label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-sm font-medium text-ink-primary">
+                Local / Posto
+              </label>
               {localId && selectedLocal && (
                 <button
                   type="button"
@@ -434,68 +474,146 @@ function EditarRenovacaoContent() {
                     trigger("vibrate");
                     setLocalId("");
                   }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
                 >
                   <Eraser size={12} /> Limpar
                 </button>
               )}
             </div>
             <button
+              type="button"
               onClick={() => {
                 trigger("vibrate");
                 setIsLocalModalOpen(true);
               }}
-              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
             >
               <span className="flex items-center gap-2">
                 <MapPin size={16} className="text-emerald-400" />
                 {selectedLocal ? selectedLocal.nome : "Selecionar local..."}
               </span>
-              <span className="text-xs text-ice font-medium">Alterar</span>
+              <span className="text-xs font-medium text-ice">Alterar</span>
             </button>
           </motion.div>
 
+          {/* Forma de Aquisição */}
           <motion.div
             variants={fadeUp}
             initial="initial"
             animate="animate"
             transition={{ delay: 0.06 }}
-            className="grid grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <p className="mb-3 text-sm font-medium text-ink-primary">Forma de Aquisição</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setTipoAquisicao("comprado");
+                }}
+                className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
+                  tipoAquisicao === "comprado"
+                    ? "border-ice bg-ice/12 text-ice"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                }`}
+              >
+                🛒 Comprado (Particular)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setTipoAquisicao("sus");
+                }}
+                className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
+                  tipoAquisicao === "sus"
+                    ? "border-emerald-500 bg-emerald-500/12 text-emerald-400"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                }`}
+              >
+                🛡️ Retirada SUS / Governo
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Data e Preço / Retirada SUS */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.07 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4"
           >
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Data da Receita</label>
+              <label className="block text-sm font-medium text-ink-primary">
+                Data do Registro / Retirada
+              </label>
               <div className="relative">
-                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                <Calendar
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                />
                 <input
                   type="text"
                   placeholder="DD/MM/AAAA"
                   maxLength={10}
                   value={dataDisplay}
                   onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm text-ink-primary outline-none focus:border-ice/50"
                 />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Custo (R$)</label>
-              <div className="relative">
-                <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="0,00"
-                  value={preco}
-                  onChange={(e) => setPreco(handleCurrencyMask(e.target.value))}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
-                />
+
+            {tipoAquisicao === "comprado" ? (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-ink-primary">
+                  Custo (R$)
+                </label>
+                <div className="relative">
+                  <DollarSign
+                    size={16}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="0,00"
+                    value={preco}
+                    onChange={(e) => setPreco(handleCurrencyMask(e.target.value))}
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm text-ink-primary outline-none focus:border-ice/50"
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-1.5 pt-2 border-t border-surface-border/30">
+                <label className="block text-sm font-medium text-emerald-400">
+                  📅 Próxima data de retorno ao posto (SUS)
+                </label>
+                <div className="relative">
+                  <Calendar
+                    size={16}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  />
+                  <input
+                    type="text"
+                    placeholder="DD/MM/AAAA"
+                    maxLength={10}
+                    value={dataProximaRetirada}
+                    onChange={(e) => setDataProximaRetirada(handleDateMask(e.target.value))}
+                    className="w-full rounded-2xl border border-emerald-500/30 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm text-ink-primary outline-none focus:border-emerald-500/50"
+                  />
+                </div>
+                <p className="text-[11px] text-ink-muted">Esta data gerará alertas automáticos na sua agenda.</p>
+              </div>
+            )}
           </motion.div>
 
+          {/* Observações */}
           <motion.div
             variants={fadeUp}
             initial="initial"
             animate="animate"
-            transition={{ delay: 0.07 }}
+            transition={{ delay: 0.08 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <TextArea
@@ -506,20 +624,23 @@ function EditarRenovacaoContent() {
             />
           </motion.div>
 
+          {/* Anexo */}
           {anexoUrl && (
             <motion.div
               variants={fadeUp}
               initial="initial"
               animate="animate"
-              transition={{ delay: 0.08 }}
+              transition={{ delay: 0.09 }}
               className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
             >
-              <label className="mb-1.5 block text-sm font-medium text-ink-primary">Anexo</label>
+              <label className="mb-1.5 block text-sm font-medium text-ink-primary">
+                Anexo
+              </label>
               <a
                 href={anexoUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 p-3.5 text-ice hover:bg-ice/20 transition-colors"
+                className="flex items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 p-3.5 text-ice transition-colors hover:bg-ice/20"
               >
                 <div className="flex items-center gap-2 text-xs font-semibold">
                   <FileText size={16} /> Ver Comprovante Anexado
@@ -530,6 +651,7 @@ function EditarRenovacaoContent() {
           )}
         </section>
 
+        {/* ===== FIXED FOOTER ===== */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button
             variant="primary"
@@ -544,6 +666,7 @@ function EditarRenovacaoContent() {
           </Button>
         </div>
 
+        {/* ===== MODAIS ===== */}
         <SelectionModal<Medicamento>
           isOpen={isMedModalOpen}
           onClose={() => setIsMedModalOpen(false)}
@@ -679,5 +802,9 @@ function EditarRenovacaoContent() {
 }
 
 export default function EditarRenovacaoPage() {
-  return <Suspense fallback={<DetailSkeleton />}><EditarRenovacaoContent /></Suspense>;
+  return (
+    <Suspense fallback={<DetailSkeleton />}>
+      <EditarRenovacaoContent />
+    </Suspense>
+  );
 }

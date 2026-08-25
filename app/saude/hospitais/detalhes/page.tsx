@@ -68,7 +68,6 @@ function DetalhesHospitalContent() {
     [id]
   ) || [];
 
-  // Hook para tratamentos vinculados ao hospital (movido para cima)
   const tratamentoIds = useMemo(() => hospital?.tratamento_ids || [], [hospital]);
   const tratamentos = useLiveQuery(
     () => tratamentoIds.length > 0 ? db.tratamentos.where('id').anyOf(tratamentoIds).toArray() : Promise.resolve([] as Tratamento[]),
@@ -129,7 +128,6 @@ function DetalhesHospitalContent() {
     };
   }, [id, hospital, consultas, medicos, cirurgias, renovacoes]);
 
-  // Alertas (useMemo movido para antes dos retornos)
   const todosAlertas = useMemo(() => {
     if (!id) return [];
     const contexto = {
@@ -196,6 +194,7 @@ function DetalhesHospitalContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                aria-label="Adicionar registro"
               >
                 <Plus size={18} />
               </button>
@@ -245,12 +244,14 @@ function DetalhesHospitalContent() {
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/hospitais/editar?id=${hospital.id}`); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary hover:text-ice hover:border-ice/30 transition-all active:scale-95"
+              aria-label="Editar hospital"
             >
               <Edit3 size={16} />
             </button>
             <button
               onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              aria-label="Excluir hospital"
             >
               <Trash2 size={16} />
             </button>

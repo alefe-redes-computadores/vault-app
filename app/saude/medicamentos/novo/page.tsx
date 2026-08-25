@@ -64,16 +64,39 @@ function handleCurrencyMask(value: string): string {
 
 function handleTimeMask(value: string): string {
   const clean = value.replace(/\D/g, "").slice(0, 4);
+  if (clean.length === 0) return "";
   if (clean.length > 2) {
     return `${clean.slice(0, 2)}:${clean.slice(2)}`;
   }
-  if (clean.length > 0) {
-    return clean.padStart(2, '0');
-  }
-  return "";
+  return clean;
 }
 
-// Ícones personalizados para suportar divisão bicolor exata
+// 🔄 Motor de Cálculo Retroativo de Estoque
+function calcularEstoqueRetroativo(
+  quantidadeComprada: number,
+  dataCompraStr: string,
+  horariosDiarios: string[],
+  unidadePorDose: number = 1
+): number {
+  if (!dataCompraStr || quantidadeComprada <= 0) return quantidadeComprada;
+  
+  const dataCompra = new Date(dataCompraStr);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  dataCompra.setHours(0, 0, 0, 0);
+
+  const diffTime = hoje.getTime() - dataCompra.getTime();
+  const diasPassados = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diasPassados <= 0) return quantidadeComprada;
+
+  const consumoDiario = (horariosDiarios.length || 1) * unidadePorDose;
+  const totalConsumido = diasPassados * consumoDiario;
+  const saldoRestante = quantidadeComprada - totalConsumido;
+
+  return Math.max(0, saldoRestante);
+}
+
 const CirclePillIcon = ({ size, fill = "currentColor", stroke = "none" }: { size: number; fill?: string; stroke?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
     <circle cx="12" cy="12" r="9" />
@@ -138,6 +161,10 @@ export default function NovoMedicamentoPage() {
   const [mlTotal, setMlTotal] = useState("");
   const [gotasPorMl, setGotasPorMl] = useState("20");
   const [estoqueGotasCalculado, setEstoqueGotasCalculado] = useState(0);
+
+  // 🛡️ Novos estados do SUS
+  const [tipoAquisicao, setTipoAquisicao] = useState<"comprado" | "sus">("comprado");
+  const [dataRetornoSusTexto, setDataRetornoSusTexto] = useState("");
 
   const [medicoId, setMedicoId] = useState<string>("");
   const [medicoNome, setMedicoNome] = useState("");
@@ -313,13 +340,15 @@ export default function NovoMedicamentoPage() {
         const dataReceitaISO = brParaIso(dataReceitaTexto) || undefined;
         const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto) || undefined;
         const estoqueDataReferenciaISO = brParaIso(estoqueDataReferenciaTexto) || getLocalTodayISO();
-
-        const quantidadeEstoqueFinal = isGotas
-          ? (estoqueGotasCalculado > 0 ? estoqueGotasCalculado : Number(estoqueQuantidade) || 0)
-          : Number(estoqueQuantidade) || 0;
-
         const horariosFiltrados = horarios.filter(Boolean);
-        const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
+
+        // 🔄 Cálculo Retroativo Automático de Estoque
+        const qtdInformada = Number(estoqueQuantidade) || 0;
+        const quantidadeEstoqueFinal = isGotas
+          ? (estoqueGotasCalculado > 0 ? estoqueGotasCalculado : calcularEstoqueRetroativo(qtdInformada, estoqueDataReferenciaISO, horariosFiltrados, Number(estoqueUnidadePorDose)))
+          : calcularEstoqueRetroativo(qtdInformada, estoqueDataReferenciaISO, horariosFiltrados, Number(estoqueUnidadePorDose));
+
+        const precoNumerico = tipoAquisicao === 'comprado' && preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
 
         let docId: string | undefined = undefined;
 
@@ -368,6 +397,11 @@ export default function NovoMedicamentoPage() {
           formato,
           cores,
           tipo_uso: tipoUso,
+          
+          // 🛡️ Propriedades do SUS enviadas para Dexie e Supabase
+          tipo_aquisicao: tipoAquisicao,
+          data_retorno_sus: tipoAquisicao === 'sus' ? (brParaIso(dataRetornoSusTexto) || undefined) : undefined,
+
           medico: medicoNome?.trim() || "", 
           medico_id: medicoId || undefined,
           hospital_id: hospitalId || undefined,
@@ -383,7 +417,7 @@ export default function NovoMedicamentoPage() {
           status: "ativo" as const,
           
           estoque_quantidade: quantidadeEstoqueFinal > 0 ? quantidadeEstoqueFinal : undefined,
-          estoque_data_referencia: quantidadeEstoqueFinal > 0 ? (estoqueDataReferenciaISO as any) : undefined,
+          estoque_data_referencia: quantidadeEstoqueFinal > 0 ? (getLocalTodayISO() as any) : undefined,
           estoque_horarios: tipoUso === 'continuo' && quantidadeEstoqueFinal > 0 && horariosFiltrados.length > 0 ? horariosFiltrados : undefined,
           estoque_unidade_por_dose: quantidadeEstoqueFinal > 0 ? Number(estoqueUnidadePorDose) : undefined,
           estoque_unidade_medida: quantidadeEstoqueFinal > 0 ? (isGotas ? "gota(s)" : estoqueUnidade) : undefined,
@@ -407,7 +441,8 @@ export default function NovoMedicamentoPage() {
             farmacia_id: farmaciaId || undefined,
             hospital_id: hospitalId || undefined,
             local_id: localId || undefined,
-            tipo_aquisicao: precoNumerico !== undefined ? "comprado" : "gratuito",
+            tipo_aquisicao: tipoAquisicao,
+            data_proxima_retirada: tipoAquisicao === 'sus' ? (brParaIso(dataRetornoSusTexto) || undefined) : undefined,
             quantidade: quantidadeEstoqueFinal > 0 ? quantidadeEstoqueFinal : undefined,
             preco: precoNumerico,
             data: (dataReceitaISO || getLocalTodayISO()) as any,
@@ -438,8 +473,6 @@ export default function NovoMedicamentoPage() {
   };
 
   const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || CirclePillIcon;
-  
-  // 🔥 CORREÇÃO: Adicionada a "capsula" para suportar 2 cores (bicolor)
   const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido" || formato === "capsula");
   const gradientId = `split-novo-bicolor`;
 
@@ -448,7 +481,6 @@ export default function NovoMedicamentoPage() {
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
 
-        {/* 🔥 CORREÇÃO: Gradiente vertical limpo (metade esquerda / metade direita) */}
         <svg width="0" height="0" className="absolute">
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -647,12 +679,32 @@ export default function NovoMedicamentoPage() {
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
                   <div className="mb-2 flex items-center gap-2">
                     <Store size={16} className="text-ice" />
-                    <h3 className="text-sm font-semibold text-ink-primary">Aquisição</h3>
+                    <h3 className="text-sm font-semibold text-ink-primary">Origem / Aquisição</h3>
+                  </div>
+
+                  {/* 🛡️ Seletor de Tipo de Aquisição (Particular vs SUS) */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { trigger("vibrate"); setTipoAquisicao("comprado"); }}
+                      className={`rounded-xl border py-3 text-xs font-bold transition-all ${tipoAquisicao === "comprado" ? "border-ice bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                    >
+                      🛒 Particular (Comprado)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { trigger("vibrate"); setTipoAquisicao("sus"); }}
+                      className={`rounded-xl border py-3 text-xs font-bold transition-all ${tipoAquisicao === "sus" ? "border-emerald-400 bg-emerald-400/10 text-emerald-400" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                    >
+                      🛡️ Retirada SUS / Governo
+                    </button>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-sm font-medium text-ink-primary">Em qual farmácia comprou?</label>
+                      <label className="block text-sm font-medium text-ink-primary">
+                        {tipoAquisicao === 'sus' ? 'Posto de Saúde / Farmácia Pública' : 'Em qual farmácia comprou?'}
+                      </label>
                       {farmaciaId && (
                         <button type="button" onClick={() => { setFarmaciaId(""); setFarmaciaNome(""); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
                           <Eraser size={12} /> Limpar
@@ -664,22 +716,37 @@ export default function NovoMedicamentoPage() {
                       onClick={() => setIsPharmacyModalOpen(true)}
                       className="flex w-full items-center justify-between rounded-2xl border bg-surface-raised px-4 py-3.5 text-left transition-all border-surface-border/50 hover:border-ice/50"
                     >
-                      <span className="truncate font-medium text-ink-primary">{farmaciaNome || "Selecionar farmácia..."}</span>
+                      <span className="truncate font-medium text-ink-primary">{farmaciaNome || (tipoAquisicao === 'sus' ? "Selecionar posto/farmácia pública..." : "Selecionar farmácia...")}</span>
                       <span className="text-xs font-bold text-ice">Selecionar</span>
                     </button>
                   </div>
 
-                  <div>
-                    <Input
-                      label="Valor pago (R$)"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="0,00"
-                      value={preco}
-                      onChange={(e) => setPreco(handleCurrencyMask(e.target.value))}
-                      icon={<DollarSign size={16} className="text-emerald-400"/>}
-                    />
-                  </div>
+                  {tipoAquisicao === 'comprado' ? (
+                    <div>
+                      <Input
+                        label="Valor pago (R$)"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0,00"
+                        value={preco}
+                        onChange={(e) => setPreco(handleCurrencyMask(e.target.value))}
+                        icon={<DollarSign size={16} className="text-emerald-400"/>}
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 space-y-3">
+                      <p className="text-xs font-semibold text-emerald-400">📅 Controle de Dispensação SUS</p>
+                      <Input
+                        label="Próxima data de retorno ao posto"
+                        placeholder="DD/MM/AAAA"
+                        value={dataRetornoSusTexto}
+                        onChange={(e) => setDataRetornoSusTexto(mascaraData(e.target.value))}
+                        maxLength={10}
+                        inputMode="numeric"
+                      />
+                      <p className="text-[11px] text-ink-muted">O app vai te avisar automaticamente na agenda quando estiver na hora de voltar para buscar novos medicamentos.</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
@@ -808,7 +875,7 @@ export default function NovoMedicamentoPage() {
                         <div className="grid grid-cols-2 gap-3 mb-4">
                           <div className={`transition-all ${shakeFields.includes('estoqueQuantidade') ? 'animate-shake' : ''}`}>
                             <Input
-                              label="Qtd Comprada"
+                              label="Qtd Comprada / Retirada"
                               type="number"
                               inputMode="numeric"
                               placeholder="Ex: 30"
@@ -826,7 +893,7 @@ export default function NovoMedicamentoPage() {
                           />
                         </div>
                         <Input
-                          label="Data da Compra"
+                          label="Data da Aquisição / Retirada"
                           value={estoqueDataReferenciaTexto}
                           onChange={(e) => setEstoqueDataReferenciaTexto(mascaraData(e.target.value))}
                           maxLength={10}

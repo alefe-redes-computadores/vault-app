@@ -271,11 +271,7 @@ export default function DocumentDetailPage() {
         <main className="flex min-h-screen items-center justify-center bg-void px-5">
           <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
             <p className="text-sm text-ink-muted">Documento não encontrado</p>
-            <Button
-              variant="primary"
-              onClick={() => router.push("/")}
-              className="mt-4"
-            >
+            <Button variant="primary" onClick={() => router.push("/")} className="mt-4">
               Voltar
             </Button>
           </div>
@@ -307,6 +303,7 @@ export default function DocumentDetailPage() {
                 }}
                 aria-label="Voltar"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+                type="button"
               >
                 <ArrowLeft size={18} className="text-ink-primary" />
               </button>
@@ -318,9 +315,7 @@ export default function DocumentDetailPage() {
                 <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary sm:text-xl">
                   {doc.title}
                 </h1>
-                <p className="mt-1 text-sm text-ink-muted">
-                  Detalhes do documento
-                </p>
+                <p className="mt-1 text-sm text-ink-muted">Detalhes do documento</p>
               </div>
             </div>
 
@@ -329,23 +324,18 @@ export default function DocumentDetailPage() {
                 onClick={handleFavoriteToggle}
                 aria-label="Favoritar documento"
                 className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all active:scale-95 ${
-                  doc.is_favorite
-                    ? "border-transparent bg-ice/12"
-                    : "border-surface-border/50 bg-surface-raised"
+                  doc.is_favorite ? "border-transparent bg-ice/12" : "border-surface-border/50 bg-surface-raised"
                 }`}
+                type="button"
               >
-                <Star
-                  size={18}
-                  className={
-                    doc.is_favorite ? "fill-ice text-ice" : "text-ink-muted"
-                  }
-                />
+                <Star size={18} className={doc.is_favorite ? "fill-ice text-ice" : "text-ink-muted"} />
               </button>
 
               <button
                 onClick={handleShare}
                 aria-label="Compartilhar documento"
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+                type="button"
               >
                 <Share2 size={18} className="text-ink-muted" />
               </button>
@@ -362,34 +352,23 @@ export default function DocumentDetailPage() {
             className="relative overflow-hidden rounded-[28px] border bg-surface p-5 shadow-sm"
             style={{ borderColor: `${color}25` }}
           >
-            <div
-              className="absolute inset-x-0 top-0 h-[3px]"
-              style={{ backgroundColor: color }}
-            />
+            <div className="absolute inset-x-0 top-0 h-[3px]" style={{ backgroundColor: color }} />
 
             <div className="flex items-start gap-4">
               <div
                 className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
-                style={{
-                  background: `linear-gradient(135deg, ${color}30, ${color}0d)`,
-                }}
+                style={{ background: `linear-gradient(135deg, ${color}30, ${color}0d)` }}
               >
                 <CategoryIcon size={24} style={{ color }} />
               </div>
 
               <div className="min-w-0 flex-1">
-                <h2 className="truncate font-display text-lg font-semibold text-ink-primary">
-                  {doc.title}
-                </h2>
+                <h2 className="truncate font-display text-lg font-semibold text-ink-primary">{doc.title}</h2>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
                   <span
                     className="rounded-full border px-2 py-0.5 text-[10px] font-medium"
-                    style={{
-                      backgroundColor: `${color}12`,
-                      borderColor: `${color}28`,
-                      color,
-                    }}
+                    style={{ backgroundColor: `${color}12`, borderColor: `${color}28`, color }}
                   >
                     {category?.name || "Outros"}
                   </span>
@@ -399,8 +378,7 @@ export default function DocumentDetailPage() {
                     <>
                       <span className="h-1 w-1 rounded-full bg-ink-faint" />
                       <span className="inline-flex items-center gap-1 text-ice">
-                        <User size={10} />
-                        Compartilhado
+                        <User size={10} /> Compartilhado
                       </span>
                     </>
                   )}
@@ -412,9 +390,7 @@ export default function DocumentDetailPage() {
               <div className="mt-5 border-t border-surface-border/50 pt-5">
                 <div className="mb-3 flex items-center gap-2">
                   <FileText size={14} className="text-ice" />
-                  <p className="text-sm font-medium text-ink-primary">
-                    Informações
-                  </p>
+                  <p className="text-sm font-medium text-ink-primary">Informações</p>
                 </div>
 
                 <div className="space-y-2.5">
@@ -462,18 +438,12 @@ export default function DocumentDetailPage() {
                       custom_field_2: "Campo 2",
                     };
 
-                    const label =
-                      labels[key] || key.replace(/_/g, " ").toUpperCase();
+                    const label = labels[key] || key.replace(/_/g, " ").toUpperCase();
 
                     return (
-                      <div
-                        key={key}
-                        className="flex items-start justify-between gap-4 rounded-2xl bg-surface-raised/55 px-3.5 py-3"
-                      >
+                      <div key={key} className="flex items-start justify-between gap-4 rounded-2xl bg-surface-raised/55 px-3.5 py-3">
                         <span className="text-sm text-ink-muted">{label}</span>
-                        <span className="text-right text-sm font-medium text-ink-primary">
-                          {displayValue}
-                        </span>
+                        <span className="text-right text-sm font-medium text-ink-primary">{displayValue}</span>
                       </div>
                     );
                   })}
@@ -484,9 +454,7 @@ export default function DocumentDetailPage() {
             {doc.description && (
               <div className="mt-5 border-t border-surface-border/50 pt-5">
                 <p className="mb-2 text-sm font-medium text-ink-primary">Notas</p>
-                <p className="text-sm leading-6 text-ink-muted">
-                  {doc.description}
-                </p>
+                <p className="text-sm leading-6 text-ink-muted">{doc.description}</p>
               </div>
             )}
 
@@ -494,18 +462,12 @@ export default function DocumentDetailPage() {
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <p className="text-ink-muted">
                   {doc.synced ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-400">
-                      ✓ Sincronizado
-                    </span>
+                    <span className="inline-flex items-center gap-1 text-emerald-400">✓ Sincronizado</span>
                   ) : (
-                    <span className="inline-flex animate-pulse items-center gap-1 text-coral">
-                      ↻ Pendente
-                    </span>
+                    <span className="inline-flex animate-pulse items-center gap-1 text-coral">↻ Pendente</span>
                   )}
                 </p>
-                <p className="text-ink-muted">
-                  Criado em {formatCreationDate(doc.created_at)}
-                </p>
+                <p className="text-ink-muted">Criado em {formatCreationDate(doc.created_at)}</p>
               </div>
             </div>
           </motion.div>
@@ -535,6 +497,8 @@ export default function DocumentDetailPage() {
                       key={attachment.id}
                       onClick={() => openAttachment(attachment)}
                       className="group relative overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface-raised p-3 text-left transition-all active:scale-[0.985] hover:border-ice/25"
+                      type="button"
+                      aria-label={`Abrir anexo ${attachment.name}`}
                     >
                       {isImage ? (
                         <img
@@ -547,8 +511,7 @@ export default function DocumentDetailPage() {
                             const parent = (e.target as HTMLImageElement).parentElement;
                             if (parent) {
                               const icon = document.createElement("div");
-                              icon.className =
-                                "flex flex-col items-center justify-center w-full h-24 rounded-xl bg-surface";
+                              icon.className = "flex flex-col items-center justify-center w-full h-24 rounded-xl bg-surface";
                               icon.innerHTML = `<svg class="w-8 h-8 text-coral/60 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg><span class="text-[9px] text-ink-muted px-1 text-center">Arquivo indisponível. Edite para reenviar.</span>`;
                               parent.prepend(icon);
                             }
@@ -602,11 +565,7 @@ export default function DocumentDetailPage() {
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Trash2 size={16} />
-              )}
+              {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
               {isDeleting ? "Excluindo..." : "Excluir"}
             </Button>
           </motion.div>
@@ -638,19 +597,14 @@ export default function DocumentDetailPage() {
                         onChange={(e) =>
                           setSelectedAttachment({
                             ...selectedAttachment,
-                            name: buildFullName(
-                              e.target.value,
-                              getExtension(selectedAttachment.name)
-                            ),
+                            name: buildFullName(e.target.value, getExtension(selectedAttachment.name)),
                           })
                         }
                         className="flex-1 border-b border-ice/30 bg-transparent font-medium text-ink-primary outline-none transition-colors focus:border-ice"
                         autoFocus
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
-                            updateAttachmentName(
-                              getBaseName(selectedAttachment.name)
-                            );
+                            updateAttachmentName(getBaseName(selectedAttachment.name));
                           }
                           if (e.key === "Escape") {
                             setIsRenaming(false);
@@ -674,15 +628,15 @@ export default function DocumentDetailPage() {
                         } else {
                           setIsRenaming(true);
                           setTimeout(() => {
-                            const input = document.querySelector(
-                              'input[type="text"]'
-                            ) as HTMLInputElement;
+                            const input = document.querySelector('input[type="text"]') as HTMLInputElement;
                             if (input) input.focus();
                           }, 100);
                         }
                       }}
                       className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
                       title={isRenaming ? "Salvar nome" : "Renomear"}
+                      type="button"
+                      aria-label={isRenaming ? "Salvar nome" : "Renomear"}
                     >
                       <Pencil size={16} className="text-ink-muted" />
                     </button>
@@ -692,23 +646,21 @@ export default function DocumentDetailPage() {
                     {selectedAttachment.type === "image" && (
                       <>
                         <button
-                          onClick={() =>
-                            setZoomLevel(Math.max(0.5, zoomLevel - 0.25))
-                          }
+                          onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.25))}
                           className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                          type="button"
+                          aria-label="Diminuir zoom"
                         >
                           <ZoomOut size={16} className="text-ink-muted" />
                         </button>
 
-                        <span className="text-xs text-ink-muted">
-                          {Math.round(zoomLevel * 100)}%
-                        </span>
+                        <span className="text-xs text-ink-muted">{Math.round(zoomLevel * 100)}%</span>
 
                         <button
-                          onClick={() =>
-                            setZoomLevel(Math.min(3, zoomLevel + 0.25))
-                          }
+                          onClick={() => setZoomLevel(Math.min(3, zoomLevel + 0.25))}
                           className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                          type="button"
+                          aria-label="Aumentar zoom"
                         >
                           <ZoomIn size={16} className="text-ink-muted" />
                         </button>
@@ -718,6 +670,8 @@ export default function DocumentDetailPage() {
                     <button
                       onClick={() => setIsModalOpen(false)}
                       className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
+                      type="button"
+                      aria-label="Fechar modal"
                     >
                       <X size={20} className="text-ink-muted" />
                     </button>
@@ -746,9 +700,7 @@ export default function DocumentDetailPage() {
                   ) : selectedAttachment.type === "pdf" ? (
                     <div className="flex w-full flex-col items-center gap-4 text-ink-muted">
                       <FileText size={64} className="text-ice/30" />
-                      <p className="text-sm text-ink-primary">
-                        {selectedAttachment.name}
-                      </p>
+                      <p className="text-sm text-ink-primary">{selectedAttachment.name}</p>
                       <div className="flex gap-4 text-xs text-ink-muted/60">
                         <span>Clique em "Baixar" para visualizar</span>
                         <span>•</span>
@@ -757,6 +709,8 @@ export default function DocumentDetailPage() {
                       <button
                         onClick={() => downloadAttachment(selectedAttachment)}
                         className="text-sm text-ice transition-colors hover:text-ice/80"
+                        type="button"
+                        aria-label="Baixar PDF"
                       >
                         Baixar PDF
                       </button>
@@ -764,15 +718,13 @@ export default function DocumentDetailPage() {
                   ) : (
                     <div className="flex flex-col items-center gap-4 text-ink-muted">
                       <FileIcon size={64} className="text-ink-muted/30" />
-                      <p className="text-sm text-ink-primary">
-                        {selectedAttachment.name}
-                      </p>
-                      <p className="text-xs text-ink-muted/60">
-                        Pré-visualização não disponível
-                      </p>
+                      <p className="text-sm text-ink-primary">{selectedAttachment.name}</p>
+                      <p className="text-xs text-ink-muted/60">Pré-visualização não disponível</p>
                       <button
                         onClick={() => downloadAttachment(selectedAttachment)}
                         className="text-sm text-ice transition-colors hover:text-ice/80"
+                        type="button"
+                        aria-label="Baixar arquivo"
                       >
                         Baixar arquivo
                       </button>
@@ -787,19 +739,11 @@ export default function DocumentDetailPage() {
                     onClick={() => downloadAttachment(selectedAttachment)}
                     disabled={isDownloading || imageError}
                   >
-                    {isDownloading ? (
-                      <Loader2 size={14} className="mr-1 animate-spin" />
-                    ) : (
-                      <Download size={14} className="mr-1" />
-                    )}
+                    {isDownloading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Download size={14} className="mr-1" />}
                     {isDownloading ? "Baixando..." : "Baixar"}
                   </Button>
 
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setIsModalOpen(false)}
-                  >
+                  <Button variant="primary" size="sm" onClick={() => setIsModalOpen(false)}>
                     Fechar
                   </Button>
                 </div>

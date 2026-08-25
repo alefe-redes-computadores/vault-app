@@ -96,7 +96,7 @@ export function QuickDoseModal({ isOpen, onClose, preselectedMedicamentoId, onSu
     return medicamentosAtivos.filter(m => m.nome.toLowerCase().includes(q));
   }, [medicamentosAtivos, searchQuery]);
 
-  const handleSalvar = async () => {
+      const handleSalvar = async () => {
     const targetId = preselectedMedicamentoId || doseMedId;
     if (!targetId) { trigger("error"); showToast("Selecione um medicamento", "error"); return; }
     if (!doseHora) { trigger("error"); showToast("Horário é obrigatório", "error"); return; }
@@ -110,15 +110,24 @@ export function QuickDoseModal({ isOpen, onClose, preselectedMedicamentoId, onSu
 
       const hoje = getLocalTodayISO();
       const atual = med.estoque_quantidade ?? 0;
-      const novoEstoque = Math.max(0, atual - doseQtd);
+      
+      let doseParaAbater = doseQtd;
+      const unidadeEstoque = (med.estoque_unidade_medida || "").toLowerCase();
+      const formato = (med.formato || "").toLowerCase();
+      const isGotas = formato.includes("gota");
 
-      // Atualiza estoque
+      if (isGotas && (unidadeEstoque.includes("ml") || unidadeEstoque.includes("frasco"))) {
+        const gotasPorMl = med.estoque_gotas_por_ml || 20; 
+        doseParaAbater = doseQtd / gotasPorMl; 
+      }
+
+      const novoEstoque = Math.max(0, Number((atual - doseParaAbater).toFixed(2)));
+
       await safeUpdateMedicamento(med.id!, {
         estoque_quantidade: novoEstoque,
         estoque_data_referencia: hoje,
       });
 
-      // Salva log de dose avulsa / SOS
       const logId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
       const novoLog = {
         id: logId,
@@ -139,7 +148,6 @@ export function QuickDoseModal({ isOpen, onClose, preselectedMedicamentoId, onSu
 
       if (typeof window !== "undefined") window.dispatchEvent(new Event("sync:process"));
 
-      // Análise de IA Inteligente de Segurança
       const historicoDoses = await db.doseLogs.where('medicamento_id').equals(med.id!).toArray();
       const insightUso = analisarComportamentoUso(med, historicoDoses);
       if (insightUso?.requerAtencaoUrgente) {
@@ -159,6 +167,8 @@ export function QuickDoseModal({ isOpen, onClose, preselectedMedicamentoId, onSu
       setIsSaving(false);
     }
   };
+
+
 
   if (!isOpen) return null;
 

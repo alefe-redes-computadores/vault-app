@@ -95,38 +95,94 @@ export interface EstoqueInfo {
   quantidadeInicial: number;
   quantidadeRestante: number;
   diasRestantes: number;
+  dosesRestantes: number; 
   unidade: string;
+  textoEstoque: string; 
 }
 
 export function temEstoqueConfigurado(med: Medicamento): boolean {
-  return (
-    typeof med.estoque_quantidade === "number" &&
-    !!med.estoque_data_referencia &&
-    !!med.estoque_horarios &&
-    med.estoque_horarios.length > 0
-  );
+  return typeof med.estoque_quantidade === "number";
 }
 
 export function computeEstoqueInfo(med: Medicamento): EstoqueInfo | null {
   if (!temEstoqueConfigurado(med)) return null;
 
-  const horarios = med.estoque_horarios!;
+  const horarios = med.estoque_horarios || [];
+  const isSOS = med.tipo_uso !== "continuo";
   const unidadePorDose = med.estoque_unidade_por_dose || 1;
-  const consumoDiario = horarios.length * unidadePorDose;
-  
-  if (consumoDiario <= 0) return null;
-
   const quantidadeRestante = med.estoque_quantidade!;
-  const diasRestantes = Math.floor(quantidadeRestante / consumoDiario);
+  const unidade = (med.estoque_unidade_medida || "unidades").toLowerCase();
+  const formato = (med.formato || "").toLowerCase();
+  const isGotas = formato.includes("gota");
+
+  let diasRestantes = 0;
+  let dosesRestantes = 0;
+  let consumoDiario = 0;
+  let textoEstoque = "";
+
+  if (isGotas && (unidade.includes("ml") || unidade.includes("frasco"))) {
+    const gotasPorMl = med.estoque_gotas_por_ml || 20; 
+    const totalGotas = quantidadeRestante * gotasPorMl; 
+    
+    consumoDiario = horarios.length * unidadePorDose; 
+    dosesRestantes = Math.floor(totalGotas / (unidadePorDose > 0 ? unidadePorDose : 1));
+    
+    if (!isSOS && consumoDiario > 0) {
+      diasRestantes = Math.floor(totalGotas / consumoDiario);
+    }
+    
+    textoEstoque = `${quantidadeRestante} ${med.estoque_unidade_medida || 'ml'} (aprox. ${dosesRestantes} doses)`;
+  } else {
+    consumoDiario = horarios.length * unidadePorDose; 
+    dosesRestantes = Math.floor(quantidadeRestante / (unidadePorDose > 0 ? unidadePorDose : 1));
+    
+    if (!isSOS && consumoDiario > 0) {
+      diasRestantes = Math.floor(quantidadeRestante / consumoDiario);
+    }
+    
+    textoEstoque = `${quantidadeRestante} ${med.estoque_unidade_medida || 'unidades'}`;
+  }
 
   return {
     consumoDiario,
     quantidadeInicial: quantidadeRestante,
     quantidadeRestante,
     diasRestantes,
+    dosesRestantes,
     unidade: med.estoque_unidade_medida || "unidade(s)",
+    textoEstoque,
   };
 }
+/**
+ * 🔄 Calcula o estoque estimado retroativamente com base em uma data passada.
+ * Se o usuário comprou comprimidos no passado, o app abate o consumo diário até hoje.
+ */
+export function calcularEstoqueRetroativo(
+  quantidadeComprada: number,
+  dataCompraStr: string,
+  horariosDiarios: string[],
+  unidadePorDose: number = 1
+): number {
+  if (!dataCompraStr || quantidadeComprada <= 0) return quantidadeComprada;
+  
+  const dataCompra = new Date(dataCompraStr);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  dataCompra.setHours(0, 0, 0, 0);
+
+  const diffTime = hoje.getTime() - dataCompra.getTime();
+  const diasPassados = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diasPassados <= 0) return quantidadeComprada;
+
+  const consumoDiario = (horariosDiarios.length || 1) * unidadePorDose;
+  const totalConsumido = diasPassados * consumoDiario;
+  const saldoRestante = quantidadeComprada - totalConsumido;
+
+  return Math.max(0, saldoRestante);
+}
+
+
 
 export function getEstoqueAlerts(medicamentos: Medicamento[]): HealthAlert[] {
   return medicamentos

@@ -108,9 +108,11 @@ export default function NewCardPage() {
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-44">
         <header className="header-safe-top sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
-          <button 
-            onClick={() => { trigger("vibrate"); router.back(); }} 
+          <button
+            onClick={() => { trigger("vibrate"); router.back(); }}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+            type="button"
+            aria-label="Voltar"
           >
             <ArrowLeft size={18} className="text-ink-primary" />
           </button>
@@ -134,19 +136,19 @@ export default function NewCardPage() {
 
         <section className="space-y-4 px-5 pt-6">
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input 
-              label="Título (ex: Nubank Ultravioleta, Cartão Principal)" 
-              value={formData.title} 
-              onChange={(e) => handleChange("title", e.target.value)} 
-              error={errors.title} 
-              required 
+            <Input
+              label="Título (ex: Nubank Ultravioleta, Cartão Principal)"
+              value={formData.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+              error={errors.title}
+              required
             />
-            <Input 
-              label="Nome do Banco (ex: Nubank, Itaú, Bradesco)" 
-              value={formData.bank_name} 
-              onChange={(e) => handleChange("bank_name", e.target.value)} 
-              error={errors.bank_name} 
-              required 
+            <Input
+              label="Nome do Banco (ex: Nubank, Itaú, Bradesco)"
+              value={formData.bank_name}
+              onChange={(e) => handleChange("bank_name", e.target.value)}
+              error={errors.bank_name}
+              required
             />
           </motion.div>
 
@@ -161,10 +163,12 @@ export default function NewCardPage() {
                   key={typeItem.id}
                   onClick={() => { trigger("vibrate"); handleChange("type", typeItem.id); }}
                   className={`rounded-2xl border px-3 py-3 text-xs font-medium text-left transition-all active:scale-95 ${
-                    formData.type === typeItem.id 
-                      ? "border-ice bg-ice/12 text-ice" 
+                    formData.type === typeItem.id
+                      ? "border-ice bg-ice/12 text-ice"
                       : "border-surface-border/50 bg-surface-raised text-ink-muted"
                   }`}
+                  type="button"
+                  aria-pressed={formData.type === typeItem.id}
                 >
                   {typeItem.label}
                 </button>
@@ -174,11 +178,11 @@ export default function NewCardPage() {
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
             <div className="relative">
-              <Input 
-                label="Número do Cartão" 
-                value={formData.card_number} 
-                onChange={(e) => handleChange("card_number", e.target.value)} 
-                placeholder="0000 0000 0000 0000" 
+              <Input
+                label="Número do Cartão"
+                value={formData.card_number}
+                onChange={(e) => handleChange("card_number", e.target.value)}
+                placeholder="0000 0000 0000 0000"
               />
               {detectedBrand !== "unknown" && (
                 <div className="absolute right-3 top-9 rounded-md bg-surface-raised px-2 py-1 text-[11px] font-semibold text-ice border border-surface-border/40">
@@ -187,51 +191,51 @@ export default function NewCardPage() {
               )}
             </div>
 
-            <Input 
-              label="Nome Impresso no Cartão" 
-              value={formData.card_holder} 
-              onChange={(e) => handleChange("card_holder", e.target.value.toUpperCase())} 
-              placeholder="NOME COMO NO CARTÃO" 
+            <Input
+              label="Nome Impresso no Cartão"
+              value={formData.card_holder}
+              onChange={(e) => handleChange("card_holder", e.target.value.toUpperCase())}
+              placeholder="NOME COMO NO CARTÃO"
             />
 
             <div className="grid grid-cols-2 gap-3">
-              <Input 
-                label="Validade" 
-                value={formData.expiry_date} 
-                onChange={(e) => handleChange("expiry_date", e.target.value)} 
-                placeholder="MM/AA" 
+              <Input
+                label="Validade"
+                value={formData.expiry_date}
+                onChange={(e) => handleChange("expiry_date", e.target.value)}
+                placeholder="MM/AA"
               />
-              <Input 
-                label="CVV" 
-                value={formData.cvv} 
-                onChange={(e) => handleChange("cvv", e.target.value.replace(/\D/g, "").slice(0, 4))} 
-                placeholder="123" 
-                type="password" 
+              <Input
+                label="CVV"
+                value={formData.cvv}
+                onChange={(e) => handleChange("cvv", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="123"
+                type="password"
               />
             </div>
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="grid grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input 
-              label="Agência (Opcional)" 
-              value={formData.agency} 
-              onChange={(e) => handleChange("agency", e.target.value)} 
-              placeholder="0000" 
+            <Input
+              label="Agência (Opcional)"
+              value={formData.agency}
+              onChange={(e) => handleChange("agency", e.target.value)}
+              placeholder="0000"
             />
-            <Input 
-              label="Conta / Digito (Opcional)" 
-              value={formData.account} 
-              onChange={(e) => handleChange("account", e.target.value)} 
-              placeholder="00000-0" 
+            <Input
+              label="Conta / Digito (Opcional)"
+              value={formData.account}
+              onChange={(e) => handleChange("account", e.target.value)}
+              placeholder="00000-0"
             />
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <TextArea 
-              label="Observações (opcional)" 
-              value={formData.notes} 
-              onChange={(e) => handleChange("notes", e.target.value)} 
-              placeholder="Ex: Senha do app, limite, etc." 
+            <TextArea
+              label="Observações (opcional)"
+              value={formData.notes}
+              onChange={(e) => handleChange("notes", e.target.value)}
+              placeholder="Ex: Senha do app, limite, etc."
             />
           </motion.div>
         </section>

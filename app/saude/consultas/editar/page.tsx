@@ -276,6 +276,8 @@ function EditarConsultaContent() {
             <button
               onClick={() => { trigger("vibrate"); router.replace(`/saude/consultas/detalhes?id=${id}`); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              type="button"
+              aria-label="Voltar para detalhes"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -306,6 +308,7 @@ function EditarConsultaContent() {
                     setCidsSelecionados([]);
                   }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  aria-label="Limpar todos"
                 >
                   <Eraser size={12} /> Limpar todos
                 </button>
@@ -326,6 +329,8 @@ function EditarConsultaContent() {
                       <button
                         onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== tId)); }}
                         className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
+                        type="button"
+                        aria-label={`Remover ${t.nome}`}
                       >
                         <X size={14} />
                       </button>
@@ -350,6 +355,8 @@ function EditarConsultaContent() {
                       <button
                         onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setCidsSelecionados((prev) => prev.filter((item) => item !== cId)); }}
                         className="ml-1 text-current/60 hover:text-coral transition-colors"
+                        type="button"
+                        aria-label={`Remover ${c.codigo}`}
                       >
                         <X size={14} />
                       </button>
@@ -363,6 +370,8 @@ function EditarConsultaContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
+                type="button"
+                aria-label="Vincular tratamento"
               >
                 <Plus size={16} />
                 <span className="text-sm font-medium">Vincular Tratamento</span>
@@ -370,6 +379,8 @@ function EditarConsultaContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300 transition-colors hover:bg-emerald-400/10"
+                type="button"
+                aria-label="Vincular CID"
               >
                 <Plus size={16} />
                 <span className="text-sm font-medium">Vincular CID</span>
@@ -390,6 +401,7 @@ function EditarConsultaContent() {
                     setError("");
                   }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  aria-label="Limpar médico"
                 >
                   <Eraser size={12} /> Limpar
                 </button>
@@ -399,6 +411,7 @@ function EditarConsultaContent() {
               type="button"
               onClick={() => setIsMedicoModalOpen(true)}
               className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${errors.medicoId ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised flex items-center justify-between`}
+              aria-label="Selecionar médico"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <UserCheck size={16} className="text-ice shrink-0" />
@@ -421,6 +434,7 @@ function EditarConsultaContent() {
                       setHospitalId("");
                     }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                    aria-label="Limpar hospital"
                   >
                     <Eraser size={12} /> Limpar
                   </button>
@@ -430,6 +444,7 @@ function EditarConsultaContent() {
                 type="button"
                 onClick={() => setIsHospitalModalOpen(true)}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between text-ink-primary"
+                aria-label="Selecionar hospital"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Building2 size={16} className="text-violet-400 shrink-0" />
@@ -448,6 +463,7 @@ function EditarConsultaContent() {
                       setLocalId("");
                     }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                    aria-label="Limpar local"
                   >
                     <Eraser size={12} /> Limpar
                   </button>
@@ -457,6 +473,7 @@ function EditarConsultaContent() {
                 type="button"
                 onClick={() => setIsLocalModalOpen(true)}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between text-ink-primary"
+                aria-label="Selecionar local"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <MapPin size={16} className="text-emerald-400 shrink-0" />
@@ -479,6 +496,7 @@ function EditarConsultaContent() {
                     value={dataDisplay}
                     onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
                     className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50`}
+                    aria-label="Data da consulta"
                   />
                 </div>
                 {errors.data && <p className="text-xs text-coral ml-1">{errors.data}</p>}
@@ -494,6 +512,7 @@ function EditarConsultaContent() {
                     value={horario}
                     onChange={(e) => setHorario(handleTimeMask(e.target.value))}
                     className={`w-full rounded-2xl border ${errors.horario ? "border-coral/50 text-coral" : "border-surface-border/50 text-ink-primary"} bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50`}
+                    aria-label="Horário"
                   />
                 </div>
                 {errors.horario && <p className="text-xs text-coral ml-1">{errors.horario}</p>}
@@ -504,7 +523,15 @@ function EditarConsultaContent() {
               <label className="text-sm font-medium text-ink-primary">Status</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {(["agendada", "realizada", "cancelada"] as const).map(st => (
-                  <button key={st} onClick={() => { trigger("vibrate"); setStatus(st); }} className={`text-[11px] font-bold uppercase tracking-wider py-2.5 rounded-xl transition-colors ${status === st ? 'bg-ice text-void shadow-sm' : 'bg-surface-raised text-ink-muted border border-surface-border/50'}`}>{st}</button>
+                  <button
+                    key={st}
+                    onClick={() => { trigger("vibrate"); setStatus(st); }}
+                    className={`text-[11px] font-bold uppercase tracking-wider py-2.5 rounded-xl transition-colors ${status === st ? 'bg-ice text-void shadow-sm' : 'bg-surface-raised text-ink-muted border border-surface-border/50'}`}
+                    type="button"
+                    aria-pressed={status === st}
+                  >
+                    {st}
+                  </button>
                 ))}
               </div>
             </div>

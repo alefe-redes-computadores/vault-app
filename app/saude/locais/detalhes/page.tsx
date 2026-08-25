@@ -239,7 +239,12 @@ function DetalhesLocalContent() {
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95">
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              type="button"
+              aria-label="Voltar"
+            >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
@@ -253,6 +258,8 @@ function DetalhesLocalContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                type="button"
+                aria-label="Adicionar registro"
               >
                 <Plus size={18} />
               </button>
@@ -285,6 +292,7 @@ function DetalhesLocalContent() {
                               key={option.id}
                               onClick={() => handleMenuOptionClick(option.path)}
                               className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              type="button"
                             >
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                 <Icon size={15} />
@@ -302,8 +310,22 @@ function DetalhesLocalContent() {
               </AnimatePresence>
             </div>
 
-            <button onClick={() => { trigger("vibrate"); router.push(`/saude/locais/editar?id=${local.id}`); }} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary hover:text-emerald-400"><Edit3 size={16} /></button>
-            <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral"><Trash2 size={16} /></button>
+            <button
+              onClick={() => { trigger("vibrate"); router.push(`/saude/locais/editar?id=${local.id}`); }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary hover:text-emerald-400"
+              type="button"
+              aria-label="Editar local"
+            >
+              <Edit3 size={16} />
+            </button>
+            <button
+              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral"
+              type="button"
+              aria-label="Excluir local"
+            >
+              <Trash2 size={16} />
+            </button>
           </div>
         </header>
 
@@ -396,6 +418,8 @@ function DetalhesLocalContent() {
                     key={med.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${med.id}`); }}
                     className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-ice/30 transition-colors shadow-sm"
+                    role="button"
+                    tabIndex={0}
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
                       <Stethoscope size={18} />
@@ -456,6 +480,8 @@ function DetalhesLocalContent() {
                     key={con.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }}
                     className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-emerald-400/30 transition-all shadow-sm"
+                    role="button"
+                    tabIndex={0}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
@@ -490,6 +516,8 @@ function DetalhesLocalContent() {
                     key={ex.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${ex.id}`); }}
                     className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-violet-400/30 transition-all shadow-sm"
+                    role="button"
+                    tabIndex={0}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
@@ -522,6 +550,8 @@ function DetalhesLocalContent() {
                       key={r.id}
                       onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }}
                       className="flex items-center justify-between rounded-xl bg-surface-raised p-3.5 border border-surface-border/40 cursor-pointer hover:border-emerald-400/30 transition-colors"
+                      role="button"
+                      tabIndex={0}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface border border-surface-border/40">
@@ -547,6 +577,7 @@ function DetalhesLocalContent() {
                         setShowAllRetiradas(!showAllRetiradas);
                       }}
                       className="w-full py-2 text-center text-xs font-bold text-ice hover:text-ice-light transition-colors"
+                      type="button"
                     >
                       {showAllRetiradas ? "Ver menos" : `Ver todas (${analiseLocal.renovacoesComMed.length})`}
                     </button>

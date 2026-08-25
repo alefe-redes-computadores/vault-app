@@ -56,7 +56,6 @@ function AccountDetailsContent() {
     async function loadAccount() {
       if (!id) return;
       try {
-        // Usando o repositório via hook
         const item = await getCard(id);
         if (item) setAccount(item);
       } catch (error) {
@@ -120,7 +119,12 @@ function AccountDetailsContent() {
       <main className="min-h-screen bg-void pb-32">
         <header className="header-safe-top sticky top-0 z-20 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95">
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              type="button"
+              aria-label="Voltar"
+            >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div>
@@ -131,11 +135,12 @@ function AccountDetailsContent() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Botão + com menu flutuante */}
             <div className="relative">
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                type="button"
+                aria-label="Adicionar registro"
               >
                 <Plus size={18} />
               </button>
@@ -168,6 +173,7 @@ function AccountDetailsContent() {
                               key={option.id}
                               onClick={() => handleMenuOptionClick(option.path)}
                               className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              type="button"
                             >
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                 <Icon size={15} />
@@ -185,10 +191,20 @@ function AccountDetailsContent() {
               </AnimatePresence>
             </div>
 
-            <button onClick={() => { trigger("vibrate"); router.push(`/contas/editar?id=${account.id}`); }} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95">
+            <button
+              onClick={() => { trigger("vibrate"); router.push(`/contas/editar?id=${account.id}`); }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95"
+              type="button"
+              aria-label="Editar conta"
+            >
               <Edit3 size={18} />
             </button>
-            <button onClick={() => setShowDeleteModal(true)} className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral active:scale-95">
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral active:scale-95"
+              type="button"
+              aria-label="Excluir conta"
+            >
               <Trash2 size={18} />
             </button>
           </div>
@@ -230,7 +246,12 @@ function AccountDetailsContent() {
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="flex justify-center gap-3 mt-6">
             {account.agency && (
-              <button onClick={() => handleCopy(account.agency!, "agency")} className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary">
+              <button
+                onClick={() => handleCopy(account.agency!, "agency")}
+                className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary"
+                type="button"
+                aria-label="Copiar agência"
+              >
                 <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
                   {copiedField === "agency" ? <Check size={18} className="text-ice" /> : <Landmark size={18} />}
                 </div>
@@ -238,7 +259,12 @@ function AccountDetailsContent() {
               </button>
             )}
             {account.account && (
-              <button onClick={() => handleCopy(account.account!, "account")} className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary">
+              <button
+                onClick={() => handleCopy(account.account!, "account")}
+                className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary"
+                type="button"
+                aria-label="Copiar conta"
+              >
                 <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
                   {copiedField === "account" ? <Check size={18} className="text-ice" /> : <Copy size={18} />}
                 </div>

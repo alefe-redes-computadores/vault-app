@@ -266,6 +266,8 @@ function EditarHospitalContent() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              aria-label="Voltar"
+              type="button"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -278,6 +280,8 @@ function EditarHospitalContent() {
             <button
               onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              aria-label="Excluir hospital"
+              type="button"
             >
               <Trash2 size={16} />
             </button>
@@ -309,6 +313,8 @@ function EditarHospitalContent() {
                         ? "border-emerald-400 bg-emerald-400/10 text-emerald-400"
                         : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                     }`}
+                    type="button"
+                    aria-pressed={tipo === tipoOption.id}
                   >
                     {tipoOption.label}
                   </button>
@@ -355,7 +361,7 @@ function EditarHospitalContent() {
                       <Eraser size={12} /> Limpar
                     </button>
                   )}
-                  <button onClick={() => { trigger("vibrate"); setIsMedModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+                  <button onClick={() => { trigger("vibrate"); setIsMedModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button">
                     <Plus size={12} /> Adicionar
                   </button>
                 </div>
@@ -369,7 +375,7 @@ function EditarHospitalContent() {
                   {medicosVinculados.map((m) => (
                     <div key={m.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
                       <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">Dr(a). {m.nome.split(' ')[0]}</span>
-                      <button onClick={() => handleRemoveMedico(m.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors">
+                      <button onClick={() => handleRemoveMedico(m.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${m.nome}`}>
                         <X size={12} />
                       </button>
                     </div>
@@ -394,7 +400,7 @@ function EditarHospitalContent() {
                       <Eraser size={12} /> Limpar
                     </button>
                   )}
-                  <button onClick={() => { trigger("vibrate"); setIsTratModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+                  <button onClick={() => { trigger("vibrate"); setIsTratModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button">
                     <Plus size={12} /> Adicionar
                   </button>
                 </div>
@@ -408,7 +414,7 @@ function EditarHospitalContent() {
                   {tratamentosVinculados.map((t) => (
                     <div key={t.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1" style={{ borderLeft: `3px solid ${t.cor || '#8B5CF6'}` }}>
                       <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{t.nome}</span>
-                      <button onClick={() => handleRemoveTratamento(t.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors">
+                      <button onClick={() => handleRemoveTratamento(t.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${t.nome}`}>
                         <X size={12} />
                       </button>
                     </div>

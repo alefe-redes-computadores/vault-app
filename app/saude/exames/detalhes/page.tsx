@@ -283,6 +283,8 @@ function DetalhesExameContent() {
               <button 
                 onClick={() => { trigger("vibrate"); router.back(); }} 
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+                type="button"
+                aria-label="Voltar"
               >
                 <ArrowLeft size={18} className="text-ink-primary" />
               </button>
@@ -302,6 +304,8 @@ function DetalhesExameContent() {
                 <button
                   onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                  type="button"
+                  aria-label="Adicionar registro"
                 >
                   <Plus size={18} />
                 </button>
@@ -334,6 +338,7 @@ function DetalhesExameContent() {
                                 key={option.id}
                                 onClick={() => handleMenuOptionClick(option.path)}
                                 className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                                type="button"
                               >
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                   <Icon size={15} />
@@ -355,6 +360,8 @@ function DetalhesExameContent() {
                 onClick={() => { trigger("vibrate"); router.push(`/saude/exames/editar?id=${exame.id}`); }}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice active:scale-95"
                 title="Editar Exame"
+                type="button"
+                aria-label="Editar exame"
               >
                 <Edit3 size={16} />
               </button>
@@ -362,6 +369,8 @@ function DetalhesExameContent() {
                 onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral active:scale-95"
                 title="Excluir Exame"
+                type="button"
+                aria-label="Excluir exame"
               >
                 <Trash2 size={16} />
               </button>
@@ -434,6 +443,7 @@ function DetalhesExameContent() {
                     <button
                       onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${medico.id}`); }}
                       className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
+                      type="button"
                     >
                       {medico.nome}
                       <ChevronRight size={14} className="text-ink-faint" />
@@ -454,6 +464,7 @@ function DetalhesExameContent() {
                 <button
                   onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
                   className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                  type="button"
                 >
                   Corrigir
                 </button>
@@ -469,6 +480,7 @@ function DetalhesExameContent() {
                     <button
                       onClick={() => { trigger("vibrate"); router.push(`/saude/locais/detalhes?id=${local.id}`); }}
                       className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
+                      type="button"
                     >
                       {local.nome}
                       <ChevronRight size={14} className="text-ink-faint" />
@@ -489,6 +501,7 @@ function DetalhesExameContent() {
                 <button
                   onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
                   className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                  type="button"
                 >
                   Corrigir
                 </button>
@@ -509,6 +522,7 @@ function DetalhesExameContent() {
                         key={t.id}
                         onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${t.id}`); }}
                         className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 hover:opacity-80 transition-opacity ${theme.tagClass}`}
+                        type="button"
                       >
                         <Icon size={14} />
                         <span className="text-xs font-medium">{t.nome}</span>
@@ -591,6 +605,7 @@ function DetalhesExameContent() {
                     key={item.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${item.id}`); }}
                     className="w-full flex items-center justify-between p-3 rounded-2xl bg-surface-raised/70 border border-surface-border/40 text-left hover:bg-surface-raised transition-colors"
+                    type="button"
                   >
                     <div>
                       <p className="text-xs font-semibold text-ink-primary">Realizado em {formatDate(item.data)}</p>

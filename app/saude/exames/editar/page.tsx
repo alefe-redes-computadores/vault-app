@@ -331,7 +331,6 @@ function EditarExameContent() {
     if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
     if (!dataSolicitacaoDisplay || dataSolicitacaoDisplay.length < 10) newErrors.data = "Data inválida";
 
-    // Validação do Horário
     if (horario) {
       const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
       if (!timeRegex.test(horario)) {
@@ -411,6 +410,8 @@ function EditarExameContent() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              type="button"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -438,6 +439,7 @@ function EditarExameContent() {
                     setCidsSelecionados([]);
                   }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  aria-label="Limpar todos"
                 >
                   <Eraser size={12} /> Limpar todos
                 </button>
@@ -458,6 +460,8 @@ function EditarExameContent() {
                       <button
                         onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== tId)); }}
                         className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
+                        type="button"
+                        aria-label={`Remover ${t.nome}`}
                       >
                         <X size={14} />
                       </button>
@@ -482,6 +486,8 @@ function EditarExameContent() {
                       <button
                         onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setCidsSelecionados((prev) => prev.filter((item) => item !== cId)); }}
                         className="ml-1 text-current/60 hover:text-coral transition-colors"
+                        type="button"
+                        aria-label={`Remover ${c.codigo}`}
                       >
                         <X size={14} />
                       </button>
@@ -495,6 +501,8 @@ function EditarExameContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
+                type="button"
+                aria-label="Adicionar tratamento"
               >
                 <Plus size={16} />
                 <span className="text-sm font-medium">Adicionar Tratamento</span>
@@ -502,6 +510,8 @@ function EditarExameContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300 transition-colors hover:bg-emerald-400/10"
+                type="button"
+                aria-label="Adicionar CID"
               >
                 <Plus size={16} />
                 <span className="text-sm font-medium">Adicionar CID</span>
@@ -538,6 +548,7 @@ function EditarExameContent() {
                       setLaboratorio("");
                     }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                    aria-label="Limpar local"
                   >
                     <Eraser size={12} /> Limpar
                   </button>
@@ -547,6 +558,7 @@ function EditarExameContent() {
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+                aria-label="Selecionar laboratório ou hospital"
               >
                 <span className="truncate">{laboratorio || "Selecionar laboratório ou hospital"}</span>
                 <Building2 size={16} className="text-ink-muted shrink-0" />
@@ -566,6 +578,7 @@ function EditarExameContent() {
                       setMedico("");
                     }}
                     className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                    aria-label="Limpar médico"
                   >
                     <Eraser size={12} /> Limpar
                   </button>
@@ -575,6 +588,7 @@ function EditarExameContent() {
                 type="button"
                 onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
+                aria-label="Selecionar médico"
               >
                 <span className="truncate">{medico || "Selecionar médico"}</span>
                 <Stethoscope size={16} className="text-ink-muted shrink-0" />
@@ -593,6 +607,7 @@ function EditarExameContent() {
                     value={dataSolicitacaoDisplay}
                     onChange={(e) => setDataSolicitacaoDisplay(handleDateMask(e.target.value))}
                     className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50`}
+                    aria-label="Data da coleta"
                   />
                 </div>
                 {errors.data && <p className="text-xs text-coral ml-1">{errors.data}</p>}
@@ -608,6 +623,7 @@ function EditarExameContent() {
                     value={horario}
                     onChange={(e) => setHorario(handleTimeMask(e.target.value))}
                     className={`w-full rounded-2xl border ${errors.horario ? "border-coral/50 text-coral" : "border-surface-border/50 text-ink-primary"} bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50`}
+                    aria-label="Horário"
                   />
                 </div>
                 {errors.horario && <p className="text-xs text-coral ml-1">{errors.horario}</p>}
@@ -625,6 +641,7 @@ function EditarExameContent() {
                   value={dataRetornoDisplay}
                   onChange={(e) => setDataRetornoDisplay(handleDateMask(e.target.value))}
                   className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
+                  aria-label="Data de retorno"
                 />
               </div>
             </div>
@@ -645,7 +662,7 @@ function EditarExameContent() {
                 <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
                   <ImageIcon size={16} className="text-ice" />
                   <p className="truncate text-sm font-medium flex-1 text-ink-primary">{attachment?.name || anexoUrl}</p>
-                  <button onClick={() => { removeAttachment(); setAnexoUrl(""); }} className="text-ink-muted"><X size={14} /></button>
+                  <button onClick={() => { removeAttachment(); setAnexoUrl(""); }} className="text-ink-muted" type="button" aria-label="Remover anexo"><X size={14} /></button>
                 </div>
               )}
             </div>
@@ -659,6 +676,7 @@ function EditarExameContent() {
           </Button>
         </div>
 
+        {/* Modais (mesmos do novo) */}
         <SelectionModal<LocalSaude>
           isOpen={isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}
@@ -789,4 +807,4 @@ function EditarExameContent() {
       </main>
     </PageTransition>
   );
-          }
+}

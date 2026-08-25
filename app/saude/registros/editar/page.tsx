@@ -101,10 +101,31 @@ export default function EditarRegistroSaudePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeFields, setShakeFields] = useState<string[]>([]);
 
-  const registro = useLiveQuery<any>(() => (id ? db.table("registros_saude").get(id) : Promise.resolve(undefined)), [id]);
-  const medicamentos = useLiveQuery(() => activePersonId ? db.medicamentos.where('person_id').equals(activePersonId).toArray() : db.medicamentos.toArray(), [activePersonId]) || [];
-  const tratamentos = useLiveQuery(() => activePersonId ? db.tratamentos.where('person_id').equals(activePersonId).toArray() : db.tratamentos.toArray(), [activePersonId]) || [];
-  const cids = useLiveQuery(() => activePersonId ? db.cids.where('person_id').equals(activePersonId).toArray() : db.cids.toArray(), [activePersonId]) || [];
+  const registro = useLiveQuery<any>(
+    () => (id ? db.table("registros_saude").get(id) : Promise.resolve(undefined)),
+    [id]
+  );
+  const medicamentos = useLiveQuery(
+    () =>
+      activePersonId
+        ? db.medicamentos.where("person_id").equals(activePersonId).toArray()
+        : db.medicamentos.toArray(),
+    [activePersonId]
+  ) || [];
+  const tratamentos = useLiveQuery(
+    () =>
+      activePersonId
+        ? db.tratamentos.where("person_id").equals(activePersonId).toArray()
+        : db.tratamentos.toArray(),
+    [activePersonId]
+  ) || [];
+  const cids = useLiveQuery(
+    () =>
+      activePersonId
+        ? db.cids.where("person_id").equals(activePersonId).toArray()
+        : db.cids.toArray(),
+    [activePersonId]
+  ) || [];
 
   const [categoria, setCategoria] = useState<CategoriaRegistro>("sintoma");
   const [tipoSelecionado, setTipoSelecionado] = useState("dor");
@@ -131,7 +152,6 @@ export default function EditarRegistroSaudePage() {
 
   const selectedMedicamento = medicamentos.find((m: any) => m.id === medicamentoId);
 
-  // Preenche os campos assim que o registro for carregado do banco local
   useEffect(() => {
     if (registro && !initialized) {
       setCategoria(registro.categoria);
@@ -160,14 +180,25 @@ export default function EditarRegistroSaudePage() {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     const shakeList: string[] = [];
-    if (!nome.trim()) { newErrors.nome = "Informe o nome"; shakeList.push("nome"); }
-    if (!dataDisplay || dataDisplay.length < 10) { newErrors.data = "Data inválida"; shakeList.push("data"); }
+    if (!nome.trim()) {
+      newErrors.nome = "Informe o nome";
+      shakeList.push("nome");
+    }
+    if (!dataDisplay || dataDisplay.length < 10) {
+      newErrors.data = "Data inválida";
+      shakeList.push("data");
+    }
     if (horario) {
       const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-      if (!timeRegex.test(horario)) { newErrors.horario = "Horário inválido (use HH:MM)"; shakeList.push("horario"); }
+      if (!timeRegex.test(horario)) {
+        newErrors.horario = "Horário inválido (use HH:MM)";
+        shakeList.push("horario");
+      }
     }
     setErrors(newErrors);
-    if (shakeList.length > 0) { triggerShake(shakeList); }
+    if (shakeList.length > 0) {
+      triggerShake(shakeList);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -257,7 +288,7 @@ export default function EditarRegistroSaudePage() {
   if (registro === undefined) {
     return (
       <PageTransition>
-        <main className="min-h-screen bg-void p-5 flex items-center justify-center">
+        <main className="flex min-h-screen items-center justify-center bg-void p-5">
           <Loader2 size={24} className="animate-spin text-ice" />
         </main>
       </PageTransition>
@@ -269,28 +300,73 @@ export default function EditarRegistroSaudePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Activity size={16} className="text-ice" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Prontuário</p>
+      <main className="relative min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+        {/* ===== HEADER ===== */}
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
+              >
+                <ArrowLeft size={18} />
+              </button>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <Activity size={16} className="text-ice" />
+                  <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                    Prontuário
+                  </p>
+                </div>
+                <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+                  Editar Registro
+                </h1>
               </div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Editar Registro</h1>
             </div>
           </div>
         </header>
 
+        {/* ===== CONTEÚDO ===== */}
         <section className="space-y-4 px-5 pt-6">
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4">
-            <div className={`transition-all ${shakeFields.includes('nome') ? 'animate-shake' : ''}`}>
+          {/* Card de preview do tema */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300 ${theme.borderClass}`}
+            style={{ borderLeft: `6px solid ${theme.hex}` }}
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}
+              >
+                <IconComponent size={24} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${theme.textClass}`}>
+                  REGISTRO DE SAÚDE
+                </p>
+                <h2 className="mt-0.5 line-clamp-2 font-display text-base font-semibold text-ink-primary">
+                  {nome || "A prévia visual aparecerá aqui..."}
+                </h2>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Dados principais */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className={`transition-all ${shakeFields.includes("nome") ? "animate-shake" : ""}`}>
               <Input
                 label="Nome do Registro / Sintoma"
                 placeholder="Ex: Dor de cabeça, Pressão..."
@@ -302,19 +378,23 @@ export default function EditarRegistroSaudePage() {
             </div>
 
             {categoria === "medicao" && (
-              <Input
-                label="Valor da Medição (Ex: 120/80 ou 38.5)"
-                placeholder="Insira o valor numérico ou medida"
-                value={valorMedicao}
-                onChange={(e) => setValorMedicao(e.target.value)}
-              />
+              <div className="mt-4">
+                <Input
+                  label="Valor da Medição (Ex: 120/80 ou 38.5)"
+                  placeholder="Insira o valor numérico ou medida"
+                  value={valorMedicao}
+                  onChange={(e) => setValorMedicao(e.target.value)}
+                />
+              </div>
             )}
 
             {categoria === "sintoma" && intensidade !== undefined && (
-              <div className="space-y-2 pt-1">
+              <div className="mt-4 space-y-2 pt-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-ink-primary">Intensidade (1 a 10)</label>
-                  <span className="font-mono text-sm font-bold text-ice bg-ice/10 px-2.5 py-0.5 rounded-full border border-ice/20">
+                  <label className="text-sm font-medium text-ink-primary">
+                    Intensidade (1 a 10)
+                  </label>
+                  <span className="rounded-full border border-ice/20 bg-ice/10 px-2.5 py-0.5 font-mono text-sm font-bold text-ice">
                     {intensidade} / 10
                   </span>
                 </div>
@@ -323,13 +403,17 @@ export default function EditarRegistroSaudePage() {
                   min="1"
                   max="10"
                   value={intensidade}
-                  onChange={(e) => { trigger("vibrate"); setIntensidade(Number(e.target.value)); }}
-                  className="w-full accent-ice cursor-pointer"
+                  onChange={(e) => {
+                    trigger("vibrate");
+                    setIntensidade(Number(e.target.value));
+                  }}
+                  className="w-full cursor-pointer accent-ice"
                 />
               </div>
             )}
           </motion.div>
 
+          {/* Insight */}
           <AnimatePresence>
             {insight && (
               <motion.div
@@ -337,78 +421,130 @@ export default function EditarRegistroSaudePage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 className={`rounded-[24px] border p-4 shadow-sm ${
-                  insight.status === "critico" ? "bg-coral/10 border-coral/30" :
-                  insight.status === "alerta" ? "bg-amber-400/10 border-amber-400/30" :
-                  insight.status === "atencao" ? "bg-ice/10 border-ice/30" :
-                  "bg-emerald-400/10 border-emerald-400/30"
+                  insight.status === "critico"
+                    ? "border-coral/30 bg-coral/10"
+                    : insight.status === "alerta"
+                    ? "border-amber-400/30 bg-amber-400/10"
+                    : insight.status === "atencao"
+                    ? "border-ice/30 bg-ice/10"
+                    : "border-emerald-400/30 bg-emerald-400/10"
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
-                    insight.status === "critico" ? "bg-coral/20 border-coral/40 text-coral" :
-                    insight.status === "alerta" ? "bg-amber-400/20 border-amber-400/40 text-amber-400" :
-                    insight.status === "atencao" ? "bg-ice/20 border-ice/40 text-ice" :
-                    "bg-emerald-400/20 border-emerald-400/40 text-emerald-400"
-                  }`}>
-                    {insight.status === "critico" || insight.status === "alerta" ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                      insight.status === "critico"
+                        ? "border-coral/40 bg-coral/20 text-coral"
+                        : insight.status === "alerta"
+                        ? "border-amber-400/40 bg-amber-400/20 text-amber-400"
+                        : insight.status === "atencao"
+                        ? "border-ice/40 bg-ice/20 text-ice"
+                        : "border-emerald-400/40 bg-emerald-400/20 text-emerald-400"
+                    }`}
+                  >
+                    {insight.status === "critico" || insight.status === "alerta" ? (
+                      <AlertTriangle size={18} />
+                    ) : (
+                      <CheckCircle2 size={18} />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className={`text-xs font-bold uppercase tracking-wider ${
-                      insight.status === "critico" ? "text-coral" :
-                      insight.status === "alerta" ? "text-amber-400" :
-                      insight.status === "atencao" ? "text-ice" :
-                      "text-emerald-400"
-                    }`}>
+                    <h3
+                      className={`text-xs font-bold uppercase tracking-wider ${
+                        insight.status === "critico"
+                          ? "text-coral"
+                          : insight.status === "alerta"
+                          ? "text-amber-400"
+                          : insight.status === "atencao"
+                          ? "text-ice"
+                          : "text-emerald-400"
+                      }`}
+                    >
                       {insight.titulo}
                     </h3>
-                    <p className="text-xs text-ink-primary mt-1 leading-snug">{insight.mensagem}</p>
-                    <p className="text-[11px] text-ink-muted mt-1.5 italic">{insight.recomendacao}</p>
+                    <p className="mt-1 text-xs leading-snug text-ink-primary">
+                      {insight.mensagem}
+                    </p>
+                    <p className="mt-1.5 text-[11px] italic text-ink-muted">
+                      {insight.recomendacao}
+                    </p>
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          {/* Data e Horário */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.04 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Data <span className="text-coral">*</span></label>
+                <label className="block text-sm font-medium text-ink-primary">
+                  Data <span className="text-coral">*</span>
+                </label>
                 <div className="relative">
-                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <Calendar
+                    size={16}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  />
                   <input
                     type="text"
                     placeholder="DD/MM/AAAA"
                     maxLength={10}
                     value={dataDisplay}
                     onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
-                    className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50`}
+                    className={`w-full rounded-2xl border bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm text-ink-primary outline-none focus:border-ice/50 ${
+                      errors.data ? "border-coral/50" : "border-surface-border/50"
+                    }`}
                   />
                 </div>
-                {errors.data && <p className="text-xs text-coral ml-1">{errors.data}</p>}
+                {errors.data && <p className="ml-1 text-xs text-coral">{errors.data}</p>}
               </div>
+
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Horário <span className="text-coral">*</span></label>
+                <label className="block text-sm font-medium text-ink-primary">
+                  Horário <span className="text-coral">*</span>
+                </label>
                 <div className="relative">
-                  <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <Clock
+                    size={16}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  />
                   <input
                     type="text"
                     placeholder="00:00"
                     maxLength={5}
                     value={horario}
                     onChange={(e) => setHorario(handleTimeMask(e.target.value))}
-                    className={`w-full rounded-2xl border ${errors.horario ? "border-coral/50 text-coral" : "border-surface-border/50 text-ink-primary"} bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50`}
+                    className={`w-full rounded-2xl border bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50 ${
+                      errors.horario ? "border-coral/50 text-coral" : "border-surface-border/50 text-ink-primary"
+                    }`}
                   />
                 </div>
-                {errors.horario && <p className="text-xs text-coral ml-1">{errors.horario}</p>}
+                {errors.horario && <p className="ml-1 text-xs text-coral">{errors.horario}</p>}
               </div>
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
+          {/* Tratamentos e CIDs */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.05 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity size={16} className="text-violet-400" />
-                <label className="text-sm font-semibold text-ink-primary">Tratamentos e CIDs Relacionados</label>
+                <label className="text-sm font-semibold text-ink-primary">
+                  Tratamentos e CIDs Relacionados
+                </label>
               </div>
               {(tratamentosSelecionados.length > 0 || cidsSelecionados.length > 0) && (
                 <button
@@ -418,7 +554,7 @@ export default function EditarRegistroSaudePage() {
                     setTratamentosSelecionados([]);
                     setCidsSelecionados([]);
                   }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
                 >
                   <Eraser size={12} /> Limpar todos
                 </button>
@@ -426,18 +562,29 @@ export default function EditarRegistroSaudePage() {
             </div>
 
             {tratamentosSelecionados.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="mb-3 flex flex-wrap gap-2">
                 {tratamentosSelecionados.map((tId) => {
                   const t = tratamentos.find((x) => x.id === tId);
                   if (!t) return null;
                   const IconComp = getTratamentoIcon(t.nome);
                   return (
-                    <div key={tId} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
+                    <div
+                      key={tId}
+                      className="flex items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5"
+                    >
                       <IconComp size={14} className="text-violet-400" />
-                      <span className="text-xs font-medium text-violet-300">{t.nome}</span>
+                      <span className="text-xs font-medium text-violet-300">
+                        {t.nome}
+                      </span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== tId)); }}
-                        className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trigger("vibrate");
+                          setTratamentosSelecionados((prev) =>
+                            prev.filter((item) => item !== tId)
+                          );
+                        }}
+                        className="ml-1 text-violet-400/60 transition-colors hover:text-coral"
                       >
                         <X size={14} />
                       </button>
@@ -448,19 +595,28 @@ export default function EditarRegistroSaudePage() {
             )}
 
             {cidsSelecionados.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="mb-3 flex flex-wrap gap-2">
                 {cidsSelecionados.map((cId) => {
                   const c = cids.find((x) => x.id === cId);
                   if (!c) return null;
                   const theme = getClinicalTheme(c.descricao || c.codigo);
                   const IconComp = theme.icon;
                   return (
-                    <div key={cId} className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}>
+                    <div
+                      key={cId}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}
+                    >
                       <IconComp size={14} />
                       <span className="text-xs font-medium">{c.codigo}</span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setCidsSelecionados((prev) => prev.filter((item) => item !== cId)); }}
-                        className="ml-1 text-current/60 hover:text-coral transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trigger("vibrate");
+                          setCidsSelecionados((prev) =>
+                            prev.filter((item) => item !== cId)
+                          );
+                        }}
+                        className="ml-1 text-current/60 transition-colors hover:text-coral"
                       >
                         <X size={14} />
                       </button>
@@ -472,14 +628,22 @@ export default function EditarRegistroSaudePage() {
 
             <div className="flex gap-2">
               <button
-                onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setIsTratamentoModalOpen(true);
+                }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
               >
                 <Plus size={16} />
                 <span className="text-sm font-medium">Vincular Tratamento</span>
               </button>
               <button
-                onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }}
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setIsCidModalOpen(true);
+                }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300 transition-colors hover:bg-emerald-400/10"
               >
                 <Plus size={16} />
@@ -488,14 +652,26 @@ export default function EditarRegistroSaudePage() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Medicamento Relacionado (Opcional)</label>
+          {/* Medicamento relacionado */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.06 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-sm font-medium text-ink-primary">
+                Medicamento Relacionado (Opcional)
+              </label>
               {medicamentoId && selectedMedicamento && (
                 <button
                   type="button"
-                  onClick={() => { trigger("vibrate"); setMedicamentoId(""); }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setMedicamentoId("");
+                  }}
+                  className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
                 >
                   <Eraser size={12} /> Limpar
                 </button>
@@ -503,14 +679,28 @@ export default function EditarRegistroSaudePage() {
             </div>
             <button
               type="button"
-              onClick={() => { trigger("vibrate"); setIsMedicamentoModalOpen(true); }}
-              className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between text-ink-primary"
+              onClick={() => {
+                trigger("vibrate");
+                setIsMedicamentoModalOpen(true);
+              }}
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
             >
-              <span className="truncate">{selectedMedicamento ? `${selectedMedicamento.nome} (${selectedMedicamento.dosagem})` : "Vincular medicamento..."}</span>
+              <span className="truncate">
+                {selectedMedicamento
+                  ? `${selectedMedicamento.nome} (${selectedMedicamento.dosagem})`
+                  : "Vincular medicamento..."}
+              </span>
             </button>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.08 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          {/* Observações */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.08 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <TextArea
               label="Observações / Anotações (Opcional)"
               value={observacoes}
@@ -520,16 +710,31 @@ export default function EditarRegistroSaudePage() {
           </motion.div>
         </section>
 
+        {/* ===== FIXED FOOTER ===== */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : "Salvar Alterações"}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              "Salvar Alterações"
+            )}
           </Button>
         </div>
 
+        {/* ===== MODAIS ===== */}
         <SelectionModal
           isOpen={isMedicamentoModalOpen}
           onClose={() => setIsMedicamentoModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setMedicamentoId(item.id!); }}
+          onSelect={(item: any) => {
+            trigger("vibrate");
+            setMedicamentoId(item.id!);
+          }}
           items={medicamentos}
           title="Selecionar Medicamento"
           placeholder="Buscar medicamento..."
@@ -559,18 +764,27 @@ export default function EditarRegistroSaudePage() {
             const IconComp = getTratamentoIcon(item.nome);
             const isSelected = tratamentosSelecionados.includes(item.id!);
             return (
-              <div className="flex items-center gap-2 w-full">
+              <div className="flex w-full items-center gap-2">
                 <IconComp size={16} className="text-violet-400" />
-                <span className={`text-sm font-medium ${isSelected ? "text-violet-400" : "text-ink-primary"}`}>
+                <span
+                  className={`text-sm font-medium ${
+                    isSelected ? "text-violet-400" : "text-ink-primary"
+                  }`}
+                >
                   {item.nome}
                 </span>
-                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
+                {isSelected && (
+                  <span className="ml-auto text-[10px] text-emerald-400">✓</span>
+                )}
               </div>
             );
           }}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsTratamentoModalOpen(false); setIsCreatingTratamento(true); }}
+          onCreateNew={() => {
+            setIsTratamentoModalOpen(false);
+            setIsCreatingTratamento(true);
+          }}
           createNewLabel="Cadastrar Novo Tratamento"
         />
 
@@ -591,35 +805,79 @@ export default function EditarRegistroSaudePage() {
             const IconComp = theme.icon;
             const isSelected = cidsSelecionados.includes(item.id!);
             return (
-              <div className="flex items-center gap-2 w-full">
+              <div className="flex w-full items-center gap-2">
                 <IconComp size={16} className={theme.textClass} />
-                <span className={`text-sm font-medium ${isSelected ? theme.textClass : "text-ink-primary"}`}>
+                <span
+                  className={`text-sm font-medium ${
+                    isSelected ? theme.textClass : "text-ink-primary"
+                  }`}
+                >
                   {item.codigo} - {item.descricao}
                 </span>
-                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
+                {isSelected && (
+                  <span className="ml-auto text-[10px] text-emerald-400">✓</span>
+                )}
               </div>
             );
           }}
           getItemId={(item) => item.id!}
           getItemLabel={(item) => `${item.codigo} - ${item.descricao}`}
-          onCreateNew={() => { setIsCidModalOpen(false); setIsCreatingCid(true); }}
+          onCreateNew={() => {
+            setIsCidModalOpen(false);
+            setIsCreatingCid(true);
+          }}
           createNewLabel="Cadastrar Novo CID"
         />
 
-        <BottomSheet isOpen={isCreatingTratamento} onClose={() => setIsCreatingTratamento(false)} title="Novo Tratamento">
+        {/* BottomSheets */}
+        <BottomSheet
+          isOpen={isCreatingTratamento}
+          onClose={() => setIsCreatingTratamento(false)}
+          title="Novo Tratamento"
+        >
           <div className="space-y-4 px-1 pb-2">
-            <Input label="Nome do Tratamento" value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus />
-            <Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={!newTratamentoName.trim()}>
+            <Input
+              label="Nome do Tratamento"
+              value={newTratamentoName}
+              onChange={(e) => setNewTratamentoName(e.target.value)}
+              autoFocus
+            />
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleCreateTratamento}
+              disabled={!newTratamentoName.trim()}
+            >
               Salvar e Selecionar
             </Button>
           </div>
         </BottomSheet>
 
-        <BottomSheet isOpen={isCreatingCid} onClose={() => setIsCreatingCid(false)} title="Novo CID">
+        <BottomSheet
+          isOpen={isCreatingCid}
+          onClose={() => setIsCreatingCid(false)}
+          title="Novo CID"
+        >
           <div className="space-y-4 px-1 pb-2">
-            <Input label="Código CID" placeholder="Ex: F90.0" value={newCidCodigo} onChange={(e) => setNewCidCodigo(e.target.value)} autoFocus />
-            <Input label="Descrição" placeholder="Ex: Transtorno de déficit de atenção" value={newCidDescricao} onChange={(e) => setNewCidDescricao(e.target.value)} />
-            <Button variant="primary" fullWidth onClick={handleCreateCid} disabled={!newCidCodigo.trim() || !newCidDescricao.trim()}>
+            <Input
+              label="Código CID"
+              placeholder="Ex: F90.0"
+              value={newCidCodigo}
+              onChange={(e) => setNewCidCodigo(e.target.value)}
+              autoFocus
+            />
+            <Input
+              label="Descrição"
+              placeholder="Ex: Transtorno de déficit de atenção"
+              value={newCidDescricao}
+              onChange={(e) => setNewCidDescricao(e.target.value)}
+            />
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleCreateCid}
+              disabled={!newCidCodigo.trim() || !newCidDescricao.trim()}
+            >
               Salvar e Selecionar
             </Button>
           </div>

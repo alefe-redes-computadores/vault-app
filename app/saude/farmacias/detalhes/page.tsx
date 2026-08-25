@@ -6,8 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Store, MapPin, Phone, Edit3, Trash2,
-  Pill, ExternalLink, Clock, TrendingDown, TrendingUp,
-  Plus, FileWarning, AlertTriangle, Navigation,
+  Pill, ExternalLink, Clock, Plus, FileWarning, AlertTriangle, Navigation,
   Calendar, DollarSign, Gift
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -90,7 +89,6 @@ function DetalhesFarmaciaContent() {
     let totalGasto = 0;
     const precosParaMedia: number[] = [];
 
-    // Soma as renovações
     renovacoesDaFarmacia.forEach((r) => {
       if (typeof r.preco === "number" && r.preco > 0) {
         totalGasto += r.preco;
@@ -98,7 +96,6 @@ function DetalhesFarmaciaContent() {
       }
     });
 
-    // SOMA O VALOR DE COMPRA INICIAL DO MEDICAMENTO (se ele não estiver listado como renovação no mesmo dia)
     medicamentosVinculados.forEach((m) => {
       if (typeof m.preco === "number" && m.preco > 0) {
         const jaTemRenovacaoIgual = renovacoesDaFarmacia.some(r => r.medicamento_id === m.id && r.preco === m.preco && (r.data === m.data_receita || r.data === m.estoque_data_referencia));
@@ -177,6 +174,7 @@ function DetalhesFarmaciaContent() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              type="button"
               aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
@@ -191,6 +189,8 @@ function DetalhesFarmaciaContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                type="button"
+                aria-label="Adicionar registro"
               >
                 <Plus size={18} />
               </button>
@@ -223,6 +223,7 @@ function DetalhesFarmaciaContent() {
                               key={option.id}
                               onClick={() => handleMenuOptionClick(option.path)}
                               className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              type="button"
                             >
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                 <Icon size={15} />
@@ -240,12 +241,16 @@ function DetalhesFarmaciaContent() {
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/farmacias/editar?id=${farmacia.id}`); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary hover:text-amber-400 hover:border-amber-400/30 transition-all active:scale-95"
+              type="button"
+              aria-label="Editar farmácia"
             >
               <Edit3 size={16} />
             </button>
             <button
               onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              type="button"
+              aria-label="Excluir farmácia"
             >
               <Trash2 size={16} />
             </button>
@@ -299,6 +304,7 @@ function DetalhesFarmaciaContent() {
                     onClick={() => trigger("vibrate")}
                     className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-400 active:scale-95 transition-all"
                     title="Ligar para farmácia"
+                    aria-label="Ligar para farmácia"
                   >
                     <Phone size={16} />
                   </a>
@@ -311,6 +317,7 @@ function DetalhesFarmaciaContent() {
                     onClick={() => trigger("vibrate")}
                     className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/30 bg-ice/10 text-ice active:scale-95 transition-all"
                     title="Abrir no mapa"
+                    aria-label="Abrir no mapa"
                   >
                     <Navigation size={16} />
                   </a>
@@ -360,6 +367,8 @@ function DetalhesFarmaciaContent() {
                     key={med.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
                     className="flex flex-col justify-center rounded-2xl border border-surface-border/50 bg-surface p-3.5 transition-all active:scale-[0.98] hover:border-amber-400/30 cursor-pointer shadow-sm gap-3"
+                    role="button"
+                    tabIndex={0}
                   >
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-3 min-w-0">

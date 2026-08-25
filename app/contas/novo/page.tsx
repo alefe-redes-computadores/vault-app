@@ -95,9 +95,11 @@ export default function NewAccountPage() {
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-44">
         <header className="header-safe-top sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
-          <button 
-            onClick={() => { trigger("vibrate"); router.back(); }} 
+          <button
+            onClick={() => { trigger("vibrate"); router.back(); }}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+            type="button"
+            aria-label="Voltar"
           >
             <ArrowLeft size={18} className="text-ink-primary" />
           </button>
@@ -121,19 +123,19 @@ export default function NewAccountPage() {
 
         <section className="space-y-4 px-5 pt-6">
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input 
-              label="Título (ex: Conta Corrente Principal, Salário Itaú)" 
-              value={formData.title} 
-              onChange={(e) => handleChange("title", e.target.value)} 
-              error={errors.title} 
-              required 
+            <Input
+              label="Título (ex: Conta Corrente Principal, Salário Itaú)"
+              value={formData.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+              error={errors.title}
+              required
             />
-            <Input 
-              label="Nome do Banco (ex: Nubank, Itaú, Bradesco)" 
-              value={formData.bank_name} 
-              onChange={(e) => handleChange("bank_name", e.target.value)} 
-              error={errors.bank_name} 
-              required 
+            <Input
+              label="Nome do Banco (ex: Nubank, Itaú, Bradesco)"
+              value={formData.bank_name}
+              onChange={(e) => handleChange("bank_name", e.target.value)}
+              error={errors.bank_name}
+              required
             />
           </motion.div>
 
@@ -149,10 +151,12 @@ export default function NewAccountPage() {
                   key={typeItem.id}
                   onClick={() => { trigger("vibrate"); handleChange("type", typeItem.id); }}
                   className={`rounded-2xl border px-2 py-3 text-xs font-medium text-center transition-all active:scale-95 ${
-                    formData.type === typeItem.id 
-                      ? "border-ice bg-ice/12 text-ice" 
+                    formData.type === typeItem.id
+                      ? "border-ice bg-ice/12 text-ice"
                       : "border-surface-border/50 bg-surface-raised text-ink-muted"
                   }`}
+                  type="button"
+                  aria-pressed={formData.type === typeItem.id}
                 >
                   {typeItem.label}
                 </button>
@@ -161,30 +165,30 @@ export default function NewAccountPage() {
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input 
-              label="Agência" 
-              value={formData.agency} 
-              onChange={(e) => handleChange("agency", e.target.value)} 
-              placeholder="0000" 
+            <Input
+              label="Agência"
+              value={formData.agency}
+              onChange={(e) => handleChange("agency", e.target.value)}
+              placeholder="0000"
               error={errors.agency}
               required
             />
-            <Input 
-              label="Conta / Digito" 
-              value={formData.account} 
-              onChange={(e) => handleChange("account", e.target.value)} 
-              placeholder="00000-0" 
+            <Input
+              label="Conta / Digito"
+              value={formData.account}
+              onChange={(e) => handleChange("account", e.target.value)}
+              placeholder="00000-0"
               error={errors.account}
               required
             />
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <TextArea 
-              label="Observações (opcional)" 
-              value={formData.notes} 
-              onChange={(e) => handleChange("notes", e.target.value)} 
-              placeholder="Ex: Senha do app, chave PIX, etc." 
+            <TextArea
+              label="Observações (opcional)"
+              value={formData.notes}
+              onChange={(e) => handleChange("notes", e.target.value)}
+              placeholder="Ex: Senha do app, chave PIX, etc."
             />
           </motion.div>
         </section>

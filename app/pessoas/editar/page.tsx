@@ -171,10 +171,6 @@ export default function EditarPessoaPage() {
     run(
       async () => {
         try {
-          // Usamos o repositório, que já cuida de:
-          // - updated_at
-          // - synced: false
-          // - enfileirarOperacao
           await personsRepository.update(id, {
             name: formData.name.trim(),
             email: formData.email.trim() || undefined,
@@ -186,8 +182,6 @@ export default function EditarPessoaPage() {
           if (isDefault && formData.color) {
             document.documentElement.style.setProperty("--person-accent", formData.color);
           }
-
-          // Navegação após sucesso (useSubmitAction com goBackOnSuccess)
         } finally {
           isSubmitLocked.current = false;
         }
@@ -195,7 +189,7 @@ export default function EditarPessoaPage() {
       {
         successMessage: "Pessoa atualizada com sucesso!",
         errorMessage: "Erro ao atualizar pessoa. Tente novamente.",
-        goBackOnSuccess: true, // ativado para voltar para a lista
+        goBackOnSuccess: true,
       }
     );
   };
@@ -232,6 +226,7 @@ export default function EditarPessoaPage() {
                 router.back();
               }}
               aria-label="Voltar"
+              type="button"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
@@ -278,6 +273,8 @@ export default function EditarPessoaPage() {
                   disabled={uploadingPhoto}
                   className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-void bg-ice text-void transition-all active:scale-95 disabled:opacity-50"
                   title="Alterar foto"
+                  type="button"
+                  aria-label="Alterar foto"
                 >
                   {uploadingPhoto ? (
                     <Loader2 size={14} className="animate-spin" />
@@ -291,6 +288,8 @@ export default function EditarPessoaPage() {
                     onClick={removePhoto}
                     className="absolute -top-1 -left-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-void bg-coral text-white transition-all active:scale-95"
                     title="Remover foto"
+                    type="button"
+                    aria-label="Remover foto"
                   >
                     <X size={12} />
                   </button>
@@ -411,6 +410,7 @@ export default function EditarPessoaPage() {
                           backgroundColor: selected ? `${color.value}12` : "transparent",
                         }}
                         aria-label={`Selecionar cor ${color.name}`}
+                        aria-pressed={selected}
                       >
                         <span
                           className="h-9 w-9 rounded-full border-2 transition-transform group-hover:scale-105"

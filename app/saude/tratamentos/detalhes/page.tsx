@@ -4,9 +4,9 @@
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, 
-  Pill, 
+import {
+  ArrowLeft,
+  Pill,
   Edit3,
   ChevronRight,
   History,
@@ -35,10 +35,10 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { Tratamento, Document, Medicamento, Renovacao, Medico, Cid } from "@/lib/types";
-import { 
-  isReceitaVencidaSegura, 
+import {
+  isReceitaVencidaSegura,
   calcularEconomia,
-  sugerirRenovacao
+  sugerirRenovacao,
 } from "@/lib/health-insights";
 import { getCidInsights } from "@/lib/health-insights";
 import { getClinicalTheme, formatCurrency } from "@/lib/health-utils";
@@ -107,13 +107,12 @@ function TratamentoContent() {
     return false;
   });
 
-  // 🔥 TODOS OS HOOKS (useLiveQuery e useMemo) DEVEM FICAR AQUI NO TOPO, ANTES DE QUALQUER RETURN CONDICIONAL
   const allDocuments = useLiveQuery(() => db.documents.toArray(), []) || [];
   const allRenovacoes = useLiveQuery(() => db.renovacoes.toArray(), []) || [];
 
   const cidsVinculados = useLiveQuery(() => {
     if (!tratamento?.cid_ids || tratamento.cid_ids.length === 0) return [];
-    return db.cids.where('id').anyOf(tratamento.cid_ids).toArray();
+    return db.cids.where("id").anyOf(tratamento.cid_ids).toArray();
   }, [tratamento?.cid_ids]) || [];
 
   const linkedMedicamentos = useMemo(() => {
@@ -172,12 +171,11 @@ function TratamentoContent() {
     });
   }, [cidsVinculados]);
 
-  // EFEITOS
   useEffect(() => {
     const handleClickOutside = () => setIsMenuFlutuanteOpen(false);
     if (isMenuFlutuanteOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
     }
   }, [isMenuFlutuanteOpen]);
 
@@ -205,7 +203,6 @@ function TratamentoContent() {
     fetchTratamento();
   }, [id, router]);
 
-  // AGORA SIM: RETORNOS CONDICIONAIS APÓS TODOS OS HOOKS DECLARADOS
   if (!mounted) return <DetailSkeleton />;
   if (isLoading) return <DetailSkeleton />;
   if (!tratamento) return null;
@@ -224,10 +221,30 @@ function TratamentoContent() {
   };
 
   const menuOptions = [
-    { id: "adicionar-cid", label: "Adicionar CID", icon: FolderHeart, path: `/saude/cids?tratamento_id=${id}` },
-    { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?tratamento_id=${id}` },
-    { id: "adicionar-documento", label: "Adicionar Documento", icon: FileText, path: `/novo?tratamento_id=${id}` },
-    { id: "editar-tratamento", label: "Editar Tratamento", icon: Edit3, path: `/saude/tratamentos/editar?id=${id}` },
+    {
+      id: "adicionar-cid",
+      label: "Adicionar CID",
+      icon: FolderHeart,
+      path: `/saude/cids?tratamento_id=${id}`,
+    },
+    {
+      id: "novo-medicamento",
+      label: "Novo Medicamento",
+      icon: Pill,
+      path: `/saude/medicamentos/novo?tratamento_id=${id}`,
+    },
+    {
+      id: "adicionar-documento",
+      label: "Adicionar Documento",
+      icon: FileText,
+      path: `/novo?tratamento_id=${id}`,
+    },
+    {
+      id: "editar-tratamento",
+      label: "Editar Tratamento",
+      icon: Edit3,
+      path: `/saude/tratamentos/editar?id=${id}`,
+    },
   ];
 
   const handleMenuOptionClick = (path: string) => {
@@ -238,36 +255,52 @@ function TratamentoContent() {
 
   const theme = getClinicalTheme(tratamento.nome);
   const IconComp = theme.icon;
-  
-  const medicamentosAtivos = medicamentosComAlertas.filter((m) => m.status !== "descontinuado");
-  const medicamentosDescontinuados = medicamentosComAlertas.filter((m) => m.status === "descontinuado");
 
-  const medicosNomesDosMedicamentos = [...new Set(linkedMedicamentos.map(m => m.medico).filter(Boolean))];
+  const medicamentosAtivos = medicamentosComAlertas.filter((m) => m.status !== "descontinuado");
+  const medicamentosDescontinuados = medicamentosComAlertas.filter(
+    (m) => m.status === "descontinuado"
+  );
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+      <main className="relative min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+        {/* ===== HEADER ===== */}
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
               <button
-                onClick={() => { trigger("vibrate"); router.back(); }}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
               >
-                <ArrowLeft size={18} className="text-ink-primary" />
+                <ArrowLeft size={18} />
               </button>
-              
+
               <div className="min-w-0">
-                <p className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.textClass}`}>Painel Clínico</p>
-                <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">Visão Geral</h1>
+                <p className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.textClass}`}>
+                  Painel Clínico
+                </p>
+                <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">
+                  Visão Geral
+                </h1>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <div className="relative">
                 <button
-                  onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    trigger("vibrate");
+                    setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen);
+                  }}
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                  aria-label="Menu"
                 >
                   <Plus size={18} />
                 </button>
@@ -291,14 +324,17 @@ function TratamentoContent() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="px-3 pb-2 pt-3.5">
-                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
+                            Adicionar
+                          </p>
                         </div>
-                        <div className="px-1.5 pb-2">
+                        <div className="space-y-0.5 px-1.5 pb-2">
                           {menuOptions.map((option) => {
                             const Icon = option.icon;
                             return (
                               <button
                                 key={option.id}
+                                type="button"
                                 onClick={() => handleMenuOptionClick(option.path)}
                                 className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
                               >
@@ -319,9 +355,13 @@ function TratamentoContent() {
               </div>
 
               <button
-                onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/editar?id=${tratamento.id}`); }}
-                aria-label="Editar tratamento"
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push(`/saude/tratamentos/editar?id=${tratamento.id}`);
+                }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
+                aria-label="Editar tratamento"
               >
                 <Edit3 size={16} />
               </button>
@@ -329,48 +369,71 @@ function TratamentoContent() {
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-6">
-          <motion.div 
-            variants={fadeUp} 
-            initial="initial" 
-            animate="animate" 
+        {/* ===== CONTEÚDO ===== */}
+        <section className="space-y-6 px-5 pt-6">
+          {/* Card principal */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             className={`relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm ${theme.borderClass}`}
             style={{ borderLeft: `6px solid ${theme.hex}` }}
           >
-            <div className={`absolute -right-4 -top-4 opacity-5 pointer-events-none ${theme.textClass}`}>
+            <div
+              className={`pointer-events-none absolute -right-4 -top-4 opacity-5 ${theme.textClass}`}
+            >
               <IconComp size={140} />
             </div>
-            
+
             <div className="relative z-10 flex items-start gap-4">
-              <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-sm border ${theme.bgClass} ${theme.borderClass} ${theme.textClass}`}>
+              <div
+                className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border shadow-sm ${theme.bgClass} ${theme.borderClass} ${theme.textClass}`}
+              >
                 <IconComp size={28} />
               </div>
               <div className="min-w-0 pt-1">
-                <h2 className="font-display text-2xl font-bold text-ink-primary leading-tight">{tratamento.nome}</h2>
+                <h2 className="font-display text-2xl font-bold leading-tight text-ink-primary">
+                  {tratamento.nome}
+                </h2>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                    tratamento.status === "ativo" ? "bg-emerald-400/10 border border-emerald-400/20 text-emerald-400" : 
-                    tratamento.status === "concluido" ? "bg-ice/10 border border-ice/20 text-ice" : 
-                    "bg-coral/10 border border-coral/20 text-coral"
-                  }`}>
-                    {tratamento.status === "ativo" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>}
-                    {tratamento.status === "ativo" ? "Em andamento" : tratamento.status === "concluido" ? "Concluído" : "Suspenso"}
+                  <span
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                      tratamento.status === "ativo"
+                        ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
+                        : tratamento.status === "concluido"
+                        ? "border border-ice/20 bg-ice/10 text-ice"
+                        : "border border-coral/20 bg-coral/10 text-coral"
+                    }`}
+                  >
+                    {tratamento.status === "ativo" && (
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                    )}
+                    {tratamento.status === "ativo"
+                      ? "Em andamento"
+                      : tratamento.status === "concluido"
+                      ? "Concluído"
+                      : "Suspenso"}
                   </span>
                 </div>
               </div>
             </div>
 
+            {/* CIDs vinculados */}
             {cidsVinculados.length > 0 && (
-              <div className="relative z-10 mt-4 rounded-xl bg-surface-raised/50 border border-surface-border/40 p-3 space-y-2">
-                <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5">
-                  <FolderHeart size={14} className="text-violet-400" /> Diagnósticos vinculados:
+              <div className="relative z-10 mt-4 rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3">
+                <p className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                  <FolderHeart size={14} className="text-violet-400" />
+                  Diagnósticos vinculados:
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {cidsInsights.map((cid) => {
                     const cidTheme = getClinicalTheme(cid.descricao || cid.codigo);
                     const CidIcon = cidTheme.icon;
                     return (
-                      <div key={cid.id} className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${cidTheme.tagClass}`}>
+                      <div
+                        key={cid.id}
+                        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${cidTheme.tagClass}`}
+                      >
                         <CidIcon size={12} />
                         <span className="text-[10px] font-semibold">{cid.codigo}</span>
                         <span className="text-[10px] opacity-80">- {cid.descricao}</span>
@@ -379,58 +442,77 @@ function TratamentoContent() {
                     );
                   })}
                 </div>
-                {cidsInsights.some(c => c.insight) && (
-                  <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-400/5 border border-amber-400/20 p-2.5">
-                    <Sparkles size={16} className="text-amber-400 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-ink-muted leading-relaxed">
-                      <span className="font-medium text-amber-400">Dica clínica:</span> {cidsInsights.map(c => c.insight?.alertaClinico).filter(Boolean).join(' • ')}
+                {cidsInsights.some((c) => c.insight) && (
+                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 p-2.5">
+                    <Sparkles size={16} className="mt-0.5 shrink-0 text-amber-400" />
+                    <p className="text-[11px] leading-relaxed text-ink-muted">
+                      <span className="font-medium text-amber-400">Dica clínica:</span>{" "}
+                      {cidsInsights
+                        .map((c) => c.insight?.alertaClinico)
+                        .filter(Boolean)
+                        .join(" • ")}
                     </p>
                   </div>
                 )}
               </div>
             )}
 
+            {/* Métricas */}
             <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5">
               <div className="flex flex-col items-center text-center">
                 <div className="flex items-center gap-1 text-ink-muted">
                   <Pill size={14} />
-                  <span className="text-[10px] font-medium uppercase tracking-wider">Medicamentos</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider">
+                    Medicamentos
+                  </span>
                 </div>
-                <span className="font-mono text-xl font-semibold text-ink-primary mt-1">
-                  {medicamentosAtivos.length} <span className="text-xs font-normal text-ink-faint">ativos</span>
+                <span className="mt-1 font-mono text-xl font-semibold text-ink-primary">
+                  {medicamentosAtivos.length}{" "}
+                  <span className="text-xs font-normal text-ink-faint">ativos</span>
                 </span>
               </div>
               <div className="flex flex-col items-center text-center">
                 <div className="flex items-center gap-1 text-ink-muted">
                   <FileStack size={14} />
-                  <span className="text-[10px] font-medium uppercase tracking-wider">Laudos</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider">
+                    Laudos
+                  </span>
                 </div>
-                <span className="font-mono text-xl font-semibold text-ink-primary mt-1">{linkedDocuments.length}</span>
+                <span className="mt-1 font-mono text-xl font-semibold text-ink-primary">
+                  {linkedDocuments.length}
+                </span>
               </div>
               <div className="flex flex-col items-center text-center">
                 <div className="flex items-center gap-1 text-ink-muted">
                   <Receipt size={14} />
-                  <span className="text-[10px] font-medium uppercase tracking-wider">Custo Total</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider">
+                    Custo Total
+                  </span>
                 </div>
-                <span className="font-mono text-base font-semibold text-emerald-400 mt-1">
+                <span className="mt-1 font-mono text-base font-semibold text-emerald-400">
                   {custoTotalTratamento > 0 ? formatCurrency(custoTotalTratamento) : "R$ 0,00"}
                 </span>
               </div>
             </div>
           </motion.div>
 
+          {/* Economia */}
           {economiaInfo && isFinite(economiaInfo.percentual) && !dismissEconomia && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`rounded-2xl p-4 border flex items-center justify-between ${
-                economiaInfo.economia > 0 
-                  ? 'bg-emerald-500/10 border-emerald-500/30' 
-                  : 'bg-coral/10 border-coral/30'
+              className={`flex items-center justify-between rounded-2xl border p-4 ${
+                economiaInfo.economia > 0
+                  ? "border-emerald-500/30 bg-emerald-500/10"
+                  : "border-coral/30 bg-coral/10"
               }`}
             >
-              <div className="flex items-center gap-3 flex-1">
-                <div className={`p-2 rounded-full ${economiaInfo.economia > 0 ? 'bg-emerald-500/20' : 'bg-coral/20'}`}>
+              <div className="flex flex-1 items-center gap-3">
+                <div
+                  className={`rounded-full p-2 ${
+                    economiaInfo.economia > 0 ? "bg-emerald-500/20" : "bg-coral/20"
+                  }`}
+                >
                   {economiaInfo.economia > 0 ? (
                     <TrendingDown size={20} className="text-emerald-400" />
                   ) : (
@@ -439,19 +521,21 @@ function TratamentoContent() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-ink-primary">
-                    {economiaInfo.economia > 0 ? '💰 Economia na última compra' : '📈 Aumento de custo'}
+                    {economiaInfo.economia > 0
+                      ? "💰 Economia na última compra"
+                      : "📈 Aumento de custo"}
                   </p>
                   <p className="text-xs text-ink-muted">
-                    {economiaInfo.economia > 0 
+                    {economiaInfo.economia > 0
                       ? `Você economizou ${formatCurrency(Math.abs(economiaInfo.economia))} (${Math.abs(economiaInfo.percentual).toFixed(1)}%) em relação à média anterior.`
-                      : `A última compra custou ${formatCurrency(Math.abs(economiaInfo.economia))} (${Math.abs(economiaInfo.percentual).toFixed(1)}%) a mais que a média.`
-                    }
+                      : `A última compra custou ${formatCurrency(Math.abs(economiaInfo.economia))} (${Math.abs(economiaInfo.percentual).toFixed(1)}%) a mais que a média.`}
                   </p>
                 </div>
               </div>
-              <button 
+              <button
+                type="button"
                 onClick={handleDismissEconomia}
-                className="p-1.5 rounded-full hover:bg-void/20 transition-colors shrink-0 ml-2"
+                className="ml-2 shrink-0 rounded-full p-1.5 transition-colors hover:bg-void/20"
                 aria-label="Fechar alerta"
               >
                 <X size={16} className="text-ink-muted" />
@@ -459,27 +543,37 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-3">
+          {/* Equipe Clínica */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.03 }}
+            className="space-y-3"
+          >
             <div className="flex items-center gap-2 pl-1">
               <Users size={16} className="text-ice" />
-              <h3 className="font-display text-base font-semibold text-ink-primary">Equipe Clínica</h3>
+              <h3 className="font-display text-base font-semibold text-ink-primary">
+                Equipe Clínica
+              </h3>
             </div>
             {linkedMedicos.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
                 <p className="text-xs text-ink-muted">
-                  {medicosNomesDosMedicamentos.length > 0 
-                    ? `Médico(s) mencionado(s): ${medicosNomesDosMedicamentos.join(', ')}`
-                    : 'Nenhum médico vinculado aos medicamentos deste tratamento.'
-                  }
+                  Nenhum médico vinculado aos medicamentos deste tratamento.
                 </p>
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {linkedMedicos.map((m: Medico) => (
-                  <button 
-                    key={m.id} 
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${m.id}`); }} 
-                    className="rounded-full bg-surface border border-surface-border px-4 py-2 text-sm font-medium text-ink-primary shadow-sm hover:border-ice/30 transition-all active:scale-95"
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+                      router.push(`/saude/medicos/detalhes?id=${m.id}`);
+                    }}
+                    className="rounded-full border border-surface-border bg-surface px-4 py-2 text-sm font-medium text-ink-primary shadow-sm transition-all hover:border-ice/30 active:scale-95"
                   >
                     Dr(a). {m.nome}
                   </button>
@@ -488,78 +582,121 @@ function TratamentoContent() {
             )}
           </motion.div>
 
+          {/* Últimas Compras */}
           {linkedRenovacoes.length > 0 && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.04 }}
+              className="space-y-3"
+            >
               <div className="flex items-center gap-2 pl-1">
                 <Clock size={16} className="text-amber-400" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">Últimas Compras</h3>
+                <h3 className="font-display text-base font-semibold text-ink-primary">
+                  Últimas Compras
+                </h3>
               </div>
               <div className="space-y-2">
                 {linkedRenovacoes.slice(0, 5).map((ren: Renovacao) => {
-                  const med = linkedMedicamentos.find((m: Medicamento) => m.id === ren.medicamento_id);
+                  const med = linkedMedicamentos.find(
+                    (m: Medicamento) => m.id === ren.medicamento_id
+                  );
                   return (
-                    <div key={ren.id} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm">
+                    <div
+                      key={ren.id}
+                      className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm"
+                    >
                       <div>
-                        <p className="text-sm font-semibold text-ink-primary">{med?.nome || "Medicamento"}</p>
-                        <p className="text-[11px] text-ink-muted">{formatDateDisplay(ren.data)}</p>
+                        <p className="text-sm font-semibold text-ink-primary">
+                          {med?.nome || "Medicamento"}
+                        </p>
+                        <p className="text-[11px] text-ink-muted">
+                          {formatDateDisplay(ren.data)}
+                        </p>
                       </div>
                       {ren.preco && (
-                        <span className="text-sm font-semibold text-emerald-400">{formatCurrency(ren.preco)}</span>
+                        <span className="text-sm font-semibold text-emerald-400">
+                          {formatCurrency(ren.preco)}
+                        </span>
                       )}
                     </div>
                   );
                 })}
                 {linkedRenovacoes.length > 5 && (
-                  <p className="text-[10px] text-center text-ink-muted pt-1">E mais {linkedRenovacoes.length - 5} compra(s)...</p>
+                  <p className="pt-1 text-center text-[10px] text-ink-muted">
+                    E mais {linkedRenovacoes.length - 5} compra(s)...
+                  </p>
                 )}
               </div>
             </motion.div>
           )}
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
+          {/* Medicamentos em Uso */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.05 }}
+            className="space-y-3"
+          >
             <div className="flex items-center gap-2 pl-1">
               <Pill size={16} className="text-ice" />
-              <h3 className="font-display text-base font-semibold text-ink-primary">Medicamentos em Uso</h3>
+              <h3 className="font-display text-base font-semibold text-ink-primary">
+                Medicamentos em Uso
+              </h3>
             </div>
 
             {medicamentosAtivos.length === 0 ? (
               <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">
-                <p className="text-sm text-ink-muted">Nenhum medicamento ativo vinculado a este tratamento.</p>
+                <p className="text-sm text-ink-muted">
+                  Nenhum medicamento ativo vinculado a este tratamento.
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {medicamentosAtivos.map((med) => (
                   <div
                     key={med.id}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
-                    className="group cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all active:scale-[0.98] hover:border-ice/30 relative overflow-hidden"
-                    style={{ 
-                      borderLeft: `4px solid ${activePersonId ? 'var(--person-accent, #38BDF8)' : '#38BDF8'}` 
+                    onClick={() => {
+                      trigger("vibrate");
+                      router.push(`/saude/medicamentos/detalhes?id=${med.id}`);
+                    }}
+                    className="group cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all hover:border-ice/30 active:scale-[0.98]"
+                    style={{
+                      borderLeft: `4px solid ${activePersonId ? "var(--person-accent, #38BDF8)" : "#38BDF8"}`,
                     }}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice border border-ice/10">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ice/10 bg-ice/10 text-ice">
                           <Pill size={18} />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="truncate font-semibold text-ink-primary text-[15px]">{med.nome}</p>
+                            <p className="truncate text-[15px] font-semibold text-ink-primary">
+                              {med.nome}
+                            </p>
                             {med.receitaVencida && (
-                              <span className="text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">
+                              <span className="rounded-full bg-coral/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-coral">
                                 Vencida
                               </span>
                             )}
                             {med.insight?.deveRenovar && (
-                              <span className="text-[8px] font-bold uppercase bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded-full">
+                              <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-400">
                                 Renovar
                               </span>
                             )}
                           </div>
-                          <p className="truncate text-xs text-ink-muted mt-0.5">{med.dosagem} • Dr(a). {med.medico}</p>
+                          <p className="mt-0.5 truncate text-xs text-ink-muted">
+                            {med.dosagem} • Dr(a). {med.medico}
+                          </p>
                         </div>
                       </div>
-                      <ChevronRight size={18} className="text-ink-faint group-hover:text-ice transition-colors" />
+                      <ChevronRight
+                        size={18}
+                        className="text-ink-faint transition-colors group-hover:text-ice"
+                      />
                     </div>
                   </div>
                 ))}
@@ -567,25 +704,47 @@ function TratamentoContent() {
             )}
           </motion.div>
 
+          {/* Histórico Descontinuados */}
           {medicamentosDescontinuados.length > 0 && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.1 }}
+              className="space-y-3"
+            >
               <div className="flex items-center gap-2 pl-1">
                 <History size={16} className="text-coral" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">Histórico (Descontinuados)</h3>
+                <h3 className="font-display text-base font-semibold text-ink-primary">
+                  Histórico (Descontinuados)
+                </h3>
               </div>
-              <div className="space-y-3 border-l-2 border-surface-border/50 ml-3 pl-4">
+              <div className="ml-3 space-y-3 border-l-2 border-surface-border/50 pl-4">
                 {medicamentosDescontinuados.map((med) => (
-                  <div key={med.id} onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }} className="relative rounded-2xl border border-coral/10 bg-surface-raised/60 p-3.5 cursor-pointer">
-                    <div className="absolute -left-[23px] top-4 h-2.5 w-2.5 rounded-full bg-coral border-2 border-void ring-1 ring-surface-border/50"></div>
-                    <div className="flex justify-between items-start mb-1">
-                      <p className="font-semibold text-ink-primary text-sm line-through opacity-70">{med.nome} {med.dosagem}</p>
-                      <span className="text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md">SUSPENSO</span>
+                  <div
+                    key={med.id}
+                    onClick={() => {
+                      trigger("vibrate");
+                      router.push(`/saude/medicamentos/detalhes?id=${med.id}`);
+                    }}
+                    className="relative cursor-pointer rounded-2xl border border-coral/10 bg-surface-raised/60 p-3.5"
+                  >
+                    <div className="absolute -left-[23px] top-4 h-2.5 w-2.5 rounded-full border-2 border-void bg-coral ring-1 ring-surface-border/50" />
+                    <div className="mb-1 flex items-start justify-between">
+                      <p className="text-sm font-semibold text-ink-primary line-through opacity-70">
+                        {med.nome} {med.dosagem}
+                      </p>
+                      <span className="rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold text-coral">
+                        SUSPENSO
+                      </span>
                     </div>
                     {med.motivo_descontinuacao && (
-                      <p className="text-xs text-ink-muted italic mb-2">"{med.motivo_descontinuacao}"</p>
+                      <p className="mb-2 text-xs italic text-ink-muted">
+                        "{med.motivo_descontinuacao}"
+                      </p>
                     )}
                     {med.substituido_por_id && (
-                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-ice mt-2 bg-ice/10 w-fit px-2 py-1 rounded-md border border-ice/10">
+                      <div className="mt-2 flex w-fit items-center gap-1.5 rounded-md border border-ice/10 bg-ice/10 px-2 py-1 text-[11px] font-medium text-ice">
                         <ArrowLeftRight size={10} />
                         Substituído por outro medicamento
                       </div>
@@ -596,29 +755,47 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
+          {/* Receitas e Laudos */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.15 }}
+            className="space-y-3"
+          >
             <div className="flex items-center justify-between pl-1 pr-1">
               <div className="flex items-center gap-2">
                 <FileText size={16} className="text-emerald-400" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">Receitas e Laudos</h3>
+                <h3 className="font-display text-base font-semibold text-ink-primary">
+                  Receitas e Laudos
+                </h3>
               </div>
             </div>
 
             {linkedDocuments.length === 0 ? (
               <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">
-                <p className="text-sm text-ink-muted">Nenhum documento ou laudo vinculado a este tratamento.</p>
+                <p className="text-sm text-ink-muted">
+                  Nenhum documento ou laudo vinculado a este tratamento.
+                </p>
               </div>
             ) : (
-              <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-4">
+              <motion.div
+                variants={listVariants}
+                initial="hidden"
+                animate="show"
+                className="space-y-4"
+              >
                 {linkedDocuments.map((doc) => (
                   <motion.div key={doc.id} variants={cardVariants}>
-                    <DocumentCard document={doc} onFavoriteToggle={handleFavoriteToggle} />
+                    <DocumentCard
+                      document={doc}
+                      onFavoriteToggle={handleFavoriteToggle}
+                    />
                   </motion.div>
                 ))}
               </motion.div>
             )}
           </motion.div>
-
         </section>
       </main>
     </PageTransition>
@@ -626,5 +803,9 @@ function TratamentoContent() {
 }
 
 export default function TratamentoPage() {
-  return <Suspense fallback={<DetailSkeleton />}><TratamentoContent /></Suspense>;
+  return (
+    <Suspense fallback={<DetailSkeleton />}>
+      <TratamentoContent />
+    </Suspense>
+  );
 }

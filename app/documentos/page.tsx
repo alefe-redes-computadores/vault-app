@@ -53,11 +53,6 @@ function useDebounce(value: string, delay = 300) {
   return debouncedValue;
 }
 
-// ============================================================
-// TIPOS DE DOCUMENTOS DO COFRE PESSOAL
-// Saúde fica separada do Cofre Pessoal.
-// ============================================================
-
 const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
   { id: "rg", label: "RG" },
   { id: "cpf", label: "CPF" },
@@ -109,44 +104,21 @@ export default function DocumentsPage() {
 
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // ============================================================
-  // ESTADO DOS FILTROS
-  // ============================================================
-
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(
     activePersonId || null
   );
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [selectedCategory, setSelectedCategory] = useState<
-    CategoryId | "all"
-  >("all");
-
-  const [selectedType, setSelectedType] = useState<DocumentType | "all">(
-    "all"
-  );
-
+  const [selectedCategory, setSelectedCategory] = useState<CategoryId | "all">("all");
+  const [selectedType, setSelectedType] = useState<DocumentType | "all">("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
-
   const [showFilters, setShowFilters] = useState(false);
-
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-
   const [isLoading, setIsLoading] = useState(true);
-
-  // Guarda se o usuário realmente escolheu uma pessoa nesta tela.
-  //
-  // Isso evita considerar automaticamente a pessoa ativa global
-  // como um "filtro ativo" visual.
-  const [personFilterManuallySelected, setPersonFilterManuallySelected] =
-    useState(false);
+  const [personFilterManuallySelected, setPersonFilterManuallySelected] = useState(false);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
-
-  // ============================================================
-  // LOADING INICIAL
-  // ============================================================
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -156,20 +128,10 @@ export default function DocumentsPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // ============================================================
-  // SINCRONIZAÇÃO COM A PESSOA ATIVA
-  //
-  // Quando a pessoa ativa global muda, a página acompanha.
-  // ============================================================
-
   useEffect(() => {
     setSelectedPersonId(activePersonId || null);
     setPersonFilterManuallySelected(false);
   }, [activePersonId]);
-
-  // ============================================================
-  // DOCUMENTOS PAGINADOS
-  // ============================================================
 
   const {
     documents: paginatedDocs,
@@ -179,32 +141,17 @@ export default function DocumentsPage() {
     loadMore,
   } = usePaginatedDocuments({
     personId: selectedPersonId || undefined,
-    categoryId:
-      selectedCategory !== "all" ? selectedCategory : undefined,
+    categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
     searchQuery: debouncedSearch,
     excludeCategories: ["saude"],
   });
 
-  // ============================================================
-  // FILTROS LOCAIS
-  //
-  // Tipo e validade são aplicados sobre os documentos já carregados.
-  // ============================================================
-
   const filteredDocs = useMemo<Document[]>(() => {
     let result = paginatedDocs as Document[];
-
-    // ----------------------------------------------------------
-    // Tipo
-    // ----------------------------------------------------------
 
     if (selectedType !== "all") {
       result = result.filter((doc) => doc.type === selectedType);
     }
-
-    // ----------------------------------------------------------
-    // Validade
-    // ----------------------------------------------------------
 
     if (dateFilter !== "all") {
       const now = new Date();
@@ -218,47 +165,25 @@ export default function DocumentsPage() {
             }
           | undefined;
 
-        const expiry =
-          metadata?.expiry_date ||
-          metadata?.renewal_date ||
-          metadata?.validade;
+        const expiry = metadata?.expiry_date || metadata?.renewal_date || metadata?.validade;
 
-        if (!expiry) {
-          return false;
-        }
+        if (!expiry) return false;
 
         const expiryDate = new Date(expiry);
 
-        if (Number.isNaN(expiryDate.getTime())) {
-          return false;
-        }
-
-        // ------------------------------------------------------
-        // Vencidos
-        // ------------------------------------------------------
+        if (Number.isNaN(expiryDate.getTime())) return false;
 
         if (dateFilter === "expired") {
           return expiryDate < now;
         }
 
-        // ------------------------------------------------------
-        // Vencendo nos próximos 7 dias
-        // ------------------------------------------------------
-
-        const sevenDaysFromNow = new Date(
-          now.getTime() + 7 * 24 * 60 * 60 * 1000
-        );
-
+        const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
         return expiryDate > now && expiryDate <= sevenDaysFromNow;
       });
     }
 
     return result;
   }, [paginatedDocs, selectedType, dateFilter]);
-
-  // ============================================================
-  // FAVORITO
-  // ============================================================
 
   const handleFavoriteToggle = useCallback(
     async (id: string) => {
@@ -268,27 +193,15 @@ export default function DocumentsPage() {
     [favorite, trigger]
   );
 
-  // ============================================================
-  // LIMPAR FILTROS
-  // ============================================================
-
   const clearFilters = useCallback(() => {
     setSearchQuery("");
     setSelectedCategory("all");
     setSelectedType("all");
     setDateFilter("all");
-
-    // Retorna para a pessoa ativa global.
     setSelectedPersonId(activePersonId || null);
-
     setPersonFilterManuallySelected(false);
-
     trigger("vibrate");
   }, [trigger, activePersonId]);
-
-  // ============================================================
-  // ESTADO DOS FILTROS
-  // ============================================================
 
   const hasActiveFilters =
     personFilterManuallySelected ||
@@ -298,51 +211,21 @@ export default function DocumentsPage() {
 
   const hasSearch = searchQuery.trim().length > 0;
 
-  // ============================================================
-  // EXPORTAÇÃO
-  // ============================================================
-
   const getExportCards = useCallback(() => {
     return filteredDocs
       .filter((doc) => Boolean(doc.id))
       .map((doc) => ({
-        ref: {
-          current: cardRefs.current[doc.id!],
-        },
+        ref: { current: cardRefs.current[doc.id!] },
         id: doc.id!,
       }));
   }, [filteredDocs]);
 
-  // ============================================================
-  // CATEGORIAS DO COFRE
-  //
-  // Saúde continua fora desta página.
-  // ============================================================
-
   const vaultCategories = useMemo(() => {
-    return Object.values(CATEGORIES).filter(
-      (category) => category.id !== "saude"
-    );
+    return Object.values(CATEGORIES).filter((category) => category.id !== "saude");
   }, []);
 
-  // ============================================================
-  // CONTAGEM EXIBIDA
-  //
-  // Quando não existem filtros locais, podemos utilizar o total
-  // informado pela paginação.
-  //
-  // Quando existem filtros locais, usamos a quantidade efetivamente
-  // filtrada que já foi carregada.
-  // ============================================================
-
   const displayedCount =
-    selectedType === "all" && dateFilter === "all"
-      ? totalCount
-      : filteredDocs.length;
-
-  // ============================================================
-  // LOADING
-  // ============================================================
+    selectedType === "all" && dateFilter === "all" ? totalCount : filteredDocs.length;
 
   if (isLoading) {
     return <CardListSkeleton />;
@@ -351,10 +234,6 @@ export default function DocumentsPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* ======================================================
-            HEADER
-        ====================================================== */}
-
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl header-safe-top">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -370,10 +249,6 @@ export default function DocumentsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* ==================================================
-                  GALERIA
-              ================================================== */}
-
               <button
                 type="button"
                 onClick={() => {
@@ -386,32 +261,18 @@ export default function DocumentsPage() {
                 <Images size={18} />
               </button>
 
-              {/* ==================================================
-                  LISTA / GRID
-              ================================================== */}
-
               <button
                 type="button"
                 onClick={() => {
                   trigger("vibrate");
-
-                  setViewMode((prev) =>
-                    prev === "list" ? "grid" : "list"
-                  );
+                  setViewMode((prev) => (prev === "list" ? "grid" : "list"));
                 }}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-all active:scale-95 hover:text-ink-primary"
                 aria-label="Alternar visualização"
+                aria-pressed={viewMode === "grid"}
               >
-                {viewMode === "list" ? (
-                  <Grid3X3 size={18} />
-                ) : (
-                  <LayoutList size={18} />
-                )}
+                {viewMode === "list" ? <Grid3X3 size={18} /> : <LayoutList size={18} />}
               </button>
-
-              {/* ==================================================
-                  EXPORTAR
-              ================================================== */}
 
               {filteredDocs.length > 0 && (
                 <ExportCardButton
@@ -422,10 +283,6 @@ export default function DocumentsPage() {
                   label="Exportar"
                 />
               )}
-
-              {/* ==================================================
-                  FILTROS
-              ================================================== */}
 
               <button
                 type="button"
@@ -439,15 +296,12 @@ export default function DocumentsPage() {
                     : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                 }`}
                 aria-label="Abrir filtros"
+                aria-pressed={showFilters}
               >
                 <SlidersHorizontal size={18} />
               </button>
             </div>
           </div>
-
-          {/* ======================================================
-              BUSCA
-          ====================================================== */}
 
           <div className="relative mt-4">
             <Search
@@ -458,9 +312,7 @@ export default function DocumentsPage() {
             <Input
               placeholder="Buscar documentos, números ou notas..."
               value={searchQuery}
-              onChange={(event) =>
-                setSearchQuery(event.target.value)
-              }
+              onChange={(event) => setSearchQuery(event.target.value)}
               className="border-surface-border/50 bg-surface-raised pl-9 transition-all"
             />
 
@@ -476,18 +328,11 @@ export default function DocumentsPage() {
             )}
           </div>
 
-          {/* ======================================================
-              INDICADORES DE FILTRO
-          ====================================================== */}
-
           {(hasActiveFilters || hasSearch) && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-2 rounded-full border border-ice/20 bg-ice/10 px-3 py-1.5 text-xs font-medium text-ice">
                 <Sparkles size={12} />
-
-                {hasSearch && !hasActiveFilters
-                  ? "Busca ativa"
-                  : "Filtros ativos"}
+                {hasSearch && !hasActiveFilters ? "Busca ativa" : "Filtros ativos"}
               </div>
 
               <button
@@ -501,39 +346,16 @@ export default function DocumentsPage() {
             </div>
           )}
 
-          {/* ======================================================
-              PAINEL DE FILTROS
-          ====================================================== */}
-
           <AnimatePresence initial={false}>
             {showFilters && (
               <motion.div
-                initial={{
-                  opacity: 0,
-                  height: 0,
-                  y: -4,
-                }}
-                animate={{
-                  opacity: 1,
-                  height: "auto",
-                  y: 0,
-                }}
-                exit={{
-                  opacity: 0,
-                  height: 0,
-                  y: -4,
-                }}
-                transition={{
-                  duration: 0.24,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
+                initial={{ opacity: 0, height: 0, y: -4 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -4 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
                 className="overflow-hidden"
               >
                 <div className="mt-4 space-y-4 rounded-[26px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
-                  {/* ==================================================
-                      PESSOA
-                  ================================================== */}
-
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
                       Pessoa
@@ -551,6 +373,7 @@ export default function DocumentsPage() {
                             ? "border-ice bg-ice/12 text-ice"
                             : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                         }`}
+                        aria-pressed={selectedPersonId === null}
                       >
                         Todos
                       </button>
@@ -561,7 +384,6 @@ export default function DocumentsPage() {
                           key={person.id}
                           onClick={() => {
                             if (!person.id) return;
-
                             setSelectedPersonId(person.id);
                             setPersonFilterManuallySelected(true);
                           }}
@@ -570,16 +392,13 @@ export default function DocumentsPage() {
                               ? "border-ice bg-ice/12 text-ice"
                               : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                           }`}
+                          aria-pressed={selectedPersonId === person.id}
                         >
                           {person.name}
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  {/* ==================================================
-                      CATEGORIA
-                  ================================================== */}
 
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
@@ -589,14 +408,13 @@ export default function DocumentsPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          setSelectedCategory("all")
-                        }
+                        onClick={() => setSelectedCategory("all")}
                         className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
                           selectedCategory === "all"
                             ? "border-ice bg-ice/12 text-ice"
                             : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                         }`}
+                        aria-pressed={selectedCategory === "all"}
                       >
                         Todas
                       </button>
@@ -605,31 +423,20 @@ export default function DocumentsPage() {
                         <button
                           type="button"
                           key={category.id}
-                          onClick={() =>
-                            setSelectedCategory(category.id)
-                          }
+                          onClick={() => setSelectedCategory(category.id)}
                           className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
                             selectedCategory === category.id
                               ? "border-ice bg-ice/12 text-ice"
                               : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                           }`}
+                          aria-pressed={selectedCategory === category.id}
                         >
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{
-                              backgroundColor: category.color,
-                            }}
-                          />
-
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: category.color }} />
                           {category.name}
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  {/* ==================================================
-                      TIPO
-                  ================================================== */}
 
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
@@ -639,14 +446,13 @@ export default function DocumentsPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          setSelectedType("all")
-                        }
+                        onClick={() => setSelectedType("all")}
                         className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
                           selectedType === "all"
                             ? "border-ice bg-ice/12 text-ice"
                             : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                         }`}
+                        aria-pressed={selectedType === "all"}
                       >
                         Todos
                       </button>
@@ -655,24 +461,19 @@ export default function DocumentsPage() {
                         <button
                           type="button"
                           key={type.id}
-                          onClick={() =>
-                            setSelectedType(type.id)
-                          }
+                          onClick={() => setSelectedType(type.id)}
                           className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
                             selectedType === type.id
                               ? "border-ice bg-ice/12 text-ice"
                               : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                           }`}
+                          aria-pressed={selectedType === type.id}
                         >
                           {type.label}
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  {/* ==================================================
-                      VALIDADE
-                  ================================================== */}
 
                   <div>
                     <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-ink-faint">
@@ -682,28 +483,26 @@ export default function DocumentsPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          setDateFilter("all")
-                        }
+                        onClick={() => setDateFilter("all")}
                         className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
                           dateFilter === "all"
                             ? "border-ice bg-ice/12 text-ice"
                             : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                         }`}
+                        aria-pressed={dateFilter === "all"}
                       >
                         Todas
                       </button>
 
                       <button
                         type="button"
-                        onClick={() =>
-                          setDateFilter("expiring")
-                        }
+                        onClick={() => setDateFilter("expiring")}
                         className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
                           dateFilter === "expiring"
                             ? "border-ice bg-ice/12 text-ice"
                             : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                         }`}
+                        aria-pressed={dateFilter === "expiring"}
                       >
                         <Calendar size={12} />
                         Vencendo (7d)
@@ -711,14 +510,13 @@ export default function DocumentsPage() {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          setDateFilter("expired")
-                        }
+                        onClick={() => setDateFilter("expired")}
                         className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
                           dateFilter === "expired"
                             ? "border-coral bg-coral/10 text-coral"
                             : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
                         }`}
+                        aria-pressed={dateFilter === "expired"}
                       >
                         <Calendar size={12} />
                         Vencidos
@@ -731,37 +529,18 @@ export default function DocumentsPage() {
           </AnimatePresence>
         </header>
 
-        {/* ========================================================
-            BANNER DE SAÚDE
-        ======================================================== */}
-
         <HealthDocsBanner />
-
-        {/* ========================================================
-            CONTEÚDO
-        ======================================================== */}
 
         <section className="px-5 pt-5">
           {filteredDocs.length === 0 ? (
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 10,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 0.24,
-              }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24 }}
               className="flex flex-col items-center justify-center rounded-[30px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm"
             >
               <div className="glow-ice mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-ice/15 bg-surface-raised">
-                <Search
-                  size={28}
-                  className="text-ice/60"
-                />
+                <Search size={28} className="text-ice/60" />
               </div>
 
               <h3 className="font-display text-lg font-semibold text-ink-primary">
@@ -769,62 +548,32 @@ export default function DocumentsPage() {
               </h3>
 
               <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
-                Seus documentos pessoais, de empresa e outros
-                aparecerão aqui.
+                Seus documentos pessoais, de empresa e outros aparecerão aqui.
               </p>
             </motion.div>
           ) : viewMode === "list" ? (
-            /* ======================================================
-               LISTA
-            ====================================================== */
-
-            <InfiniteScrollTrigger
-              onLoadMore={loadMore}
-              hasMore={hasMore}
-              isLoading={isLoadingMore}
-            >
-              <motion.div
-                variants={listVariants}
-                initial="hidden"
-                animate="show"
-                className="space-y-4"
-              >
+            <InfiniteScrollTrigger onLoadMore={loadMore} hasMore={hasMore} isLoading={isLoadingMore}>
+              <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-4">
                 {filteredDocs.map((doc) => (
                   <motion.div
                     key={doc.id}
                     variants={cardVariants}
                     ref={(element) => {
                       if (doc.id) {
-                        cardRefs.current[doc.id] =
-                          element;
+                        cardRefs.current[doc.id] = element;
                       }
                     }}
                   >
-                    <DocumentCard
-                      document={doc}
-                      onFavoriteToggle={
-                        handleFavoriteToggle
-                      }
-                    />
+                    <DocumentCard document={doc} onFavoriteToggle={handleFavoriteToggle} />
                   </motion.div>
                 ))}
               </motion.div>
             </InfiniteScrollTrigger>
           ) : (
-            /* ======================================================
-               GRID
-               Também utiliza InfiniteScrollTrigger.
-            ====================================================== */
-
-            <InfiniteScrollTrigger
-              onLoadMore={loadMore}
-              hasMore={hasMore}
-              isLoading={isLoadingMore}
-            >
+            <InfiniteScrollTrigger onLoadMore={loadMore} hasMore={hasMore} isLoading={isLoadingMore}>
               <div className="grid grid-cols-2 gap-3">
                 {filteredDocs.map((doc) => {
-                  const firstAttachment =
-                    doc.attachments?.[0];
+                  const firstAttachment = doc.attachments?.[0];
 
                   return (
                     <motion.div
@@ -834,46 +583,34 @@ export default function DocumentsPage() {
                       animate="show"
                       ref={(element) => {
                         if (doc.id) {
-                          cardRefs.current[doc.id] =
-                            element;
+                          cardRefs.current[doc.id] = element;
                         }
                       }}
                       onClick={() => {
                         if (!doc.id) return;
-
                         trigger("vibrate");
-                        router.push(
-                          `/detalhes?id=${doc.id}`
-                        );
+                        router.push(`/detalhes?id=${doc.id}`);
                       }}
                       className="group relative cursor-pointer overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface p-3 shadow-sm transition-all hover:border-ice/30 active:scale-[0.98]"
+                      role="button"
+                      tabIndex={0}
                     >
                       <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-xl bg-surface-raised">
-                        {firstAttachment?.type ===
-                        "image" ? (
+                        {firstAttachment?.type === "image" ? (
                           <img
                             src={firstAttachment.url}
                             alt={doc.title}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                         ) : (
-                          <FileText
-                            size={32}
-                            className="text-ice/50"
-                          />
+                          <FileText size={32} className="text-ice/50" />
                         )}
                       </div>
 
                       <div className="mt-2.5 min-w-0">
-                        <p className="truncate text-xs font-semibold text-ink-primary">
-                          {doc.title}
-                        </p>
-
+                        <p className="truncate text-xs font-semibold text-ink-primary">{doc.title}</p>
                         <p className="text-[10px] capitalize text-ink-muted">
-                          {doc.type.replace(
-                            "_",
-                            " "
-                          )}
+                          {doc.type.replace("_", " ")}
                         </p>
                       </div>
                     </motion.div>
@@ -883,10 +620,6 @@ export default function DocumentsPage() {
             </InfiniteScrollTrigger>
           )}
         </section>
-
-        {/* ========================================================
-            VOLTAR AO TOPO
-        ======================================================== */}
 
         <ScrollToTop threshold={400} />
       </main>

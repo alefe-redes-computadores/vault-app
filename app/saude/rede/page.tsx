@@ -12,7 +12,6 @@ import {
   Phone,
   MapPin,
   ChevronRight,
-  User,
   Activity,
   Calendar,
   FlaskConical,
@@ -40,27 +39,34 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { Input } from "@/components/ui/Input";
+import { EmptyState } from "@/components/EmptyState";
+import {
+  ListPageHeader,
+  ListSearch,
+  ListCard,
+  ListIcon,
+} from "@/components/list";
 import { sugerirRenovacao, isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
-import type { 
-  Medico, 
-  Farmacia, 
-  Hospital, 
-  Medicamento, 
-  Tratamento, 
-  Consulta, 
-  Exame, 
-  Cirurgia, 
+import type {
+  Medico,
+  Farmacia,
+  Hospital,
+  Medicamento,
+  Tratamento,
+  Consulta,
+  Exame,
+  Cirurgia,
   Renovacao,
-  Person
+  Person,
 } from "@/lib/types";
 
 type TabType = "visao-geral" | "medicos" | "farmacias" | "hospitais" | "tratamentos";
 
 type AlertaRede = {
-  tipo: 'estoque' | 'receita' | 'consulta' | 'exame' | 'cirurgia';
+  tipo: "estoque" | "receita" | "consulta" | "exame" | "cirurgia";
   mensagem: string;
-  urgencia: 'alta' | 'media' | 'baixa';
+  urgencia: "alta" | "media" | "baixa";
   link: string;
 };
 
@@ -76,7 +82,7 @@ export default function RedeSaudePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { activePersonId } = useActivePersonId();
-  
+
   const { medicos = [] } = useMedicos();
   const { farmacias = [] } = useFarmacias();
   const { hospitais = [] } = useHospitais();
@@ -110,55 +116,79 @@ export default function RedeSaudePage() {
   }, [tabFromUrl, activeTab]);
 
   const filteredMedicamentos = useMemo(() => {
-    return (medicamentos || []).filter((m: Medicamento) => !selectedPersonId || !m.person_id || m.person_id === selectedPersonId);
+    return (medicamentos || []).filter(
+      (m: Medicamento) => !selectedPersonId || !m.person_id || m.person_id === selectedPersonId
+    );
   }, [medicamentos, selectedPersonId]);
 
   const filteredTratamentos = useMemo(() => {
-    return (tratamentos || []).filter((t: Tratamento) => !selectedPersonId || !t.person_id || t.person_id === selectedPersonId);
+    return (tratamentos || []).filter(
+      (t: Tratamento) => !selectedPersonId || !t.person_id || t.person_id === selectedPersonId
+    );
   }, [tratamentos, selectedPersonId]);
 
   const filteredConsultas = useMemo(() => {
-    return (consultas || []).filter((c: Consulta) => !selectedPersonId || !c.person_id || c.person_id === selectedPersonId);
+    return (consultas || []).filter(
+      (c: Consulta) => !selectedPersonId || !c.person_id || c.person_id === selectedPersonId
+    );
   }, [consultas, selectedPersonId]);
 
   const filteredExames = useMemo(() => {
-    return (exames || []).filter((e: Exame) => !selectedPersonId || !e.person_id || e.person_id === selectedPersonId);
+    return (exames || []).filter(
+      (e: Exame) => !selectedPersonId || !e.person_id || e.person_id === selectedPersonId
+    );
   }, [exames, selectedPersonId]);
 
   const filteredCirurgias = useMemo(() => {
-    return (cirurgias || []).filter((c: Cirurgia) => !selectedPersonId || !c.person_id || c.person_id === selectedPersonId);
+    return (cirurgias || []).filter(
+      (c: Cirurgia) => !selectedPersonId || !c.person_id || c.person_id === selectedPersonId
+    );
   }, [cirurgias, selectedPersonId]);
 
   const filteredRenovacoes = useMemo(() => {
-    const medsIds = new Set(filteredMedicamentos.map(m => m.id).filter((id): id is string => Boolean(id)));
-    return (renovacoes || []).filter((r: Renovacao) => !selectedPersonId || !r.person_id || r.person_id === selectedPersonId || (r.medicamento_id && medsIds.has(r.medicamento_id)));
+    const medsIds = new Set(
+      filteredMedicamentos.map((m) => m.id).filter((id): id is string => Boolean(id))
+    );
+    return (renovacoes || []).filter(
+      (r: Renovacao) =>
+        !selectedPersonId ||
+        !r.person_id ||
+        r.person_id === selectedPersonId ||
+        (r.medicamento_id && medsIds.has(r.medicamento_id))
+    );
   }, [renovacoes, selectedPersonId, filteredMedicamentos]);
 
   const filteredMedicos = useMemo(() => {
-    const linked = new Set([
-      ...filteredConsultas.map(c => c.medico_id),
-      ...filteredCirurgias.map(c => c.medico_id),
-      ...filteredMedicamentos.map(m => m.medico_id)
-    ].filter((id): id is string => Boolean(id)));
+    const linked = new Set(
+      [
+        ...filteredConsultas.map((c) => c.medico_id),
+        ...filteredCirurgias.map((c) => c.medico_id),
+        ...filteredMedicamentos.map((m) => m.medico_id),
+      ].filter((id): id is string => Boolean(id))
+    );
 
     return (medicos || []).filter((m: Medico) => m.id && linked.has(m.id));
   }, [medicos, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
 
   const filteredFarmacias = useMemo(() => {
-    const linked = new Set([
-      ...filteredMedicamentos.map(m => m.farmacia_id),
-      ...filteredRenovacoes.map(r => r.farmacia_id)
-    ].filter((id): id is string => Boolean(id)));
+    const linked = new Set(
+      [
+        ...filteredMedicamentos.map((m) => m.farmacia_id),
+        ...filteredRenovacoes.map((r) => r.farmacia_id),
+      ].filter((id): id is string => Boolean(id))
+    );
 
     return (farmacias || []).filter((f: Farmacia) => f.id && linked.has(f.id));
   }, [farmacias, filteredMedicamentos, filteredRenovacoes]);
 
   const filteredHospitais = useMemo(() => {
-    const linked = new Set([
-      ...filteredConsultas.map(c => c.hospital_id),
-      ...filteredCirurgias.map(c => c.hospital_id),
-      ...filteredMedicamentos.map(m => m.local_id)
-    ].filter((id): id is string => Boolean(id)));
+    const linked = new Set(
+      [
+        ...filteredConsultas.map((c) => c.hospital_id),
+        ...filteredCirurgias.map((c) => c.hospital_id),
+        ...filteredMedicamentos.map((m) => m.local_id),
+      ].filter((id): id is string => Boolean(id))
+    );
 
     return (hospitais || []).filter((h: Hospital) => h.id && linked.has(h.id));
   }, [hospitais, filteredConsultas, filteredCirurgias, filteredMedicamentos]);
@@ -170,18 +200,18 @@ export default function RedeSaudePage() {
       const insight = sugerirRenovacao(med);
       if (insight.deveRenovar && med.id) {
         alerts.push({
-          tipo: 'estoque',
+          tipo: "estoque",
           mensagem: insight.mensagem,
-          urgencia: insight.urgencia === 'nenhuma' ? 'baixa' : insight.urgencia,
+          urgencia: insight.urgencia === "nenhuma" ? "baixa" : insight.urgencia,
           link: `/saude/medicamentos/detalhes?id=${med.id}`,
         });
       }
 
       if (med.proxima_renovacao && isReceitaVencidaSegura(med.proxima_renovacao) && med.id) {
         alerts.push({
-          tipo: 'receita',
+          tipo: "receita",
           mensagem: `Receita de ${med.nome} venceu em ${formatDateDisplay(med.proxima_renovacao)}`,
-          urgencia: 'alta',
+          urgencia: "alta",
           link: `/saude/medicamentos/detalhes?id=${med.id}`,
         });
       }
@@ -190,17 +220,17 @@ export default function RedeSaudePage() {
     const hoje = new Date();
     const seteDias = new Date(hoje);
     seteDias.setDate(hoje.getDate() + 7);
-    
+
     filteredConsultas.forEach((con: Consulta) => {
-      if (con.status === 'agendada' && con.id) {
+      if (con.status === "agendada" && con.id) {
         const dataCon = new Date(con.data);
         if (dataCon >= hoje && dataCon <= seteDias) {
           const dias = Math.ceil((dataCon.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-          const nomeMedico = con.medico || 'médico';
+          const nomeMedico = con.medico || "médico";
           alerts.push({
-            tipo: 'consulta',
-            mensagem: `Consulta com ${nomeMedico} em ${dias} dia${dias > 1 ? 's' : ''}`,
-            urgencia: dias <= 2 ? 'alta' : 'media',
+            tipo: "consulta",
+            mensagem: `Consulta com ${nomeMedico} em ${dias} dia${dias > 1 ? "s" : ""}`,
+            urgencia: dias <= 2 ? "alta" : "media",
             link: `/saude/consultas/detalhes?id=${con.id}`,
           });
         }
@@ -213,16 +243,16 @@ export default function RedeSaudePage() {
         if (dias !== null) {
           if (dias < 0) {
             alerts.push({
-              tipo: 'exame',
+              tipo: "exame",
               mensagem: `Exame "${exame.nome}" venceu há ${Math.abs(dias)} dia(s)`,
-              urgencia: 'alta',
+              urgencia: "alta",
               link: `/saude/exames/detalhes?id=${exame.id}`,
             });
           } else if (dias <= 7) {
             alerts.push({
-              tipo: 'exame',
+              tipo: "exame",
               mensagem: `Apresentação de exame "${exame.nome}" em ${dias} dia(s)`,
-              urgencia: dias <= 2 ? 'alta' : 'media',
+              urgencia: dias <= 2 ? "alta" : "media",
               link: `/saude/exames/detalhes?id=${exame.id}`,
             });
           }
@@ -236,57 +266,67 @@ export default function RedeSaudePage() {
     });
   }, [filteredMedicamentos, filteredConsultas, filteredExames]);
 
-  const stats = useMemo(() => ({
-    medicamentos: filteredMedicamentos.length,
-    medicamentosAtivos: filteredMedicamentos.filter(m => m.status === 'ativo').length,
-    tratamentos: filteredTratamentos.length,
-    tratamentosAtivos: filteredTratamentos.filter(t => t.status === 'ativo').length,
-    consultas: filteredConsultas.length,
-    consultasProximas: filteredConsultas.filter(c => c.status === 'agendada' && new Date(c.data) >= new Date()).length,
-    exames: filteredExames.length,
-    cirurgias: filteredCirurgias.length,
-    medicos: filteredMedicos.length,
-    farmacias: filteredFarmacias.length,
-    hospitais: filteredHospitais.length,
-  }), [filteredMedicamentos, filteredTratamentos, filteredConsultas, filteredExames, filteredCirurgias, filteredMedicos, filteredFarmacias, filteredHospitais]);
+  const stats = useMemo(
+    () => ({
+      medicamentos: filteredMedicamentos.length,
+      medicamentosAtivos: filteredMedicamentos.filter((m) => m.status === "ativo").length,
+      tratamentos: filteredTratamentos.length,
+      tratamentosAtivos: filteredTratamentos.filter((t) => t.status === "ativo").length,
+      consultas: filteredConsultas.length,
+      consultasProximas: filteredConsultas.filter(
+        (c) => c.status === "agendada" && new Date(c.data) >= new Date()
+      ).length,
+      exames: filteredExames.length,
+      cirurgias: filteredCirurgias.length,
+      medicos: filteredMedicos.length,
+      farmacias: filteredFarmacias.length,
+      hospitais: filteredHospitais.length,
+    }),
+    [
+      filteredMedicamentos,
+      filteredTratamentos,
+      filteredConsultas,
+      filteredExames,
+      filteredCirurgias,
+      filteredMedicos,
+      filteredFarmacias,
+      filteredHospitais,
+    ]
+  );
 
   const filteredMedicosSearch = useMemo(() => {
     if (!search) return filteredMedicos;
-    return filteredMedicos.filter(m => m.nome.toLowerCase().includes(search.toLowerCase()));
+    return filteredMedicos.filter((m) => m.nome.toLowerCase().includes(search.toLowerCase()));
   }, [filteredMedicos, search]);
 
   const filteredFarmaciasSearch = useMemo(() => {
     if (!search) return filteredFarmacias;
-    return filteredFarmacias.filter(f => f.nome.toLowerCase().includes(search.toLowerCase()));
+    return filteredFarmacias.filter((f) => f.nome.toLowerCase().includes(search.toLowerCase()));
   }, [filteredFarmacias, search]);
 
   const filteredHospitaisSearch = useMemo(() => {
     if (!search) return filteredHospitais;
-    return filteredHospitais.filter(h => h.nome.toLowerCase().includes(search.toLowerCase()));
+    return filteredHospitais.filter((h) => h.nome.toLowerCase().includes(search.toLowerCase()));
   }, [filteredHospitais, search]);
 
   const filteredTratamentosSearch = useMemo(() => {
     if (!search) return filteredTratamentos;
-    return filteredTratamentos.filter(t => t.nome.toLowerCase().includes(search.toLowerCase()));
+    return filteredTratamentos.filter((t) => t.nome.toLowerCase().includes(search.toLowerCase()));
   }, [filteredTratamentos, search]);
 
   if (!persons) return <CardListSkeleton />;
 
   const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
-    { id: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard },
-    { id: 'medicos', label: 'Médicos', icon: Stethoscope },
-    { id: 'farmacias', label: 'Farmácias', icon: Pill },
-    { id: 'hospitais', label: 'Hospitais', icon: Building2 },
-    { id: 'tratamentos', label: 'Tratamentos', icon: FolderHeart },
+    { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
+    { id: "medicos", label: "Médicos", icon: Stethoscope },
+    { id: "farmacias", label: "Farmácias", icon: Pill },
+    { id: "hospitais", label: "Hospitais", icon: Building2 },
+    { id: "tratamentos", label: "Tratamentos", icon: FolderHeart },
   ];
 
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
-        {/* ======================================================
-            HEADER
-            ====================================================== */}
-
         <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -311,10 +351,6 @@ export default function RedeSaudePage() {
             </div>
           </div>
 
-          {/* ----------------------------------------------------
-              TABS
-              ---------------------------------------------------- */}
-
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {tabs.map((t) => {
               const Icon = t.icon;
@@ -337,15 +373,19 @@ export default function RedeSaudePage() {
             })}
           </div>
 
-          {/* ----------------------------------------------------
-              BUSCA (para tabs que não são visão geral)
-              ---------------------------------------------------- */}
-
-          {activeTab !== 'visao-geral' && (
+          {activeTab !== "visao-geral" && (
             <div className="relative mt-4">
               <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
               <Input
-                placeholder={`Buscar ${activeTab === 'medicos' ? 'médico' : activeTab === 'farmacias' ? 'farmácia' : activeTab === 'hospitais' ? 'hospital' : 'tratamento'}...`}
+                placeholder={`Buscar ${
+                  activeTab === "medicos"
+                    ? "médico"
+                    : activeTab === "farmacias"
+                    ? "farmácia"
+                    : activeTab === "hospitais"
+                    ? "hospital"
+                    : "tratamento"
+                }...`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-11 w-full rounded-2xl bg-surface-raised/60 pl-9 text-sm"
@@ -354,13 +394,9 @@ export default function RedeSaudePage() {
           )}
         </header>
 
-        {/* ======================================================
-            CONTEÚDO
-            ====================================================== */}
-
         <section className="space-y-3.5 px-5 pt-4">
           <AnimatePresence mode="wait">
-            {activeTab === 'visao-geral' && (
+            {activeTab === "visao-geral" && (
               <motion.div
                 key="visao-geral"
                 initial={{ opacity: 0, y: 10 }}
@@ -374,23 +410,30 @@ export default function RedeSaudePage() {
                     <div className="flex items-center gap-2 mb-3">
                       <AlertTriangle size={16} className="text-amber-400" />
                       <h3 className="text-sm font-semibold text-ink-primary">Alertas Inteligentes</h3>
-                      <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{alertas.length}</span>
+                      <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">
+                        {alertas.length}
+                      </span>
                     </div>
                     <div className="space-y-2">
                       {alertas.slice(0, 5).map((alerta, idx) => (
                         <button
                           key={idx}
                           type="button"
-                          onClick={() => { trigger("vibrate"); router.push(alerta.link); }}
+                          onClick={() => {
+                            trigger("vibrate");
+                            router.push(alerta.link);
+                          }}
                           className={`flex items-start gap-2 text-xs w-full text-left p-2 rounded-xl transition-colors hover:bg-surface-raised/50 ${
-                            alerta.urgencia === 'alta' ? 'border-l-2 border-coral pl-2' :
-                            alerta.urgencia === 'media' ? 'border-l-2 border-amber-400 pl-2' :
-                            'border-l-2 border-ice pl-2'
+                            alerta.urgencia === "alta"
+                              ? "border-l-2 border-coral pl-2"
+                              : alerta.urgencia === "media"
+                              ? "border-l-2 border-amber-400 pl-2"
+                              : "border-l-2 border-ice pl-2"
                           }`}
                         >
-                          {alerta.urgencia === 'alta' ? (
+                          {alerta.urgencia === "alta" ? (
                             <AlertTriangle size={14} className="text-coral shrink-0 mt-0.5" />
-                          ) : alerta.urgencia === 'media' ? (
+                          ) : alerta.urgencia === "media" ? (
                             <Clock size={14} className="text-amber-400 shrink-0 mt-0.5" />
                           ) : (
                             <CheckCircle2 size={14} className="text-ice shrink-0 mt-0.5" />
@@ -449,13 +492,13 @@ export default function RedeSaudePage() {
                     value={stats.medicos + stats.farmacias + stats.hospitais}
                     sub={`${stats.medicos} méd., ${stats.farmacias} farm., ${stats.hospitais} hosp.`}
                     color="#38BDF8"
-                    onClick={() => setActiveTab('medicos')}
+                    onClick={() => setActiveTab("medicos")}
                   />
                 </div>
               </motion.div>
             )}
 
-            {activeTab === 'medicos' && (
+            {activeTab === "medicos" && (
               <TabList<Medico>
                 key="medicos"
                 items={filteredMedicosSearch}
@@ -479,7 +522,7 @@ export default function RedeSaudePage() {
               />
             )}
 
-            {activeTab === 'farmacias' && (
+            {activeTab === "farmacias" && (
               <TabList<Farmacia>
                 key="farmacias"
                 items={filteredFarmaciasSearch}
@@ -501,7 +544,7 @@ export default function RedeSaudePage() {
               />
             )}
 
-            {activeTab === 'hospitais' && (
+            {activeTab === "hospitais" && (
               <TabList<Hospital>
                 key="hospitais"
                 items={filteredHospitaisSearch}
@@ -523,7 +566,7 @@ export default function RedeSaudePage() {
               />
             )}
 
-            {activeTab === 'tratamentos' && (
+            {activeTab === "tratamentos" && (
               <TabList<Tratamento>
                 key="tratamentos"
                 items={filteredTratamentosSearch}
@@ -536,18 +579,22 @@ export default function RedeSaudePage() {
                   return (
                     <div>
                       <div className="flex items-center gap-2">
-                        <span 
-                          className="h-2.5 w-2.5 rounded-full shrink-0" 
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
                           style={{ backgroundColor: cor }}
                         />
                         <p className="truncate font-display text-sm font-semibold text-ink-primary">{item.nome}</p>
                       </div>
                       {item.condicao && <p className="mt-0.5 text-xs text-ink-muted">{item.condicao}</p>}
-                      <span className={`mt-1 inline-block text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                        item.status === "ativo" ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" :
-                        item.status === "concluido" ? "bg-ice/10 text-ice border border-ice/20" :
-                        "bg-coral/10 text-coral border border-coral/20"
-                      }`}>
+                      <span
+                        className={`mt-1 inline-block text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                          item.status === "ativo"
+                            ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
+                            : item.status === "concluido"
+                            ? "bg-ice/10 text-ice border border-ice/20"
+                            : "bg-coral/10 text-coral border border-coral/20"
+                        }`}
+                      >
                         {item.status === "ativo" ? "Ativo" : item.status === "concluido" ? "Concluído" : "Suspenso"}
                       </span>
                     </div>
@@ -581,13 +628,13 @@ function ResumoCard({ icon: Icon, label, value, sub, color, onClick }: ResumoCar
   return (
     <button
       type="button"
-      onClick={() => { trigger("vibrate"); onClick(); }}
+      onClick={() => {
+        trigger("vibrate");
+        onClick();
+      }}
       className="flex flex-col items-start justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.98] hover:bg-surface-raised/80"
     >
-      <div 
-        className="flex h-10 w-10 items-center justify-center rounded-2xl" 
-        style={{ backgroundColor: `${color}20`, color }}
-      >
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: `${color}20`, color }}>
         <Icon size={18} />
       </div>
       <div className="mt-3">
@@ -608,13 +655,13 @@ interface TabListProps<T> {
   renderItem: (item: T) => React.ReactNode;
 }
 
-function TabList<T extends { id?: string }>({ 
-  items, 
-  icon: Icon, 
+function TabList<T extends { id?: string }>({
+  items,
+  icon: Icon,
   color = "#38BDF8",
-  emptyMessage, 
-  onItemClick, 
-  renderItem 
+  emptyMessage,
+  onItemClick,
+  renderItem,
 }: TabListProps<T>) {
   const { trigger } = useHapticFeedback();
 
@@ -629,9 +676,7 @@ function TabList<T extends { id?: string }>({
         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised">
           <Icon size={22} className="text-ink-muted" />
         </div>
-        <h3 className="font-display text-base font-semibold text-ink-primary">
-          {emptyMessage}
-        </h3>
+        <h3 className="font-display text-base font-semibold text-ink-primary">{emptyMessage}</h3>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-ink-muted">
           Nenhum registro encontrado neste contexto.
         </p>
@@ -642,42 +687,20 @@ function TabList<T extends { id?: string }>({
   return (
     <div className="space-y-3">
       {items.map((item, index) => (
-        <motion.article
+        <ListCard
           key={item.id || index}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
-          className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
-          style={{
-            borderColor: `${color}40`,
-            borderLeft: `6px solid ${color}`,
+          id={item.id || String(index)}
+          color={color}
+          onClick={() => {
+            trigger("vibrate");
+            onItemClick(item);
           }}
+          delay={index * 0.025}
+          icon={<Icon size={22} />}
+          showChevron={true}
         >
-          <div className="p-4 pl-5">
-            <button
-              type="button"
-              onClick={() => { trigger("vibrate"); onItemClick(item); }}
-              className="flex w-full items-start gap-3.5 text-left outline-none"
-            >
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
-                style={{
-                  backgroundColor: `${color}15`,
-                  borderColor: `${color}30`,
-                  color: color,
-                }}
-              >
-                <Icon size={22} />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                {renderItem(item)}
-              </div>
-
-              <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
-            </button>
-          </div>
-        </motion.article>
+          {renderItem(item)}
+        </ListCard>
       ))}
     </div>
   );

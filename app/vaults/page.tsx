@@ -4,16 +4,15 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
-import { motion } from "framer-motion";
 import { useVaults } from "@/hooks/useVaults";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { VaultCard } from "@/components/VaultCard";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { db } from "@/lib/db";
+import { ListPageHeader } from "@/components/list";
 
 export default function VaultsPage() {
   const { trigger } = useHapticFeedback();
@@ -48,14 +47,15 @@ export default function VaultsPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
-          <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
-            <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Meus cofres</h1>
-            <p className="mt-1 text-sm text-ink-muted">Compartilhe documentos com família, médicos e cuidadores</p>
-          </div>
-        </header>
+      <main className="relative min-h-screen bg-void pb-28">
+        <ListPageHeader
+          title="Meus cofres"
+          subtitle="Compartilhe documentos com família, médicos e cuidadores"
+          badgeLabel="Vault"
+          badgeColor="text-ice/90"
+          icon={<Lock size={14} />}
+          iconColor="text-ice"
+        />
 
         <section className="space-y-4 px-5 pt-6">
           {!filteredVaults || filteredVaults.length === 0 ? (
@@ -64,18 +64,22 @@ export default function VaultsPage() {
               title="Nenhum cofre criado"
               description="Crie um cofre para compartilhar documentos com sua família, médicos ou cuidadores."
               actionLabel="Criar cofre"
-              onAction={() => { trigger("vibrate"); router.push("/vaults/novo"); }}
+              onAction={() => {
+                trigger("vibrate");
+                router.push("/vaults/novo");
+              }}
             />
           ) : (
             filteredVaults.map((vault, index) => (
-              <motion.div
+              <div
                 key={vault.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24, delay: Math.min(index * 0.05, 0.24) }}
+                className="transition-opacity"
+                style={{
+                  animationDelay: `${Math.min(index * 0.05, 0.24)}s`,
+                }}
               >
                 <VaultCard vault={vault} memberCount={memberCounts[vault.id!] || 0} />
-              </motion.div>
+              </div>
             ))
           )}
         </section>

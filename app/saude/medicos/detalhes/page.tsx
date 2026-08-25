@@ -291,6 +291,8 @@ function DetalhesMedicoContent() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              type="button"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -305,6 +307,8 @@ function DetalhesMedicoContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                type="button"
+                aria-label="Adicionar registro"
               >
                 <Plus size={18} />
               </button>
@@ -337,6 +341,7 @@ function DetalhesMedicoContent() {
                               key={option.id}
                               onClick={() => handleMenuOptionClick(option.path)}
                               className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              type="button"
                             >
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                 <Icon size={15} />
@@ -357,12 +362,16 @@ function DetalhesMedicoContent() {
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/editar?id=${medico.id}`); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95 hover:text-ice hover:border-ice/30"
+              type="button"
+              aria-label="Editar médico"
             >
               <Edit3 size={16} />
             </button>
             <button
               onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              type="button"
+              aria-label="Excluir médico"
             >
               <Trash2 size={16} />
             </button>
@@ -380,7 +389,6 @@ function DetalhesMedicoContent() {
             }}
           >
             <div className="flex items-start gap-4">
-              {/* ÍCONE SVG UNIFICADO NO CABEÇALHO */}
               <div 
                 className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
                 style={{ backgroundColor: "#38BDF815", color: "#38BDF8", borderColor: "#38BDF830" }}
@@ -584,6 +592,8 @@ function DetalhesMedicoContent() {
                         key={doc.id}
                         onClick={() => { trigger("vibrate"); router.push(`/detalhes?id=${doc.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-amber-400/30 transition-colors"
+                        role="button"
+                        tabIndex={0}
                       >
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-ink-primary truncate">{doc.title}</p>
@@ -596,6 +606,7 @@ function DetalhesMedicoContent() {
                       <button
                         onClick={() => { trigger("vibrate"); router.push("/documentos?tipo=receita"); }}
                         className="w-full text-center text-[10px] font-medium text-ice bg-ice/10 py-2 rounded-xl mt-1 active:scale-95 transition-all"
+                        type="button"
                       >
                         Ver todas ({prescricoes.length})
                       </button>
@@ -617,6 +628,8 @@ function DetalhesMedicoContent() {
                         key={doc.id}
                         onClick={() => { trigger("vibrate"); router.push(`/detalhes?id=${doc.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-ice/30 transition-colors"
+                        role="button"
+                        tabIndex={0}
                       >
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-ink-primary truncate">{doc.title}</p>
@@ -629,6 +642,7 @@ function DetalhesMedicoContent() {
                       <button
                         onClick={() => { trigger("vibrate"); router.push("/documentos?tipo=laudo"); }}
                         className="w-full text-center text-[10px] font-medium text-ice bg-ice/10 py-2 rounded-xl mt-1 active:scale-95 transition-all"
+                        type="button"
                       >
                         Ver todos ({laudosRelatorios.length})
                       </button>
@@ -653,6 +667,8 @@ function DetalhesMedicoContent() {
                     key={exame.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }}
                     className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-violet-400/30 transition-colors"
+                    role="button"
+                    tabIndex={0}
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-ink-primary truncate">{exame.nome}</p>
@@ -721,6 +737,8 @@ function DetalhesMedicoContent() {
                         key={con.id}
                         onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-ice/30 transition-colors"
+                        role="button"
+                        tabIndex={0}
                       >
                         <div>
                           <p className="text-sm font-medium text-ink-primary font-mono">{formatDateDisplay(con.data)}</p>
@@ -750,6 +768,8 @@ function DetalhesMedicoContent() {
                         key={cir.id}
                         onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-coral/30 transition-colors"
+                        role="button"
+                        tabIndex={0}
                       >
                         <div>
                           <p className="text-sm font-medium text-ink-primary">{cir.procedimento}</p>
@@ -784,6 +804,8 @@ function DetalhesMedicoContent() {
                         key={med.id}
                         onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-emerald-400/30 transition-colors"
+                        role="button"
+                        tabIndex={0}
                       >
                         <div>
                           <div className="flex items-center gap-2">

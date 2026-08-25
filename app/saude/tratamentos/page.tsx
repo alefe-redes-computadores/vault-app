@@ -3,10 +3,8 @@
 
 import { useMemo, Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
-  ChevronRight,
   Activity,
   Pill,
   Filter,
@@ -24,12 +22,11 @@ import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import type { Tratamento, Medicamento, Renovacao } from "@/lib/types";
 import { getClinicalTheme, formatCurrency } from "@/lib/health-utils";
-
-/* ============================================================
-   HELPERS
-   ============================================================ */
-
-const fadeUp = { initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } };
+import {
+  ListPageHeader,
+  ListFilters,
+  ListCard,
+} from "@/components/list";
 
 type TratamentoEnriquecido = Tratamento & {
   medicamentosCount: number;
@@ -50,10 +47,6 @@ function TratamentoListContent() {
   const { tratamentos = [] } = useTratamentos();
   const { medicamentos = [] } = useMedicamentos();
   const { renovacoes = [] } = useRenovacoes();
-
-  /* ============================================================
-     ENRIQUECIMENTO DOS TRATAMENTOS
-     ============================================================ */
 
   const listaEnriquecida = useMemo<TratamentoEnriquecido[]>(() => {
     const filtrados = (tratamentos || []).filter((t) => {
@@ -85,10 +78,6 @@ function TratamentoListContent() {
     });
   }, [tratamentos, medicamentos, renovacoes, activePersonId]);
 
-  /* ============================================================
-     FILTRAGEM
-     ============================================================ */
-
   const filteredList = useMemo(() => {
     let result = listaEnriquecida;
     if (filtroStatus !== "todos") {
@@ -97,57 +86,29 @@ function TratamentoListContent() {
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [listaEnriquecida, filtroStatus]);
 
-  /* ============================================================
-     LOADING
-     ============================================================ */
+  const handleClearFilters = () => {
+    trigger("vibrate");
+    setFiltroStatus("todos");
+  };
 
   if (!tratamentos && !medicamentos) {
     return <CardListSkeleton />;
   }
 
-  /* ============================================================
-     RENDER
-     ============================================================ */
-
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
-        {/* ======================================================
-            HEADER
-            ====================================================== */}
-
-        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  router.back();
-                }}
-                aria-label="Voltar"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
-              >
-                <ArrowLeft size={18} />
-              </button>
-
-              <div className="min-w-0">
-                <h1 className="truncate font-display text-xl font-semibold text-ink-primary">Seus Tratamentos</h1>
-                <p className="text-xs text-ink-muted">{filteredList.length} em acompanhamento</p>
-              </div>
-            </div>
-          </div>
-
-          {/* ----------------------------------------------------
-              FILTROS
-              ---------------------------------------------------- */}
-
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Filter size={14} className="text-ink-muted shrink-0" />
-
+        <ListPageHeader
+          title="Seus Tratamentos"
+          subtitle={`${filteredList.length} em acompanhamento`}
+        >
+          <ListFilters onClear={handleClearFilters}>
             <button
               type="button"
-              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "ativo" ? "todos" : "ativo"); }}
+              onClick={() => {
+                trigger("vibrate");
+                setFiltroStatus(filtroStatus === "ativo" ? "todos" : "ativo");
+              }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroStatus === "ativo"
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
@@ -159,7 +120,10 @@ function TratamentoListContent() {
 
             <button
               type="button"
-              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "concluido" ? "todos" : "concluido"); }}
+              onClick={() => {
+                trigger("vibrate");
+                setFiltroStatus(filtroStatus === "concluido" ? "todos" : "concluido");
+              }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroStatus === "concluido"
                   ? "border-ice bg-ice/20 text-ice"
@@ -171,7 +135,10 @@ function TratamentoListContent() {
 
             <button
               type="button"
-              onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "suspenso" ? "todos" : "suspenso"); }}
+              onClick={() => {
+                trigger("vibrate");
+                setFiltroStatus(filtroStatus === "suspenso" ? "todos" : "suspenso");
+              }}
               className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
                 filtroStatus === "suspenso"
                   ? "border-coral bg-coral/20 text-coral"
@@ -180,22 +147,8 @@ function TratamentoListContent() {
             >
               Suspenso
             </button>
-
-            {filtroStatus !== "todos" && (
-              <button
-                type="button"
-                onClick={() => { trigger("vibrate"); setFiltroStatus("todos"); }}
-                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
-              >
-                <X size={12} /> Limpar
-              </button>
-            )}
-          </div>
-        </header>
-
-        {/* ======================================================
-            LISTA
-            ====================================================== */}
+          </ListFilters>
+        </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
           {filteredList.length === 0 ? (
@@ -218,81 +171,51 @@ function TratamentoListContent() {
               const IconComp = theme.icon;
 
               return (
-                <motion.article
+                <ListCard
                   key={t.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
-                  className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
-                  style={{
-                    borderColor: `${theme.hex}40`,
-                    borderLeft: `6px solid ${theme.hex}`,
+                  id={t.id!}
+                  color={theme.hex}
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(`/saude/tratamentos/detalhes?id=${t.id}`);
                   }}
+                  delay={index * 0.025}
+                  icon={<IconComp size={22} />}
                 >
-                  <div className="p-4 pl-5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        trigger("vibrate");
-                        router.push(`/saude/tratamentos/detalhes?id=${t.id}`);
-                      }}
-                      className="flex w-full items-start gap-3.5 text-left outline-none"
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
+                      {t.nome}
+                    </h3>
+                    <span
+                      className={`shrink-0 whitespace-nowrap text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                        t.status === "ativo"
+                          ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
+                          : t.status === "concluido"
+                          ? "border-ice/30 bg-ice/10 text-ice"
+                          : "border-coral/30 bg-coral/10 text-coral"
+                      }`}
                     >
-                      <div
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
-                        style={{
-                          backgroundColor: `${theme.hex}15`,
-                          borderColor: `${theme.hex}30`,
-                          color: theme.hex,
-                        }}
-                      >
-                        <IconComp size={22} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 items-baseline gap-2">
-                          <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
-                            {t.nome}
-                          </h3>
-                          <span
-                            className={`shrink-0 whitespace-nowrap text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-                              t.status === "ativo"
-                                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
-                                : t.status === "concluido"
-                                ? "border-ice/30 bg-ice/10 text-ice"
-                                : "border-coral/30 bg-coral/10 text-coral"
-                            }`}
-                          >
-                            {t.status === "ativo" ? "Ativo" : t.status === "concluido" ? "Concluído" : "Suspenso"}
-                          </span>
-                        </div>
-
-                        {/* Métricas */}
-
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <span className="flex items-center gap-1 text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-md border border-surface-border/40">
-                            <Pill size={10} className="text-ice" /> {t.medicamentosCount} med(s)
-                          </span>
-                          {t.totalGasto > 0 && (
-                            <span className="flex items-center gap-1 text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-md border border-surface-border/40">
-                              <DollarSign size={10} className="text-emerald-400" /> {formatCurrency(t.totalGasto)}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Alerta */}
-
-                        {t.alertaSemMedicamento && (
-                          <p className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 mt-2 bg-amber-400/10 w-fit px-2 py-0.5 rounded-md border border-amber-400/20">
-                            <AlertTriangle size={10} /> Nenhum medicamento vinculado
-                          </p>
-                        )}
-                      </div>
-
-                      <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
-                    </button>
+                      {t.status === "ativo" ? "Ativo" : t.status === "concluido" ? "Concluído" : "Suspenso"}
+                    </span>
                   </div>
-                </motion.article>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="flex items-center gap-1 text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-md border border-surface-border/40">
+                      <Pill size={10} className="text-ice" /> {t.medicamentosCount} med(s)
+                    </span>
+                    {t.totalGasto > 0 && (
+                      <span className="flex items-center gap-1 text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-md border border-surface-border/40">
+                        <DollarSign size={10} className="text-emerald-400" /> {formatCurrency(t.totalGasto)}
+                      </span>
+                    )}
+                  </div>
+
+                  {t.alertaSemMedicamento && (
+                    <p className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 mt-2 bg-amber-400/10 w-fit px-2 py-0.5 rounded-md border border-amber-400/20">
+                      <AlertTriangle size={10} /> Nenhum medicamento vinculado
+                    </p>
+                  )}
+                </ListCard>
               );
             })
           )}
@@ -303,5 +226,9 @@ function TratamentoListContent() {
 }
 
 export default function TratamentosPage() {
-  return <Suspense fallback={<CardListSkeleton />}><TratamentoListContent /></Suspense>;
+  return (
+    <Suspense fallback={<CardListSkeleton />}>
+      <TratamentoListContent />
+    </Suspense>
+  );
 }

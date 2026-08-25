@@ -1,7 +1,7 @@
 // app/saude/registros/detalhes/page.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -61,44 +61,61 @@ export default function DetalhesRegistroSaudePage() {
 
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const registro = useLiveQuery<any>(() => (id ? db.table("registros_saude").get(id) : Promise.resolve(undefined)), [id]);
+  const registro = useLiveQuery<any>(
+    () => (id ? db.table("registros_saude").get(id) : Promise.resolve(undefined)),
+    [id]
+  );
 
-  // Cruzamento relacional: busca dados amarrados
   const medicamento = useLiveQuery<any>(
-    () => (registro?.medicamento_id ? db.medicamentos.get(registro.medicamento_id) : Promise.resolve(undefined)),
+    () =>
+      registro?.medicamento_id
+        ? db.medicamentos.get(registro.medicamento_id)
+        : Promise.resolve(undefined),
     [registro?.medicamento_id]
   );
 
-  const tratamentos = useLiveQuery<any[]>(async () => {
-    if (!registro?.tratamento_ids || registro.tratamento_ids.length === 0) return [];
-    return db.tratamentos.where("id").anyOf(registro.tratamento_ids).toArray();
-  }, [registro?.tratamento_ids]);
+  const tratamentos = useLiveQuery<any[]>(
+    async () => {
+      if (!registro?.tratamento_ids || registro.tratamento_ids.length === 0) return [];
+      return db.tratamentos.where("id").anyOf(registro.tratamento_ids).toArray();
+    },
+    [registro?.tratamento_ids]
+  );
 
-  const cids = useLiveQuery<any[]>(async () => {
-    if (!registro?.cid_ids || registro.cid_ids.length === 0) return [];
-    return db.cids.where("id").anyOf(registro.cid_ids).toArray();
-  }, [registro?.cid_ids]);
+  const cids = useLiveQuery<any[]>(
+    async () => {
+      if (!registro?.cid_ids || registro.cid_ids.length === 0) return [];
+      return db.cids.where("id").anyOf(registro.cid_ids).toArray();
+    },
+    [registro?.cid_ids]
+  );
 
-  // Métricas: última ocorrência semelhante
-  const historicoSimilar = useLiveQuery<any[]>(async () => {
-    if (!registro?.nome || !registro?.id) return [];
-    return db.table("registros_saude")
-      .where("nome")
-      .equals(registro.nome)
-      .filter((r: any) => r.id !== registro.id)
-      .reverse()
-      .limit(3)
-      .toArray();
-  }, [registro?.nome, registro?.id]);
+  const historicoSimilar = useLiveQuery<any[]>(
+    async () => {
+      if (!registro?.nome || !registro?.id) return [];
+      return db
+        .table("registros_saude")
+        .where("nome")
+        .equals(registro.nome)
+        .filter((r: any) => r.id !== registro.id)
+        .reverse()
+        .limit(3)
+        .toArray();
+    },
+    [registro?.nome, registro?.id]
+  );
 
   if (registro === undefined) return <CardListSkeleton />;
 
   if (!registro) {
     return (
       <PageTransition>
-        <main className="min-h-screen bg-void p-5 flex flex-col items-center justify-center text-center">
-          <p className="text-ink-muted mb-4">Registro não encontrado.</p>
-          <button onClick={() => router.back()} className="px-4 py-2 rounded-xl bg-surface-raised text-ink-primary border">
+        <main className="flex min-h-screen flex-col items-center justify-center bg-void p-5 text-center">
+          <p className="mb-4 text-ink-muted">Registro não encontrado.</p>
+          <button
+            onClick={() => router.back()}
+            className="rounded-xl border bg-surface-raised px-4 py-2 text-ink-primary"
+          >
             Voltar
           </button>
         </main>
@@ -108,7 +125,12 @@ export default function DetalhesRegistroSaudePage() {
 
   const theme = getRegistroTheme(registro.nome);
   const IconComp = theme.icon;
-  const insight = analisarRegistroSaude(registro.nome, registro.valor_medicao, registro.intensidade, registro.observacoes);
+  const insight = analisarRegistroSaude(
+    registro.nome,
+    registro.valor_medicao,
+    registro.intensidade,
+    registro.observacoes
+  );
 
   const handleDelete = async () => {
     if (!id || isDeleting) return;
@@ -131,22 +153,31 @@ export default function DetalhesRegistroSaudePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
+      <main className="relative min-h-screen bg-void pb-32">
+        {/* ===== HEADER ===== */}
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <button
-                onClick={() => { trigger("vibrate"); router.back(); }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
               >
-                <ArrowLeft size={18} className="text-ink-primary" />
+                <ArrowLeft size={18} />
               </button>
+
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <Activity size={16} className="text-ice" />
-                  <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Prontuário</p>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                    Prontuário
+                  </p>
                 </div>
-                <h1 className="mt-0.5 font-display text-xl font-semibold text-ink-primary truncate">
+                <h1 className="mt-0.5 truncate font-display text-xl font-semibold text-ink-primary">
                   Detalhes do Registro
                 </h1>
               </div>
@@ -154,53 +185,74 @@ export default function DetalhesRegistroSaudePage() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => { trigger("vibrate"); router.push(`/saude/registros/editar?id=${id}`); }}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95 transition-all"
-                title="Editar"
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push(`/saude/registros/editar?id=${id}`);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
+                aria-label="Editar registro"
               >
                 <Edit3 size={16} />
               </button>
               <button
+                type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral active:scale-95 transition-all disabled:opacity-50"
-                title="Excluir"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral transition-all active:scale-95 disabled:opacity-50"
+                aria-label="Excluir registro"
               >
-                {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                {isDeleting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Trash2 size={16} />
+                )}
               </button>
             </div>
           </div>
         </header>
 
+        {/* ===== CONTEÚDO ===== */}
         <section className="space-y-4 px-5 pt-6">
-          <motion.div 
-            variants={fadeUp} 
-            initial="initial" 
-            animate="animate" 
-            style={{ borderLeft: `6px solid ${theme.hex}` }} 
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4"
+          {/* Card principal */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            style={{ borderLeft: `6px solid ${theme.hex}` }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
           >
             <div className="flex items-center gap-4">
-              <div 
+              <div
                 className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border shadow-sm"
-                style={{ backgroundColor: `${theme.hex}15`, borderColor: `${theme.hex}40`, color: theme.hex }}
+                style={{
+                  backgroundColor: `${theme.hex}15`,
+                  borderColor: `${theme.hex}40`,
+                  color: theme.hex,
+                }}
               >
                 <IconComp size={28} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs uppercase tracking-wider font-bold text-ink-muted">{registro.categoria}</p>
-                <h2 className="font-display text-lg font-semibold text-ink-primary">{registro.nome}</h2>
+                <p className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                  {registro.categoria}
+                </p>
+                <h2 className="font-display text-lg font-semibold text-ink-primary">
+                  {registro.nome}
+                </h2>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-surface-border/40">
+            <div className="mt-3 grid grid-cols-2 gap-3 border-t border-surface-border/40 pt-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-raised text-ice">
                   <Calendar size={16} />
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-bold text-ink-muted">Data</p>
-                  <p className="text-xs font-mono font-semibold text-ink-primary">{formatDateToDisplay(registro.data)}</p>
+                  <p className="text-[10px] font-bold uppercase text-ink-muted">Data</p>
+                  <p className="font-mono text-xs font-semibold text-ink-primary">
+                    {formatDateToDisplay(registro.data)}
+                  </p>
                 </div>
               </div>
 
@@ -209,76 +261,106 @@ export default function DetalhesRegistroSaudePage() {
                   <Clock size={16} />
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-bold text-ink-muted">Horário</p>
-                  <p className="text-xs font-mono font-semibold text-ink-primary">{registro.horario}</p>
+                  <p className="text-[10px] font-bold uppercase text-ink-muted">Horário</p>
+                  <p className="font-mono text-xs font-semibold text-ink-primary">
+                    {registro.horario}
+                  </p>
                 </div>
               </div>
             </div>
 
             {registro.intensidade !== undefined && (
-              <div className="pt-2">
-                <div className="flex items-center justify-between text-xs mb-1.5">
+              <div className="mt-3">
+                <div className="mb-1.5 flex items-center justify-between text-xs">
                   <span className="font-medium text-ink-muted">Intensidade Relatada</span>
                   <span className="font-mono font-bold text-ice">{registro.intensidade} / 10</span>
                 </div>
-                <div className="w-full h-2 rounded-full bg-surface-raised overflow-hidden">
-                  <div className="h-full bg-ice rounded-full" style={{ width: `${(registro.intensidade / 10) * 100}%` }} />
+                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-raised">
+                  <div
+                    className="h-full rounded-full bg-ice"
+                    style={{ width: `${(registro.intensidade / 10) * 100}%` }}
+                  />
                 </div>
               </div>
             )}
 
             {registro.valor_medicao && (
-              <div className="flex items-center justify-between rounded-2xl bg-surface-raised p-3 border border-surface-border/50">
+              <div className="mt-3 flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised p-3">
                 <span className="text-xs font-medium text-ink-muted">Valor da Medição</span>
-                <span className="font-mono text-sm font-bold text-ice">{registro.valor_medicao}</span>
+                <span className="font-mono text-sm font-bold text-ice">
+                  {registro.valor_medicao}
+                </span>
               </div>
             )}
           </motion.div>
 
+          {/* Insight */}
           {insight && (
-            <motion.div 
-              variants={fadeUp} 
-              initial="initial" 
-              animate="animate" 
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
               transition={{ delay: 0.02 }}
               className={`rounded-[24px] border p-4 shadow-sm ${
-                insight.status === "critico" ? "bg-coral/10 border-coral/30" :
-                insight.status === "alerta" ? "bg-amber-400/10 border-amber-400/30" :
-                insight.status === "atencao" ? "bg-ice/10 border-ice/30" :
-                "bg-emerald-400/10 border-emerald-400/30"
+                insight.status === "critico"
+                  ? "border-coral/30 bg-coral/10"
+                  : insight.status === "alerta"
+                  ? "border-amber-400/30 bg-amber-400/10"
+                  : insight.status === "atencao"
+                  ? "border-ice/30 bg-ice/10"
+                  : "border-emerald-400/30 bg-emerald-400/10"
               }`}
             >
               <div className="flex items-start gap-3">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
-                  insight.status === "critico" ? "bg-coral/20 border-coral/40 text-coral" :
-                  insight.status === "alerta" ? "bg-amber-400/20 border-amber-400/40 text-amber-400" :
-                  insight.status === "atencao" ? "bg-ice/20 border-ice/40 text-ice" :
-                  "bg-emerald-400/20 border-emerald-400/40 text-emerald-400"
-                }`}>
-                  {insight.status === "critico" || insight.status === "alerta" ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                    insight.status === "critico"
+                      ? "border-coral/40 bg-coral/20 text-coral"
+                      : insight.status === "alerta"
+                      ? "border-amber-400/40 bg-amber-400/20 text-amber-400"
+                      : insight.status === "atencao"
+                      ? "border-ice/40 bg-ice/20 text-ice"
+                      : "border-emerald-400/40 bg-emerald-400/20 text-emerald-400"
+                  }`}
+                >
+                  {insight.status === "critico" || insight.status === "alerta" ? (
+                    <AlertTriangle size={18} />
+                  ) : (
+                    <CheckCircle2 size={18} />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className={`text-xs font-bold uppercase tracking-wider ${
-                    insight.status === "critico" ? "text-coral" :
-                    insight.status === "alerta" ? "text-amber-400" :
-                    insight.status === "atencao" ? "text-ice" :
-                    "text-emerald-400"
-                  }`}>
+                  <h3
+                    className={`text-xs font-bold uppercase tracking-wider ${
+                      insight.status === "critico"
+                        ? "text-coral"
+                        : insight.status === "alerta"
+                        ? "text-amber-400"
+                        : insight.status === "atencao"
+                        ? "text-ice"
+                        : "text-emerald-400"
+                    }`}
+                  >
                     {insight.titulo}
                   </h3>
-                  <p className="text-xs text-ink-primary mt-1 leading-snug">{insight.mensagem}</p>
-                  <p className="text-[11px] text-ink-muted mt-1.5 italic">{insight.recomendacao}</p>
+                  <p className="mt-1 text-xs leading-snug text-ink-primary">
+                    {insight.mensagem}
+                  </p>
+                  <p className="mt-1.5 text-[11px] italic text-ink-muted">
+                    {insight.recomendacao}
+                  </p>
                 </div>
               </div>
             </motion.div>
           )}
 
-          <motion.div 
-            variants={fadeUp} 
-            initial="initial" 
-            animate="animate" 
+          {/* Cruzamento Relacional */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             transition={{ delay: 0.04 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4"
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
           >
             <h3 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
               Cruzamento Relacional
@@ -286,38 +368,54 @@ export default function DetalhesRegistroSaudePage() {
 
             {medicamento ? (
               <div
-                onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${medicamento.id}`); }}
-                className="flex items-center justify-between rounded-2xl bg-surface-raised p-3 border border-surface-border/50 cursor-pointer active:scale-[0.98] transition-all hover:border-surface-border"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push(`/saude/medicamentos/detalhes?id=${medicamento.id}`);
+                }}
+                className="mt-3 flex cursor-pointer items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised p-3 transition-all hover:border-surface-border active:scale-[0.98]"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-400">
                     <Pill size={18} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-ink-primary">Medicamento Relacionado</p>
-                    <p className="text-[11px] text-ink-muted truncate">{medicamento.nome} ({medicamento.dosagem})</p>
+                    <p className="text-xs font-semibold text-ink-primary">
+                      Medicamento Relacionado
+                    </p>
+                    <p className="truncate text-[11px] text-ink-muted">
+                      {medicamento.nome} ({medicamento.dosagem})
+                    </p>
                   </div>
                 </div>
-                <ChevronRight size={16} className="text-ink-muted shrink-0" />
+                <ChevronRight size={16} className="shrink-0 text-ink-muted" />
               </div>
             ) : (
-              <div className="text-xs text-ink-muted italic">Nenhum medicamento vinculado a este registro.</div>
+              <p className="mt-3 text-xs italic text-ink-muted">
+                Nenhum medicamento vinculado a este registro.
+              </p>
             )}
 
             {tratamentos && tratamentos.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-surface-border/30">
-                <p className="text-xs font-bold text-ink-muted uppercase">Tratamentos Associados</p>
+              <div className="mt-3 space-y-2 border-t border-surface-border/30 pt-3">
+                <p className="text-xs font-bold uppercase text-ink-muted">
+                  Tratamentos Associados
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {tratamentos.map((t) => {
+                  {tratamentos.map((t: any) => {
                     const Icon = getTratamentoIcon(t.nome);
                     return (
                       <div
                         key={t.id}
-                        onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${t.id}`); }}
-                        className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5 cursor-pointer hover:bg-violet-400/20 transition-colors"
+                        onClick={() => {
+                          trigger("vibrate");
+                          router.push(`/saude/tratamentos/detalhes?id=${t.id}`);
+                        }}
+                        className="flex cursor-pointer items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 transition-colors hover:bg-violet-400/20"
                       >
                         <Icon size={14} className="text-violet-400" />
-                        <span className="text-xs font-medium text-violet-300">{t.nome}</span>
+                        <span className="text-xs font-medium text-violet-300">
+                          {t.nome}
+                        </span>
                       </div>
                     );
                   })}
@@ -326,20 +424,27 @@ export default function DetalhesRegistroSaudePage() {
             )}
 
             {cids && cids.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-surface-border/30">
-                <p className="text-xs font-bold text-ink-muted uppercase">CIDs Vinculados</p>
+              <div className="mt-3 space-y-2 border-t border-surface-border/30 pt-3">
+                <p className="text-xs font-bold uppercase text-ink-muted">
+                  CIDs Vinculados
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {cids.map((c) => {
+                  {cids.map((c: any) => {
                     const cTheme = getClinicalTheme(c.descricao || c.codigo);
                     const CIcon = cTheme.icon;
                     return (
                       <div
                         key={c.id}
-                        onClick={() => { trigger("vibrate"); router.push(`/saude/cids/detalhes?id=${c.id}`); }}
-                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${cTheme.tagClass} cursor-pointer hover:opacity-80 transition-colors`}
+                        onClick={() => {
+                          trigger("vibrate");
+                          router.push(`/saude/cids/detalhes?id=${c.id}`);
+                        }}
+                        className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors hover:opacity-80 ${cTheme.tagClass}`}
                       >
                         <CIcon size={14} />
-                        <span className="text-xs font-medium">{c.codigo} - {c.descricao}</span>
+                        <span className="text-xs font-medium">
+                          {c.codigo} - {c.descricao}
+                        </span>
                       </div>
                     );
                   })}
@@ -348,13 +453,14 @@ export default function DetalhesRegistroSaudePage() {
             )}
           </motion.div>
 
+          {/* Últimas Ocorrências */}
           {historicoSimilar && historicoSimilar.length > 0 && (
             <motion.div
               variants={fadeUp}
               initial="initial"
               animate="animate"
               transition={{ delay: 0.06 }}
-              className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-3"
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
               <div className="flex items-center gap-2">
                 <TrendingUp size={16} className="text-ice" />
@@ -362,20 +468,29 @@ export default function DetalhesRegistroSaudePage() {
                   Últimas Ocorrências
                 </h3>
               </div>
-              <div className="space-y-2">
+              <div className="mt-3 space-y-2">
                 {historicoSimilar.map((r: any) => (
                   <div
                     key={r.id}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/registros/detalhes?id=${r.id}`); }}
-                    className="flex items-center justify-between rounded-2xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-surface-border transition-colors"
+                    onClick={() => {
+                      trigger("vibrate");
+                      router.push(`/saude/registros/detalhes?id=${r.id}`);
+                    }}
+                    className="flex cursor-pointer items-center justify-between rounded-2xl border border-surface-border/40 bg-surface-raised p-3 transition-colors hover:border-surface-border"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-mono text-ink-muted">{formatDateToDisplay(r.data)}</span>
+                      <span className="font-mono text-xs text-ink-muted">
+                        {formatDateToDisplay(r.data)}
+                      </span>
                       {r.intensidade !== undefined && (
-                        <span className="text-xs font-mono text-ink-faint">Nível {r.intensidade}/10</span>
+                        <span className="font-mono text-xs text-ink-faint">
+                          Nível {r.intensidade}/10
+                        </span>
                       )}
                       {r.valor_medicao && (
-                        <span className="text-xs font-mono text-ice">{r.valor_medicao}</span>
+                        <span className="font-mono text-xs text-ice">
+                          {r.valor_medicao}
+                        </span>
                       )}
                     </div>
                     <ChevronRight size={14} className="text-ink-faint" />
@@ -385,16 +500,21 @@ export default function DetalhesRegistroSaudePage() {
             </motion.div>
           )}
 
+          {/* Anotações */}
           {registro.observacoes && (
-            <motion.div 
-              variants={fadeUp} 
-              initial="initial" 
-              animate="animate" 
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
               transition={{ delay: 0.08 }}
-              className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-2"
+              className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
-              <h3 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">Anotações</h3>
-              <p className="text-xs text-ink-primary leading-relaxed whitespace-pre-wrap">{registro.observacoes}</p>
+              <h3 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
+                Anotações
+              </h3>
+              <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-ink-primary">
+                {registro.observacoes}
+              </p>
             </motion.div>
           )}
         </section>

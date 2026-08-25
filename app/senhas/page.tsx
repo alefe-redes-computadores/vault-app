@@ -3,9 +3,16 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
-  Search, X, KeyRound, Lock, Loader2, Eye, EyeOff, ShieldAlert, Clock, ArrowLeft,
+  Search,
+  X,
+  KeyRound,
+  Lock,
+  Loader2,
+  Eye,
+  EyeOff,
+  ShieldAlert,
+  Clock,
 } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { usePaginatedCredentials } from "@/hooks/usePaginatedCredentials";
@@ -21,6 +28,11 @@ import { CredentialCard } from "@/components/CredentialCard";
 import { EmptyState } from "@/components/EmptyState";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useToast } from "@/components/ToastProvider";
+import {
+  ListPageHeader,
+  ListSearch,
+  ListFilters,
+} from "@/components/list";
 
 const CATEGORIES = [
   { id: "all", label: "Todas" },
@@ -94,6 +106,11 @@ export default function PasswordsPage() {
     togglePrivacy();
   };
 
+  const handleClearFilters = () => {
+    trigger("vibrate");
+    setSelectedCategory("all");
+  };
+
   if (isLocked) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-void">
@@ -105,26 +122,17 @@ export default function PasswordsPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
-        <header className="header-safe-top sticky top-0 z-25 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                onClick={() => { trigger("vibrate"); router.back(); }}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-              >
-                <ArrowLeft size={18} className="text-ink-primary" />
-              </button>
-              <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
-                <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Senhas</h1>
-                <p className="mt-1 text-sm text-ink-muted">
-                  {credentials.length} senha{credentials.length !== 1 ? "s" : ""} encontrada{credentials.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-            </div>
-
+      <main className="relative min-h-screen bg-void pb-28">
+        <ListPageHeader
+          title="Senhas"
+          subtitle={`${credentials.length} senha${credentials.length !== 1 ? "s" : ""} encontrada${credentials.length !== 1 ? "s" : ""}`}
+          badgeLabel="Vault"
+          badgeColor="text-ice/90"
+          icon={<KeyRound size={14} />}
+          iconColor="text-ice"
+          rightAction={
             <button
+              type="button"
               onClick={handleTogglePrivacy}
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
                 isPrivate ? "border-ice bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ice"
@@ -133,31 +141,25 @@ export default function PasswordsPage() {
             >
               {isPrivate ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
-          </div>
-
-          <div className="relative mt-4">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-muted" />
-            <Input
-              placeholder="Buscar senhas, logins ou sites..."
+          }
+        >
+          <div className="flex items-center gap-2">
+            <ListSearch
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-surface-border/50 bg-surface-raised pl-9"
+              onChange={setSearchQuery}
+              placeholder="Buscar senhas, logins ou sites..."
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-ink-muted active:scale-95"
-              >
-                <X size= {14} />
-              </button>
-            )}
           </div>
 
-          <div className="scrollbar-hide mt-4 flex gap-2 overflow-x-auto pb-1">
+          <ListFilters onClear={handleClearFilters}>
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => { trigger("vibrate"); setSelectedCategory(cat.id); }}
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setSelectedCategory(cat.id);
+                }}
                 className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-medium transition-all active:scale-95 flex items-center gap-1.5 ${
                   selectedCategory === cat.id
                     ? cat.id === "fracas"
@@ -170,10 +172,10 @@ export default function PasswordsPage() {
                 {cat.label}
               </button>
             ))}
-          </div>
-        </header>
+          </ListFilters>
+        </ListPageHeader>
 
-        <section className="px-5 pt-5">
+        <section className="space-y-3.5 px-5 pt-4">
           {credentials.length === 0 ? (
             <EmptyState
               icon={KeyRound}
@@ -186,23 +188,26 @@ export default function PasswordsPage() {
               }}
             />
           ) : (
-            <div className="space-y-3">
-              {credentials.map((cred) => (
-                <CredentialCard
-                  key={cred.id}
-                  credential={cred}
-                  onClick={() => router.push(`/senhas/detalhes?id=${cred.id}`)}
-                  onCopy={(e: React.MouseEvent) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleCopyPassword(cred.password_encrypted);
-                  }}
-                />
-              ))}
+            <>
+              <div className="space-y-3">
+                {credentials.map((cred) => (
+                  <CredentialCard
+                    key={cred.id}
+                    credential={cred}
+                    onClick={() => router.push(`/senhas/detalhes?id=${cred.id}`)}
+                    onCopy={(e: React.MouseEvent) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleCopyPassword(cred.password_encrypted);
+                    }}
+                  />
+                ))}
+              </div>
 
               {hasMore && (
                 <div className="pt-4 text-center">
                   <button
+                    type="button"
                     onClick={() => { trigger("vibrate"); loadMore(); }}
                     disabled={isLoadingMore}
                     className="rounded-2xl border border-surface-border/50 bg-surface px-6 py-3 text-xs font-medium text-ink-primary transition-all active:scale-95 hover:border-ice/40 disabled:opacity-50"
@@ -212,7 +217,7 @@ export default function PasswordsPage() {
                   </button>
                 </div>
               )}
-            </div>
+            </>
           )}
         </section>
 

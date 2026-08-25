@@ -3,24 +3,17 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
-  ArrowLeft,
   Stethoscope,
-  Search,
-  ChevronRight,
   Pill,
   Activity,
   Calendar,
   FileText,
   Building2,
-  X,
-  Filter,
   Phone,
   Edit3,
-  Clock,
-  User,
   MapPin,
+  ChevronRight,
 } from "lucide-react";
 import { Hospital as HospitalIcon } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -28,7 +21,6 @@ import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
-import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -38,6 +30,13 @@ import { useCirurgias } from "@/hooks/useCirurgias";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { sugerirRenovacao } from "@/lib/health-insights";
+import {
+  ListPageHeader,
+  ListSearch,
+  ListSort,
+  ListFilters,
+  ListCard,
+} from "@/components/list";
 import type {
   Medico,
   Medicamento,
@@ -74,6 +73,17 @@ type MedicoComMetadados = Medico & {
 };
 
 /* ============================================================
+   CONFIGURAÇÕES DE ORDENAÇÃO
+   ============================================================ */
+
+type SortOption = "name" | "recent";
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "name", label: "Nome" },
+  { value: "recent", label: "Última consulta" },
+];
+
+/* ============================================================
    PÁGINA
    ============================================================ */
 
@@ -81,6 +91,7 @@ export default function MedicosPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("name");
 
   const [filtroTratamento, setFiltroTratamento] = useState<string | null>(null);
   const [filtroHospital, setFiltroHospital] = useState<string | null>(null);
@@ -171,7 +182,7 @@ export default function MedicosPage() {
   }, [medicos, medicamentos, documentos, consultas, cirurgias, tratamentoMap, hospitalMap, localMap]);
 
   /* ============================================================
-     FILTRAGEM
+     FILTRAGEM E ORDENAÇÃO
      ============================================================ */
 
   const filteredMedicos = useMemo(() => {
@@ -204,8 +215,15 @@ export default function MedicosPage() {
       );
     }
 
-    return result.sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [medicosComMetadados, search, filtroTratamento, filtroHospital, filtroLocal]);
+    return result.sort((a, b) => {
+      if (sortBy === "name") {
+        return a.nome.localeCompare(b.nome);
+      }
+      const aDate = a.ultimaConsulta?.data || "";
+      const bDate = b.ultimaConsulta?.data || "";
+      return bDate.localeCompare(aDate);
+    });
+  }, [medicosComMetadados, search, filtroTratamento, filtroHospital, filtroLocal, sortBy]);
 
   /* ============================================================
      FILTROS PARA O HEADER
@@ -235,6 +253,18 @@ export default function MedicosPage() {
     return Array.from(map.values());
   }, [medicosComMetadados]);
 
+  const handleSortChange = (value: string) => {
+    trigger("vibrate");
+    setSortBy(value as SortOption);
+  };
+
+  const handleClearFilters = () => {
+    trigger("vibrate");
+    setFiltroTratamento(null);
+    setFiltroHospital(null);
+    setFiltroLocal(null);
+  };
+
   /* ============================================================
      LOADING
      ============================================================ */
@@ -248,146 +278,90 @@ export default function MedicosPage() {
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
-        {/* ======================================================
-            HEADER
-            ====================================================== */}
-
-        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  router.back();
-                }}
-                aria-label="Voltar"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
-              >
-                <ArrowLeft size={18} />
-              </button>
-
-              <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Rede de Apoio</p>
-                <h1 className="truncate font-display text-xl font-semibold text-ink-primary">Médicos Prescritores</h1>
-              </div>
-            </div>
-          </div>
-
-          {/* ----------------------------------------------------
-              BUSCA
-              ---------------------------------------------------- */}
-
-          <div className="relative mt-4">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-            <Input
-              placeholder="Buscar por nome ou especialidade..."
+        <ListPageHeader
+          title="Médicos Prescritores"
+          subtitle={`${filteredMedicos.length} profissionais`}
+          badgeLabel="Rede de Apoio"
+          badgeColor="text-ice"
+          icon={<Stethoscope size={14} />}
+          iconColor="text-ice"
+        >
+          <div className="flex items-center gap-2">
+            <ListSearch
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 w-full rounded-2xl bg-surface-raised/60 pl-9 text-sm"
+              onChange={setSearch}
+              placeholder="Buscar por nome ou especialidade..."
+            />
+            <ListSort
+              options={SORT_OPTIONS}
+              value={sortBy}
+              onChange={handleSortChange}
             />
           </div>
 
-          {/* ----------------------------------------------------
-              FILTROS
-              ---------------------------------------------------- */}
-
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Filter size={14} className="text-ink-muted shrink-0" />
-
-            {tratamentosUnicos.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {tratamentosUnicos.slice(0, 4).map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setFiltroTratamento(filtroTratamento === t.id ? null : t.id!);
-                    }}
-                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all shrink-0 ${
-                      filtroTratamento === t.id
-                        ? "border-ice bg-ice/20 text-ice"
-                        : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                    }`}
-                    style={{
-                      borderColor: filtroTratamento === t.id ? t.color : undefined,
-                      color: filtroTratamento === t.id ? t.color : undefined,
-                    }}
-                  >
-                    <Activity size={10} className="inline mr-1" />
-                    {t.nome}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {hospitaisUnicos.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 ml-1">
-                {hospitaisUnicos.slice(0, 2).map((h) => (
-                  <button
-                    key={h.id}
-                    type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setFiltroHospital(filtroHospital === h.id ? null : h.id!);
-                    }}
-                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all shrink-0 ${
-                      filtroHospital === h.id
-                        ? "border-ice bg-ice/20 text-ice"
-                        : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                    }`}
-                  >
-                    <HospitalIcon size={10} className="inline mr-1" />
-                    <span className="truncate max-w-[80px]">{h.nome}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {locaisUnicos.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 ml-1">
-                {locaisUnicos.slice(0, 2).map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setFiltroLocal(filtroLocal === l.id ? null : l.id!);
-                    }}
-                    className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all shrink-0 ${
-                      filtroLocal === l.id
-                        ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
-                        : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                    }`}
-                  >
-                    <MapPin size={10} className="inline mr-1" />
-                    <span className="truncate max-w-[80px]">{l.nome}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {(filtroTratamento || filtroHospital || filtroLocal) && (
+          <ListFilters onClear={handleClearFilters}>
+            {tratamentosUnicos.slice(0, 4).map((t) => (
               <button
+                key={t.id}
                 type="button"
                 onClick={() => {
                   trigger("vibrate");
-                  setFiltroTratamento(null);
-                  setFiltroHospital(null);
-                  setFiltroLocal(null);
+                  setFiltroTratamento(filtroTratamento === t.id ? null : t.id!);
                 }}
-                className="text-[9px] font-medium text-coral bg-coral/10 px-2 py-1 rounded-full flex items-center gap-1"
+                className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all shrink-0 ${
+                  filtroTratamento === t.id
+                    ? "border-ice bg-ice/20 text-ice"
+                    : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                }`}
+                style={{
+                  borderColor: filtroTratamento === t.id ? t.color : undefined,
+                  color: filtroTratamento === t.id ? t.color : undefined,
+                }}
               >
-                <X size={12} /> Limpar
+                <Activity size={10} className="inline mr-1" />
+                {t.nome}
               </button>
-            )}
-          </div>
-        </header>
+            ))}
 
-        {/* ======================================================
-            LISTA
-            ====================================================== */}
+            {hospitaisUnicos.slice(0, 2).map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setFiltroHospital(filtroHospital === h.id ? null : h.id!);
+                }}
+                className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all shrink-0 ${
+                  filtroHospital === h.id
+                    ? "border-ice bg-ice/20 text-ice"
+                    : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                }`}
+              >
+                <HospitalIcon size={10} className="inline mr-1" />
+                <span className="truncate max-w-[80px]">{h.nome}</span>
+              </button>
+            ))}
+
+            {locaisUnicos.slice(0, 2).map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setFiltroLocal(filtroLocal === l.id ? null : l.id!);
+                }}
+                className={`text-[9px] font-bold uppercase px-2.5 py-1 rounded-full border transition-all shrink-0 ${
+                  filtroLocal === l.id
+                    ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
+                    : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                }`}
+              >
+                <MapPin size={10} className="inline mr-1" />
+                <span className="truncate max-w-[80px]">{l.nome}</span>
+              </button>
+            ))}
+          </ListFilters>
+        </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
           {filteredMedicos.length === 0 ? (
@@ -412,143 +386,18 @@ export default function MedicosPage() {
                   : "#38BDF8";
 
               return (
-                <motion.article
+                <ListCard
                   key={medico.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
-                  className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
-                  style={{
-                    borderColor: `${primaryColor}40`,
-                    borderLeft: `6px solid ${primaryColor}`,
+                  id={medico.id!}
+                  color={primaryColor}
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(`/saude/medicos/detalhes?id=${medico.id}`);
                   }}
-                >
-                  <div className="p-4 pl-5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        trigger("vibrate");
-                        router.push(`/saude/medicos/detalhes?id=${medico.id}`);
-                      }}
-                      className="flex w-full items-start gap-3.5 text-left outline-none"
-                    >
-                      <div
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
-                        style={{
-                          backgroundColor: `${primaryColor}15`,
-                          borderColor: `${primaryColor}30`,
-                          color: primaryColor,
-                        }}
-                      >
-                        <Stethoscope size={22} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 items-baseline gap-2">
-                          <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
-                            Dr(a). {medico.nome}
-                          </h3>
-                          {medico.especialidade && (
-                            <span className="shrink-0 whitespace-nowrap rounded-full border border-ice/20 bg-ice/10 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ice">
-                              {medico.especialidade}
-                            </span>
-                          )}
-                          {medico.temAlertaUrgente && (
-                            <span className="flex shrink-0 items-center gap-1 rounded-full bg-coral/10 px-2 py-0.5 text-[9px] font-bold text-coral">
-                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-coral" />
-                              Alerta
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Contato e última consulta */}
-
-                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-                          {medico.telefone && (
-                            <span className="flex items-center gap-1">
-                              <Phone size={11} className="text-ink-faint" />
-                              {medico.telefone}
-                            </span>
-                          )}
-                          {medico.crm && (
-                            <span className="flex items-center gap-1 font-mono text-[10px] text-ink-faint">
-                              CRM: {medico.crm}
-                            </span>
-                          )}
-                          {medico.ultimoHospital && (
-                            <span className="flex items-center gap-1 rounded-full bg-violet-400/10 px-2 py-0.5 text-[10px] font-medium text-violet-400">
-                              <Building2 size={11} />
-                              <span className="truncate max-w-[120px]">{medico.ultimoHospital.nome}</span>
-                            </span>
-                          )}
-                          {medico.ultimaConsulta && (
-                            <span className="flex items-center gap-1">
-                              <Calendar size={11} className="text-ice" />
-                              Última: {formatDateDisplay(medico.ultimaConsulta.data)}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Tags de tratamentos, hospitais e locais */}
-
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          {medico.tratamentos.slice(0, 3).map((t) => (
-                            <span
-                              key={t.id}
-                              className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-0.5 text-[9px] font-bold uppercase max-w-[100px]"
-                              style={{
-                                backgroundColor: `${t.color}15`,
-                                borderColor: `${t.color}40`,
-                                color: t.color,
-                              }}
-                            >
-                              <Activity size={10} /> {t.nome}
-                            </span>
-                          ))}
-                          {medico.tratamentos.length > 3 && (
-                            <span className="text-[9px] text-ink-faint">+{medico.tratamentos.length - 3}</span>
-                          )}
-
-                          {medico.hospitais.length > 0 && (
-                            <span className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised max-w-[120px]">
-                              <Building2 size={10} /> {medico.hospitais.map(h => h.nome).join(', ')}
-                            </span>
-                          )}
-
-                          {medico.locais.length > 0 && (
-                            <span className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised max-w-[120px]">
-                              <MapPin size={10} /> {medico.locais.map(l => l.nome).join(', ')}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Métricas no canto */}
-
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          {medico.consultasCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-0.5 text-[10px] font-medium text-ice">
-                              <Calendar size={12} /> {medico.consultasCount}
-                            </span>
-                          )}
-                          {medico.cirurgiasCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-medium text-coral">
-                              <Activity size={12} /> {medico.cirurgiasCount}
-                            </span>
-                          )}
-                          {medico.medicamentosCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                              <Pill size={12} /> {medico.medicamentosCount}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
-                    </button>
-
-                    {/* Ações rápidas (dentro do card, mas não conflitam com o clique principal) */}
-
-                    <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-surface-border/40">
+                  delay={index * 0.025}
+                  icon={<Stethoscope size={22} />}
+                  actions={
+                    <>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -582,9 +431,101 @@ export default function MedicosPage() {
                       >
                         Ver Perfil <ChevronRight size={13} />
                       </button>
-                    </div>
+                    </>
+                  }
+                >
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
+                      Dr(a). {medico.nome}
+                    </h3>
+                    {medico.especialidade && (
+                      <span className="shrink-0 whitespace-nowrap rounded-full border border-ice/20 bg-ice/10 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ice">
+                        {medico.especialidade}
+                      </span>
+                    )}
+                    {medico.temAlertaUrgente && (
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-coral/10 px-2 py-0.5 text-[9px] font-bold text-coral">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-coral" />
+                        Alerta
+                      </span>
+                    )}
                   </div>
-                </motion.article>
+
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
+                    {medico.telefone && (
+                      <span className="flex items-center gap-1">
+                        <Phone size={11} className="text-ink-faint" />
+                        {medico.telefone}
+                      </span>
+                    )}
+                    {medico.crm && (
+                      <span className="flex items-center gap-1 font-mono text-[10px] text-ink-faint">
+                        CRM: {medico.crm}
+                      </span>
+                    )}
+                    {medico.ultimoHospital && (
+                      <span className="flex items-center gap-1 rounded-full bg-violet-400/10 px-2 py-0.5 text-[10px] font-medium text-violet-400">
+                        <Building2 size={11} />
+                        <span className="truncate max-w-[120px]">{medico.ultimoHospital.nome}</span>
+                      </span>
+                    )}
+                    {medico.ultimaConsulta && (
+                      <span className="flex items-center gap-1">
+                        <Calendar size={11} className="text-ice" />
+                        Última: {formatDateDisplay(medico.ultimaConsulta.data)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {medico.tratamentos.slice(0, 3).map((t) => (
+                      <span
+                        key={t.id}
+                        className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-0.5 text-[9px] font-bold uppercase max-w-[100px]"
+                        style={{
+                          backgroundColor: `${t.color}15`,
+                          borderColor: `${t.color}40`,
+                          color: t.color,
+                        }}
+                      >
+                        <Activity size={10} /> {t.nome}
+                      </span>
+                    ))}
+                    {medico.tratamentos.length > 3 && (
+                      <span className="text-[9px] text-ink-faint">+{medico.tratamentos.length - 3}</span>
+                    )}
+
+                    {medico.hospitais.length > 0 && (
+                      <span className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised max-w-[120px]">
+                        <Building2 size={10} /> {medico.hospitais.map(h => h.nome).join(', ')}
+                      </span>
+                    )}
+
+                    {medico.locais.length > 0 && (
+                      <span className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-0.5 text-[9px] font-medium text-ink-muted bg-surface-raised max-w-[120px]">
+                        <MapPin size={10} /> {medico.locais.map(l => l.nome).join(', ')}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {medico.consultasCount > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-0.5 text-[10px] font-medium text-ice">
+                        <Calendar size={12} /> {medico.consultasCount}
+                      </span>
+                    )}
+                    {medico.cirurgiasCount > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-medium text-coral">
+                        <Activity size={12} /> {medico.cirurgiasCount}
+                      </span>
+                    )}
+                    {medico.medicamentosCount > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                        <Pill size={12} /> {medico.medicamentosCount}
+                      </span>
+                    )}
+                  </div>
+                </ListCard>
               );
             })
           )}

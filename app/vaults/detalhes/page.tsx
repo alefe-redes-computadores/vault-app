@@ -46,7 +46,6 @@ function VaultDetailContent() {
   const members = useLiveQuery(() => db.vaultMembers.where("vault_id").equals(id).toArray(), [id], []);
   const documents = useLiveQuery(() => db.documents.where("vault_id").equals(id).toArray(), [id], []);
 
-  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
   if (!mounted) return <DetailSkeleton />;
 
   if (vault === undefined) {
@@ -97,7 +96,12 @@ function VaultDetailContent() {
       <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} aria-label="Voltar" className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
+              aria-label="Voltar"
+              type="button"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+            >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
@@ -150,7 +154,7 @@ function VaultDetailContent() {
                   variant="secondary"
                   size="sm"
                   className="flex items-center gap-2"
-                  onClick={() => { trigger("vibrate"); showToast("Edição de cofre em breve", "info"); }}
+                  onClick={() => { trigger("vibrate"); router.push(`/vaults/editar?id=${vault.id}`); }}
                   disabled={!isOwner}
                 >
                   <Edit size={14} />
@@ -183,6 +187,7 @@ function VaultDetailContent() {
                     key={doc.id}
                     onClick={() => { trigger("vibrate"); router.push(`/detalhes?id=${doc.id}`); }}
                     className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface px-4 py-3 text-left transition-all duration-200 active:scale-[0.99] hover:bg-surface-raised"
+                    type="button"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted">

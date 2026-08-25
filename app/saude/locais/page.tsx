@@ -3,11 +3,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
-  ArrowLeft,
-  Search,
-  ChevronRight,
   MapPin,
   Calendar,
   FileText,
@@ -22,16 +18,22 @@ import {
   Activity,
   FolderHeart,
   Clock,
+  ChevronRight,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
-import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocais } from "@/hooks/useLocais";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
+import {
+  ListPageHeader,
+  ListSearch,
+  ListFilters,
+  ListCard,
+} from "@/components/list";
 import type { LocalSaude, Renovacao, Medico, Tratamento, Consulta } from "@/lib/types";
 
 function formatDateDisplay(isoStr: string): string {
@@ -44,10 +46,6 @@ function formatDateDisplay(isoStr: string): string {
 function formatCurrency(value: number): string {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
-
-/* ============================================================
-   CONFIGURAÇÕES
-   ============================================================ */
 
 const LOCAL_TYPE_STYLE: Record<string, { color: string; icon: any; label: string }> = {
   posto_saude: { color: "#34D399", icon: PlusCircle, label: "Posto de Saúde" },
@@ -68,10 +66,6 @@ type LocalComHistorico = LocalSaude & {
   proximasConsultasCount: number;
 };
 
-/* ============================================================
-   PÁGINA
-   ============================================================ */
-
 export default function LocaisPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -82,10 +76,6 @@ export default function LocaisPage() {
   const { locais = [] } = useLocais();
   const { renovacoes = [] } = useRenovacoes();
 
-  /* ============================================================
-     VÍNCULOS RELACIONAIS (LEITURA)
-     ============================================================ */
-
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
@@ -95,10 +85,6 @@ export default function LocaisPage() {
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
-
-  /* ============================================================
-     ENRIQUECIMENTO DOS LOCAIS
-     ============================================================ */
 
   const locaisEnriquecidos = useMemo<LocalComHistorico[]>(() => {
     return locais.map((local) => {
@@ -139,10 +125,6 @@ export default function LocaisPage() {
     });
   }, [locais, renovacoes, medicos, tratamentos, consultas, hoje]);
 
-  /* ============================================================
-     FILTRAGEM
-     ============================================================ */
-
   const filteredLocais = useMemo(() => {
     let result = locaisEnriquecidos;
 
@@ -168,66 +150,31 @@ export default function LocaisPage() {
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }, [locaisEnriquecidos, search, filtroTipo, filtroStatus]);
 
-  /* ============================================================
-     LOADING
-     ============================================================ */
+  const handleClearFilters = () => {
+    trigger("vibrate");
+    setFiltroTipo("todos");
+    setFiltroStatus("todos");
+  };
 
   if (!locais || !renovacoes) return <CardListSkeleton />;
-
-  /* ============================================================
-     RENDER
-     ============================================================ */
 
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
-        {/* ======================================================
-            HEADER
-            ====================================================== */}
+        <ListPageHeader
+          title="Postos e Locais"
+          badgeLabel="Rede de Apoio"
+          badgeColor="text-emerald-400"
+          icon={<MapPin size={14} />}
+          iconColor="text-emerald-400"
+        >
+          <ListSearch
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar por nome ou endereço..."
+          />
 
-        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  router.back();
-                }}
-                aria-label="Voltar"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
-              >
-                <ArrowLeft size={18} />
-              </button>
-
-              <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">Rede de Apoio</p>
-                <h1 className="truncate font-display text-xl font-semibold text-ink-primary">Postos e Locais</h1>
-              </div>
-            </div>
-          </div>
-
-          {/* ----------------------------------------------------
-              BUSCA
-              ---------------------------------------------------- */}
-
-          <div className="relative mt-4">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-            <Input
-              placeholder="Buscar por nome ou endereço..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 w-full rounded-2xl bg-surface-raised/60 pl-9 text-sm"
-            />
-          </div>
-
-          {/* ----------------------------------------------------
-              FILTROS
-              ---------------------------------------------------- */}
-
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Filter size={14} className="text-ink-muted shrink-0" />
-
+          <ListFilters onClear={handleClearFilters}>
             <button
               type="button"
               onClick={() => {
@@ -302,30 +249,10 @@ export default function LocaisPage() {
             >
               Sem Registros
             </button>
-
-            {(filtroTipo !== "todos" || filtroStatus !== "todos") && (
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  setFiltroTipo("todos");
-                  setFiltroStatus("todos");
-                }}
-                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
-              >
-                <X size={12} /> Limpar
-              </button>
-            )}
-          </div>
-        </header>
-
-        {/* ======================================================
-            LISTA
-            ====================================================== */}
+          </ListFilters>
+        </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
-          {/* Botão de adição rápida */}
-
           <button
             type="button"
             onClick={() => {
@@ -370,120 +297,90 @@ export default function LocaisPage() {
               );
 
               return (
-                <motion.article
+                <ListCard
                   key={local.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
-                  className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
-                  style={{
-                    borderColor: `${style.color}40`,
-                    borderLeft: `6px solid ${style.color}`,
+                  id={local.id!}
+                  color={style.color}
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(`/saude/locais/detalhes?id=${local.id}`);
                   }}
+                  delay={index * 0.025}
+                  icon={<IconComponent size={22} />}
                 >
-                  <div className="p-4 pl-5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        trigger("vibrate");
-                        router.push(`/saude/locais/detalhes?id=${local.id}`);
-                      }}
-                      className="flex w-full items-start gap-3.5 text-left outline-none"
-                    >
-                      <div
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
-                        style={{
-                          backgroundColor: `${style.color}15`,
-                          borderColor: `${style.color}30`,
-                          color: style.color,
-                        }}
-                      >
-                        <IconComponent size={22} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 items-baseline gap-2">
-                          <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold uppercase text-ink-primary">
-                            {local.nome}
-                          </h3>
-                          <span className="shrink-0 whitespace-nowrap text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border border-surface-border/40 bg-surface-raised text-ink-muted">
-                            {style.label}
-                          </span>
-                        </div>
-
-                        {local.endereco && (
-                          <p className="mt-1 truncate text-xs text-ink-muted">{local.endereco}</p>
-                        )}
-
-                        {/* Tags de tratamentos */}
-
-                        {tratamentosDoLocal.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {tratamentosDoLocal.slice(0, 3).map((t: Tratamento) => (
-                              <span
-                                key={t.id}
-                                className="inline-flex items-center gap-1 truncate rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide max-w-[100px]"
-                                style={{
-                                  backgroundColor: `${t.cor || "#38BDF8"}20`,
-                                  borderColor: `${t.cor || "#38BDF8"}40`,
-                                  color: t.cor || "#38BDF8",
-                                }}
-                              >
-                                <Activity size={10} /> {t.nome}
-                              </span>
-                            ))}
-                            {tratamentosDoLocal.length > 3 && (
-                              <span className="flex items-center text-[9px] font-medium text-ink-faint">
-                                +{tratamentosDoLocal.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Rodapé com métricas */}
-
-                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                          {local.medicosCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                              <Stethoscope size={11} className="text-ice" /> {local.medicosCount} médico(s)
-                            </span>
-                          )}
-                          {local.tratamentosCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                              <FolderHeart size={11} className="text-violet-400" /> {local.tratamentosCount} tratamento(s)
-                            </span>
-                          )}
-                          {local.proximasConsultasCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                              <Calendar size={11} className="text-emerald-400" /> {local.proximasConsultasCount} próxima(s)
-                            </span>
-                          )}
-                          {local.historicoCount > 0 ? (
-                            <>
-                              <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                                <FileText size={11} className="text-amber-400" /> {local.historicoCount} retirada(s)
-                              </span>
-                              {local.totalGasto > 0 && (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                                  <DollarSign size={11} className="text-emerald-400" /> {formatCurrency(local.totalGasto)}
-                                </span>
-                              )}
-                              {local.ultimaRenovacao && (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                                  <Clock size={11} className="text-ice" /> {formatDateDisplay(local.ultimaRenovacao.data)}
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-[10px] text-ink-muted">Sem registros</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
-                    </button>
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold uppercase text-ink-primary">
+                      {local.nome}
+                    </h3>
+                    <span className="shrink-0 whitespace-nowrap text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border border-surface-border/40 bg-surface-raised text-ink-muted">
+                      {style.label}
+                    </span>
                   </div>
-                </motion.article>
+
+                  {local.endereco && (
+                    <p className="mt-1 truncate text-xs text-ink-muted">{local.endereco}</p>
+                  )}
+
+                  {tratamentosDoLocal.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {tratamentosDoLocal.slice(0, 3).map((t: Tratamento) => (
+                        <span
+                          key={t.id}
+                          className="inline-flex items-center gap-1 truncate rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide max-w-[100px]"
+                          style={{
+                            backgroundColor: `${t.cor || "#38BDF8"}20`,
+                            borderColor: `${t.cor || "#38BDF8"}40`,
+                            color: t.cor || "#38BDF8",
+                          }}
+                        >
+                          <Activity size={10} /> {t.nome}
+                        </span>
+                      ))}
+                      {tratamentosDoLocal.length > 3 && (
+                        <span className="flex items-center text-[9px] font-medium text-ink-faint">
+                          +{tratamentosDoLocal.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    {local.medicosCount > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+                        <Stethoscope size={11} className="text-ice" /> {local.medicosCount} médico(s)
+                      </span>
+                    )}
+                    {local.tratamentosCount > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+                        <FolderHeart size={11} className="text-violet-400" /> {local.tratamentosCount} tratamento(s)
+                      </span>
+                    )}
+                    {local.proximasConsultasCount > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+                        <Calendar size={11} className="text-emerald-400" /> {local.proximasConsultasCount} próxima(s)
+                      </span>
+                    )}
+                    {local.historicoCount > 0 ? (
+                      <>
+                        <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+                          <FileText size={11} className="text-amber-400" /> {local.historicoCount} retirada(s)
+                        </span>
+                        {local.totalGasto > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+                            <DollarSign size={11} className="text-emerald-400" /> {formatCurrency(local.totalGasto)}
+                          </span>
+                        )}
+                        {local.ultimaRenovacao && (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+                            <Clock size={11} className="text-ice" /> {formatDateDisplay(local.ultimaRenovacao.data)}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-ink-muted">Sem registros</span>
+                    )}
+                  </div>
+                </ListCard>
               );
             })
           )}

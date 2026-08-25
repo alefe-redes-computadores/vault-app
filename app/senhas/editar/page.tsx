@@ -246,7 +246,12 @@ function EditPasswordContent() {
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="header-safe-top sticky top-0 z-20 flex items-center gap-3 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
-          <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95">
+          <button
+            onClick={() => { trigger("vibrate"); router.back(); }}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+            type="button"
+            aria-label="Voltar"
+          >
             <ArrowLeft size={18} className="text-ink-primary" />
           </button>
           <div className="min-w-0">
@@ -275,11 +280,21 @@ function EditPasswordContent() {
                   className={`w-full rounded-2xl border bg-surface-raised px-4 py-3 pr-24 text-ink-primary outline-none transition-all duration-200 focus:border-ice/50 focus:ring-2 focus:ring-ice/15 ${errors.password_plain ? "border-coral/50" : "border-surface-border/50"}`}
                 />
                 <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
-                  <button onClick={() => { trigger("vibrate"); setShowGenerator(true); }} className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-surface-border/50 hover:text-ice active:scale-95 transition-all">
+                  <button
+                    onClick={() => { trigger("vibrate"); setShowGenerator(true); }}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-surface-border/50 hover:text-ice active:scale-95 transition-all"
+                    type="button"
+                    aria-label="Abrir gerador de senha"
+                  >
                     <Wand2 size={16} />
                   </button>
                   <div className="mx-0.5 h-4 w-px bg-surface-border/50"></div>
-                  <button onClick={handleTogglePassword} className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-surface-border/50 hover:text-ice active:scale-95 transition-all">
+                  <button
+                    onClick={handleTogglePassword}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-surface-border/50 hover:text-ice active:scale-95 transition-all"
+                    type="button"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
@@ -303,6 +318,8 @@ function EditPasswordContent() {
                   key={cat}
                   onClick={() => { trigger("vibrate"); handleChange("category", cat); }}
                   className={`capitalize rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${formData.category === cat ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                  type="button"
+                  aria-pressed={formData.category === cat}
                 >
                   {cat}
                 </button>
@@ -332,10 +349,20 @@ function EditPasswordContent() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => toggleVisibleHistory(idx)} className="p-2 text-ink-muted hover:text-ice transition-colors">
+                        <button
+                          onClick={() => toggleVisibleHistory(idx)}
+                          className="p-2 text-ink-muted hover:text-ice transition-colors"
+                          type="button"
+                          aria-label={visibleHistoryPass[idx] ? "Ocultar senha antiga" : "Mostrar senha antiga"}
+                        >
                           {visibleHistoryPass[idx] ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
-                        <button onClick={() => copyOldPassword(hist.encrypted)} className="p-2 text-ink-muted hover:text-ice transition-colors">
+                        <button
+                          onClick={() => copyOldPassword(hist.encrypted)}
+                          className="p-2 text-ink-muted hover:text-ice transition-colors"
+                          type="button"
+                          aria-label="Copiar senha antiga"
+                        >
                           <Copy size={16} />
                         </button>
                       </div>
@@ -356,7 +383,14 @@ function EditPasswordContent() {
                   <h3 className="font-display text-lg font-semibold text-ink-primary flex items-center gap-2">
                     <Wand2 size={20} className="text-ice" /> Gerador Inteligente
                   </h3>
-                  <button onClick={() => setShowGenerator(false)} className="rounded-full p-2 bg-surface-raised text-ink-muted active:scale-95"><X size={16}/></button>
+                  <button
+                    onClick={() => setShowGenerator(false)}
+                    className="rounded-full p-2 bg-surface-raised text-ink-muted active:scale-95"
+                    type="button"
+                    aria-label="Fechar gerador"
+                  >
+                    <X size={16}/>
+                  </button>
                 </div>
 
                 <div className="space-y-6">
@@ -372,7 +406,13 @@ function EditPasswordContent() {
                       { id: 'numbers', label: 'Números (0-9)' },
                       { id: 'symbols', label: 'Símbolos (!@#)' }
                     ].map((opt) => (
-                      <button key={opt.id} onClick={() => { trigger("vibrate"); setGenOptions(p => ({ ...p, [opt.id]: !p[opt.id as keyof typeof p] })); }} className={`flex items-center justify-center rounded-2xl border py-3 text-sm font-medium transition-all active:scale-95 ${genOptions[opt.id as keyof typeof genOptions] ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>
+                      <button
+                        key={opt.id}
+                        onClick={() => { trigger("vibrate"); setGenOptions(p => ({ ...p, [opt.id]: !p[opt.id as keyof typeof p] })); }}
+                        className={`flex items-center justify-center rounded-2xl border py-3 text-sm font-medium transition-all active:scale-95 ${genOptions[opt.id as keyof typeof genOptions] ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                        type="button"
+                        aria-pressed={genOptions[opt.id as keyof typeof genOptions]}
+                      >
                         {opt.label}
                       </button>
                     ))}

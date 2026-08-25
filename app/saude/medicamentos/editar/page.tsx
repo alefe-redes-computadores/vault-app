@@ -8,7 +8,7 @@ import {
   ArrowLeft, Loader2, Save, Pill, Trash2, AlertTriangle, Package, Plus, Clock,
   Activity, Stethoscope, Droplet, Syringe, StickyNote, Palette, Info, Store,
   ArrowRightLeft, X, Circle, ChevronRight, Building2, MapPin, DollarSign, Ban,
-  Settings2, Upload, FileText, TrendingUp, HeartPulse, Eraser, FileSearch, Check,
+  Settings2, Upload, FileText, TrendingUp, HeartPulse, Eraser, FileSearch, Check, Calendar,
 } from "lucide-react";
 
 import { db } from "@/lib/db";
@@ -50,9 +50,42 @@ function mascaraData(value: string) { return value.replace(/\D/g, "").replace(/(
 function isoParaBr(iso: string) { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; }
 function brParaIso(br: string) { const parts = br.split("/"); if (parts.length !== 3 || parts[2].length !== 4) return ""; return `${parts[2]}-${parts[1]}-${parts[0]}`; }
 function handleCurrencyMask(value: string): string { const clean = value.replace(/\D/g, ""); if (!clean) return ""; const numberVal = parseInt(clean, 10) / 100; return numberVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function handleTimeMask(value: string): string { const clean = value.replace(/\D/g, "").slice(0, 4); if (clean.length > 2) { return `${clean.slice(0, 2)}:${clean.slice(2)}`; } if (clean.length > 0) { return clean.padStart(2, '0'); } return ""; }
 
-// Ícones personalizados para suportar divisão bicolor exata (vertical)
+function handleTimeMask(value: string): string {
+  const clean = value.replace(/\D/g, "").slice(0, 4);
+  if (clean.length === 0) return "";
+  if (clean.length > 2) {
+    return `${clean.slice(0, 2)}:${clean.slice(2)}`;
+  }
+  return clean;
+}
+
+// 🔄 Motor de Cálculo Retroativo de Estoque
+function calcularEstoqueRetroativo(
+  quantidadeComprada: number,
+  dataCompraStr: string,
+  horariosDiarios: string[],
+  unidadePorDose: number = 1
+): number {
+  if (!dataCompraStr || quantidadeComprada <= 0) return quantidadeComprada;
+  
+  const dataCompra = new Date(dataCompraStr);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  dataCompra.setHours(0, 0, 0, 0);
+
+  const diffTime = hoje.getTime() - dataCompra.getTime();
+  const diasPassados = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diasPassados <= 0) return quantidadeComprada;
+
+  const consumoDiario = (horariosDiarios.length || 1) * unidadePorDose;
+  const totalConsumido = diasPassados * consumoDiario;
+  const saldoRestante = quantidadeComprada - totalConsumido;
+
+  return Math.max(0, saldoRestante);
+}
+
 const CirclePillIcon = ({ size, fill = "currentColor", stroke = "none" }: { size: number; fill?: string; stroke?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
     <circle cx="12" cy="12" r="9" />
@@ -138,6 +171,11 @@ function EditarMedicamentoContent() {
   const [farmaciaNome, setFarmaciaNome] = useState("");
   const [farmaciaId, setFarmaciaId] = useState("");
   const [preco, setPreco] = useState("");
+
+  // 🛡️ Novos estados do SUS na edição
+  const [tipoAquisicao, setTipoAquisicao] = useState<"comprado" | "sus">("comprado");
+  const [dataRetornoSusTexto, setDataRetornoSusTexto] = useState("");
+
   const [tipoReceita, setTipoReceita] = useState<TipoReceita>("comum");
   const [dataReceitaTexto, setDataReceitaTexto] = useState("");
   const [proximaRenovacaoTexto, setProximaRenovacaoTexto] = useState("");
@@ -218,6 +256,10 @@ function EditarMedicamentoContent() {
         setFarmaciaNome(item.farmacia || "");
         setFarmaciaId(item.farmacia_id || "");
         
+        // 🛡️ Carrega dados do SUS
+        setTipoAquisicao(item.tipo_aquisicao === "sus" ? "sus" : "comprado");
+        setDataRetornoSusTexto(isoParaBr(item.data_retorno_sus || ""));
+
         setCidIds(item.cid_ids || (item.cid_id ? [item.cid_id] : []));
 
         if (item.preco !== undefined && item.preco !== null) {
@@ -431,10 +473,16 @@ function EditarMedicamentoContent() {
 
     runSave(
       async () => {
-        const horariosFiltrados = horarios.filter((h) => h.trim());
+        const horariosFiltrados = horarios.filter((h) => h && typeof h === "string" && h.trim() !== "");
         const dataReceitaISO = brParaIso(dataReceitaTexto);
         const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
         const estoqueDataReferenciaISO = brParaIso(estoqueDataReferenciaTexto);
+
+        // 🔄 Aplica o cálculo retroativo se houver estoque ativo e data de referência válida
+        const qtdInformada = Number(estoqueQuantidade) || 0;
+        const quantidadeEstoqueFinal = estoqueAtivo && estoqueDataReferenciaISO
+          ? calcularEstoqueRetroativo(qtdInformada, estoqueDataReferenciaISO, horariosFiltrados, Number(estoqueUnidadePorDose) || 1)
+          : qtdInformada;
 
         let dosagemFinal = dosagem;
         let historicoFinal = [...historicoDosagens];
@@ -448,7 +496,7 @@ function EditarMedicamentoContent() {
           dosagemFinal = novaDosagem.trim();
         }
 
-        const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
+        const precoNumerico = tipoAquisicao === "comprado" && preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
 
         if (documentId && (dataReceitaISO || attachment)) {
           const doc = await documentsRepository.getById(documentId);
@@ -506,6 +554,11 @@ function EditarMedicamentoContent() {
           formato,
           cores,
           tipo_uso: tipoUso,
+          
+          // 🛡️ Campos do SUS atualizados
+          tipo_aquisicao: tipoAquisicao,
+          data_retorno_sus: tipoAquisicao === "sus" ? (brParaIso(dataRetornoSusTexto) || null) : null,
+
           historico_dosagens: historicoFinal,
           medico: selectedMedico?.nome || medicoNome.trim() || "",
           medico_id: medicoId || null,
@@ -526,8 +579,8 @@ function EditarMedicamentoContent() {
           substituido_por_id: !statusAtivo ? (substituidoPorId || null) : null,
           data_descontinuacao: !statusAtivo ? getLocalTodayISO() : null,
           
-          estoque_quantidade: estoqueAtivo ? Number(estoqueQuantidade) : null,
-          estoque_data_referencia: estoqueAtivo && estoqueDataReferenciaISO ? estoqueDataReferenciaISO : null,
+          estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : null,
+          estoque_data_referencia: estoqueAtivo ? getLocalTodayISO() : null,
           estoque_horarios: tipoUso === "continuo" && estoqueAtivo && horariosFiltrados.length > 0 ? horariosFiltrados : null,
           estoque_unidade_por_dose: estoqueAtivo ? (Number(estoqueUnidadePorDose) || 1) : null,
           estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : null,
@@ -586,15 +639,13 @@ function EditarMedicamentoContent() {
           <AlertTriangle size={26} />
         </div>
         <p className="mt-4 font-semibold text-ink-primary">Medicamento não encontrado</p>
-        <button onClick={() => router.replace("/saude")} className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void">
+        <button onClick={() => router.replace("/saude")} className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void" type="button">
           Voltar
         </button>
       </main>
     );
 
   const SelectedFormatIcon = FORMATOS.find((f) => f.id === formato)?.icon || Circle;
-  
-  // 🔥 CORREÇÃO: Adicionada a "capsula" para suportar 2 cores em formato bicolor
   const hasTwoColors = cores.length === 2 && (formato === "comprimido" || formato === "partido" || formato === "capsula");
   const gradientId = `split-edit-${id}`;
 
@@ -603,7 +654,6 @@ function EditarMedicamentoContent() {
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
 
-        {/* 🔥 CORREÇÃO: Gradiente vertical limpo (metade esquerda / metade direita) */}
         <svg width="0" height="0" className="absolute">
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -615,7 +665,12 @@ function EditarMedicamentoContent() {
 
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={handleBack} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-95">
+            <button
+              onClick={handleBack}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border bg-surface-raised active:scale-95"
+              type="button"
+              aria-label="Voltar"
+            >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
@@ -631,6 +686,7 @@ function EditarMedicamentoContent() {
                   <button
                     onClick={() => setShowConfirmExitModal(true)}
                     className="ml-4 shrink-0 text-sm font-medium text-ink-muted transition-colors hover:text-coral"
+                    type="button"
                   >
                     Descartar
                   </button>
@@ -639,6 +695,7 @@ function EditarMedicamentoContent() {
                     onClick={() => setShowDeleteModal(true)}
                     aria-label="Excluir medicamento"
                     className="flex h-10 w-10 items-center justify-center rounded-full bg-coral/10 text-coral active:scale-95 ml-4 shrink-0"
+                    type="button"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -654,15 +711,15 @@ function EditarMedicamentoContent() {
               <motion.div key="menu" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="grid grid-cols-1 gap-4">
                 <p className="text-sm text-ink-muted mb-2 font-medium">O que você deseja atualizar?</p>
 
-                <button onClick={() => { trigger("vibrate"); setEditIntent("compra"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
+                <button onClick={() => { trigger("vibrate"); setEditIntent("compra"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all" type="button">
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400"><Package size={24} /></div>
-                    <div><h3 className="font-semibold text-ink-primary">Estoque & Compra</h3><p className="text-xs text-ink-muted mt-0.5">Caixas e valores</p></div>
+                    <div><h3 className="font-semibold text-ink-primary">Estoque, Compra & SUS</h3><p className="text-xs text-ink-muted mt-0.5">Caixas, valores e dispensação pública</p></div>
                   </div>
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button onClick={() => { trigger("vibrate"); setEditIntent("evolucao"); }} className="flex items-center justify-between rounded-[24px] border border-ice/30 bg-ice/5 p-5 text-left shadow-sm active:scale-95 transition-all">
+                <button onClick={() => { trigger("vibrate"); setEditIntent("evolucao"); }} className="flex items-center justify-between rounded-[24px] border border-ice/30 bg-ice/5 p-5 text-left shadow-sm active:scale-95 transition-all" type="button">
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ice/20 text-ice"><TrendingUp size={24} /></div>
                     <div><h3 className="font-semibold text-ice">Evolução de Dose</h3><p className="text-xs text-ink-muted mt-0.5">Aumento ou redução de mg/ml</p></div>
@@ -670,7 +727,7 @@ function EditarMedicamentoContent() {
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button onClick={() => { trigger("vibrate"); setEditIntent("posologia"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
+                <button onClick={() => { trigger("vibrate"); setEditIntent("posologia"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all" type="button">
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-400/10 text-blue-400"><Clock size={24} /></div>
                     <div><h3 className="font-semibold text-ink-primary">Posologia & Formato</h3><p className="text-xs text-ink-muted mt-0.5">Horários e aparência</p></div>
@@ -678,7 +735,7 @@ function EditarMedicamentoContent() {
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button onClick={() => { trigger("vibrate"); setEditIntent("rede"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
+                <button onClick={() => { trigger("vibrate"); setEditIntent("rede"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all" type="button">
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400"><Stethoscope size={24} /></div>
                     <div><h3 className="font-semibold text-ink-primary">Rede & Receita</h3><p className="text-xs text-ink-muted mt-0.5">Médico, local e anexos</p></div>
@@ -686,7 +743,7 @@ function EditarMedicamentoContent() {
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button onClick={() => { trigger("vibrate"); setEditIntent("suspensao"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
+                <button onClick={() => { trigger("vibrate"); setEditIntent("suspensao"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all" type="button">
                   <div className="flex items-center gap-4">
                     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${statusAtivo ? "bg-amber-400/10 text-amber-400" : "bg-coral/10 text-coral"}`}><Ban size={24} /></div>
                     <div><h3 className="font-semibold text-ink-primary">{statusAtivo ? "Suspender Tratamento" : "Retomar Tratamento"}</h3><p className="text-xs text-ink-muted mt-0.5">Status e pausas</p></div>
@@ -694,7 +751,7 @@ function EditarMedicamentoContent() {
                   <ChevronRight size={20} className="text-ink-muted" />
                 </button>
 
-                <button onClick={() => { trigger("vibrate"); setEditIntent("basico"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all">
+                <button onClick={() => { trigger("vibrate"); setEditIntent("basico"); }} className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-5 text-left shadow-sm active:scale-95 transition-all" type="button">
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-400/10 text-zinc-400"><Settings2 size={24} /></div>
                     <div><h3 className="font-semibold text-ink-primary">Informações Básicas</h3><p className="text-xs text-ink-muted mt-0.5">Nome e CIDs</p></div>
@@ -759,15 +816,93 @@ function EditarMedicamentoContent() {
 
             {editIntent === "compra" && (
               <motion.div key="compra" variants={fadeUp} initial="initial" animate="animate" exit="exit" className="space-y-6">
+                {/* 🛡️ Seletor de Aquisição (Particular vs SUS) */}
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Store size={16} className="text-ice" />
+                    <h3 className="text-sm font-semibold text-ink-primary">Forma de Aquisição</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { trigger("vibrate"); setTipoAquisicao("comprado"); markChanged(); }}
+                      className={`rounded-xl border py-3 text-xs font-bold transition-all ${tipoAquisicao === "comprado" ? "border-ice bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                    >
+                      🛒 Particular (Comprado)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { trigger("vibrate"); setTipoAquisicao("sus"); markChanged(); }}
+                      className={`rounded-xl border py-3 text-xs font-bold transition-all ${tipoAquisicao === "sus" ? "border-emerald-400 bg-emerald-400/10 text-emerald-400" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                    >
+                      🛡️ Retirada SUS / Governo
+                    </button>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-ink-primary">
+                        {tipoAquisicao === 'sus' ? 'Posto de Saúde / Farmácia Pública' : 'Em qual farmácia comprou?'}
+                      </label>
+                      {farmaciaId && (
+                        <button type="button" onClick={() => { setFarmaciaId(""); setFarmaciaNome(""); markChanged(); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
+                          <Eraser size={12} /> Limpar
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsPharmacyModalOpen(true)}
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left"
+                    >
+                      <span className="truncate font-medium text-ink-primary">{farmaciaNome || (tipoAquisicao === 'sus' ? "Selecionar posto/farmácia pública..." : "Selecionar farmácia...")}</span>
+                      <span className="text-xs font-bold text-ice">Selecionar</span>
+                    </button>
+                  </div>
+
+                  {tipoAquisicao === 'comprado' ? (
+                    <div>
+                      <Input
+                        label="Valor pago (R$)"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0,00"
+                        value={preco}
+                        onChange={(e) => {
+                          setPreco(handleCurrencyMask(e.target.value));
+                          markChanged();
+                        }}
+                        icon={<DollarSign size={16} className="text-emerald-400" />}
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 space-y-3">
+                      <p className="text-xs font-semibold text-emerald-400">📅 Controle de Dispensação SUS</p>
+                      <Input
+                        label="Próxima data de retorno ao posto"
+                        placeholder="DD/MM/AAAA"
+                        value={dataRetornoSusTexto}
+                        onChange={(e) => { setDataRetornoSusTexto(mascaraData(e.target.value)); markChanged(); }}
+                        maxLength={10}
+                        inputMode="numeric"
+                      />
+                      <p className="text-[11px] text-ink-muted">O app vai te avisar automaticamente na agenda quando estiver na hora de voltar para buscar novos medicamentos.</p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Package size={16} className="text-ice" />
-                      <h3 className="text-sm font-semibold text-ink-primary">Controle Atual</h3>
+                      <h3 className="text-sm font-semibold text-ink-primary">Controle Atual de Estoque</h3>
                     </div>
                     <button
                       onClick={toggleEstoque}
                       className={`h-6 w-11 rounded-full p-0.5 transition-colors ${estoqueAtivo ? "bg-ice" : "bg-surface-raised border border-surface-border"}`}
+                      type="button"
+                      aria-pressed={estoqueAtivo}
+                      aria-label="Alternar controle de estoque"
                     >
                       <div className={`h-5 w-5 rounded-full bg-void shadow-sm transition-transform ${estoqueAtivo ? "translate-x-5" : ""}`} />
                     </button>
@@ -783,7 +918,7 @@ function EditarMedicamentoContent() {
                         <div className="grid grid-cols-2 gap-3">
                           <div className={`transition-all ${shakeFields.includes("estoqueQuantidade") ? "animate-shake" : ""}`}>
                             <Input
-                              label="Unidades na caixa"
+                              label="Quantidade Atual"
                               type="number"
                               inputMode="numeric"
                               value={estoqueQuantidade}
@@ -808,7 +943,7 @@ function EditarMedicamentoContent() {
                         </div>
                         <div className={`transition-all ${shakeFields.includes("estoqueDataReferenciaTexto") ? "animate-shake" : ""}`}>
                           <Input
-                            label="Data da contagem"
+                            label="Data da referência (Retroativo)"
                             placeholder="DD/MM/AAAA"
                             value={estoqueDataReferenciaTexto}
                             onChange={handleDateChange(setEstoqueDataReferenciaTexto)}
@@ -820,45 +955,6 @@ function EditarMedicamentoContent() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </div>
-
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Store size={16} className="text-ice" />
-                    <h3 className="text-sm font-semibold text-ink-primary">Aquisição Expressa</h3>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-sm font-medium text-ink-primary">Farmácia</label>
-                      {farmaciaId && (
-                        <button type="button" onClick={() => { setFarmaciaId(""); setFarmaciaNome(""); markChanged(); }} className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase">
-                          <Eraser size={12} /> Limpar
-                        </button>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsPharmacyModalOpen(true)}
-                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left"
-                    >
-                      <span className="truncate font-medium text-ink-primary">{farmaciaNome || "Onde comprou?"}</span>
-                      <span className="text-xs font-bold text-ice">Selecionar</span>
-                    </button>
-                  </div>
-                  <div>
-                    <Input
-                      label="Valor pago (R$)"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="0,00"
-                      value={preco}
-                      onChange={(e) => {
-                        setPreco(handleCurrencyMask(e.target.value));
-                        markChanged();
-                      }}
-                      icon={<DollarSign size={16} className="text-emerald-400" />}
-                    />
-                  </div>
                 </div>
               </motion.div>
             )}
@@ -883,6 +979,8 @@ function EditarMedicamentoContent() {
                               ? "border-ice bg-ice/15 text-ice"
                               : "border-surface-border/40 bg-surface-raised text-ink-muted"
                           }`}
+                          type="button"
+                          aria-pressed={isActive}
                         >
                           <Icon size={20} fill={isActive ? "currentColor" : "none"} stroke={isActive ? "none" : "currentColor"} />
                           <span className="text-[10px] font-medium">{f.label}</span>
@@ -899,6 +997,9 @@ function EditarMedicamentoContent() {
                           cores.includes(hex) ? "scale-110 border-ice" : "border-transparent"
                         }`}
                         style={{ backgroundColor: hex }}
+                        type="button"
+                        aria-pressed={cores.includes(hex)}
+                        aria-label={`Selecionar cor ${hex}`}
                       />
                     ))}
                   </div>
@@ -959,7 +1060,7 @@ function EditarMedicamentoContent() {
 
                   {tipoUso === "continuo" && (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-3 items-start">
                         <div className={`transition-all ${shakeFields.includes("vezesAoDia") ? "animate-shake" : ""}`}>
                           <Input
                             label="Doses/dia"
@@ -986,32 +1087,37 @@ function EditarMedicamentoContent() {
                       <button
                         onClick={handleGerarHorarios}
                         className="w-full bg-surface-raised border border-surface-border text-sm font-bold text-ice py-2 rounded-xl active:scale-95 transition-transform"
+                        type="button"
                       >
                         Auto-Completar Horários
                       </button>
 
                       <div className="rounded-xl bg-surface-raised p-4 border border-surface-border mt-3">
                         <div className="flex flex-wrap gap-2.5">
-                          {horarios.map((h, i) => (
-                            <div key={i} className="flex items-center gap-1">
-                              <input
-                                type="text"
-                                placeholder="00:00"
-                                value={h}
-                                maxLength={5}
-                                onChange={(e) => updateHorario(i, handleTimeMask(e.target.value))}
-                                className="w-16 bg-void border border-surface-border rounded-xl text-center py-2.5 text-sm font-mono focus:border-ice outline-none shadow-inner"
-                              />
-                              {horarios.length > 1 && (
-                                <button
-                                  onClick={() => removeHorario(i)}
-                                  className="p-2.5 text-coral bg-coral/10 hover:bg-coral/20 rounded-xl transition-colors"
-                                >
-                                  <X size={14} />
-                                </button>
-                              )}
-                            </div>
-                          ))}
+                          {horarios
+                            .filter((h) => h && typeof h === "string" && h.trim() !== "")
+                            .map((h, i) => (
+                              <div key={i} className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  placeholder="00:00"
+                                  value={h}
+                                  maxLength={5}
+                                  onChange={(e) => updateHorario(i, handleTimeMask(e.target.value))}
+                                  className="w-16 bg-void border border-surface-border rounded-xl text-center py-2.5 text-sm font-mono focus:border-ice outline-none shadow-inner"
+                                />
+                                {horarios.length > 1 && (
+                                  <button
+                                    onClick={() => removeHorario(i)}
+                                    className="p-2.5 text-coral bg-coral/10 hover:bg-coral/20 rounded-xl transition-colors"
+                                    type="button"
+                                    aria-label={`Remover horário ${h}`}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
                         </div>
                       </div>
                     </div>
@@ -1020,7 +1126,7 @@ function EditarMedicamentoContent() {
                   {tipoUso !== "continuo" && estoqueAtivo && (
                     <div className="mt-4 pt-5 border-t border-surface-border/40 space-y-3">
                       <p className="text-xs text-ink-muted">Como este medicamento é SOS, não haverá alarmes automáticos. Você pode abater o estoque manualmente aqui ao utilizar.</p>
-                      <button onClick={handleRegistrarDoseUnica} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400/10 text-amber-400 border border-amber-400/20 py-3.5 text-sm font-bold active:scale-95 transition-all">
+                      <button onClick={handleRegistrarDoseUnica} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400/10 text-amber-400 border border-amber-400/20 py-3.5 text-sm font-bold active:scale-95 transition-all" type="button">
                         <HeartPulse size={18}/> Registrar Dose Única Agora
                       </button>
                     </div>
@@ -1160,6 +1266,7 @@ function EditarMedicamentoContent() {
                         type="button"
                         onClick={removeAttachment}
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-coral/10 text-coral"
+                        aria-label="Remover anexo"
                       >
                         <X size={16} />
                       </button>
@@ -1188,6 +1295,8 @@ function EditarMedicamentoContent() {
                           ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
                           : "border-coral/30 bg-coral/10 text-coral"
                       }`}
+                      type="button"
+                      aria-pressed={statusAtivo}
                     >
                       {statusAtivo ? "EM USO" : "SUSPENSO"}
                     </button>
@@ -1229,6 +1338,7 @@ function EditarMedicamentoContent() {
                             <button
                               onClick={() => setIsDoctorDescontinuacaoModalOpen(true)}
                               className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left"
+                              type="button"
                             >
                               <span className="truncate font-medium text-ink-primary">
                                 {selectedMedicoDescontinuacao?.nome || medicoDescontinuacaoNome || "Vincular médico..."}
@@ -1244,6 +1354,7 @@ function EditarMedicamentoContent() {
                             <button
                               onClick={() => setIsSubstitutoModalOpen(true)}
                               className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left"
+                              type="button"
                             >
                               <span className="truncate font-medium text-ink-primary">
                                 {selectedSubstituto ? selectedSubstituto.nome : "Nenhum substituto"}
@@ -1259,6 +1370,7 @@ function EditarMedicamentoContent() {
                                   markChanged();
                                 }}
                                 className="mt-2 text-xs font-medium text-coral flex items-center gap-1"
+                                type="button"
                               >
                                 <X size={12} /> Remover substituto
                               </button>
@@ -1309,6 +1421,7 @@ function EditarMedicamentoContent() {
                   <button
                     onClick={() => setIsTratamentoModalOpen(true)}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl border border-surface-border/50 bg-void py-3.5 text-sm font-bold text-ink-primary transition-colors hover:border-ice/50 shadow-inner"
+                    type="button"
                   >
                     <Plus size={16} />
                     Gerenciar Tratamentos

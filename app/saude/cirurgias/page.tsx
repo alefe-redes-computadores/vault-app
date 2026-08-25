@@ -3,11 +3,10 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   Building2, 
-  ChevronRight,
   Activity,
   Filter,
   X
@@ -23,10 +22,11 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { EmptyState } from "@/components/EmptyState";
 import { getDaysUntil } from "@/lib/health-utils";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
-
-/* ============================================================
-   HELPERS
-   ============================================================ */
+import {
+  ListPageHeader,
+  ListFilters,
+  ListCard,
+} from "@/components/list";
 
 function formatDateDisplay(isoStr: string): string {
   if (!isoStr) return "";
@@ -37,14 +37,10 @@ function formatDateDisplay(isoStr: string): string {
 
 function getStatusColor(status: string): string {
   switch (status) {
-    case "agendada":
-      return "#F59E0B";
-    case "realizada":
-      return "#34D399";
-    case "cancelada":
-      return "#EF4444";
-    default:
-      return "#F59E0B";
+    case "agendada": return "#F59E0B";
+    case "realizada": return "#34D399";
+    case "cancelada": return "#EF4444";
+    default: return "#F59E0B";
   }
 }
 
@@ -54,10 +50,6 @@ function getDiasRestantesLabel(dias: number | null): string | null {
   if (dias < 0) return `Há ${Math.abs(dias)} dia${Math.abs(dias) > 1 ? 's' : ''}`;
   return `Em ${dias} dia${dias > 1 ? 's' : ''}`;
 }
-
-/* ============================================================
-   PÁGINA
-   ============================================================ */
 
 export default function CirurgiasPage() {
   const { trigger } = useHapticFeedback();
@@ -116,44 +108,23 @@ export default function CirurgiasPage() {
     return hosp ? hosp.nome : null;
   };
 
+  const handleClearFilters = () => {
+    trigger("vibrate");
+    setFiltroStatus("todos");
+  };
+
   if (!cirurgias) return <CardListSkeleton />;
 
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
-        {/* ======================================================
-            HEADER
-            ====================================================== */}
-
-        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  router.back();
-                }}
-                aria-label="Voltar"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
-              >
-                <ArrowLeft size={18} />
-              </button>
-
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <Activity size={16} className="text-coral" />
-                  <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-coral/90">Clínico</p>
-                </div>
-                <h1 className="truncate font-display text-xl font-semibold text-ink-primary">Cirurgias</h1>
-              </div>
-            </div>
-          </div>
-
-          {/* ----------------------------------------------------
-              ABAS
-              ---------------------------------------------------- */}
-
+        <ListPageHeader
+          title="Cirurgias"
+          badgeLabel="Clínico"
+          badgeColor="text-coral/90"
+          icon={<Activity size={14} />}
+          iconColor="text-coral"
+        >
           <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-surface-raised p-1 border border-surface-border/40">
             <button
               type="button"
@@ -179,13 +150,7 @@ export default function CirurgiasPage() {
             </button>
           </div>
 
-          {/* ----------------------------------------------------
-              FILTROS
-              ---------------------------------------------------- */}
-
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Filter size={14} className="text-ink-muted shrink-0" />
-            
+          <ListFilters onClear={handleClearFilters}>
             <button
               type="button"
               onClick={() => { trigger("vibrate"); setFiltroStatus(filtroStatus === "agendada" ? "todos" : "agendada"); }}
@@ -221,22 +186,8 @@ export default function CirurgiasPage() {
             >
               Cancelada
             </button>
-
-            {filtroStatus !== "todos" && (
-              <button
-                type="button"
-                onClick={() => { trigger("vibrate"); setFiltroStatus("todos"); }}
-                className="text-[10px] font-medium text-coral bg-coral/10 px-2.5 py-1 rounded-full flex items-center gap-1"
-              >
-                <X size={12} /> Limpar
-              </button>
-            )}
-          </div>
-        </header>
-
-        {/* ======================================================
-            LISTA
-            ====================================================== */}
+          </ListFilters>
+        </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
           {listaExibida.length === 0 ? (
@@ -262,89 +213,63 @@ export default function CirurgiasPage() {
               const temHorario = cir.horario && cir.horario.trim().length > 0;
 
               return (
-                <motion.article
+                <ListCard
                   key={cir.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.2) }}
-                  className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
-                  style={{
-                    borderColor: `${corBorda}40`,
-                    borderLeft: `6px solid ${corBorda}`,
+                  id={cir.id!}
+                  color={corBorda}
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(`/saude/cirurgias/detalhes?id=${cir.id}`);
                   }}
+                  delay={index * 0.025}
+                  icon={<Activity size={22} />}
                 >
-                  <div className="p-4 pl-5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        trigger("vibrate");
-                        router.push(`/saude/cirurgias/detalhes?id=${cir.id}`);
-                      }}
-                      className="flex w-full items-start gap-3.5 text-left outline-none"
-                    >
-                      <div
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
-                        style={{
-                          backgroundColor: `${corBorda}15`,
-                          borderColor: `${corBorda}30`,
-                          color: corBorda,
-                        }}
-                      >
-                        <Activity size={22} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 items-baseline gap-2 flex-wrap">
-                          <span className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold" style={{ color: corBorda }}>
-                            {formatDateDisplay(cir.data)}
-                          </span>
-                          {temHorario && (
-                            <span className="shrink-0 whitespace-nowrap text-[10px] font-mono text-ink-muted">
-                              • {cir.horario}
-                            </span>
-                          )}
-                          <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                            cir.status === "agendada" ? "bg-amber-400/10 text-amber-400 border border-amber-400/20" :
-                            cir.status === "realizada" ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" :
-                            "bg-coral/10 text-coral border border-coral/20"
-                          }`}>
-                            {cir.status}
-                          </span>
-                          {vencida && cir.status !== "realizada" && cir.status !== "cancelada" && (
-                            <span className="shrink-0 whitespace-nowrap rounded-full bg-coral/20 px-2 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">
-                              Vencida
-                            </span>
-                          )}
-                          {diasRestantes !== null && diasRestantes >= 0 && cir.status === "agendada" && (
-                            <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase border ${
-                              diasRestantes <= 2 ? "bg-amber-400/20 text-amber-400 border-amber-400/30" :
-                              "bg-ice/10 text-ice border-ice/20"
-                            }`}>
-                              {getDiasRestantesLabel(diasRestantes)}
-                            </span>
-                          )}
-                        </div>
-
-                        <h3 className="truncate font-semibold text-ink-primary text-base mt-1">
-                          {cir.procedimento}
-                        </h3>
-
-                        {hospitalNome && (
-                          <div className="flex items-center gap-1.5 text-xs text-ink-muted mt-1">
-                            <Building2 size={13} className="text-ink-faint shrink-0" />
-                            <span className="truncate">{hospitalNome}</span>
-                          </div>
-                        )}
-
-                        <p className="text-xs text-ink-faint mt-1.5 truncate">
-                          {getMedicoNome(cir.medico_id)}
-                        </p>
-                      </div>
-
-                      <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
-                    </button>
+                  <div className="flex min-w-0 items-baseline gap-2 flex-wrap">
+                    <span className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold" style={{ color: corBorda }}>
+                      {formatDateDisplay(cir.data)}
+                    </span>
+                    {temHorario && (
+                      <span className="shrink-0 whitespace-nowrap text-[10px] font-mono text-ink-muted">
+                        • {cir.horario}
+                      </span>
+                    )}
+                    <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                      cir.status === "agendada" ? "bg-amber-400/10 text-amber-400 border border-amber-400/20" :
+                      cir.status === "realizada" ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" :
+                      "bg-coral/10 text-coral border border-coral/20"
+                    }`}>
+                      {cir.status}
+                    </span>
+                    {vencida && cir.status !== "realizada" && cir.status !== "cancelada" && (
+                      <span className="shrink-0 whitespace-nowrap rounded-full bg-coral/20 px-2 py-0.5 text-[9px] font-bold text-coral border border-coral/20 uppercase">
+                        Vencida
+                      </span>
+                    )}
+                    {diasRestantes !== null && diasRestantes >= 0 && cir.status === "agendada" && (
+                      <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase border ${
+                        diasRestantes <= 2 ? "bg-amber-400/20 text-amber-400 border-amber-400/30" :
+                        "bg-ice/10 text-ice border-ice/20"
+                      }`}>
+                        {getDiasRestantesLabel(diasRestantes)}
+                      </span>
+                    )}
                   </div>
-                </motion.article>
+
+                  <h3 className="truncate font-semibold text-ink-primary text-base mt-1">
+                    {cir.procedimento}
+                  </h3>
+
+                  {hospitalNome && (
+                    <div className="flex items-center gap-1.5 text-xs text-ink-muted mt-1">
+                      <Building2 size={13} className="text-ink-faint shrink-0" />
+                      <span className="truncate">{hospitalNome}</span>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-ink-faint mt-1.5 truncate">
+                    {getMedicoNome(cir.medico_id)}
+                  </p>
+                </ListCard>
               );
             })
           )}

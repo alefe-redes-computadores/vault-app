@@ -726,7 +726,7 @@ class VaultDB extends Dexie {
       versiculos: 'id, user_id, created_at',
     });
 
-    // ==========================================================
+    //     ==========================================================
     // VERSÃO 30 — Registros de Saúde (sintomas, medições, humor)
     // ==========================================================
 
@@ -786,8 +786,18 @@ class VaultDB extends Dexie {
 
       registros_saude: 'id, user_id, person_id, data, categoria, tipo, synced',
     });
+
+    // ==========================================================
+    // VERSÃO 31 — Correção do Cofre (Indexação do vault_id)
+    // ==========================================================
+
+    (this as any).version(31).stores({
+      vaultMembers: 'id, vault_id, user_id',
+      vaults: 'id, user_id, name'
+    });
   } // Fecha o constructor
 } // Fecha a classe VaultDB
+
 
 // ============================================================
 // INSTÂNCIA ÚNICA

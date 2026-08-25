@@ -68,7 +68,6 @@ function CardDetailsContent() {
     async function loadCard() {
       if (!id) return;
       try {
-        // Usando o repositório via hook
         const item = await getCard(id);
         if (item) setCard(item);
       } catch (error) {
@@ -133,7 +132,12 @@ function CardDetailsContent() {
       <main className="min-h-screen bg-void pb-32">
         <header className="header-safe-top sticky top-0 z-20 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95">
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              type="button"
+              aria-label="Voltar"
+            >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div>
@@ -144,24 +148,32 @@ function CardDetailsContent() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => { trigger("vibrate"); router.push(`/cartoes/editar?id=${card.id}`); }} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95">
+            <button
+              onClick={() => { trigger("vibrate"); router.push(`/cartoes/editar?id=${card.id}`); }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95"
+              type="button"
+              aria-label="Editar cartão"
+            >
               <Edit3 size={18} />
             </button>
-            <button onClick={() => setShowDeleteModal(true)} className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral active:scale-95">
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/30 bg-coral/10 text-coral active:scale-95"
+              type="button"
+              aria-label="Excluir cartão"
+            >
               <Trash2 size={18} />
             </button>
           </div>
         </header>
 
         <section className="px-5 pt-6">
-          {/* CARTÃO VIRTUAL */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className="relative w-full">
             <div className={`absolute -inset-1 blur-2xl opacity-20 bg-gradient-to-br ${cardStyle}`} />
 
             <div className={`relative aspect-[1.58/1] w-full rounded-3xl border p-6 flex flex-col justify-between overflow-hidden shadow-2xl bg-gradient-to-br ${cardStyle}`}>
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
 
-              {/* Topo do Cartão: Logo + Bandeira */}
               <div className="relative z-10 flex justify-between items-start">
                 {logoUrl ? (
                   <div className="bg-white/90 p-1.5 rounded-lg backdrop-blur-md">
@@ -173,7 +185,6 @@ function CardDetailsContent() {
                 {brandLabel && <span className="font-bold italic text-white/90 uppercase tracking-widest text-sm">{brandLabel}</span>}
               </div>
 
-              {/* Meio: Chip & NFC */}
               {plainCardNumber && (
                 <div className="relative z-10 flex items-center gap-3 mt-4">
                   <div className="w-11 h-8 rounded-md bg-gradient-to-br from-amber-200 to-amber-500 border border-amber-600/50 flex flex-col justify-around p-1 shadow-inner">
@@ -185,7 +196,6 @@ function CardDetailsContent() {
                 </div>
               )}
 
-              {/* Base do Cartão: Número, Nome e Validade */}
               <div className="relative z-10 mt-auto pt-4 space-y-2">
                 {plainCardNumber ? (
                   <div className="font-mono text-xl md:text-2xl tracking-[0.12em] text-white drop-shadow-sm">
@@ -219,11 +229,12 @@ function CardDetailsContent() {
             </div>
           </motion.div>
 
-          {/* BARRA DE AÇÕES RÁPIDAS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="flex justify-center gap-3 mt-6">
             <button
               onClick={handleToggleSensitive}
               className={`flex flex-col items-center gap-1.5 transition-all active:scale-95 ${showSensitive ? "text-ice" : "text-ink-muted hover:text-ink-primary"}`}
+              type="button"
+              aria-label={showSensitive ? "Ocultar dados" : "Revelar dados"}
             >
               <div className={`flex h-12 w-12 items-center justify-center rounded-full border ${showSensitive ? "bg-ice/15 border-ice/30" : "bg-surface-raised border-surface-border/50"}`}>
                 {showSensitive ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -232,7 +243,12 @@ function CardDetailsContent() {
             </button>
 
             {plainCardNumber && (
-              <button onClick={() => handleCopy(plainCardNumber, "card")} className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary">
+              <button
+                onClick={() => handleCopy(plainCardNumber, "card")}
+                className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary"
+                type="button"
+                aria-label="Copiar número do cartão"
+              >
                 <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
                   {copiedField === "card" ? <Check size={18} className="text-ice" /> : <CreditCard size={18} />}
                 </div>
@@ -241,7 +257,12 @@ function CardDetailsContent() {
             )}
 
             {card.account && (
-              <button onClick={() => handleCopy(card.account!, "account")} className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary">
+              <button
+                onClick={() => handleCopy(card.account!, "account")}
+                className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary"
+                type="button"
+                aria-label="Copiar conta"
+              >
                 <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
                   {copiedField === "account" ? <Check size={18} className="text-ice" /> : <Landmark size={18} />}
                 </div>
@@ -251,7 +272,6 @@ function CardDetailsContent() {
           </motion.div>
         </section>
 
-        {/* Detalhes Adicionais */}
         <section className="space-y-3 px-5 pt-8">
           {(card.agency || card.account) && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="grid grid-cols-2 gap-3">
@@ -260,7 +280,12 @@ function CardDetailsContent() {
                   <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Agência</span>
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-base font-semibold text-ink-primary">{card.agency}</span>
-                    <button onClick={() => handleCopy(card.agency!, "agency")} className="text-ink-muted active:scale-95 p-1">
+                    <button
+                      onClick={() => handleCopy(card.agency!, "agency")}
+                      className="text-ink-muted active:scale-95 p-1"
+                      type="button"
+                      aria-label="Copiar agência"
+                    >
                       {copiedField === "agency" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
                     </button>
                   </div>
@@ -271,7 +296,12 @@ function CardDetailsContent() {
                   <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Conta</span>
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-base font-semibold text-ink-primary">{card.account}</span>
-                    <button onClick={() => handleCopy(card.account!, "account_only")} className="text-ink-muted active:scale-95 p-1">
+                    <button
+                      onClick={() => handleCopy(card.account!, "account_only")}
+                      className="text-ink-muted active:scale-95 p-1"
+                      type="button"
+                      aria-label="Copiar conta"
+                    >
                       {copiedField === "account_only" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
                     </button>
                   </div>

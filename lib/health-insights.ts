@@ -306,7 +306,31 @@ export function gerarAlertasVisaoGeral(contexto: {
     }
   });
 
-  // 2. Consultas (Próximos 7 dias)
+  // 2. Retiradas / Retornos do SUS (Posto de Saúde / Dispensação)
+  contexto.medicamentos.forEach(med => {
+    if (med.tipo_aquisicao === 'sus' && med.data_retorno_sus) {
+      const dias = getDaysUntil(med.data_retorno_sus);
+      if (dias !== null) {
+        if (dias < 0) {
+          alerts.push({
+            tipo: 'consulta',
+            mensagem: `Prazo de retirada SUS de "${med.nome}" venceu há ${Math.abs(dias)} dia(s)!`,
+            urgencia: 'alta',
+            link: `/saude/medicamentos/detalhes?id=${med.id}`,
+          });
+        } else if (dias <= 7) {
+          alerts.push({
+            tipo: 'consulta',
+            mensagem: `Retirada SUS de "${med.nome}" programada para daqui a ${dias} dia(s)`,
+            urgencia: dias <= 2 ? 'alta' : 'media',
+            link: `/saude/medicamentos/detalhes?id=${med.id}`,
+          });
+        }
+      }
+    }
+  });
+
+  // 3. Consultas (Próximos 7 dias)
   contexto.consultas.forEach(con => {
     if (con.status === 'agendada') {
       const dataCon = new Date(con.data);
@@ -323,7 +347,7 @@ export function gerarAlertasVisaoGeral(contexto: {
     }
   });
 
-  // 3. Exames (Vencidos ou Próximos 7 dias)
+  // 4. Exames (Vencidos ou Próximos 7 dias)
   contexto.exames.forEach(exame => {
     if (exame.data_retorno) {
       const dias = getDaysUntil(exame.data_retorno);
@@ -347,7 +371,7 @@ export function gerarAlertasVisaoGeral(contexto: {
     }
   });
 
-  // 4. Cirurgias (Próximos 30 dias)
+  // 5. Cirurgias (Próximos 30 dias)
   contexto.cirurgias.forEach(cir => {
     if (cir.status === 'agendada') {
       const dataCir = new Date(cir.data);
@@ -369,6 +393,7 @@ export function gerarAlertasVisaoGeral(contexto: {
     return ordem[a.urgencia] - ordem[b.urgencia];
   });
 }
+
 
 // ============================================================
 // 11. ASSISTENTE DIÁRIO (INSIGHTS CRUZADOS DA ROTINA)

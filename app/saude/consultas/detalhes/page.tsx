@@ -197,6 +197,8 @@ function DetalhesConsultaContent() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              type="button"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -211,6 +213,8 @@ function DetalhesConsultaContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                type="button"
+                aria-label="Adicionar registro"
               >
                 <Plus size={18} />
               </button>
@@ -243,6 +247,7 @@ function DetalhesConsultaContent() {
                               key={option.id}
                               onClick={() => handleMenuOptionClick(option.path)}
                               className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              type="button"
                             >
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                 <Icon size={15} />
@@ -263,12 +268,16 @@ function DetalhesConsultaContent() {
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/editar?id=${consulta.id}`); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
+              type="button"
+              aria-label="Editar consulta"
             >
               <Edit3 size={16} />
             </button>
             <button
               onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              type="button"
+              aria-label="Excluir consulta"
             >
               <Trash2 size={16} />
             </button>
@@ -378,6 +387,8 @@ function DetalhesConsultaContent() {
                         key={m.id} 
                         onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${m.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-ice/30 transition-colors"
+                        role="button"
+                        tabIndex={0}
                       >
                         <div>
                           <p className="text-sm font-medium text-ink-primary">{m.nome} · <span className="text-ice">{m.dosagem}</span></p>
@@ -426,6 +437,7 @@ function DetalhesConsultaContent() {
               <button
                 onClick={() => handleStatusChange("realizada")}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 py-3.5 px-4 text-emerald-300 font-medium text-sm transition-all active:scale-[0.98]"
+                type="button"
               >
                 <CheckCircle2 size={18} />
                 Marcar como Realizada

@@ -20,7 +20,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { uploadFile } from "@/lib/supabase/storage";
 import { getLocalTodayISO, getDaysUntil, VALIDADE_RECEITA_DIAS } from "@/lib/health-utils";
-import { getClinicalTheme } from "@/lib/health-utils"; // INJEÇÃO VISUAL
+import { getClinicalTheme } from "@/lib/health-utils";
 import type { Attachment, TipoReceita, Medicamento, Medico, Farmacia, Hospital, LocalSaude, Renovacao } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/TextArea";
@@ -78,7 +78,6 @@ function NovaRenovacaoContent() {
   const autoSelectMedId = searchParams.get("medicamento_id");
   const { run, isSubmitting } = useSubmitAction();
 
-  // TRAVA SÍNCRONA CONTRA DUPLO CLIQUE
   const isSubmitLocked = useRef(false);
 
   const { user } = useAuth();
@@ -111,13 +110,14 @@ function NovaRenovacaoContent() {
   const [localId, setLocalId] = useState("");
   const [localNome, setLocalNome] = useState("");
 
-  const [registrarCompra, setRegistrarCompra] = useState(false);
+  const [registrarCompra, setRegistrarCompra] = useState(true);
   const [preco, setPreco] = useState("");
   const [quantidadeAdicionar, setQuantidadeAdicionar] = useState("30");
   const [lote, setLote] = useState("");
   const [validadeProduto, setValidadeProduto] = useState("");
 
-  const [tipoAquisicao, setTipoAquisicao] = useState<"comprado" | "gratuito">("comprado");
+  // 🛡️ Integrado com o padrão SUS
+  const [tipoAquisicao, setTipoAquisicao] = useState<"comprado" | "sus">("comprado");
   const [dataProximaRetirada, setDataProximaRetirada] = useState("");
   const [exigeNovaReceita, setExigeNovaReceita] = useState(false);
 
@@ -142,7 +142,6 @@ function NovaRenovacaoContent() {
     preco
   );
 
-  // TEMA DINÂMICO PARA A PRÉVIA VISUAL
   const theme = getClinicalTheme(selectedMedicamento?.nome || "Nova Renovação");
 
   useEffect(() => {
@@ -245,7 +244,6 @@ function NovaRenovacaoContent() {
 
   const handleSubmit = () => {
     trigger("vibrate");
-    // 🛡️ TRAVA RIGIDA: impede reenvio por duplo clique ou re-render
     if (!validate() || isSubmitLocked.current || isSubmitting) {
       if (!isSubmitLocked.current && !isSubmitting) trigger("error");
       return;
@@ -269,18 +267,17 @@ function NovaRenovacaoContent() {
 
         const dataISO = parseDateToISO(dataDisplay);
         const proximaISO = proximaDisplay.length === 10 ? parseDateToISO(proximaDisplay) : addDaysToISO(dataISO, 30);
-        const precoNumerico = preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
-        const quantidadeNum = registrarCompra ? Number(quantidadeAdicionar) || 0 : undefined;
+        const precoNumerico = tipoAquisicao === "comprado" && preco ? parseFloat(preco.replace(/\./g, "").replace(",", ".")) : undefined;
+        const quantidadeNum = Number(quantidadeAdicionar) || 0;
 
         if (!user) throw new Error('Usuário não autenticado');
 
-        // Validação de integridade: Garante que o medicamento pai existe antes de salvar a renovação filha
         const medOriginal = await medicamentosRepository.getById(medicamentoId);
         if (!medOriginal) {
           throw new Error("Medicamento vinculado não encontrado no banco de dados.");
         }
 
-        // 1. Cria a renovação via repositório de forma segura
+        // 1. Cria a renovação no Supabase e Dexie
         await renovacoesRepository.create({
           user_id: user.id,
           person_id: activePersonId || undefined,
@@ -290,9 +287,9 @@ function NovaRenovacaoContent() {
           hospital_id: hospitalId || undefined,
           local_id: localId || undefined,
           tipo_aquisicao: tipoAquisicao,
-          data_proxima_retirada: tipoAquisicao === "gratuito" ? parseDateToISO(dataProximaRetirada) : undefined,
-          exige_nova_receita: tipoAquisicao === "gratuito" ? exigeNovaReceita : undefined,
-          quantidade: quantidadeNum,
+          data_proxima_retirada: tipoAquisicao === "sus" && dataProximaRetirada.length === 10 ? parseDateToISO(dataProximaRetirada) : undefined,
+          exige_nova_receita: tipoAquisicao === "sus" ? exigeNovaReceita : undefined,
+          quantidade: quantidadeNum > 0 ? quantidadeNum : undefined,
           preco: precoNumerico,
           lote: lote.trim() || undefined,
           validade_produto: validadeProduto ? parseDateToISO(validadeProduto) : undefined,
@@ -301,22 +298,22 @@ function NovaRenovacaoContent() {
           observacoes: observacoes.trim() || undefined,
         });
 
-        // 2. Atualiza o medicamento vinculado com segurança
+        // 2. Atualiza o medicamento com a nova data e o estoque somado
         const dadosUpdate: Partial<Medicamento> = {
           data_receita: dataISO,
           proxima_renovacao: proximaISO,
           medico_id: medicoId || undefined,
           medico: medicoNome || undefined,
+          tipo_aquisicao: tipoAquisicao,
+          data_retorno_sus: tipoAquisicao === "sus" && dataProximaRetirada.length === 10 ? parseDateToISO(dataProximaRetirada) : undefined,
         };
 
-        if (registrarCompra) {
-          const estoqueAtual = Number(medOriginal.estoque_quantidade) || 0;
-          dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
-          dadosUpdate.estoque_data_referencia = getLocalTodayISO();
-          if (selectedFarmacia) {
-            dadosUpdate.farmacia = selectedFarmacia.nome;
-            dadosUpdate.farmacia_id = selectedFarmacia.id;
-          }
+        const estoqueAtual = Number(medOriginal.estoque_quantidade) || 0;
+        dadosUpdate.estoque_quantidade = estoqueAtual + (quantidadeNum || 0);
+        dadosUpdate.estoque_data_referencia = getLocalTodayISO();
+        if (selectedFarmacia) {
+          dadosUpdate.farmacia = selectedFarmacia.nome;
+          dadosUpdate.farmacia_id = selectedFarmacia.id;
         }
 
         await medicamentosRepository.update(medicamentoId, dadosUpdate);
@@ -327,7 +324,6 @@ function NovaRenovacaoContent() {
         goBackOnSuccess: true,
       }
     ).finally(() => {
-      // 🛡️ LIBERA A TRAVA APENAS NO FIM DO PROCESSO
       isSubmitLocked.current = false;
     });
   };
@@ -352,16 +348,12 @@ function NovaRenovacaoContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <FileWarning size={16} className="text-ice" />
-              </div>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Nova receita / Renovação</h1>
             </div>
           </div>
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* PRÉVIA VISUAL (LIVE PREVIEW) */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -606,22 +598,22 @@ function NovaRenovacaoContent() {
                     : "border-surface-border/50 bg-surface-raised text-ink-muted"
                 }`}
               >
-                Comprado
+                🛒 Comprado (Particular)
               </button>
               <button
                 type="button"
                 onClick={() => {
                   trigger("vibrate");
-                  setTipoAquisicao("gratuito");
-                  setRegistrarCompra(false);
+                  setTipoAquisicao("sus");
+                  setRegistrarCompra(true);
                 }}
                 className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
-                  tipoAquisicao === "gratuito"
+                  tipoAquisicao === "sus"
                     ? "border-emerald-500 bg-emerald-500/12 text-emerald-400"
                     : "border-surface-border/50 bg-surface-raised text-ink-muted"
                 }`}
               >
-                Gratuito (SUS)
+                🛡️ Retirada SUS / Governo
               </button>
             </div>
           </motion.div>
@@ -750,13 +742,13 @@ function NovaRenovacaoContent() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
                   <Check size={16} />
                 </div>
-                <h3 className="text-sm font-semibold text-emerald-400">Retirada Gratuita</h3>
-                <span className="ml-auto text-xs text-emerald-400/60">Sem custo registrado</span>
+                <h3 className="text-sm font-semibold text-emerald-400">Retirada SUS / Governo</h3>
+                <span className="ml-auto text-xs text-emerald-400/60">Dispensação Pública</span>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-sm font-medium text-ink-primary">Farmácia / Posto de Retirada</label>
+                  <label className="block text-sm font-medium text-ink-primary">Posto de Saúde / Farmácia Pública</label>
                   {farmaciaId && selectedFarmacia && (
                     <button
                       type="button"
@@ -783,8 +775,22 @@ function NovaRenovacaoContent() {
                 </button>
               </div>
 
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary flex items-center gap-2">
+                  <PackagePlus size={16} className="text-ink-muted" />
+                  Quantidade retirada (Adicionada ao estoque)
+                </label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  value={quantidadeAdicionar}
+                  onChange={(e) => setQuantidadeAdicionar(e.target.value)}
+                />
+              </div>
+
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Data agendada para próxima retirada</label>
+                <label className="block text-sm font-medium text-ink-primary">Próxima data de retorno ao posto</label>
                 <div className="relative">
                   <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                   <input
@@ -796,9 +802,10 @@ function NovaRenovacaoContent() {
                     className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50 text-ink-primary"
                   />
                 </div>
+                <p className="text-[11px] text-ink-muted">Esta data gerará um alerta automático na sua agenda principal.</p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 pt-1">
                 <input
                   type="checkbox"
                   id="exigeNovaReceita"

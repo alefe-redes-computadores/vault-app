@@ -202,11 +202,25 @@ function EditarLocalContent() {
       <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"><ArrowLeft size={18} className="text-ink-primary" /></button>
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              type="button"
+              aria-label="Voltar"
+            >
+              <ArrowLeft size={18} className="text-ink-primary" />
+            </button>
             <div className="min-w-0 flex-1">
               <h1 className="font-display text-xl font-semibold text-ink-primary truncate">{nome || "Editar local"}</h1>
             </div>
-            <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"><Trash2 size={16} /></button>
+            <button
+              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              type="button"
+              aria-label="Excluir local"
+            >
+              <Trash2 size={16} />
+            </button>
           </div>
         </header>
 
@@ -219,7 +233,15 @@ function EditarLocalContent() {
               <label className="mb-1.5 block text-sm font-medium text-ink-primary">Tipo</label>
               <div className="flex flex-wrap gap-2">
                 {TIPOS_LOCAL.map((tipoOption) => (
-                  <button key={tipoOption.id} onClick={() => { trigger("vibrate"); setTipo(tipoOption.id); }} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${tipo === tipoOption.id ? "border-emerald-400 bg-emerald-400/10 text-emerald-400" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"}`}>{tipoOption.label}</button>
+                  <button
+                    key={tipoOption.id}
+                    onClick={() => { trigger("vibrate"); setTipo(tipoOption.id); }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all active:scale-95 ${tipo === tipoOption.id ? "border-emerald-400 bg-emerald-400/10 text-emerald-400" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"}`}
+                    type="button"
+                    aria-pressed={tipo === tipoOption.id}
+                  >
+                    {tipoOption.label}
+                  </button>
                 ))}
               </div>
             </div>
@@ -233,7 +255,12 @@ function EditarLocalContent() {
               <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
                 <Stethoscope size={14} className="text-ice" /> Médicos do Local
               </h2>
-              <button onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+              <button
+                onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
+                className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all"
+                type="button"
+                aria-label="Adicionar médico"
+              >
                 <Plus size={12} /> Adicionar
               </button>
             </div>
@@ -244,7 +271,14 @@ function EditarLocalContent() {
                 {medicosVinculadosObjects.map((med) => (
                   <div key={med.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
                     <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">Dr(a). {med.nome.split(' ')[0]}</span>
-                    <button onClick={() => handleRemoveMedico(med.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button>
+                    <button
+                      onClick={() => handleRemoveMedico(med.id!)}
+                      className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"
+                      type="button"
+                      aria-label={`Remover ${med.nome}`}
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -257,7 +291,12 @@ function EditarLocalContent() {
               <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
                 <Activity size={14} className="text-violet-400" /> Polo de Tratamentos
               </h2>
-              <button onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+              <button
+                onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
+                className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all"
+                type="button"
+                aria-label="Adicionar tratamento"
+              >
                 <Plus size={12} /> Adicionar
               </button>
             </div>
@@ -268,7 +307,14 @@ function EditarLocalContent() {
                 {tratamentosVinculadosObjects.map((t) => (
                   <div key={t.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1" style={{ borderLeft: `3px solid ${t.cor || '#8B5CF6'}` }}>
                     <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{t.nome}</span>
-                    <button onClick={() => handleRemoveTratamento(t.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button>
+                    <button
+                      onClick={() => handleRemoveTratamento(t.id!)}
+                      className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"
+                      type="button"
+                      aria-label={`Remover ${t.nome}`}
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
                 ))}
               </div>

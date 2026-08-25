@@ -142,7 +142,6 @@ export default function PessoaDetalhesPage() {
     }
   }, [id, router]);
 
-  // ✅ TODOS OS HOOKS JÁ FORAM CHAMADOS ACIMA
   if (!mounted) return <DetailSkeleton />;
 
   const handleSetDefault = async () => {
@@ -242,6 +241,7 @@ export default function PessoaDetalhesPage() {
                   router.back();
                 }}
                 aria-label="Voltar"
+                type="button"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
                 <ArrowLeft size={18} className="text-ink-primary" />
@@ -262,6 +262,8 @@ export default function PessoaDetalhesPage() {
                 <button
                   onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                  type="button"
+                  aria-label="Adicionar registro"
                 >
                   <Plus size={18} />
                 </button>
@@ -294,6 +296,7 @@ export default function PessoaDetalhesPage() {
                                 key={option.id}
                                 onClick={() => handleMenuOptionClick(option.path)}
                                 className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                                type="button"
                               >
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                   <Icon size={15} />
@@ -315,6 +318,7 @@ export default function PessoaDetalhesPage() {
                 <button
                   onClick={() => setShowDefaultModal(true)}
                   className="flex h-10 items-center gap-1.5 rounded-full border border-ice/20 bg-ice/10 px-3.5 py-2 text-xs font-semibold text-ice transition-all active:scale-95 hover:bg-ice/20"
+                  type="button"
                 >
                   <Star size={14} />
                   Definir padrão
@@ -326,6 +330,7 @@ export default function PessoaDetalhesPage() {
                   router.push(`/pessoas/editar?id=${id}`);
                 }}
                 aria-label="Editar pessoa"
+                type="button"
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
               >
                 <Edit3 size={18} />
@@ -333,6 +338,8 @@ export default function PessoaDetalhesPage() {
               <button
                 onClick={() => setShowDeleteModal(true)}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95 hover:bg-coral/20"
+                type="button"
+                aria-label="Excluir pessoa"
               >
                 <Trash2 size={18} />
               </button>
@@ -356,6 +363,8 @@ export default function PessoaDetalhesPage() {
                   router.push(`/pessoas/editar?id=${id}`);
                 }}
                 title="Clique para editar a foto"
+                role="button"
+                tabIndex={0}
               >
                 {person.avatar_url ? (
                   <img
@@ -469,6 +478,7 @@ export default function PessoaDetalhesPage() {
                       onClick={() => router.push(`/saude/tratamentos/detalhes?id=${t.id}`)}
                       className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left active:scale-[0.98] transition-all"
                       style={{ borderLeft: `4px solid ${cor}` }}
+                      type="button"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -491,6 +501,7 @@ export default function PessoaDetalhesPage() {
                   <button
                     onClick={() => router.push("/saude/tratamentos")}
                     className="text-xs text-ice font-medium flex items-center gap-1 ml-1 mt-1"
+                    type="button"
                   >
                     Ver todos ({tratamentos.filter((t) => t.status === "ativo").length})
                     <ChevronRight size={14} />
@@ -544,6 +555,7 @@ export default function PessoaDetalhesPage() {
                     key={doc.id}
                     onClick={() => router.push(`/detalhes?id=${doc.id}`)}
                     className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left active:scale-[0.98] transition-all"
+                    type="button"
                   >
                     <span className="truncate text-sm font-medium text-ink-primary">
                       {doc.title}
@@ -572,6 +584,7 @@ export default function PessoaDetalhesPage() {
                     key={c.id}
                     onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)}
                     className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left active:scale-[0.98] transition-all"
+                    type="button"
                   >
                     <div>
                       <span className="text-sm font-medium text-ink-primary">
@@ -605,6 +618,7 @@ export default function PessoaDetalhesPage() {
                     key={e.id}
                     onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)}
                     className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left active:scale-[0.98] transition-all"
+                    type="button"
                   >
                     <span className="truncate text-sm font-medium text-ink-primary">
                       {e.nome}

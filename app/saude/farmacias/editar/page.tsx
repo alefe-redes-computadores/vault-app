@@ -167,7 +167,7 @@ function EditarFarmaciaContent() {
       <PageTransition>
         <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-void px-6 text-center">
           <p className="font-display text-lg font-semibold text-ink-primary">Farmácia não encontrada</p>
-          <button onClick={() => router.back()} className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void">Voltar</button>
+          <button onClick={() => router.back()} className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void" type="button">Voltar</button>
         </main>
       </PageTransition>
     );
@@ -178,7 +178,7 @@ function EditarFarmaciaContent() {
       <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
+            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95" type="button" aria-label="Voltar">
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
@@ -188,7 +188,7 @@ function EditarFarmaciaContent() {
               </div>
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary truncate">{nome || "Editar farmácia"}</h1>
             </div>
-            <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95">
+            <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95" type="button" aria-label="Excluir farmácia">
               <Trash2 size={16} />
             </button>
           </div>
@@ -209,7 +209,7 @@ function EditarFarmaciaContent() {
               <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
                 <Pill size={14} className="text-amber-400" /> Polo de Retirada ({medicamentosVinculados.length})
               </h2>
-              <button onClick={() => setIsMedModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+              <button onClick={() => setIsMedModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Vincular medicamento">
                 <Plus size={12} /> Vincular Remédio
               </button>
             </div>
@@ -221,7 +221,7 @@ function EditarFarmaciaContent() {
             ) : (
               <div className="space-y-2">
                 {medicamentosVinculados.map((med: Medicamento) => (
-                  <div key={med.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${med.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer transition-all active:scale-[0.98]">
+                  <div key={med.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${med.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer transition-all active:scale-[0.98]" role="button" tabIndex={0}>
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
                         <Pill size={14} />
@@ -233,7 +233,7 @@ function EditarFarmaciaContent() {
                     </div>
                     <div className="flex items-center gap-3">
                       <ExternalLink size={14} className="text-ink-faint shrink-0" />
-                      <button onClick={(e) => handleDesvincularMedicamento(med, e)} className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors">
+                      <button onClick={(e) => handleDesvincularMedicamento(med, e)} className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Desvincular ${med.nome}`}>
                         <X size={14} />
                       </button>
                     </div>

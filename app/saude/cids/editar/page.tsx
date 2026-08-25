@@ -26,7 +26,7 @@ import { cidsRepository } from "@/lib/repositories/cids";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import type { Medico, Hospital, LocalSaude, Cid, Tratamento, Medicamento, Consulta, Exame } from "@/lib/types";
-import { getClinicalTheme } from "@/lib/health-utils"; // INJEÇÃO DO UTILITÁRIO VISUAL
+import { getClinicalTheme } from "@/lib/health-utils";
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
@@ -78,7 +78,6 @@ function EditarCidContent() {
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Live Queries para o Hub Relacional do CID
   const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), [], []) || [];
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), [], []) || [];
   const consultas = useLiveQuery(() => db.consultas.toArray(), [], []) || [];
@@ -113,7 +112,6 @@ function EditarCidContent() {
   const selectedHospital = hospitais.find((h) => h.id === hospitalId);
   const selectedLocal = locais.find((l) => l.id === localId);
 
-  // Cruzamentos Relacionais Corrigidos
   const tratamentosVinculados = useMemo(() => {
     if (!id) return [];
     return tratamentos.filter((t: Tratamento) => t.cid_ids && t.cid_ids.includes(id));
@@ -127,9 +125,8 @@ function EditarCidContent() {
 
   const consultasVinculadas = useMemo(() => {
     if (!id) return [];
-    const tratIds = new Set(tratamentosVinculados.map(t => t.id));
     return consultas.filter((c: Consulta) => (c.medico_id && selectedMedico && c.medico_id === selectedMedico.id)).sort((a, b) => b.data.localeCompare(a.data));
-  }, [consultas, tratamentosVinculados, selectedMedico]);
+  }, [consultas, selectedMedico]);
 
   const examesVinculados = useMemo(() => {
     if (!id) return [];
@@ -205,7 +202,6 @@ function EditarCidContent() {
   if (isLoading) return <DetailSkeleton />;
   if (!cid) return null;
 
-  // LÓGICA DE PRÉVIA VISUAL (LIVE PREVIEW)
   const theme = getClinicalTheme(descricao || codigo || "Geral");
   const PreviewIcon = theme.icon;
 
@@ -217,6 +213,8 @@ function EditarCidContent() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              type="button"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -229,7 +227,6 @@ function EditarCidContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* CARD DE PRÉVIA EM TEMPO REAL */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -291,11 +288,11 @@ function EditarCidContent() {
                 value={dataDiagnostico}
                 onChange={(e) => setDataDiagnostico(handleDateMask(e.target.value))}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice"
+                aria-label="Data do diagnóstico"
               />
             </div>
           </motion.div>
 
-          {/* MÉDICO COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -310,6 +307,7 @@ function EditarCidContent() {
                   type="button"
                   onClick={() => { trigger("vibrate"); setMedicoId(""); }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  aria-label="Limpar médico"
                 >
                   <Eraser size={12} /> Limpar
                 </button>
@@ -318,6 +316,8 @@ function EditarCidContent() {
             <button
               onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
+              type="button"
+              aria-label="Selecionar médico"
             >
               <span className="flex items-center gap-2">
                 <Stethoscope size={16} className="text-ice" />
@@ -327,7 +327,6 @@ function EditarCidContent() {
             </button>
           </motion.div>
 
-          {/* HOSPITAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -342,6 +341,7 @@ function EditarCidContent() {
                   type="button"
                   onClick={() => { trigger("vibrate"); setHospitalId(""); }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  aria-label="Limpar hospital"
                 >
                   <Eraser size={12} /> Limpar
                 </button>
@@ -350,6 +350,8 @@ function EditarCidContent() {
             <button
               onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
+              type="button"
+              aria-label="Selecionar hospital"
             >
               <span className="flex items-center gap-2">
                 <Building2 size={16} className="text-violet-400" />
@@ -359,7 +361,6 @@ function EditarCidContent() {
             </button>
           </motion.div>
 
-          {/* LOCAL COM LIMPAR */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -374,6 +375,7 @@ function EditarCidContent() {
                   type="button"
                   onClick={() => { trigger("vibrate"); setLocalId(""); }}
                   className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  aria-label="Limpar local"
                 >
                   <Eraser size={12} /> Limpar
                 </button>
@@ -382,6 +384,8 @@ function EditarCidContent() {
             <button
               onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
               className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary transition-colors hover:border-ice/50 flex items-center justify-between"
+              type="button"
+              aria-label="Selecionar local"
             >
               <span className="flex items-center gap-2">
                 <MapPin size={16} className="text-emerald-400" />
@@ -391,7 +395,6 @@ function EditarCidContent() {
             </button>
           </motion.div>
 
-          {/* HUB RELACIONAL: ITENS VINCULADOS A ESTE CID */}
           {(tratamentosVinculados.length > 0 || medicamentosVinculados.length > 0 || consultasVinculadas.length > 0 || examesVinculados.length > 0) && (
             <motion.div
               variants={fadeUp}
@@ -408,7 +411,7 @@ function EditarCidContent() {
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold text-violet-400 uppercase">Tratamentos ({tratamentosVinculados.length})</p>
                   {tratamentosVinculados.map((t) => (
-                    <div key={t.id} onClick={() => router.push(`/saude/tratamentos/detalhes?id=${t.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                    <div key={t.id} onClick={() => router.push(`/saude/tratamentos/detalhes?id=${t.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                       <div className="flex items-center gap-2.5">
                         <FolderHeart size={14} className="text-violet-400" />
                         <span className="text-xs font-semibold text-ink-primary">{t.nome}</span>
@@ -423,7 +426,7 @@ function EditarCidContent() {
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold text-amber-400 uppercase">Medicamentos ({medicamentosVinculados.length})</p>
                   {medicamentosVinculados.map((m) => (
-                    <div key={m.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${m.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                    <div key={m.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${m.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                       <div className="flex items-center gap-2.5">
                         <Pill size={14} className="text-amber-400" />
                         <span className="text-xs font-semibold text-ink-primary">{m.nome}</span>
@@ -438,7 +441,7 @@ function EditarCidContent() {
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold text-ice uppercase">Consultas ({consultasVinculadas.length})</p>
                   {consultasVinculadas.map((c) => (
-                    <div key={c.id} onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                    <div key={c.id} onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                       <div className="flex items-center gap-2.5">
                         <Calendar size={14} className="text-ice" />
                         <span className="text-xs font-semibold text-ink-primary">{c.especialidade} ({formatDateToDisplay(c.data)})</span>
@@ -453,7 +456,7 @@ function EditarCidContent() {
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold text-emerald-400 uppercase">Exames ({examesVinculados.length})</p>
                   {examesVinculados.map((e) => (
-                    <div key={e.id} onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                    <div key={e.id} onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                       <div className="flex items-center gap-2.5">
                         <FlaskConical size={14} className="text-emerald-400" />
                         <span className="text-xs font-semibold text-ink-primary">{e.nome} ({formatDateToDisplay(e.data)})</span>
@@ -488,6 +491,8 @@ function EditarCidContent() {
                   <button
                     onClick={() => { trigger("vibrate"); setAnexoUrl(""); setLocalFile(null); }}
                     className="text-coral"
+                    type="button"
+                    aria-label="Remover anexo"
                   >
                     <X size={16} />
                   </button>
@@ -498,6 +503,7 @@ function EditarCidContent() {
                     variant="secondary"
                     onClick={() => document.getElementById("file-upload")?.click()}
                     className="flex-1"
+                    type="button"
                   >
                     <Upload size={16} /> Anexar
                   </Button>

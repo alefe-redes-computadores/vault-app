@@ -73,18 +73,15 @@ function CidDetalhesContent() {
         }
         setCid(cidData);
 
-        // 1. Tratamentos vinculados
         const tratData = await db.tratamentos.toArray();
         const tratsVinculados = tratData.filter(t => t.cid_ids?.includes(id));
         setTratamentos(tratsVinculados);
         const tratIds = new Set(tratsVinculados.map(t => t.id).filter(Boolean));
 
-        // 2. Medicamentos vinculados
         const medsData = await db.medicamentos.toArray();
         const medsVinculados = medsData.filter(m => m.tratamento_ids && m.tratamento_ids.some(tid => tratIds.has(tid)));
         setMedicamentos(medsVinculados);
 
-        // 3. Custos Atrelados ao CID (Soma das Renovações dos Medicamentos vinculados)
         const medIdsVinculados = new Set(medsVinculados.map(m => m.id).filter(Boolean));
         if (medIdsVinculados.size > 0) {
           const renovacoesData = await db.renovacoes.toArray();
@@ -97,22 +94,18 @@ function CidDetalhesContent() {
           setCustoTotal(total);
         }
 
-        // 4. Médicos
         const medicoIds = new Set(medsVinculados.map(m => m.medico_id).filter(Boolean));
         const medsList = await db.medicos.toArray();
         setMedicos(medsList.filter(med => med.id && medicoIds.has(med.id)));
 
-        // 5. Locais / Hospitais
         const hospIds = new Set(medsVinculados.map(m => m.hospital_id || m.local_id || m.farmacia_id).filter(Boolean));
         const hospList = await db.hospitais.toArray();
         setHospitais(hospList.filter(h => h.id && hospIds.has(h.id)));
 
-        // 6. Farmácias
         const farmaciaIds = new Set(medsVinculados.map(m => m.farmacia_id).filter(Boolean));
         const farmList = await db.farmacias.toArray();
         setFarmacias(farmList.filter(f => f.id && farmaciaIds.has(f.id)));
 
-        // 7. Laudos / Anexos
         const docsList = await db.documents.toArray();
         setDocumentos(docsList.filter(d => {
           const meta = d.metadata as { cid_id?: string; tratamento_id?: string };
@@ -135,10 +128,8 @@ function CidDetalhesContent() {
     trigger("vibrate");
     if (!id) return;
     try {
-      // 👈 Bypass removido, passando pelo repositório oficial
       await cidsRepository.delete(id);
       
-      // Gatilho para iniciar o envio
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("sync:process"));
       }
@@ -172,7 +163,6 @@ function CidDetalhesContent() {
   if (isLoading) return <DetailSkeleton />;
   if (!cid) return null;
 
-  // UTILIZANDO A INTELIGÊNCIA VISUAL GLOBAL
   const theme = getClinicalTheme(cid.descricao || cid.codigo);
   const IconComp = theme.icon;
 
@@ -184,6 +174,8 @@ function CidDetalhesContent() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              type="button"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -198,6 +190,8 @@ function CidDetalhesContent() {
               <button
                 onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                type="button"
+                aria-label="Adicionar registro"
               >
                 <Plus size={18} />
               </button>
@@ -230,6 +224,7 @@ function CidDetalhesContent() {
                               key={option.id}
                               onClick={() => handleMenuOptionClick(option.path)}
                               className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              type="button"
                             >
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                 <Icon size={15} />
@@ -250,12 +245,16 @@ function CidDetalhesContent() {
             <button
               onClick={() => { trigger("vibrate"); router.push(`/saude/cids/editar?id=${cid.id}`); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
+              type="button"
+              aria-label="Editar CID"
             >
               <Edit3 size={16} />
             </button>
             <button
               onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              type="button"
+              aria-label="Excluir CID"
             >
               <Trash2 size={16} />
             </button>
@@ -325,7 +324,6 @@ function CidDetalhesContent() {
             </div>
           </motion.div>
 
-          {/* INSIGHT FINANCEIRO: Custo Total do Diagnóstico */}
           {custoTotal > 0 && (
             <motion.div
               variants={fadeUp}
@@ -366,6 +364,7 @@ function CidDetalhesContent() {
                       key={t.id}
                       onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${t.id}`); }}
                       className="w-full flex items-center justify-between p-4 rounded-2xl border border-surface-border/50 bg-surface shadow-sm hover:border-ice/30 transition-all active:scale-[0.98]"
+                      type="button"
                     >
                       <div className="flex items-center gap-3 text-left">
                         <div className={`h-10 w-10 rounded-xl border flex items-center justify-center ${tTheme.bgClass} ${tTheme.textClass} ${tTheme.borderClass}`}>
@@ -400,6 +399,7 @@ function CidDetalhesContent() {
                     key={m.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${m.id}`); }}
                     className="w-full flex items-center justify-between p-4 rounded-2xl border border-surface-border/50 bg-surface shadow-sm hover:border-ice/30 transition-all active:scale-[0.98]"
+                    type="button"
                   >
                     <div className="flex items-center gap-3 text-left">
                       <div className="h-10 w-10 rounded-xl bg-ice/10 flex items-center justify-center text-ice">
@@ -433,6 +433,7 @@ function CidDetalhesContent() {
                     key={m.id}
                     onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${m.id}`); }}
                     className="rounded-full bg-surface border border-surface-border px-4 py-2 text-sm font-medium text-ink-primary shadow-sm hover:border-ice/30 transition-all active:scale-95"
+                    type="button"
                   >
                     Dr(a). {m.nome}
                   </button>

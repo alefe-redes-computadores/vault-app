@@ -202,14 +202,14 @@ function EditarTratamentoContent() {
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
+            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95" type="button" aria-label="Voltar">
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
               <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">Editar Tratamento</h1>
             </div>
           </div>
-          <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95">
+          <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95" type="button" aria-label="Excluir tratamento">
             <Trash2 size={16} />
           </button>
         </header>
@@ -241,7 +241,7 @@ function EditarTratamentoContent() {
             <p className="mb-3 text-sm font-medium text-ink-primary">Para quem? <span className="text-coral">*</span></p>
             <div className="flex flex-wrap gap-2">
               {persons.map((p: Person) => (
-                <button key={p.id} onClick={() => { trigger("vibrate"); setPersonId(p.id!); }} className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${personId === p.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>
+                <button key={p.id} onClick={() => { trigger("vibrate"); setPersonId(p.id!); }} className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${personId === p.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`} type="button" aria-pressed={personId === p.id}>
                   {p.name}
                 </button>
               ))}
@@ -259,12 +259,12 @@ function EditarTratamentoContent() {
                   {selectedCids.map((c: Cid) => (
                     <div key={c.id} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
                       <span className="text-xs font-medium text-violet-300">{c.codigo !== "N/A" ? `${c.codigo} - ` : ""}{c.descricao}</span>
-                      <button onClick={() => handleRemoveCid(c.id!)} className="text-violet-400/60 hover:text-coral transition-colors"><X size={14} /></button>
+                      <button onClick={() => handleRemoveCid(c.id!)} className="text-violet-400/60 hover:text-coral transition-colors" type="button" aria-label={`Remover ${c.descricao}`}><X size={14} /></button>
                     </div>
                   ))}
                 </div>
               )}
-              <button type="button" onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left transition-all active:scale-95">
+              <button type="button" onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }} className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left transition-all active:scale-95" aria-label="Vincular CIDs">
                 <span className="text-ink-muted">{selectedCids.length > 0 ? "Adicionar outro CID" : "Toque para vincular CIDs"}</span>
                 <ChevronRight size={18} className="text-ink-muted shrink-0 ml-2" />
               </button>
@@ -274,7 +274,14 @@ function EditarTratamentoContent() {
               <label className="mb-2 block text-sm font-medium text-ink-primary">Status</label>
               <div className="grid grid-cols-3 gap-2">
                 {(["ativo", "concluido", "suspenso"] as const).map((s) => (
-                  <button key={s} onClick={() => { trigger("vibrate"); setStatus(s); }} className={`rounded-2xl border px-1 py-2.5 text-xs font-medium capitalize transition-all active:scale-95 text-center ${status === s ? `border-[${theme.hex}] bg-[${theme.hex}]/10 text-[${theme.hex}]` : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"}`} style={status === s ? { borderColor: theme.hex, color: theme.hex, backgroundColor: `${theme.hex}20` } : {}}>
+                  <button
+                    key={s}
+                    onClick={() => { trigger("vibrate"); setStatus(s); }}
+                    className={`rounded-2xl border px-1 py-2.5 text-xs font-medium capitalize transition-all active:scale-95 text-center ${status === s ? "border-transparent" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"}`}
+                    style={status === s ? { borderColor: theme.hex, color: theme.hex, backgroundColor: `${theme.hex}20` } : {}}
+                    type="button"
+                    aria-pressed={status === s}
+                  >
                     {s === "ativo" ? "Em andamento" : s === "concluido" ? "Concluído" : "Suspenso"}
                   </button>
                 ))}
@@ -291,14 +298,17 @@ function EditarTratamentoContent() {
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Stethoscope size={14} className="text-ice" /> Médicos Responsáveis</h2>
-                <button onClick={() => setIsMedicoModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all"><Plus size={12} /> Adicionar</button>
+                <button onClick={() => setIsMedicoModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Adicionar médico"><Plus size={12} /> Adicionar</button>
               </div>
               {medicosVinculados.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum médico vinculado.</p></div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {medicosVinculados.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1"><span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">Dr(a). {m.nome.split(' ')[0]}</span><button onClick={() => handleRemoveMedico(m.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button></div>
+                    <div key={m.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
+                      <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">Dr(a). {m.nome.split(' ')[0]}</span>
+                      <button onClick={() => handleRemoveMedico(m.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${m.nome}`}><X size={12} /></button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -307,14 +317,17 @@ function EditarTratamentoContent() {
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Building2 size={14} className="text-violet-400" /> Hospitais / Clínicas</h2>
-                <button onClick={() => setIsHospitalModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all"><Plus size={12} /> Adicionar</button>
+                <button onClick={() => setIsHospitalModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Adicionar hospital"><Plus size={12} /> Adicionar</button>
               </div>
               {hospitaisVinculados.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum hospital vinculado.</p></div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {hospitaisVinculados.map((h) => (
-                    <div key={h.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1"><span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{h.nome}</span><button onClick={() => handleRemoveHospital(h.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button></div>
+                    <div key={h.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
+                      <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{h.nome}</span>
+                      <button onClick={() => handleRemoveHospital(h.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${h.nome}`}><X size={12} /></button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -323,14 +336,17 @@ function EditarTratamentoContent() {
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><MapPin size={14} className="text-emerald-400" /> Postos de Saúde / C.A.P.S</h2>
-                <button onClick={() => setIsLocalModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all"><Plus size={12} /> Adicionar</button>
+                <button onClick={() => setIsLocalModalOpen(true)} className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Adicionar local"><Plus size={12} /> Adicionar</button>
               </div>
               {locaisVinculados.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum posto ou local vinculado.</p></div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {locaisVinculados.map((l) => (
-                    <div key={l.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1"><span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{l.nome}</span><button onClick={() => handleRemoveLocal(l.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button></div>
+                    <div key={l.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
+                      <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{l.nome}</span>
+                      <button onClick={() => handleRemoveLocal(l.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${l.nome}`}><X size={12} /></button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -346,7 +362,7 @@ function EditarTratamentoContent() {
                   <h3 className="text-[10px] font-bold text-ink-muted uppercase tracking-wider mb-2 flex items-center gap-1"><Pill size={12} className="text-emerald-400" /> Prescrições</h3>
                   <div className="space-y-2">
                     {medicamentosVinculados.slice(0, 3).map(m => (
-                      <div key={m.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${m.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div key={m.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${m.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                         <div className="min-w-0">
                           <p className={`text-xs font-semibold truncate ${m.status === 'ativo' ? 'text-ink-primary' : 'text-ink-muted line-through'}`}>{m.nome}</p>
                           <p className="text-[10px] text-ink-muted">{m.dosagem}</p>
@@ -363,7 +379,7 @@ function EditarTratamentoContent() {
                   <h3 className="text-[10px] font-bold text-ink-muted uppercase tracking-wider mb-2 mt-3 flex items-center gap-1"><FlaskConical size={12} className="text-ice" /> Avaliações / Exames</h3>
                   <div className="space-y-2">
                     {examesVinculados.slice(0, 3).map(e => (
-                      <div key={e.id} onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div key={e.id} onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-ink-primary truncate">{e.nome}</p>
                           <p className="text-[10px] text-ink-muted">Agendado/Realizado em: {e.data}</p>
@@ -399,7 +415,7 @@ function EditarTratamentoContent() {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm" onClick={() => setShowAddCidPrompt(false)}>
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-[28px] border border-surface-border bg-surface p-6 shadow-xl space-y-4">
                 <div className="flex items-center gap-3 text-violet-400"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/10"><FolderHeart size={22} /></div><div><h3 className="font-display text-base font-bold text-ink-primary">Adicionar outro CID?</h3><p className="text-xs text-ink-muted">Você pode vincular múltiplos diagnósticos</p></div></div>
-                <div className="flex gap-2 pt-2"><button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); }} className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all">Não, finalizar</button><button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); setIsCidModalOpen(true); }} className="flex-1 rounded-2xl bg-violet-400 py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-violet-400/20">Sim, adicionar</button></div>
+                <div className="flex gap-2 pt-2"><button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); }} className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all" type="button">Não, finalizar</button><button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); setIsCidModalOpen(true); }} className="flex-1 rounded-2xl bg-violet-400 py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-violet-400/20" type="button">Sim, adicionar</button></div>
               </motion.div>
             </div>
           )}

@@ -68,7 +68,7 @@ function VaultMembersContent() {
     try {
       await addMember({
         vault_id: vaultId,
-        user_id: "", 
+        user_id: "",
         email: email.trim(),
         name: email.split("@")[0],
         permission,
@@ -110,7 +110,12 @@ function VaultMembersContent() {
       <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} aria-label="Voltar" className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
+            <button
+              onClick={() => { trigger("vibrate"); router.back(); }}
+              aria-label="Voltar"
+              type="button"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+            >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0">
@@ -158,6 +163,8 @@ function VaultMembersContent() {
                         className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 text-xs font-medium transition-all active:scale-95 ${
                           isSelected ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
                         }`}
+                        type="button"
+                        aria-pressed={isSelected}
                       >
                         <Icon size={16} />
                         {option.label}
@@ -238,10 +245,20 @@ function VaultMembersContent() {
 
                         {member.status === "pending" && (
                           <div className="flex shrink-0 items-center gap-1">
-                            <button onClick={() => handleUpdateStatus(member.id!, "accepted")} aria-label="Aceitar convite" className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-300 transition-colors active:scale-95 hover:bg-surface-raised">
+                            <button
+                              onClick={() => handleUpdateStatus(member.id!, "accepted")}
+                              aria-label="Aceitar convite"
+                              className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-300 transition-colors active:scale-95 hover:bg-surface-raised"
+                              type="button"
+                            >
                               <Check size={15} />
                             </button>
-                            <button onClick={() => handleUpdateStatus(member.id!, "rejected")} aria-label="Rejeitar convite" className="flex h-9 w-9 items-center justify-center rounded-full text-coral transition-colors active:scale-95 hover:bg-surface-raised">
+                            <button
+                              onClick={() => handleUpdateStatus(member.id!, "rejected")}
+                              aria-label="Rejeitar convite"
+                              className="flex h-9 w-9 items-center justify-center rounded-full text-coral transition-colors active:scale-95 hover:bg-surface-raised"
+                              type="button"
+                            >
                               <X size={15} />
                             </button>
                           </div>

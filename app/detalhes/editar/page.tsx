@@ -74,14 +74,11 @@ const applyMask = (value: string, type: string): string => {
 const getMaskType = (fieldKey: string, fieldType: string): string | null => {
   if (fieldKey === "cpf") return "cpf";
   if (fieldKey === "rg_number" || fieldKey === "number") return "rg";
-  if (fieldType === "date") return "date"; 
+  if (fieldType === "date") return "date";
   return null;
 };
 
 export default function EditarDetalhePage() {
-  // ==========================================
-  // TODOS OS HOOKS NO TOPO (REGRA DE OURO REACT)
-  // ==========================================
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -105,16 +102,15 @@ export default function EditarDetalhePage() {
 
   const [uploading, setUploading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
 
   const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
   const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
   const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
-  
+
   const [localFiles, setLocalFiles] = useState<File[]>([]);
-  
+
   const [formData, setFormData] = useState({
     person_id: "",
     category_id: "pessoal" as CategoryId,
@@ -128,7 +124,7 @@ export default function EditarDetalhePage() {
   useEffect(() => {
     if (doc) {
       const loadedMetadata = { ...doc.metadata };
-      
+
       Object.keys(loadedMetadata).forEach((key) => {
         const val = loadedMetadata[key];
         if (typeof val === 'string') {
@@ -156,9 +152,6 @@ export default function EditarDetalhePage() {
     }
   }, [doc]);
 
-  // ==========================================
-  // RETORNOS CONDICIONAIS APÓS OS HOOKS
-  // ==========================================
   if (!mounted) {
     return (
       <PageTransition>
@@ -268,12 +261,12 @@ export default function EditarDetalhePage() {
     saveAction.run(
       async () => {
         const cleanMetadata = { ...formData.metadata };
-        
+
         fields.forEach((field: DocField) => {
           if (field.type === 'date' && cleanMetadata[field.key]) {
             const parts = cleanMetadata[field.key].split('/');
             if (parts.length === 3) {
-              cleanMetadata[field.key] = `${parts[2]}-${parts[1]}-${parts[0]}`; 
+              cleanMetadata[field.key] = `${parts[2]}-${parts[1]}-${parts[0]}`;
             }
           }
         });
@@ -367,6 +360,8 @@ export default function EditarDetalhePage() {
             <button
               onClick={() => { trigger("vibrate"); router.back(); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              type="button"
+              aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
@@ -376,6 +371,8 @@ export default function EditarDetalhePage() {
             <button
               onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              type="button"
+              aria-label="Excluir documento"
             >
               <Trash2 size={16} />
             </button>
@@ -406,6 +403,8 @@ export default function EditarDetalhePage() {
                   key={person.id}
                   onClick={() => handleChange("person_id", person.id!)}
                   className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${formData.person_id === person.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                  type="button"
+                  aria-pressed={formData.person_id === person.id}
                 >
                   {person.name}
                 </button>
@@ -421,6 +420,8 @@ export default function EditarDetalhePage() {
                   key={cat.id}
                   onClick={() => handleChange("category_id", cat.id)}
                   className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all ${formData.category_id === cat.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                  type="button"
+                  aria-pressed={formData.category_id === cat.id}
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
                   {cat.name}
@@ -432,128 +433,146 @@ export default function EditarDetalhePage() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }} className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
             <label className="mb-3 block text-sm font-medium text-ink-primary">Tipo</label>
             <button
-               onClick={() => { trigger("vibrate"); setIsTypeModalOpen(true); }}
-               className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
-             >
-               <span>{selectedTypeLabel}</span>
-               <Layers3 size={16} className="text-ink-muted" />
-             </button>
+              onClick={() => { trigger("vibrate"); setIsTypeModalOpen(true); }}
+              className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
+              type="button"
+              aria-label="Selecionar tipo"
+            >
+              <span>{selectedTypeLabel}</span>
+              <Layers3 size={16} className="text-ink-muted" />
+            </button>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
             <Input label="Título" value={formData.title} onChange={(e) => handleChange("title", e.target.value)} error={errors.title} />
 
             {fields.map((field) => {
-               if (formData.type === 'rg' && field.key === 'rg_number' && formData.metadata['modelo'] === 'C.I.N (Nova Identidade)') return null; 
+              if (formData.type === 'rg' && field.key === 'rg_number' && formData.metadata['modelo'] === 'C.I.N (Nova Identidade)') return null;
 
-               const maskType = getMaskType(field.key, field.type);
-               const rawValue = formData.metadata[field.key] || "";
-               const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
+              const maskType = getMaskType(field.key, field.type);
+              const rawValue = formData.metadata[field.key] || "";
+              const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
 
-               if (field.type === 'select' && field.options) {
-                 return (
-                    <div key={field.key}>
-                       <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
-                       <div className="flex flex-wrap gap-2">
-                          {field.options.map((opt: string) => (
-                             <button
-                                key={opt}
-                                onClick={() => handleMetadataChange(field.key, opt)}
-                                className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all ${
-                                   formData.metadata[field.key] === opt ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                                }`}
-                             >
-                               {opt}
-                             </button>
-                          ))}
-                       </div>
+              if (field.type === 'select' && field.options) {
+                return (
+                  <div key={field.key}>
+                    <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
+                    <div className="flex flex-wrap gap-2">
+                      {field.options.map((opt: string) => (
+                        <button
+                          key={opt}
+                          onClick={() => handleMetadataChange(field.key, opt)}
+                          className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all ${formData.metadata[field.key] === opt ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                          type="button"
+                          aria-pressed={formData.metadata[field.key] === opt}
+                        >
+                          {opt}
+                        </button>
+                      ))}
                     </div>
-                 );
-               }
+                  </div>
+                );
+              }
 
-               const isComplexSelect = field.type === "select" || field.key === "institution" || field.key === "medication";
-               if (isComplexSelect && !field.options) {
-                 let items: any[] = [];
-                 let renderItem: any, getItemLabel: any, getItemId: any, isModalOpen = false, setIsModalOpen: any, onSelect: any, title = "";
+              const isComplexSelect = field.type === "select" || field.key === "institution" || field.key === "medication";
+              if (isComplexSelect && !field.options) {
+                let items: any[] = [];
+                let renderItem: any, getItemLabel: any, getItemId: any, isModalOpen = false, setIsModalOpen: any, onSelect: any, title = "";
 
-                 if (field.key === "doctor") {
-                   items = medicos; title = "Médico";
-                   renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
-                   getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
-                   isModalOpen = isDoctorModalOpen; setIsModalOpen = setIsDoctorModalOpen;
-                   onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
-                 } else if (field.key === "pharmacy") {
-                    items = farmacias; title = "Farmácia";
-                    renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
-                    getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
-                    isModalOpen = isPharmacyModalOpen; setIsModalOpen = setIsPharmacyModalOpen;
-                    onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
-                 } else if (field.key === "hospital") {
-                    items = hospitais; title = "Hospital";
-                    renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
-                    getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
-                    isModalOpen = isHospitalModalOpen; setIsModalOpen = setIsHospitalModalOpen;
-                    onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
-                 }
+                if (field.key === "doctor") {
+                  items = medicos; title = "Médico";
+                  renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
+                  getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
+                  isModalOpen = isDoctorModalOpen; setIsModalOpen = setIsDoctorModalOpen;
+                  onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
+                } else if (field.key === "pharmacy") {
+                  items = farmacias; title = "Farmácia";
+                  renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
+                  getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
+                  isModalOpen = isPharmacyModalOpen; setIsModalOpen = setIsPharmacyModalOpen;
+                  onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
+                } else if (field.key === "hospital") {
+                  items = hospitais; title = "Hospital";
+                  renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
+                  getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
+                  isModalOpen = isHospitalModalOpen; setIsModalOpen = setIsHospitalModalOpen;
+                  onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
+                }
 
-                 const selectedItem = items.find((item: any) => String(item.id) === formData.metadata[field.key]);
+                const selectedItem = items.find((item: any) => String(item.id) === formData.metadata[field.key]);
 
-                 return (
-                   <div key={field.key}>
-                     <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
-                     <button onClick={() => { trigger("vibrate"); setIsModalOpen(true); }} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary">
-                       {selectedItem ? selectedItem.nome : `Selecionar ${field.label.toLowerCase()}`}
-                     </button>
-                     {isModalOpen && (
-                        <SelectionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSelect={onSelect} items={items} title={title} placeholder="Buscar..." renderItem={renderItem} getItemId={getItemId} getItemLabel={getItemLabel} onCreateNew={() => setIsModalOpen(false)} createNewLabel="" />
-                     )}
-                   </div>
-                 );
-               }
+                return (
+                  <div key={field.key}>
+                    <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
+                    <button
+                      onClick={() => { trigger("vibrate"); setIsModalOpen(true); }}
+                      className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
+                      type="button"
+                    >
+                      {selectedItem ? selectedItem.nome : `Selecionar ${field.label.toLowerCase()}`}
+                    </button>
+                    {isModalOpen && (
+                      <SelectionModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        onSelect={onSelect}
+                        items={items}
+                        title={title}
+                        placeholder="Buscar..."
+                        renderItem={renderItem}
+                        getItemId={getItemId}
+                        getItemLabel={getItemLabel}
+                        onCreateNew={() => setIsModalOpen(false)}
+                        createNewLabel=""
+                      />
+                    )}
+                  </div>
+                );
+              }
 
-               return (
-                 <Input
-                   key={field.key}
-                   label={field.label}
-                   type="text"
-                   value={displayedValue}
-                   onChange={(e) => {
-                     const raw = maskType ? e.target.value.replace(/\D/g, "") : e.target.value;
-                     handleMetadataChange(field.key, raw);
-                   }}
-                   placeholder={field.type === 'date' ? "DD/MM/AAAA" : `Digite ${field.label.toLowerCase()}...`}
-                 />
-               );
+              return (
+                <Input
+                  key={field.key}
+                  label={field.label}
+                  type="text"
+                  value={displayedValue}
+                  onChange={(e) => {
+                    const raw = maskType ? e.target.value.replace(/\D/g, "") : e.target.value;
+                    handleMetadataChange(field.key, raw);
+                  }}
+                  placeholder={field.type === 'date' ? "DD/MM/AAAA" : `Digite ${field.label.toLowerCase()}...`}
+                />
+              );
             })}
 
             <TextArea label="Notas" value={formData.description} onChange={(e) => handleChange("description", e.target.value)} />
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-             <div className="mb-3">
-               <label className="block text-sm font-medium text-ink-primary">Anexos</label>
-             </div>
-             <div className="grid grid-cols-2 gap-3">
-               <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading || saveAction.isSubmitting}>
-                 <Upload size={16} /> Arquivo
-               </Button>
-               <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => cameraInputRef.current?.click()} disabled={uploading || saveAction.isSubmitting}>
-                 <Camera size={16} /> Câmera
-               </Button>
-               <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-               <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleCameraCapture} className="hidden" />
-             </div>
-             <AnimatePresence>
-               {formData.attachments.map((att) => (
-                 <motion.div key={att.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
-                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface border border-surface-border/40">
-                     {att.type === "image" ? <ImageIcon size={16} className="text-ice" /> : <FileText size={16} className="text-ice" />}
-                   </div>
-                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink-primary">{att.name}</p></div>
-                   <button onClick={() => removeAttachment(att.id)} className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:text-ink-primary"><X size={14} /></button>
-                 </motion.div>
-               ))}
-             </AnimatePresence>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-ink-primary">Anexos</label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading || saveAction.isSubmitting}>
+                <Upload size={16} /> Arquivo
+              </Button>
+              <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => cameraInputRef.current?.click()} disabled={uploading || saveAction.isSubmitting}>
+                <Camera size={16} /> Câmera
+              </Button>
+              <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+              <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleCameraCapture} className="hidden" />
+            </div>
+            <AnimatePresence>
+              {formData.attachments.map((att) => (
+                <motion.div key={att.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface border border-surface-border/40">
+                    {att.type === "image" ? <ImageIcon size={16} className="text-ice" /> : <FileText size={16} className="text-ice" />}
+                  </div>
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink-primary">{att.name}</p></div>
+                  <button onClick={() => removeAttachment(att.id)} className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:text-ink-primary" type="button" aria-label={`Remover anexo ${att.name}`}><X size={14} /></button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
@@ -565,30 +584,32 @@ export default function EditarDetalhePage() {
 
         <BottomSheet isOpen={isTypeModalOpen} onClose={() => setIsTypeModalOpen(false)} title="Selecionar tipo">
           <div className="grid grid-cols-2 gap-3 px-1 pb-4">
-             {availableTypes.map((typeObj) => {
-               const TYPE_ICONS: Record<string, any> = {
-                 rg: Contact, cpf: FileText, cnh: CreditCard,
-                 certidao_nascimento: Scroll, titulo_eleitor: Landmark, certificado: Award,
-                 receita: Pill, prontuario: Heart, laudo: FileText,
-                 encaminhamento: FileOutput, consulta: Stethoscope, cirurgia: ActivityIcon, 
-                 exame_sangue: ActivityIcon, exame_imagem: ActivityIcon, credencial: Contact,
-                 outro: Folder,
-               };
-               const Icon = TYPE_ICONS[typeObj] || FileText;
-               const isActive = formData.type === typeObj;
+            {availableTypes.map((typeObj) => {
+              const TYPE_ICONS: Record<string, any> = {
+                rg: Contact, cpf: FileText, cnh: CreditCard,
+                certidao_nascimento: Scroll, titulo_eleitor: Landmark, certificado: Award,
+                receita: Pill, prontuario: Heart, laudo: FileText,
+                encaminhamento: FileOutput, consulta: Stethoscope, cirurgia: ActivityIcon,
+                exame_sangue: ActivityIcon, exame_imagem: ActivityIcon, credencial: Contact,
+                outro: Folder,
+              };
+              const Icon = TYPE_ICONS[typeObj] || FileText;
+              const isActive = formData.type === typeObj;
 
-               return (
-                 <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    key={typeObj}
-                    onClick={() => { trigger("vibrate"); handleChange("type", typeObj); setIsTypeModalOpen(false); }}
-                    className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${isActive ? "border-ice bg-ice/10" : "border-surface-border/50 bg-surface hover:bg-surface-raised"}`}
-                 >
-                   <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${isActive ? 'bg-ice/20 text-ice' : 'bg-surface-raised text-ink-muted'}`}><Icon size={20} /></div>
-                   <span className={`text-sm font-semibold mb-1 ${isActive ? 'text-ice' : 'text-ink-primary'}`}>{DOCUMENT_TYPE_LABELS[typeObj]}</span>
-                 </motion.button>
-               );
-             })}
+              return (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  key={typeObj}
+                  onClick={() => { trigger("vibrate"); handleChange("type", typeObj); setIsTypeModalOpen(false); }}
+                  className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${isActive ? "border-ice bg-ice/10" : "border-surface-border/50 bg-surface hover:bg-surface-raised"}`}
+                  type="button"
+                  aria-pressed={isActive}
+                >
+                  <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${isActive ? 'bg-ice/20 text-ice' : 'bg-surface-raised text-ink-muted'}`}><Icon size={20} /></div>
+                  <span className={`text-sm font-semibold mb-1 ${isActive ? 'text-ice' : 'text-ink-primary'}`}>{DOCUMENT_TYPE_LABELS[typeObj]}</span>
+                </motion.button>
+              );
+            })}
           </div>
         </BottomSheet>
 

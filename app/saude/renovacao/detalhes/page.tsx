@@ -4,10 +4,23 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, FileWarning, Calendar, DollarSign, ExternalLink, 
-  Trash2, Pill, FileText, Edit3, AlertCircle, CheckCircle2, Clock,
-  History, ChevronRight, Plus, Receipt
+import {
+  ArrowLeft,
+  FileWarning,
+  Calendar,
+  DollarSign,
+  ExternalLink,
+  Trash2,
+  Pill,
+  FileText,
+  Edit3,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  History,
+  ChevronRight,
+  Plus,
+  Receipt,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -16,7 +29,7 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
-import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils"; // INJEÇÃO VISUAL
+import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
 import type { Renovacao, Medicamento, Medico, Farmacia } from "@/lib/types";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useMounted } from "@/hooks/useMounted";
@@ -67,28 +80,28 @@ function DetalhesRenovacaoContent() {
         const res = await db.renovacoes.get(id);
         if (res) {
           setRenovacao(res);
-          
+
           if (res.medicamento_id) {
             const med = await db.medicamentos.get(res.medicamento_id);
             setMedicamento(med || null);
-            
+
             const outrasRenovacoes = await db.renovacoes
-              .where('medicamento_id')
+              .where("medicamento_id")
               .equals(res.medicamento_id)
               .toArray();
-            
+
             const historico = outrasRenovacoes
-              .filter(r => r.id !== res.id)
+              .filter((r) => r.id !== res.id)
               .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
               .slice(0, 5);
-            
+
             setHistoricoRenovacoes(historico);
-            
+
             if (res.medico_id) {
               const doc = await db.medicos.get(res.medico_id);
               setMedico(doc || null);
             }
-            
+
             if (res.farmacia_id) {
               const farm = await db.farmacias.get(res.farmacia_id);
               setFarmacia(farm || null);
@@ -104,7 +117,7 @@ function DetalhesRenovacaoContent() {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
   }, [id, router]);
 
@@ -127,8 +140,18 @@ function DetalhesRenovacaoContent() {
   };
 
   const menuOptions = [
-    { id: "nova-renovacao", label: "Nova Renovação", icon: FileWarning, path: `/saude/renovacao/nova?medicamento_id=${medicamento?.id || ''}` },
-    { id: "editar-renovacao", label: "Editar Renovação", icon: Edit3, path: `/saude/renovacao/editar?id=${id}` },
+    {
+      id: "nova-renovacao",
+      label: "Nova Renovação",
+      icon: FileWarning,
+      path: `/saude/renovacao/nova?medicamento_id=${medicamento?.id || ""}`,
+    },
+    {
+      id: "editar-renovacao",
+      label: "Editar Renovação",
+      icon: Edit3,
+      path: `/saude/renovacao/editar?id=${id}`,
+    },
   ];
 
   const handleMenuOptionClick = (path: string) => {
@@ -140,142 +163,176 @@ function DetalhesRenovacaoContent() {
   if (isLoading) return <DetailSkeleton />;
   if (!renovacao) return null;
 
-  const precoFormatado = renovacao.preco 
-    ? formatCurrency(renovacao.preco)
-    : "SUS / Gratuito";
+  const precoFormatado = renovacao.preco ? formatCurrency(renovacao.preco) : "SUS / Gratuito";
 
-  const vencida = medicamento ? isReceitaVencidaSegura(medicamento.proxima_renovacao) : isReceitaVencidaSegura(renovacao.data);
+  const vencida = medicamento
+    ? isReceitaVencidaSegura(medicamento.proxima_renovacao)
+    : isReceitaVencidaSegura(renovacao.data);
   const diasRestantes = getDaysUntil(medicamento?.proxima_renovacao || renovacao.data);
 
-  // TEMA DINÂMICO
   const theme = getClinicalTheme(medicamento?.nome || "Renovação");
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-            <div className="min-w-0">
-              <p className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.textClass}`}>Vault</p>
-              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Detalhes da Renovação</h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="relative">
+      <main className="relative min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+        {/* ===== HEADER ===== */}
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <button
-                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                aria-label="Voltar"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
               >
-                <Plus size={18} />
+                <ArrowLeft size={18} />
               </button>
-              <AnimatePresence>
-                {isMenuFlutuanteOpen && (
-                  <>
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.16 }}
-                      onClick={() => setIsMenuFlutuanteOpen(false)}
-                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
-                    >
-                      <div className="px-3 pb-2 pt-3.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
-                      </div>
-                      <div className="px-1.5 pb-2">
-                        {menuOptions.map((option) => {
-                          const Icon = option.icon;
-                          return (
-                            <button
-                              key={option.id}
-                              onClick={() => handleMenuOptionClick(option.path)}
-                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
-                            >
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                                <Icon size={15} />
-                              </div>
-                              <span className="text-sm font-medium text-ink-primary">
-                                {option.label}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
+
+              <div className="min-w-0">
+                <p className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.textClass}`}>
+                  Vault
+                </p>
+                <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
+                  Detalhes da Renovação
+                </h1>
+              </div>
             </div>
 
-            <button
-              onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/editar?id=${id}`); }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ice transition-all active:scale-95 hover:bg-ice/10"
-              aria-label="Editar renovação"
-            >
-              <Edit3 size={16} />
-            </button>
-            <button
-              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen);
+                  }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
+                  aria-label="Menu"
+                >
+                  <Plus size={18} />
+                </button>
+                <AnimatePresence>
+                  {isMenuFlutuanteOpen && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.16 }}
+                        onClick={() => setIsMenuFlutuanteOpen(false)}
+                        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                        className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="px-3 pb-2 pt-3.5">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
+                            Adicionar
+                          </p>
+                        </div>
+                        <div className="space-y-0.5 px-1.5 pb-2">
+                          {menuOptions.map((option) => {
+                            const Icon = option.icon;
+                            return (
+                              <button
+                                key={option.id}
+                                type="button"
+                                onClick={() => handleMenuOptionClick(option.path)}
+                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                              >
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                  <Icon size={15} />
+                                </div>
+                                <span className="text-sm font-medium text-ink-primary">
+                                  {option.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push(`/saude/renovacao/editar?id=${id}`);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ice transition-all active:scale-95 hover:bg-ice/10"
+                aria-label="Editar renovação"
+              >
+                <Edit3 size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setShowDeleteModal(true);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+                aria-label="Excluir renovação"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-5">
-          <motion.div 
-            variants={fadeUp} 
-            initial="initial" 
-            animate="animate" 
-            className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ 
-              borderLeft: `6px solid ${vencida ? '#EF4444' : theme.hex}` 
+        {/* ===== CONTEÚDO ===== */}
+        <section className="space-y-5 px-5 pt-6">
+          {/* Card principal */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm"
+            style={{
+              borderLeft: `6px solid ${vencida ? "#EF4444" : theme.hex}`,
             }}
           >
             <div className="flex items-start gap-4">
-              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
+              <div
+                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}
+              >
                 <Receipt size={24} />
               </div>
               <div className="min-w-0 pt-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-display text-xl font-bold text-ink-primary truncate">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="truncate font-display text-xl font-bold text-ink-primary">
                     {medicamento?.nome || "Medicamento"}
                   </h2>
                   {vencida ? (
-                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-coral/20 text-coral px-2 py-0.5 rounded-full border border-coral/30">
+                    <span className="flex items-center gap-1 rounded-full border border-coral/30 bg-coral/20 px-2 py-0.5 text-[10px] font-bold uppercase text-coral">
                       <AlertCircle size={10} /> Vencida
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-400/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-400/30">
+                    <span className="flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/20 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-400">
                       <CheckCircle2 size={10} /> Válida
                     </span>
                   )}
                 </div>
-                <p className={`text-sm font-medium mt-0.5 ${theme.textClass}`}>
+                <p className={`mt-0.5 text-sm font-medium ${theme.textClass}`}>
                   {medicamento?.dosagem || ""}
                 </p>
                 {medico && (
-                  <p className="text-xs text-ink-muted mt-1">
+                  <p className="mt-1 text-xs text-ink-muted">
                     <span className="font-medium">Prescrito por:</span> Dr(a). {medico.nome}
                   </p>
                 )}
                 {farmacia && (
-                  <p className="text-xs text-ink-muted mt-0.5">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     <span className="font-medium">Farmácia:</span> {farmacia.nome}
                   </p>
                 )}
@@ -283,47 +340,61 @@ function DetalhesRenovacaoContent() {
             </div>
 
             {diasRestantes !== null && !vencida && (
-              <div className="pt-2 border-t border-surface-border/40">
-                <div className={`flex items-center gap-2 text-xs ${
-                  diasRestantes <= 7 ? 'text-amber-400' : 'text-ink-muted'
-                }`}>
+              <div className="mt-3 border-t border-surface-border/40 pt-3">
+                <div
+                  className={`flex items-center gap-2 text-xs ${
+                    diasRestantes <= 7 ? "text-amber-400" : "text-ink-muted"
+                  }`}
+                >
                   <Clock size={14} />
                   <span>
                     {diasRestantes <= 7 ? (
                       <span className="font-medium text-amber-400">Atenção!</span>
                     ) : (
                       <span>Faltam</span>
-                    )}
-                    {' '}{diasRestantes} dias para o vencimento da receita
+                    )}{" "}
+                    {diasRestantes} dias para o vencimento da receita
                   </span>
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-surface-border/40">
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-surface-border/40 pt-4">
               <div className="rounded-2xl bg-surface-raised p-3">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Data da Receita</p>
-                <p className="mt-0.5 text-sm font-semibold text-ink-primary font-mono">{formatDateDisplay(renovacao.data)}</p>
+                <p className="font-mono text-[10px] uppercase text-ink-muted">
+                  Data da Receita
+                </p>
+                <p className="mt-0.5 font-mono text-sm font-semibold text-ink-primary">
+                  {formatDateDisplay(renovacao.data)}
+                </p>
               </div>
               <div className="rounded-2xl bg-surface-raised p-3">
-                <p className="text-[10px] uppercase font-mono text-ink-muted">Custo Registrado</p>
-                <p className="mt-0.5 text-sm font-semibold text-emerald-400">{precoFormatado}</p>
+                <p className="font-mono text-[10px] uppercase text-ink-muted">
+                  Custo Registrado
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-emerald-400">
+                  {precoFormatado}
+                </p>
               </div>
             </div>
 
             {renovacao.observacoes && (
-              <div className="pt-2">
-                <p className="text-xs font-medium text-ink-muted mb-1">Notas / Observações</p>
-                <p className="text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40">{renovacao.observacoes}</p>
+              <div className="mt-3">
+                <p className="mb-1 text-xs font-medium text-ink-muted">
+                  Notas / Observações
+                </p>
+                <p className="rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3 text-xs text-ink-primary">
+                  {renovacao.observacoes}
+                </p>
               </div>
             )}
 
             {renovacao.anexo_url && (
-              <a 
-                href={renovacao.anexo_url} 
-                target="_blank" 
+              <a
+                href={renovacao.anexo_url}
+                target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 p-3.5 text-ice hover:bg-ice/20 transition-colors mt-2"
+                className="mt-3 flex items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 p-3.5 text-ice transition-colors hover:bg-ice/20"
               >
                 <div className="flex items-center gap-2 text-xs font-semibold">
                   <FileText size={16} /> Ver Comprovante / Receita Anexada
@@ -333,12 +404,21 @@ function DetalhesRenovacaoContent() {
             )}
           </motion.div>
 
+          {/* Histórico */}
           {historicoRenovacoes.length > 0 && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.05 }}
+              className="space-y-3"
+            >
               <div className="flex items-center gap-2 pl-1">
                 <History size={16} className="text-amber-400" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">Histórico de Renovações</h3>
-                <span className="text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">
+                <h3 className="font-display text-base font-semibold text-ink-primary">
+                  Histórico de Renovações
+                </h3>
+                <span className="rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
                   {historicoRenovacoes.length} anteriores
                 </span>
               </div>
@@ -346,11 +426,16 @@ function DetalhesRenovacaoContent() {
                 {historicoRenovacoes.map((r) => (
                   <div
                     key={r.id}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/renovacao/detalhes?id=${r.id}`); }}
-                    className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 cursor-pointer hover:border-amber-400/30 transition-all active:scale-[0.98]"
+                    onClick={() => {
+                      trigger("vibrate");
+                      router.push(`/saude/renovacao/detalhes?id=${r.id}`);
+                    }}
+                    className="flex cursor-pointer items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 transition-all hover:border-amber-400/30 active:scale-[0.98]"
                   >
                     <div>
-                      <p className="text-sm font-semibold text-ink-primary">{formatDateDisplay(r.data)}</p>
+                      <p className="text-sm font-semibold text-ink-primary">
+                        {formatDateDisplay(r.data)}
+                      </p>
                       {r.preco && (
                         <p className="text-xs text-emerald-400">{formatCurrency(r.preco)}</p>
                       )}
@@ -362,41 +447,57 @@ function DetalhesRenovacaoContent() {
             </motion.div>
           )}
 
+          {/* Rede de Apoio */}
           {(medico || farmacia) && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
-              <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Rede de Apoio</h3>
-              {medico && (
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
-                    <Pill size={14} />
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.1 }}
+              className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            >
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                Rede de Apoio
+              </h3>
+              <div className="mt-3 space-y-3">
+                {medico && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
+                      <Pill size={14} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-ink-muted">Médico</p>
+                      <p className="text-sm font-semibold text-ink-primary">
+                        Dr(a). {medico.nome}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-ink-muted">Médico</p>
-                    <p className="text-sm font-semibold text-ink-primary">Dr(a). {medico.nome}</p>
+                )}
+                {farmacia && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400">
+                      <DollarSign size={14} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-ink-muted">Farmácia</p>
+                      <p className="text-sm font-semibold text-ink-primary">
+                        {farmacia.nome}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-              {farmacia && (
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400">
-                    <DollarSign size={14} />
-                  </div>
-                  <div>
-                    <p className="text-xs text-ink-muted">Farmácia</p>
-                    <p className="text-sm font-semibold text-ink-primary">{farmacia.nome}</p>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </motion.div>
           )}
         </section>
 
-        <ConfirmationModal 
-          isOpen={showDeleteModal} 
-          onClose={() => setShowDeleteModal(false)} 
-          onConfirm={handleDelete} 
-          title="Excluir Registro" 
-          message="Tem certeza que deseja excluir este registro de renovação?" 
+        {/* ===== MODAL ===== */}
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir Registro"
+          message="Tem certeza que deseja excluir este registro de renovação?"
           isLoading={deleting}
         />
       </main>
@@ -405,5 +506,9 @@ function DetalhesRenovacaoContent() {
 }
 
 export default function DetalhesRenovacaoPage() {
-  return <Suspense fallback={<DetailSkeleton />}><DetalhesRenovacaoContent /></Suspense>;
+  return (
+    <Suspense fallback={<DetailSkeleton />}>
+      <DetalhesRenovacaoContent />
+    </Suspense>
+  );
 }

@@ -210,13 +210,13 @@ function EditarMedicoContent() {
       <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
+            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95" type="button" aria-label="Voltar">
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div className="min-w-0 flex-1">
               <h1 className="font-display text-xl font-semibold text-ink-primary truncate">{nome || "Editar médico"}</h1>
             </div>
-            <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95">
+            <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95" type="button" aria-label="Excluir médico">
               <Trash2 size={16} />
             </button>
           </div>
@@ -246,7 +246,7 @@ function EditarMedicoContent() {
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
                   <Building2 size={14} className="text-ice" /> Hospitais / Clínicas
                 </h2>
-                <button onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+                <button onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Adicionar hospital">
                   <Plus size={12} /> Adicionar
                 </button>
               </div>
@@ -257,7 +257,7 @@ function EditarMedicoContent() {
                   {hospitaisVinculados.map((h) => (
                     <div key={h.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
                       <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{h.nome}</span>
-                      <button onClick={() => handleRemoveHospital(h.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button>
+                      <button onClick={() => handleRemoveHospital(h.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${h.nome}`}><X size={12} /></button>
                     </div>
                   ))}
                 </div>
@@ -270,7 +270,7 @@ function EditarMedicoContent() {
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
                   <MapPin size={14} className="text-emerald-400" /> Postos de Saúde / Locais
                 </h2>
-                <button onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+                <button onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Adicionar local">
                   <Plus size={12} /> Adicionar
                 </button>
               </div>
@@ -281,7 +281,7 @@ function EditarMedicoContent() {
                   {locaisVinculados.map((l) => (
                     <div key={l.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
                       <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{l.nome}</span>
-                      <button onClick={() => handleRemoveLocal(l.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button>
+                      <button onClick={() => handleRemoveLocal(l.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${l.nome}`}><X size={12} /></button>
                     </div>
                   ))}
                 </div>
@@ -295,7 +295,7 @@ function EditarMedicoContent() {
               <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
                 <Activity size={14} className="text-violet-400" /> Tratamentos Associados
               </h2>
-              <button onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all">
+              <button onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Adicionar tratamento">
                 <Plus size={12} /> Adicionar
               </button>
             </div>
@@ -306,7 +306,7 @@ function EditarMedicoContent() {
                 {tratamentosVinculados.map((t) => (
                   <div key={t.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1" style={{ borderLeft: `3px solid ${t.cor || '#8B5CF6'}` }}>
                     <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{t.nome}</span>
-                    <button onClick={() => handleRemoveTratamento(t.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors"><X size={12} /></button>
+                    <button onClick={() => handleRemoveTratamento(t.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${t.nome}`}><X size={12} /></button>
                   </div>
                 ))}
               </div>
@@ -326,7 +326,7 @@ function EditarMedicoContent() {
                   <h3 className="text-[10px] font-bold text-ink-muted uppercase tracking-wider mb-2 flex items-center gap-1"><Pill size={12} className="text-emerald-400" /> Prescrições do Médico</h3>
                   <div className="space-y-2">
                     {medicamentosVinculados.slice(0, 3).map(m => (
-                      <div key={m.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${m.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div key={m.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${m.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                         <div className="min-w-0">
                           <p className={`text-xs font-semibold truncate ${m.status === 'ativo' ? 'text-ink-primary' : 'text-ink-muted line-through'}`}>{m.nome}</p>
                           <p className="text-[10px] text-ink-muted">{m.dosagem}</p>
@@ -344,7 +344,7 @@ function EditarMedicoContent() {
                   <h3 className="text-[10px] font-bold text-ink-muted uppercase tracking-wider mb-2 mt-3 flex items-center gap-1"><Calendar size={12} className="text-ice" /> Consultas e Procedimentos</h3>
                   <div className="space-y-2.5">
                     {consultasVinculadas.slice(0, 2).map((c) => (
-                      <div key={c.id} onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div key={c.id} onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/10 text-ice"><Calendar size={14} /></div>
                           <div><p className="text-xs font-semibold text-ink-primary truncate">Consulta: {c.especialidade}</p><p className="text-[10px] text-ink-muted">{formatDateDisplay(c.data)}</p></div>
@@ -354,7 +354,7 @@ function EditarMedicoContent() {
                     ))}
 
                     {cirurgiasVinculadas.slice(0, 2).map((c) => (
-                      <div key={c.id} onClick={() => router.push(`/saude/cirurgias/detalhes?id=${c.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div key={c.id} onClick={() => router.push(`/saude/cirurgias/detalhes?id=${c.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-coral/10 text-coral"><Activity size={14} /></div>
                           <div><p className="text-xs font-semibold text-ink-primary truncate">Cirurgia: {c.procedimento}</p><p className="text-[10px] text-ink-muted">{formatDateDisplay(c.data)}</p></div>
@@ -364,7 +364,7 @@ function EditarMedicoContent() {
                     ))}
 
                     {examesVinculados.slice(0, 2).map((e) => (
-                      <div key={e.id} onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer">
+                      <div key={e.id} onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400"><FlaskConical size={14} /></div>
                           <div><p className="text-xs font-semibold text-ink-primary truncate">Exame: {e.nome}</p><p className="text-[10px] text-ink-muted">{formatDateDisplay(e.data)}</p></div>
