@@ -51,15 +51,47 @@ import {
 } from "@/components/list";
 
 /* ============================================================
-   CONFIGURAÇÕES (UNIFICADAS COM A TELA DE DETALHES)
+   FORMATOS (IDÊNTICO À TELA DE DETALHES)
    ============================================================ */
 
+const SplitPillIcon = ({
+  size,
+  fill = "currentColor",
+  stroke = "currentColor",
+  strokeWidth = 2,
+}: {
+  size?: number;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={stroke}
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="10" fill={fill} />
+    <line
+      x1="12"
+      y1="2"
+      x2="12"
+      y2="22"
+      stroke="rgba(0,0,0,0.3)"
+      strokeWidth="2"
+    />
+  </svg>
+);
+
 const FORMATOS = [
-  { id: "inteiro", label: "Inteiro", icon: Circle },
-  { id: "comprimido", label: "Comprimido", icon: Pill },
-  { id: "partido", label: "Partido", icon: Pill },
+  { id: "comprimido", label: "Inteiro", icon: Circle },
+  { id: "partido", label: "Partido", icon: SplitPillIcon },
   { id: "capsula", label: "Cápsula", icon: Pill },
-  { id: "gota", label: "Gota", icon: Droplet },
+  { id: "gota", label: "Gotas", icon: Droplet },
   { id: "gotas", label: "Gotas", icon: Droplet },
   { id: "injecao", label: "Injeção", icon: Syringe },
   { id: "adesivo", label: "Adesivo", icon: StickyNote },
@@ -361,12 +393,14 @@ export default function MedicamentosListPage() {
               const insight = isSuspenso ? null : sugerirRenovacao(med);
               const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
 
-              // 🛡️ CORREÇÃO ROBUSTA DE FORMATO DE ÍCONE
+              // 🛡️ MESMA LÓGICA EXATA DA TELA DE DETALHES
               const formatoBanco = med.formato?.toLowerCase().trim() || "comprimido";
-              const itemFormato = 
-                FORMATOS.find((f) => f.id === formatoBanco) || 
-                FORMATOS.find((f) => f.id.includes(formatoBanco) || formatoBanco.includes(f.id)) || 
-                FORMATOS[0];
+              const itemFormato =
+                FORMATOS.find(
+                  (formato) =>
+                    formato.id === formatoBanco
+                ) || FORMATOS[0];
+
               const SelectedFormatIcon = itemFormato.icon;
 
               const cor1 = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
@@ -601,7 +635,7 @@ export default function MedicamentosListPage() {
                         }
                       `}
                     >
-                      <FileWarning size={12} />
+                      <FileWarning size=12 />
                       <span className="text-left">{insight.mensagem}</span>
                     </button>
                   )}
