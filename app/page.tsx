@@ -1299,95 +1299,77 @@ export default function HomePage() {
             </button>
           </motion.section>
 
-          {/* =========================================================
-              ATENÇÃO
+{/*        =========================================================
+              ATENÇÃO (Carrossel Horizontal)
           ========================================================= */}
-
           {unifiedAlerts.length > 0 && (
             <motion.section
-              initial={{
-                opacity: 0,
-                y: 10,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 0.24,
-                delay: 0.04,
-              }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: 0.04 }}
               className="space-y-3"
             >
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-coral/10 text-coral">
-                  <Bell size={16} />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-coral/10 text-coral">
+                    <Bell size={16} />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-sm font-semibold text-ink-primary">
+                      Atenção
+                    </h2>
+                    <p className="text-[10px] text-ink-muted">
+                      Itens que merecem sua atenção
+                    </p>
+                  </div>
                 </div>
-
-                <div>
-                  <h2 className="font-display text-sm font-semibold text-ink-primary">
-                    Atenção
-                  </h2>
-
-                  <p className="text-[10px] text-ink-muted">
-                    Itens que merecem sua atenção
-                  </p>
-                </div>
-
-                <span className="ml-auto rounded-full bg-coral/10 px-2.5 py-1 text-[10px] font-semibold text-coral">
+                <span className="rounded-full bg-coral/10 px-2.5 py-1 text-[10px] font-semibold text-coral">
                   {unifiedAlerts.length}
                 </span>
               </div>
 
-              <div className="space-y-2.5">
+              <div
+                className="-mx-5 flex snap-x snap-mandatory overflow-x-auto px-5 pb-4 gap-3 scrollbar-hide"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
                 {unifiedAlerts.map((alert) => (
-                  <AlertRow
+                  <div
                     key={alert.id}
-                    alert={alert}
-                  />
+                    className="w-[85%] max-w-[320px] shrink-0 snap-start"
+                  >
+                    <AlertRow alert={alert} />
+                  </div>
                 ))}
+                {/* Espaçador final */}
+                <div className="w-2 shrink-0" />
               </div>
             </motion.section>
           )}
 
-          {/* =========================================================
-              COMPROMISSOS DE HOJE
+          {/* =     =========================================================
+              COMPROMISSOS DE HOJE (Carrossel Horizontal)
           ========================================================= */}
-
           {totalCompromissosHoje > 0 && (
             <motion.section
-              initial={{
-                opacity: 0,
-                y: 10,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 0.24,
-                delay: 0.06,
-              }}
-              className="rounded-[26px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: 0.06 }}
+              className="space-y-3"
             >
-              <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Calendar
-                    size={16}
-                    className="text-ice"
-                  />
-
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                    <Calendar size={16} />
+                  </div>
                   <div>
                     <h2 className="font-display text-sm font-semibold text-ink-primary">
                       Hoje
                     </h2>
-
                     <p className="text-[10px] text-ink-muted">
                       Seus compromissos clínicos
                     </p>
                   </div>
                 </div>
-
                 <button
                   onClick={() => {
                     trigger("vibrate");
@@ -1399,138 +1381,68 @@ export default function HomePage() {
                 </button>
               </div>
 
-              <div className="space-y-2.5">
-                {consultasHoje.map(
-                  (consulta: any) => (
-                    <button
-                      key={consulta.id}
-                      onClick={() => {
-                        trigger("vibrate");
-
-                        router.push(
-                          `/saude/consultas/detalhes?id=${consulta.id}`
-                        );
-                      }}
-                      className="flex w-full items-center gap-3 rounded-2xl border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.985]"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+              <div
+                className="-mx-5 flex snap-x snap-mandatory overflow-x-auto px-5 pb-4 gap-3 scrollbar-hide"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                {consultasHoje.map((consulta: any) => (
+                  <div key={consulta.id} className="w-[85%] max-w-[320px] shrink-0 snap-start">
+                    <button onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${consulta.id}`); }} className="flex w-full items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:border-ice/30">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                         <Stethoscope size={18} />
                       </div>
-
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-ink-primary">
-                          {consulta.especialidade ||
-                            "Consulta"}
-                        </p>
-
-                        <p className="truncate text-[11px] text-ink-muted">
-                          Dr(a).{" "}
-                          {consulta.medico ||
-                            "não informado"}
-                        </p>
+                        <p className="truncate text-sm font-semibold text-ink-primary">{consulta.especialidade || "Consulta"}</p>
+                        <p className="truncate text-[11px] text-ink-muted">Dr(a). {consulta.medico || "não informado"}</p>
                       </div>
-
                       <div className="shrink-0 text-right">
-                        <p className="font-mono text-xs font-bold text-coral">
-                          {consulta.horario ||
-                            "Hoje"}
-                        </p>
-
-                        <ChevronRight
-                          size={14}
-                          className="ml-auto mt-1 text-ink-faint"
-                        />
+                        <p className="font-mono text-xs font-bold text-coral">{consulta.horario || "Hoje"}</p>
+                        <ChevronRight size={14} className="ml-auto mt-1 text-ink-faint" />
                       </div>
                     </button>
-                  )
-                )}
+                  </div>
+                ))}
 
-                {cirurgiasHoje.map(
-                  (cirurgia: any) => (
-                    <button
-                      key={cirurgia.id}
-                      onClick={() => {
-                        trigger("vibrate");
-
-                        router.push(
-                          `/saude/cirurgias/detalhes?id=${cirurgia.id}`
-                        );
-                      }}
-                      className="flex w-full items-center gap-3 rounded-2xl border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.985]"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                {cirurgiasHoje.map((cirurgia: any) => (
+                  <div key={cirurgia.id} className="w-[85%] max-w-[320px] shrink-0 snap-start">
+                    <button onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cirurgia.id}`); }} className="flex w-full items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:border-violet-400/30">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
                         <Activity size={18} />
                       </div>
-
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-ink-primary">
-                          {cirurgia.procedimento ||
-                            "Cirurgia"}
-                        </p>
-
-                        <p className="text-[11px] text-ink-muted">
-                          Procedimento agendado
-                        </p>
+                        <p className="truncate text-sm font-semibold text-ink-primary">{cirurgia.procedimento || "Cirurgia"}</p>
+                        <p className="text-[11px] text-ink-muted">Procedimento agendado</p>
                       </div>
-
                       <div className="shrink-0 text-right">
-                        <p className="font-mono text-xs font-bold text-coral">
-                          Hoje
-                        </p>
-
-                        <ChevronRight
-                          size={14}
-                          className="ml-auto mt-1 text-ink-faint"
-                        />
+                        <p className="font-mono text-xs font-bold text-coral">Hoje</p>
+                        <ChevronRight size={14} className="ml-auto mt-1 text-ink-faint" />
                       </div>
                     </button>
-                  )
-                )}
+                  </div>
+                ))}
 
-                {examesHoje.map(
-                  (exame: any) => (
-                    <button
-                      key={exame.id}
-                      onClick={() => {
-                        trigger("vibrate");
-
-                        router.push(
-                          `/saude/exames/detalhes?id=${exame.id}`
-                        );
-                      }}
-                      className="flex w-full items-center gap-3 rounded-2xl border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.985]"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                {examesHoje.map((exame: any) => (
+                  <div key={exame.id} className="w-[85%] max-w-[320px] shrink-0 snap-start">
+                    <button onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }} className="flex w-full items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:border-emerald-400/30">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
                         <FlaskConical size={18} />
                       </div>
-
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-ink-primary">
-                          {exame.nome ||
-                            "Exame"}
-                        </p>
-
-                        <p className="text-[11px] text-ink-muted">
-                          Exame programado para hoje
-                        </p>
+                        <p className="truncate text-sm font-semibold text-ink-primary">{exame.nome || "Exame"}</p>
+                        <p className="text-[11px] text-ink-muted">Exame para hoje</p>
                       </div>
-
                       <div className="shrink-0 text-right">
-                        <p className="font-mono text-xs font-bold text-coral">
-                          Hoje
-                        </p>
-
-                        <ChevronRight
-                          size={14}
-                          className="ml-auto mt-1 text-ink-faint"
-                        />
+                        <p className="font-mono text-xs font-bold text-coral">Hoje</p>
+                        <ChevronRight size={14} className="ml-auto mt-1 text-ink-faint" />
                       </div>
                     </button>
-                  )
-                )}
+                  </div>
+                ))}
+                <div className="w-2 shrink-0" />
               </div>
             </motion.section>
           )}
+
 
           {/* =========================================================
               MEDICAMENTOS
@@ -1683,43 +1595,35 @@ export default function HomePage() {
             <MedicamentosNotifications />
           </motion.section>
 
-          {/* =========================================================
-              TRATAMENTOS
+{/* =========================================================
+              TRATAMENTOS (Carrossel Horizontal)
           ========================================================= */}
-
           <motion.section
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.24,
-              delay: 0.12,
-            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, delay: 0.12 }}
+            className="space-y-3"
           >
-            <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FolderHeart
-                  size={15}
-                  className="text-violet-400"
-                />
-
-                <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Tratamentos ativos
-                </h2>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                  <FolderHeart size={16} />
+                </div>
+                <div>
+                  <h2 className="font-display text-sm font-semibold text-ink-primary">
+                    Tratamentos ativos
+                  </h2>
+                  <p className="text-[10px] text-ink-muted">
+                    Condições em acompanhamento
+                  </p>
+                </div>
               </div>
 
               {tratamentos.length > 0 && (
                 <button
                   onClick={() => {
                     trigger("vibrate");
-                    router.push(
-                      "/saude/tratamentos"
-                    );
+                    router.push("/saude/tratamentos");
                   }}
                   className="text-[10px] font-semibold text-ice"
                 >
@@ -1729,41 +1633,33 @@ export default function HomePage() {
             </div>
 
             {tratamentos.length === 0 ? (
-              <div className="rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-6 text-center">
-                <FolderHeart
-                  size={22}
-                  className="mx-auto mb-2 text-ink-faint"
-                />
-
+              <div className="rounded-[24px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-6 text-center">
+                <FolderHeart size={22} className="mx-auto mb-2 text-ink-faint" />
                 <p className="text-sm text-ink-muted">
                   Nenhum tratamento cadastrado.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2.5">
-                {tratamentos
-                  .slice(0, 4)
-                  .map((tratamento: any) => {
-                    const IconComponent =
-                      getTratamentoIcon(
-                        tratamento.nome
-                      );
-
-                    const cor =
-                      tratamento.cor ||
-                      "#8B5CF6";
-
-                    return (
+              <div
+                className="-mx-5 flex snap-x snap-mandatory overflow-x-auto px-5 pb-4 gap-3 scrollbar-hide"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                {tratamentos.map((tratamento: any) => {
+                  const IconComponent = getTratamentoIcon(tratamento.nome);
+                  const cor = tratamento.cor || "#8B5CF6";
+                  return (
+                    <div
+                      key={tratamento.id}
+                      className="w-[85%] max-w-[320px] shrink-0 snap-start"
+                    >
                       <button
-                        key={tratamento.id}
                         onClick={() => {
                           trigger("vibrate");
-
                           router.push(
                             `/saude/tratamentos/detalhes?id=${tratamento.id}`
                           );
                         }}
-                        className="flex w-full items-center justify-between overflow-hidden rounded-[22px] border bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
+                        className="flex w-full items-center justify-between overflow-hidden rounded-[22px] border bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.985] hover:bg-surface-raised/80"
                         style={{
                           borderColor: `${cor}30`,
                           borderLeftWidth: 4,
@@ -1772,44 +1668,40 @@ export default function HomePage() {
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <div
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
                             style={{
                               backgroundColor: `${cor}15`,
                               color: cor,
                             }}
                           >
-                            <IconComponent
-                              size={19}
-                            />
+                            <IconComponent size={19} />
                           </div>
-
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-ink-primary">
                               {tratamento.nome}
                             </p>
-
-                            <p className="truncate text-[10px] text-ink-muted">
-                              {tratamento.status ===
-                              "ativo"
+                            <p className="truncate text-[11px] text-ink-muted">
+                              {tratamento.status === "ativo"
                                 ? "Em andamento"
-                                : tratamento.status ===
-                                  "concluido"
+                                : tratamento.status === "concluido"
                                 ? "Concluído"
                                 : "Suspenso"}
                             </p>
                           </div>
                         </div>
-
                         <ChevronRight
                           size={16}
                           className="shrink-0 text-ink-faint"
                         />
                       </button>
-                    );
-                  })}
+                    </div>
+                  );
+                })}
+                <div className="w-2 shrink-0" />
               </div>
             )}
           </motion.section>
+
 
           {/* =========================================================
               ACESSO RÁPIDO
