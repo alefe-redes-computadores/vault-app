@@ -15,7 +15,6 @@ import {
   Activity,
   Pill,
   ChevronRight,
-  User,
   Building2,
   FileWarning,
   FolderHeart,
@@ -24,9 +23,7 @@ import {
   Plus,
   Syringe,
   FileText,
-  ExternalLink,
   FlaskConical,
-  DollarSign,
   MapPin,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -58,7 +55,6 @@ import { useMounted } from "@/hooks/useMounted";
 import {
   SectionTitle,
   DetailInfoRow,
-  StatCard,
 } from "@/components/detail/DetailComponents";
 
 /* ============================================================
@@ -92,23 +88,120 @@ function getTreatmentColor(nome: string): string {
     obesidade: "#F59E0B",
     alergia: "#06B6D4",
   };
+
   const lower = nome.toLowerCase();
+
   for (const [key, color] of Object.entries(colors)) {
     if (lower.includes(key)) return color;
   }
+
   return "#38BDF8";
 }
 
-function formatDateDisplay(isoStr: string): string {
+function formatDateDisplay(isoStr?: string): string {
   if (!isoStr) return "";
+
   const parts = isoStr.split("-");
+
   if (parts.length !== 3) return isoStr;
+
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function isDateInFuture(dateStr: string): boolean {
+function isDateInFuture(dateStr?: string): boolean {
   if (!dateStr) return false;
+
   return new Date(dateStr) > new Date();
+}
+
+/* ============================================================
+   COMPONENTES LOCAIS
+   ============================================================ */
+
+function DetailCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function HistoryItem({
+  title,
+  subtitle,
+  onClick,
+  icon,
+  iconClassName = "text-ice",
+}: {
+  title: string;
+  subtitle?: string;
+  onClick?: () => void;
+  icon?: React.ReactNode;
+  iconClassName?: string;
+}) {
+  const content = (
+    <>
+      <div className="flex min-w-0 items-center gap-3">
+        {icon && (
+          <div
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface ${iconClassName}`}
+          >
+            {icon}
+          </div>
+        )}
+
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-ink-primary">
+            {title}
+          </p>
+
+          {subtitle && (
+            <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {onClick && (
+        <ChevronRight size={14} className="shrink-0 text-ink-faint" />
+      )}
+    </>
+  );
+
+  if (!onClick) {
+    return (
+      <div className="flex items-center justify-between rounded-xl border border-surface-border/40 bg-surface-raised p-3">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between rounded-xl border border-surface-border/40 bg-surface-raised p-3 text-left transition-all hover:border-ice/30 active:scale-[0.99]"
+    >
+      {content}
+    </button>
+  );
+}
+
+function EmptyHistory({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="py-1 text-xs text-ink-muted">
+      {children}
+    </p>
+  );
 }
 
 /* ============================================================
@@ -119,6 +212,7 @@ function DetalhesMedicoContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const id = searchParams.get("id");
   const mounted = useMounted();
 
@@ -133,225 +227,551 @@ function DetalhesMedicoContent() {
      DEXIE
      ========================================================== */
 
-  const consultas = useLiveQuery(
-    () => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as Consulta[])),
-    [id]
-  ) ?? [];
-  const cirurgias = useLiveQuery(
-    () => (id ? db.cirurgias.where("medico_id").equals(id).toArray() : Promise.resolve([] as Cirurgia[])),
-    [id]
-  ) ?? [];
-  const medicamentos = useLiveQuery(
-    () => (id ? db.medicamentos.where("medico_id").equals(id).toArray() : Promise.resolve([] as Medicamento[])),
-    [id]
-  ) ?? [];
-  const renovacoes = useLiveQuery(
-    () => (id ? db.renovacoes.where("medico_id").equals(id).reverse().sortBy("data") : Promise.resolve([] as Renovacao[])),
-    [id]
-  ) ?? [];
-  const exames = useLiveQuery(
-    () => (id ? db.exames.where("medico_id").equals(id).toArray() : Promise.resolve([] as Exame[])),
-    [id]
-  ) ?? [];
+  const consultas =
+    useLiveQuery(
+      () =>
+        id
+          ? db.consultas
+              .where("medico_id")
+              .equals(id)
+              .toArray()
+          : Promise.resolve([] as Consulta[]),
+      [id]
+    ) ?? [];
+
+  const cirurgias =
+    useLiveQuery(
+      () =>
+        id
+          ? db.cirurgias
+              .where("medico_id")
+              .equals(id)
+              .toArray()
+          : Promise.resolve([] as Cirurgia[]),
+      [id]
+    ) ?? [];
+
+  const medicamentos =
+    useLiveQuery(
+      () =>
+        id
+          ? db.medicamentos
+              .where("medico_id")
+              .equals(id)
+              .toArray()
+          : Promise.resolve([] as Medicamento[]),
+      [id]
+    ) ?? [];
+
+  const renovacoes =
+    useLiveQuery(
+      () =>
+        id
+          ? db.renovacoes
+              .where("medico_id")
+              .equals(id)
+              .reverse()
+              .sortBy("data")
+          : Promise.resolve([] as Renovacao[]),
+      [id]
+    ) ?? [];
+
+  const exames =
+    useLiveQuery(
+      () =>
+        id
+          ? db.exames
+              .where("medico_id")
+              .equals(id)
+              .toArray()
+          : Promise.resolve([] as Exame[]),
+      [id]
+    ) ?? [];
+
+  /* ==========================================================
+     DOSES
+     ========================================================== */
 
   const medIdsStr = useMemo(
-    () => medicamentos.map((m) => m.id).filter(Boolean).sort().join(','),
+    () =>
+      medicamentos
+        .map((med) => med.id)
+        .filter(Boolean)
+        .sort()
+        .join(","),
     [medicamentos]
   );
-  const doseLogs = useLiveQuery(() => {
-    const validMedIds = medIdsStr ? medIdsStr.split(',') : [];
-    if (validMedIds.length === 0) return Promise.resolve([] as DoseLog[]);
-    return db.doseLogs.where('medicamento_id').anyOf(validMedIds).toArray();
-  }, [medIdsStr]) ?? [];
+
+  const doseLogs =
+    useLiveQuery(() => {
+      const validMedIds = medIdsStr
+        ? medIdsStr.split(",")
+        : [];
+
+      if (validMedIds.length === 0) {
+        return Promise.resolve([] as DoseLog[]);
+      }
+
+      return db.doseLogs
+        .where("medicamento_id")
+        .anyOf(validMedIds)
+        .toArray();
+    }, [medIdsStr]) ?? [];
+
+  /* ==========================================================
+     ESTABELECIMENTOS UTILIZADOS EM CONSULTAS/CIRURGIAS
+     ========================================================== */
 
   const estabelecimentosIdsStr = useMemo(() => {
     const ids = new Set<string>();
-    consultas.forEach((c) => c.hospital_id && ids.add(c.hospital_id));
-    cirurgias.forEach((c) => c.hospital_id && ids.add(c.hospital_id));
-    return Array.from(ids).sort().join(',');
+
+    consultas.forEach((consulta) => {
+      if (consulta.hospital_id) {
+        ids.add(consulta.hospital_id);
+      }
+    });
+
+    cirurgias.forEach((cirurgia) => {
+      if (cirurgia.hospital_id) {
+        ids.add(cirurgia.hospital_id);
+      }
+    });
+
+    return Array.from(ids).sort().join(",");
   }, [consultas, cirurgias]);
 
-  const estabelecimentos = useLiveQuery(() => {
-    const ids = estabelecimentosIdsStr ? estabelecimentosIdsStr.split(',') : [];
-    if (ids.length === 0) return Promise.resolve([] as Hospital[]);
-    return db.hospitais.where('id').anyOf(ids).toArray();
-  }, [estabelecimentosIdsStr]) ?? [];
+  const estabelecimentos =
+    useLiveQuery(() => {
+      const ids = estabelecimentosIdsStr
+        ? estabelecimentosIdsStr.split(",")
+        : [];
+
+      if (ids.length === 0) {
+        return Promise.resolve([] as Hospital[]);
+      }
+
+      return db.hospitais
+        .where("id")
+        .anyOf(ids)
+        .toArray();
+    }, [estabelecimentosIdsStr]) ?? [];
+
+  /* ==========================================================
+     TRATAMENTOS
+     ========================================================== */
 
   const tratamentosIdsStr = useMemo(() => {
     const ids = new Set<string>();
-    medicamentos.forEach((m) => {
-      if (m.tratamento_ids && Array.isArray(m.tratamento_ids)) {
-        m.tratamento_ids.forEach((tid) => ids.add(tid));
+
+    medicamentos.forEach((medicamento) => {
+      if (
+        medicamento.tratamento_ids &&
+        Array.isArray(medicamento.tratamento_ids)
+      ) {
+        medicamento.tratamento_ids.forEach((tratamentoId) => {
+          ids.add(tratamentoId);
+        });
       }
     });
-    return Array.from(ids).sort().join(',');
+
+    return Array.from(ids).sort().join(",");
   }, [medicamentos]);
 
-  const tratamentos = useLiveQuery(() => {
-    const ids = tratamentosIdsStr ? tratamentosIdsStr.split(',') : [];
-    if (ids.length === 0) return Promise.resolve([] as Tratamento[]);
-    return db.tratamentos.where('id').anyOf(ids).toArray();
-  }, [tratamentosIdsStr]) ?? [];
+  const tratamentos =
+    useLiveQuery(() => {
+      const ids = tratamentosIdsStr
+        ? tratamentosIdsStr.split(",")
+        : [];
+
+      if (ids.length === 0) {
+        return Promise.resolve([] as Tratamento[]);
+      }
+
+      return db.tratamentos
+        .where("id")
+        .anyOf(ids)
+        .toArray();
+    }, [tratamentosIdsStr]) ?? [];
+
+  /* ==========================================================
+     HOSPITAIS VINCULADOS AO MÉDICO
+     ========================================================== */
 
   const medicoHospIdsStr = useMemo(
-    () => (medico?.hospital_ids || []).sort().join(','),
+    () =>
+      (medico?.hospital_ids || [])
+        .slice()
+        .sort()
+        .join(","),
     [medico?.hospital_ids]
   );
-  const hospitaisVinculados = useLiveQuery(() => {
-    const ids = medicoHospIdsStr ? medicoHospIdsStr.split(',') : [];
-    if (ids.length === 0) return Promise.resolve([] as Hospital[]);
-    return db.hospitais.where('id').anyOf(ids).toArray();
-  }, [medicoHospIdsStr]) ?? [];
+
+  const hospitaisVinculados =
+    useLiveQuery(() => {
+      const ids = medicoHospIdsStr
+        ? medicoHospIdsStr.split(",")
+        : [];
+
+      if (ids.length === 0) {
+        return Promise.resolve([] as Hospital[]);
+      }
+
+      return db.hospitais
+        .where("id")
+        .anyOf(ids)
+        .toArray();
+    }, [medicoHospIdsStr]) ?? [];
+
+  /* ==========================================================
+     LOCAIS VINCULADOS AO MÉDICO
+     ========================================================== */
 
   const medicoLocalIdsStr = useMemo(
-    () => (medico?.local_ids || []).sort().join(','),
+    () =>
+      (medico?.local_ids || [])
+        .slice()
+        .sort()
+        .join(","),
     [medico?.local_ids]
   );
-  const locaisVinculados = useLiveQuery(() => {
-    const ids = medicoLocalIdsStr ? medicoLocalIdsStr.split(',') : [];
-    if (ids.length === 0) return Promise.resolve([] as LocalSaude[]);
-    return db.locais.where('id').anyOf(ids).toArray();
-  }, [medicoLocalIdsStr]) ?? [];
 
-  const documentosDoMedico = useLiveQuery(
-    () => (id ? db.documents.where("medico_id").equals(id).reverse().sortBy("created_at") : Promise.resolve([] as Document[])),
-    [id]
-  ) ?? [];
+  const locaisVinculados =
+    useLiveQuery(() => {
+      const ids = medicoLocalIdsStr
+        ? medicoLocalIdsStr.split(",")
+        : [];
+
+      if (ids.length === 0) {
+        return Promise.resolve([] as LocalSaude[]);
+      }
+
+      return db.locais
+        .where("id")
+        .anyOf(ids)
+        .toArray();
+    }, [medicoLocalIdsStr]) ?? [];
+
+  /* ==========================================================
+     DOCUMENTOS
+     ========================================================== */
+
+  const documentosDoMedico =
+    useLiveQuery(
+      () =>
+        id
+          ? db.documents
+              .where("medico_id")
+              .equals(id)
+              .reverse()
+              .sortBy("created_at")
+          : Promise.resolve([] as Document[]),
+      [id]
+    ) ?? [];
 
   /* ==========================================================
      DADOS DERIVADOS
      ========================================================== */
 
+  const consultasOrdenadas = useMemo(
+    () =>
+      [...consultas].sort((a, b) =>
+        (b.data || "").localeCompare(a.data || "")
+      ),
+    [consultas]
+  );
+
+  const cirurgiasOrdenadas = useMemo(
+    () =>
+      [...cirurgias].sort((a, b) =>
+        (b.data || "").localeCompare(a.data || "")
+      ),
+    [cirurgias]
+  );
+
   const proximaConsulta = useMemo(() => {
-    const futuras = consultas.filter((c) => isDateInFuture(c.data));
-    if (futuras.length === 0) return null;
-    return futuras.sort((a, b) => (a.data || "").localeCompare(b.data || ""))[0];
+    const futuras = consultas.filter((consulta) =>
+      isDateInFuture(consulta.data)
+    );
+
+    if (futuras.length === 0) {
+      return null;
+    }
+
+    return [...futuras].sort((a, b) =>
+      (a.data || "").localeCompare(b.data || "")
+    )[0];
   }, [consultas]);
 
   const ultimaConsulta = useMemo(() => {
-    if (consultas.length === 0) return null;
-    return [...consultas].sort((a, b) => (b.data || "").localeCompare(a.data || ""))[0];
-  }, [consultas]);
+    return consultasOrdenadas[0] ?? null;
+  }, [consultasOrdenadas]);
 
   const alertaSemRetorno = useMemo(() => {
-    if (proximaConsulta || !ultimaConsulta || !ultimaConsulta.data) return null;
-    const dataUltima = new Date(ultimaConsulta.data).getTime();
-    const hoje = new Date().getTime();
-    const diffDias = Math.floor((hoje - dataUltima) / (1000 * 3600 * 24));
-    if (diffDias > 180) {
-      const meses = Math.floor(diffDias / 30);
-      return `Faz ${meses} meses desde a sua última consulta. Avalie a necessidade de agendar um acompanhamento.`;
+    if (
+      proximaConsulta ||
+      !ultimaConsulta ||
+      !ultimaConsulta.data
+    ) {
+      return null;
     }
-    return null;
+
+    const dataUltima = new Date(
+      ultimaConsulta.data
+    ).getTime();
+
+    const hoje = new Date().getTime();
+
+    const diffDias = Math.floor(
+      (hoje - dataUltima) /
+        (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDias <= 180) {
+      return null;
+    }
+
+    const meses = Math.floor(diffDias / 30);
+
+    return `Faz ${meses} meses desde a sua última consulta. Avalie a necessidade de agendar um acompanhamento.`;
   }, [ultimaConsulta, proximaConsulta]);
 
   const alertasMedicamentos = useMemo(() => {
-    return medicamentos.map((med) => {
-      const insight = sugerirRenovacao(med);
-      const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
-      const comportamento = analisarComportamentoUso(
-        med,
-        doseLogs.filter((d) => d.medicamento_id === med.id)
-      );
-      return { ...med, insight, receitaVencida, comportamento };
+    return medicamentos.map((medicamento) => {
+      const insight = sugerirRenovacao(medicamento);
+
+      const receitaVencida =
+        isReceitaVencidaSegura(
+          medicamento.proxima_renovacao
+        );
+
+      const comportamento =
+        analisarComportamentoUso(
+          medicamento,
+          doseLogs.filter(
+            (dose) =>
+              dose.medicamento_id === medicamento.id
+          )
+        );
+
+      return {
+        ...medicamento,
+        insight,
+        receitaVencida,
+        comportamento,
+      };
     });
   }, [medicamentos, doseLogs]);
 
   const alertasGerais = useMemo(() => {
-    const ativos = alertasMedicamentos.filter((m) => m.insight?.deveRenovar);
-    const vencidos = alertasMedicamentos.filter((m) => m.receitaVencida);
-    const comportamentos = alertasMedicamentos.filter((m) => m.comportamento);
-    return { ativos, vencidos, comportamentos };
+    return {
+      ativos: alertasMedicamentos.filter(
+        (med) => med.insight?.deveRenovar
+      ),
+      vencidos: alertasMedicamentos.filter(
+        (med) => med.receitaVencida
+      ),
+      comportamentos: alertasMedicamentos.filter(
+        (med) => med.comportamento
+      ),
+    };
   }, [alertasMedicamentos]);
 
+  const medicamentosAtivos = useMemo(
+    () =>
+      medicamentos.filter(
+        (medicamento) =>
+          medicamento.status === "ativo"
+      ),
+    [medicamentos]
+  );
+
+  const prescricoes = useMemo(
+    () =>
+      documentosDoMedico.filter(
+        (documento) => documento.type === "receita"
+      ),
+    [documentosDoMedico]
+  );
+
+  const laudosRelatorios = useMemo(
+    () =>
+      documentosDoMedico.filter(
+        (documento) =>
+          documento.type === "laudo" ||
+          documento.type === "encaminhamento" ||
+          documento.type === "exame_imagem" ||
+          documento.type === "exame_sangue"
+      ),
+    [documentosDoMedico]
+  );
+
   const totalGastoRenovacoes = useMemo(() => {
-    return renovacoes.reduce((acc, r) => {
-      const preco = typeof r.preco === "number" ? r.preco : Number(r.preco) || 0;
-      return acc + preco;
+    return renovacoes.reduce((total, renovacao) => {
+      const preco =
+        typeof renovacao.preco === "number"
+          ? renovacao.preco
+          : Number(renovacao.preco) || 0;
+
+      return total + preco;
     }, 0);
   }, [renovacoes]);
+
+  const possuiAlertas =
+    alertasGerais.ativos.length > 0 ||
+    alertasGerais.vencidos.length > 0 ||
+    alertasGerais.comportamentos.length > 0 ||
+    Boolean(alertaSemRetorno);
+
+  /* ==========================================================
+     CARREGAMENTO DO MÉDICO
+     ========================================================== */
 
   useEffect(() => {
     if (!id) {
       router.replace("/saude/medicos");
       return;
     }
+
     db.medicos.get(id).then((medData) => {
       if (medData) {
         setMedico(medData);
       } else {
         router.replace("/saude/medicos");
       }
+
       setIsLoading(false);
     });
   }, [id, router]);
 
-  if (!mounted) return <DetailSkeleton />;
+  /* ==========================================================
+     ESTADOS INICIAIS
+     ========================================================== */
+
+  if (!mounted) {
+    return <DetailSkeleton />;
+  }
+
+  /* ==========================================================
+     AÇÕES
+     ========================================================== */
 
   const handleDelete = async () => {
     trigger("vibrate");
+
     if (!id) return;
+
     try {
       await deleteMedico(id);
+
       trigger("success");
+
       router.replace("/saude/medicos");
     } catch (error) {
-      console.error("Erro ao excluir médico:", error);
+      console.error(
+        "Erro ao excluir médico:",
+        error
+      );
+
       trigger("error");
     }
   };
 
   const menuOptions = [
-    { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?medico_id=${id}` },
-    { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: `/saude/cirurgias/nova?medico_id=${id}` },
-    { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?medico_id=${id}` },
+    {
+      id: "nova-consulta",
+      label: "Nova Consulta",
+      icon: Stethoscope,
+      path: `/saude/consultas/nova?medico_id=${id}`,
+    },
+    {
+      id: "nova-cirurgia",
+      label: "Nova Cirurgia",
+      icon: Syringe,
+      path: `/saude/cirurgias/nova?medico_id=${id}`,
+    },
+    {
+      id: "novo-medicamento",
+      label: "Novo Medicamento",
+      icon: Pill,
+      path: `/saude/medicamentos/novo?medico_id=${id}`,
+    },
   ];
 
-  const handleMenuOptionClick = (path: string) => {
+  const handleMenuOptionClick = (
+    path: string
+  ) => {
     trigger("vibrate");
     setIsMenuFlutuanteOpen(false);
     router.push(path);
   };
 
-  if (isLoading) return <DetailSkeleton />;
-  if (!medico) return null;
+  if (isLoading) {
+    return <DetailSkeleton />;
+  }
 
-  const medicamentosAtivos = medicamentos.filter((m) => m.status === "ativo");
-  const prescricoes = documentosDoMedico.filter((doc) => doc.type === "receita");
-  const laudosRelatorios = documentosDoMedico.filter(
-    (doc) => doc.type === "laudo" || doc.type === "encaminhamento" || doc.type === "exame_imagem" || doc.type === "exame_sangue"
-  );
+  if (!medico) {
+    return null;
+  }
+
+  /* ==========================================================
+     RENDER
+     ========================================================== */
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        {/* HEADER */}
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
+
+        {/* ====================================================
+            HEADER
+        ==================================================== */}
+
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl header-safe-top">
+          <div className="flex min-w-0 items-center gap-3">
             <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               type="button"
+              onClick={() => {
+                trigger("vibrate");
+                router.back();
+              }}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
               aria-label="Voltar"
             >
-              <ArrowLeft size={18} className="text-ink-primary" />
+              <ArrowLeft size={18} />
             </button>
+
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">Profissional</p>
-              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">Perfil Médico</h1>
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">
+                Profissional
+              </p>
+
+              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
+                Perfil Médico
+              </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+
+            {/* MENU ADICIONAR */}
+
             <div className="relative">
               <button
-                onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
                 type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setIsMenuFlutuanteOpen(
+                    (open) => !open
+                  );
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all hover:bg-ice/20 active:scale-95"
                 aria-label="Adicionar registro"
+                aria-expanded={
+                  isMenuFlutuanteOpen
+                }
               >
                 <Plus size={18} />
               </button>
+
               <AnimatePresence>
                 {isMenuFlutuanteOpen && (
                   <>
@@ -359,39 +779,78 @@ function DetalhesMedicoContent() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      transition={{ duration: 0.16 }}
-                      onClick={() => setIsMenuFlutuanteOpen(false)}
+                      transition={{
+                        duration: 0.16,
+                      }}
+                      onClick={() =>
+                        setIsMenuFlutuanteOpen(false)
+                      }
                       className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
                     />
+
                     <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      initial={{
+                        opacity: 0,
+                        y: 10,
+                        scale: 0.95,
+                      }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                      }}
+                      exit={{
+                        opacity: 0,
+                        y: 10,
+                        scale: 0.95,
+                      }}
+                      transition={{
+                        duration: 0.18,
+                        ease: [
+                          0.16,
+                          1,
+                          0.3,
+                          1,
+                        ],
+                      }}
                       className="absolute right-0 top-12 z-50 w-60 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
                     >
                       <div className="px-3 pb-2 pt-3.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
+                          Adicionar
+                        </p>
                       </div>
+
                       <div className="px-1.5 pb-2">
-                        {menuOptions.map((option) => {
-                          const Icon = option.icon;
-                          return (
-                            <button
-                              key={option.id}
-                              onClick={() => handleMenuOptionClick(option.path)}
-                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
-                              type="button"
-                            >
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                                <Icon size={15} />
-                              </div>
-                              <span className="text-sm font-medium text-ink-primary">
-                                {option.label}
-                              </span>
-                            </button>
-                          );
-                        })}
+                        {menuOptions.map(
+                          (option) => {
+                            const Icon =
+                              option.icon;
+
+                            return (
+                              <button
+                                key={option.id}
+                                type="button"
+                                onClick={() =>
+                                  handleMenuOptionClick(
+                                    option.path
+                                  )
+                                }
+                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-ice/8 active:scale-[0.98]"
+                              >
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                  <Icon size={15} />
+                                </div>
+
+                                <span className="text-sm font-medium text-ink-primary">
+                                  {
+                                    option.label
+                                  }
+                                </span>
+                              </button>
+                            );
+                          }
+                        )}
                       </div>
                     </motion.div>
                   </>
@@ -399,18 +858,31 @@ function DetalhesMedicoContent() {
               </AnimatePresence>
             </div>
 
+            {/* EDITAR */}
+
             <button
-              onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/editar?id=${medico.id}`); }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95 hover:text-ice hover:border-ice/30"
               type="button"
+              onClick={() => {
+                trigger("vibrate");
+                router.push(
+                  `/saude/medicos/editar?id=${medico.id}`
+                );
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all hover:border-ice/30 hover:text-ice active:scale-95"
               aria-label="Editar médico"
             >
               <Edit3 size={16} />
             </button>
+
+            {/* EXCLUIR */}
+
             <button
-              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
               type="button"
+              onClick={() => {
+                trigger("vibrate");
+                setShowDeleteModal(true);
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
               aria-label="Excluir médico"
             >
               <Trash2 size={16} />
@@ -418,452 +890,1008 @@ function DetalhesMedicoContent() {
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-5">
-          {/* HERO */}
+        {/* ====================================================
+            CONTEÚDO
+        ==================================================== */}
+
+        <section className="space-y-5 px-5 pt-6">
+
+          {/* ==================================================
+              HERO
+          ================================================== */}
+
           <motion.div
-            variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}
+            variants={{
+              initial: {
+                opacity: 0,
+                y: 12,
+              },
+              animate: {
+                opacity: 1,
+                y: 0,
+              },
+            }}
             initial="initial"
             animate="animate"
-            className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{ borderLeft: `6px solid #38BDF8` }}
+            className="overflow-hidden rounded-[32px] border border-surface-border/50 bg-surface shadow-sm"
+            style={{
+              borderLeft:
+                "6px solid #38BDF8",
+            }}
           >
-            <div className="flex items-start gap-4">
-              <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
-                style={{ backgroundColor: "#38BDF815", color: "#38BDF8", borderColor: "#38BDF830" }}
-              >
-                <Stethoscope size={28} />
-              </div>
+            <div className="space-y-5 p-6">
 
-              <div className="min-w-0 pt-1">
-                <h2 className="font-display text-xl font-bold text-ink-primary truncate">
-                  Dr(a). {medico.nome}
-                </h2>
-                <p className="text-sm font-medium text-ice mt-0.5">
-                  {medico.especialidade || "Especialidade Geral"}
-                </p>
-                {medico.crm && (
-                  <p className="text-xs text-ink-muted font-mono mt-1">
-                    CRM: {medico.crm}
+              <div className="flex items-start gap-4">
+                <div
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
+                  style={{
+                    backgroundColor:
+                      "#38BDF815",
+                    color: "#38BDF8",
+                    borderColor:
+                      "#38BDF830",
+                  }}
+                >
+                  <Stethoscope size={28} />
+                </div>
+
+                <div className="min-w-0 pt-1">
+                  <h2 className="truncate font-display text-xl font-bold text-ink-primary">
+                    Dr(a). {medico.nome}
+                  </h2>
+
+                  <p className="mt-0.5 text-sm font-medium text-ice">
+                    {medico.especialidade ||
+                      "Especialidade Geral"}
                   </p>
-                )}
-              </div>
-            </div>
 
-            {(medico.telefone || medico.email) && (
-              <div className="pt-4 border-t border-surface-border/40 space-y-3">
-                {medico.telefone && (
-                  <DetailInfoRow
-                    icon={<Phone size={14} />}
-                    iconClassName="bg-surface-raised text-ink-muted"
-                    label="Telefone"
-                  >
-                    <span className="text-sm font-medium text-ink-primary">{medico.telefone}</span>
-                  </DetailInfoRow>
-                )}
-                {medico.email && (
-                  <DetailInfoRow
-                    icon={<Mail size={14} />}
-                    iconClassName="bg-surface-raised text-ink-muted"
-                    label="Email"
-                  >
-                    <span className="text-sm font-medium text-ink-primary truncate">{medico.email}</span>
-                  </DetailInfoRow>
-                )}
-              </div>
-            )}
-
-            {proximaConsulta && (
-              <div className="pt-4 border-t border-surface-border/40">
-                <div className="rounded-xl bg-emerald-400/10 border border-emerald-400/20 p-3 flex items-center gap-3">
-                  <Calendar size={16} className="text-emerald-400" />
-                  <div>
-                    <p className="text-xs font-medium text-emerald-400">Próxima consulta</p>
-                    <p className="text-sm font-semibold text-ink-primary">
-                      {formatDateDisplay(proximaConsulta.data)}
-                      {proximaConsulta.horario && ` às ${proximaConsulta.horario}`}
+                  {medico.crm && (
+                    <p className="mt-1 font-mono text-xs text-ink-muted">
+                      CRM: {medico.crm}
                     </p>
+                  )}
+                </div>
+              </div>
+
+              {(medico.telefone ||
+                medico.email) && (
+                <div className="space-y-3 border-t border-surface-border/40 pt-4">
+                  {medico.telefone && (
+                    <DetailInfoRow
+                      icon={
+                        <Phone size={14} />
+                      }
+                      iconClassName="bg-surface-raised text-ink-muted"
+                      label="Telefone"
+                    >
+                      <span className="text-sm font-medium text-ink-primary">
+                        {medico.telefone}
+                      </span>
+                    </DetailInfoRow>
+                  )}
+
+                  {medico.email && (
+                    <DetailInfoRow
+                      icon={
+                        <Mail size={14} />
+                      }
+                      iconClassName="bg-surface-raised text-ink-muted"
+                      label="Email"
+                    >
+                      <span className="truncate text-sm font-medium text-ink-primary">
+                        {medico.email}
+                      </span>
+                    </DetailInfoRow>
+                  )}
+                </div>
+              )}
+
+              {proximaConsulta && (
+                <div className="border-t border-surface-border/40 pt-4">
+                  <div className="flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                      <Calendar size={16} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-emerald-400">
+                        Próxima consulta
+                      </p>
+
+                      <p className="text-sm font-semibold text-ink-primary">
+                        {formatDateDisplay(
+                          proximaConsulta.data
+                        )}
+
+                        {proximaConsulta.horario &&
+                          ` às ${proximaConsulta.horario}`}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {medico.observacoes && (
-              <div className="pt-4 border-t border-surface-border/40">
-                <p className="text-xs font-medium text-ink-muted flex items-center gap-1.5">
-                  <AlertCircle size={14} /> Observações
-                </p>
-                <p className="text-sm text-ink-primary mt-1">{medico.observacoes}</p>
-              </div>
-            )}
+              {medico.observacoes && (
+                <div className="border-t border-surface-border/40 pt-4">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                    <AlertCircle
+                      size={14}
+                    />
+                    Observações
+                  </div>
 
-            {hospitaisVinculados.length > 0 && (
-              <div className="pt-4 border-t border-surface-border/40">
-                <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
-                  <Building2 size={14} className="text-ice" /> Hospitais onde atende:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {hospitaisVinculados.map((h) => (
-                    <span key={h.id} className="text-xs bg-surface-raised border border-surface-border/40 px-3 py-1.5 rounded-full text-ink-primary">
-                      {h.nome}
-                    </span>
-                  ))}
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-primary">
+                    {medico.observacoes}
+                  </p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {locaisVinculados.length > 0 && (
-              <div className="pt-4 border-t border-surface-border/40">
-                <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
-                  <MapPin size={14} className="text-emerald-400" /> Locais de atendimento:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {locaisVinculados.map((l) => (
-                    <span key={l.id} className="text-xs bg-surface-raised border border-surface-border/40 px-3 py-1.5 rounded-full text-ink-primary">
-                      {l.nome}
-                    </span>
-                  ))}
+              {hospitaisVinculados.length >
+                0 && (
+                <div className="border-t border-surface-border/40 pt-4">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                    <Building2
+                      size={14}
+                      className="text-ice"
+                    />
+                    Hospitais onde atende
+                  </p>
+
+                  <div className="flex flex-wrap gap-2">
+                    {hospitaisVinculados.map(
+                      (hospital) => (
+                        <span
+                          key={hospital.id}
+                          className="rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1.5 text-xs text-ink-primary"
+                        >
+                          {hospital.nome}
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {locaisVinculados.length >
+                0 && (
+                <div className="border-t border-surface-border/40 pt-4">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                    <MapPin
+                      size={14}
+                      className="text-emerald-400"
+                    />
+                    Locais de atendimento
+                  </p>
+
+                  <div className="flex flex-wrap gap-2">
+                    {locaisVinculados.map(
+                      (local) => (
+                        <span
+                          key={local.id}
+                          className="rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1.5 text-xs text-ink-primary"
+                        >
+                          {local.nome}
+                        </span>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </motion.div>
 
-          {/* ALERTAS */}
-          {(alertasGerais.ativos.length > 0 || alertasGerais.vencidos.length > 0 || alertasGerais.comportamentos.length > 0 || alertaSemRetorno) && (
+          {/* ==================================================
+              ALERTAS
+          ================================================== */}
+
+          {possuiAlertas && (
             <motion.div
-              variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}
+              variants={{
+                initial: {
+                  opacity: 0,
+                  y: 12,
+                },
+                animate: {
+                  opacity: 1,
+                  y: 0,
+                },
+              }}
               initial="initial"
               animate="animate"
-              transition={{ delay: 0.02 }}
-              className="rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-4 shadow-sm"
+              transition={{
+                delay: 0.02,
+              }}
+              className="rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-5 shadow-sm"
             >
               <SectionTitle
-                icon={<AlertTriangle size={15} />}
+                icon={
+                  <AlertTriangle
+                    size={15}
+                  />
+                }
                 title="Alertas Inteligentes"
               />
 
-              <div className="mt-3 space-y-2">
+              <div className="mt-4 space-y-3">
+
                 {alertaSemRetorno && (
-                  <div className="flex items-start gap-2 text-xs border-b border-amber-400/10 pb-2 last:border-0">
-                    <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 border-b border-amber-400/10 pb-3">
+                    <AlertCircle
+                      size={14}
+                      className="mt-0.5 shrink-0 text-amber-400"
+                    />
+
                     <div>
-                      <p className="font-medium text-ink-primary">Acompanhamento</p>
-                      <p className="text-ink-muted">{alertaSemRetorno}</p>
+                      <p className="text-xs font-medium text-ink-primary">
+                        Acompanhamento
+                      </p>
+
+                      <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
+                        {alertaSemRetorno}
+                      </p>
                     </div>
                   </div>
                 )}
 
-                {alertasGerais.ativos.slice(0, 3).map((med) => (
-                  <div key={med.id} className="flex items-start gap-2 text-xs border-b border-amber-400/10 pb-2 last:border-0">
-                    <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-ink-primary">{med.nome}</p>
-                      <p className="text-ink-muted">{med.insight?.mensagem}</p>
-                    </div>
-                  </div>
-                ))}
-
-                {alertasGerais.vencidos.slice(0, 3).map((med) => (
-                  <div key={med.id} className="flex items-start gap-2 text-xs border-b border-coral/10 pb-2 last:border-0">
-                    <AlertCircle size={14} className="text-coral shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-ink-primary">{med.nome}</p>
-                      <p className="text-ink-muted">Receita vencida desde {formatDateDisplay(med.proxima_renovacao)}</p>
-                    </div>
-                  </div>
-                ))}
-
-                {alertasGerais.comportamentos.slice(0, 3).map((med) => (
-                  <div key={med.id} className="flex items-start gap-2 text-xs border-b border-violet-400/10 pb-2 last:border-0">
-                    <Activity size={14} className="text-violet-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-ink-primary">{med.comportamento?.titulo}</p>
-                      <p className="text-ink-muted">{med.comportamento?.mensagem}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* TRATAMENTOS */}
-          {tratamentos.length > 0 && (
-            <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-              <SectionTitle icon={<FolderHeart size={15} />} title="Tratamentos Relacionados" />
-              <div className="mt-3 flex flex-wrap gap-2">
-                {tratamentos.map((t) => {
-                  const color = getTreatmentColor(t.nome);
-                  return (
-                    <span
-                      key={t.id}
-                      className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded-md border"
-                      style={{ backgroundColor: `${color}20`, borderColor: `${color}40`, color: color }}
+                {alertasGerais.ativos
+                  .slice(0, 3)
+                  .map((med) => (
+                    <div
+                      key={`ativo-${med.id}`}
+                      className="flex items-start gap-2 border-b border-amber-400/10 pb-3"
                     >
-                      <Activity size={10} /> {t.nome}
-                    </span>
-                  );
-                })}
+                      <AlertCircle
+                        size={14}
+                        className="mt-0.5 shrink-0 text-amber-400"
+                      />
+
+                      <div>
+                        <p className="text-xs font-medium text-ink-primary">
+                          {med.nome}
+                        </p>
+
+                        <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
+                          {
+                            med.insight
+                              ?.mensagem
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                {alertasGerais.vencidos
+                  .slice(0, 3)
+                  .map((med) => (
+                    <div
+                      key={`vencida-${med.id}`}
+                      className="flex items-start gap-2 border-b border-coral/10 pb-3"
+                    >
+                      <AlertCircle
+                        size={14}
+                        className="mt-0.5 shrink-0 text-coral"
+                      />
+
+                      <div>
+                        <p className="text-xs font-medium text-ink-primary">
+                          {med.nome}
+                        </p>
+
+                        <p className="mt-0.5 text-xs text-ink-muted">
+                          Receita vencida
+                          desde{" "}
+                          {formatDateDisplay(
+                            med.proxima_renovacao
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                {alertasGerais.comportamentos
+                  .slice(0, 3)
+                  .map((med) => (
+                    <div
+                      key={`comportamento-${med.id}`}
+                      className="flex items-start gap-2 border-b border-violet-400/10 pb-3 last:border-0 last:pb-0"
+                    >
+                      <Activity
+                        size={14}
+                        className="mt-0.5 shrink-0 text-violet-400"
+                      />
+
+                      <div>
+                        <p className="text-xs font-medium text-ink-primary">
+                          {
+                            med.comportamento
+                              ?.titulo
+                          }
+                        </p>
+
+                        <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
+                          {
+                            med.comportamento
+                              ?.mensagem
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  ))}
               </div>
             </motion.div>
           )}
 
-          {/* DOCUMENTOS */}
-          {(prescricoes.length > 0 || laudosRelatorios.length > 0) && (
-            <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
-              <SectionTitle icon={<FileText size={15} />} title="Documentos e Prescrições" />
+          {/* ==================================================
+              TRATAMENTOS
+          ================================================== */}
+
+          {tratamentos.length > 0 && (
+            <motion.div
+              variants={{
+                initial: {
+                  opacity: 0,
+                  y: 12,
+                },
+                animate: {
+                  opacity: 1,
+                  y: 0,
+                },
+              }}
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay: 0.03,
+              }}
+            >
+              <DetailCard>
+                <SectionTitle
+                  icon={
+                    <FolderHeart
+                      size={15}
+                    />
+                  }
+                  title="Tratamentos Relacionados"
+                />
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {tratamentos.map(
+                    (tratamento) => {
+                      const color =
+                        getTreatmentColor(
+                          tratamento.nome
+                        );
+
+                      return (
+                        <span
+                          key={tratamento.id}
+                          className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-bold uppercase"
+                          style={{
+                            backgroundColor: `${color}20`,
+                            borderColor: `${color}40`,
+                            color,
+                          }}
+                        >
+                          <Activity size={10} />
+                          {tratamento.nome}
+                        </span>
+                      );
+                    }
+                  )}
+                </div>
+              </DetailCard>
+            </motion.div>
+          )}
+
+          {/* ==================================================
+              DOCUMENTOS
+          ================================================== */}
+
+          {(prescricoes.length > 0 ||
+            laudosRelatorios.length > 0) && (
+            <motion.div
+              variants={{
+                initial: {
+                  opacity: 0,
+                  y: 12,
+                },
+                animate: {
+                  opacity: 1,
+                  y: 0,
+                },
+              }}
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay: 0.04,
+              }}
+              className="space-y-3"
+            >
+              <SectionTitle
+                icon={
+                  <FileText size={15} />
+                }
+                title="Documentos e Prescrições"
+              />
 
               {prescricoes.length > 0 && (
-                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <FileWarning size={16} className="text-amber-400" />
-                    <h5 className="text-sm font-medium text-ink-primary">Prescrições</h5>
-                    <span className="ml-auto text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{prescricoes.length}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {prescricoes.slice(0, 3).map((doc) => (
-                      <div
-                        key={doc.id}
-                        onClick={() => { trigger("vibrate"); router.push(`/detalhes?id=${doc.id}`); }}
-                        className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-amber-400/30 transition-colors"
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-ink-primary truncate">{doc.title}</p>
-                          <p className="text-[11px] text-ink-muted">{formatDateDisplay(doc.created_at)}</p>
-                        </div>
-                        <ChevronRight size={14} className="text-ink-faint" />
-                      </div>
-                    ))}
-                    {prescricoes.length > 3 && (
-                      <button
-                        onClick={() => { trigger("vibrate"); router.push("/documentos?tipo=receita"); }}
-                        className="w-full text-center text-[10px] font-medium text-ice bg-ice/10 py-2 rounded-xl mt-1 active:scale-95 transition-all"
-                        type="button"
-                      >
-                        Ver todas ({prescricoes.length})
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+                <DetailCard>
+                  <div className="mb-3 flex items-center gap-2">
+                    <FileWarning
+                      size={16}
+                      className="text-amber-400"
+                    />
 
-              {laudosRelatorios.length > 0 && (
-                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <FileText size={16} className="text-ice" />
-                    <h5 className="text-sm font-medium text-ink-primary">Laudos e Relatórios</h5>
-                    <span className="ml-auto text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{laudosRelatorios.length}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {laudosRelatorios.slice(0, 3).map((doc) => (
-                      <div
-                        key={doc.id}
-                        onClick={() => { trigger("vibrate"); router.push(`/detalhes?id=${doc.id}`); }}
-                        className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-ice/30 transition-colors"
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-ink-primary truncate">{doc.title}</p>
-                          <p className="text-[11px] text-ink-muted">{formatDateDisplay(doc.created_at)}</p>
-                        </div>
-                        <ChevronRight size={14} className="text-ink-faint" />
-                      </div>
-                    ))}
-                    {laudosRelatorios.length > 3 && (
-                      <button
-                        onClick={() => { trigger("vibrate"); router.push("/documentos?tipo=laudo"); }}
-                        className="w-full text-center text-[10px] font-medium text-ice bg-ice/10 py-2 rounded-xl mt-1 active:scale-95 transition-all"
-                        type="button"
-                      >
-                        Ver todos ({laudosRelatorios.length})
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
+                    <h5 className="text-sm font-medium text-ink-primary">
+                      Prescrições
+                    </h5>
 
-          {/* EXAMES */}
-          {exames.length > 0 && (
-            <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-              <SectionTitle icon={<FlaskConical size={15} />} title="Exames Solicitados" />
-              <div className="mt-3 space-y-2">
-                {exames.slice(0, 3).map((exame) => (
-                  <div
-                    key={exame.id}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${exame.id}`); }}
-                    className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-violet-400/30 transition-colors"
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink-primary truncate">{exame.nome}</p>
-                      <p className="text-[11px] text-ink-muted">{formatDateDisplay(exame.data)}</p>
-                    </div>
-                    <ChevronRight size={14} className="text-ink-faint" />
-                  </div>
-                ))}
-                {exames.length > 3 && (
-                  <p className="text-[10px] text-center text-ink-muted pt-1">E mais {exames.length - 3} registro(s)...</p>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* RENOVAÇÕES */}
-          {renovacoes.length > 0 && (
-            <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-              <SectionTitle icon={<FileWarning size={15} />} title="Renovações Emitidas" />
-              <div className="mt-3 space-y-2">
-                {renovacoes.slice(0, 3).map((ren) => (
-                  <div key={ren.id} className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink-primary">{formatDateDisplay(ren.data)}</p>
-                      <p className="text-[11px] text-ink-muted">{ren.observacoes || "Renovação de receita"}</p>
-                    </div>
-                    <span className="text-xs font-semibold text-emerald-400">
-                      {typeof ren.preco === "number" && ren.preco > 0 ? `R$ ${ren.preco.toFixed(2).replace(".", ",")}` : "Gratuito"}
+                    <span className="ml-auto rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                      {prescricoes.length}
                     </span>
                   </div>
-                ))}
-              </div>
-              {totalGastoRenovacoes > 0 && (
-                <div className="mt-3 pt-3 border-t border-surface-border/40 flex items-center justify-between">
-                  <span className="text-xs text-ink-muted">Total com renovações</span>
-                  <span className="text-xs font-bold text-emerald-400">R$ {totalGastoRenovacoes.toFixed(2).replace(".", ",")}</span>
-                </div>
+
+                  <div className="space-y-2">
+                    {prescricoes
+                      .slice(0, 3)
+                      .map((documento) => (
+                        <HistoryItem
+                          key={documento.id}
+                          title={
+                            documento.title
+                          }
+                          subtitle={formatDateDisplay(
+                            documento.created_at
+                          )}
+                          icon={
+                            <FileWarning
+                              size={15}
+                            />
+                          }
+                          iconClassName="text-amber-400"
+                          onClick={() => {
+                            trigger(
+                              "vibrate"
+                            );
+                            router.push(
+                              `/detalhes?id=${documento.id}`
+                            );
+                          }}
+                        />
+                      ))}
+
+                    {prescricoes.length >
+                      3 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          trigger(
+                            "vibrate"
+                          );
+                          router.push(
+                            "/documentos?tipo=receita"
+                          );
+                        }}
+                        className="mt-1 w-full rounded-xl bg-ice/10 py-2 text-center text-[10px] font-medium text-ice transition-all active:scale-95"
+                      >
+                        Ver todas (
+                        {
+                          prescricoes.length
+                        }
+                        )
+                      </button>
+                    )}
+                  </div>
+                </DetailCard>
+              )}
+
+              {laudosRelatorios.length >
+                0 && (
+                <DetailCard>
+                  <div className="mb-3 flex items-center gap-2">
+                    <FileText
+                      size={16}
+                      className="text-ice"
+                    />
+
+                    <h5 className="text-sm font-medium text-ink-primary">
+                      Laudos e Relatórios
+                    </h5>
+
+                    <span className="ml-auto rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                      {
+                        laudosRelatorios.length
+                      }
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {laudosRelatorios
+                      .slice(0, 3)
+                      .map((documento) => (
+                        <HistoryItem
+                          key={documento.id}
+                          title={
+                            documento.title
+                          }
+                          subtitle={formatDateDisplay(
+                            documento.created_at
+                          )}
+                          icon={
+                            <FileText
+                              size={15}
+                            />
+                          }
+                          iconClassName="text-ice"
+                          onClick={() => {
+                            trigger(
+                              "vibrate"
+                            );
+                            router.push(
+                              `/detalhes?id=${documento.id}`
+                            );
+                          }}
+                        />
+                      ))}
+
+                    {laudosRelatorios.length >
+                      3 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          trigger(
+                            "vibrate"
+                          );
+                          router.push(
+                            "/documentos?tipo=laudo"
+                          );
+                        }}
+                        className="mt-1 w-full rounded-xl bg-ice/10 py-2 text-center text-[10px] font-medium text-ice transition-all active:scale-95"
+                      >
+                        Ver todos (
+                        {
+                          laudosRelatorios.length
+                        }
+                        )
+                      </button>
+                    )}
+                  </div>
+                </DetailCard>
               )}
             </motion.div>
           )}
 
-          {/* HISTÓRICO CLÍNICO */}
-          <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.07 }} className="space-y-4 pt-2">
-            <SectionTitle icon={<Calendar size={15} />} title="Histórico Clínico" />
+          {/* ==================================================
+              EXAMES
+          ================================================== */}
 
-            <div className="grid grid-cols-1 gap-3">
+          {exames.length > 0 && (
+            <motion.div
+              variants={{
+                initial: {
+                  opacity: 0,
+                  y: 12,
+                },
+                animate: {
+                  opacity: 1,
+                  y: 0,
+                },
+              }}
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay: 0.05,
+              }}
+            >
+              <DetailCard>
+                <SectionTitle
+                  icon={
+                    <FlaskConical
+                      size={15}
+                    />
+                  }
+                  title="Exames Solicitados"
+                />
+
+                <div className="mt-4 space-y-2">
+                  {exames
+                    .slice(0, 3)
+                    .map((exame) => (
+                      <HistoryItem
+                        key={exame.id}
+                        title={exame.nome}
+                        subtitle={formatDateDisplay(
+                          exame.data
+                        )}
+                        icon={
+                          <FlaskConical
+                            size={15}
+                          />
+                        }
+                        iconClassName="text-violet-400"
+                        onClick={() => {
+                          trigger(
+                            "vibrate"
+                          );
+                          router.push(
+                            `/saude/exames/detalhes?id=${exame.id}`
+                          );
+                        }}
+                      />
+                    ))}
+
+                  {exames.length > 3 && (
+                    <p className="pt-1 text-center text-[10px] text-ink-muted">
+                      E mais{" "}
+                      {exames.length - 3}{" "}
+                      registro(s)...
+                    </p>
+                  )}
+                </div>
+              </DetailCard>
+            </motion.div>
+          )}
+
+          {/* ==================================================
+              RENOVAÇÕES
+          ================================================== */}
+
+          {renovacoes.length > 0 && (
+            <motion.div
+              variants={{
+                initial: {
+                  opacity: 0,
+                  y: 12,
+                },
+                animate: {
+                  opacity: 1,
+                  y: 0,
+                },
+              }}
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay: 0.06,
+              }}
+            >
+              <DetailCard>
+                <SectionTitle
+                  icon={
+                    <FileWarning
+                      size={15}
+                    />
+                  }
+                  title="Renovações Emitidas"
+                />
+
+                <div className="mt-4 space-y-2">
+                  {renovacoes
+                    .slice(0, 3)
+                    .map((renovacao) => (
+                      <div
+                        key={renovacao.id}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-surface-border/40 bg-surface-raised p-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-ink-primary">
+                            {formatDateDisplay(
+                              renovacao.data
+                            )}
+                          </p>
+
+                          <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+                            {renovacao.observacoes ||
+                              "Renovação de receita"}
+                          </p>
+                        </div>
+
+                        <span className="shrink-0 text-xs font-semibold text-emerald-400">
+                          {typeof renovacao.preco ===
+                            "number" &&
+                          renovacao.preco > 0
+                            ? `R$ ${renovacao.preco
+                                .toFixed(2)
+                                .replace(
+                                  ".",
+                                  ","
+                                )}`
+                            : "Gratuito"}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+
+                {totalGastoRenovacoes >
+                  0 && (
+                  <div className="mt-4 flex items-center justify-between border-t border-surface-border/40 pt-3">
+                    <span className="text-xs text-ink-muted">
+                      Total com renovações
+                    </span>
+
+                    <span className="text-xs font-bold text-emerald-400">
+                      R${" "}
+                      {totalGastoRenovacoes
+                        .toFixed(2)
+                        .replace(".", ",")}
+                    </span>
+                  </div>
+                )}
+              </DetailCard>
+            </motion.div>
+          )}
+
+          {/* ==================================================
+              HISTÓRICO CLÍNICO
+          ================================================== */}
+
+          <motion.div
+            variants={{
+              initial: {
+                opacity: 0,
+                y: 12,
+              },
+              animate: {
+                opacity: 1,
+                y: 0,
+              },
+            }}
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay: 0.07,
+            }}
+            className="space-y-4 pt-2"
+          >
+            <SectionTitle
+              icon={
+                <Calendar size={15} />
+              }
+              title="Histórico Clínico"
+            />
+
+            <div className="space-y-3">
+
               {/* CONSULTAS */}
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
+
+              <DetailCard className="p-4">
                 <div className="flex items-center gap-2">
-                  <Calendar size={16} className="text-ice" />
-                  <h4 className="text-sm font-semibold text-ink-primary">Consultas ({consultas.length})</h4>
+                  <Calendar
+                    size={16}
+                    className="text-ice"
+                  />
+
+                  <h4 className="text-sm font-semibold text-ink-primary">
+                    Consultas ({consultas.length})
+                  </h4>
+
                   {ultimaConsulta && (
-                    <span className="ml-auto text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">
-                      Última: {formatDateDisplay(ultimaConsulta.data)}
+                    <span className="ml-auto rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                      Última:{" "}
+                      {formatDateDisplay(
+                        ultimaConsulta.data
+                      )}
                     </span>
                   )}
                 </div>
-                {consultas.length === 0 ? (
-                  <p className="text-xs text-ink-muted py-1">Nenhuma consulta registrada.</p>
+
+                {consultas.length ===
+                0 ? (
+                  <EmptyHistory>
+                    Nenhuma consulta registrada.
+                  </EmptyHistory>
                 ) : (
-                  <div className="space-y-2">
-                    {[...consultas].sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((con) => (
-                      <div
-                        key={con.id}
-                        onClick={() => { trigger("vibrate"); router.push(`/saude/consultas/detalhes?id=${con.id}`); }}
-                        className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-ice/30 transition-colors"
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-ink-primary font-mono">{formatDateDisplay(con.data)}</p>
-                          <p className="text-[11px] text-ink-muted capitalize">{con.status}</p>
-                        </div>
-                        <ChevronRight size={14} className="text-ink-faint" />
-                      </div>
-                    ))}
-                    {consultas.length > 3 && (
-                      <p className="text-[10px] text-center text-ink-muted pt-1">E mais {consultas.length - 3} registro(s)...</p>
+                  <div className="mt-3 space-y-2">
+                    {consultasOrdenadas
+                      .slice(0, 3)
+                      .map((consulta) => (
+                        <HistoryItem
+                          key={consulta.id}
+                          title={formatDateDisplay(
+                            consulta.data
+                          )}
+                          subtitle={
+                            consulta.status
+                              ? consulta.status
+                              : undefined
+                          }
+                          icon={
+                            <Calendar
+                              size={15}
+                            />
+                          }
+                          iconClassName="text-ice"
+                          onClick={() => {
+                            trigger(
+                              "vibrate"
+                            );
+                            router.push(
+                              `/saude/consultas/detalhes?id=${consulta.id}`
+                            );
+                          }}
+                        />
+                      ))}
+
+                    {consultas.length >
+                      3 && (
+                      <p className="pt-1 text-center text-[10px] text-ink-muted">
+                        E mais{" "}
+                        {consultas.length - 3}{" "}
+                        registro(s)...
+                      </p>
                     )}
                   </div>
                 )}
-              </div>
+              </DetailCard>
 
               {/* CIRURGIAS */}
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
+
+              <DetailCard className="p-4">
                 <div className="flex items-center gap-2">
-                  <Activity size={16} className="text-coral" />
-                  <h4 className="text-sm font-semibold text-ink-primary">Procedimentos ({cirurgias.length})</h4>
+                  <Activity
+                    size={16}
+                    className="text-coral"
+                  />
+
+                  <h4 className="text-sm font-semibold text-ink-primary">
+                    Procedimentos (
+                    {cirurgias.length})
+                  </h4>
                 </div>
-                {cirurgias.length === 0 ? (
-                  <p className="text-xs text-ink-muted py-1">Nenhum procedimento registrado.</p>
+
+                {cirurgias.length ===
+                0 ? (
+                  <EmptyHistory>
+                    Nenhum procedimento registrado.
+                  </EmptyHistory>
                 ) : (
-                  <div className="space-y-2">
-                    {[...cirurgias].sort((a, b) => (b.data || "").localeCompare(a.data || "")).slice(0, 3).map((cir) => (
-                      <div
-                        key={cir.id}
-                        onClick={() => { trigger("vibrate"); router.push(`/saude/cirurgias/detalhes?id=${cir.id}`); }}
-                        className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-coral/30 transition-colors"
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-ink-primary">{cir.procedimento}</p>
-                          <p className="text-[11px] text-ink-muted">{formatDateDisplay(cir.data)}</p>
-                        </div>
-                        <ChevronRight size={14} className="text-ink-faint" />
-                      </div>
-                    ))}
-                    {cirurgias.length > 3 && (
-                      <p className="text-[10px] text-center text-ink-muted pt-1">E mais {cirurgias.length - 3} registro(s)...</p>
+                  <div className="mt-3 space-y-2">
+                    {cirurgiasOrdenadas
+                      .slice(0, 3)
+                      .map((cirurgia) => (
+                        <HistoryItem
+                          key={cirurgia.id}
+                          title={
+                            cirurgia.procedimento
+                          }
+                          subtitle={formatDateDisplay(
+                            cirurgia.data
+                          )}
+                          icon={
+                            <Activity
+                              size={15}
+                            />
+                          }
+                          iconClassName="text-coral"
+                          onClick={() => {
+                            trigger(
+                              "vibrate"
+                            );
+                            router.push(
+                              `/saude/cirurgias/detalhes?id=${cirurgia.id}`
+                            );
+                          }}
+                        />
+                      ))}
+
+                    {cirurgias.length >
+                      3 && (
+                      <p className="pt-1 text-center text-[10px] text-ink-muted">
+                        E mais{" "}
+                        {cirurgias.length - 3}{" "}
+                        registro(s)...
+                      </p>
                     )}
                   </div>
                 )}
-              </div>
+              </DetailCard>
 
               {/* MEDICAMENTOS */}
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
+
+              <DetailCard className="p-4">
                 <div className="flex items-center gap-2">
-                  <Pill size={16} className="text-emerald-400" />
-                  <h4 className="text-sm font-semibold text-ink-primary">Prescrições ({medicamentos.length})</h4>
-                  {medicamentosAtivos.length > 0 && (
-                    <span className="ml-auto text-[10px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
-                      {medicamentosAtivos.length} ativos
+                  <Pill
+                    size={16}
+                    className="text-emerald-400"
+                  />
+
+                  <h4 className="text-sm font-semibold text-ink-primary">
+                    Prescrições (
+                    {medicamentos.length})
+                  </h4>
+
+                  {medicamentosAtivos.length >
+                    0 && (
+                    <span className="ml-auto rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                      {
+                        medicamentosAtivos.length
+                      }{" "}
+                      ativos
                     </span>
                   )}
                 </div>
-                {medicamentos.length === 0 ? (
-                  <p className="text-xs text-ink-muted py-1">Nenhum medicamento prescrito por este médico.</p>
+
+                {medicamentos.length ===
+                0 ? (
+                  <EmptyHistory>
+                    Nenhum medicamento prescrito por este médico.
+                  </EmptyHistory>
                 ) : (
-                  <div className="space-y-2">
-                    {alertasMedicamentos.slice(0, 3).map((med) => (
-                      <div
-                        key={med.id}
-                        onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${med.id}`); }}
-                        className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-emerald-400/30 transition-colors"
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-ink-primary">{med.nome}</p>
-                            {med.insight?.deveRenovar && (
-                              <span className="text-[8px] font-bold uppercase bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded-full">Renovar</span>
-                            )}
-                            {med.receitaVencida && (
-                              <span className="text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencida</span>
-                            )}
+                  <div className="mt-3 space-y-2">
+                    {alertasMedicamentos
+                      .slice(0, 3)
+                      .map((medicamento) => (
+                        <button
+                          key={medicamento.id}
+                          type="button"
+                          onClick={() => {
+                            trigger(
+                              "vibrate"
+                            );
+                            router.push(
+                              `/saude/medicamentos/detalhes?id=${medicamento.id}`
+                            );
+                          }}
+                          className="flex w-full items-center justify-between gap-3 rounded-xl border border-surface-border/40 bg-surface-raised p-3 text-left transition-all hover:border-emerald-400/30 active:scale-[0.99]"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-medium text-ink-primary">
+                                {
+                                  medicamento.nome
+                                }
+                              </p>
+
+                              {medicamento.insight
+                                ?.deveRenovar && (
+                                <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-400">
+                                  Renovar
+                                </span>
+                              )}
+
+                              {medicamento.receitaVencida && (
+                                <span className="rounded-full bg-coral/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-coral">
+                                  Vencida
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-0.5 text-[11px] text-ink-muted">
+                              {
+                                medicamento.dosagem
+                              }
+                            </p>
                           </div>
-                          <p className="text-[11px] text-ink-muted">{med.dosagem}</p>
-                        </div>
-                        <ChevronRight size={14} className="text-ink-faint" />
-                      </div>
-                    ))}
-                    {medicamentos.length > 3 && (
-                      <p className="text-[10px] text-center text-ink-muted pt-1">E mais {medicamentos.length - 3} registro(s)...</p>
+
+                          <ChevronRight
+                            size={14}
+                            className="shrink-0 text-ink-faint"
+                          />
+                        </button>
+                      ))}
+
+                    {medicamentos.length >
+                      3 && (
+                      <p className="pt-1 text-center text-[10px] text-ink-muted">
+                        E mais{" "}
+                        {medicamentos.length - 3}{" "}
+                        registro(s)...
+                      </p>
                     )}
                   </div>
                 )}
-              </div>
+              </DetailCard>
             </div>
           </motion.div>
         </section>
 
+        {/* ====================================================
+            MODAL DE EXCLUSÃO
+        ==================================================== */}
+
         <ConfirmationModal
           isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
+          onClose={() =>
+            setShowDeleteModal(false)
+          }
           onConfirm={handleDelete}
           title="Excluir Médico"
           message="Tem certeza que deseja excluir este profissional? As consultas e registros vinculados não serão apagados, mas perderão a associação com este nome."
@@ -873,6 +1901,16 @@ function DetalhesMedicoContent() {
   );
 }
 
+/* ============================================================
+   PAGE
+   ============================================================ */
+
 export default function DetalhesMedicoPage() {
-  return <Suspense fallback={<DetailSkeleton />}><DetalhesMedicoContent /></Suspense>;
+  return (
+    <Suspense
+      fallback={<DetailSkeleton />}
+    >
+      <DetalhesMedicoContent />
+    </Suspense>
+  );
 }
