@@ -91,13 +91,14 @@ const SplitPillIcon = ({
 function getMedicamentoIconComponent(formato?: string) {
   const f = (formato || "").toLowerCase().trim();
   if (f.includes("gota")) return Droplet;
+  if (f.includes("capsula") || f.includes("cápsula")) return Pill;
   if (f.includes("partido")) return SplitPillIcon;
-  if (f.includes("capsula") || f.includes("cápsula") || f.includes("comprimido")) return Pill;
   if (f.includes("injecao") || f.includes("injeção")) return Syringe;
   if (f.includes("adesivo")) return StickyNote;
-  if (f.includes("inteiro")) return Circle;
+  if (f.includes("comprimido") || f.includes("inteiro")) return Circle;
   return Pill; // Fallback padrão seguro
 }
+
 
 type SortOption = "urgency" | "renewal" | "name";
 
