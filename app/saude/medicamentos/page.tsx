@@ -51,7 +51,7 @@ import {
 } from "@/components/list";
 
 /* ============================================================
-   CONFIGURAÇÕES
+   CONFIGURAÇÕES (UNIFICADAS COM A TELA DE DETALHES)
    ============================================================ */
 
 const FORMATOS = [
@@ -130,7 +130,6 @@ function getTratamentoStyle(nome: string, cor?: string) {
   };
 }
 
-// 🛡️ NOVO HELPER: Cores exatas para cada tipo de receita
 function getReceitaBadgeProps(tipo?: string) {
   if (!tipo || tipo === "comum") return null;
 
@@ -358,14 +357,16 @@ export default function MedicamentosListPage() {
               const tratamentoIds = med.tratamento_ids || [];
               const isSuspenso = med.status === "descontinuado";
               
-              // 🛡️ SUBSTITUIÇÃO: Tag Controlado pela Tag Específica da Receita
               const receitaBadge = getReceitaBadgeProps(med.tipo_receita);
-              
               const insight = isSuspenso ? null : sugerirRenovacao(med);
               const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
 
-              const formatoBanco = med.formato?.toLowerCase().trim() || "inteiro";
-              const itemFormato = FORMATOS.find((f) => f.id === formatoBanco) || FORMATOS[0];
+              // 🛡️ CORREÇÃO ROBUSTA DE FORMATO DE ÍCONE
+              const formatoBanco = med.formato?.toLowerCase().trim() || "comprimido";
+              const itemFormato = 
+                FORMATOS.find((f) => f.id === formatoBanco) || 
+                FORMATOS.find((f) => f.id.includes(formatoBanco) || formatoBanco.includes(f.id)) || 
+                FORMATOS[0];
               const SelectedFormatIcon = itemFormato.icon;
 
               const cor1 = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
@@ -376,17 +377,15 @@ export default function MedicamentosListPage() {
               const estoqueZerado = dosesParaAcabar <= 0;
               const temEstoque = med.estoque_quantidade !== undefined && med.estoque_quantidade !== null;
 
-              // 🛡️ LÓGICA DE TEXTO DE EXIBIÇÃO APRIMORADA PARA ML E GOTAS
               let textoExibicao = estoqueInfo 
                 ? estoqueInfo.textoEstoque 
                 : temEstoque 
                   ? `${med.estoque_quantidade} ${med.estoque_unidade_medida || 'unidades'}` 
                   : "Sem estoque";
 
-              // Se a unidade de medida do app estiver gravada como gota(s), converter o montante de gotas para mililitros.
               if (temEstoque && med.estoque_unidade_medida?.toLowerCase().includes("gota") && med.estoque_quantidade) {
                 const gotas = med.estoque_quantidade;
-                const gotasPorMl = med.estoque_gotas_por_ml || 20; // Default para 20 gotas = 1 ml
+                const gotasPorMl = med.estoque_gotas_por_ml || 20;
                 const mlAprox = (gotas / gotasPorMl).toFixed(1).replace(".0", "");
                 textoExibicao = `${mlAprox} ml (~${gotas} gotas)`;
               }
@@ -516,7 +515,6 @@ export default function MedicamentosListPage() {
                         <Zap size={8} fill="currentColor" /> SOS
                       </span>
                     )}
-                    {/* 🛡️ RENDER DA ETIQUETA DE RECEITA */}
                     {receitaBadge && (
                       <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase ${receitaBadge.colorClass}`}>
                         {receitaBadge.label}

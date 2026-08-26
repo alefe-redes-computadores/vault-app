@@ -20,6 +20,12 @@ export async function enfileirarOperacao(
   operacao: Operacao,
   dados: unknown
 ) {
+  // 🛡️ GUARDA ANTI-ECO: Se a alteração veio do Supabase Realtime, ignora a fila!
+  if (typeof window !== "undefined" && (window as any).__isCloudUpdate) {
+    console.log(`[Anti-Eco] Ignorando operação na fila (${tabela}) porque o dado veio da nuvem.`);
+    return;
+  }
+
   const dadosObj = dados as { id?: string };
   const chave = `${tabela}:${dadosObj.id ?? ""}`;
   const agora = new Date().toISOString();

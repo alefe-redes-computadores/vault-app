@@ -8,13 +8,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useSentry } from "@/hooks/useSentry";
 import { useDoseNotificationActions } from "@/hooks/useDoseNotificationActions";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime"; // 👇 1. Importação do nosso novo Hook
 import { BottomNav } from "./BottomNav";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ToastProvider } from "./ToastProvider";
 import { pullAllData } from "@/lib/sync/pull";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
-import { db } from "@/lib/db"; // 👈 Importação do db adicionada
+import { db } from "@/lib/db";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -24,12 +25,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const { setUser, captureException } = useSentry();
   const { processQueue, isOnline } = useSyncQueue();
   const [isPullDone, setIsPullDone] = useState(false);
-  const hasPulledRef = useRef(false); // 🔒 Trava absoluta anti-duplicidade
+  const hasPulledRef = useRef(false);
 
   useDoseNotificationActions();
+  
+  // 👇 2. Ligando o rádio comunicador do Realtime!
+  useSupabaseRealtime(); 
 
   useEffect(() => {
-    // 👈 Injeção do db no window para o Eruda / debug
     if (typeof window !== "undefined") {
       (window as any).db = db;
     }
@@ -48,7 +51,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user || loading || !isOnline || isPullDone || hasPulledRef.current) return;
     
-    hasPulledRef.current = true; // Sela a porta instantaneamente
+    hasPulledRef.current = true;
     console.log("🔵 Executando pullAllData unificado...");
 
     pullAllData(user.id)
@@ -58,7 +61,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
       .catch((err) => {
         console.error("❌ Erro no pull:", err);
-        hasPulledRef.current = false; // Libera caso precise tentar de novo em erro crítico
+        hasPulledRef.current = false;
       });
   }, [user, loading, isOnline, isPullDone]);
 
