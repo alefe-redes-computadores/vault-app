@@ -180,6 +180,24 @@ const FORMATOS = [
 ];
 
 /* ============================================================
+   NOVO HELPER: CORES EXATAS PARA CADA TIPO DE RECEITA
+   ============================================================ */
+
+function getReceitaBadgeProps(tipo?: string) {
+  if (!tipo || tipo === "comum") return null;
+
+  const map: Record<string, { label: string; colorClass: string }> = {
+    amarela: { label: "Receita Amarela", colorClass: "border-amber-400/30 bg-amber-400/10 text-amber-400" },
+    azul: { label: "Receita Azul", colorClass: "border-blue-400/30 bg-blue-400/10 text-blue-400" },
+    branca_controle: { label: "Receita Branca (C)", colorClass: "border-slate-300/30 bg-slate-400/10 text-slate-300" },
+    branca: { label: "Receita Branca", colorClass: "border-slate-300/30 bg-slate-400/10 text-slate-300" },
+    especial: { label: "Receita Especial", colorClass: "border-purple-400/30 bg-purple-400/10 text-purple-400" },
+  };
+
+  return map[tipo] || { label: "Controlado", colorClass: "border-blue-400/30 bg-blue-400/10 text-blue-400" };
+}
+
+/* ============================================================
    CONTEÚDO
    ============================================================ */
 
@@ -395,6 +413,11 @@ function MedicamentoDetalhesContent() {
      ESTOQUE
      ========================================================== */
 
+  // 🛡️ NOVO: Conversão de gotas para ml quando aplicável
+  const isGota = med.formato === "gota" || med.estoque_unidade_medida?.toLowerCase().includes("gota");
+  const gotasPorMl = Number(med.estoque_gotas_por_ml) || 20;
+  const estoqueEmMl = isGota && gotasPorMl > 0 ? qtd / gotasPorMl : null;
+
   const getEstoqueStyle = () => {
     if (qtd <= 9) {
       return {
@@ -430,24 +453,6 @@ function MedicamentoDetalhesContent() {
   /* ==========================================================
      RECEITA
      ========================================================== */
-
-  const getReceitaBadgeStyle = () => {
-    const tipo = med.tipo_receita || "comum";
-
-    if (tipo === "amarela") {
-      return "border-amber-400/50 bg-amber-400/10 text-amber-300";
-    }
-
-    if (tipo === "azul") {
-      return "border-blue-400/50 bg-blue-400/10 text-blue-300";
-    }
-
-    if (tipo === "branca") {
-      return "border-zinc-300/50 bg-zinc-300/10 text-zinc-200";
-    }
-
-    return "border-ice/30 bg-ice/5 text-ice";
-  };
 
   const tipoReceitaLabel =
     TIPO_RECEITA_LABELS[
@@ -1342,27 +1347,25 @@ function MedicamentoDetalhesContent() {
                       </p>
 
                       <div className="mt-1 flex items-baseline gap-2">
-                        <p
-                          className={`text-3xl font-display font-bold ${estoqueStatus.color}`}
-                        >
-                          {qtd}
-                        </p>
-
-                        <span className="text-sm font-medium uppercase text-ink-muted">
-                          {med.estoque_unidade_medida ||
-                            "doses"}
-                        </span>
-
-                        <span
-                          className={`
-                            ml-1 rounded-lg px-2 py-1
-                            text-[9px] font-bold uppercase
-                            ${estoqueStatus.bg}
-                            ${estoqueStatus.color}
-                          `}
-                        >
-                          {estoqueStatus.label}
-                        </span>
+                        {isGota && estoqueEmMl !== null ? (
+                          <>
+                            <p className={`text-3xl font-display font-bold ${estoqueStatus.color}`}>
+                              {estoqueEmMl.toFixed(1)}
+                            </p>
+                            <span className="text-sm font-medium uppercase text-ink-muted">
+                              ml
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <p className={`text-3xl font-display font-bold ${estoqueStatus.color}`}>
+                              {qtd}
+                            </p>
+                            <span className="text-sm font-medium uppercase text-ink-muted">
+                              {med.estoque_unidade_medida || "doses"}
+                            </span>
+                          </>
+                        )}
                       </div>
 
                       {ultimaDose && (
@@ -1816,18 +1819,21 @@ function MedicamentoDetalhesContent() {
               }
             />
 
-            <div
-              className={`
-                rounded-[24px]
-                border p-4
-                ${getReceitaBadgeStyle()}
-              `}
-            >
+            <div className="rounded-[24px] border border-surface-border bg-surface p-4">
               <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em]">
-                  <FileText size={14} />
-                  {tipoReceitaLabel}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em]">
+                    <FileText size={14} />
+                    {tipoReceitaLabel}
+                  </span>
+                  
+                  {/* Badge Inteligente */}
+                  {getReceitaBadgeProps(med.tipo_receita) && (
+                    <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase ${getReceitaBadgeProps(med.tipo_receita)!.colorClass}`}>
+                       {getReceitaBadgeProps(med.tipo_receita)!.label}
+                    </span>
+                  )}
+                </div>
 
                 {isVencida ? (
                   <span className="rounded-full bg-coral px-2 py-1 text-[9px] font-bold uppercase text-void">
@@ -1840,7 +1846,7 @@ function MedicamentoDetalhesContent() {
                 )}
               </div>
 
-              <div className="mt-4 flex flex-col gap-3 border-t border-current/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-4 flex flex-col gap-3 border-t border-surface-border/50 pt-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-[9px] font-bold uppercase opacity-70">
                     Válida até

@@ -130,6 +130,21 @@ function getTratamentoStyle(nome: string, cor?: string) {
   };
 }
 
+// 🛡️ NOVO HELPER: Cores exatas para cada tipo de receita
+function getReceitaBadgeProps(tipo?: string) {
+  if (!tipo || tipo === "comum") return null;
+
+  const map: Record<string, { label: string; colorClass: string }> = {
+    amarela: { label: "Receita Amarela", colorClass: "border-amber-400/30 bg-amber-400/10 text-amber-400" },
+    azul: { label: "Receita Azul", colorClass: "border-blue-400/30 bg-blue-400/10 text-blue-400" },
+    branca_controle: { label: "Receita Branca (C)", colorClass: "border-slate-300/30 bg-slate-400/10 text-slate-300" },
+    branca: { label: "Receita Branca", colorClass: "border-slate-300/30 bg-slate-400/10 text-slate-300" },
+    especial: { label: "Receita Especial", colorClass: "border-purple-400/30 bg-purple-400/10 text-purple-400" },
+  };
+
+  return map[tipo] || { label: "Controlado", colorClass: "border-blue-400/30 bg-blue-400/10 text-blue-400" };
+}
+
 /* ============================================================
    PÁGINA
    ============================================================ */
@@ -342,7 +357,10 @@ export default function MedicamentosListPage() {
               
               const tratamentoIds = med.tratamento_ids || [];
               const isSuspenso = med.status === "descontinuado";
-              const isControlado = med.tipo_receita === "amarela" || med.tipo_receita === "azul";
+              
+              // 🛡️ SUBSTITUIÇÃO: Tag Controlado pela Tag Específica da Receita
+              const receitaBadge = getReceitaBadgeProps(med.tipo_receita);
+              
               const insight = isSuspenso ? null : sugerirRenovacao(med);
               const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
 
@@ -351,7 +369,6 @@ export default function MedicamentosListPage() {
               const SelectedFormatIcon = itemFormato.icon;
 
               const cor1 = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
-              const cor2 = med.cores && med.cores.length > 1 ? med.cores[1] : null;
               const cardColor = activePersonColor || cor1;
 
               const dosesParaAcabar = estoqueInfo ? estoqueInfo.dosesRestantes : (med.estoque_quantidade ?? 0);
@@ -359,11 +376,20 @@ export default function MedicamentosListPage() {
               const estoqueZerado = dosesParaAcabar <= 0;
               const temEstoque = med.estoque_quantidade !== undefined && med.estoque_quantidade !== null;
 
-              const textoExibicao = estoqueInfo 
+              // 🛡️ LÓGICA DE TEXTO DE EXIBIÇÃO APRIMORADA PARA ML E GOTAS
+              let textoExibicao = estoqueInfo 
                 ? estoqueInfo.textoEstoque 
                 : temEstoque 
                   ? `${med.estoque_quantidade} ${med.estoque_unidade_medida || 'unidades'}` 
                   : "Sem estoque";
+
+              // Se a unidade de medida do app estiver gravada como gota(s), converter o montante de gotas para mililitros.
+              if (temEstoque && med.estoque_unidade_medida?.toLowerCase().includes("gota") && med.estoque_quantidade) {
+                const gotas = med.estoque_quantidade;
+                const gotasPorMl = med.estoque_gotas_por_ml || 20; // Default para 20 gotas = 1 ml
+                const mlAprox = (gotas / gotasPorMl).toFixed(1).replace(".0", "");
+                textoExibicao = `${mlAprox} ml (~${gotas} gotas)`;
+              }
 
               return (
                 <ListCard
@@ -400,7 +426,8 @@ export default function MedicamentosListPage() {
                         {temEstoque && !estoqueZerado && !isSuspenso && (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               trigger("vibrate");
                               setQuickDoseMedId(med.id!);
                             }}
@@ -429,7 +456,8 @@ export default function MedicamentosListPage() {
                         <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-surface-border bg-surface-raised">
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               trigger("vibrate");
                               router.push(`/saude/renovacao/nova?medicamento_id=${med.id}`);
                             }}
@@ -488,9 +516,10 @@ export default function MedicamentosListPage() {
                         <Zap size={8} fill="currentColor" /> SOS
                       </span>
                     )}
-                    {isControlado && (
-                      <span className="shrink-0 rounded-md border border-blue-400/20 bg-blue-400/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-blue-400">
-                        Controlado
+                    {/* 🛡️ RENDER DA ETIQUETA DE RECEITA */}
+                    {receitaBadge && (
+                      <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase ${receitaBadge.colorClass}`}>
+                        {receitaBadge.label}
                       </span>
                     )}
                     {receitaVencida && !isSuspenso && (
@@ -551,7 +580,8 @@ export default function MedicamentosListPage() {
                   {insight?.deveRenovar && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         trigger("vibrate");
                         router.push(`/saude/renovacao/nova?medicamento_id=${med.id}`);
                       }}
