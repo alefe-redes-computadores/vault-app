@@ -19,10 +19,14 @@ export function validarVinculoMedicoLocal(
 // ============================================================
 // 2. SUGERIR RENOVAÇÃO (COM BASE NO ESTOQUE E RECEITA)
 // ============================================================
-export function sugerirRenovacao(medicamento: Medicamento) {
+export function sugerirRenovacao(medicamento: Medicamento): { 
+  deveRenovar: boolean; 
+  mensagem: string; 
+  urgencia: 'alta' | 'media' | 'nenhuma' 
+} {
   const estoque = computeEstoqueInfo(medicamento);
   if (!estoque) {
-    return { deveRenovar: false, mensagem: "", urgencia: "nenhuma" as const };
+    return { deveRenovar: false, mensagem: "", urgencia: "nenhuma" };
   }
 
   const consumoDiario =
@@ -32,45 +36,44 @@ export function sugerirRenovacao(medicamento: Medicamento) {
   const diasRestantes = Math.floor(estoque.quantidadeRestante / consumoDiario);
   const diasAteVencimento = getDaysUntil(medicamento.proxima_renovacao);
 
-  // Cenário 1: Estoque crítico + receita vencendo
-  if (diasRestantes <= 5 && diasAteVencimento !== null && diasAteVencimento <= 15) {
+  // Cenário 1: Receita vai vencer ANTES do estoque acabar (em menos de 20 dias)
+  if (diasAteVencimento !== null && diasAteVencimento <= 20 && diasAteVencimento < diasRestantes) {
     return {
       deveRenovar: true,
-      mensagem: `Seu estoque de ${medicamento.nome} dura apenas ${diasRestantes} dias e a receita vence em ${diasAteVencimento} dias.`,
-      urgencia: "alta" as const,
+      mensagem: `Sua receita vence em ${diasAteVencimento} dias, antes do estoque atual acabar (${diasRestantes}d).`,
+      urgencia: diasAteVencimento <= 7 ? "alta" : "media",
     };
   }
 
-  // Cenário 2 (Implementado): Estoque acaba antes da próxima renovação da receita
-  if (diasAteVencimento !== null && diasRestantes < diasAteVencimento) {
+  // Cenário 2: Estoque e Receita acabando juntos na mesma época (zona de perigo)
+  if (diasRestantes <= 15 && diasAteVencimento !== null && diasAteVencimento <= 15) {
     return {
       deveRenovar: true,
-      mensagem: `Atenção: O estoque de ${medicamento.nome} acaba em ${diasRestantes} dias, antes da renovação da receita (${diasAteVencimento}d).`,
-      urgencia: "alta" as const,
+      mensagem: `Atenção dupla: Estoque para ${diasRestantes} dias e receita vence em ${diasAteVencimento} dias.`,
+      urgencia: "alta",
     };
   }
 
-  // Cenário 3: Estoque crítico
-  if (diasRestantes <= 3) {
+  // Cenário 3: Apenas o Estoque acabando (Alerta real)
+  if (diasRestantes <= 10) {
     return {
       deveRenovar: true,
-      mensagem: `Estoque crítico! ${medicamento.nome} dura apenas ${diasRestantes} dias.`,
-      urgencia: "alta" as const,
+      mensagem: `Estoque crítico! "${medicamento.nome}" dura apenas ${diasRestantes} dias.`,
+      urgencia: diasRestantes <= 4 ? "alta" : "media",
     };
   }
 
-  // Cenário 4: Receita vencendo
-  if (diasAteVencimento !== null && diasAteVencimento <= 7) {
+  // Cenário 4: Apenas a Receita vencendo
+  if (diasAteVencimento !== null && diasAteVencimento <= 10) {
     return {
       deveRenovar: true,
-      mensagem: `A receita de ${medicamento.nome} vence em ${diasAteVencimento} dias.`,
-      urgencia: "media" as const,
+      mensagem: `A receita de "${medicamento.nome}" vence em ${diasAteVencimento} dias.`,
+      urgencia: diasAteVencimento <= 3 ? "alta" : "media",
     };
   }
 
-  return { deveRenovar: false, mensagem: "", urgencia: "nenhuma" as const };
+  return { deveRenovar: false, mensagem: "", urgencia: "nenhuma" };
 }
-
 
 // ============================================================
 // 3. ANALISAR MELHOR FARMÁCIA (INSIGHT DE ECONOMIA)
@@ -302,7 +305,7 @@ export function gerarAlertasVisaoGeral(contexto: {
       alerts.push({
         tipo: 'estoque',
         mensagem: insight.mensagem,
-        urgencia: insight.urgencia,
+        urgencia: insight.urgencia, // Type is 'alta' | 'media' | 'nenhuma'
         link: `/saude/medicamentos/detalhes?id=${med.id}`,
       });
     }
@@ -824,7 +827,7 @@ export interface ProcessedMed {
   isSuspenso: boolean;
   foiTomadoHoje: boolean;
   horarioTomado?: string;
-  insight: { deveRenovar: boolean; mensagem: string; urgencia: 'alta' | 'media' | 'baixa' | 'nenhuma' };
+  insight: { deveRenovar: boolean; mensagem: string; urgencia: 'alta' | 'media' | 'nenhuma' };
   receita: { sigla: string; corBorda: string; tooltip: string; textColorClass: string } | null;
   textoEstoque: string;
   isEstoqueZerado: boolean;
@@ -899,9 +902,10 @@ export function processarListaMedicamentos(
       if (!a.foiTomadoHoje && b.foiTomadoHoje) return -1;
     }
 
-    const urgenciaPeso = { alta: 0, media: 1, baixa: 2, nenhuma: 3 };
-    const pesoA = urgenciaPeso[a.insight.urgencia] ?? 3;
-    const pesoB = urgenciaPeso[b.insight.urgencia] ?? 3;
+    const urgenciaPeso: Record<'alta' | 'media' | 'nenhuma', number> = { alta: 0, media: 1, nenhuma: 2 };
+    const pesoA = urgenciaPeso[a.insight.urgencia] ?? 2;
+    const pesoB = urgenciaPeso[b.insight.urgencia] ?? 2;
+    
     if (pesoA !== pesoB) return pesoA - pesoB;
 
     return a.med.nome.localeCompare(b.med.nome, "pt-BR", { sensitivity: "base" });
