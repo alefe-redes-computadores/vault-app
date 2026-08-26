@@ -1,7 +1,7 @@
 // app/saude/medicamentos/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Droplet,
@@ -202,6 +202,41 @@ export default function MedicamentosListPage() {
     return map;
   }, [tratamentos]);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showDescontinuados, setShowDescontinuados] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>("urgency");
+  const [quickDoseMedId, setQuickDoseMedId] = useState<string | null>(null);
+
+  // 🛡️ MEMÓRIA PERSISTENTE: Carrega os filtros do Local Storage ao abrir a página
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedSort = localStorage.getItem("@vault:meds_sortBy");
+      if (savedSort) setSortBy(savedSort as SortOption);
+
+      const savedSuspended = localStorage.getItem("@vault:meds_showSuspended");
+      if (savedSuspended) setShowDescontinuados(savedSuspended === "true");
+    }
+  }, []);
+
+  /* ============================================================
+     DADOS PROCESSADOS
+     ============================================================ */
+
+  const medicamentos = useMemo(() => {
+    if (!activePersonId) return [];
+    return (medicamentosTodas || []).filter(
+      (medicamento) => medicamento.person_id === activePersonId
+    );
+  }, [medicamentosTodas, activePersonId]);
+
+  const tratamentoMap = useMemo(() => {
+    const map = new Map<string, { nome: string; cor?: string }>();
+    (tratamentos || []).forEach((tratamento) => {
+      if (tratamento.id) map.set(tratamento.id, { nome: tratamento.nome, cor: tratamento.cor });
+    });
+    return map;
+  }, [tratamentos]);
+
   const activePerson = (persons || []).find((p) => p.id === activePersonId);
   const activePersonColor = activePerson?.color || "#38BDF8";
 
@@ -262,14 +297,25 @@ export default function MedicamentosListPage() {
     });
   }, [medicamentos, searchQuery, showDescontinuados, sortBy]);
 
+  // 🛡️ ATUALIZADO: Salva automaticamente no Local Storage ao mudar a ordem
   const handleSortChange = (value: string) => {
     trigger("vibrate");
     setSortBy(value as SortOption);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("@vault:meds_sortBy", value);
+    }
   };
 
+  // 🛡️ ATUALIZADO: Salva automaticamente ao mostrar/ocultar suspensos
   const handleToggleSuspensos = () => {
     trigger("vibrate");
-    setShowDescontinuados((prev) => !prev);
+    setShowDescontinuados((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("@vault:meds_showSuspended", String(next));
+      }
+      return next;
+    });
   };
 
   if (medicamentosTodas === undefined) {
