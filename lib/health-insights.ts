@@ -818,3 +818,99 @@ export function analisarRegistroSaude(
     recomendacao: 'Mantenha o registro contínuo para gerar um histórico detalhado para o seu acompanhamento.'
   };
 }
+// ============================================================
+// 16. PROCESSADOR INTELIGENTE DA LISTAGEM DE MEDICAMENTOS
+// ============================================================
+export interface ProcessedMed {
+  med: Medicamento;
+  isSOS: boolean;
+  isSuspenso: boolean;
+  foiTomadoHoje: boolean;
+  horarioTomado?: string;
+  insight: { deveRenovar: boolean; mensagem: string; urgencia: 'alta' | 'media' | 'baixa' | 'nenhuma' };
+  receita: { sigla: string; corBorda: string; tooltip: string; textColorClass: string } | null;
+  textoEstoque: string;
+  isEstoqueZerado: boolean;
+  isEstoqueCritico: boolean;
+}
+
+export function processarListaMedicamentos(
+  medicamentos: Medicamento[],
+  doseLogsHoje: Array<{ medicamento_id: string; tomado_em?: string }>
+): ProcessedMed[] {
+  const lista = medicamentos.map((med) => {
+    const isSOS = med.tipo_uso !== "continuo";
+    const isSuspenso = med.status === "descontinuado";
+    const insight = isSuspenso ? { deveRenovar: false, mensagem: "", urgencia: 'nenhuma' as const } : sugerirRenovacao(med);
+    
+    // Verifica se foi tomado hoje
+    const logHoje = doseLogsHoje.find(l => l.medicamento_id === med.id && l.tomado_em);
+    const foiTomadoHoje = !!logHoje;
+    const horarioTomado = logHoje && logHoje.tomado_em 
+      ? new Date(logHoje.tomado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) 
+      : undefined;
+
+    // Lógica enxuta da Receita (Padrão Anvisa) com Type Casting para o TS
+    let receita = null;
+    const corPadrao = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
+    const tipoReceitaSegura = med.tipo_receita as string; // 🛡️ Evita erro de tipos do TS
+    
+    if (tipoReceitaSegura === "amarela") {
+      receita = { sigla: "A1/A2", corBorda: "#fbbf24", textColorClass: "text-amber-400", tooltip: "Receita Amarela (Controle Rigoroso)" };
+    } else if (tipoReceitaSegura === "azul") {
+      receita = { sigla: "B1/B2", corBorda: "#60a5fa", textColorClass: "text-blue-400", tooltip: "Receita Azul (Psicotrópicos)" };
+    } else if (tipoReceitaSegura === "branca_controle" || tipoReceitaSegura === "especial") {
+      receita = { sigla: "C1", corBorda: "#94a3b8", textColorClass: "text-slate-400", tooltip: "Receita Branca (Controle Especial)" };
+    } else if (tipoReceitaSegura === "branca") {
+      receita = { sigla: "Branca", corBorda: corPadrao, textColorClass: "text-slate-300", tooltip: "Receita Branca Comum" };
+    } else {
+      receita = { sigla: "S/R", corBorda: corPadrao, textColorClass: "text-slate-500", tooltip: "Sem retenção de receita" };
+    }
+
+    // Lógica do Estoque
+    const estoqueInfo = computeEstoqueInfo(med);
+    const dosesRestantes = estoqueInfo ? estoqueInfo.dosesRestantes : (med.estoque_quantidade ?? 0);
+    const isEstoqueCritico = dosesRestantes > 0 && dosesRestantes < 10;
+    const isEstoqueZerado = dosesRestantes <= 0;
+    const temEstoque = med.estoque_quantidade !== undefined && med.estoque_quantidade !== null;
+
+    let textoEstoque = estoqueInfo ? estoqueInfo.textoEstoque : temEstoque ? `${med.estoque_quantidade} ${med.estoque_unidade_medida || 'unidades'}` : "Sem estoque";
+    if (temEstoque && med.estoque_unidade_medida?.toLowerCase().includes("gota") && med.estoque_quantidade) {
+      const gotasPorMl = med.estoque_gotas_por_ml || 20;
+      textoEstoque = `${(med.estoque_quantidade / gotasPorMl).toFixed(1).replace(".0", "")} ml (~${med.estoque_quantidade} gotas)`;
+    }
+
+    return {
+      med,
+      isSOS,
+      isSuspenso,
+      foiTomadoHoje,
+      horarioTomado,
+      insight,
+      receita,
+      textoEstoque,
+      isEstoqueZerado,
+      isEstoqueCritico,
+    };
+  });
+
+  // O Coração da Tela: Ordenação Inteligente
+  return lista.sort((a, b) => {
+    if (a.isSuspenso && !b.isSuspenso) return 1;
+    if (!a.isSuspenso && b.isSuspenso) return -1;
+    if (a.isSOS && !b.isSOS) return 1;
+    if (!a.isSOS && b.isSOS) return -1;
+
+    if (!a.isSOS && !b.isSOS) {
+      if (a.foiTomadoHoje && !b.foiTomadoHoje) return 1;
+      if (!a.foiTomadoHoje && b.foiTomadoHoje) return -1;
+    }
+
+    const urgenciaPeso = { alta: 0, media: 1, baixa: 2, nenhuma: 3 };
+    const pesoA = urgenciaPeso[a.insight.urgencia] ?? 3;
+    const pesoB = urgenciaPeso[b.insight.urgencia] ?? 3;
+    if (pesoA !== pesoB) return pesoA - pesoB;
+
+    return a.med.nome.localeCompare(b.med.nome, "pt-BR", { sensitivity: "base" });
+  });
+}
