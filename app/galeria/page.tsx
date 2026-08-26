@@ -15,6 +15,7 @@ import {
   FileText,
   ExternalLink,
   FileWarning,
+  Trash2,
 } from "lucide-react";
 import { useGaleria, type GalleryItem } from "@/hooks/useGaleria";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -23,7 +24,7 @@ import { UploadGaleriaModal } from "@/components/UploadGaleriaModal";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 
 // ============================================================
-// 1. COMPONENTE DE PREVIEW DO CARD (Otimizado com Miniaturas)
+// 1. COMPONENTE DE PREVIEW DO CARD (Com Blindagem Anti-Blob)
 // ============================================================
 interface DocumentPreviewProps {
   item: GalleryItem;
@@ -33,6 +34,9 @@ interface DocumentPreviewProps {
 
 function DocumentPreview({ item, accentColor, onClick }: DocumentPreviewProps) {
   const [imgStatus, setImgStatus] = useState<"idle" | "loading" | "success" | "error">("loading");
+  
+  // Detecta se a URL é um blob local expirado ou inválido
+  const isDeadBlob = item.url?.startsWith("blob:");
   const imageSource = item.thumbnail_url || item.url;
 
   return (
@@ -48,6 +52,14 @@ function DocumentPreview({ item, accentColor, onClick }: DocumentPreviewProps) {
             <FileText size={26} strokeWidth={1.5} />
           </div>
           <span className="rounded-lg bg-surface-border/50 px-2.5 py-1 text-[10px] font-bold text-ink-primary uppercase tracking-widest">PDF</span>
+        </div>
+      ) : isDeadBlob ? (
+        <div className="flex h-full w-full flex-col items-center justify-center bg-void/50 p-4 text-center">
+          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-coral/10 text-coral">
+            <FileWarning size={18} />
+          </div>
+          <span className="text-[10px] font-bold text-coral leading-tight">Link Local Expirado</span>
+          <span className="mt-1 text-[9px] text-ink-muted">Edite o item para reanexar</span>
         </div>
       ) : (
         <>
@@ -77,7 +89,6 @@ function DocumentPreview({ item, accentColor, onClick }: DocumentPreviewProps) {
         </>
       )}
       
-      {/* Informações Organizadas no Rodapé do Card */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent p-3 pt-10 text-left">
         <p className="truncate text-[13px] font-bold text-white/95 leading-tight">{item.title}</p>
         <div className="mt-1 flex items-center justify-between gap-1">
@@ -96,7 +107,7 @@ function DocumentPreview({ item, accentColor, onClick }: DocumentPreviewProps) {
 }
 
 // ============================================================
-// 2. COMPONENTE VISUALIZADOR TELA CHEIA (Com Zoom via GPU)
+// 2. COMPONENTE VISUALIZADOR TELA CHEIA
 // ============================================================
 interface DocumentViewerProps {
   item: GalleryItem;
@@ -106,7 +117,6 @@ interface DocumentViewerProps {
 
 function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) {
   const imgRef = useRef<HTMLImageElement>(null);
-  
   const transform = useRef({ scale: 1, x: 0, y: 0 });
   const initialPinch = useRef({ dist: 0, scale: 1 });
   const lastPan = useRef({ x: 0, y: 0 });
@@ -274,9 +284,12 @@ function GaleriaContent() {
 
   const { items: allItems, isLoading } = useGaleria();
 
-  const filteredItems = useMemo(() => {
+    const filteredItems = useMemo(() => {
     if (!allItems) return [];
     return allItems.filter((item: any) => {
+      // 🛡️ Ignora e oculta automaticamente itens com links temporários (blob) quebrados ou expirados
+      if (item.url && item.url.startsWith("blob:")) return false;
+
       const pertenceAoPerfil = !activePersonId || !item.person_id || item.person_id === activePersonId;
       if (!pertenceAoPerfil) return false;
       const category = item.category || item.category_id;
@@ -284,6 +297,7 @@ function GaleriaContent() {
       return category !== "saude";
     });
   }, [allItems, activePersonId, activeTab]);
+
 
   const groupedItems = useMemo(() => {
     const groups: Record<string, GalleryItem[]> = {};

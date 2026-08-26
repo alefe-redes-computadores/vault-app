@@ -24,7 +24,6 @@ import {
   ZoomIn,
   ZoomOut,
   Paperclip,
-  ChevronRight,
 } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { useSafeDb } from "@/hooks/useSafeDb";
@@ -116,7 +115,7 @@ const buildFullName = (baseName: string, extension: string): string => {
 };
 
 /* ============================================================
-   CONTEÚDO
+   CONTEÚDO PRINCIPAL
    ============================================================ */
 
 export default function DocumentDetailPage() {
@@ -368,7 +367,6 @@ export default function DocumentDetailPage() {
 
         {/* ===== CONTEÚDO ===== */}
         <section className="space-y-5 px-5 pt-6">
-          {/* Card principal */}
           <motion.div
             ref={cardRef}
             initial={{ opacity: 0, y: 10 }}
@@ -399,19 +397,10 @@ export default function DocumentDetailPage() {
                   </span>
                   <span className="h-1 w-1 rounded-full bg-ink-faint" />
                   <span className="capitalize">{doc.type.replace('_', ' ')}</span>
-                  {doc.vault_id && (
-                    <>
-                      <span className="h-1 w-1 rounded-full bg-ink-faint" />
-                      <span className="inline-flex items-center gap-1 text-ice">
-                        <User size={10} /> Compartilhado
-                      </span>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
 
-            {/* Informações */}
             {hasMetadata && (
               <div className="mt-5 border-t border-surface-border/50 pt-5">
                 <SectionTitle icon={<FileText size={15} />} title="Informações" />
@@ -432,36 +421,7 @@ export default function DocumentDetailPage() {
                       displayValue = formatDate(value);
                     }
 
-                    const labels: Record<string, string> = {
-                      number: "Número",
-                      issue_date: "Data de emissão",
-                      expiry_date: "Data de validade",
-                      issuer: "Órgão emissor",
-                      category: "Categoria",
-                      institution: "Instituição",
-                      course: "Curso",
-                      duration: "Duração",
-                      completion_date: "Data de conclusão",
-                      medication: "Medicamento",
-                      dosage: "Dosagem",
-                      doctor: "Médico",
-                      pharmacy: "Farmácia",
-                      prescription_date: "Data da receita",
-                      renewal_date: "Próxima renovação",
-                      hospital: "Hospital",
-                      specialty: "Especialidade",
-                      date: "Data",
-                      from: "Quem encaminhou",
-                      to: "Para quem",
-                      reason: "Motivo",
-                      data_nascimento: "Data de Nascimento",
-                      data_exame: "Data do Exame",
-                      validade: "Validade",
-                      custom_field_1: "Campo 1",
-                      custom_field_2: "Campo 2",
-                    };
-
-                    const label = labels[key] || key.replace(/_/g, " ").toUpperCase();
+                    const label = key.replace(/_/g, " ").toUpperCase();
 
                     return (
                       <DetailInfoRow
@@ -478,7 +438,6 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
-            {/* Notas */}
             {doc.description && (
               <div className="mt-5 border-t border-surface-border/50 pt-5">
                 <SectionTitle icon={<FileText size={15} />} title="Notas" />
@@ -486,7 +445,6 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
-            {/* Status */}
             <div className="mt-5 border-t border-surface-border/50 pt-4">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <p className="text-ink-muted">
@@ -501,14 +459,12 @@ export default function DocumentDetailPage() {
             </div>
           </motion.div>
 
-          {/* Seção Relacional Avô-Pai-Filho (Gerenciador de Documentos Vinculados) */}
           <DocumentManager 
             entidadeId={doc.id!} 
             entidadeTipo={doc.category_id === "saude" ? "medicamento" : "pessoal"} 
             tituloSecao="Anexos e Documentos Vinculados" 
           />
 
-          {/* Anexos */}
           {hasAttachments && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -542,13 +498,6 @@ export default function DocumentDetailPage() {
                           loading="lazy"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = "none";
-                            const parent = (e.target as HTMLImageElement).parentElement;
-                            if (parent) {
-                              const icon = document.createElement("div");
-                              icon.className = "flex flex-col items-center justify-center w-full h-24 rounded-xl bg-surface";
-                              icon.innerHTML = `<svg class="w-8 h-8 text-coral/60 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg><span class="text-[9px] text-ink-muted px-1 text-center">Arquivo indisponível. Edite para reenviar.</span>`;
-                              parent.prepend(icon);
-                            }
                           }}
                         />
                       ) : (
@@ -567,7 +516,6 @@ export default function DocumentDetailPage() {
             </motion.div>
           )}
 
-          {/* Ações */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -606,7 +554,7 @@ export default function DocumentDetailPage() {
           </motion.div>
         </section>
 
-        {/* ===== MODAL ===== */}
+        {/* ===== MODAL DE ANEXO ===== */}
         <AnimatePresence>
           {isModalOpen && selectedAttachment && (
             <motion.div
@@ -663,51 +611,20 @@ export default function DocumentDetailPage() {
                           updateAttachmentName(getBaseName(selectedAttachment.name));
                         } else {
                           setIsRenaming(true);
-                          setTimeout(() => {
-                            const input = document.querySelector('input[type="text"]') as HTMLInputElement;
-                            if (input) input.focus();
-                          }, 100);
                         }
                       }}
                       className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
-                      title={isRenaming ? "Salvar nome" : "Renomear"}
                       type="button"
-                      aria-label={isRenaming ? "Salvar nome" : "Renomear"}
                     >
                       <Pencil size={16} className="text-ink-muted" />
                     </button>
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
-                    {selectedAttachment.type === "image" && (
-                      <>
-                        <button
-                          onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.25))}
-                          className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
-                          type="button"
-                          aria-label="Diminuir zoom"
-                        >
-                          <ZoomOut size={16} className="text-ink-muted" />
-                        </button>
-
-                        <span className="text-xs text-ink-muted">{Math.round(zoomLevel * 100)}%</span>
-
-                        <button
-                          onClick={() => setZoomLevel(Math.min(3, zoomLevel + 0.25))}
-                          className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
-                          type="button"
-                          aria-label="Aumentar zoom"
-                        >
-                          <ZoomIn size={16} className="text-ink-muted" />
-                        </button>
-                      </>
-                    )}
-
                     <button
                       onClick={() => setIsModalOpen(false)}
                       className="rounded-full p-1.5 transition-colors hover:bg-surface-border"
                       type="button"
-                      aria-label="Fechar modal"
                     >
                       <X size={20} className="text-ink-muted" />
                     </button>
@@ -716,51 +633,18 @@ export default function DocumentDetailPage() {
 
                 <div className="flex min-h-[320px] items-center justify-center overflow-auto rounded-[22px] border border-surface-border/50 bg-surface p-4">
                   {selectedAttachment.type === "image" ? (
-                    !imageError ? (
-                      <img
-                        src={selectedAttachment.url}
-                        alt={selectedAttachment.name}
-                        className="max-h-[70vh] max-w-full rounded-xl object-contain transition-transform duration-200"
-                        style={{ transform: `scale(${zoomLevel})` }}
-                        loading="lazy"
-                        onError={() => setImageError(true)}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center gap-4 text-ink-muted">
-                        <ImageIcon size={64} className="text-ink-muted/30" />
-                        <p className="text-sm text-ink-primary text-center">
-                          Imagem não disponível.<br/><span className="text-xs">Edite o documento para enviá-la novamente.</span>
-                        </p>
-                      </div>
-                    )
-                  ) : selectedAttachment.type === "pdf" ? (
-                    <div className="flex w-full flex-col items-center gap-4 text-ink-muted">
-                      <FileText size={64} className="text-ice/30" />
-                      <p className="text-sm text-ink-primary">{selectedAttachment.name}</p>
-                      <div className="flex gap-4 text-xs text-ink-muted/60">
-                        <span>Clique em "Baixar" para visualizar</span>
-                        <span>•</span>
-                        <span>PDF</span>
-                      </div>
-                      <button
-                        onClick={() => downloadAttachment(selectedAttachment)}
-                        className="text-sm text-ice transition-colors hover:text-ice/80"
-                        type="button"
-                        aria-label="Baixar PDF"
-                      >
-                        Baixar PDF
-                      </button>
-                    </div>
+                    <img
+                      src={selectedAttachment.url}
+                      alt={selectedAttachment.name}
+                      className="max-h-[70vh] max-w-full rounded-xl object-contain transition-transform duration-200"
+                    />
                   ) : (
                     <div className="flex flex-col items-center gap-4 text-ink-muted">
-                      <FileIcon size={64} className="text-ink-muted/30" />
-                      <p className="text-sm text-ink-primary">{selectedAttachment.name}</p>
-                      <p className="text-xs text-ink-muted/60">Pré-visualização não disponível</p>
+                      <FileText size={64} className="text-ice/30" />
                       <button
                         onClick={() => downloadAttachment(selectedAttachment)}
                         className="text-sm text-ice transition-colors hover:text-ice/80"
                         type="button"
-                        aria-label="Baixar arquivo"
                       >
                         Baixar arquivo
                       </button>
@@ -773,12 +657,11 @@ export default function DocumentDetailPage() {
                     variant="secondary"
                     size="sm"
                     onClick={() => downloadAttachment(selectedAttachment)}
-                    disabled={isDownloading || imageError}
+                    disabled={isDownloading}
                   >
                     {isDownloading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Download size={14} className="mr-1" />}
                     {isDownloading ? "Baixando..." : "Baixar"}
                   </Button>
-
                   <Button variant="primary" size="sm" onClick={() => setIsModalOpen(false)}>
                     Fechar
                   </Button>

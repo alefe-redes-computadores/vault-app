@@ -13,6 +13,8 @@ import {
   FlaskConical,
   Filter,
   X,
+  ChevronRight,
+  Paperclip,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePaginatedDocuments } from "@/hooks/usePaginatedDocuments";
@@ -22,7 +24,6 @@ import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { DocumentCard } from "@/components/DocumentCard";
 import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
 import { Input } from "@/components/ui/Input";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -32,7 +33,9 @@ import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import {
+  isReceitaVencidaSegura,
+} from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
 
 type TabType = "receitas" | "prontuarios" | "exames";
@@ -102,7 +105,7 @@ export default function DocumentsPage() {
 
   const medicamentoMap = useMemo(() => {
     const map = new Map();
-      (medicamentos || []).forEach((m) => map.set(m.id, m.nome));
+    (medicamentos || []).forEach((m) => map.set(m.id, m.nome));
     return map;
   }, [medicamentos]);
 
@@ -181,7 +184,6 @@ export default function DocumentsPage() {
       const person = persons.find((p) => p.id === doc.person_id);
       const personColor = person?.color || "#6B7280";
 
-      // Extração inteligente do nome do remédio se faltar ID
       let resolvedMedName = medNameFromMap || doc.metadata?.medication;
       if (!resolvedMedName && doc.title) {
         const parts = doc.title.split("—");
@@ -215,11 +217,10 @@ export default function DocumentsPage() {
       const dateB = new Date(
         b.metadata?.prescription_date || b.metadata?.date || b.created_at || 0
       ).getTime();
-      return dateB - dateB; // Correção: ordenação decrescente correta
+      return dateB - dateA;
     });
   }, [filteredDocs]);
 
-  // Agrupamento Inteligente por Medicamento Pai (Sem cair em "Medicamento Geral" genérico)
   const groupedReceitas = useMemo((): GroupData[] => {
     if (activeTab !== "receitas") return [];
 
@@ -270,23 +271,6 @@ export default function DocumentsPage() {
     }
     return Object.entries(groups);
   }, [sortedDocs, activeTab]);
-
-  const handleFavoriteToggle = useCallback(
-    async (id: string) => {
-      await favorite(id);
-      trigger("vibrate");
-    },
-    [favorite, trigger]
-  );
-
-  const clearFilters = useCallback(() => {
-    setSearchQuery("");
-    setSelectedCategory("all");
-    setSelectedMonth("all");
-    setSelectedPersonId(null);
-    setFiltroStatus("todos");
-    trigger("vibrate");
-  }, [trigger]);
 
   const toggleGroup = useCallback(
     (groupKey: string) => {
@@ -506,7 +490,7 @@ export default function DocumentsPage() {
                                 {group.groupName}
                               </p>
                               <p className="text-[11px] text-ink-muted">
-                                {group.count} receita(s) no período
+                                {group.count} receita(s) no histórico
                               </p>
                             </div>
                           </div>
@@ -515,6 +499,7 @@ export default function DocumentsPage() {
                           </span>
                         </button>
 
+                        {/* LISTA COMPACTA DOS FILHOS (ETIQUETA DE MÊS/DATA E DOSAGEM) */}
                         <AnimatePresence>
                           {isExpanded && (
                             <motion.div
@@ -523,23 +508,75 @@ export default function DocumentsPage() {
                               exit={{ opacity: 0, height: 0 }}
                               className="px-3.5 pb-3.5 space-y-2 overflow-hidden"
                             >
-                              {group.documents.map((doc: any) => (
-                                <div
-                                  key={doc.id}
-                                  ref={(el) => {
-                                    cardRefs.current[doc.id!] = el;
-                                  }}
-                                >
-                                  <DocumentCard
-                                    document={doc}
-                                    compact
-                                    onFavoriteToggle={handleFavoriteToggle}
-                                    alerta={doc.alerta}
-                                    personColor={doc.personColor}
-                                    personName={doc.personName}
-                                  />
-                                </div>
-                              ))}
+                              {group.documents.map((doc: any) => {
+                                const dataStr = doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
+                                let dataFormatada = "Data não informada";
+                                let mesEtiqueta = "";
+                                if (dataStr) {
+                                  try {
+                                    const parsed = parseISO(dataStr);
+                                    dataFormatada = format(parsed, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+                                    mesEtiqueta = format(parsed, "MMMM / yyyy", { locale: ptBR });
+                                    mesEtiqueta = mesEtiqueta.charAt(0).toUpperCase() + mesEtiqueta.slice(1);
+                                  } catch {
+                                    dataFormatada = dataStr;
+                                  }
+                                }
+
+                                return (
+                                  <div
+                                    key={doc.id}
+                                    ref={(el) => {
+                                      cardRefs.current[doc.id!] = el;
+                                    }}
+                                    onClick={() => {
+                                      trigger("vibrate");
+                                      router.push(`/detalhes?id=${doc.id}`);
+                                    }}
+                                    className="group flex items-center justify-between p-3 rounded-xl bg-surface-raised/60 border border-surface-border/40 hover:border-amber-400/40 transition-all cursor-pointer active:scale-[0.99]"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-400">
+                                        <FileText size={15} />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="text-xs font-bold text-ink-primary">
+                                            {dataFormatada}
+                                          </span>
+                                          {mesEtiqueta && (
+                                            <span className="rounded-md bg-surface px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider text-amber-400 border border-surface-border/50">
+                                              {mesEtiqueta}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-ink-muted">
+                                          {doc.metadata?.dosage && (
+                                            <span>Dosagem: <strong className="text-ink-primary">{doc.metadata.dosage}</strong></span>
+                                          )}
+                                          {doc.attachments?.length > 0 && (
+                                            <span className="flex items-center gap-1 text-ice">
+                                              <Paperclip size={11} /> {doc.attachments.length} anexo(s)
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {doc.alerta && (
+                                        <span 
+                                          className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                                          style={{ backgroundColor: `${doc.alerta.color}20`, color: doc.alerta.color }}
+                                        >
+                                          {doc.alerta.label}
+                                        </span>
+                                      )}
+                                      <ChevronRight size={14} className="text-ink-muted group-hover:text-ink-primary transition-colors" />
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -562,22 +599,51 @@ export default function DocumentsPage() {
                       </div>
 
                       <div className="space-y-2">
-                        {docs.map((doc: any) => (
-                          <div
-                            key={doc.id}
-                            ref={(el) => {
-                              cardRefs.current[doc.id!] = el;
-                            }}
-                          >
-                            <DocumentCard
-                              document={doc}
-                              onFavoriteToggle={handleFavoriteToggle}
-                              alerta={doc.alerta}
-                              personColor={doc.personColor}
-                              personName={doc.personName}
-                            />
-                          </div>
-                        ))}
+                        {docs.map((doc: any) => {
+                          const dataStr = doc.metadata?.prescription_date || doc.metadata?.date || doc.created_at;
+                          let dataFormatada = "";
+                          if (dataStr) {
+                            try {
+                              dataFormatada = format(parseISO(dataStr), "dd 'de' MMMM", { locale: ptBR });
+                            } catch {
+                              dataFormatada = dataStr;
+                            }
+                          }
+
+                          return (
+                            <div
+                              key={doc.id}
+                              ref={(el) => {
+                                cardRefs.current[doc.id!] = el;
+                              }}
+                              onClick={() => {
+                                trigger("vibrate");
+                                router.push(`/detalhes?id=${doc.id}`);
+                              }}
+                              className="group flex items-center justify-between p-3.5 rounded-2xl bg-surface border border-surface-border/50 hover:border-violet-400/40 transition-all cursor-pointer active:scale-[0.99]"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                                  <FileText size={16} />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold text-ink-primary truncate">
+                                    {doc.title}
+                                  </p>
+                                  <div className="flex items-center gap-2 text-[11px] text-ink-muted mt-0.5">
+                                    {dataFormatada && <span>{dataFormatada}</span>}
+                                    {doc.attachments?.length > 0 && (
+                                      <span className="flex items-center gap-1 text-ice">
+                                        <Paperclip size={11} /> {doc.attachments.length} anexo(s)
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <ChevronRight size={15} className="text-ink-muted group-hover:text-ink-primary transition-colors" />
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -593,7 +659,7 @@ export default function DocumentsPage() {
           )}
         </section>
 
-        <ScrollToTop threshold={400} />
+        <ScrollToTop threshold= {400} />
       </main>
     </PageTransition>
   );

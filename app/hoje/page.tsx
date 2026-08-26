@@ -22,6 +22,12 @@ import {
   AlertOctagon,
   Info,
   Activity,
+  Sun,
+  Moon,
+  Sunrise,
+  Zap,
+  Trash2,
+  RotateCcw,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
@@ -34,7 +40,6 @@ import {
   safeAddRenovacao,
   safeUpdateMedicamento,
 } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { EmptyState } from "@/components/EmptyState";
 import {
   computeEstoqueInfo,
@@ -66,23 +71,26 @@ function getPeriodoDoDia(horario: string) {
   if (h >= 5 && h < 12) {
     return {
       key: "manha",
-      label: "🌅 Manhã",
+      label: "Manhã",
       sub: "Comece o dia com foco",
+      icon: Sunrise,
     };
   }
 
   if (h >= 12 && h < 18) {
     return {
       key: "tarde",
-      label: "☀️ Tarde",
+      label: "Tarde",
       sub: "Manutenção e constância",
+      icon: Sun,
     };
   }
 
   return {
     key: "noite",
-    label: "🌙 Noite",
+    label: "Noite",
     sub: "Encerramento e descanso",
+    icon: Moon,
   };
 }
 
@@ -518,16 +526,17 @@ export default function HojePage() {
     for (const log of doseLogs || []) {
       if (!log.medicamento_id) continue;
 
-      const chave = `${log.medicamento_id}-${log.horario}`;
-
       const med = medicamentos.find(
         (m) => m.id === log.medicamento_id
       );
 
       if (!med) continue;
 
+      const chaveProgramada = `${med.id}-${log.horario}`;
+      const isOficialTomada = chavesProgramadas.has(chaveProgramada);
+
       if (
-        !chavesProgramadas.has(chave) ||
+        !isOficialTomada &&
         log.tomado_em
       ) {
         const jaExisteAvulsa =
@@ -535,10 +544,7 @@ export default function HojePage() {
             (item) => item.logId === log.id
           );
 
-        if (
-          !jaExisteAvulsa &&
-          log.tomado_em
-        ) {
+        if (!jaExisteAvulsa) {
           const tratamentoObj =
             tratamentos.find(
               (t) =>
@@ -738,22 +744,26 @@ export default function HojePage() {
       {
         label: string;
         sub: string;
+        icon: any;
         items: DoseItemExt[];
       }
     > = {
       manha: {
-        label: "🌅 Manhã",
+        label: "Manhã",
         sub: "Início do dia",
+        icon: Sunrise,
         items: [],
       },
       tarde: {
-        label: "☀️ Tarde",
+        label: "Tarde",
         sub: "Período da tarde",
+        icon: Sun,
         items: [],
       },
       noite: {
-        label: "🌙 Noite",
+        label: "Noite",
         sub: "Final do dia",
+        icon: Moon,
         items: [],
       },
     };
@@ -834,12 +844,6 @@ export default function HojePage() {
         if (!proximaTomada) {
           await db.doseLogs.delete(
             item.logId
-          );
-
-          await enfileirarOperacao(
-            "doseLogs",
-            "delete",
-            { id: item.logId }
           );
         }
       } else {
@@ -1235,13 +1239,14 @@ export default function HojePage() {
                       : "manha"
                   );
                 }}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
                   filtroPeriodo === "manha"
                     ? "border-ice bg-ice/20 text-ice"
                     : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                 }`}
               >
-                🌅 Manhã
+                <Sunrise size={12} />
+                Manhã
               </button>
 
               <button
@@ -1254,13 +1259,14 @@ export default function HojePage() {
                       : "tarde"
                   );
                 }}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
                   filtroPeriodo === "tarde"
                     ? "border-ice bg-ice/20 text-ice"
                     : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                 }`}
               >
-                ☀️ Tarde
+                <Sun size={12} />
+                Tarde
               </button>
 
               <button
@@ -1273,13 +1279,14 @@ export default function HojePage() {
                       : "noite"
                   );
                 }}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
                   filtroPeriodo === "noite"
                     ? "border-ice bg-ice/20 text-ice"
                     : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                 }`}
               >
-                🌙 Noite
+                <Moon size={12} />
+                Noite
               </button>
 
               {hasFiltrosAtivos && (
@@ -1332,29 +1339,7 @@ export default function HojePage() {
                       : "bg-ice/20 text-ice"
                   }`}
                 >
-                  {assistenteDiario.icone ===
-                    "cirurgia" && (
-                    <Activity size={20} />
-                  )}
-
-                  {assistenteDiario.icone ===
-                    "alerta" && (
-                    <AlertTriangle
-                      size={20}
-                    />
-                  )}
-
-                  {assistenteDiario.icone ===
-                    "medico" && (
-                    <Stethoscope
-                      size={20}
-                    />
-                  )}
-
-                  {assistenteDiario.icone ===
-                    "info" && (
-                    <Info size={20} />
-                  )}
+                  <Activity size={20} />
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -1374,7 +1359,7 @@ export default function HojePage() {
                     </h3>
 
                     <span className="text-xs text-ink-faint">
-                      💡 Dica
+                      Dica
                     </span>
                   </div>
 
@@ -1597,6 +1582,8 @@ export default function HojePage() {
                       )
                     : 0;
 
+                const GrupoIcon = grupo.icon;
+
                 return (
                   <div
                     key={key}
@@ -1604,14 +1591,18 @@ export default function HojePage() {
                   >
                     {/* CABEÇALHO DO PERÍODO */}
                     <div className="flex items-end justify-between gap-4 px-1">
-                      <div>
-                        <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
-                          {grupo.label}
-                        </h2>
-
-                        <p className="mt-0.5 text-[11px] text-ink-muted">
-                          {grupo.sub}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-raised text-ice border border-surface-border/40">
+                          <GrupoIcon size={15} />
+                        </div>
+                        <div>
+                          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
+                            {grupo.label}
+                          </h2>
+                          <p className="text-[11px] text-ink-muted">
+                            {grupo.sub}
+                          </p>
+                        </div>
                       </div>
 
                       <div className="flex shrink-0 items-center gap-2.5">
@@ -1635,9 +1626,6 @@ export default function HojePage() {
                     <div className="space-y-2.5">
                       {grupo.items.map(
                         (item) => {
-                          {/* ===============================
-                              SINTOMA
-                          =============================== */}
                           if (
                             item.isSintoma
                           ) {
@@ -1671,8 +1659,8 @@ export default function HojePage() {
 
                                   <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-1.5">
-                                      <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                                        ⚠️ Sintoma
+                                      <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                                        <AlertTriangle size={12} /> Sintoma
                                       </span>
 
                                       <span className="text-[10px] text-ink-faint">
@@ -1908,7 +1896,6 @@ export default function HojePage() {
                               }`}
                             >
                               <div className="space-y-3">
-                                {/* PARTE PRINCIPAL */}
                                 <div className="flex items-start gap-3">
                                   <div className="shrink-0 pt-0.5">
                                     {item.tomada ? (
@@ -1930,7 +1917,6 @@ export default function HojePage() {
                                   </div>
 
                                   <div className="min-w-0 flex-1">
-                                    {/* STATUS / HORÁRIO */}
                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                       <span
                                         className={`inline-flex items-center gap-1 font-mono text-[10px] font-bold ${statusColor}`}
@@ -1950,13 +1936,12 @@ export default function HojePage() {
                                       </span>
 
                                       {item.isAvulsa && (
-                                        <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[9px] font-bold uppercase text-amber-400">
-                                          ⚡ SOS / Avulsa
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[9px] font-bold uppercase text-amber-400">
+                                          <Zap size={10} /> SOS / Avulsa
                                         </span>
                                       )}
                                     </div>
 
-                                    {/* MEDICAMENTO */}
                                     <p
                                       className={`mt-1 truncate text-sm font-semibold ${
                                         item.ignorada
@@ -1977,7 +1962,6 @@ export default function HojePage() {
                                       </p>
                                     )}
 
-                                    {/* MOTIVO AVULSA */}
                                     {item.isAvulsa &&
                                       item.motivoAvulsa && (
                                         <p className="mt-2 w-fit max-w-full rounded-lg border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-medium text-amber-300">
@@ -1988,29 +1972,14 @@ export default function HojePage() {
                                         </p>
                                       )}
 
-                                    {/* RELACIONAMENTOS */}
                                     {(item.tratamentoNome ||
                                       item.medicoNome ||
                                       item.farmaciaNome) && (
                                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                         {item.tratamentoNome &&
                                           item.tratamentoId && (
-                                            <button
-                                              type="button"
-                                              onClick={(
-                                                e
-                                              ) => {
-                                                e.stopPropagation();
-
-                                                trigger(
-                                                  "vibrate"
-                                                );
-
-                                                router.push(
-                                                  `/saude/tratamentos/detalhes?id=${item.tratamentoId}`
-                                                );
-                                              }}
-                                              className="max-w-full truncate rounded-md px-2 py-0.5 text-[9px] font-bold uppercase transition-opacity hover:opacity-80"
+                                            <span
+                                              className="max-w-full truncate rounded-md px-2 py-0.5 text-[9px] font-bold uppercase"
                                               style={{
                                                 backgroundColor: `${tratamentoCor}20`,
                                                 color: tratamentoCor,
@@ -2019,7 +1988,7 @@ export default function HojePage() {
                                               {
                                                 item.tratamentoNome
                                               }
-                                            </button>
+                                            </span>
                                           )}
 
                                         {item.medicoNome && (
@@ -2038,26 +2007,9 @@ export default function HojePage() {
                                             </span>
                                           </span>
                                         )}
-
-                                        {item.farmaciaNome && (
-                                          <span className="flex max-w-full items-center gap-1 truncate text-[10px] text-ink-muted">
-                                            <Building2
-                                              size={
-                                                10
-                                              }
-                                              className="shrink-0"
-                                            />
-                                            <span className="truncate">
-                                              {
-                                                item.farmaciaNome
-                                              }
-                                            </span>
-                                          </span>
-                                        )}
                                       </div>
                                     )}
 
-                                    {/* ESTOQUE / RENOVAÇÃO */}
                                     {!item.isAvulsa && (
                                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                         {(
@@ -2082,11 +2034,7 @@ export default function HojePage() {
                                           item.diasRestantes >=
                                             0 && (
                                             <span
-                                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold ${diasEstilo.cor} ${diasEstilo.bg} ${
-                                                diasEstilo.pulse
-                                                  ? "animate-pulse"
-                                                  : ""
-                                              }`}
+                                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold ${diasEstilo.cor} ${diasEstilo.bg}`}
                                             >
                                               <Calendar
                                                 size={
@@ -2098,38 +2046,11 @@ export default function HojePage() {
                                                 item.diasRestantes
                                               }{" "}
                                               dias
-                                              {diasEstilo.label !==
-                                                "Indefinido" &&
-                                                ` · ${diasEstilo.label}`}
                                             </span>
                                           )}
-
-                                        {item.insight
-                                          ?.deveRenovar && (
-                                          <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-400">
-                                            <FileWarning
-                                              size={
-                                                12
-                                              }
-                                            />
-                                            Renovar
-                                          </span>
-                                        )}
-
-                                        {item.receitaVencida && (
-                                          <span className="flex items-center gap-1 text-[10px] font-semibold text-coral">
-                                            <AlertOctagon
-                                              size={
-                                                12
-                                              }
-                                            />
-                                            Receita vencida
-                                          </span>
-                                        )}
                                       </div>
                                     )}
 
-                                    {/* ESTOQUE ZERADO */}
                                     {!item.isAvulsa &&
                                       isEstoqueZerado && (
                                         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -2180,31 +2101,9 @@ export default function HojePage() {
                                           </button>
                                         </div>
                                       )}
-
-                                    {/* ESTOQUE CRÍTICO */}
-                                    {!item.isAvulsa &&
-                                      isEstoqueCritico && (
-                                        <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-amber-400">
-                                          <AlertTriangle
-                                            size={
-                                              12
-                                            }
-                                          />
-
-                                          Estoque crítico (
-                                          {
-                                            item.estoqueRestante
-                                          }{" "}
-                                          {
-                                            item.unidadeMedida
-                                          }
-                                          )
-                                        </div>
-                                      )}
                                   </div>
                                 </div>
 
-                                {/* AÇÕES */}
                                 <div className="flex flex-wrap items-center justify-end gap-2 border-t border-surface-border/30 pt-3">
                                   {!item.tomada &&
                                     !item.ignorada &&
@@ -2245,11 +2144,12 @@ export default function HojePage() {
                                             isProcessando ||
                                             isProcessing
                                           }
-                                          className="rounded-full bg-emerald-400 px-4 py-2 text-[10px] font-bold text-void shadow-sm transition-all hover:bg-emerald-300 active:scale-95 disabled:opacity-50"
+                                          className="inline-flex items-center gap-1 rounded-full bg-emerald-400 px-4 py-2 text-[10px] font-bold text-void shadow-sm transition-all hover:bg-emerald-300 active:scale-95 disabled:opacity-50"
                                         >
+                                          <CheckCircle2 size={13} />
                                           {isProcessando
                                             ? "..."
-                                            : "✅ Tomar"}
+                                            : "Tomar"}
                                         </button>
                                       </>
                                     )}
@@ -2266,11 +2166,17 @@ export default function HojePage() {
                                           item
                                         );
                                       }}
-                                      className="rounded-full border border-surface-border/50 bg-surface-raised px-3 py-2 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95"
+                                      className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-2 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95"
                                     >
-                                      {item.isAvulsa
-                                        ? "🗑️ Excluir"
-                                        : "↩️ Desfazer"}
+                                      {item.isAvulsa ? (
+                                        <>
+                                          <Trash2 size={12} /> Excluir
+                                        </>
+                                      ) : (
+                                        <>
+                                          <RotateCcw size={12} /> Desfazer
+                                        </>
+                                      )}
                                     </button>
                                   )}
                                 </div>
@@ -2346,7 +2252,6 @@ export default function HojePage() {
                   }
                   className="w-full max-w-md overflow-hidden rounded-[32px] border border-surface-border bg-surface shadow-2xl"
                 >
-                  {/* CABEÇALHO */}
                   <div className="border-b border-surface-border/50 p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 items-center gap-3">
@@ -2386,7 +2291,6 @@ export default function HojePage() {
                     </div>
                   </div>
 
-                  {/* CONTEÚDO */}
                   <div className="space-y-4 p-5">
                     <div className="rounded-2xl border border-coral/20 bg-coral/5 p-3">
                       <p className="text-xs leading-relaxed text-ink-muted">
@@ -2474,7 +2378,6 @@ export default function HojePage() {
                     </div>
                   </div>
 
-                  {/* AÇÕES */}
                   <div className="flex items-center gap-2 border-t border-surface-border/50 p-5">
                     <button
                       type="button"

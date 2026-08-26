@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -24,7 +24,7 @@ import {
   Activity as ActivityIcon,
   Calendar,
   Layers3,
-  User,
+  CheckCircle2,
   AlertCircle,
 } from "lucide-react";
 
@@ -33,12 +33,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { uploadFile } from "@/lib/supabase/storage";
-import { db, safeAddPerson } from "@/lib/db";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { documentsRepository } from "@/lib/repositories/documents";
-import { useMedicamentos } from "@/hooks/useMedicamentos";
 import {
-  CATEGORIES,
   type CategoryId,
   type DocumentType,
   type Attachment,
@@ -49,11 +46,10 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
-import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
 
-const DEFAULT_PERSON_COLOR = "#34D399"; // Verde clínico para saúde
+const DEFAULT_PERSON_COLOR = "#34D399";
 
 const HEALTH_TYPES: DocumentType[] = [
   "receita",
@@ -113,7 +109,6 @@ export default function NovoDocumentoSaudePage() {
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
   const persons = usePersons() as Person[];
-  const { medicamentos } = useMedicamentos();
   const { run, isSubmitting } = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
@@ -139,24 +134,18 @@ export default function NovoDocumentoSaudePage() {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
-  const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
-  const [isCreatingPerson, setIsCreatingPerson] = useState(false);
-  const [newPersonName, setNewPersonName] = useState("");
-  const [isSavingPerson, setIsSavingPerson] = useState(false);
   const [expiryWarning, setExpiryWarning] = useState<string | null>(null);
 
-  const selectedPerson = persons.find((p) => p.id === formData.person_id);
-  const personColor = selectedPerson?.color || DEFAULT_PERSON_COLOR;
-
   useEffect(() => {
-    if (activePersonId && !formData.person_id) {
+    if (activePersonId) {
       setFormData((prev) => ({ ...prev, person_id: activePersonId }));
     } else if (!formData.person_id && persons.length > 0) {
       setFormData((prev) => ({ ...prev, person_id: persons[0].id! }));
     }
   }, [activePersonId, persons]);
 
-  // Define campos dinâmicos com base no tipo de documento clínico escolhido
+  const activePersonObj = persons.find((p) => p.id === formData.person_id) || persons[0];
+
   const fields = useMemo(() => {
     switch (formData.type) {
       case "receita":
@@ -173,18 +162,6 @@ export default function NovoDocumentoSaudePage() {
           { key: "hospital", label: "Clínica / Hospital", type: "text", required: false },
           { key: "date", label: "Data da Consulta", type: "date", required: true },
           { key: "reason", label: "Motivo / Sintomas", type: "text", required: false },
-        ];
-      case "cirurgia":
-        return [
-          { key: "procedure", label: "Procedimento Cirúrgico", type: "text", required: true },
-          { key: "hospital", label: "Hospital / Unidade", type: "text", required: false },
-          { key: "date", label: "Data da Cirurgia", type: "date", required: true },
-        ];
-      case "exame_sangue":
-      case "exame_imagem":
-        return [
-          { key: "hospital", label: "Laboratório / Local", type: "text", required: false },
-          { key: "data_exame", label: "Data do Exame", type: "date", required: true },
         ];
       default:
         return [
@@ -230,30 +207,6 @@ export default function NovoDocumentoSaudePage() {
   const removeCustomField = (id: string) => {
     setCustomFields(customFields.filter((f) => f.id !== id));
     trigger("vibrate");
-  };
-
-  const handleCreatePerson = async () => {
-    if (!newPersonName.trim() || !user?.id) return;
-    setIsSavingPerson(true);
-    trigger("vibrate");
-
-    try {
-      const id = await safeAddPerson({
-        user_id: user.id,
-        name: newPersonName.trim(),
-        color: DEFAULT_PERSON_COLOR,
-      });
-
-      handleChange("person_id", id);
-      trigger("success");
-      setIsCreatingPerson(false);
-      setNewPersonName("");
-    } catch (error) {
-      console.error("Erro ao criar perfil:", error);
-      trigger("error");
-    } finally {
-      setIsSavingPerson(false);
-    }
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -317,12 +270,9 @@ export default function NovoDocumentoSaudePage() {
 
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
-
     if (step === 1) {
-      if (!formData.person_id) newErrors.person_id = "Selecione o paciente responsável";
       if (!formData.title.trim()) newErrors.title = "O título é obrigatório";
     }
-
     if (step === 2) {
       fields.forEach((field) => {
         if (field.required && !formData.metadata[field.key]?.trim()) {
@@ -330,7 +280,6 @@ export default function NovoDocumentoSaudePage() {
         }
       });
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -353,7 +302,8 @@ export default function NovoDocumentoSaudePage() {
 
   const handleSubmit = () => {
     trigger("vibrate");
-    if (!validateStep(3) || !user?.id) return;
+    const targetPersonId = formData.person_id || activePersonId || persons[0]?.id;
+    if (!validateStep(3) || !user?.id || !targetPersonId) return;
 
     if (isSubmitLocked.current || isSubmitting) return;
     isSubmitLocked.current = true;
@@ -387,10 +337,7 @@ export default function NovoDocumentoSaudePage() {
               if (!attachment) continue;
 
               const { url, error } = await uploadFile(user.id, file, "saude");
-              if (error) {
-                console.error("Erro no upload:", error);
-                continue;
-              }
+              if (error) continue;
 
               uploadedAttachments.push({ ...attachment, url });
               setUploadProgress(Math.round(((i + 1) / localFiles.length) * 80));
@@ -410,7 +357,7 @@ export default function NovoDocumentoSaudePage() {
 
           await documentsRepository.create({
             user_id: user.id,
-            person_id: formData.person_id || activePersonId || "",
+            person_id: targetPersonId,
             category_id: "saude",
             type: formData.type,
             title: formData.title.trim(),
@@ -501,28 +448,18 @@ export default function NovoDocumentoSaudePage() {
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="space-y-4"
               >
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-                  <label className="mb-2 block text-sm font-medium text-ink-primary">
-                    Paciente / Perfil <span className="text-coral">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setIsPersonModalOpen(true);
-                    }}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary flex items-center justify-between"
-                    style={{ borderColor: formData.person_id ? personColor : undefined }}
-                  >
-                    <span className="font-medium flex items-center gap-2">
-                      <User size={16} className="text-emerald-400" />
-                      {formData.person_id
-                        ? persons.find((p) => p.id === formData.person_id)?.name
-                        : "Selecionar paciente..."}
-                    </span>
-                    <span className="text-xs font-bold text-emerald-400">Alterar</span>
-                  </button>
-                  {errors.person_id && <p className="mt-1 text-xs text-coral">{errors.person_id}</p>}
+                {/* VINCULAÇÃO AUTOMÁTICA AO PERFIL ATIVO (SEM SELECTOR MANUAL) */}
+                <div className="rounded-[24px] border border-surface-border/50 bg-surface px-4 py-3 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400">
+                      <CheckCircle2 size={16} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-ink-muted font-mono">Paciente Vinculado</p>
+                      <p className="text-xs font-bold text-ink-primary">{activePersonObj?.name || "Perfil Padrão"}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-emerald-400 font-medium bg-emerald-400/10 px-2 py-1 rounded-lg">Automático</span>
                 </div>
 
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
@@ -804,43 +741,6 @@ export default function NovoDocumentoSaudePage() {
                 </motion.button>
               );
             })}
-          </div>
-        </BottomSheet>
-
-        <SelectionModal
-          isOpen={isPersonModalOpen}
-          onClose={() => setIsPersonModalOpen(false)}
-          onSelect={(item: Person) => {
-            if (item.id) {
-              handleChange("person_id", item.id);
-              setIsPersonModalOpen(false);
-            }
-          }}
-          items={persons}
-          title="Selecionar Paciente"
-          placeholder="Buscar pessoa..."
-          renderItem={(item: Person) => <p className="font-medium text-ink-primary">{item.name}</p>}
-          getItemId={(item: Person) => item.id!}
-          getItemLabel={(item: Person) => item.name}
-          onCreateNew={() => {
-            setIsPersonModalOpen(false);
-            setIsCreatingPerson(true);
-          }}
-          createNewLabel="Cadastrar Novo Paciente"
-        />
-
-        <BottomSheet isOpen={isCreatingPerson} onClose={() => { setIsCreatingPerson(false); setNewPersonName(""); }} title="Cadastrar novo paciente">
-          <div className="space-y-4 px-1 pb-2">
-            <Input label="Nome completo" placeholder="Ex: Maria Silva..." value={newPersonName} onChange={(e) => setNewPersonName(e.target.value)} autoFocus />
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={handleCreatePerson}
-              disabled={isSavingPerson || !newPersonName.trim()}
-              className="flex items-center justify-center gap-2"
-            >
-              {isSavingPerson ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Salvar e selecionar
-            </Button>
           </div>
         </BottomSheet>
 

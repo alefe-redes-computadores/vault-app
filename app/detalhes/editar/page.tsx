@@ -1,19 +1,46 @@
 // app/detalhes/editar/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Save, Loader2, FileText, Layers3, Trash2,
-  Contact, CreditCard, Scroll, Landmark, Award, Pill, Heart, FileOutput, Stethoscope, Activity as ActivityIcon, Folder,
-  Upload, Camera, X, Image as ImageIcon
+  ArrowLeft,
+  Save,
+  Loader2,
+  FileText,
+  Layers3,
+  Trash2,
+  Upload,
+  Camera,
+  X,
+  Image as ImageIcon,
+  CheckCircle2,
+  Contact,
+  CreditCard,
+  Scroll,
+  Landmark,
+  Award,
+  Folder,
+  Pill,
+  Heart,
+  FileOutput,
+  Stethoscope,
+  Activity as ActivityIcon,
 } from "lucide-react";
 import { useDocument } from "@/hooks/useDocuments";
 import { usePersons } from "@/hooks/usePersons";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useHapticFeedback } from "@/lib/haptics";
-import { CATEGORIES, type CategoryId, type DocumentType, type Attachment, type Person } from "@/lib/types";
+import { useToast } from "@/components/ToastProvider";
+import {
+  CATEGORIES,
+  type CategoryId,
+  type DocumentType,
+  type Attachment,
+  type Person,
+} from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
@@ -21,98 +48,125 @@ import { PageTransition } from "@/components/PageTransition";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { db } from "@/lib/db";
-import { useMedicos } from "@/hooks/useMedicos";
-import { useFarmacias } from "@/hooks/useFarmacias";
-import { useHospitais } from "@/hooks/useHospitais";
 import { uploadFile } from "@/lib/supabase/storage";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { useMounted } from "@/hooks/useMounted";
-import { documentsRepository } from "@/lib/repositories/documents";
 
 const TYPE_CATEGORY_MAP: Record<string, CategoryId[]> = {
-  rg: ["pessoal"], cpf: ["pessoal"], cnh: ["pessoal"], certidao_nascimento: ["pessoal"],
-  titulo_eleitor: ["pessoal"], certificado: ["pessoal", "empresa"],
-  receita: ["saude"], prontuario: ["saude"], laudo: ["saude"], encaminhamento: ["saude"],
-  consulta: ["saude"], cirurgia: ["saude"], exame_sangue: ["saude"], exame_imagem: ["saude"],
-  credencial: ["saude", "empresa", "outros"], outro: ["saude", "pessoal", "empresa", "outros"]
+  rg: ["pessoal"],
+  cpf: ["pessoal"],
+  cnh: ["pessoal"],
+  certidao_nascimento: ["pessoal"],
+  titulo_eleitor: ["pessoal"],
+  certificado: ["pessoal", "empresa"],
+  receita: ["saude"],
+  prontuario: ["saude"],
+  laudo: ["saude"],
+  encaminhamento: ["saude"],
+  consulta: ["saude"],
+  cirurgia: ["saude"],
+  exame_sangue: ["saude"],
+  exame_imagem: ["saude"],
+  credencial: ["saude", "empresa", "outros"],
+  outro: ["saude", "pessoal", "empresa", "outros"],
 };
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  rg: "C.I.N / Identidade", cpf: "CPF", cnh: "CNH", certidao_nascimento: "Certidão de Nascimento",
-  titulo_eleitor: "Título de Eleitor", certificado: "Certificado", receita: "Receita médica",
-  prontuario: "Prontuário", laudo: "Laudo", encaminhamento: "Encaminhamento",
-  consulta: "Consulta", cirurgia: "Cirurgia", exame_sangue: "Exame de Sangue",
-  exame_imagem: "Exame de Imagem", credencial: "Credencial / Carteirinha", outro: "Outro",
+  rg: "C.I.N / Identidade",
+  cpf: "CPF",
+  cnh: "CNH",
+  certidao_nascimento: "Certidão de Nascimento",
+  titulo_eleitor: "Título de Eleitor",
+  certificado: "Certificado",
+  receita: "Receita médica",
+  prontuario: "Prontuário",
+  laudo: "Laudo",
+  encaminhamento: "Encaminhamento",
+  consulta: "Consulta",
+  cirurgia: "Cirurgia",
+  exame_sangue: "Exame de Sangue",
+  exame_imagem: "Exame de Imagem",
+  credencial: "Credencial / Carteirinha",
+  outro: "Outro",
 };
 
-interface DocField { key: string; label: string; type: string; options?: string[] }
+interface DocField {
+  key: string;
+  label: string;
+  type: string;
+  options?: string[];
+}
 
 const getFieldsForType = (type: string): DocField[] => {
   const map: Record<string, DocField[]> = {
-    rg: [{ key: "modelo", label: "Modelo", type: "select", options: ["C.I.N (Nova Identidade)", "RG Antigo"] }, { key: "cpf", label: "CPF", type: "text" }, { key: "rg_number", label: "Número do RG", type: "text" }, { key: "issue_date", label: "Data de emissão", type: "date" }, { key: "issuer", label: "Órgão emissor", type: "text" }],
+    rg: [
+      { key: "modelo", label: "Modelo", type: "select", options: ["C.I.N (Nova Identidade)", "RG Antigo"] },
+      { key: "cpf", label: "CPF", type: "text" },
+      { key: "rg_number", label: "Número do RG", type: "text" },
+      { key: "issue_date", label: "Data de emissão", type: "date" },
+      { key: "issuer", label: "Órgão emissor", type: "text" },
+    ],
     cpf: [{ key: "number", label: "Número do CPF", type: "text" }],
-    cnh: [{ key: "number", label: "Número da CNH", type: "text" }, { key: "category", label: "Categoria", type: "text" }, { key: "issue_date", label: "Data de emissão", type: "date" }, { key: "expiry_date", label: "Data de validade", type: "date" }],
-    certidao_nascimento: [{ key: 'nome_registrado', label: 'Nome Registrado', type: 'text' }, { key: 'matricula', label: 'Matrícula', type: 'text' }, { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date' }],
-    receita: [{ key: "medication", label: "Medicamento", type: "text" }, { key: "doctor", label: "Médico", type: "select" }, { key: "pharmacy", label: "Farmácia", type: "select" }, { key: "prescription_date", label: "Data da receita", type: "date" }],
-    consulta: [{ key: "doctor", label: "Médico", type: "select" }, { key: "hospital", label: "Clínica / Hospital", type: "select" }, { key: "date", label: "Data da Consulta", type: "date" }, { key: "reason", label: "Motivo", type: "text" }],
-    exame_sangue: [{ key: 'hospital', label: 'Laboratório', type: 'select' }, { key: 'data_exame', label: 'Data do Exame', type: 'date' }],
-    outro: [{ key: "custom_field_1", label: "Campo 1", type: "text" }]
+    cnh: [
+      { key: "number", label: "Número da CNH", type: "text" },
+      { key: "category", label: "Categoria", type: "text" },
+      { key: "issue_date", label: "Data de emissão", type: "date" },
+      { key: "expiry_date", label: "Data de validade", type: "date" },
+    ],
+    receita: [
+      { key: "medication", label: "Medicamento", type: "text" },
+      { key: "dosage", label: "Dosagem", type: "text" },
+      { key: "doctor", label: "Médico", type: "text" },
+      { key: "prescription_date", label: "Data da receita", type: "date" },
+    ],
+    outro: [{ key: "custom_field_1", label: "Campo 1", type: "text" }],
   };
   return map[type] || map.outro;
 };
 
-const applyMask = (value: string, type: string): string => {
-  const digits = value.replace(/\D/g, "");
-  if (type === "cpf") return digits.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})/, "$1-$2").slice(0, 14);
-  if (type === "rg") return digits.replace(/(\d{2})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})/, "$1-$2").slice(0, 13);
-  if (type === "date") return digits.replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{2})(\d)/, "$1/$2").slice(0, 10);
-  return value;
-};
-
-const getMaskType = (fieldKey: string, fieldType: string): string | null => {
-  if (fieldKey === "cpf") return "cpf";
-  if (fieldKey === "rg_number" || fieldKey === "number") return "rg";
-  if (fieldType === "date") return "date";
-  return null;
+const TYPE_ICONS: Record<string, any> = {
+  rg: Contact,
+  cpf: FileText,
+  cnh: CreditCard,
+  certidao_nascimento: Scroll,
+  titulo_eleitor: Landmark,
+  certificado: Award,
+  receita: Pill,
+  prontuario: Heart,
+  laudo: FileText,
+  encaminhamento: FileOutput,
+  consulta: Stethoscope,
+  cirurgia: ActivityIcon,
+  exame_sangue: ActivityIcon,
+  exame_imagem: ActivityIcon,
+  credencial: Contact,
+  outro: Folder,
 };
 
 export default function EditarDetalhePage() {
   const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
-  const mounted = useMounted();
 
   const { user } = useAuth();
   const doc = useDocument(id);
   const persons = usePersons() as Person[];
-  const { updateDocument } = useSafeDb();
-
-  const { medicos } = useMedicos();
-  const { farmacias } = useFarmacias();
-  const { hospitais } = useHospitais();
-
-  const saveAction = useSubmitAction();
-  const deleteAction = useSubmitAction();
+  const { activePersonId } = useActivePersonId();
+  const { updateDocument, deleteDocument } = useSafeDb();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
-
-  const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
-  const [isPharmacyModalOpen, setIsPharmacyModalOpen] = useState(false);
-  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
-
   const [localFiles, setLocalFiles] = useState<File[]>([]);
 
   const [formData, setFormData] = useState({
-    person_id: "",
+    person_id: activePersonId || "",
     category_id: "pessoal" as CategoryId,
     type: "rg" as DocumentType,
     title: "",
@@ -123,60 +177,32 @@ export default function EditarDetalhePage() {
 
   useEffect(() => {
     if (doc) {
-      const loadedMetadata = { ...doc.metadata };
-
-      Object.keys(loadedMetadata).forEach((key) => {
-        const val = loadedMetadata[key];
-        if (typeof val === 'string') {
-          if (val.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            const [y, m, d] = val.split('-');
-            loadedMetadata[key] = `${d}/${m}/${y}`;
-          } else if (val.match(/^\d{8}$/)) {
-            const d = val.substring(0, 2);
-            const m = val.substring(2, 4);
-            const y = val.substring(4, 8);
-            loadedMetadata[key] = `${d}/${m}/${y}`;
-          }
-        }
-      });
-
       setFormData({
-        person_id: doc.person_id || "",
+        person_id: doc.person_id || activePersonId || "",
         category_id: doc.category_id,
         type: doc.type as DocumentType,
         title: doc.title,
         description: doc.description || "",
-        metadata: loadedMetadata,
+        metadata: doc.metadata || {},
         attachments: doc.attachments || [],
       });
     }
-  }, [doc]);
+  }, [doc, activePersonId]);
 
-  if (!mounted) {
-    return (
-      <PageTransition>
-        <div className="min-h-screen bg-void px-5 pt-6">
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-surface-border/40" />
-            <div className="mx-auto h-4 w-3/4 animate-pulse rounded bg-surface-border/40" />
-            <div className="mx-auto mt-2 h-3 w-1/2 animate-pulse rounded bg-surface-border/40" />
-          </div>
-        </div>
-      </PageTransition>
+  const fields = useMemo(() => getFieldsForType(formData.type), [formData.type]);
+
+  const availableTypes = useMemo(() => {
+    return (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).filter((type) =>
+      TYPE_CATEGORY_MAP[type].includes(formData.category_id)
     );
-  }
-
-  const fields = getFieldsForType(formData.type);
-  const availableTypes = (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).filter(
-    type => TYPE_CATEGORY_MAP[type].includes(formData.category_id)
-  );
+  }, [formData.category_id]);
 
   const handleChange = (field: keyof typeof formData, value: any) => {
     if (field === "category_id") {
-      const allowedTypes = (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).filter(
-        t => TYPE_CATEGORY_MAP[t].includes(value)
+      const allowedTypes = (Object.keys(TYPE_CATEGORY_MAP) as DocumentType[]).filter((t) =>
+        TYPE_CATEGORY_MAP[t].includes(value)
       );
-      const defaultType = allowedTypes.includes(formData.type) ? formData.type : (allowedTypes[0] || "outro");
+      const defaultType = allowedTypes.includes(formData.type) ? formData.type : allowedTypes[0] || "outro";
       setFormData((prev) => ({ ...prev, category_id: value, type: defaultType }));
       return;
     }
@@ -230,18 +256,16 @@ export default function EditarDetalhePage() {
     e.target.value = "";
   };
 
-  const removeAttachment = (id: string) => {
-    const attachmentToRemove = formData.attachments.find((a) => a.id === id);
+  const removeAttachment = (attId: string) => {
+    const attachmentToRemove = formData.attachments.find((a) => a.id === attId);
     if (attachmentToRemove && attachmentToRemove.url.startsWith("blob:")) {
       URL.revokeObjectURL(attachmentToRemove.url);
-      const fileIndex = localFiles.findIndex((f) => f.name === attachmentToRemove.name);
-      if (fileIndex !== -1) {
-        const newFiles = [...localFiles];
-        newFiles.splice(fileIndex, 1);
-        setLocalFiles(newFiles);
-      }
+      setLocalFiles((prev) => prev.filter((f) => f.name !== attachmentToRemove.name));
     }
-    setFormData((prev) => ({ ...prev, attachments: prev.attachments.filter((a) => a.id !== id) }));
+    setFormData((prev) => ({
+      ...prev,
+      attachments: prev.attachments.filter((a) => a.id !== attId),
+    }));
     trigger("vibrate");
   };
 
@@ -252,89 +276,74 @@ export default function EditarDetalhePage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate() || !doc || !id) {
       trigger("error");
       return;
     }
 
-    saveAction.run(
-      async () => {
-        const cleanMetadata = { ...formData.metadata };
-
-        fields.forEach((field: DocField) => {
-          if (field.type === 'date' && cleanMetadata[field.key]) {
-            const parts = cleanMetadata[field.key].split('/');
-            if (parts.length === 3) {
-              cleanMetadata[field.key] = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    setLoading(true);
+    try {
+      let finalAttachments = [...formData.attachments];
+      if (localFiles.length > 0 && user) {
+        const uploadedAttachments: Attachment[] = [];
+        for (const file of localFiles) {
+          const { url } = await uploadFile(user.id, file, formData.category_id);
+          if (url) {
+            const att = formData.attachments.find((a) => a.name === file.name || a.name.startsWith("foto_"));
+            if (att) {
+              uploadedAttachments.push({ ...att, url });
             }
-          }
-        });
-
-        let finalAttachments = [...formData.attachments];
-        if (localFiles.length > 0 && user) {
-          setUploading(true);
-          try {
-            const folder = formData.category_id;
-            const uploadedAttachments: Attachment[] = [];
-
-            for (let i = 0; i < localFiles.length; i++) {
-              const file = localFiles[i];
-              const attachment = formData.attachments.find(a => a.name === file.name || a.name.startsWith("foto_"));
-              if (!attachment) continue;
-
-              const { url, error } = await uploadFile(user.id, file, folder);
-              if (!error && url) {
-                uploadedAttachments.push({ ...attachment, url });
-              }
-            }
-
-            finalAttachments = formData.attachments.map((att) => {
-              const updated = uploadedAttachments.find((u) => u.id === att.id);
-              return updated || att;
-            });
-
-            formData.attachments.forEach((att) => {
-              if (att.url.startsWith("blob:")) URL.revokeObjectURL(att.url);
-            });
-          } finally {
-            setUploading(false);
           }
         }
 
-        await updateDocument(id, {
-          person_id: formData.person_id,
-          category_id: formData.category_id,
-          type: formData.type,
-          title: formData.title.trim(),
-          description: formData.description.trim() || undefined,
-          metadata: cleanMetadata,
-          attachments: finalAttachments,
+        finalAttachments = formData.attachments.map((att) => {
+          const updated = uploadedAttachments.find((u) => u.id === att.id);
+          return updated || att;
         });
 
-        router.replace(`/detalhes?id=${id}`);
-      },
-      {
-        successMessage: "Documento atualizado com sucesso",
-        errorMessage: "Erro ao atualizar documento",
-        goBackOnSuccess: false,
+        formData.attachments.forEach((att) => {
+          if (att.url.startsWith("blob:")) URL.revokeObjectURL(att.url);
+        });
+        setLocalFiles([]);
       }
-    );
+
+      await updateDocument(id, {
+        person_id: formData.person_id || activePersonId || "",
+        category_id: formData.category_id,
+        type: formData.type,
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        metadata: formData.metadata,
+        attachments: finalAttachments,
+      });
+
+      trigger("success");
+      showToast("Documento atualizado com sucesso", "success");
+      router.replace(`/detalhes?id=${id}`);
+    } catch (error) {
+      trigger("error");
+      showToast("Erro ao atualizar documento", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!id) return;
-    deleteAction.run(
-      async () => {
-        await documentsRepository.delete(id);
-        router.replace("/");
-      },
-      {
-        successMessage: "Documento excluído com sucesso",
-        errorMessage: "Erro ao excluir documento",
-        goBackOnSuccess: false,
-      }
-    );
+    setDeleting(true);
+    try {
+      await deleteDocument(id);
+      trigger("success");
+      showToast("Documento excluído", "success");
+      router.replace("/");
+    } catch (error) {
+      trigger("error");
+      showToast("Erro ao excluir documento", "error");
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+    }
   };
 
   if (!doc) {
@@ -343,7 +352,9 @@ export default function EditarDetalhePage() {
         <main className="flex min-h-screen items-center justify-center bg-void px-5">
           <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
             <p className="text-sm text-ink-muted">Documento não encontrado</p>
-            <Button variant="primary" onClick={() => router.replace("/")} className="mt-5">Voltar</Button>
+            <Button variant="primary" onClick={() => router.replace("/")} className="mt-5">
+              Voltar
+            </Button>
           </div>
         </main>
       </PageTransition>
@@ -351,25 +362,35 @@ export default function EditarDetalhePage() {
   }
 
   const selectedTypeLabel = DOCUMENT_TYPE_LABELS[formData.type] || "Selecione o tipo";
+  const activePersonObj = persons.find((p) => p.id === formData.person_id) || persons[0];
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-              type="button"
-              aria-label="Voltar"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-            <div className="min-w-0 flex-1">
-              <h1 className="font-display text-xl font-semibold text-ink-primary">Editar documento</h1>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+                type="button"
+                aria-label="Voltar"
+              >
+                <ArrowLeft size={18} className="text-ink-primary" />
+              </button>
+              <div className="min-w-0">
+                <h1 className="font-display text-xl font-semibold text-ink-primary">Editar documento</h1>
+              </div>
             </div>
+
             <button
-              onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
+              onClick={() => {
+                trigger("vibrate");
+                setShowDeleteModal(true);
+              }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
               type="button"
               aria-label="Excluir documento"
@@ -380,48 +401,38 @@ export default function EditarDetalhePage() {
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised">
-                <FileText size={22} className="text-ice" />
+          {/* PACIENTE / PERFIL VINCULADO AUTOMATICAMENTE */}
+          <div className="rounded-[24px] border border-surface-border/50 bg-surface px-4 py-3 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice">
+                <CheckCircle2 size={16} />
               </div>
-              <div className="min-w-0">
-                <p className="text-sm text-ink-muted">Documento atual</p>
-                <h2 className="line-clamp-2 break-words font-display text-lg font-semibold leading-tight text-ink-primary">
-                  {formData.title || "Sem título"}
-                </h2>
-                <p className="mt-1 text-xs leading-5 text-ink-faint">Atualize os dados visíveis do documento.</p>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-ink-muted font-mono">Vinculado ao perfil</p>
+                <p className="text-xs font-bold text-ink-primary">{activePersonObj?.name || "Perfil Padrão"}</p>
               </div>
             </div>
-          </motion.div>
+            <span className="text-[10px] text-ice font-medium bg-ice/10 px-2 py-1 rounded-lg">Automático</span>
+          </div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
-            <p className="mb-3 text-sm font-medium text-ink-primary">Pessoa</p>
-            <div className="flex flex-wrap gap-2">
-              {persons.map((person) => (
-                <button
-                  key={person.id}
-                  onClick={() => handleChange("person_id", person.id!)}
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${formData.person_id === person.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
-                  type="button"
-                  aria-pressed={formData.person_id === person.id}
-                >
-                  {person.name}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.03 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
+          >
             <p className="mb-3 text-sm font-medium text-ink-primary">Categoria</p>
             <div className="flex flex-wrap gap-2">
-              {Object.values(CATEGORIES).map((cat: any) => (
+              {Object.values(CATEGORIES).map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => handleChange("category_id", cat.id)}
-                  className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all ${formData.category_id === cat.id ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                  className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
+                    formData.category_id === cat.id
+                      ? "border-ice bg-ice/12 text-ice"
+                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
+                  }`}
                   type="button"
-                  aria-pressed={formData.category_id === cat.id}
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
                   {cat.name}
@@ -430,154 +441,138 @@ export default function EditarDetalhePage() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }} className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.06 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
+          >
             <label className="mb-3 block text-sm font-medium text-ink-primary">Tipo</label>
             <button
-              onClick={() => { trigger("vibrate"); setIsTypeModalOpen(true); }}
+              onClick={() => {
+                trigger("vibrate");
+                setIsTypeModalOpen(true);
+              }}
               className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
               type="button"
-              aria-label="Selecionar tipo"
             >
               <span>{selectedTypeLabel}</span>
               <Layers3 size={16} className="text-ink-muted" />
             </button>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm">
-            <Input label="Título" value={formData.title} onChange={(e) => handleChange("title", e.target.value)} error={errors.title} />
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.09 }}
+            className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
+          >
+            <Input
+              label="Título"
+              value={formData.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+              error={errors.title}
+            />
 
-            {fields.map((field) => {
-              if (formData.type === 'rg' && field.key === 'rg_number' && formData.metadata['modelo'] === 'C.I.N (Nova Identidade)') return null;
+            {fields.map((field) => (
+              <Input
+                key={field.key}
+                label={field.label}
+                type={field.type === "date" ? "date" : "text"}
+                value={String(formData.metadata[field.key] ?? "")}
+                onChange={(e) => handleMetadataChange(field.key, e.target.value)}
+              />
+            ))}
 
-              const maskType = getMaskType(field.key, field.type);
-              const rawValue = formData.metadata[field.key] || "";
-              const displayedValue = maskType ? applyMask(rawValue, maskType) : rawValue;
-
-              if (field.type === 'select' && field.options) {
-                return (
-                  <div key={field.key}>
-                    <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
-                    <div className="flex flex-wrap gap-2">
-                      {field.options.map((opt: string) => (
-                        <button
-                          key={opt}
-                          onClick={() => handleMetadataChange(field.key, opt)}
-                          className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all ${formData.metadata[field.key] === opt ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
-                          type="button"
-                          aria-pressed={formData.metadata[field.key] === opt}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              }
-
-              const isComplexSelect = field.type === "select" || field.key === "institution" || field.key === "medication";
-              if (isComplexSelect && !field.options) {
-                let items: any[] = [];
-                let renderItem: any, getItemLabel: any, getItemId: any, isModalOpen = false, setIsModalOpen: any, onSelect: any, title = "";
-
-                if (field.key === "doctor") {
-                  items = medicos; title = "Médico";
-                  renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
-                  getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
-                  isModalOpen = isDoctorModalOpen; setIsModalOpen = setIsDoctorModalOpen;
-                  onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
-                } else if (field.key === "pharmacy") {
-                  items = farmacias; title = "Farmácia";
-                  renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
-                  getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
-                  isModalOpen = isPharmacyModalOpen; setIsModalOpen = setIsPharmacyModalOpen;
-                  onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
-                } else if (field.key === "hospital") {
-                  items = hospitais; title = "Hospital";
-                  renderItem = (item: any) => (<p className="font-medium text-ink-primary">{item.nome}</p>);
-                  getItemLabel = (item: any) => item.nome; getItemId = (item: any) => item.id!;
-                  isModalOpen = isHospitalModalOpen; setIsModalOpen = setIsHospitalModalOpen;
-                  onSelect = (item: any) => { handleMetadataChange(field.key, String(item.id)); };
-                }
-
-                const selectedItem = items.find((item: any) => String(item.id) === formData.metadata[field.key]);
-
-                return (
-                  <div key={field.key}>
-                    <label className="mb-1.5 block text-sm font-medium text-ink-primary">{field.label}</label>
-                    <button
-                      onClick={() => { trigger("vibrate"); setIsModalOpen(true); }}
-                      className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
-                      type="button"
-                    >
-                      {selectedItem ? selectedItem.nome : `Selecionar ${field.label.toLowerCase()}`}
-                    </button>
-                    {isModalOpen && (
-                      <SelectionModal
-                        isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
-                        onSelect={onSelect}
-                        items={items}
-                        title={title}
-                        placeholder="Buscar..."
-                        renderItem={renderItem}
-                        getItemId={getItemId}
-                        getItemLabel={getItemLabel}
-                        onCreateNew={() => setIsModalOpen(false)}
-                        createNewLabel=""
-                      />
-                    )}
-                  </div>
-                );
-              }
-
-              return (
-                <Input
-                  key={field.key}
-                  label={field.label}
-                  type="text"
-                  value={displayedValue}
-                  onChange={(e) => {
-                    const raw = maskType ? e.target.value.replace(/\D/g, "") : e.target.value;
-                    handleMetadataChange(field.key, raw);
-                  }}
-                  placeholder={field.type === 'date' ? "DD/MM/AAAA" : `Digite ${field.label.toLowerCase()}...`}
-                />
-              );
-            })}
-
-            <TextArea label="Notas" value={formData.description} onChange={(e) => handleChange("description", e.target.value)} />
+            <TextArea
+              label="Notas"
+              value={formData.description}
+              onChange={(e) => handleChange("description", e.target.value)}
+            />
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.12 }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <div className="mb-3">
               <label className="block text-sm font-medium text-ink-primary">Anexos</label>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading || saveAction.isSubmitting}>
+              <Button
+                variant="secondary"
+                className="flex items-center justify-center gap-2"
+                onClick={() => fileInputRef.current?.click()}
+                type="button"
+              >
                 <Upload size={16} /> Arquivo
               </Button>
-              <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={() => cameraInputRef.current?.click()} disabled={uploading || saveAction.isSubmitting}>
+              <Button
+                variant="secondary"
+                className="flex items-center justify-center gap-2"
+                onClick={() => cameraInputRef.current?.click()}
+                type="button"
+              >
                 <Camera size={16} /> Câmera
               </Button>
               <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
               <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleCameraCapture} className="hidden" />
             </div>
+
             <AnimatePresence>
               {formData.attachments.map((att) => (
-                <motion.div key={att.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
+                <motion.div
+                  key={att.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="mt-4 flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3.5 py-3"
+                >
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface border border-surface-border/40">
                     {att.type === "image" ? <ImageIcon size={16} className="text-ice" /> : <FileText size={16} className="text-ice" />}
                   </div>
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink-primary">{att.name}</p></div>
-                  <button onClick={() => removeAttachment(att.id)} className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:text-ink-primary" type="button" aria-label={`Remover anexo ${att.name}`}><X size={14} /></button>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-ink-primary">{att.name}</p>
+                  </div>
+                  <button
+                    onClick={() => removeAttachment(att.id)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-ink-muted hover:text-ink-primary"
+                    type="button"
+                    aria-label={`Remover anexo ${att.name}`}
+                  >
+                    <X size={14} />
+                  </button>
                 </motion.div>
               ))}
             </AnimatePresence>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
-            <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saveAction.isSubmitting || uploading || deleteAction.isSubmitting} className="flex items-center justify-center gap-2">
-              {saveAction.isSubmitting || uploading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar alterações</>}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.15 }}
+          >
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Salvar alterações
+                </>
+              )}
             </Button>
           </motion.div>
         </section>
@@ -585,14 +580,6 @@ export default function EditarDetalhePage() {
         <BottomSheet isOpen={isTypeModalOpen} onClose={() => setIsTypeModalOpen(false)} title="Selecionar tipo">
           <div className="grid grid-cols-2 gap-3 px-1 pb-4">
             {availableTypes.map((typeObj) => {
-              const TYPE_ICONS: Record<string, any> = {
-                rg: Contact, cpf: FileText, cnh: CreditCard,
-                certidao_nascimento: Scroll, titulo_eleitor: Landmark, certificado: Award,
-                receita: Pill, prontuario: Heart, laudo: FileText,
-                encaminhamento: FileOutput, consulta: Stethoscope, cirurgia: ActivityIcon,
-                exame_sangue: ActivityIcon, exame_imagem: ActivityIcon, credencial: Contact,
-                outro: Folder,
-              };
               const Icon = TYPE_ICONS[typeObj] || FileText;
               const isActive = formData.type === typeObj;
 
@@ -600,20 +587,39 @@ export default function EditarDetalhePage() {
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   key={typeObj}
-                  onClick={() => { trigger("vibrate"); handleChange("type", typeObj); setIsTypeModalOpen(false); }}
-                  className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${isActive ? "border-ice bg-ice/10" : "border-surface-border/50 bg-surface hover:bg-surface-raised"}`}
+                  onClick={() => {
+                    trigger("vibrate");
+                    handleChange("type", typeObj);
+                    setIsTypeModalOpen(false);
+                  }}
+                  className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
+                    isActive ? "border-ice bg-ice/10" : "border-surface-border/50 bg-surface hover:bg-surface-raised"
+                  }`}
                   type="button"
-                  aria-pressed={isActive}
                 >
-                  <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${isActive ? 'bg-ice/20 text-ice' : 'bg-surface-raised text-ink-muted'}`}><Icon size={20} /></div>
-                  <span className={`text-sm font-semibold mb-1 ${isActive ? 'text-ice' : 'text-ink-primary'}`}>{DOCUMENT_TYPE_LABELS[typeObj]}</span>
+                  <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${isActive ? 'bg-ice/20 text-ice' : 'bg-surface-raised text-ink-muted'}`}>
+                    <Icon size={20} />
+                  </div>
+                  <span className={`text-sm font-semibold mb-1 ${isActive ? 'text-ice' : 'text-ink-primary'}`}>
+                    {DOCUMENT_TYPE_LABELS[typeObj]}
+                  </span>
                 </motion.button>
               );
             })}
           </div>
         </BottomSheet>
 
-        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir documento" message={`Tem certeza que deseja excluir "${formData.title}"? Esta ação não pode ser desfeita.`} confirmLabel="Excluir" cancelLabel="Cancelar" isLoading={deleteAction.isSubmitting} type="danger" />
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir documento"
+          message={`Tem certeza que deseja excluir "${formData.title}"? Esta ação não pode ser desfeita.`}
+          confirmLabel="Excluir"
+          cancelLabel="Cancelar"
+          isLoading={deleting}
+          type="danger"
+        />
       </main>
     </PageTransition>
   );

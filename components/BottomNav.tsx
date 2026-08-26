@@ -30,7 +30,6 @@ import {
 import { useHapticFeedback } from "@/lib/haptics";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 
 interface NavItem {
   id: string;
@@ -53,10 +52,6 @@ interface ComposeOption {
   path: string;
 }
 
-const DEFAULT_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "documento", label: "Novo arquivo", icon: Plus, path: "/novo" },
-];
-
 const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "medicamento", label: "Medicamento", icon: Pill, path: "/saude/medicamentos/novo" },
   { id: "tratamento", label: "Tratamento", icon: FolderHeart, path: "/saude/tratamentos/novo" },
@@ -76,7 +71,6 @@ const SAUDE_DOCUMENTOS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-documento-saude", label: "Novo documento", icon: Plus, path: "/saude/documentos/novo" },
 ];
 
-// OPÇÕES EXCLUSIVAS DA ABA "HOJE"
 const HOJE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "dose-unica", label: "Dose Única", icon: Zap, path: "/hoje?action=dose" },
   { id: "sintoma", label: "Novo Sintoma", icon: Activity, path: "/saude/registros/novo" },
@@ -140,10 +134,6 @@ const CONTAS_COMPOSE_OPTIONS: ComposeOption[] = [
 
 const VAULTS_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "novo-cofre", label: "Novo cofre", icon: Lock, path: "/vaults/novo" },
-];
-
-const GALERIA_COMPOSE_OPTIONS: ComposeOption[] = [
-  { id: "upload-galeria", label: "Adicionar à Galeria", icon: UploadCloud, path: "/galeria?upload=true" },
 ];
 
 const SENHAS_COMPOSE_OPTIONS: ComposeOption[] = [
@@ -219,13 +209,13 @@ const ALLOWED_NAV_PATHS = [
   "/saude/cids",
   "/saude/rede",
   "/saude/registros",
-  "/saude/registros/novo",
-  "/saude/registros/detalhes",
-  "/saude/registros/editar",
-  "/saude/documentos/novo",
 ];
 
 function shouldShowNav(pathname: string): boolean {
+  // Garante que rotas de criação (/novo) ou edição (/editar) nunca mostrem o menu inferior
+  if (pathname.includes("/novo") || pathname.includes("/editar") || pathname.includes("/nova")) {
+    return false;
+  }
   return ALLOWED_NAV_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}?`)
   );
