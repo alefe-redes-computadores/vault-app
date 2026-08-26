@@ -51,7 +51,7 @@ import {
 } from "@/components/list";
 
 /* ============================================================
-   FORMATOS (IDÊNTICO À TELA DE DETALHES)
+   FORMATOS E ÍCONES BLINDADOS
    ============================================================ */
 
 const SplitPillIcon = ({
@@ -87,15 +87,17 @@ const SplitPillIcon = ({
   </svg>
 );
 
-const FORMATOS = [
-  { id: "comprimido", label: "Inteiro", icon: Circle },
-  { id: "partido", label: "Partido", icon: SplitPillIcon },
-  { id: "capsula", label: "Cápsula", icon: Pill },
-  { id: "gota", label: "Gotas", icon: Droplet },
-  { id: "gotas", label: "Gotas", icon: Droplet },
-  { id: "injecao", label: "Injeção", icon: Syringe },
-  { id: "adesivo", label: "Adesivo", icon: StickyNote },
-] as const;
+// 🛡️ Helper inteligente que descobre o ícone correto independente de como foi salvo no banco
+function getMedicamentoIconComponent(formato?: string) {
+  const f = (formato || "").toLowerCase().trim();
+  if (f.includes("gota")) return Droplet;
+  if (f.includes("partido")) return SplitPillIcon;
+  if (f.includes("capsula") || f.includes("cápsula") || f.includes("comprimido")) return Pill;
+  if (f.includes("injecao") || f.includes("injeção")) return Syringe;
+  if (f.includes("adesivo")) return StickyNote;
+  if (f.includes("inteiro")) return Circle;
+  return Pill; // Fallback padrão seguro
+}
 
 type SortOption = "urgency" | "renewal" | "name";
 
@@ -393,15 +395,8 @@ export default function MedicamentosListPage() {
               const insight = isSuspenso ? null : sugerirRenovacao(med);
               const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
 
-              // 🛡️ MESMA LÓGICA EXATA DA TELA DE DETALHES
-              const formatoBanco = med.formato?.toLowerCase().trim() || "comprimido";
-              const itemFormato =
-                FORMATOS.find(
-                  (formato) =>
-                    formato.id === formatoBanco
-                ) || FORMATOS[0];
-
-              const SelectedFormatIcon = itemFormato.icon;
+              // 🛡️ SELETOR INTELIGENTE DE ÍCONE
+              const SelectedFormatIcon = getMedicamentoIconComponent(med.formato);
 
               const cor1 = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
               const cardColor = activePersonColor || cor1;
@@ -503,7 +498,7 @@ export default function MedicamentosListPage() {
                               text-ink-muted
                               transition-colors
                               hover:text-ink-primary
-                              active:bg-surface-border
+                              active:scale-95
                             "
                           >
                             <Calendar
@@ -635,7 +630,7 @@ export default function MedicamentosListPage() {
                         }
                       `}
                     >
-                      <FileWarning size=12 />
+                      <FileWarning size={12} />
                       <span className="text-left">{insight.mensagem}</span>
                     </button>
                   )}

@@ -45,12 +45,12 @@ const SplitPillIcon = ({ size, fill = "currentColor" }: any) => (
 );
 
 function getMedicineIcon(formato?: string) {
-  const f = formato?.toLowerCase().trim();
-  if (f === 'partido') return SplitPillIcon;
-  if (f === 'gota') return Droplet;
-  if (f === 'injecao') return Syringe;
-  if (f === 'adesivo') return StickyNote;
-  if (f === 'comprimido') return Circle;
+  const f = formato?.toLowerCase().trim() || "";
+  if (f.includes('partido')) return SplitPillIcon;
+  if (f.includes('gota')) return Droplet;
+  if (f.includes('injecao') || f.includes('injeção')) return Syringe;
+  if (f.includes('adesivo')) return StickyNote;
+  if (f.includes('comprimido') || f.includes('inteiro')) return Circle;
   return Pill;
 }
 
@@ -96,7 +96,7 @@ export function QuickDoseModal({ isOpen, onClose, preselectedMedicamentoId, onSu
     return medicamentosAtivos.filter(m => m.nome.toLowerCase().includes(q));
   }, [medicamentosAtivos, searchQuery]);
 
-      const handleSalvar = async () => {
+  const handleSalvar = async () => {
     const targetId = preselectedMedicamentoId || doseMedId;
     if (!targetId) { trigger("error"); showToast("Selecione um medicamento", "error"); return; }
     if (!doseHora) { trigger("error"); showToast("Horário é obrigatório", "error"); return; }
@@ -122,12 +122,21 @@ export function QuickDoseModal({ isOpen, onClose, preselectedMedicamentoId, onSu
       }
 
       const novoEstoque = Math.max(0, Number((atual - doseParaAbater).toFixed(2)));
+      const timestampAtualizacao = new Date().toISOString();
 
-      await safeUpdateMedicamento(med.id!, {
+      // 1. Atualiza o medicamento localmente
+      const medicamentoAtualizado = {
+        ...med,
         estoque_quantidade: novoEstoque,
         estoque_data_referencia: hoje,
-      });
+        updated_at: timestampAtualizacao,
+      };
 
+      await db.medicamentos.put(medicamentoAtualizado as any);
+      // 🛡️ CORREÇÃO CRUCIAL: Enfileira a alteração do estoque do remédio para subir para a nuvem
+      await enfileirarOperacao("medicamentos", "update", medicamentoAtualizado);
+
+      // 2. Cria e enfileira o log da dose tomada
       const logId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
       const novoLog = {
         id: logId,
@@ -137,8 +146,8 @@ export function QuickDoseModal({ isOpen, onClose, preselectedMedicamentoId, onSu
         data: hoje,
         horario: doseHora,
         quantidade: doseQtd,
-        tomado_em: new Date().toISOString(),
-        created_at: new Date().toISOString(),
+        tomado_em: timestampAtualizacao,
+        created_at: timestampAtualizacao,
         synced: false,
         observacoes: doseMotivo || "Dose avulsa / SOS",
       };
@@ -146,10 +155,11 @@ export function QuickDoseModal({ isOpen, onClose, preselectedMedicamentoId, onSu
       await db.doseLogs.add(novoLog as any);
       await enfileirarOperacao("doseLogs", "add", novoLog);
 
+      // 3. Aciona o processo de sync imediato
       if (typeof window !== "undefined") window.dispatchEvent(new Event("sync:process"));
 
       const historicoDoses = await db.doseLogs.where('medicamento_id').equals(med.id!).toArray();
-      const insightUso = analisarComportamentoUso(med, historicoDoses);
+      const insightUso = analisarComportamentoUso(med as any, historicoDoses);
       if (insightUso?.requerAtencaoUrgente) {
         showToast(insightUso.mensagem, "error");
       } else {
@@ -167,8 +177,6 @@ export function QuickDoseModal({ isOpen, onClose, preselectedMedicamentoId, onSu
       setIsSaving(false);
     }
   };
-
-
 
   if (!isOpen) return null;
 
