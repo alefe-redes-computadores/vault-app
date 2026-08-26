@@ -41,7 +41,16 @@ export function sugerirRenovacao(medicamento: Medicamento) {
     };
   }
 
-  // Cenário 2: Estoque crítico
+  // Cenário 2 (Implementado): Estoque acaba antes da próxima renovação da receita
+  if (diasAteVencimento !== null && diasRestantes < diasAteVencimento) {
+    return {
+      deveRenovar: true,
+      mensagem: `Atenção: O estoque de ${medicamento.nome} acaba em ${diasRestantes} dias, antes da renovação da receita (${diasAteVencimento}d).`,
+      urgencia: "alta" as const,
+    };
+  }
+
+  // Cenário 3: Estoque crítico
   if (diasRestantes <= 3) {
     return {
       deveRenovar: true,
@@ -50,7 +59,7 @@ export function sugerirRenovacao(medicamento: Medicamento) {
     };
   }
 
-  // Cenário 3: Receita vencendo
+  // Cenário 4: Receita vencendo
   if (diasAteVencimento !== null && diasAteVencimento <= 7) {
     return {
       deveRenovar: true,
@@ -61,6 +70,7 @@ export function sugerirRenovacao(medicamento: Medicamento) {
 
   return { deveRenovar: false, mensagem: "", urgencia: "nenhuma" as const };
 }
+
 
 // ============================================================
 // 3. ANALISAR MELHOR FARMÁCIA (INSIGHT DE ECONOMIA)
@@ -146,7 +156,7 @@ export function isReceitaVencidaSegura(dataRenovacao?: string): boolean {
 // 7. COMPORTAMENTO DE USO & SEGURANÇA (VIGILÂNCIA DE DOSAGEM)
 // ============================================================
 export interface ComportamentoInsight {
-  tipo: 'padrao_esporadico' | 'alerta_adesao' | 'risco_superdosagem';
+  tipo: 'padrao_esporadico' | 'alerta_adesao' | 'risco_superdosagem' | 'alerta_tolerancia';
   titulo: string;
   mensagem: string;
   acaoSugerida: string;
@@ -167,7 +177,6 @@ export function analisarComportamentoUso(
   const dosesRecentes = historicoDoses.filter(d => new Date(d.timestamp || d.data || '') >= umaSemanaAtras);
   const isEsporadico = medicamento.tipo_uso === 'esporadico' || medicamento.tipo_uso === 'sos';
 
-  // Vigilância de Segurança: Múltiplas doses em curto espaço de tempo (Proteção contra superdosagem)
   if (dosesUltimaHora.length >= 2) {
     return {
       tipo: 'risco_superdosagem',
@@ -178,11 +187,12 @@ export function analisarComportamentoUso(
     };
   }
 
+  // Implementado: Alerta de Tolerância e Escalada para SOS
   if (isEsporadico && dosesRecentes.length >= 4) {
     return {
-      tipo: 'padrao_esporadico',
-      titulo: 'Aumento no uso de SOS',
-      mensagem: `Você utilizou "${medicamento.nome}" ${dosesRecentes.length} vezes na última semana. Considere reavaliar com seu médico.`,
+      tipo: 'alerta_tolerancia',
+      titulo: 'Revisão de Uso SOS & Tolerância',
+      mensagem: `Você utilizou "${medicamento.nome}" ${dosesRecentes.length} vezes na última semana. O uso está rigorosamente alinhado à prescrição para evitar tolerância precoce?`,
       acaoSugerida: 'Conversar com médico'
     };
   }
@@ -199,6 +209,7 @@ export function analisarComportamentoUso(
 
   return null;
 }
+
 
 // ============================================================
 // 8. VIGILÂNCIA MÉDICA (CONTEXTO ESPECÍFICO DE MÉDICOS)
@@ -409,7 +420,6 @@ export function analisarRotinaDiaria(
   dosesHoje: Array<{ tomada?: boolean; ignorada?: boolean; horario: string }>,
   compromissosHoje: Array<{ tipo: string; procedimento?: string; nome?: string; medico?: string }>
 ): RotinaInsight | null {
-  // Regra 1: Risco Cirúrgico (Jejum/Interação)
   const cirurgiaHoje = compromissosHoje.find(c => c.tipo === 'cirurgia');
   if (cirurgiaHoje && dosesHoje.some(d => !d.tomada && !d.ignorada)) {
     return {
@@ -420,7 +430,6 @@ export function analisarRotinaDiaria(
     };
   }
 
-  // Regra 2: Risco de Exame (Ex: Exames de Sangue pedem jejum)
   const exameHoje = compromissosHoje.find(c => 
     c.tipo === 'exame' && 
     (c.nome?.toLowerCase().includes('sangue') || 
@@ -436,7 +445,6 @@ export function analisarRotinaDiaria(
     };
   }
 
-  // Regra 3: Aproveitamento de Consulta
   const consultaHoje = compromissosHoje.find(c => c.tipo === 'consulta');
   if (consultaHoje) {
     const medico = consultaHoje.medico || 'seu médico';
@@ -467,7 +475,6 @@ export function analisarReceitaArquivada(
 ): StatusReceita | null {
   if (!dataReceita) return null;
 
-  // 1. Verifica se houve compra APÓS a data desta receita
   const temRenovacaoRecente = renovacoesDoMedicamento.some(
     r => new Date(r.data) >= new Date(dataReceita)
   );
@@ -476,7 +483,6 @@ export function analisarReceitaArquivada(
     return { status: 'renovada_historico', label: 'Arquivada (Renovada)', color: '#38BDF8' };
   }
 
-  // 2. Se não renovou, verifica se está vencida
   const vencida = isReceitaVencidaSegura(dataReceita);
   const dias = getDaysUntil(dataReceita);
 
@@ -501,7 +507,6 @@ export interface CidInsight {
 export function getCidInsights(codigo: string): CidInsight {
   const codigoLimpo = (codigo || "").trim().toUpperCase();
   
-  // Transtornos Hipercinéticos / TDAH (Capítulo F90)
   if (codigoLimpo.startsWith("F90")) {
     return {
       categoria: "Neurodesenvolvimento (TDAH)",
@@ -510,7 +515,6 @@ export function getCidInsights(codigo: string): CidInsight {
     };
   }
 
-  // Transtornos Depressivos (Capítulo F32 ou F33)
   if (codigoLimpo.startsWith("F32") || codigoLimpo.startsWith("F33")) {
     return {
       categoria: "Transtorno do Humor (Depressão)",
@@ -519,7 +523,6 @@ export function getCidInsights(codigo: string): CidInsight {
     };
   }
 
-  // Dor Crônica / Neuropática ou enxaquecas comuns
   if (codigoLimpo.startsWith("G43") || codigoLimpo.startsWith("M54")) {
     return {
       categoria: "Dor Crônica / Neurológica",
@@ -528,7 +531,6 @@ export function getCidInsights(codigo: string): CidInsight {
     };
   }
 
-  // Fallback padrão para outras CIDs
   return {
     categoria: "Condição Clínica Geral",
     tratamentosSugeridos: ["Acompanhamento Médico Regular", "Manutenção de Prontuários e Laudos atualizados"],
@@ -537,7 +539,7 @@ export function getCidInsights(codigo: string): CidInsight {
 }
 
 // ============================================================
-// 14. ANÁLISE DE ADESÃO (MEDICAMENTOS) – NOVA FUNÇÃO
+// 14. ANÁLISE DE ADESÃO (MEDICAMENTOS)
 // ============================================================
 export function analisarAdesaoMedicamento(
   medicamento: Medicamento,
@@ -575,7 +577,7 @@ export function analisarAdesaoMedicamento(
 }
 
 // ============================================================
-// 15. MOTOR DE INTELIGÊNCIA CLÍNICA E SINAIS VITAIS (COMPLETO)
+// 15. MOTOR DE INTELIGÊNCIA CLÍNICA E SINAIS VITAIS
 // ============================================================
 export interface RegistroSaudeInsight {
   status: 'normal' | 'atencao' | 'alerta' | 'critico';
@@ -593,7 +595,6 @@ export function analisarRegistroSaude(
   if (!tipo) return null;
   const t = tipo.toLowerCase().trim();
 
-  // 1. PRESSÃO ARTERIAL (Ex: "120/80")
   if (t.includes('pressao') || t.includes('pressão') || t.includes('pa')) {
     if (!valorMedicao) return null;
     const [sisStr, diasStr] = valorMedicao.split('/');
@@ -641,7 +642,6 @@ export function analisarRegistroSaude(
     };
   }
 
-  // 2. GLICEMIA (Ex: "99", "140")
   if (t.includes('glicemia') || t.includes('acucar') || t.includes('açúcar') || t.includes('glicose')) {
     if (!valorMedicao) return null;
     const glic = Number(valorMedicao.replace(',', '.'));
@@ -679,7 +679,6 @@ export function analisarRegistroSaude(
     };
   }
 
-  // 3. TEMPERATURA / FEBRE (Ex: "38.5")
   if (t.includes('temperatura') || t.includes('febre')) {
     if (!valorMedicao) return null;
     const temp = Number(valorMedicao.replace(',', '.'));
@@ -725,7 +724,6 @@ export function analisarRegistroSaude(
     };
   }
 
-  // 4. FREQUÊNCIA CARDÍACA / PULSO (Ex: "85")
   if (t.includes('batimento') || t.includes('pulso') || t.includes('frequencia') || t.includes('cardíaca') || t.includes('bpm')) {
     if (!valorMedicao) return null;
     const bpm = Number(valorMedicao);
@@ -755,7 +753,6 @@ export function analisarRegistroSaude(
     };
   }
 
-  // 5. ESCALA DE INTENSIDADE PARA SINTOMAS (DOR, ANSIEDADE, FADIGA, APATIA, NÁUSEA - 1 A 10)
   if (intensidade !== undefined && intensidade !== null) {
     if (intensidade >= 8) {
       return {
@@ -783,7 +780,6 @@ export function analisarRegistroSaude(
     }
   }
 
-  // 6. CASOS ESPECÍFICOS DE SINTOMAS E CONTEXTOS (ANSIEDADE, SONO, APATIA, FADIGA)
   if (t.includes('ansiedade') || t.includes('panico') || t.includes('pânico')) {
     return {
       status: 'atencao',
@@ -818,6 +814,7 @@ export function analisarRegistroSaude(
     recomendacao: 'Mantenha o registro contínuo para gerar um histórico detalhado para o seu acompanhamento.'
   };
 }
+
 // ============================================================
 // 16. PROCESSADOR INTELIGENTE DA LISTAGEM DE MEDICAMENTOS
 // ============================================================
@@ -843,17 +840,15 @@ export function processarListaMedicamentos(
     const isSuspenso = med.status === "descontinuado";
     const insight = isSuspenso ? { deveRenovar: false, mensagem: "", urgencia: 'nenhuma' as const } : sugerirRenovacao(med);
     
-    // Verifica se foi tomado hoje
     const logHoje = doseLogsHoje.find(l => l.medicamento_id === med.id && l.tomado_em);
     const foiTomadoHoje = !!logHoje;
     const horarioTomado = logHoje && logHoje.tomado_em 
       ? new Date(logHoje.tomado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) 
       : undefined;
 
-    // Lógica enxuta da Receita (Padrão Anvisa) com Type Casting para o TS
     let receita = null;
     const corPadrao = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
-    const tipoReceitaSegura = med.tipo_receita as string; // 🛡️ Evita erro de tipos do TS
+    const tipoReceitaSegura = med.tipo_receita as string;
     
     if (tipoReceitaSegura === "amarela") {
       receita = { sigla: "A1/A2", corBorda: "#fbbf24", textColorClass: "text-amber-400", tooltip: "Receita Amarela (Controle Rigoroso)" };
@@ -867,7 +862,6 @@ export function processarListaMedicamentos(
       receita = { sigla: "S/R", corBorda: corPadrao, textColorClass: "text-slate-500", tooltip: "Sem retenção de receita" };
     }
 
-    // Lógica do Estoque
     const estoqueInfo = computeEstoqueInfo(med);
     const dosesRestantes = estoqueInfo ? estoqueInfo.dosesRestantes : (med.estoque_quantidade ?? 0);
     const isEstoqueCritico = dosesRestantes > 0 && dosesRestantes < 10;
@@ -894,7 +888,6 @@ export function processarListaMedicamentos(
     };
   });
 
-  // O Coração da Tela: Ordenação Inteligente
   return lista.sort((a, b) => {
     if (a.isSuspenso && !b.isSuspenso) return 1;
     if (!a.isSuspenso && b.isSuspenso) return -1;
@@ -913,4 +906,128 @@ export function processarListaMedicamentos(
 
     return a.med.nome.localeCompare(b.med.nome, "pt-BR", { sensitivity: "base" });
   });
+}
+
+// ============================================================
+// 7.1. NOVO MOTOR DE CLUSTERS: SINTOMAS MÚLTIPLOS + SOS
+// ============================================================
+export interface ClusterSintomaSosInsight {
+  titulo: string;
+  mensagem: string;
+  sintomasDetectados: string[];
+  recomendacao: string;
+}
+
+export function analisarClustersSintomasSOS(
+  registrosSaude: Array<{ data?: string; timestamp?: string; tipo: string; intensidade?: number }>,
+  dosesSos: Array<{ data?: string; timestamp?: string; medicamento_nome?: string }>,
+  janelaDias: number = 3
+): ClusterSintomaSosInsight | null {
+  if (!registrosSaude || registrosSaude.length === 0) return null;
+
+  const agora = new Date();
+  const limiteDias = new Date(agora.getTime() - janelaDias * 24 * 60 * 60 * 1000);
+
+  const sintomasRecentes = registrosSaude.filter(r => new Date(r.timestamp || r.data || '') >= limiteDias);
+  const tiposUnicosSintomas = Array.from(new Set(sintomasRecentes.map(r => r.tipo.toLowerCase())));
+
+  if (tiposUnicosSintomas.length >= 2) {
+    const dosesRecentesSos = dosesSos.filter(d => new Date(d.timestamp || d.data || '') >= limiteDias);
+    
+    return {
+      titulo: '🧠 Correlação de Sintomas & Resgate',
+      mensagem: `Notamos múltiplos registros simultâneos nos últimos dias (${tiposUnicosSintomas.join(', ')}).`,
+      sintomasDetectados: tiposUnicosSintomas,
+      recomendacao: dosesRecentesSos.length > 0 
+        ? `Houve uso de medicamento SOS associado a esses episódios. Valide com seu médico se a estratégia atual está cobrindo a raiz dos gatilhos.`
+        : `Considere monitorar se há fatores externos ou ambientais desencadeando esses sintomas em conjunto.`
+    };
+  }
+
+  return null;
+}
+
+// ============================================================
+// 17. RESUMO EXECUTIVO PARA CONSULTA (DOCTOR PREP)
+// ============================================================
+export interface ResumoConsultaMedico {
+  totalDosesSosMes: number;
+  sintomaMaisFrequente: string;
+  taxaAdesaoGeral: number;
+  mensagemProntaMedico: string;
+}
+
+export function gerarResumoParaConsulta(
+  dosesSosMes: Array<{ data?: string; timestamp?: string }>,
+  registrosSaudeMes: Array<{ tipo: string; data?: string; timestamp?: string }>,
+  taxaAdesaoMedia: number
+): ResumoConsultaMedico {
+  const totalDosesSosMes = dosesSosMes.length;
+
+  const contagemSintomas: Record<string, number> = {};
+  registrosSaudeMes.forEach(r => {
+    const t = r.tipo.toLowerCase();
+    contagemSintomas[t] = (contagemSintomas[t] || 0) + 1;
+  });
+
+  let sintomaMaisFrequente = "Nenhum registrado";
+  let maxCount = 0;
+  Object.entries(contagemSintomas).forEach(([sintoma, count]) => {
+    if (count > maxCount) {
+      maxCount = count;
+      sintomaMaisFrequente = sintoma;
+    }
+  });
+
+  const mensagemProntaMedico = `Relatório dos últimos 30 dias: Adesão média de ${taxaAdesaoMedia}%. Sintoma mais recorrente: "${sintomaMaisFrequente}" (${maxCount} ocorrências). Medicamento de resgate SOS utilizado ${totalDosesSosMes} vezes no período.`;
+
+  return {
+    totalDosesSosMes,
+    sintomaMaisFrequente,
+    taxaAdesaoGeral: taxaAdesaoMedia,
+    mensagemProntaMedico,
+  };
+}
+
+// ============================================================
+// 18. DETECÇÃO DE PADRÃO POR DIA DA SEMANA
+// ============================================================
+export function analisarPadraoDiaSemana(
+  registros: Array<{ data?: string; timestamp?: string; tipo: string }>
+): { diaCritico: string; mensagem: string } | null {
+  if (!registros || registros.length === 0) return null;
+
+  const diasContagem: Record<string, number> = {
+    "Domingo": 0, "Segunda-feira": 0, "Terça-feira": 0,
+    "Quarta-feira": 0, "Quinta-feira": 0, "Sexta-feira": 0, "Sábado": 0
+  };
+
+  const nomesDias = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+
+  registros.forEach(r => {
+    const d = new Date(r.timestamp || r.data || '');
+    if (!isNaN(d.getTime())) {
+      const nomeDia = nomesDias[d.getDay()];
+      diasContagem[nomeDia] = (diasContagem[nomeDia] || 0) + 1;
+    }
+  });
+
+  let diaCritico = "";
+  let maxOcorrencias = 0;
+
+  Object.entries(diasContagem).forEach(([dia, qtd]) => {
+    if (qtd > maxOcorrencias) {
+      maxOcorrencias = qtd;
+      diaCritico = dia;
+    }
+  });
+
+  if (maxOcorrencias >= 3) {
+    return {
+      diaCritico,
+      mensagem: `Notamos uma concentração de registros nos dias de ${diaCritico}. Vale a pena observar se há fatores de estresse específicos neste dia.`
+    };
+  }
+
+  return null;
 }
