@@ -4,15 +4,15 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, 
-  FlaskConical, 
-  Building2, 
-  Stethoscope, 
-  Calendar, 
-  FileText, 
-  ExternalLink, 
-  Trash2, 
+import {
+  ArrowLeft,
+  FlaskConical,
+  Building2,
+  Stethoscope,
+  Calendar,
+  FileText,
+  ExternalLink,
+  Trash2,
   Edit3,
   AlertCircle,
   User,
@@ -47,13 +47,29 @@ import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useLocais } from "@/hooks/useLocais";
+import {
+  SectionTitle,
+  DetailInfoRow,
+  StatCard,
+} from "@/components/detail/DetailComponents";
 import type { Exame, Medico, Hospital, Tratamento, Cid } from "@/lib/types";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 function formatDate(isoStr?: string) {
   if (!isoStr) return "—";
-  try { return new Date(isoStr).toLocaleDateString("pt-BR"); }
-  catch { return isoStr; }
+  try {
+    return new Date(isoStr).toLocaleDateString("pt-BR");
+  } catch {
+    return isoStr;
+  }
 }
+
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
 
 function DetalhesExameContent() {
   const { trigger } = useHapticFeedback();
@@ -82,17 +98,60 @@ function DetalhesExameContent() {
   const { addMedico } = useMedicos();
   const { addLocal } = useLocais();
 
+  /* ==========================================================
+     DEXIE
+     ========================================================== */
+
   const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
   const locais = useLiveQuery(() => db.locais.toArray(), []) || [];
   const persons = useLiveQuery(() => db.persons.toArray(), []) || [];
+
   const tratamentos = useLiveQuery(() => {
     if (!exame?.tratamento_ids || exame.tratamento_ids.length === 0) return [];
     return db.tratamentos.where('id').anyOf(exame.tratamento_ids).toArray();
   }, [exame?.tratamento_ids]) || [];
+
   const cids = useLiveQuery(() => {
     if (!exame?.cid_ids || exame.cid_ids.length === 0) return [];
     return db.cids.where('id').anyOf(exame.cid_ids).toArray();
   }, [exame?.cid_ids]) || [];
+
+  const person = useLiveQuery(
+    () => (exame?.person_id ? db.persons.get(exame.person_id) : undefined),
+    [exame?.person_id]
+  );
+
+  const medico = useLiveQuery(
+    () => (exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined),
+    [exame?.medico_id]
+  );
+
+  const local = useLiveQuery(
+    () => (exame?.local_id ? db.locais.get(exame.local_id) : undefined),
+    [exame?.local_id]
+  );
+
+  const historicoExames = useLiveQuery(() => {
+    if (!exame) return [];
+    return db.exames
+      .where('nome')
+      .equals(exame.nome)
+      .filter((item) => item.id !== id && item.person_id === exame.person_id)
+      .toArray();
+  }, [exame, id]) || [];
+
+  /* ==========================================================
+     DADOS DERIVADOS
+     ========================================================== */
+
+  const exameVencido = useMemo(() => {
+    return exame?.data_retorno ? isReceitaVencidaSegura(exame.data_retorno) : false;
+  }, [exame]);
+
+  const diasParaApresentacao = useMemo(() => {
+    if (!exame?.data_retorno) return null;
+    return getDaysUntil(exame.data_retorno);
+  }, [exame]);
 
   useEffect(() => {
     if (!id) {
@@ -117,28 +176,6 @@ function DetalhesExameContent() {
 
   if (!mounted) return <DetailSkeleton />;
 
-  const person = useLiveQuery(() => exame?.person_id ? db.persons.get(exame.person_id) : undefined, [exame?.person_id]);
-  const medico = useLiveQuery(() => exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined, [exame?.medico_id]);
-  const local = useLiveQuery(() => exame?.local_id ? db.locais.get(exame.local_id) : undefined, [exame?.local_id]);
-
-  const historicoExames = useLiveQuery(() => {
-    if (!exame) return [];
-    return db.exames
-      .where('nome')
-      .equals(exame.nome)
-      .filter(item => item.id !== id && item.person_id === exame.person_id)
-      .toArray();
-  }, [exame, id]) || [];
-
-  const exameVencido = useMemo(() => {
-    return exame?.data_retorno ? isReceitaVencidaSegura(exame.data_retorno) : false;
-  }, [exame]);
-
-  const diasParaApresentacao = useMemo(() => {
-    if (!exame?.data_retorno) return null;
-    return getDaysUntil(exame.data_retorno);
-  }, [exame]);
-
   const temHorario = exame?.horario && exame.horario.trim().length > 0;
 
   const menuOptions = [
@@ -154,13 +191,15 @@ function DetalhesExameContent() {
   if (isLoading) return <DetailSkeleton />;
   if (!exame) return null;
 
-  const medicoEncontrado = medico !== undefined;
-  const localEncontrado = local !== undefined;
-
-  const medicoValido = medicoEncontrado && medico?.nome;
-  const localValido = localEncontrado && local?.nome;
-
   const exameId = typeof id === 'string' ? id : undefined;
+  const medicoValido = medico?.nome;
+  const localValido = local?.nome;
+  const personName = person?.name || persons.find(p => p.id === exame.person_id)?.name || "Pessoa não encontrada";
+  const corBorda = exameVencido ? "#EF4444" : (diasParaApresentacao !== null && diasParaApresentacao <= 3) ? "#F59E0B" : "#10B981";
+
+  /* ==========================================================
+     HANDLERS
+     ========================================================== */
 
   const handleCreateMedico = async () => {
     if (!newMedicoNome.trim()) {
@@ -270,18 +309,21 @@ function DetalhesExameContent() {
     }
   };
 
-  const personName = person?.name || persons.find(p => p.id === exame.person_id)?.name || "Pessoa não encontrada";
-
-  const corBorda = exameVencido ? "#EF4444" : (diasParaApresentacao !== null && diasParaApresentacao <= 3) ? "#F59E0B" : "#10B981";
+  /* ==========================================================
+     RENDER
+     ========================================================== */
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
+        {/* ====================================================
+            HEADER
+        ==================================================== */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <button 
-                onClick={() => { trigger("vibrate"); router.back(); }} 
+              <button
+                onClick={() => { trigger("vibrate"); router.back(); }}
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
                 type="button"
                 aria-label="Voltar"
@@ -379,14 +421,16 @@ function DetalhesExameContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          
+          {/* ==================================================
+              ALERTA DE PRAZO
+          ================================================== */}
           {exame.data_retorno && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-sm ${
-                exameVencido 
-                  ? 'border-coral/40 bg-coral/10 text-coral' 
+                exameVencido
+                  ? 'border-coral/40 bg-coral/10 text-coral'
                   : diasParaApresentacao !== null && diasParaApresentacao <= 3
                   ? 'border-amber-400/40 bg-amber-400/10 text-amber-300'
                   : 'border-surface-border/50 bg-surface text-ink-primary'
@@ -403,21 +447,22 @@ function DetalhesExameContent() {
                   )}
                 </p>
                 <p className="text-xs mt-0.5 opacity-90">
-                  {exameVencido 
-                    ? `A data limite era ${formatDate(exame.data_retorno)}. Verifique se precisa de uma nova solicitação.` 
+                  {exameVencido
+                    ? `A data limite era ${formatDate(exame.data_retorno)}. Verifique se precisa de uma nova solicitação.`
                     : `Data limite agendada para ${formatDate(exame.data_retorno)}.`}
                 </p>
               </div>
             </motion.div>
           )}
 
-          <motion.div 
+          {/* ==================================================
+              HERO
+          ================================================== */}
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4"
-            style={{
-              borderLeft: `6px solid ${corBorda}`
-            }}
+            style={{ borderLeft: `6px solid ${corBorda}` }}
           >
             <div className="flex items-center gap-3.5 pb-4 border-b border-surface-border/40">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
@@ -434,86 +479,87 @@ function DetalhesExameContent() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised/50 p-3 border border-surface-border/40">
-              <div className="flex items-center gap-3 min-w-0">
-                <Stethoscope size={16} className="text-ice shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-ink-faint">Solicitante</p>
-                  {medicoValido ? (
-                    <button
-                      onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${medico.id}`); }}
-                      className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
-                      type="button"
-                    >
-                      {medico.nome}
-                      <ChevronRight size={14} className="text-ink-faint" />
-                    </button>
-                  ) : exame.medico ? (
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-ink-muted line-through">{exame.medico}</p>
-                      <span className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <AlertOctagon size={12} /> Cadastro perdido
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-ink-muted">Não informado</p>
-                  )}
-                </div>
-              </div>
-              {!medicoValido && exame.medico && (
+            {/* SOLICITANTE */}
+            <DetailInfoRow
+              icon={<Stethoscope size={18} />}
+              iconClassName="bg-ice/10 text-ice"
+              label="Solicitante"
+              action={
+                !medicoValido && exame.medico ? (
+                  <button
+                    onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
+                    className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                    type="button"
+                  >
+                    Corrigir
+                  </button>
+                ) : undefined
+              }
+            >
+              {medicoValido ? (
                 <button
-                  onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
-                  className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                  onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${medico.id}`); }}
+                  className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
                   type="button"
                 >
-                  Corrigir
+                  {medico.nome}
+                  <ChevronRight size={14} className="text-ink-faint" />
                 </button>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised/50 p-3 border border-surface-border/40">
-              <div className="flex items-center gap-3 min-w-0">
-                <Building2 size={16} className="text-emerald-400 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-ink-faint">Local / Laboratório</p>
-                  {localValido ? (
-                    <button
-                      onClick={() => { trigger("vibrate"); router.push(`/saude/locais/detalhes?id=${local.id}`); }}
-                      className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
-                      type="button"
-                    >
-                      {local.nome}
-                      <ChevronRight size={14} className="text-ink-faint" />
-                    </button>
-                  ) : exame.laboratorio ? (
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-ink-muted line-through">{exame.laboratorio}</p>
-                      <span className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <AlertOctagon size={12} /> Cadastro perdido
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-ink-muted">Não informado</p>
-                  )}
+              ) : exame.medico ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-ink-muted line-through">{exame.medico}</p>
+                  <span className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <AlertOctagon size={12} /> Cadastro perdido
+                  </span>
                 </div>
-              </div>
-              {!localValido && exame.laboratorio && (
+              ) : (
+                <p className="text-sm text-ink-muted">Não informado</p>
+              )}
+            </DetailInfoRow>
+
+            {/* LOCAL */}
+            <DetailInfoRow
+              icon={<Building2 size={18} />}
+              iconClassName="bg-emerald-400/10 text-emerald-400"
+              label="Local / Laboratório"
+              action={
+                !localValido && exame.laboratorio ? (
+                  <button
+                    onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
+                    className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                    type="button"
+                  >
+                    Corrigir
+                  </button>
+                ) : undefined
+              }
+            >
+              {localValido ? (
                 <button
-                  onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
-                  className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                  onClick={() => { trigger("vibrate"); router.push(`/saude/locais/detalhes?id=${local.id}`); }}
+                  className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
                   type="button"
                 >
-                  Corrigir
+                  {local.nome}
+                  <ChevronRight size={14} className="text-ink-faint" />
                 </button>
+              ) : exame.laboratorio ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-ink-muted line-through">{exame.laboratorio}</p>
+                  <span className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <AlertOctagon size={12} /> Cadastro perdido
+                  </span>
+                </div>
+              ) : (
+                <p className="text-sm text-ink-muted">Não informado</p>
               )}
-            </div>
+            </DetailInfoRow>
 
+            {/* TRATAMENTOS */}
             {tratamentos && tratamentos.length > 0 && (
               <div className="pt-2">
-                <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
-                  <Activity size={14} className="text-violet-400" /> Tratamentos Relacionados
-                </p>
-                <div className="flex flex-wrap gap-2">
+                <SectionTitle icon={<Activity size={15} />} title="Tratamentos Relacionados" />
+                <div className="mt-2 flex flex-wrap gap-2">
                   {tratamentos.map((t: Tratamento) => {
                     const theme = getClinicalTheme(t.nome);
                     const Icon = theme.icon;
@@ -533,12 +579,11 @@ function DetalhesExameContent() {
               </div>
             )}
 
+            {/* CIDs */}
             {cids && cids.length > 0 && (
               <div className="pt-2">
-                <p className="text-xs font-medium text-ink-muted mb-2 flex items-center gap-1.5">
-                  <Activity size={14} className="text-violet-400" /> CIDs Relacionados
-                </p>
-                <div className="flex flex-wrap gap-2">
+                <SectionTitle icon={<Activity size={15} />} title="CIDs Relacionados" />
+                <div className="mt-2 flex flex-wrap gap-2">
                   {cids.map((cid: Cid) => {
                     const theme = getClinicalTheme(cid.descricao || cid.codigo);
                     const Icon = theme.icon;
@@ -556,24 +601,27 @@ function DetalhesExameContent() {
               </div>
             )}
 
+            {/* MOTIVO */}
             {exame.motivo && (
               <div className="pt-2">
-                <p className="text-xs font-medium text-ink-muted mb-1">Motivo da Solicitação</p>
-                <p className="text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40">{exame.motivo}</p>
+                <SectionTitle icon={<FileText size={15} />} title="Motivo da Solicitação" />
+                <p className="mt-1 text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40">{exame.motivo}</p>
               </div>
             )}
 
+            {/* RESULTADOS */}
             {exame.observacoes && (
               <div className="pt-2">
-                <p className="text-xs font-medium text-ink-muted mb-1">Resultados / Notas</p>
-                <p className="text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40 whitespace-pre-wrap">{exame.observacoes}</p>
+                <SectionTitle icon={<FileText size={15} />} title="Resultados / Notas" />
+                <p className="mt-1 text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40 whitespace-pre-wrap">{exame.observacoes}</p>
               </div>
             )}
 
+            {/* ANEXO */}
             {exame.anexo_url && (
-              <a 
-                href={exame.anexo_url} 
-                target="_blank" 
+              <a
+                href={exame.anexo_url}
+                target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 p-3.5 text-ice hover:bg-ice/20 transition-colors mt-2"
               >
@@ -585,18 +633,17 @@ function DetalhesExameContent() {
             )}
           </motion.div>
 
+          {/* ==================================================
+              HISTÓRICO
+          ================================================== */}
           {historicoExames.length > 0 && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-3"
             >
-              <div className="flex items-center gap-2">
-                <History size={15} className="text-emerald-400" />
-                <h3 className="font-display text-sm font-semibold text-ink-primary">Histórico do Exame</h3>
-                <span className="text-xs text-ink-muted">({historicoExames.length} anteriores)</span>
-              </div>
+              <SectionTitle icon={<History size={15} />} title="Histórico do Exame" />
               <p className="text-xs text-ink-muted">Outras vezes que "{exame.nome}" foi realizado para {personName}:</p>
 
               <div className="space-y-2 pt-1">
@@ -620,6 +667,9 @@ function DetalhesExameContent() {
           )}
         </section>
 
+        {/* ====================================================
+            MODAIS
+        ==================================================== */}
         <ConfirmationModal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}
@@ -670,6 +720,7 @@ function DetalhesExameContent() {
           createNewLabel="Cadastrar Novo Local"
         />
 
+        {/* Modais de criação rápida */}
         {isCreatingMedico && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-4 backdrop-blur-md">
             <motion.div

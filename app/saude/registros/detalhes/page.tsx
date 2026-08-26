@@ -30,6 +30,14 @@ import { useToast } from "@/components/ToastProvider";
 import { registrosSaudeRepository } from "@/lib/repositories/registrosSaude";
 import { getRegistroTheme, getClinicalTheme } from "@/lib/health-utils";
 import { analisarRegistroSaude } from "@/lib/health-insights";
+import {
+  SectionTitle,
+  DetailInfoRow,
+} from "@/components/detail/DetailComponents";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -52,6 +60,10 @@ function getTratamentoIcon(nome: string) {
   return Activity;
 }
 
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
+
 export default function DetalhesRegistroSaudePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -60,6 +72,10 @@ export default function DetalhesRegistroSaudePage() {
   const { showToast } = useToast();
 
   const [isDeleting, setIsDeleting] = useState(false);
+
+  /* ==========================================================
+     DEXIE
+     ========================================================== */
 
   const registro = useLiveQuery<any>(
     () => (id ? db.table("registros_saude").get(id) : Promise.resolve(undefined)),
@@ -123,6 +139,10 @@ export default function DetalhesRegistroSaudePage() {
     );
   }
 
+  /* ==========================================================
+     DADOS DERIVADOS
+     ========================================================== */
+
   const theme = getRegistroTheme(registro.nome);
   const IconComp = theme.icon;
   const insight = analisarRegistroSaude(
@@ -150,6 +170,10 @@ export default function DetalhesRegistroSaudePage() {
       setIsDeleting(false);
     }
   };
+
+  /* ==========================================================
+     RENDER
+     ========================================================== */
 
   return (
     <PageTransition>
@@ -243,32 +267,30 @@ export default function DetalhesRegistroSaudePage() {
               </div>
             </div>
 
+            {/* Data e horário */}
             <div className="mt-3 grid grid-cols-2 gap-3 border-t border-surface-border/40 pt-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-raised text-ice">
-                  <Calendar size={16} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase text-ink-muted">Data</p>
-                  <p className="font-mono text-xs font-semibold text-ink-primary">
-                    {formatDateToDisplay(registro.data)}
-                  </p>
-                </div>
-              </div>
+              <DetailInfoRow
+                icon={<Calendar size={16} />}
+                iconClassName="bg-ice/10 text-ice"
+                label="Data"
+              >
+                <p className="font-mono text-xs font-semibold text-ink-primary">
+                  {formatDateToDisplay(registro.data)}
+                </p>
+              </DetailInfoRow>
 
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-raised text-ice">
-                  <Clock size={16} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase text-ink-muted">Horário</p>
-                  <p className="font-mono text-xs font-semibold text-ink-primary">
-                    {registro.horario}
-                  </p>
-                </div>
-              </div>
+              <DetailInfoRow
+                icon={<Clock size={16} />}
+                iconClassName="bg-ice/10 text-ice"
+                label="Horário"
+              >
+                <p className="font-mono text-xs font-semibold text-ink-primary">
+                  {registro.horario}
+                </p>
+              </DetailInfoRow>
             </div>
 
+            {/* Intensidade */}
             {registro.intensidade !== undefined && (
               <div className="mt-3">
                 <div className="mb-1.5 flex items-center justify-between text-xs">
@@ -284,6 +306,7 @@ export default function DetalhesRegistroSaudePage() {
               </div>
             )}
 
+            {/* Valor da medição */}
             {registro.valor_medicao && (
               <div className="mt-3 flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised p-3">
                 <span className="text-xs font-medium text-ink-muted">Valor da Medição</span>
@@ -362,9 +385,10 @@ export default function DetalhesRegistroSaudePage() {
             transition={{ delay: 0.04 }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
           >
-            <h3 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
-              Cruzamento Relacional
-            </h3>
+            <SectionTitle
+              icon={<Activity size={15} />}
+              title="Cruzamento Relacional"
+            />
 
             {medicamento ? (
               <div
@@ -462,12 +486,10 @@ export default function DetalhesRegistroSaudePage() {
               transition={{ delay: 0.06 }}
               className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
-              <div className="flex items-center gap-2">
-                <TrendingUp size={16} className="text-ice" />
-                <h3 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
-                  Últimas Ocorrências
-                </h3>
-              </div>
+              <SectionTitle
+                icon={<TrendingUp size={15} />}
+                title="Últimas Ocorrências"
+              />
               <div className="mt-3 space-y-2">
                 {historicoSimilar.map((r: any) => (
                   <div
@@ -509,9 +531,10 @@ export default function DetalhesRegistroSaudePage() {
               transition={{ delay: 0.08 }}
               className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
-              <h3 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
-                Anotações
-              </h3>
+              <SectionTitle
+                icon={<Activity size={15} />}
+                title="Anotações"
+              />
               <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-ink-primary">
                 {registro.observacoes}
               </p>

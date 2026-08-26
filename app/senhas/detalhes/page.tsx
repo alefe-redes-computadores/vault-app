@@ -4,7 +4,16 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowLeft, Trash2, Pencil, Eye, EyeOff, Copy, Check, ShieldCheck, Loader2, Lock,
+  ArrowLeft,
+  Trash2,
+  Pencil,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  ShieldCheck,
+  Loader2,
+  Lock,
 } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { useCredentials } from "@/hooks/useCredentials";
@@ -18,6 +27,14 @@ import type { Credential } from "@/lib/types";
 import { useToast } from "@/components/ToastProvider";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useMounted } from "@/hooks/useMounted";
+import {
+  SectionTitle,
+  DetailInfoRow,
+} from "@/components/detail/DetailComponents";
+
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
 
 function CredentialDetailsContent() {
   const { trigger } = useHapticFeedback();
@@ -161,21 +178,26 @@ function CredentialDetailsContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
+        {/* ===== HEADER ===== */}
         <header className="header-safe-top sticky top-0 z-20 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
             <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
+              onClick={() => {
+                trigger("vibrate");
+                router.back();
+              }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
               type="button"
               aria-label="Voltar"
             >
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
+
             <div className="min-w-0">
-              <h1 className="font-display text-lg font-semibold truncate text-ink-primary">
+              <h1 className="truncate font-display text-lg font-semibold text-ink-primary">
                 {credential.title}
               </h1>
-              <span className="inline-block rounded-full bg-ice/15 px-2.5 py-0.5 text-[11px] font-medium capitalize text-ice">
+              <span className="mt-0.5 inline-block rounded-full bg-ice/15 px-2.5 py-0.5 text-[11px] font-medium capitalize text-ice">
                 {credential.category}
               </span>
             </div>
@@ -205,35 +227,49 @@ function CredentialDetailsContent() {
           </div>
         </header>
 
+        {/* ===== CONTEÚDO ===== */}
         <section className="space-y-4 px-5 pt-6">
+          {/* Usuário / E-mail */}
           {credential.username && (
-            <div className="flex items-center justify-between rounded-[28px] border border-surface-border/50 bg-surface p-4">
-              <div className="min-w-0">
-                <p className="text-xs uppercase text-ink-faint">Usuário / E-mail</p>
-                <p className="mt-1 text-base font-medium text-ink-primary truncate">
-                  {credential.username}
-                </p>
-              </div>
-              <button
-                onClick={() => handleCopy(credential.username!, "username")}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised"
-                type="button"
-                aria-label="Copiar usuário"
-              >
-                {copiedField === "username" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
-              </button>
-            </div>
+            <DetailInfoRow
+              icon={<Copy size={14} />}
+              iconClassName="bg-ice/10 text-ice"
+              label="Usuário / E-mail"
+              action={
+                <button
+                  onClick={() => handleCopy(credential.username!, "username")}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised"
+                  type="button"
+                  aria-label="Copiar usuário"
+                >
+                  {copiedField === "username" ? (
+                    <Check size={16} className="text-ice" />
+                  ) : (
+                    <Copy size={16} />
+                  )}
+                </button>
+              }
+            >
+              <p className="truncate text-base font-medium text-ink-primary">
+                {credential.username}
+              </p>
+            </DetailInfoRow>
           )}
 
+          {/* Senha */}
           <div className="space-y-2 rounded-[28px] border border-surface-border/50 bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase text-ink-faint">Senha criptografada</p>
-              <span className="flex items-center gap-1 text-[11px] text-ice">
-                <ShieldCheck size={12} /> E2EE
-              </span>
-            </div>
+            <SectionTitle
+              icon={<ShieldCheck size={15} />}
+              title="Senha criptografada"
+              action={
+                <span className="flex items-center gap-1 text-[11px] text-ice">
+                  <ShieldCheck size={12} /> E2EE
+                </span>
+              }
+            />
+
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised p-3">
-              <span className="font-mono text-base text-ink-primary truncate">
+              <span className="truncate font-mono text-base text-ink-primary">
                 {revealed ? plainPassword : "••••••••••••••••"}
               </span>
               <div className="flex gap-2">
@@ -254,13 +290,18 @@ function CredentialDetailsContent() {
                   type="button"
                   aria-label="Copiar senha"
                 >
-                  {copiedField === "password" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
+                  {copiedField === "password" ? (
+                    <Check size={16} className="text-ice" />
+                  ) : (
+                    <Copy size={16} />
+                  )}
                 </button>
               </div>
             </div>
           </div>
         </section>
 
+        {/* ===== MODAL ===== */}
         <ConfirmationModal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}

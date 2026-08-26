@@ -5,7 +5,15 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Edit3, ShieldCheck, Copy, Check, Landmark, Loader2, Trash2, Plus,
+  ArrowLeft,
+  Edit3,
+  ShieldCheck,
+  Copy,
+  Check,
+  Landmark,
+  Loader2,
+  Trash2,
+  Plus,
 } from "lucide-react";
 import { useCards } from "@/hooks/useCards";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -16,6 +24,15 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { useMounted } from "@/hooks/useMounted";
 import type { BankCard } from "@/lib/types";
+import {
+  SectionTitle,
+  DetailInfoRow,
+  StatCard,
+} from "@/components/detail/DetailComponents";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -36,6 +53,10 @@ const getBankStyle = (bankName: string) => {
   if (name.includes('sicredi')) return 'from-[#008736] to-[#00b046] text-white';
   return 'from-surface-raised to-surface border-surface-border/50 text-ink-primary';
 };
+
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
 
 function AccountDetailsContent() {
   const { trigger } = useHapticFeedback();
@@ -117,6 +138,7 @@ function AccountDetailsContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
+        {/* ===== HEADER ===== */}
         <header className="header-safe-top sticky top-0 z-20 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -128,12 +150,15 @@ function AccountDetailsContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div>
-              <h1 className="font-display text-lg font-semibold text-ink-primary truncate max-w-[180px]">{account.title}</h1>
-              <p className="text-[11px] text-ink-muted flex items-center gap-1 mt-0.5">
+              <h1 className="max-w-[180px] truncate font-display text-lg font-semibold text-ink-primary">
+                {account.title}
+              </h1>
+              <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-muted">
                 <ShieldCheck size={12} className="text-ice" /> Protegido (E2EE)
               </p>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
             <div className="relative">
               <button
@@ -163,7 +188,9 @@ function AccountDetailsContent() {
                       className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
                     >
                       <div className="px-3 pb-2 pt-3.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
+                          Adicionar
+                        </p>
                       </div>
                       <div className="px-1.5 pb-2">
                         {menuOptions.map((option) => {
@@ -210,32 +237,46 @@ function AccountDetailsContent() {
           </div>
         </header>
 
-        <section className="px-5 pt-6">
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="relative w-full">
+        {/* ===== CONTEÚDO ===== */}
+        <section className="space-y-6 px-5 pt-6">
+          {/* Cartão do banco */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className="relative w-full"
+          >
             <div className={`absolute -inset-1 blur-2xl opacity-20 bg-gradient-to-br ${accountStyle}`} />
-            <div className={`relative aspect-[1.58/1] w-full rounded-3xl border p-6 flex flex-col justify-between overflow-hidden shadow-2xl bg-gradient-to-br ${accountStyle}`}>
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-              <div className="relative z-10 flex justify-between items-start">
+            <div
+              className={`relative aspect-[1.58/1] w-full overflow-hidden rounded-3xl border bg-gradient-to-br ${accountStyle} flex flex-col justify-between p-6 shadow-2xl`}
+            >
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
+              <div className="relative z-10 flex items-start justify-between">
                 {logoUrl ? (
-                  <div className="bg-white/90 p-1.5 rounded-lg backdrop-blur-md">
-                    <img src={logoUrl} alt={account.bank_name} className="h-5 object-contain mix-blend-multiply" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                  <div className="rounded-lg bg-white/90 p-1.5 backdrop-blur-md">
+                    <img
+                      src={logoUrl}
+                      alt={account.bank_name}
+                      className="h-5 object-contain mix-blend-multiply"
+                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                    />
                   </div>
                 ) : (
-                  <span className="font-display font-bold text-lg">{account.bank_name}</span>
+                  <span className="font-display text-lg font-bold">{account.bank_name}</span>
                 )}
-                <span className="font-bold uppercase tracking-widest text-sm text-white/80">Conta Bancária</span>
+                <span className="text-sm font-bold uppercase tracking-widest text-white/80">Conta Bancária</span>
               </div>
-              <div className="relative z-10 mt-auto pt-4 space-y-2">
+              <div className="relative z-10 mt-auto space-y-2 pt-4">
                 <div className="font-mono text-2xl tracking-widest text-white/80">
                   {account.account ? `Conta: ${account.account}` : "•••• ••••"}
                 </div>
-                <div className="flex justify-between items-end">
-                  <div className="uppercase tracking-widest text-[10px] text-white/80 font-medium">
+                <div className="flex items-end justify-between">
+                  <div className="text-[10px] font-medium uppercase tracking-widest text-white/80">
                     {account.bank_name}
                   </div>
                   {account.agency && (
                     <div className="text-right">
-                      <span className="text-[7px] uppercase text-white/60 tracking-wider block">Agência</span>
+                      <span className="block text-[7px] uppercase tracking-wider text-white/60">Agência</span>
                       <span className="font-mono text-sm text-white">{account.agency}</span>
                     </div>
                   )}
@@ -244,16 +285,27 @@ function AccountDetailsContent() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="flex justify-center gap-3 mt-6">
+          {/* Botões de cópia */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.1 }}
+            className="flex justify-center gap-3"
+          >
             {account.agency && (
               <button
                 onClick={() => handleCopy(account.agency!, "agency")}
-                className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary"
+                className="flex flex-col items-center gap-1.5 text-ink-muted transition-all hover:text-ink-primary active:scale-95"
                 type="button"
                 aria-label="Copiar agência"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
-                  {copiedField === "agency" ? <Check size={18} className="text-ice" /> : <Landmark size={18} />}
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
+                  {copiedField === "agency" ? (
+                    <Check size={18} className="text-ice" />
+                  ) : (
+                    <Landmark size={18} />
+                  )}
                 </div>
                 <span className="text-[10px] font-medium uppercase tracking-wider">Copiar Agência</span>
               </button>
@@ -261,45 +313,101 @@ function AccountDetailsContent() {
             {account.account && (
               <button
                 onClick={() => handleCopy(account.account!, "account")}
-                className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary"
+                className="flex flex-col items-center gap-1.5 text-ink-muted transition-all hover:text-ink-primary active:scale-95"
                 type="button"
                 aria-label="Copiar conta"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
-                  {copiedField === "account" ? <Check size={18} className="text-ice" /> : <Copy size={18} />}
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
+                  {copiedField === "account" ? (
+                    <Check size={18} className="text-ice" />
+                  ) : (
+                    <Copy size={18} />
+                  )}
                 </div>
                 <span className="text-[10px] font-medium uppercase tracking-wider">Copiar Conta</span>
               </button>
             )}
           </motion.div>
-        </section>
 
-        <section className="space-y-3 px-5 pt-8">
+          {/* Dados da conta */}
           {(account.agency || account.account) && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="grid grid-cols-2 gap-3">
-              {account.agency && (
-                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Agência</span>
-                  <span className="font-mono text-base font-semibold text-ink-primary">{account.agency}</span>
-                </div>
-              )}
-              {account.account && (
-                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Conta</span>
-                  <span className="font-mono text-base font-semibold text-ink-primary">{account.account}</span>
-                </div>
-              )}
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.15 }}
+              className="space-y-3"
+            >
+              <SectionTitle icon={<Landmark size={15} />} title="Dados da Conta" />
+              <div className="grid grid-cols-2 gap-3">
+                {account.agency && (
+                  <DetailInfoRow
+                    icon={<Landmark size={14} />}
+                    iconClassName="bg-surface-raised text-ink-muted"
+                    label="Agência"
+                    action={
+                      <button
+                        onClick={() => handleCopy(account.agency!, "agency")}
+                        className="p-1 text-ink-muted active:scale-95"
+                        type="button"
+                        aria-label="Copiar agência"
+                      >
+                        {copiedField === "agency" ? (
+                          <Check size={16} className="text-ice" />
+                        ) : (
+                          <Copy size={16} />
+                        )}
+                      </button>
+                    }
+                  >
+                    <span className="font-mono text-base font-semibold text-ink-primary">{account.agency}</span>
+                  </DetailInfoRow>
+                )}
+                {account.account && (
+                  <DetailInfoRow
+                    icon={<Copy size={14} />}
+                    iconClassName="bg-surface-raised text-ink-muted"
+                    label="Conta"
+                    action={
+                      <button
+                        onClick={() => handleCopy(account.account!, "account")}
+                        className="p-1 text-ink-muted active:scale-95"
+                        type="button"
+                        aria-label="Copiar conta"
+                      >
+                        {copiedField === "account" ? (
+                          <Check size={16} className="text-ice" />
+                        ) : (
+                          <Copy size={16} />
+                        )}
+                      </button>
+                    }
+                  >
+                    <span className="font-mono text-base font-semibold text-ink-primary">{account.account}</span>
+                  </DetailInfoRow>
+                )}
+              </div>
             </motion.div>
           )}
 
+          {/* Anotações */}
           {account.notes && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-2">
-              <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Anotações</span>
-              <p className="text-sm text-ink-primary whitespace-pre-wrap leading-relaxed">{account.notes}</p>
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.2 }}
+              className="space-y-3"
+            >
+              <SectionTitle icon={<Edit3 size={15} />} title="Anotações" />
+              <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-primary">{account.notes}</p>
+              </div>
             </motion.div>
           )}
         </section>
 
+        {/* ===== MODAL ===== */}
         <ConfirmationModal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}

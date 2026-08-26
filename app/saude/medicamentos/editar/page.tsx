@@ -478,11 +478,9 @@ function EditarMedicamentoContent() {
         const proximaRenovacaoISO = brParaIso(proximaRenovacaoTexto);
         const estoqueDataReferenciaISO = brParaIso(estoqueDataReferenciaTexto);
 
-        // 🔄 Aplica o cálculo retroativo se houver estoque ativo e data de referência válida
-        const qtdInformada = Number(estoqueQuantidade) || 0;
-        const quantidadeEstoqueFinal = estoqueAtivo && estoqueDataReferenciaISO
-          ? calcularEstoqueRetroativo(qtdInformada, estoqueDataReferenciaISO, horariosFiltrados, Number(estoqueUnidadePorDose) || 1)
-          : qtdInformada;
+        // 🛑 CORREÇÃO: Na Edição, a quantidade na tela é absoluta (override manual).
+        // Removemos o cálculo retroativo aqui para impedir o duplo-desconto fantasma.
+        const quantidadeEstoqueFinal = Number(estoqueQuantidade) || 0;
 
         let dosagemFinal = dosagem;
         let historicoFinal = [...historicoDosagens];
@@ -580,7 +578,7 @@ function EditarMedicamentoContent() {
           data_descontinuacao: !statusAtivo ? getLocalTodayISO() : null,
           
           estoque_quantidade: estoqueAtivo ? quantidadeEstoqueFinal : null,
-          estoque_data_referencia: estoqueAtivo ? getLocalTodayISO() : null,
+          estoque_data_referencia: estoqueAtivo && estoqueDataReferenciaISO ? estoqueDataReferenciaISO : null,
           estoque_horarios: tipoUso === "continuo" && estoqueAtivo && horariosFiltrados.length > 0 ? horariosFiltrados : null,
           estoque_unidade_por_dose: estoqueAtivo ? (Number(estoqueUnidadePorDose) || 1) : null,
           estoque_unidade_medida: estoqueAtivo ? (isGotas ? "gota(s)" : estoqueUnidade) : null,

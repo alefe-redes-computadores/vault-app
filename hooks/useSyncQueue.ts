@@ -524,6 +524,10 @@ export function useSyncQueue() {
             status: tratamento.status,
             cor: tratamento.cor || "#8B5CF6",
             observacoes: tratamento.observacoes || null,
+            medico_ids: tratamento.medico_ids || [],
+            hospital_ids: tratamento.hospital_ids || [],
+            local_ids: tratamento.local_ids || [],
+            cid_ids: tratamento.cid_ids || [],
             created_at: tratamento.created_at,
             updated_at: tratamento.updated_at,
           },
@@ -541,6 +545,10 @@ export function useSyncQueue() {
             status: tratamento.status,
             cor: tratamento.cor || "#8B5CF6",
             observacoes: tratamento.observacoes || null,
+            medico_ids: tratamento.medico_ids || [],
+            hospital_ids: tratamento.hospital_ids || [],
+            local_ids: tratamento.local_ids || [],
+            cid_ids: tratamento.cid_ids || [],
             updated_at: tratamento.updated_at,
           })
           .eq("id", tratamento.id);
@@ -564,7 +572,7 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // MEDICAMENTOS (BLINDADO AUTO-HEALING E SUS)
+  // MEDICAMENTOS
   // ============================================================
 
   const syncMedicamento = async (item: SyncQueueItem) => {
@@ -573,8 +581,7 @@ export function useSyncQueue() {
 
     switch (item.operation) {
       case "add":
-      case "update": {
-        // 🛡️ UPSERT: Auto-healing. Se não existir na nuvem, cria. Se existir, atualiza.
+      case "update": { // Medicamentos usa upsert nativamente no seu código por conta da lógica de auto-healing
         const { error } = await client.from("medicamentos").upsert(
           {
             id: med.id,
@@ -608,14 +615,15 @@ export function useSyncQueue() {
             formato: med.formato || null,
             cores: med.cores || [],
             preco: med.preco !== undefined ? med.preco : null,
-            tipo_aquisicao: med.tipo_aquisicao || null, // 🛡️ NOVO: SUS
-            data_retorno_sus: med.data_retorno_sus || null, // 🛡️ NOVO: SUS
+            tipo_aquisicao: med.tipo_aquisicao || null,
+            data_retorno_sus: med.data_retorno_sus || null,
             motivo_descontinuacao: med.motivo_descontinuacao || null,
             medico_descontinuacao_id: med.medico_descontinuacao_id || null,
             medico_descontinuacao_nome: med.medico_descontinuacao_nome || null,
             substituido_por_id: med.substituido_por_id || null,
             data_descontinuacao: med.data_descontinuacao || null,
             historico_dosagens: med.historico_dosagens || [],
+            cid_ids: med.cid_ids || [],
             created_at: med.created_at,
             updated_at: med.updated_at,
           },
@@ -637,15 +645,11 @@ export function useSyncQueue() {
         throw new Error(`Operação não suportada em medicamentos: ${item.operation}`);
     }
 
-    // 🛡️ MANTIDO INTOCÁVEL: É isso que resolveu o bug de duplicação
     if (item.operation !== "delete" && med.id) {
-      if (med.tratamento_ids) {
-        await syncMedicamentoTratamentos(med.id, med.tratamento_ids);
-      }
+      await syncMedicamentoTratamentos(med.id, med.tratamento_ids || []);
       await db.medicamentos.update(med.id, { synced: true });
     }
   };
-
 
   // ============================================================
   // DOCUMENTOS
@@ -738,6 +742,7 @@ export function useSyncQueue() {
             medico: exame.medico || null,
             nome: exame.nome,
             data: exame.data,
+            horario: exame.horario || null,   
             data_retorno: exame.data_retorno || null,
             motivo: exame.motivo || null,
             observacoes: exame.observacoes || null,
@@ -762,6 +767,7 @@ export function useSyncQueue() {
             medico: exame.medico || null,
             nome: exame.nome,
             data: exame.data,
+            horario: exame.horario || null, 
             data_retorno: exame.data_retorno || null,
             motivo: exame.motivo || null,
             observacoes: exame.observacoes || null,
@@ -787,6 +793,7 @@ export function useSyncQueue() {
       await db.exames.update(exame.id, { synced: true });
     }
   };
+
 
   // ============================================================
   // CONSULTAS
@@ -874,6 +881,8 @@ export function useSyncQueue() {
             person_id: cirurgia.person_id || null,
             procedimento: cirurgia.procedimento,
             data: cirurgia.data,
+            horario: cirurgia.horario || null,
+            local_id: cirurgia.local_id || null,
             medico_id: cirurgia.medico_id || null,
             hospital_id: cirurgia.hospital_id || null,
             document_id: cirurgia.document_id || null,
@@ -894,6 +903,8 @@ export function useSyncQueue() {
             person_id: cirurgia.person_id || null,
             procedimento: cirurgia.procedimento,
             data: cirurgia.data,
+            horario: cirurgia.horario || null,
+            local_id: cirurgia.local_id || null,
             medico_id: cirurgia.medico_id || null,
             hospital_id: cirurgia.hospital_id || null,
             document_id: cirurgia.document_id || null,
@@ -921,7 +932,7 @@ export function useSyncQueue() {
   };
 
   // ============================================================
-  // RENOVAÇÕES (BLINDADO AUTO-HEALING)
+  // RENOVAÇÕES
   // ============================================================
 
   const syncRenovacao = async (item: SyncQueueItem) => {
@@ -942,8 +953,9 @@ export function useSyncQueue() {
             hospital_id: renovacao.hospital_id || null,
             local_id: renovacao.local_id || null,
             document_id: renovacao.document_id || null,
-            tipo_aquisicao: renovacao.tipo_aquisicao || null, // Novo campo SUS
-            data_proxima_retirada: renovacao.data_proxima_retirada || null, // Novo campo SUS
+            tipo_aquisicao: renovacao.tipo_aquisicao || null,
+            data_proxima_retirada: renovacao.data_proxima_retirada || null, // 🛡️ ADICIONADO CONFORME AUDITORIA DAS COLUNAS
+            data_retorno_sus: renovacao.data_retorno_sus || null,
             exige_nova_receita: renovacao.exige_nova_receita || false,
             quantidade: renovacao.quantidade || null,
             preco: renovacao.preco || null,
@@ -974,6 +986,7 @@ export function useSyncQueue() {
       await db.renovacoes.update(renovacao.id, { synced: true });
     }
   };
+
 
   // ============================================================
   // DOSE LOGS
@@ -1635,7 +1648,6 @@ export function useSyncQueue() {
 
           const errorMessage = error instanceof Error ? error.message : String(error);
 
-          // 🛡️ ADICIONADO: Salva a mensagem exata do erro no Dexie para exibir na interface
           await db.syncQueue.update(item.id!, {
             retry_count: nextRetryCount,
             failed,

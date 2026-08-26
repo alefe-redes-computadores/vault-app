@@ -38,6 +38,14 @@ import { useToast } from "@/components/ToastProvider";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { useMounted } from "@/hooks/useMounted";
+import {
+  SectionTitle,
+  DetailInfoRow,
+} from "@/components/detail/DetailComponents";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 const CATEGORY_ICONS: Record<string, typeof Heart> = {
   saude: Heart,
@@ -105,6 +113,10 @@ const getExtension = (filename: string): string => {
 const buildFullName = (baseName: string, extension: string): string => {
   return baseName + extension;
 };
+
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
 
 export default function DocumentDetailPage() {
   const { trigger } = useHapticFeedback();
@@ -288,11 +300,21 @@ export default function DocumentDetailPage() {
   const hasAttachments = doc.attachments && doc.attachments.length > 0;
   const FileIcon = selectedAttachment ? getFileIcon(selectedAttachment.type) : File;
 
-  const dateFields = ["issue_date", "expiry_date", "prescription_date", "renewal_date", "date", "data_nascimento", "data_exame", "validade"];
+  const dateFields = [
+    "issue_date",
+    "expiry_date",
+    "prescription_date",
+    "renewal_date",
+    "date",
+    "data_nascimento",
+    "data_exame",
+    "validade",
+  ];
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
+        {/* ===== HEADER ===== */}
         <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -343,7 +365,9 @@ export default function DocumentDetailPage() {
           </div>
         </header>
 
+        {/* ===== CONTEÚDO ===== */}
         <section className="space-y-5 px-5 pt-6">
+          {/* Card principal */}
           <motion.div
             ref={cardRef}
             initial={{ opacity: 0, y: 10 }}
@@ -386,14 +410,12 @@ export default function DocumentDetailPage() {
               </div>
             </div>
 
+            {/* Informações */}
             {hasMetadata && (
               <div className="mt-5 border-t border-surface-border/50 pt-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <FileText size={14} className="text-ice" />
-                  <p className="text-sm font-medium text-ink-primary">Informações</p>
-                </div>
+                <SectionTitle icon={<FileText size={15} />} title="Informações" />
 
-                <div className="space-y-2.5">
+                <div className="mt-3 space-y-2.5">
                   {Object.entries(doc.metadata || {}).map(([key, value]) => {
                     if (!value) return null;
 
@@ -441,23 +463,29 @@ export default function DocumentDetailPage() {
                     const label = labels[key] || key.replace(/_/g, " ").toUpperCase();
 
                     return (
-                      <div key={key} className="flex items-start justify-between gap-4 rounded-2xl bg-surface-raised/55 px-3.5 py-3">
-                        <span className="text-sm text-ink-muted">{label}</span>
-                        <span className="text-right text-sm font-medium text-ink-primary">{displayValue}</span>
-                      </div>
+                      <DetailInfoRow
+                        key={key}
+                        icon={<FileText size={14} />}
+                        iconClassName="bg-surface-raised text-ink-muted"
+                        label={label}
+                      >
+                        <span className="text-sm font-medium text-ink-primary">{displayValue}</span>
+                      </DetailInfoRow>
                     );
                   })}
                 </div>
               </div>
             )}
 
+            {/* Notas */}
             {doc.description && (
               <div className="mt-5 border-t border-surface-border/50 pt-5">
-                <p className="mb-2 text-sm font-medium text-ink-primary">Notas</p>
-                <p className="text-sm leading-6 text-ink-muted">{doc.description}</p>
+                <SectionTitle icon={<FileText size={15} />} title="Notas" />
+                <p className="mt-2 text-sm leading-6 text-ink-muted">{doc.description}</p>
               </div>
             )}
 
+            {/* Status */}
             <div className="mt-5 border-t border-surface-border/50 pt-4">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <p className="text-ink-muted">
@@ -472,6 +500,7 @@ export default function DocumentDetailPage() {
             </div>
           </motion.div>
 
+          {/* Anexos */}
           {hasAttachments && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -479,15 +508,12 @@ export default function DocumentDetailPage() {
               transition={{ duration: 0.28, delay: 0.06 }}
               className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
-              <div className="mb-4 flex items-center justify-between">
-                <p className="flex items-center gap-2 text-sm font-medium text-ink-primary">
-                  <Paperclip size={14} className="text-ice" />
-                  Anexos ({doc.attachments.length})
-                </p>
-                <ChevronRight size={16} className="text-ink-faint" />
-              </div>
+              <SectionTitle
+                icon={<Paperclip size={15} />}
+                title={`Anexos (${doc.attachments.length})`}
+              />
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 {doc.attachments.map((attachment: Attachment) => {
                   const Icon = getFileIcon(attachment.type);
                   const isImage = attachment.type === "image";
@@ -533,6 +559,7 @@ export default function DocumentDetailPage() {
             </motion.div>
           )}
 
+          {/* Ações */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -571,6 +598,7 @@ export default function DocumentDetailPage() {
           </motion.div>
         </section>
 
+        {/* ===== MODAL ===== */}
         <AnimatePresence>
           {isModalOpen && selectedAttachment && (
             <motion.div

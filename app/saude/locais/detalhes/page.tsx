@@ -22,6 +22,14 @@ import type {
 } from "@/lib/types";
 import { useLocais } from "@/hooks/useLocais";
 import { useMounted } from "@/hooks/useMounted";
+import {
+  SectionTitle,
+  DetailInfoRow,
+} from "@/components/detail/DetailComponents";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 function formatCurrency(value: number | undefined | null): string {
   const val = typeof value === 'number' ? value : 0;
@@ -33,7 +41,6 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-// Mapeamento de estilo por tipo de local
 const LOCAL_TYPE_STYLE: Record<string, { color: string; icon: any }> = {
   posto_saude: { color: "#34D399", icon: PlusCircle },
   laboratorio: { color: "#A78BFA", icon: FlaskConical },
@@ -41,33 +48,32 @@ const LOCAL_TYPE_STYLE: Record<string, { color: string; icon: any }> = {
   outro: { color: "#F59E0B", icon: MapPin },
 };
 
-// Função de cor para tratamento (reaproveitada para consistência)
 function getTreatmentColor(nome: string): string {
   const colors: Record<string, string> = {
-    "tdah": "#8B5CF6",
-    "ansiedade": "#F59E0B",
-    "depressão": "#EF4444",
-    "insônia": "#6366F1",
-    "enxaqueca": "#8B5CF6",
-    "neuropatia": "#EC4899",
-    "hipertensão": "#EF4444",
-    "colesterol": "#F59E0B",
-    "diabetes": "#3B82F6",
-    "tireoide": "#8B5CF6",
+    tdah: "#8B5CF6",
+    ansiedade: "#F59E0B",
+    depressão: "#EF4444",
+    insônia: "#6366F1",
+    enxaqueca: "#8B5CF6",
+    neuropatia: "#EC4899",
+    hipertensão: "#EF4444",
+    colesterol: "#F59E0B",
+    diabetes: "#3B82F6",
+    tireoide: "#8B5CF6",
     "dor crônica": "#EC4899",
-    "fibromialgia": "#F472B6",
-    "asma": "#06B6D4",
-    "dpoc": "#06B6D4",
-    "refluxo": "#F59E0B",
-    "gastrite": "#F59E0B",
+    fibromialgia: "#F472B6",
+    asma: "#06B6D4",
+    dpoc: "#06B6D4",
+    refluxo: "#F59E0B",
+    gastrite: "#F59E0B",
     "transtorno bipolar": "#8B5CF6",
-    "esquizofrenia": "#8B5CF6",
-    "lúpus": "#EC4899",
+    esquizofrenia: "#8B5CF6",
+    lúpus: "#EC4899",
     "esclerose múltipla": "#EC4899",
     "artrite reumatoide": "#EC4899",
-    "câncer": "#EF4444",
-    "obesidade": "#F59E0B",
-    "alergia": "#06B6D4",
+    câncer: "#EF4444",
+    obesidade: "#F59E0B",
+    alergia: "#06B6D4",
   };
   const lower = nome.toLowerCase();
   for (const [key, color] of Object.entries(colors)) {
@@ -75,6 +81,10 @@ function getTreatmentColor(nome: string): string {
   }
   return "#38BDF8";
 }
+
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
 
 function DetalhesLocalContent() {
   const router = useRouter();
@@ -84,14 +94,16 @@ function DetalhesLocalContent() {
   const { deleteLocal } = useLocais();
   const mounted = useMounted();
 
-  // === TODOS OS HOOKS AQUI, SEM RETORNO CONDICIONAL ANTES ===
   const [local, setLocal] = useState<LocalSaude | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
   const [showAllRetiradas, setShowAllRetiradas] = useState(false);
 
-  // Dados relacionados via useLiveQuery (incondicionais)
+  /* ==========================================================
+     DEXIE
+     ========================================================== */
+
   const renovacoes = useLiveQuery(
     () => (id ? db.renovacoes.where("local_id").equals(id).toArray() : Promise.resolve([] as Renovacao[])),
     [id]
@@ -101,7 +113,6 @@ function DetalhesLocalContent() {
   const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
-  // Vínculos diretos (medicos e tratamentos) a partir dos IDs no local
   const medicoIds = useMemo(() => (local?.medico_ids || []).sort().join(','), [local?.medico_ids]);
   const medicosVinculados = useLiveQuery(() => {
     const ids = medicoIds ? medicoIds.split(',') : [];
@@ -116,7 +127,10 @@ function DetalhesLocalContent() {
     return db.tratamentos.where('id').anyOf(ids).toArray();
   }, [tratamentoIds]) || [];
 
-  // Análise dos dados do local
+  /* ==========================================================
+     ANÁLISE
+     ========================================================== */
+
   const analiseLocal = useMemo(() => {
     if (!id || !renovacoes || !medicamentos || !consultas || !exames) {
       return {
@@ -237,6 +251,7 @@ function DetalhesLocalContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+        {/* HEADER */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -330,7 +345,7 @@ function DetalhesLocalContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          {/* CARD PRINCIPAL */}
+          {/* HERO */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -355,7 +370,6 @@ function DetalhesLocalContent() {
               </div>
             </div>
 
-            {/* Resumo de vínculos diretos */}
             {(medicosVinculados.length > 0 || tratamentosVinculados.length > 0) && (
               <div className="flex flex-wrap gap-2 pt-2">
                 {medicosVinculados.map((med) => (
@@ -378,7 +392,6 @@ function DetalhesLocalContent() {
               </div>
             )}
 
-            {/* Métricas resumidas */}
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-surface-border/40">
               <div className="rounded-2xl bg-surface-raised p-3 text-center">
                 <p className="text-[10px] uppercase font-mono text-ink-muted">Médicos</p>
@@ -404,14 +417,10 @@ function DetalhesLocalContent() {
             )}
           </motion.div>
 
-          {/* MÉDICOS QUE ATENDEM AQUI */}
+          {/* MÉDICOS */}
           {medicosVinculados.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <Stethoscope size={16} className="text-ice" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">Médicos que atendem aqui</h3>
-                <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{medicosVinculados.length}</span>
-              </div>
+              <SectionTitle icon={<Stethoscope size={15} />} title="Médicos que atendem aqui" />
               <div className="grid grid-cols-1 gap-2">
                 {medicosVinculados.map((med) => (
                   <div
@@ -437,26 +446,18 @@ function DetalhesLocalContent() {
             </motion.div>
           )}
 
-          {/* TRATAMENTOS VINCULADOS */}
+          {/* TRATAMENTOS */}
           {tratamentosVinculados.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <FolderHeart size={16} className="text-violet-400" />
-                <h4 className="text-sm font-semibold text-ink-primary">Tratamentos neste local</h4>
-                <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{tratamentosVinculados.length}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
+              <SectionTitle icon={<FolderHeart size={15} />} title="Tratamentos neste local" />
+              <div className="mt-3 flex flex-wrap gap-2">
                 {tratamentosVinculados.map((t) => {
                   const color = getTreatmentColor(t.nome);
                   return (
                     <span
                       key={t.id}
                       className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded-md border"
-                      style={{
-                        backgroundColor: `${color}20`,
-                        borderColor: `${color}40`,
-                        color: color,
-                      }}
+                      style={{ backgroundColor: `${color}20`, borderColor: `${color}40`, color: color }}
                     >
                       <Activity size={10} /> {t.nome}
                     </span>
@@ -469,11 +470,7 @@ function DetalhesLocalContent() {
           {/* PRÓXIMAS CONSULTAS */}
           {analiseLocal.proximasConsultas.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <Calendar size={16} className="text-emerald-400" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">Próximas consultas</h3>
-                <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{analiseLocal.proximasConsultas.length}</span>
-              </div>
+              <SectionTitle icon={<Calendar size={15} />} title="Próximas consultas" />
               <div className="space-y-2">
                 {analiseLocal.proximasConsultas.map((con) => (
                   <div
@@ -502,14 +499,10 @@ function DetalhesLocalContent() {
             </motion.div>
           )}
 
-          {/* EXAMES REALIZADOS */}
+          {/* EXAMES */}
           {analiseLocal.examesLocal.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <FlaskConical size={16} className="text-violet-400" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">Exames realizados</h3>
-                <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{analiseLocal.examesLocal.length}</span>
-              </div>
+              <SectionTitle icon={<FlaskConical size={15} />} title="Exames realizados" />
               <div className="space-y-2">
                 {analiseLocal.examesLocal.map((ex) => (
                   <div
@@ -535,11 +528,12 @@ function DetalhesLocalContent() {
             </motion.div>
           )}
 
-          {/* HISTÓRICO DE RETIRADAS */}
+          {/* RETIRADAS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-4 pt-2">
-            <h3 className="font-display text-base font-semibold text-ink-primary px-1">
-              Últimas retiradas ({analiseLocal.renovacoesComMed?.length || 0})
-            </h3>
+            <SectionTitle
+              icon={<FileWarning size={15} />}
+              title={`Últimas retiradas (${analiseLocal.renovacoesComMed?.length || 0})`}
+            />
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
               {(!analiseLocal.renovacoesComMed || analiseLocal.renovacoesComMed.length === 0) ? (
                 <p className="text-xs text-ink-muted py-2">Nenhum registro de retirada vinculado a este local.</p>
@@ -587,7 +581,7 @@ function DetalhesLocalContent() {
             </div>
           </motion.div>
 
-          {/* CUSTOS EVENTUAIS (FORA DO SUS) */}
+          {/* CUSTOS EVENTUAIS */}
           {analiseLocal.totalGasto > 0 && (
             <motion.div
               variants={fadeUp}

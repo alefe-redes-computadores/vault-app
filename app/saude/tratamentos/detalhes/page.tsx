@@ -34,15 +34,31 @@ import { useMedicos } from "@/hooks/useMedicos";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { db } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import type { Tratamento, Document, Medicamento, Renovacao, Medico, Cid } from "@/lib/types";
+import type {
+  Tratamento,
+  Document,
+  Medicamento,
+  Renovacao,
+  Medico,
+  Cid,
+} from "@/lib/types";
 import {
   isReceitaVencidaSegura,
   calcularEconomia,
   sugerirRenovacao,
+  getCidInsights,
 } from "@/lib/health-insights";
-import { getCidInsights } from "@/lib/health-insights";
 import { getClinicalTheme, formatCurrency } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
+import {
+  SectionTitle,
+  DetailInfoRow,
+  StatCard,
+} from "@/components/detail/DetailComponents";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 const listVariants = {
   hidden: { opacity: 0 },
@@ -84,6 +100,10 @@ interface DocumentMetadata {
   [key: string]: unknown;
 }
 
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
+
 function TratamentoContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -123,7 +143,9 @@ function TratamentoContent() {
   }, [medicamentos, id]);
 
   const linkedRenovacoes = useMemo(() => {
-    const medIds = new Set(linkedMedicamentos.map((m: Medicamento) => m.id).filter(Boolean));
+    const medIds = new Set(
+      linkedMedicamentos.map((m: Medicamento) => m.id).filter(Boolean)
+    );
     return allRenovacoes
       .filter((r: Renovacao) => r.medicamento_id && medIds.has(r.medicamento_id))
       .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
@@ -131,10 +153,12 @@ function TratamentoContent() {
 
   const linkedDocuments = useMemo(() => {
     if (!id) return [];
-    return allDocuments.filter((doc: Document) => {
-      const meta = doc.metadata as DocumentMetadata;
-      return meta.tratamento_id === id;
-    }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return allDocuments
+      .filter((doc: Document) => {
+        const meta = doc.metadata as DocumentMetadata;
+        return meta.tratamento_id === id;
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [allDocuments, id]);
 
   const custoTotalTratamento = useMemo(() => {
@@ -152,7 +176,9 @@ function TratamentoContent() {
   }, [linkedRenovacoes]);
 
   const linkedMedicos = useMemo(() => {
-    const medIds = new Set(linkedMedicamentos.map((m: Medicamento) => m.medico_id).filter(Boolean));
+    const medIds = new Set(
+      linkedMedicamentos.map((m: Medicamento) => m.medico_id).filter(Boolean)
+    );
     return medicos.filter((med: Medico) => med.id && medIds.has(med.id));
   }, [linkedMedicamentos, medicos]);
 
@@ -256,7 +282,9 @@ function TratamentoContent() {
   const theme = getClinicalTheme(tratamento.nome);
   const IconComp = theme.icon;
 
-  const medicamentosAtivos = medicamentosComAlertas.filter((m) => m.status !== "descontinuado");
+  const medicamentosAtivos = medicamentosComAlertas.filter(
+    (m) => m.status !== "descontinuado"
+  );
   const medicamentosDescontinuados = medicamentosComAlertas.filter(
     (m) => m.status === "descontinuado"
   );
@@ -459,40 +487,24 @@ function TratamentoContent() {
 
             {/* Métricas */}
             <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5">
-              <div className="flex flex-col items-center text-center">
-                <div className="flex items-center gap-1 text-ink-muted">
-                  <Pill size={14} />
-                  <span className="text-[10px] font-medium uppercase tracking-wider">
-                    Medicamentos
-                  </span>
-                </div>
-                <span className="mt-1 font-mono text-xl font-semibold text-ink-primary">
-                  {medicamentosAtivos.length}{" "}
-                  <span className="text-xs font-normal text-ink-faint">ativos</span>
-                </span>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <div className="flex items-center gap-1 text-ink-muted">
-                  <FileStack size={14} />
-                  <span className="text-[10px] font-medium uppercase tracking-wider">
-                    Laudos
-                  </span>
-                </div>
-                <span className="mt-1 font-mono text-xl font-semibold text-ink-primary">
-                  {linkedDocuments.length}
-                </span>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <div className="flex items-center gap-1 text-ink-muted">
-                  <Receipt size={14} />
-                  <span className="text-[10px] font-medium uppercase tracking-wider">
-                    Custo Total
-                  </span>
-                </div>
-                <span className="mt-1 font-mono text-base font-semibold text-emerald-400">
-                  {custoTotalTratamento > 0 ? formatCurrency(custoTotalTratamento) : "R$ 0,00"}
-                </span>
-              </div>
+              <StatCard
+                icon={<Pill size={14} />}
+                label="Ativos"
+                value={`${medicamentosAtivos.length}`}
+                description="Medicamentos"
+              />
+              <StatCard
+                icon={<FileStack size={14} />}
+                label="Laudos"
+                value={`${linkedDocuments.length}`}
+                description="Documentos"
+              />
+              <StatCard
+                icon={<Receipt size={14} />}
+                label="Custo Total"
+                value={custoTotalTratamento > 0 ? formatCurrency(custoTotalTratamento) : "R$ 0,00"}
+                description="Em renovações"
+              />
             </div>
           </motion.div>
 
@@ -551,12 +563,10 @@ function TratamentoContent() {
             transition={{ delay: 0.03 }}
             className="space-y-3"
           >
-            <div className="flex items-center gap-2 pl-1">
-              <Users size={16} className="text-ice" />
-              <h3 className="font-display text-base font-semibold text-ink-primary">
-                Equipe Clínica
-              </h3>
-            </div>
+            <SectionTitle
+              icon={<Users size={15} />}
+              title="Equipe Clínica"
+            />
             {linkedMedicos.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
                 <p className="text-xs text-ink-muted">
@@ -591,12 +601,10 @@ function TratamentoContent() {
               transition={{ delay: 0.04 }}
               className="space-y-3"
             >
-              <div className="flex items-center gap-2 pl-1">
-                <Clock size={16} className="text-amber-400" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">
-                  Últimas Compras
-                </h3>
-              </div>
+              <SectionTitle
+                icon={<Clock size={15} />}
+                title="Últimas Compras"
+              />
               <div className="space-y-2">
                 {linkedRenovacoes.slice(0, 5).map((ren: Renovacao) => {
                   const med = linkedMedicamentos.find(
@@ -640,12 +648,10 @@ function TratamentoContent() {
             transition={{ delay: 0.05 }}
             className="space-y-3"
           >
-            <div className="flex items-center gap-2 pl-1">
-              <Pill size={16} className="text-ice" />
-              <h3 className="font-display text-base font-semibold text-ink-primary">
-                Medicamentos em Uso
-              </h3>
-            </div>
+            <SectionTitle
+              icon={<Pill size={15} />}
+              title="Medicamentos em Uso"
+            />
 
             {medicamentosAtivos.length === 0 ? (
               <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">
@@ -664,7 +670,9 @@ function TratamentoContent() {
                     }}
                     className="group cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm transition-all hover:border-ice/30 active:scale-[0.98]"
                     style={{
-                      borderLeft: `4px solid ${activePersonId ? "var(--person-accent, #38BDF8)" : "#38BDF8"}`,
+                      borderLeft: `4px solid ${
+                        activePersonId ? "var(--person-accent, #38BDF8)" : "#38BDF8"
+                      }`,
                     }}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -713,12 +721,10 @@ function TratamentoContent() {
               transition={{ delay: 0.1 }}
               className="space-y-3"
             >
-              <div className="flex items-center gap-2 pl-1">
-                <History size={16} className="text-coral" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">
-                  Histórico (Descontinuados)
-                </h3>
-              </div>
+              <SectionTitle
+                icon={<History size={15} />}
+                title="Histórico (Descontinuados)"
+              />
               <div className="ml-3 space-y-3 border-l-2 border-surface-border/50 pl-4">
                 {medicamentosDescontinuados.map((med) => (
                   <div
@@ -763,14 +769,10 @@ function TratamentoContent() {
             transition={{ delay: 0.15 }}
             className="space-y-3"
           >
-            <div className="flex items-center justify-between pl-1 pr-1">
-              <div className="flex items-center gap-2">
-                <FileText size={16} className="text-emerald-400" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">
-                  Receitas e Laudos
-                </h3>
-              </div>
-            </div>
+            <SectionTitle
+              icon={<FileText size={15} />}
+              title="Receitas e Laudos"
+            />
 
             {linkedDocuments.length === 0 ? (
               <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">

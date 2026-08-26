@@ -5,7 +5,18 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Edit3, ShieldCheck, Copy, Check, Eye, EyeOff, Landmark, CreditCard, Loader2, Trash2, Wifi,
+  ArrowLeft,
+  Edit3,
+  ShieldCheck,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  Landmark,
+  CreditCard,
+  Loader2,
+  Trash2,
+  Wifi,
 } from "lucide-react";
 import { useCards } from "@/hooks/useCards";
 import { useBiometric } from "@/hooks/useBiometric";
@@ -17,7 +28,15 @@ import { PageTransition } from "@/components/PageTransition";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { useMounted } from "@/hooks/useMounted";
+import {
+  SectionTitle,
+  DetailInfoRow,
+} from "@/components/detail/DetailComponents";
 import type { BankCard } from "@/lib/types";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -44,6 +63,10 @@ const getBankStyle = (bankName: string) => {
   if (name.includes('sicredi')) return 'from-[#008736] to-[#00b046] text-white';
   return 'from-surface-raised to-surface border-surface-border/50 text-ink-primary';
 };
+
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
 
 function CardDetailsContent() {
   const { trigger } = useHapticFeedback();
@@ -130,6 +153,7 @@ function CardDetailsContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
+        {/* ===== HEADER ===== */}
         <header className="header-safe-top sticky top-0 z-20 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -141,12 +165,15 @@ function CardDetailsContent() {
               <ArrowLeft size={18} className="text-ink-primary" />
             </button>
             <div>
-              <h1 className="font-display text-lg font-semibold text-ink-primary truncate max-w-[180px]">{card.title}</h1>
-              <p className="text-[11px] text-ink-muted flex items-center gap-1 mt-0.5">
+              <h1 className="max-w-[180px] truncate font-display text-lg font-semibold text-ink-primary">
+                {card.title}
+              </h1>
+              <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-muted">
                 <ShieldCheck size={12} className="text-ice" /> Protegido (E2EE)
               </p>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => { trigger("vibrate"); router.push(`/cartoes/editar?id=${card.id}`); }}
@@ -167,59 +194,77 @@ function CardDetailsContent() {
           </div>
         </header>
 
-        <section className="px-5 pt-6">
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="relative w-full">
+        {/* ===== CONTEÚDO ===== */}
+        <section className="space-y-6 px-5 pt-6">
+          {/* Cartão visual */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className="relative w-full"
+          >
             <div className={`absolute -inset-1 blur-2xl opacity-20 bg-gradient-to-br ${cardStyle}`} />
 
-            <div className={`relative aspect-[1.58/1] w-full rounded-3xl border p-6 flex flex-col justify-between overflow-hidden shadow-2xl bg-gradient-to-br ${cardStyle}`}>
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+            <div
+              className={`relative aspect-[1.58/1] w-full overflow-hidden rounded-3xl border bg-gradient-to-br ${cardStyle} flex flex-col justify-between p-6 shadow-2xl`}
+            >
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
 
-              <div className="relative z-10 flex justify-between items-start">
+              <div className="relative z-10 flex items-start justify-between">
                 {logoUrl ? (
-                  <div className="bg-white/90 p-1.5 rounded-lg backdrop-blur-md">
-                    <img src={logoUrl} alt={card.bank_name} className="h-5 object-contain mix-blend-multiply" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                  <div className="rounded-lg bg-white/90 p-1.5 backdrop-blur-md">
+                    <img
+                      src={logoUrl}
+                      alt={card.bank_name}
+                      className="h-5 object-contain mix-blend-multiply"
+                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                    />
                   </div>
                 ) : (
-                  <span className="font-display font-bold text-lg">{card.bank_name}</span>
+                  <span className="font-display text-lg font-bold">{card.bank_name}</span>
                 )}
-                {brandLabel && <span className="font-bold italic text-white/90 uppercase tracking-widest text-sm">{brandLabel}</span>}
+                {brandLabel && (
+                  <span className="text-sm font-bold italic uppercase tracking-widest text-white/90">
+                    {brandLabel}
+                  </span>
+                )}
               </div>
 
               {plainCardNumber && (
-                <div className="relative z-10 flex items-center gap-3 mt-4">
-                  <div className="w-11 h-8 rounded-md bg-gradient-to-br from-amber-200 to-amber-500 border border-amber-600/50 flex flex-col justify-around p-1 shadow-inner">
-                    <div className="w-full h-[1px] bg-amber-700/30" />
-                    <div className="w-full h-[1px] bg-amber-700/30" />
-                    <div className="w-full h-[1px] bg-amber-700/30" />
+                <div className="relative z-10 mt-4 flex items-center gap-3">
+                  <div className="flex h-8 w-11 flex-col justify-around rounded-md border border-amber-600/50 bg-gradient-to-br from-amber-200 to-amber-500 p-1 shadow-inner">
+                    <div className="h-[1px] w-full bg-amber-700/30" />
+                    <div className="h-[1px] w-full bg-amber-700/30" />
+                    <div className="h-[1px] w-full bg-amber-700/30" />
                   </div>
-                  <Wifi size={24} className="text-white/60 rotate-90" />
+                  <Wifi size={24} className="rotate-90 text-white/60" />
                 </div>
               )}
 
-              <div className="relative z-10 mt-auto pt-4 space-y-2">
+              <div className="relative z-10 mt-auto space-y-2 pt-4">
                 {plainCardNumber ? (
-                  <div className="font-mono text-xl md:text-2xl tracking-[0.12em] text-white drop-shadow-sm">
+                  <div className="font-mono text-xl tracking-[0.12em] text-white drop-shadow-sm md:text-2xl">
                     {showSensitive ? formatCardNumber(plainCardNumber) : "••••  ••••  ••••  " + plainCardNumber.slice(-4)}
                   </div>
                 ) : (
                   <div className="font-mono text-xl tracking-widest text-white/50">CONTA BANCÁRIA</div>
                 )}
 
-                <div className="flex justify-between items-end">
-                  <div className="uppercase tracking-widest text-[10px] text-white/80 font-medium truncate pr-4">
+                <div className="flex items-end justify-between">
+                  <div className="truncate pr-4 text-[10px] font-medium uppercase tracking-widest text-white/80">
                     {card.card_holder || "TITULAR DO CARTÃO"}
                   </div>
 
                   <div className="flex gap-4 text-right">
                     {card.expiry_date && (
                       <div className="flex flex-col">
-                        <span className="text-[7px] uppercase text-white/60 tracking-wider">Validade</span>
+                        <span className="text-[7px] uppercase tracking-wider text-white/60">Validade</span>
                         <span className="font-mono text-sm text-white">{card.expiry_date}</span>
                       </div>
                     )}
                     {plainCvv && (
                       <div className="flex flex-col">
-                        <span className="text-[7px] uppercase text-white/60 tracking-wider">CVV</span>
+                        <span className="text-[7px] uppercase tracking-wider text-white/60">CVV</span>
                         <span className="font-mono text-sm text-white">{showSensitive ? plainCvv : "•••"}</span>
                       </div>
                     )}
@@ -229,28 +274,47 @@ function CardDetailsContent() {
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="flex justify-center gap-3 mt-6">
+          {/* Ações rápidas */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{ delay: 0.1 }}
+            className="flex justify-center gap-3"
+          >
             <button
               onClick={handleToggleSensitive}
-              className={`flex flex-col items-center gap-1.5 transition-all active:scale-95 ${showSensitive ? "text-ice" : "text-ink-muted hover:text-ink-primary"}`}
+              className={`flex flex-col items-center gap-1.5 transition-all active:scale-95 ${
+                showSensitive ? "text-ice" : "text-ink-muted hover:text-ink-primary"
+              }`}
               type="button"
               aria-label={showSensitive ? "Ocultar dados" : "Revelar dados"}
             >
-              <div className={`flex h-12 w-12 items-center justify-center rounded-full border ${showSensitive ? "bg-ice/15 border-ice/30" : "bg-surface-raised border-surface-border/50"}`}>
+              <div
+                className={`flex h-12 w-12 items-center justify-center rounded-full border ${
+                  showSensitive ? "border-ice/30 bg-ice/15" : "border-surface-border/50 bg-surface-raised"
+                }`}
+              >
                 {showSensitive ? <EyeOff size={18} /> : <Eye size={18} />}
               </div>
-              <span className="text-[10px] font-medium uppercase tracking-wider">{showSensitive ? "Ocultar" : "Revelar"}</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider">
+                {showSensitive ? "Ocultar" : "Revelar"}
+              </span>
             </button>
 
             {plainCardNumber && (
               <button
                 onClick={() => handleCopy(plainCardNumber, "card")}
-                className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary"
+                className="flex flex-col items-center gap-1.5 text-ink-muted transition-all hover:text-ink-primary active:scale-95"
                 type="button"
                 aria-label="Copiar número do cartão"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
-                  {copiedField === "card" ? <Check size={18} className="text-ice" /> : <CreditCard size={18} />}
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
+                  {copiedField === "card" ? (
+                    <Check size={18} className="text-ice" />
+                  ) : (
+                    <CreditCard size={18} />
+                  )}
                 </div>
                 <span className="text-[10px] font-medium uppercase tracking-wider">Copiar Nº</span>
               </button>
@@ -259,65 +323,101 @@ function CardDetailsContent() {
             {card.account && (
               <button
                 onClick={() => handleCopy(card.account!, "account")}
-                className="flex flex-col items-center gap-1.5 transition-all active:scale-95 text-ink-muted hover:text-ink-primary"
+                className="flex flex-col items-center gap-1.5 text-ink-muted transition-all hover:text-ink-primary active:scale-95"
                 type="button"
                 aria-label="Copiar conta"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border bg-surface-raised border-surface-border/50">
-                  {copiedField === "account" ? <Check size={18} className="text-ice" /> : <Landmark size={18} />}
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
+                  {copiedField === "account" ? (
+                    <Check size={18} className="text-ice" />
+                  ) : (
+                    <Landmark size={18} />
+                  )}
                 </div>
                 <span className="text-[10px] font-medium uppercase tracking-wider">Copiar C/C</span>
               </button>
             )}
           </motion.div>
-        </section>
 
-        <section className="space-y-3 px-5 pt-8">
+          {/* Dados adicionais */}
           {(card.agency || card.account) && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="grid grid-cols-2 gap-3">
-              {card.agency && (
-                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Agência</span>
-                  <div className="flex items-center justify-between">
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.15 }}
+              className="space-y-3"
+            >
+              <SectionTitle icon={<Landmark size={15} />} title="Dados da Conta" />
+              <div className="grid grid-cols-2 gap-3">
+                {card.agency && (
+                  <DetailInfoRow
+                    icon={<Landmark size={14} />}
+                    iconClassName="bg-surface-raised text-ink-muted"
+                    label="Agência"
+                    action={
+                      <button
+                        onClick={() => handleCopy(card.agency!, "agency")}
+                        className="p-1 text-ink-muted active:scale-95"
+                        type="button"
+                        aria-label="Copiar agência"
+                      >
+                        {copiedField === "agency" ? (
+                          <Check size={16} className="text-ice" />
+                        ) : (
+                          <Copy size={16} />
+                        )}
+                      </button>
+                    }
+                  >
                     <span className="font-mono text-base font-semibold text-ink-primary">{card.agency}</span>
-                    <button
-                      onClick={() => handleCopy(card.agency!, "agency")}
-                      className="text-ink-muted active:scale-95 p-1"
-                      type="button"
-                      aria-label="Copiar agência"
-                    >
-                      {copiedField === "agency" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {card.account && (
-                <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Conta</span>
-                  <div className="flex items-center justify-between">
+                  </DetailInfoRow>
+                )}
+                {card.account && (
+                  <DetailInfoRow
+                    icon={<Copy size={14} />}
+                    iconClassName="bg-surface-raised text-ink-muted"
+                    label="Conta"
+                    action={
+                      <button
+                        onClick={() => handleCopy(card.account!, "account_only")}
+                        className="p-1 text-ink-muted active:scale-95"
+                        type="button"
+                        aria-label="Copiar conta"
+                      >
+                        {copiedField === "account_only" ? (
+                          <Check size={16} className="text-ice" />
+                        ) : (
+                          <Copy size={16} />
+                        )}
+                      </button>
+                    }
+                  >
                     <span className="font-mono text-base font-semibold text-ink-primary">{card.account}</span>
-                    <button
-                      onClick={() => handleCopy(card.account!, "account_only")}
-                      className="text-ink-muted active:scale-95 p-1"
-                      type="button"
-                      aria-label="Copiar conta"
-                    >
-                      {copiedField === "account_only" ? <Check size={16} className="text-ice" /> : <Copy size={16} />}
-                    </button>
-                  </div>
-                </div>
-              )}
+                  </DetailInfoRow>
+                )}
+              </div>
             </motion.div>
           )}
 
+          {/* Anotações */}
           {card.notes && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-2">
-              <span className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Anotações</span>
-              <p className="text-sm text-ink-primary whitespace-pre-wrap leading-relaxed">{card.notes}</p>
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.2 }}
+              className="space-y-3"
+            >
+              <SectionTitle icon={<Edit3 size={15} />} title="Anotações" />
+              <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-primary">{card.notes}</p>
+              </div>
             </motion.div>
           )}
         </section>
 
+        {/* ===== MODAL ===== */}
         <ConfirmationModal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}

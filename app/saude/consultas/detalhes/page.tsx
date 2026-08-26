@@ -4,15 +4,15 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, 
-  Stethoscope, 
-  Calendar, 
-  Building2, 
-  UserCheck, 
-  Edit3, 
-  Trash2, 
-  CheckCircle2, 
+import {
+  ArrowLeft,
+  Stethoscope,
+  Calendar,
+  Building2,
+  UserCheck,
+  Edit3,
+  Trash2,
+  CheckCircle2,
   RotateCcw,
   FileText,
   Pill,
@@ -20,7 +20,7 @@ import {
   Plus,
   X,
   Clock,
-  XCircle
+  XCircle,
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -33,6 +33,11 @@ import { useConsultas } from "@/hooks/useConsultas";
 import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
+import {
+  SectionTitle,
+  DetailInfoRow,
+  StatCard,
+} from "@/components/detail/DetailComponents";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -85,6 +90,33 @@ function DetalhesConsultaContent() {
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), []) || [];
 
+  // Hooks derivados (movidos para antes de qualquer retorno condicional)
+  const consultaVencida = useMemo(() => {
+    return consulta?.data ? isReceitaVencidaSegura(consulta.data) : false;
+  }, [consulta]);
+
+  const diasRestantes = useMemo(() => {
+    return consulta?.data ? getDaysUntil(consulta.data) : null;
+  }, [consulta]);
+
+  const medicamentosRelacionados = useMemo(() => {
+    if (!consulta) return [];
+    return medicamentos.filter((m: Medicamento) => {
+      const matchMedico = consulta.medico_id && m.medico_id === consulta.medico_id;
+      const matchDataReceita = m.data_receita === consulta.data;
+      return matchMedico || matchDataReceita;
+    });
+  }, [medicamentos, consulta]);
+
+  const examesRelacionados = useMemo(() => {
+    if (!consulta) return [];
+    return exames.filter((e: Exame) => {
+      const matchMedico = consulta.medico_id && e.medico_id === consulta.medico_id;
+      const matchData = e.data === consulta.data;
+      return matchMedico || matchData;
+    });
+  }, [exames, consulta]);
+
   useEffect(() => {
     if (!id) {
       router.push("/saude/consultas");
@@ -118,32 +150,6 @@ function DetalhesConsultaContent() {
   }, [id, router, getConsulta]);
 
   if (!mounted) return <DetailSkeleton />;
-
-  const consultaVencida = useMemo(() => {
-    return consulta?.data ? isReceitaVencidaSegura(consulta.data) : false;
-  }, [consulta]);
-
-  const diasRestantes = useMemo(() => {
-    return consulta?.data ? getDaysUntil(consulta.data) : null;
-  }, [consulta]);
-
-  const medicamentosRelacionados = useMemo(() => {
-    if (!consulta) return [];
-    return medicamentos.filter((m: Medicamento) => {
-      const matchMedico = consulta.medico_id && m.medico_id === consulta.medico_id;
-      const matchDataReceita = m.data_receita === consulta.data;
-      return matchMedico || matchDataReceita;
-    });
-  }, [medicamentos, consulta]);
-
-  const examesRelacionados = useMemo(() => {
-    if (!consulta) return [];
-    return exames.filter((e: Exame) => {
-      const matchMedico = consulta.medico_id && e.medico_id === consulta.medico_id;
-      const matchData = e.data === consulta.data;
-      return matchMedico || matchData;
-    });
-  }, [exames, consulta]);
 
   const menuOptions = [
     { id: "reagendar-consulta", label: "Reagendar Consulta", icon: RotateCcw, path: `/saude/consultas/nova?reagendar=true&consulta_id=${id}` },
@@ -285,16 +291,17 @@ function DetalhesConsultaContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
-          <motion.div 
-            variants={fadeUp} 
-            initial="initial" 
-            animate="animate" 
+          {/* HERO */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
             style={{ borderLeft: `6px solid ${finalCorBorda}` }}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div 
+                <div
                   className="flex h-14 w-14 items-center justify-center rounded-2xl border"
                   style={{ backgroundColor: `${finalCorBorda}15`, color: finalCorBorda, borderColor: `${finalCorBorda}30` }}
                 >
@@ -334,21 +341,21 @@ function DetalhesConsultaContent() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-surface-border/40">
-              <div className="flex items-center gap-3 rounded-2xl bg-surface-raised p-3.5 border border-surface-border/40">
-                <UserCheck size={18} className="text-ice shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[11px] text-ink-muted">Especialidade</p>
-                  <p className="text-sm font-medium text-ink-primary truncate">{medico?.especialidade || "Não informada"}</p>
-                </div>
-              </div>
+              <DetailInfoRow
+                icon={<UserCheck size={18} />}
+                iconClassName="bg-ice/10 text-ice"
+                label="Especialidade"
+              >
+                <p className="text-sm font-medium text-ink-primary truncate">{medico?.especialidade || "Não informada"}</p>
+              </DetailInfoRow>
 
-              <div className="flex items-center gap-3 rounded-2xl bg-surface-raised p-3.5 border border-surface-border/40">
-                <Building2 size={18} className="text-ice shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[11px] text-ink-muted">Local / Hospital</p>
-                  <p className="text-sm font-medium text-ink-primary truncate">{hospital?.nome || "Não informado"}</p>
-                </div>
-              </div>
+              <DetailInfoRow
+                icon={<Building2 size={18} />}
+                iconClassName="bg-ice/10 text-ice"
+                label="Local / Hospital"
+              >
+                <p className="text-sm font-medium text-ink-primary truncate">{hospital?.nome || "Não informado"}</p>
+              </DetailInfoRow>
             </div>
 
             {consulta.motivo && (
@@ -366,25 +373,21 @@ function DetalhesConsultaContent() {
             )}
           </motion.div>
 
+          {/* REGISTROS VINCULADOS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="space-y-4">
-            <h3 className="font-display text-base font-semibold text-ink-primary px-1">Registros Vinculados ao Atendimento</h3>
+            <SectionTitle icon={<FileText size={15} />} title="Registros Vinculados ao Atendimento" />
 
             <div className="grid grid-cols-1 gap-3">
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Pill size={16} className="text-ice" />
-                    <h4 className="text-sm font-semibold text-ink-primary">Medicamentos / Prescrições ({medicamentosRelacionados.length})</h4>
-                  </div>
-                </div>
+              <section className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
+                <SectionTitle icon={<Pill size={15} />} title={`Medicamentos / Prescrições (${medicamentosRelacionados.length})`} />
 
                 {medicamentosRelacionados.length === 0 ? (
                   <p className="text-xs text-ink-muted py-2">Nenhum medicamento vinculado diretamente a esta consulta ou data.</p>
                 ) : (
                   <div className="space-y-2">
                     {medicamentosRelacionados.map((m: Medicamento) => (
-                      <div 
-                        key={m.id} 
+                      <div
+                        key={m.id}
                         onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/detalhes?id=${m.id}`); }}
                         className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40 cursor-pointer hover:border-ice/30 transition-colors"
                         role="button"
@@ -399,25 +402,17 @@ function DetalhesConsultaContent() {
                     ))}
                   </div>
                 )}
-              </div>
+              </section>
 
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Activity size={16} className="text-emerald-400" />
-                    <h4 className="text-sm font-semibold text-ink-primary">Exames Solicitados ({examesRelacionados.length})</h4>
-                  </div>
-                </div>
+              <section className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
+                <SectionTitle icon={<Activity size={15} />} title={`Exames Solicitados (${examesRelacionados.length})`} />
 
                 {examesRelacionados.length === 0 ? (
                   <p className="text-xs text-ink-muted py-2">Nenhum exame registrado para este médico/data.</p>
                 ) : (
                   <div className="space-y-2">
                     {examesRelacionados.map((e: Exame) => (
-                      <div 
-                        key={e.id}
-                        className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40"
-                      >
+                      <div key={e.id} className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40">
                         <div>
                           <p className="text-sm font-medium text-ink-primary">{e.nome}</p>
                           <p className="text-[11px] text-ink-muted">Data: {formatDateDisplay(e.data)}</p>
@@ -426,14 +421,15 @@ function DetalhesConsultaContent() {
                     ))}
                   </div>
                 )}
-              </div>
+              </section>
             </div>
           </motion.div>
 
+          {/* AÇÃO DE ACOMPANHAMENTO */}
           {consulta.status === "agendada" && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-3 pt-2">
-              <h3 className="font-display text-sm font-semibold text-ink-muted px-1">Ações de Acompanhamento</h3>
-              
+              <SectionTitle icon={<CheckCircle2 size={15} />} title="Ações de Acompanhamento" />
+
               <button
                 onClick={() => handleStatusChange("realizada")}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 py-3.5 px-4 text-emerald-300 font-medium text-sm transition-all active:scale-[0.98]"
@@ -446,12 +442,12 @@ function DetalhesConsultaContent() {
           )}
         </section>
 
-        <ConfirmationModal 
-          isOpen={showDeleteModal} 
-          onClose={() => setShowDeleteModal(false)} 
-          onConfirm={handleDelete} 
-          title="Excluir Consulta" 
-          message="Tem certeza que deseja excluir este registro de consulta? Essa ação não pode ser desfeita." 
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir Consulta"
+          message="Tem certeza que deseja excluir este registro de consulta? Essa ação não pode ser desfeita."
         />
       </main>
     </PageTransition>

@@ -4,20 +4,20 @@
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, 
-  Edit3, 
-  FolderHeart, 
-  Pill, 
-  Stethoscope, 
-  FileText, 
-  Sparkles, 
-  ChevronRight, 
+import {
+  ArrowLeft,
+  Edit3,
+  FolderHeart,
+  Pill,
+  Stethoscope,
+  FileText,
+  Sparkles,
+  ChevronRight,
   Trash2,
   Building2,
   MapPin,
   Plus,
-  DollarSign
+  DollarSign,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -25,17 +25,37 @@ import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useToast } from "@/components/ToastProvider";
-import type { Cid, Tratamento, Medicamento, Medico, Hospital, Farmacia, Document, Renovacao } from "@/lib/types";
+import type {
+  Cid,
+  Tratamento,
+  Medicamento,
+  Medico,
+  Hospital,
+  Farmacia,
+  Document,
+  Renovacao,
+} from "@/lib/types";
 import { getCidInsights } from "@/lib/health-insights";
 import { getClinicalTheme, formatCurrency } from "@/lib/health-utils";
 import { useMounted } from "@/hooks/useMounted";
 import { cidsRepository } from "@/lib/repositories/cids";
+import {
+  SectionTitle,
+  DetailInfoRow,
+} from "@/components/detail/DetailComponents";
 
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 const fadeUp = {
   initial: { opacity: 0, y: 15 },
   animate: { opacity: 1, y: 0 },
 };
+
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
 
 function CidDetalhesContent() {
   const { trigger } = useHapticFeedback();
@@ -86,7 +106,7 @@ function CidDetalhesContent() {
         if (medIdsVinculados.size > 0) {
           const renovacoesData = await db.renovacoes.toArray();
           const renovacoesDoCid = renovacoesData.filter((r: Renovacao) => medIdsVinculados.has(r.medicamento_id));
-          
+
           let total = 0;
           renovacoesDoCid.forEach(r => {
             if (typeof r.preco === "number" && r.preco > 0) total += r.preco;
@@ -129,7 +149,7 @@ function CidDetalhesContent() {
     if (!id) return;
     try {
       await cidsRepository.delete(id);
-      
+
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("sync:process"));
       }
@@ -169,6 +189,9 @@ function CidDetalhesContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
+        {/* ====================================================
+            HEADER
+        ==================================================== */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between pt-6">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -262,10 +285,13 @@ function CidDetalhesContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-6">
-          <motion.div 
-            variants={fadeUp} 
-            initial="initial" 
-            animate="animate" 
+          {/* ====================================================
+              HERO
+          ==================================================== */}
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
             className={`relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm ${theme.borderClass}`}
             style={{ borderLeft: `6px solid ${theme.hex}` }}
           >
@@ -324,6 +350,9 @@ function CidDetalhesContent() {
             </div>
           </motion.div>
 
+          {/* ====================================================
+              CUSTO
+          ==================================================== */}
           {custoTotal > 0 && (
             <motion.div
               variants={fadeUp}
@@ -345,11 +374,12 @@ function CidDetalhesContent() {
             </motion.div>
           )}
 
+          {/* ====================================================
+              TRATAMENTOS
+          ==================================================== */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="space-y-3">
-            <div className="flex items-center gap-2 pl-1">
-              <FolderHeart size={16} className="text-violet-400" />
-              <h3 className="font-display text-base font-semibold text-ink-primary">Tratamentos Relacionados</h3>
-            </div>
+            <SectionTitle icon={<FolderHeart size={15} />} title="Tratamentos Relacionados" />
+
             {tratamentos.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
                 <p className="text-xs text-ink-muted">Nenhum tratamento vinculado a este diagnóstico.</p>
@@ -383,11 +413,12 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
+          {/* ====================================================
+              MEDICAMENTOS
+          ==================================================== */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.1 }} className="space-y-3">
-            <div className="flex items-center gap-2 pl-1">
-              <Pill size={16} className="text-ice" />
-              <h3 className="font-display text-base font-semibold text-ink-primary">Medicamentos em Uso</h3>
-            </div>
+            <SectionTitle icon={<Pill size={15} />} title="Medicamentos em Uso" />
+
             {medicamentos.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
                 <p className="text-xs text-ink-muted">Nenhum medicamento associado a este CID.</p>
@@ -417,11 +448,12 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
+          {/* ====================================================
+              EQUIPE MÉDICA
+          ==================================================== */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="space-y-3">
-            <div className="flex items-center gap-2 pl-1">
-              <Stethoscope size={16} className="text-ice" />
-              <h3 className="font-display text-base font-semibold text-ink-primary">Equipe Médica Associada</h3>
-            </div>
+            <SectionTitle icon={<Stethoscope size={15} />} title="Equipe Médica Associada" />
+
             {medicos.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
                 <p className="text-xs text-ink-muted">Nenhum médico vinculado aos tratamentos desta condição.</p>
@@ -442,11 +474,12 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
+          {/* ====================================================
+              LOCAIS E FARMÁCIAS
+          ==================================================== */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.2 }} className="space-y-3">
-            <div className="flex items-center gap-2 pl-1">
-              <Building2 size={16} className="text-amber-400" />
-              <h3 className="font-display text-base font-semibold text-ink-primary">Locais de Atendimento e Farmácias</h3>
-            </div>
+            <SectionTitle icon={<Building2 size={15} />} title="Locais de Atendimento e Farmácias" />
+
             {hospitais.length === 0 && farmacias.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
                 <p className="text-xs text-ink-muted">Nenhum local ou farmácia cruzada para este CID.</p>
@@ -483,11 +516,12 @@ function CidDetalhesContent() {
             )}
           </motion.div>
 
+          {/* ====================================================
+              LAUDOS
+          ==================================================== */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.25 }} className="space-y-3">
-            <div className="flex items-center gap-2 pl-1">
-              <FileText size={16} className="text-emerald-400" />
-              <h3 className="font-display text-base font-semibold text-ink-primary">Laudos e Relatórios Vinculados</h3>
-            </div>
+            <SectionTitle icon={<FileText size={15} />} title="Laudos e Relatórios Vinculados" />
+
             {documentos.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
                 <p className="text-xs text-ink-muted">Nenhum laudo ou relatório anexado a este CID.</p>
@@ -507,12 +541,12 @@ function CidDetalhesContent() {
           </motion.div>
         </section>
 
-        <ConfirmationModal 
-          isOpen={showDeleteModal} 
-          onClose={() => setShowDeleteModal(false)} 
-          onConfirm={handleDelete} 
-          title="Excluir CID" 
-          message="Tem certeza que deseja remover este diagnóstico da base? Os tratamentos associados não serão apagados, mas perderão a referência de CID." 
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Excluir CID"
+          message="Tem certeza que deseja remover este diagnóstico da base? Os tratamentos associados não serão apagados, mas perderão a referência de CID."
         />
       </main>
     </PageTransition>

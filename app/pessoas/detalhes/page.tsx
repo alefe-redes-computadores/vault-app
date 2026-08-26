@@ -37,10 +37,28 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { personsRepository } from "@/lib/repositories/persons";
-import type { Person, Document, Medicamento, Consulta, Exame, Cirurgia, Tratamento, Cid } from "@/lib/types";
+import type {
+  Person,
+  Document,
+  Medicamento,
+  Consulta,
+  Exame,
+  Cirurgia,
+  Tratamento,
+  Cid,
+} from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMounted } from "@/hooks/useMounted";
+import {
+  SectionTitle,
+  DetailInfoRow,
+  StatCard,
+} from "@/components/detail/DetailComponents";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 function getTratamentoIcon(nome: string) {
   const n = (nome || "").toLowerCase();
@@ -53,21 +71,33 @@ function getTratamentoIcon(nome: string) {
 
 function getStatusColor(status: string) {
   switch (status) {
-    case "ativo": return "text-emerald-400 bg-emerald-400/10 border-emerald-400/20";
-    case "concluido": return "text-ice bg-ice/10 border-ice/20";
-    case "suspenso": return "text-coral bg-coral/10 border-coral/20";
-    default: return "text-ink-muted bg-surface-border/20 border-surface-border/30";
+    case "ativo":
+      return "text-emerald-400 bg-emerald-400/10 border-emerald-400/20";
+    case "concluido":
+      return "text-ice bg-ice/10 border-ice/20";
+    case "suspenso":
+      return "text-coral bg-coral/10 border-coral/20";
+    default:
+      return "text-ink-muted bg-surface-border/20 border-surface-border/30";
   }
 }
 
 function getStatusLabel(status: string) {
   switch (status) {
-    case "ativo": return "Em andamento";
-    case "concluido": return "Concluído";
-    case "suspenso": return "Suspenso";
-    default: return status;
+    case "ativo":
+      return "Em andamento";
+    case "concluido":
+      return "Concluído";
+    case "suspenso":
+      return "Suspenso";
+    default:
+      return status;
   }
 }
+
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
 
 export default function PessoaDetalhesPage() {
   const router = useRouter();
@@ -85,6 +115,10 @@ export default function PessoaDetalhesPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
+
+  /* ==========================================================
+     DEXIE
+     ========================================================== */
 
   const person = useLiveQuery(
     () => (id ? db.persons.get(id) : undefined),
@@ -226,12 +260,17 @@ export default function PessoaDetalhesPage() {
   }
 
   const medicamentosAtivos = (medicamentos || []).filter((m) => m.status !== "descontinuado");
-  const consultasFuturas = (consultas || []).filter((c) => c.data >= new Date().toISOString().slice(0, 10));
-  const examesPendentes = (exames || []).filter((e) => e.data_retorno && new Date(e.data_retorno) >= new Date());
+  const consultasFuturas = (consultas || []).filter(
+    (c) => c.data >= new Date().toISOString().slice(0, 10)
+  );
+  const examesPendentes = (exames || []).filter(
+    (e) => e.data_retorno && new Date(e.data_retorno) >= new Date()
+  );
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
+        {/* ===== HEADER ===== */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -347,7 +386,9 @@ export default function PessoaDetalhesPage() {
           </div>
         </header>
 
+        {/* ===== CONTEÚDO ===== */}
         <section className="px-5 pt-6 space-y-6">
+          {/* Card principal */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -356,7 +397,7 @@ export default function PessoaDetalhesPage() {
           >
             <div className="flex items-center gap-4">
               <div
-                className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 object-cover cursor-pointer"
+                className="relative flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 object-cover"
                 style={{ borderColor: `${person.color || "#38BDF8"}55` }}
                 onClick={() => {
                   trigger("vibrate");
@@ -375,7 +416,7 @@ export default function PessoaDetalhesPage() {
                 ) : (
                   <User size={36} style={{ color: person.color || "#38BDF8" }} />
                 )}
-                <div className="absolute bottom-0 right-0 rounded-full bg-void/80 border border-surface-border p-0.5">
+                <div className="absolute bottom-0 right-0 rounded-full border border-surface-border bg-void/80 p-0.5">
                   <div className="rounded-full bg-ice/20 p-0.5">
                     <Edit3 size={12} className="text-ice" />
                   </div>
@@ -383,12 +424,12 @@ export default function PessoaDetalhesPage() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-display text-2xl font-bold text-ink-primary truncate">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="truncate font-display text-2xl font-bold text-ink-primary">
                     {person.name}
                   </h2>
                   {isDefault && (
-                    <span className="flex items-center gap-0.5 rounded-full bg-ice/15 px-2.5 py-0.5 text-[10px] font-bold uppercase text-ice border border-ice/20">
+                    <span className="flex items-center gap-0.5 rounded-full border border-ice/20 bg-ice/15 px-2.5 py-0.5 text-[10px] font-bold uppercase text-ice">
                       <CheckCircle size={12} />
                       Padrão
                     </span>
@@ -416,47 +457,47 @@ export default function PessoaDetalhesPage() {
             </div>
           </motion.div>
 
+          {/* Métricas */}
           <div className="grid grid-cols-3 gap-3">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: 0.04 }}
-              className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm text-center"
             >
-              <FileText size={20} className="mx-auto text-ice" />
-              <p className="mt-2 font-mono text-2xl font-bold text-ink-primary">
-                {documentos?.length || 0}
-              </p>
-              <p className="text-[10px] text-ink-muted uppercase tracking-wider">Documentos</p>
+              <StatCard
+                icon={<FileText size={20} />}
+                label="Documentos"
+                value={`${documentos?.length || 0}`}
+              />
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: 0.06 }}
-              className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm text-center"
             >
-              <Pill size={20} className="mx-auto text-emerald-400" />
-              <p className="mt-2 font-mono text-2xl font-bold text-ink-primary">
-                {medicamentosAtivos.length}
-              </p>
-              <p className="text-[10px] text-ink-muted uppercase tracking-wider">Medicamentos ativos</p>
+              <StatCard
+                icon={<Pill size={20} />}
+                label="Ativos"
+                value={`${medicamentosAtivos.length}`}
+                description="Medicamentos"
+              />
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: 0.08 }}
-              className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm text-center"
             >
-              <FolderHeart size={20} className="mx-auto text-violet-400" />
-              <p className="mt-2 font-mono text-2xl font-bold text-ink-primary">
-                {tratamentos?.length || 0}
-              </p>
-              <p className="text-[10px] text-ink-muted uppercase tracking-wider">Tratamentos</p>
+              <StatCard
+                icon={<FolderHeart size={20} />}
+                label="Tratamentos"
+                value={`${tratamentos?.length || 0}`}
+              />
             </motion.div>
           </div>
 
+          {/* Tratamentos */}
           {tratamentos && tratamentos.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -464,10 +505,10 @@ export default function PessoaDetalhesPage() {
               transition={{ duration: 0.24, delay: 0.1 }}
               className="space-y-3"
             >
-              <h3 className="text-sm font-semibold text-ink-primary flex items-center gap-2">
-                <FolderHeart size={16} className="text-violet-400" />
-                Tratamentos em andamento
-              </h3>
+              <SectionTitle
+                icon={<FolderHeart size={15} />}
+                title="Tratamentos em andamento"
+              />
               <div className="space-y-2">
                 {tratamentos.filter((t) => t.status === "ativo").slice(0, 3).map((t) => {
                   const Icon = getTratamentoIcon(t.nome);
@@ -476,7 +517,7 @@ export default function PessoaDetalhesPage() {
                     <button
                       key={t.id}
                       onClick={() => router.push(`/saude/tratamentos/detalhes?id=${t.id}`)}
-                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left active:scale-[0.98] transition-all"
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
                       style={{ borderLeft: `4px solid ${cor}` }}
                       type="button"
                     >
@@ -491,7 +532,7 @@ export default function PessoaDetalhesPage() {
                           {t.nome}
                         </span>
                       </div>
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${getStatusColor(t.status)}`}>
+                      <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${getStatusColor(t.status)}`}>
                         {getStatusLabel(t.status)}
                       </span>
                     </button>
@@ -500,7 +541,7 @@ export default function PessoaDetalhesPage() {
                 {tratamentos.filter((t) => t.status === "ativo").length > 3 && (
                   <button
                     onClick={() => router.push("/saude/tratamentos")}
-                    className="text-xs text-ice font-medium flex items-center gap-1 ml-1 mt-1"
+                    className="ml-1 mt-1 flex items-center gap-1 text-xs font-medium text-ice"
                     type="button"
                   >
                     Ver todos ({tratamentos.filter((t) => t.status === "ativo").length})
@@ -511,6 +552,7 @@ export default function PessoaDetalhesPage() {
             </motion.div>
           )}
 
+          {/* CIDs */}
           {cids && cids.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -518,15 +560,12 @@ export default function PessoaDetalhesPage() {
               transition={{ duration: 0.24, delay: 0.12 }}
               className="space-y-3"
             >
-              <h3 className="text-sm font-semibold text-ink-primary flex items-center gap-2">
-                <FileText size={16} className="text-ice" />
-                Diagnósticos (CIDs)
-              </h3>
+              <SectionTitle icon={<FileText size={15} />} title="Diagnósticos (CIDs)" />
               <div className="flex flex-wrap gap-2">
                 {cids.slice(0, 5).map((cid) => (
                   <span
                     key={cid.id}
-                    className="rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1 text-xs font-medium text-violet-300"
+                    className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs font-medium text-violet-300"
                   >
                     {cid.codigo} - {cid.descricao}
                   </span>
@@ -538,52 +577,48 @@ export default function PessoaDetalhesPage() {
             </motion.div>
           )}
 
-          {(documentos && documentos.length > 0) && (
+          {/* Documentos */}
+          {documentos && documentos.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24, delay: 0.14 }}
               className="space-y-3"
             >
-              <h3 className="text-sm font-semibold text-ink-primary flex items-center gap-2">
-                <FileText size={16} className="text-ice" />
-                Últimos documentos
-              </h3>
+              <SectionTitle icon={<FileText size={15} />} title="Últimos documentos" />
               <div className="space-y-2">
                 {documentos.slice(0, 3).map((doc) => (
                   <button
                     key={doc.id}
                     onClick={() => router.push(`/detalhes?id=${doc.id}`)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left active:scale-[0.98] transition-all"
+                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
                     type="button"
                   >
                     <span className="truncate text-sm font-medium text-ink-primary">
                       {doc.title}
                     </span>
-                    <ChevronRight size={16} className="text-ink-faint shrink-0" />
+                    <ChevronRight size={16} className="shrink-0 text-ink-faint" />
                   </button>
                 ))}
               </div>
             </motion.div>
           )}
 
-          {(consultas && consultas.length > 0) && (
+          {/* Consultas futuras */}
+          {consultas && consultas.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24, delay: 0.16 }}
               className="space-y-3"
             >
-              <h3 className="text-sm font-semibold text-ink-primary flex items-center gap-2">
-                <Stethoscope size={16} className="text-ice" />
-                Próximas consultas
-              </h3>
+              <SectionTitle icon={<Stethoscope size={15} />} title="Próximas consultas" />
               <div className="space-y-2">
                 {consultasFuturas.slice(0, 3).map((c) => (
                   <button
                     key={c.id}
                     onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left active:scale-[0.98] transition-all"
+                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
                     type="button"
                   >
                     <div>
@@ -592,7 +627,7 @@ export default function PessoaDetalhesPage() {
                       </span>
                       <p className="text-xs text-ink-muted">Dr(a). {c.medico}</p>
                     </div>
-                    <span className="text-xs text-ice font-mono font-bold">
+                    <span className="font-mono text-xs font-bold text-ice">
                       {new Date(c.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
                     </span>
                   </button>
@@ -601,30 +636,30 @@ export default function PessoaDetalhesPage() {
             </motion.div>
           )}
 
-          {(exames && exames.length > 0) && (
+          {/* Exames pendentes */}
+          {exames && exames.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24, delay: 0.18 }}
               className="space-y-3"
             >
-              <h3 className="text-sm font-semibold text-ink-primary flex items-center gap-2">
-                <Activity size={16} className="text-coral" />
-                Exames pendentes
-              </h3>
+              <SectionTitle icon={<Activity size={15} />} title="Exames pendentes" />
               <div className="space-y-2">
                 {examesPendentes.slice(0, 3).map((e) => (
                   <button
                     key={e.id}
                     onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left active:scale-[0.98] transition-all"
+                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
                     type="button"
                   >
                     <span className="truncate text-sm font-medium text-ink-primary">
                       {e.nome}
                     </span>
-                    <span className="text-xs text-coral font-mono font-bold">
-                      {e.data_retorno ? new Date(e.data_retorno).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "Sem prazo"}
+                    <span className="font-mono text-xs font-bold text-coral">
+                      {e.data_retorno
+                        ? new Date(e.data_retorno).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+                        : "Sem prazo"}
                     </span>
                   </button>
                 ))}
@@ -632,20 +667,27 @@ export default function PessoaDetalhesPage() {
             </motion.div>
           )}
 
-          {!documentos?.length && !medicamentos?.length && !consultas?.length && !exames?.length && !tratamentos?.length && !cids?.length && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.2 }}
-              className="rounded-[24px] border border-dashed border-surface-border/50 bg-surface/30 p-8 text-center"
-            >
-              <Users size={28} className="mx-auto text-ink-faint" />
-              <p className="mt-3 text-sm text-ink-muted">Nenhum dado vinculado a esta pessoa ainda.</p>
-              <p className="text-xs text-ink-faint">Comece cadastrando documentos, medicamentos ou consultas.</p>
-            </motion.div>
-          )}
+          {/* Empty state */}
+          {!documentos?.length &&
+            !medicamentos?.length &&
+            !consultas?.length &&
+            !exames?.length &&
+            !tratamentos?.length &&
+            !cids?.length && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.24, delay: 0.2 }}
+                className="rounded-[24px] border border-dashed border-surface-border/50 bg-surface/30 p-8 text-center"
+              >
+                <Users size={28} className="mx-auto text-ink-faint" />
+                <p className="mt-3 text-sm text-ink-muted">Nenhum dado vinculado a esta pessoa ainda.</p>
+                <p className="text-xs text-ink-faint">Comece cadastrando documentos, medicamentos ou consultas.</p>
+              </motion.div>
+            )}
         </section>
 
+        {/* ===== MODAIS ===== */}
         <ConfirmationModal
           isOpen={showDefaultModal}
           onClose={() => setShowDefaultModal(false)}

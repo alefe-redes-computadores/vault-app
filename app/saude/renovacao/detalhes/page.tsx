@@ -33,6 +33,15 @@ import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
 import type { Renovacao, Medicamento, Medico, Farmacia } from "@/lib/types";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useMounted } from "@/hooks/useMounted";
+import {
+  SectionTitle,
+  DetailInfoRow,
+  StatCard,
+} from "@/components/detail/DetailComponents";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -49,6 +58,10 @@ function formatDateDisplay(isoStr: string): string {
 function formatCurrency(value: number): string {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
+
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
 
 function DetalhesRenovacaoContent() {
   const router = useRouter();
@@ -360,22 +373,16 @@ function DetalhesRenovacaoContent() {
             )}
 
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-surface-border/40 pt-4">
-              <div className="rounded-2xl bg-surface-raised p-3">
-                <p className="font-mono text-[10px] uppercase text-ink-muted">
-                  Data da Receita
-                </p>
-                <p className="mt-0.5 font-mono text-sm font-semibold text-ink-primary">
-                  {formatDateDisplay(renovacao.data)}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-surface-raised p-3">
-                <p className="font-mono text-[10px] uppercase text-ink-muted">
-                  Custo Registrado
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-emerald-400">
-                  {precoFormatado}
-                </p>
-              </div>
+              <StatCard
+                icon={<Calendar size={14} />}
+                label="Data da Receita"
+                value={formatDateDisplay(renovacao.data)}
+              />
+              <StatCard
+                icon={<DollarSign size={14} />}
+                label="Custo Registrado"
+                value={precoFormatado}
+              />
             </div>
 
             {renovacao.observacoes && (
@@ -413,15 +420,10 @@ function DetalhesRenovacaoContent() {
               transition={{ delay: 0.05 }}
               className="space-y-3"
             >
-              <div className="flex items-center gap-2 pl-1">
-                <History size={16} className="text-amber-400" />
-                <h3 className="font-display text-base font-semibold text-ink-primary">
-                  Histórico de Renovações
-                </h3>
-                <span className="rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
-                  {historicoRenovacoes.length} anteriores
-                </span>
-              </div>
+              <SectionTitle
+                icon={<History size={15} />}
+                title="Histórico de Renovações"
+              />
               <div className="space-y-2">
                 {historicoRenovacoes.map((r) => (
                   <div
@@ -456,35 +458,29 @@ function DetalhesRenovacaoContent() {
               transition={{ delay: 0.1 }}
               className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm"
             >
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                Rede de Apoio
-              </h3>
+              <SectionTitle icon={<Receipt size={15} />} title="Rede de Apoio" />
               <div className="mt-3 space-y-3">
                 {medico && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
-                      <Pill size={14} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-ink-muted">Médico</p>
-                      <p className="text-sm font-semibold text-ink-primary">
-                        Dr(a). {medico.nome}
-                      </p>
-                    </div>
-                  </div>
+                  <DetailInfoRow
+                    icon={<Pill size={14} />}
+                    iconClassName="bg-ice/10 text-ice"
+                    label="Médico"
+                  >
+                    <p className="text-sm font-semibold text-ink-primary">
+                      Dr(a). {medico.nome}
+                    </p>
+                  </DetailInfoRow>
                 )}
                 {farmacia && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400">
-                      <DollarSign size={14} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-ink-muted">Farmácia</p>
-                      <p className="text-sm font-semibold text-ink-primary">
-                        {farmacia.nome}
-                      </p>
-                    </div>
-                  </div>
+                  <DetailInfoRow
+                    icon={<DollarSign size={14} />}
+                    iconClassName="bg-emerald-400/10 text-emerald-400"
+                    label="Farmácia"
+                  >
+                    <p className="text-sm font-semibold text-ink-primary">
+                      {farmacia.nome}
+                    </p>
+                  </DetailInfoRow>
                 )}
               </div>
             </motion.div>

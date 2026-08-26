@@ -49,35 +49,48 @@ import type {
   LocalSaude,
 } from "@/lib/types";
 import { useMedicos } from "@/hooks/useMedicos";
-import { sugerirRenovacao, isReceitaVencidaSegura, analisarComportamentoUso } from "@/lib/health-insights";
+import {
+  sugerirRenovacao,
+  isReceitaVencidaSegura,
+  analisarComportamentoUso,
+} from "@/lib/health-insights";
 import { useMounted } from "@/hooks/useMounted";
+import {
+  SectionTitle,
+  DetailInfoRow,
+  StatCard,
+} from "@/components/detail/DetailComponents";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
 function getTreatmentColor(nome: string): string {
   const colors: Record<string, string> = {
-    "tdah": "#8B5CF6",
-    "ansiedade": "#F59E0B",
-    "depressão": "#EF4444",
-    "insônia": "#6366F1",
-    "enxaqueca": "#8B5CF6",
-    "neuropatia": "#EC4899",
-    "hipertensão": "#EF4444",
-    "colesterol": "#F59E0B",
-    "diabetes": "#3B82F6",
-    "tireoide": "#8B5CF6",
+    tdah: "#8B5CF6",
+    ansiedade: "#F59E0B",
+    depressão: "#EF4444",
+    insônia: "#6366F1",
+    enxaqueca: "#8B5CF6",
+    neuropatia: "#EC4899",
+    hipertensão: "#EF4444",
+    colesterol: "#F59E0B",
+    diabetes: "#3B82F6",
+    tireoide: "#8B5CF6",
     "dor crônica": "#EC4899",
-    "fibromialgia": "#F472B6",
-    "asma": "#06B6D4",
-    "dpoc": "#06B6D4",
-    "refluxo": "#F59E0B",
-    "gastrite": "#F59E0B",
+    fibromialgia: "#F472B6",
+    asma: "#06B6D4",
+    dpoc: "#06B6D4",
+    refluxo: "#F59E0B",
+    gastrite: "#F59E0B",
     "transtorno bipolar": "#8B5CF6",
-    "esquizofrenia": "#8B5CF6",
-    "lúpus": "#EC4899",
+    esquizofrenia: "#8B5CF6",
+    lúpus: "#EC4899",
     "esclerose múltipla": "#EC4899",
     "artrite reumatoide": "#EC4899",
-    "câncer": "#EF4444",
-    "obesidade": "#F59E0B",
-    "alergia": "#06B6D4",
+    câncer: "#EF4444",
+    obesidade: "#F59E0B",
+    alergia: "#06B6D4",
   };
   const lower = nome.toLowerCase();
   for (const [key, color] of Object.entries(colors)) {
@@ -98,6 +111,10 @@ function isDateInFuture(dateStr: string): boolean {
   return new Date(dateStr) > new Date();
 }
 
+/* ============================================================
+   CONTEÚDO
+   ============================================================ */
+
 function DetalhesMedicoContent() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
@@ -111,6 +128,10 @@ function DetalhesMedicoContent() {
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   const { deleteMedico } = useMedicos();
+
+  /* ==========================================================
+     DEXIE
+     ========================================================== */
 
   const consultas = useLiveQuery(
     () => (id ? db.consultas.where("medico_id").equals(id).toArray() : Promise.resolve([] as Consulta[])),
@@ -133,7 +154,10 @@ function DetalhesMedicoContent() {
     [id]
   ) ?? [];
 
-  const medIdsStr = useMemo(() => medicamentos.map((m) => m.id).filter(Boolean).sort().join(','), [medicamentos]);
+  const medIdsStr = useMemo(
+    () => medicamentos.map((m) => m.id).filter(Boolean).sort().join(','),
+    [medicamentos]
+  );
   const doseLogs = useLiveQuery(() => {
     const validMedIds = medIdsStr ? medIdsStr.split(',') : [];
     if (validMedIds.length === 0) return Promise.resolve([] as DoseLog[]);
@@ -169,14 +193,20 @@ function DetalhesMedicoContent() {
     return db.tratamentos.where('id').anyOf(ids).toArray();
   }, [tratamentosIdsStr]) ?? [];
 
-  const medicoHospIdsStr = useMemo(() => (medico?.hospital_ids || []).sort().join(','), [medico?.hospital_ids]);
+  const medicoHospIdsStr = useMemo(
+    () => (medico?.hospital_ids || []).sort().join(','),
+    [medico?.hospital_ids]
+  );
   const hospitaisVinculados = useLiveQuery(() => {
     const ids = medicoHospIdsStr ? medicoHospIdsStr.split(',') : [];
     if (ids.length === 0) return Promise.resolve([] as Hospital[]);
     return db.hospitais.where('id').anyOf(ids).toArray();
   }, [medicoHospIdsStr]) ?? [];
 
-  const medicoLocalIdsStr = useMemo(() => (medico?.local_ids || []).sort().join(','), [medico?.local_ids]);
+  const medicoLocalIdsStr = useMemo(
+    () => (medico?.local_ids || []).sort().join(','),
+    [medico?.local_ids]
+  );
   const locaisVinculados = useLiveQuery(() => {
     const ids = medicoLocalIdsStr ? medicoLocalIdsStr.split(',') : [];
     if (ids.length === 0) return Promise.resolve([] as LocalSaude[]);
@@ -187,6 +217,10 @@ function DetalhesMedicoContent() {
     () => (id ? db.documents.where("medico_id").equals(id).reverse().sortBy("created_at") : Promise.resolve([] as Document[])),
     [id]
   ) ?? [];
+
+  /* ==========================================================
+     DADOS DERIVADOS
+     ========================================================== */
 
   const proximaConsulta = useMemo(() => {
     const futuras = consultas.filter((c) => isDateInFuture(c.data));
@@ -215,7 +249,10 @@ function DetalhesMedicoContent() {
     return medicamentos.map((med) => {
       const insight = sugerirRenovacao(med);
       const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
-      const comportamento = analisarComportamentoUso(med, doseLogs.filter((d) => d.medicamento_id === med.id));
+      const comportamento = analisarComportamentoUso(
+        med,
+        doseLogs.filter((d) => d.medicamento_id === med.id)
+      );
       return { ...med, insight, receitaVencida, comportamento };
     });
   }, [medicamentos, doseLogs]);
@@ -233,18 +270,6 @@ function DetalhesMedicoContent() {
       return acc + preco;
     }, 0);
   }, [renovacoes]);
-
-  const menuOptions = [
-    { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?medico_id=${id}` },
-    { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: `/saude/cirurgias/nova?medico_id=${id}` },
-    { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?medico_id=${id}` },
-  ];
-
-  const handleMenuOptionClick = (path: string) => {
-    trigger("vibrate");
-    setIsMenuFlutuanteOpen(false);
-    router.push(path);
-  };
 
   useEffect(() => {
     if (!id) {
@@ -276,16 +301,31 @@ function DetalhesMedicoContent() {
     }
   };
 
+  const menuOptions = [
+    { id: "nova-consulta", label: "Nova Consulta", icon: Stethoscope, path: `/saude/consultas/nova?medico_id=${id}` },
+    { id: "nova-cirurgia", label: "Nova Cirurgia", icon: Syringe, path: `/saude/cirurgias/nova?medico_id=${id}` },
+    { id: "novo-medicamento", label: "Novo Medicamento", icon: Pill, path: `/saude/medicamentos/novo?medico_id=${id}` },
+  ];
+
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
+
   if (isLoading) return <DetailSkeleton />;
   if (!medico) return null;
 
   const medicamentosAtivos = medicamentos.filter((m) => m.status === "ativo");
   const prescricoes = documentosDoMedico.filter((doc) => doc.type === "receita");
-  const laudosRelatorios = documentosDoMedico.filter((doc) => doc.type === "laudo" || doc.type === "encaminhamento" || doc.type === "exame_imagem" || doc.type === "exame_sangue");
+  const laudosRelatorios = documentosDoMedico.filter(
+    (doc) => doc.type === "laudo" || doc.type === "encaminhamento" || doc.type === "exame_imagem" || doc.type === "exame_sangue"
+  );
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
+        {/* HEADER */}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -379,17 +419,16 @@ function DetalhesMedicoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-5">
+          {/* HERO */}
           <motion.div
             variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}
             initial="initial"
             animate="animate"
             className="rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm space-y-4"
-            style={{
-              borderLeft: `6px solid #38BDF8`
-            }}
+            style={{ borderLeft: `6px solid #38BDF8` }}
           >
             <div className="flex items-start gap-4">
-              <div 
+              <div
                 className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
                 style={{ backgroundColor: "#38BDF815", color: "#38BDF8", borderColor: "#38BDF830" }}
               >
@@ -414,20 +453,22 @@ function DetalhesMedicoContent() {
             {(medico.telefone || medico.email) && (
               <div className="pt-4 border-t border-surface-border/40 space-y-3">
                 {medico.telefone && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised text-ink-muted">
-                      <Phone size={14} />
-                    </div>
+                  <DetailInfoRow
+                    icon={<Phone size={14} />}
+                    iconClassName="bg-surface-raised text-ink-muted"
+                    label="Telefone"
+                  >
                     <span className="text-sm font-medium text-ink-primary">{medico.telefone}</span>
-                  </div>
+                  </DetailInfoRow>
                 )}
                 {medico.email && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised text-ink-muted">
-                      <Mail size={14} />
-                    </div>
+                  <DetailInfoRow
+                    icon={<Mail size={14} />}
+                    iconClassName="bg-surface-raised text-ink-muted"
+                    label="Email"
+                  >
                     <span className="text-sm font-medium text-ink-primary truncate">{medico.email}</span>
-                  </div>
+                  </DetailInfoRow>
                 )}
               </div>
             )}
@@ -487,6 +528,7 @@ function DetalhesMedicoContent() {
             )}
           </motion.div>
 
+          {/* ALERTAS */}
           {(alertasGerais.ativos.length > 0 || alertasGerais.vencidos.length > 0 || alertasGerais.comportamentos.length > 0 || alertaSemRetorno) && (
             <motion.div
               variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}
@@ -495,12 +537,12 @@ function DetalhesMedicoContent() {
               transition={{ delay: 0.02 }}
               className="rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-4 shadow-sm"
             >
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle size={16} className="text-amber-400" />
-                <h4 className="text-sm font-semibold text-ink-primary">Alertas Inteligentes</h4>
-              </div>
+              <SectionTitle
+                icon={<AlertTriangle size={15} />}
+                title="Alertas Inteligentes"
+              />
 
-              <div className="space-y-2">
+              <div className="mt-3 space-y-2">
                 {alertaSemRetorno && (
                   <div className="flex items-start gap-2 text-xs border-b border-amber-400/10 pb-2 last:border-0">
                     <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
@@ -544,25 +586,18 @@ function DetalhesMedicoContent() {
             </motion.div>
           )}
 
+          {/* TRATAMENTOS */}
           {tratamentos.length > 0 && (
             <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <FolderHeart size={16} className="text-violet-400" />
-                <h4 className="text-sm font-semibold text-ink-primary">Tratamentos Relacionados</h4>
-                <span className="ml-auto text-[10px] font-medium text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{tratamentos.length}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
+              <SectionTitle icon={<FolderHeart size={15} />} title="Tratamentos Relacionados" />
+              <div className="mt-3 flex flex-wrap gap-2">
                 {tratamentos.map((t) => {
                   const color = getTreatmentColor(t.nome);
                   return (
                     <span
                       key={t.id}
                       className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded-md border"
-                      style={{
-                        backgroundColor: `${color}20`,
-                        borderColor: `${color}40`,
-                        color: color,
-                      }}
+                      style={{ backgroundColor: `${color}20`, borderColor: `${color}40`, color: color }}
                     >
                       <Activity size={10} /> {t.nome}
                     </span>
@@ -572,12 +607,10 @@ function DetalhesMedicoContent() {
             </motion.div>
           )}
 
+          {/* DOCUMENTOS */}
           {(prescricoes.length > 0 || laudosRelatorios.length > 0) && (
             <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <FileText size={16} className="text-ice" />
-                <h4 className="text-sm font-semibold text-ink-primary">Documentos e Prescrições</h4>
-              </div>
+              <SectionTitle icon={<FileText size={15} />} title="Documentos e Prescrições" />
 
               {prescricoes.length > 0 && (
                 <div className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
@@ -653,15 +686,11 @@ function DetalhesMedicoContent() {
             </motion.div>
           )}
 
-          {/* EXAMES SOLICITADOS */}
+          {/* EXAMES */}
           {exames.length > 0 && (
             <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.05 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <FlaskConical size={16} className="text-violet-400" />
-                <h4 className="text-sm font-semibold text-ink-primary">Exames Solicitados</h4>
-                <span className="ml-auto text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{exames.length}</span>
-              </div>
-              <div className="space-y-2">
+              <SectionTitle icon={<FlaskConical size={15} />} title="Exames Solicitados" />
+              <div className="mt-3 space-y-2">
                 {exames.slice(0, 3).map((exame) => (
                   <div
                     key={exame.id}
@@ -687,12 +716,8 @@ function DetalhesMedicoContent() {
           {/* RENOVAÇÕES */}
           {renovacoes.length > 0 && (
             <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <FileWarning size={16} className="text-amber-400" />
-                <h4 className="text-sm font-semibold text-ink-primary">Renovações Emitidas</h4>
-                <span className="ml-auto text-[10px] text-ink-muted bg-surface-raised px-2 py-0.5 rounded-full">{renovacoes.length}</span>
-              </div>
-              <div className="space-y-2">
+              <SectionTitle icon={<FileWarning size={15} />} title="Renovações Emitidas" />
+              <div className="mt-3 space-y-2">
                 {renovacoes.slice(0, 3).map((ren) => (
                   <div key={ren.id} className="flex items-center justify-between rounded-xl bg-surface-raised p-3 border border-surface-border/40">
                     <div className="min-w-0">
@@ -714,10 +739,12 @@ function DetalhesMedicoContent() {
             </motion.div>
           )}
 
+          {/* HISTÓRICO CLÍNICO */}
           <motion.div variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }} initial="initial" animate="animate" transition={{ delay: 0.07 }} className="space-y-4 pt-2">
-            <h3 className="font-display text-base font-semibold text-ink-primary px-1">Histórico Clínico</h3>
+            <SectionTitle icon={<Calendar size={15} />} title="Histórico Clínico" />
 
             <div className="grid grid-cols-1 gap-3">
+              {/* CONSULTAS */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                   <Calendar size={16} className="text-ice" />
@@ -754,6 +781,7 @@ function DetalhesMedicoContent() {
                 )}
               </div>
 
+              {/* CIRURGIAS */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                   <Activity size={16} className="text-coral" />
@@ -785,6 +813,7 @@ function DetalhesMedicoContent() {
                 )}
               </div>
 
+              {/* MEDICAMENTOS */}
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                   <Pill size={16} className="text-emerald-400" />
@@ -811,14 +840,10 @@ function DetalhesMedicoContent() {
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-ink-primary">{med.nome}</p>
                             {med.insight?.deveRenovar && (
-                              <span className="text-[8px] font-bold uppercase bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded-full">
-                                Renovar
-                              </span>
+                              <span className="text-[8px] font-bold uppercase bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded-full">Renovar</span>
                             )}
                             {med.receitaVencida && (
-                              <span className="text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">
-                                Vencida
-                              </span>
+                              <span className="text-[8px] font-bold uppercase bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencida</span>
                             )}
                           </div>
                           <p className="text-[11px] text-ink-muted">{med.dosagem}</p>

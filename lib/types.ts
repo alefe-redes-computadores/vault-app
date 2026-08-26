@@ -776,6 +776,7 @@ export interface Renovacao {
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
+  data_retorno_sus?: string | null;
 }
 
 
