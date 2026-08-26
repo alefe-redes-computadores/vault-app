@@ -4,8 +4,6 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Pill,
-  Circle,
   Droplet,
   Syringe,
   StickyNote,
@@ -17,6 +15,7 @@ import {
   Store,
   Building2,
   Stethoscope,
+  Pill // fallback
 } from "lucide-react";
 
 import { useMedicamentos } from "@/hooks/useMedicamentos";
@@ -51,39 +50,26 @@ import {
 } from "@/components/list";
 
 /* ============================================================
-   FORMATOS E ÍCONES BLINDADOS
+   ÍCONES CUSTOMIZADOS (IDÊNTICOS AO NOVO/DETALHES)
    ============================================================ */
 
-const SplitPillIcon = ({
-  size,
-  fill = "currentColor",
-  stroke = "currentColor",
-  strokeWidth = 2,
-}: {
-  size?: number;
-  fill?: string;
-  stroke?: string;
-  strokeWidth?: number;
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={stroke}
-    strokeWidth={strokeWidth}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="10" fill={fill} />
-    <line
-      x1="12"
-      y1="2"
-      x2="12"
-      y2="22"
-      stroke="rgba(0,0,0,0.3)"
-      strokeWidth="2"
-    />
+const CirclePillIcon = ({ size, fill = "currentColor", stroke = "none" }: { size?: number; fill?: string; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
+    <circle cx="12" cy="12" r="9" />
+  </svg>
+);
+
+const SplitPillIcon = ({ size, fill = "currentColor", stroke = "none" }: { size?: number; fill?: string; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
+    <circle cx="12" cy="12" r="9" />
+    <line x1="12" y1="3" x2="12" y2="21" stroke="rgba(0,0,0,0.35)" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+const CapsuleIcon = ({ size, fill = "currentColor", stroke = "none" }: { size?: number; fill?: string; stroke?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2">
+    <rect x="4" y="7" width="16" height="10" rx="5" ry="5" />
+    <line x1="12" y1="7" x2="12" y2="17" stroke="rgba(0,0,0,0.35)" strokeWidth="2" />
   </svg>
 );
 
@@ -91,14 +77,13 @@ const SplitPillIcon = ({
 function getMedicamentoIconComponent(formato?: string) {
   const f = (formato || "").toLowerCase().trim();
   if (f.includes("gota")) return Droplet;
-  if (f.includes("capsula") || f.includes("cápsula")) return Pill;
+  if (f.includes("capsula") || f.includes("cápsula")) return CapsuleIcon;
   if (f.includes("partido")) return SplitPillIcon;
   if (f.includes("injecao") || f.includes("injeção")) return Syringe;
   if (f.includes("adesivo")) return StickyNote;
-  if (f.includes("comprimido") || f.includes("inteiro")) return Circle;
-  return Pill; // Fallback padrão seguro
+  if (f.includes("comprimido") || f.includes("inteiro")) return CirclePillIcon;
+  return CapsuleIcon; // Fallback padrão seguro
 }
-
 
 type SortOption = "urgency" | "renewal" | "name";
 
@@ -298,6 +283,26 @@ export default function MedicamentosListPage() {
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
+
+        {/* ==================================================
+            INJEÇÃO DOS GRADIENTES PARA DUAS CORES (BI-COLOR)
+        ================================================== */}
+        <svg width="0" height="0" className="absolute">
+          <defs>
+            {filteredAndSorted.map(m => {
+              if (m.cores && m.cores.length > 1) {
+                return (
+                  <linearGradient key={`grad-${m.id}`} id={`grad-${m.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="50%" stopColor={m.cores[0]} />
+                    <stop offset="50%" stopColor={m.cores[1]} />
+                  </linearGradient>
+                );
+              }
+              return null;
+            })}
+          </defs>
+        </svg>
+
         {/* ===== HEADER ===== */}
         <ListPageHeader
           title="Meus medicamentos"
@@ -396,11 +401,28 @@ export default function MedicamentosListPage() {
               const insight = isSuspenso ? null : sugerirRenovacao(med);
               const receitaVencida = isReceitaVencidaSegura(med.proxima_renovacao);
 
-              // 🛡️ SELETOR INTELIGENTE DE ÍCONE
-              const SelectedFormatIcon = getMedicamentoIconComponent(med.formato);
+              // 🛡️ SELETOR INTELIGENTE DE ÍCONE E CORES PADRONIZADO
+              const formatoBanco = med.formato?.toLowerCase().trim() || "comprimido";
+              const SelectedFormatIcon = getMedicamentoIconComponent(formatoBanco);
+              
+              // Verifica se o ícone atual é um dos SVGs preenchíveis que trouxemos de "Novo"
+              const isCustomIcon = ["comprimido", "partido", "capsula", "cápsula", "inteiro"].some(val => formatoBanco.includes(val));
 
               const cor1 = med.cores && med.cores.length > 0 ? med.cores[0] : "#60A5FA";
-              const cardColor = activePersonColor || cor1;
+              const hasTwoColors = med.cores && med.cores.length > 1 && isCustomIcon;
+              
+              // SVGs preenchíveis recebem a cor via "fill". SVGs vazados (Droplet/Lucide) via "stroke".
+              const fillValue = hasTwoColors ? `url(#grad-${med.id})` : (isCustomIcon ? cor1 : "none");
+              const strokeValue = isCustomIcon ? "none" : cor1;
+
+              // 🛡️ Borda lateral obedecendo a regra da receita (camaleão)
+              const cardColor = isSuspenso 
+                ? "#fb7185" 
+                : med.tipo_receita === "amarela" 
+                ? "#fbbf24" 
+                : med.tipo_receita === "azul" 
+                ? "#60a5fa" 
+                : (activePersonColor || cor1);
 
               const dosesParaAcabar = estoqueInfo ? estoqueInfo.dosesRestantes : (med.estoque_quantidade ?? 0);
               const estoqueCritico = dosesParaAcabar > 0 && dosesParaAcabar < 10;
@@ -434,8 +456,9 @@ export default function MedicamentosListPage() {
                   icon={
                     <SelectedFormatIcon
                       size={24}
-                      style={{ color: cor1 }}
-                      strokeWidth={2.4}
+                      fill={fillValue}
+                      stroke={strokeValue}
+                      color={cor1}
                     />
                   }
                   actions={
