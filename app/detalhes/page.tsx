@@ -42,6 +42,7 @@ import {
   SectionTitle,
   DetailInfoRow,
 } from "@/components/detail/DetailComponents";
+import { DocumentManager } from "@/components/galeria/DocumentManager";
 
 /* ============================================================
    HELPERS
@@ -499,6 +500,13 @@ export default function DocumentDetailPage() {
               </div>
             </div>
           </motion.div>
+
+          {/* Seção Relacional Avô-Pai-Filho (Gerenciador de Documentos Vinculados) */}
+          <DocumentManager 
+            entidadeId={doc.id!} 
+            entidadeTipo={doc.category_id === "saude" ? "medicamento" : "pessoal"} 
+            tituloSecao="Anexos e Documentos Vinculados" 
+          />
 
           {/* Anexos */}
           {hasAttachments && (

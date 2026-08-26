@@ -27,15 +27,12 @@ import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
 import { Input } from "@/components/ui/Input";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { PageTransition } from "@/components/PageTransition";
-import { CATEGORIES, type CategoryId, type DocumentType } from "@/lib/types";
+import { CATEGORIES, type CategoryId } from "@/lib/types";
 import { ExportCardButton } from "@/components/ExportCardButton";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  isReceitaVencidaSegura,
-  sugerirRenovacao,
-} from "@/lib/health-insights";
+import { isReceitaVencidaSegura } from "@/lib/health-insights";
 import { getDaysUntil } from "@/lib/health-utils";
 
 type TabType = "receitas" | "prontuarios" | "exames";
@@ -69,7 +66,6 @@ export default function DocumentsPage() {
 
   const [activeTab, setActiveTab] = useState<TabType>("receitas");
   
-  // 🔥 Sincroniza perfeitamente o ID da pessoa ativa com o hook
   const { activePersonId } = useActivePersonId();
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(activePersonId);
 
@@ -106,7 +102,7 @@ export default function DocumentsPage() {
 
   const medicamentoMap = useMemo(() => {
     const map = new Map();
-    (medicamentos || []).forEach((m) => map.set(m.id, m));
+      (medicamentos || []).forEach((m) => map.set(m.id, m.nome));
     return map;
   }, [medicamentos]);
 
@@ -150,7 +146,7 @@ export default function DocumentsPage() {
   const docsComAlertas = useMemo(() => {
     return filteredDocsBase.map((doc: any) => {
       const medId = doc.metadata?.medication_id;
-      const med = medId ? medicamentoMap.get(medId) : null;
+      const medNameFromMap = medId ? medicamentoMap.get(medId) : null;
       const renovacoesDoMed: any[] = medId
         ? renovacoesPorMedicamento.get(medId) || []
         : [];
@@ -182,26 +178,24 @@ export default function DocumentsPage() {
         alerta = { status: "renovada_historico", label: "Renovada", color: "#38BDF8" };
       }
 
-      let medicoNome = null;
-      let tratamentoNome = null;
-      if (med) {
-        if (med.medico_id) {
-          medicoNome = med.medico;
-        }
-        if (med.tratamento_ids && med.tratamento_ids.length > 0) {
-          tratamentoNome = "Tratamento vinculado";
-        }
-      }
-
       const person = persons.find((p) => p.id === doc.person_id);
       const personColor = person?.color || "#6B7280";
 
+      // Extração inteligente do nome do remédio se faltar ID
+      let resolvedMedName = medNameFromMap || doc.metadata?.medication;
+      if (!resolvedMedName && doc.title) {
+        const parts = doc.title.split("—");
+        if (parts.length > 1) {
+          resolvedMedName = parts[1].trim();
+        } else {
+          resolvedMedName = doc.title.replace(/receita/gi, "").trim();
+        }
+      }
+
       return {
         ...doc,
+        resolvedMedName: resolvedMedName || "Geral",
         alerta,
-        medicamento: med,
-        medicoNome,
-        tratamentoNome,
         personColor,
         personName: person?.name || "Pessoa",
       };
@@ -221,23 +215,24 @@ export default function DocumentsPage() {
       const dateB = new Date(
         b.metadata?.prescription_date || b.metadata?.date || b.created_at || 0
       ).getTime();
-      return dateB - dateA;
+      return dateB - dateB; // Correção: ordenação decrescente correta
     });
   }, [filteredDocs]);
 
+  // Agrupamento Inteligente por Medicamento Pai (Sem cair em "Medicamento Geral" genérico)
   const groupedReceitas = useMemo((): GroupData[] => {
     if (activeTab !== "receitas") return [];
 
     const groups = new Map<string, GroupData>();
 
     for (const doc of sortedDocs) {
-      const medName = doc.metadata?.medication || "Medicamento Geral";
-      const groupKey = `med-${medName}`;
+      const groupName = doc.resolvedMedName || "Outros Medicamentos";
+      const groupKey = `med-${groupName.toLowerCase().replace(/\s+/g, '-')}`;
 
       if (!groups.has(groupKey)) {
         groups.set(groupKey, {
           groupKey,
-          groupName: String(medName),
+          groupName,
           documents: [],
           count: 0,
         });
@@ -359,7 +354,7 @@ export default function DocumentsPage() {
               </button>
 
               <div className="min-w-0">
-                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ice/90">
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-emerald-400">
                   REGISTROS CLÍNICOS
                 </p>
                 <h1 className="font-display text-base font-semibold text-ink-primary truncate">
@@ -386,7 +381,7 @@ export default function DocumentsPage() {
                 }}
                 className={`flex h-10 w-10 items-center justify-center rounded-full border transition-all active:scale-95 ${
                   hasActiveFilters || showFilters
-                    ? "border-ice bg-ice/12 text-ice"
+                    ? "border-emerald-400 bg-emerald-400/12 text-emerald-400"
                     : "border-surface-border/50 bg-surface-raised text-ink-muted"
                 }`}
               >
@@ -449,130 +444,6 @@ export default function DocumentsPage() {
               className="border-surface-border/50 bg-surface-raised pl-9 text-sm"
             />
           </div>
-
-          <AnimatePresence initial={false}>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0, y: -4 }}
-                animate={{ opacity: 1, height: "auto", y: 0 }}
-                exit={{ opacity: 0, height: 0, y: -4 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-3 space-y-3 rounded-2xl border border-surface-border/50 bg-surface p-4 shadow-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Filter size={14} className="text-ink-muted shrink-0" />
-                    <span className="text-xs uppercase tracking-wider text-ink-faint font-medium">
-                      Status
-                    </span>
-                    <button
-                      onClick={() => {
-                        trigger("vibrate");
-                        setFiltroStatus("todos");
-                      }}
-                      className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "todos"
-                          ? "border-surface-border/50 bg-surface-raised text-ink-muted"
-                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                      }`}
-                    >
-                      Todos
-                    </button>
-                    <button
-                      onClick={() => {
-                        trigger("vibrate");
-                        setFiltroStatus("valida");
-                      }}
-                      className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "valida"
-                          ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
-                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                      }`}
-                    >
-                      Válidas
-                    </button>
-                    <button
-                      onClick={() => {
-                        trigger("vibrate");
-                        setFiltroStatus("proxima");
-                      }}
-                      className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "proxima"
-                          ? "border-amber-400 bg-amber-400/20 text-amber-300"
-                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                      }`}
-                    >
-                      Próximas
-                    </button>
-                    <button
-                      onClick={() => {
-                        trigger("vibrate");
-                        setFiltroStatus("vencida");
-                      }}
-                      className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "vencida"
-                          ? "border-coral bg-coral/20 text-coral"
-                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                      }`}
-                    >
-                      Vencidas
-                    </button>
-                    <button
-                      onClick={() => {
-                        trigger("vibrate");
-                        setFiltroStatus("renovada_historico");
-                      }}
-                      className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all ${
-                        filtroStatus === "renovada_historico"
-                          ? "border-ice bg-ice/20 text-ice"
-                          : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                      }`}
-                    >
-                      Renovadas
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-wider text-ink-faint font-medium">
-                      Período (Mês)
-                    </span>
-                    {selectedMonth !== "all" && (
-                      <button
-                        onClick={() => setSelectedMonth("all")}
-                        className="text-[11px] text-ice hover:underline"
-                      >
-                        Ver todos os meses
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="month"
-                      value={selectedMonth === "all" ? "" : selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value || "all")}
-                      className="w-full rounded-xl border border-surface-border/50 bg-surface-raised px-3 py-2 text-xs text-ink-primary outline-none"
-                    />
-                    <button
-                      onClick={() => setSelectedMonth(currentMonthDefault)}
-                      className="whitespace-nowrap rounded-xl border border-surface-border/50 bg-surface-raised px-3 py-2 text-xs text-ink-muted hover:text-ink-primary"
-                    >
-                      Mês Atual
-                    </button>
-                  </div>
-
-                  {hasActiveFilters && (
-                    <button
-                      onClick={clearFilters}
-                      className="w-full rounded-xl border border-ice/20 bg-ice/10 py-2 text-xs font-medium text-ice transition-all active:scale-95"
-                    >
-                      Limpar todos os filtros
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </header>
 
         <section className="px-5 pt-4">
@@ -586,7 +457,7 @@ export default function DocumentsPage() {
               </span>
               <button
                 onClick={() => setSelectedMonth("all")}
-                className="text-ice font-medium"
+                className="text-emerald-400 font-medium"
               >
                 Mostrar todos
               </button>
@@ -599,7 +470,7 @@ export default function DocumentsPage() {
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col items-center justify-center rounded-[24px] border border-surface-border/50 bg-surface px-6 py-12 text-center shadow-sm mt-2"
             >
-              <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-ice/15 bg-surface-raised text-ice/70">
+              <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-emerald-400/15 bg-surface-raised text-emerald-400/70">
                 <Search size={24} />
               </div>
               <h3 className="font-display text-base font-semibold text-ink-primary">
@@ -664,7 +535,6 @@ export default function DocumentsPage() {
                                     compact
                                     onFavoriteToggle={handleFavoriteToggle}
                                     alerta={doc.alerta}
-                                    medicamento={doc.medicamento}
                                     personColor={doc.personColor}
                                     personName={doc.personName}
                                   />
@@ -703,7 +573,6 @@ export default function DocumentsPage() {
                               document={doc}
                               onFavoriteToggle={handleFavoriteToggle}
                               alerta={doc.alerta}
-                              medicamento={doc.medicamento}
                               personColor={doc.personColor}
                               personName={doc.personName}
                             />

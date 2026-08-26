@@ -726,7 +726,7 @@ class VaultDB extends Dexie {
       versiculos: 'id, user_id, created_at',
     });
 
-    //     ==========================================================
+    // ==========================================================
     // VERSÃO 30 — Registros de Saúde (sintomas, medições, humor)
     // ==========================================================
 
@@ -795,9 +795,17 @@ class VaultDB extends Dexie {
       vaultMembers: 'id, vault_id, user_id',
       vaults: 'id, user_id, name'
     });
+
+    // ==========================================================
+    // VERSÃO 32 — Suporte a Relacionamento Avô-Pai-Filho (DocumentManager)
+    // ==========================================================
+
+    (this as any).version(32).stores({
+      documents:
+        'id, user_id, person_id, category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id, entidade_tipo, entidade_id, [entidade_tipo+entidade_id]',
+    });
   } // Fecha o constructor
 } // Fecha a classe VaultDB
-
 
 // ============================================================
 // INSTÂNCIA ÚNICA

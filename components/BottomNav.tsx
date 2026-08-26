@@ -69,13 +69,17 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "consulta", label: "Consulta", icon: Calendar, path: "/saude/consultas/nova" },
   { id: "cirurgia", label: "Cirurgia", icon: Syringe, path: "/saude/cirurgias/nova" },
   { id: "cid", label: "CID", icon: FileText, path: "/saude/cids/novo" },
-  { id: "sintoma", label: "Sintoma / Medição", icon: Activity, path: "/saude/registros/novo" }, // 👈 Adicionado aqui também no menu raiz!
+  { id: "sintoma", label: "Sintoma / Medição", icon: Activity, path: "/saude/registros/novo" },
+];
+
+const SAUDE_DOCUMENTOS_COMPOSE_OPTIONS: ComposeOption[] = [
+  { id: "novo-documento-saude", label: "Novo documento", icon: Plus, path: "/saude/documentos/novo" },
 ];
 
 // OPÇÕES EXCLUSIVAS DA ABA "HOJE"
 const HOJE_COMPOSE_OPTIONS: ComposeOption[] = [
   { id: "dose-unica", label: "Dose Única", icon: Zap, path: "/hoje?action=dose" },
-  { id: "sintoma", label: "Novo Sintoma", icon: Activity, path: "/saude/registros/novo" }, // 👈 Aponta direto para a tela de novo registro
+  { id: "sintoma", label: "Novo Sintoma", icon: Activity, path: "/saude/registros/novo" },
 ];
 
 const DOCUMENTOS_COMPOSE_OPTIONS: ComposeOption[] = [
@@ -153,7 +157,7 @@ const PESSOAS_COMPOSE_OPTIONS: ComposeOption[] = [
 function getComposeOptions(pathname: string, searchParams: URLSearchParams): ComposeOption[] {
   if (pathname === "/") return SAUDE_COMPOSE_OPTIONS;
   if (pathname === "/documentos") return DOCUMENTOS_COMPOSE_OPTIONS;
-  if (pathname === "/saude/documentos") return SAUDE_COMPOSE_OPTIONS;
+  if (pathname === "/saude/documentos") return SAUDE_DOCUMENTOS_COMPOSE_OPTIONS;
   if (pathname === "/hoje") return HOJE_COMPOSE_OPTIONS;
   if (pathname === "/mais") return [];
 
@@ -214,10 +218,11 @@ const ALLOWED_NAV_PATHS = [
   "/saude/cirurgias",
   "/saude/cids",
   "/saude/rede",
-  "/saude/registros", // 👈 Adicionadas rotas de registros para manter o BottomNav ativo
+  "/saude/registros",
   "/saude/registros/novo",
   "/saude/registros/detalhes",
   "/saude/registros/editar",
+  "/saude/documentos/novo",
 ];
 
 function shouldShowNav(pathname: string): boolean {
@@ -228,10 +233,10 @@ function shouldShowNav(pathname: string): boolean {
 
 function getOptionColorClass(id: string) {
   if (['dose-unica'].includes(id)) return 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20';
-  if (['sintoma'].includes(id)) return 'bg-amber-400/10 text-amber-400 border-amber-400/20'; // 👈 Cor do sintoma
+  if (['sintoma'].includes(id)) return 'bg-amber-400/10 text-amber-400 border-amber-400/20';
   if (['renovacao'].includes(id)) return 'bg-coral/10 text-coral border-coral/20';
   if (['medicamento', 'farmacia'].includes(id)) return 'bg-amber-400/10 text-amber-400 border-amber-400/20';
-  if (['exame', 'local', 'cid'].includes(id)) return 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20';
+  if (['exame', 'local', 'cid', 'novo-documento-saude'].includes(id)) return 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20';
   if (['tratamento', 'cirurgia'].includes(id)) return 'bg-violet-400/10 text-violet-400 border-violet-400/20';
   return 'bg-ice/10 text-ice border-ice/20';
 }
