@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
-import { getDaysUntil } from "@/lib/health-utils";
 
 export function MedicamentosNotifications() {
   const { trigger } = useHapticFeedback();
@@ -134,9 +133,12 @@ export function MedicamentosNotifications() {
         </h3>
       </div>
 
-      <div className="space-y-2.5">
+      <div 
+        className="-mx-5 flex snap-x snap-mandatory overflow-x-auto px-5 pb-4 gap-3 scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
         <AnimatePresence>
-          {alertas.slice(0, 4).map((alerta, index) => (
+          {alertas.map((alerta, index) => (
             <motion.div
               key={`${alerta.tipo}-${alerta.id}-${index}`}
               initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -146,7 +148,7 @@ export function MedicamentosNotifications() {
                 trigger("vibrate");
                 router.push(`/saude/medicamentos/detalhes?id=${alerta.id}`);
               }}
-              className={`group flex items-center justify-between gap-3 rounded-[24px] border p-3.5 shadow-sm transition-all active:scale-[0.98] cursor-pointer ${getUrgencyColor(alerta.urgencia)}`}
+              className={`group w-[85%] max-w-[320px] shrink-0 snap-start flex items-center justify-between gap-3 rounded-[24px] border p-3.5 shadow-sm transition-all active:scale-[0.98] cursor-pointer ${getUrgencyColor(alerta.urgencia)}`}
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 <div
@@ -189,6 +191,7 @@ export function MedicamentosNotifications() {
             </motion.div>
           ))}
         </AnimatePresence>
+        <div className="w-2 shrink-0" />
       </div>
     </div>
   );
