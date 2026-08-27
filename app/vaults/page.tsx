@@ -1,9 +1,11 @@
 // app/vaults/page.tsx
+
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
+
 import { useVaults } from "@/hooks/useVaults";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -15,35 +17,93 @@ import { db } from "@/lib/db";
 import { ListPageHeader } from "@/components/list";
 
 export default function VaultsPage() {
-  const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { trigger } = useHapticFeedback();
+
   const { vaults } = useVaults();
   const { activePersonId } = useActivePersonId();
-  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
 
+  const [memberCounts, setMemberCounts] = useState<Record<string, number>>(
+    {}
+  );
+
+  /**
+   * Mantém apenas os cofres:
+   * - sem pessoa vinculada; ou
+   * - vinculados à pessoa atualmente ativa.
+   *
+   * Isso mantém o comportamento global do Vault baseado
+   * no perfil/pessoa ativa.
+   */
   const filteredVaults = useMemo(() => {
     if (!vaults) return [];
-    return vaults.filter((v: any) => !activePersonId || !v.person_id || v.person_id === activePersonId);
+
+    return vaults.filter(
+      (vault) =>
+        !activePersonId ||
+        !vault.person_id ||
+        vault.person_id === activePersonId
+    );
   }, [vaults, activePersonId]);
 
+  /**
+   * Busca a quantidade de membros de cada cofre.
+   *
+   * A consulta é executada novamente somente quando
+   * a lista efetivamente filtrada muda.
+   */
   useEffect(() => {
+    let cancelled = false;
+
     const countMembers = async () => {
-      if (!filteredVaults || filteredVaults.length === 0) return;
-      const counts: Record<string, number> = {};
-      for (const vault of filteredVaults) {
-        if (vault.id) {
-          const count = await db.vaultMembers.where("vault_id").equals(vault.id).count();
-          counts[vault.id] = count;
+      if (filteredVaults.length === 0) {
+        if (!cancelled) {
+          setMemberCounts({});
+        }
+        return;
+      }
+
+      try {
+        const entries = await Promise.all(
+          filteredVaults
+            .filter((vault) => Boolean(vault.id))
+            .map(async (vault) => {
+              const count = await db.vaultMembers
+                .where("vault_id")
+                .equals(vault.id!)
+                .count();
+
+              return [vault.id!, count] as const;
+            })
+        );
+
+        if (!cancelled) {
+          setMemberCounts(Object.fromEntries(entries));
+        }
+      } catch (error) {
+        console.error("Erro ao contar membros dos cofres:", error);
+
+        if (!cancelled) {
+          setMemberCounts({});
         }
       }
-      setMemberCounts(counts);
     };
-    countMembers();
+
+    void countMembers();
+
+    return () => {
+      cancelled = true;
+    };
   }, [filteredVaults]);
 
   if (vaults === undefined) {
     return <CardListSkeleton />;
   }
+
+  const handleCreateVault = () => {
+    trigger("vibrate");
+    router.push("/vaults/novo");
+  };
 
   return (
     <PageTransition>
@@ -58,16 +118,13 @@ export default function VaultsPage() {
         />
 
         <section className="space-y-4 px-5 pt-6">
-          {!filteredVaults || filteredVaults.length === 0 ? (
+          {filteredVaults.length === 0 ? (
             <EmptyState
               icon={Lock}
               title="Nenhum cofre criado"
               description="Crie um cofre para compartilhar documentos com sua família, médicos ou cuidadores."
               actionLabel="Criar cofre"
-              onAction={() => {
-                trigger("vibrate");
-                router.push("/vaults/novo");
-              }}
+              onAction={handleCreateVault}
             />
           ) : (
             filteredVaults.map((vault, index) => (
@@ -78,7 +135,10 @@ export default function VaultsPage() {
                   animationDelay: `${Math.min(index * 0.05, 0.24)}s`,
                 }}
               >
-                <VaultCard vault={vault} memberCount={memberCounts[vault.id!] || 0} />
+                <VaultCard
+                  vault={vault}
+                  memberCount={vault.id ? memberCounts[vault.id] ?? 0 : 0}
+                />
               </div>
             ))
           )}

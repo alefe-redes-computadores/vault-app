@@ -1,7 +1,8 @@
 // app/pessoas/page.tsx
+
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Trash2,
@@ -14,6 +15,7 @@ import {
   CheckCircle,
   Info,
 } from "lucide-react";
+
 import { usePersons } from "@/hooks/usePersons";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -25,34 +27,48 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { personsRepository } from "@/lib/repositories/persons";
 import { documentsRepository } from "@/lib/repositories/documents";
+
 import {
   ListPageHeader,
   ListCard,
 } from "@/components/list";
 
 export default function PessoasPage() {
-  const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
+
   const { activePersonId, changePerson } = useActivePersonId();
+  const persons = usePersons();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
   const [showDeleteModal, setShowDeleteModal] = useState<{
     id: string;
     name: string;
   } | null>(null);
 
-  const persons = usePersons();
-
+  /**
+   * Pequeno atraso para preservar a transição/skeleton da página.
+   */
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 420);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(() => {
+      setIsLoading(false);
+    }, 420);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, []);
 
+  /**
+   * A ordenação é feita apenas para apresentação.
+   * A ordem original do hook/banco não é modificada.
+   */
   const sortedPersons = useMemo(() => {
-    return [...(persons || [])].sort((a, b) =>
-      (a.name || "").localeCompare(b.name || "", "pt-BR", {
+    return [...(persons ?? [])].sort((a, b) =>
+      (a.name ?? "").localeCompare(b.name ?? "", "pt-BR", {
         sensitivity: "base",
       })
     );
@@ -60,18 +76,58 @@ export default function PessoasPage() {
 
   const handlePersonClick = async (id: string) => {
     trigger("vibrate");
-    await changePerson(id);
+
+    try {
+      await changePerson(id);
+    } catch (error) {
+      console.error("Erro ao alterar pessoa ativa:", error);
+      trigger("error");
+      showToast("Não foi possível alterar a pessoa ativa.", "error");
+    }
   };
 
-  const handleDeleteClick = (id: string, name: string) => {
+  const handleEditPerson = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    personId: string
+  ) => {
+    event.stopPropagation();
+
     trigger("vibrate");
-    setShowDeleteModal({ id, name });
+    router.push(`/pessoas/editar?id=${personId}`);
+  };
+
+  const handleDeleteClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    id: string,
+    name: string
+  ) => {
+    event.stopPropagation();
+
+    trigger("vibrate");
+    setShowDeleteModal({
+      id,
+      name,
+    });
   };
 
   const confirmDelete = async () => {
-    if (!showDeleteModal) return;
+    if (!showDeleteModal || isDeleting) return;
 
     const { id, name } = showDeleteModal;
+
+    /**
+     * Segurança adicional:
+     * mesmo que a UI tenha sido alterada entre a abertura do modal
+     * e a confirmação, nunca permitimos excluir a pessoa ativa.
+     */
+    if (id === activePersonId) {
+      setShowDeleteModal(null);
+      showToast(
+        "A pessoa ativa não pode ser removida.",
+        "error"
+      );
+      return;
+    }
 
     trigger("vibrate");
     setIsDeleting(id);
@@ -82,6 +138,10 @@ export default function PessoasPage() {
         .equals(id)
         .toArray();
 
+      /**
+       * Exclui os documentos através do repository para preservar
+       * a fila/sincronização da aplicação.
+       */
       for (const document of documents) {
         if (document.id) {
           await documentsRepository.delete(document.id);
@@ -90,6 +150,9 @@ export default function PessoasPage() {
 
       await personsRepository.delete(id);
 
+      /**
+       * Solicita processamento da sincronização imediatamente.
+       */
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("sync:process"));
       }
@@ -98,8 +161,12 @@ export default function PessoasPage() {
       showToast(`"${name}" foi removido(a)`, "success");
     } catch (error) {
       console.error("Erro ao remover pessoa:", error);
+
       trigger("error");
-      showToast("Não foi possível remover a pessoa", "error");
+      showToast(
+        "Não foi possível remover a pessoa.",
+        "error"
+      );
     } finally {
       setIsDeleting(null);
       setShowDeleteModal(null);
@@ -115,7 +182,11 @@ export default function PessoasPage() {
       <main className="relative min-h-screen bg-void pb-28">
         <ListPageHeader
           title="Pessoas"
-          subtitle={`${sortedPersons.length} pessoa${sortedPersons.length !== 1 ? "s" : ""} cadastrada${sortedPersons.length !== 1 ? "s" : ""}`}
+          subtitle={`${sortedPersons.length} pessoa${
+            sortedPersons.length !== 1 ? "s" : ""
+          } cadastrada${
+            sortedPersons.length !== 1 ? "s" : ""
+          }`}
         />
 
         <section className="px-5 pt-6">
@@ -123,42 +194,69 @@ export default function PessoasPage() {
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ice/15 text-ice">
               <Info size={16} />
             </div>
+
             <p className="text-sm leading-6 text-ink-primary">
-              Toque no card de uma pessoa para torná-la <span className="font-semibold text-ice">ativa</span>. O app passará a filtrar documentos e dados por ela automaticamente.
+              Toque no card de uma pessoa para torná-la{" "}
+              <span className="font-semibold text-ice">
+                ativa
+              </span>
+              . O app passará a filtrar documentos e dados por
+              ela automaticamente.
             </p>
           </div>
 
           {sortedPersons.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface px-6 py-14 text-center shadow-sm">
               <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
-                <Users size={32} strokeWidth={1.8} className="text-ink-muted" />
+                <Users
+                  size={32}
+                  strokeWidth={1.8}
+                  className="text-ink-muted"
+                />
               </div>
+
               <h3 className="font-display text-lg font-semibold text-ink-primary">
                 Nenhuma pessoa cadastrada
               </h3>
+
               <p className="mt-2 max-w-xs text-sm leading-6 text-ink-muted">
-                Cadastre pessoas para vincular documentos e deixar sua organização mais rápida.
+                Cadastre pessoas para vincular documentos e
+                deixar sua organização mais rápida.
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               {sortedPersons.map((person, index) => {
                 const personId = person.id!;
-                const isDefault = activePersonId === personId;
-                const color = person.color || "#38BDF8";
+
+                const isActive =
+                  activePersonId === personId;
+
+                const personColor =
+                  person.color || "#38BDF8";
 
                 return (
                   <ListCard
                     key={personId}
                     id={personId}
-                    color={color}
-                    onClick={() => handlePersonClick(personId)}
-                    delay={index * 0.025}
+                    color={personColor}
+                    onClick={() =>
+                      void handlePersonClick(personId)
+                    }
+                    delay={Math.min(index * 0.025, 0.25)}
                     icon={
                       person.avatar_url ? (
-                        <img src={person.avatar_url} alt={person.name} className="h-full w-full rounded-2xl object-cover" />
+                        <img
+                          src={person.avatar_url}
+                          alt={person.name}
+                          className="h-full w-full rounded-2xl object-cover"
+                        />
                       ) : (
-                        <span className="text-lg font-bold">{person.name?.charAt(0).toUpperCase() || "P"}</span>
+                        <span className="text-lg font-bold">
+                          {person.name
+                            ?.charAt(0)
+                            .toUpperCase() || "P"}
+                        </span>
                       )
                     }
                     isDisabled={false}
@@ -166,29 +264,39 @@ export default function PessoasPage() {
                       <>
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            trigger("vibrate");
-                            router.push(`/pessoas/editar?id=${personId}`);
-                          }}
-                          className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted transition-colors hover:text-ice active:scale-95"
+                          onClick={(event) =>
+                            handleEditPerson(
+                              event,
+                              personId
+                            )
+                          }
+                          className="flex h-8 w-8 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-colors hover:text-ice active:scale-95"
                           aria-label={`Editar ${person.name}`}
                         >
                           <Edit size={14} />
                         </button>
-                        {!isDefault && (
+
+                        {!isActive && (
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(personId, person.name);
-                            }}
-                            disabled={isDeleting === personId}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-muted transition-colors hover:text-coral hover:border-coral/30 active:scale-95 disabled:opacity-50"
+                            onClick={(event) =>
+                              handleDeleteClick(
+                                event,
+                                personId,
+                                person.name
+                              )
+                            }
+                            disabled={
+                              isDeleting === personId
+                            }
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-colors hover:border-coral/30 hover:text-coral active:scale-95 disabled:opacity-50"
                             aria-label={`Remover ${person.name}`}
                           >
                             {isDeleting === personId ? (
-                              <Loader2 size={14} className="animate-spin text-coral" />
+                              <Loader2
+                                size={14}
+                                className="animate-spin text-coral"
+                              />
                             ) : (
                               <Trash2 size={14} />
                             )}
@@ -201,8 +309,9 @@ export default function PessoasPage() {
                       <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
                         {person.name}
                       </h3>
-                      {isDefault && (
-                        <span className="shrink-0 whitespace-nowrap flex items-center gap-0.5 rounded-full bg-ice/15 px-2 py-0.5 text-[9px] font-bold uppercase text-ice border border-ice/20">
+
+                      {isActive && (
+                        <span className="flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border border-ice/20 bg-ice/15 px-2 py-0.5 text-[9px] font-bold uppercase text-ice">
                           <CheckCircle size={10} />
                           Ativa
                         </span>
@@ -211,21 +320,41 @@ export default function PessoasPage() {
 
                     <div className="mt-1 space-y-1">
                       {person.email && (
-                        <p className="flex items-center gap-1.5 text-xs text-ink-muted truncate">
-                          <Mail size={12} strokeWidth={1.8} className="shrink-0" />
-                          <span className="truncate">{person.email}</span>
+                        <p className="flex items-center gap-1.5 truncate text-xs text-ink-muted">
+                          <Mail
+                            size={12}
+                            strokeWidth={1.8}
+                            className="shrink-0"
+                          />
+                          <span className="truncate">
+                            {person.email}
+                          </span>
                         </p>
                       )}
+
                       {person.phone && (
-                        <p className="flex items-center gap-1.5 text-xs text-ink-muted truncate">
-                          <Phone size={12} strokeWidth={1.8} className="shrink-0" />
-                          <span className="truncate">{person.phone}</span>
+                        <p className="flex items-center gap-1.5 truncate text-xs text-ink-muted">
+                          <Phone
+                            size={12}
+                            strokeWidth={1.8}
+                            className="shrink-0"
+                          />
+                          <span className="truncate">
+                            {person.phone}
+                          </span>
                         </p>
                       )}
+
                       {!person.email && !person.phone && (
                         <p className="flex items-center gap-1.5 text-xs text-ink-faint">
-                          <User size={12} strokeWidth={1.8} className="shrink-0" />
-                          <span>Sem informações adicionais</span>
+                          <User
+                            size={12}
+                            strokeWidth={1.8}
+                            className="shrink-0"
+                          />
+                          <span>
+                            Sem informações adicionais
+                          </span>
                         </p>
                       )}
                     </div>
@@ -237,13 +366,13 @@ export default function PessoasPage() {
         </section>
 
         <ConfirmationModal
-          isOpen={!!showDeleteModal}
+          isOpen={Boolean(showDeleteModal)}
           onClose={() => {
             if (!isDeleting) {
               setShowDeleteModal(null);
             }
           }}
-          onConfirm={confirmDelete}
+          onConfirm={() => void confirmDelete()}
           title="Remover pessoa"
           message={
             showDeleteModal

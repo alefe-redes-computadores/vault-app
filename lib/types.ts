@@ -899,6 +899,7 @@ export interface Vault {
   created_at: string;
   updated_at: string;
   synced: boolean;
+  person_id?: string;
 }
 
 export interface VaultMember {
@@ -1068,6 +1069,7 @@ export interface Credential {
   created_at: string;
   updated_at: string;
   synced: boolean;
+  person_id?: string;
 }
 
 export interface BankCard {
