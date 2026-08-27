@@ -239,30 +239,39 @@ function TratamentoContent() {
   }, [allDocuments, id]);
 
   /* ============================================================
-     CUSTO TOTAL (SOMA DE MEDICAMENTOS + RENOVAÇÕES)
+     CUSTO TOTAL (SOMA DE MEDICAMENTOS + RENOVAÇÕES COM PARSER SEGURO)
      ============================================================ */
 
   const custoTotalTratamento = useMemo(() => {
     let total = 0;
 
-    // 1. Soma os preços de cadastro dos medicamentos
+    const getSafeNumber = (val: any) => {
+      if (!val) return 0;
+      if (typeof val === 'number') return val;
+      const parsed = Number(String(val).replace(/\./g, '').replace(',', '.'));
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
     linkedMedicamentos.forEach((med: Medicamento) => {
-      const valor = Number(med.preco || 0);
-      if (!isNaN(valor) && valor > 0) {
-        total += valor;
-      }
+      total += getSafeNumber(med.preco);
     });
 
-    // 2. Soma todas as renovações/compras
     linkedRenovacoes.forEach((r: Renovacao) => {
-      const valor = Number(r.preco || 0);
-      if (!isNaN(valor) && valor > 0) {
-        total += valor;
-      }
+      total += getSafeNumber(r.preco);
     });
 
     return total;
   }, [linkedMedicamentos, linkedRenovacoes]);
+
+  // IMPEDE QUEBRA DE LINHA NO CARD (R$ 0,00)
+  const custoDisplay = useMemo(() => {
+    if (custoTotalTratamento > 0) {
+      return formatCurrency(custoTotalTratamento).replace(/\s/g, '\u00A0');
+    }
+    const isAllSus = linkedMedicamentos.length > 0 && linkedMedicamentos.every(m => m.tipo_aquisicao === 'sus');
+    if (isAllSus) return "SUS";
+    return "R$\u00A00,00";
+  }, [custoTotalTratamento, linkedMedicamentos]);
 
   /* ============================================================
      ANÁLISE DE SUS
@@ -986,15 +995,7 @@ function TratamentoContent() {
               <StatCard
                 icon={<Receipt size={14} />}
                 label="Custo Total"
-                value={
-                  custoTotalTratamento > 0
-                    ? formatCurrency(
-                        custoTotalTratamento
-                      )
-                    : statsSus.isAllSus 
-                      ? "SUS" 
-                      : "R$ 0,00"
-                }
+                value={custoDisplay}
                 description={
                   statsSus.isAllSus 
                     ? "Integral" 

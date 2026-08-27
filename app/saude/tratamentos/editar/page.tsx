@@ -98,8 +98,7 @@ function EditarTratamentoContent() {
           setHospitalIds(data.hospital_ids || []);
           setLocalIds(data.local_ids || []);
 
-          // 🛡️ CORREÇÃO: Bypass de Dexie Array Index
-          // Puxa todos da memória primeiro para garantir que a leitura de arrays não falhe
+          // Bypass de Dexie Array Index: Puxa todos da memória primeiro para garantir que a leitura de arrays não falhe
           const todosMeds = await db.medicamentos.toArray();
           const medsVinculados = todosMeds.filter(m => m.tratamento_ids?.includes(id));
           setMedicamentoIds(medsVinculados.map(m => m.id!));
@@ -139,7 +138,7 @@ function EditarTratamentoContent() {
 
       await saveAction.run(
         async () => {
-          // 1. Atualizar o tratamento com segurança
+          // 1. Atualizar o tratamento usando o repositório oficial
           await tratamentosRepository.update(id, {
             person_id: personId,
             nome: nome.trim(),
@@ -152,7 +151,7 @@ function EditarTratamentoContent() {
             local_ids: localIds,
           });
 
-          // 2. 🛡️ Atualizar vínculos com Medicamentos usando o Bypass Memory
+          // 2. Atualizar vínculos com Medicamentos usando bypass memory e o repositório oficial
           const todosMedsParaSalvar = await db.medicamentos.toArray();
           const previousMedIds = todosMedsParaSalvar.filter(m => m.tratamento_ids?.includes(id)).map(m => m.id!);
           
@@ -301,9 +300,7 @@ function EditarTratamentoContent() {
             </div>
           </motion.div>
 
-          {/* REDE DE APOIO E MEDICAMENTOS */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            
             {/* MEDICAMENTOS */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
@@ -407,9 +404,6 @@ function EditarTratamentoContent() {
           )}
         </section>
 
-        {/* =======================================================
-            BOTÕES INFERIORES E MODAIS
-        ======================================================= */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saveAction.isSubmitting} className="shadow-lg">
             {saveAction.isSubmitting ? <Loader2 size={18} className="animate-spin" /> : "Salvar alterações"}
@@ -419,34 +413,10 @@ function EditarTratamentoContent() {
         <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir Tratamento" message="Tem certeza que deseja excluir este tratamento? O histórico de medicamentos e exames não será apagado, mas perderão este vínculo." isLoading={deleteAction.isSubmitting} />
 
         <SelectionModal<Cid> isOpen={isCidModalOpen} onClose={() => setIsCidModalOpen(false)} onSelect={(item) => handleAddCid(item.id!)} items={cids || []} title="Vincular Diagnóstico (CID)" placeholder="Buscar por código ou descrição..." getItemId={i => i.id!} getItemLabel={i => i.descricao} renderItem={(item) => (<div><p className="font-medium text-ink-primary">{item.descricao}</p>{item.codigo && item.codigo !== "N/A" && <p className="text-xs text-ink-muted">CID: {item.codigo}</p>}</div>)} onCreateNew={() => { setIsCidModalOpen(false); router.push("/saude/cids/novo"); }} createNewLabel="Cadastrar Novo CID" />
-
         <SelectionModal<Medico> isOpen={isMedicoModalOpen} onClose={() => setIsMedicoModalOpen(false)} onSelect={(item) => { handleAddMedico(item); setIsMedicoModalOpen(false); }} items={medicos.filter(m => !medicoIds.includes(m.id!))} title="Vincular Médico" placeholder="Buscar médico..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Stethoscope size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">Dr(a). {item.nome}</p></div></div>)} onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }} createNewLabel="Cadastrar Novo Médico" />
-
         <SelectionModal<Hospital> isOpen={isHospitalModalOpen} onClose={() => setIsHospitalModalOpen(false)} onSelect={(item) => { handleAddHospital(item); setIsHospitalModalOpen(false); }} items={hospitais.filter(h => !hospitalIds.includes(h.id!))} title="Vincular Hospital" placeholder="Buscar hospital..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/10 text-violet-400"><Building2 size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }} createNewLabel="Cadastrar Novo Hospital" />
-
         <SelectionModal<LocalSaude> isOpen={isLocalModalOpen} onClose={() => setIsLocalModalOpen(false)} onSelect={(item) => { handleAddLocal(item); setIsLocalModalOpen(false); }} items={locais.filter(l => !localIds.includes(l.id!))} title="Vincular Posto/Local" placeholder="Buscar local..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><MapPin size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }} createNewLabel="Cadastrar Novo Local" />
-
-        <SelectionModal<Medicamento> 
-          isOpen={isMedicamentoModalOpen} 
-          onClose={() => setIsMedicamentoModalOpen(false)} 
-          onSelect={(item) => { handleAddMedicamento(item); setIsMedicamentoModalOpen(false); }} 
-          items={medicamentos.filter(m => !medicamentoIds.includes(m.id!))} 
-          title="Vincular Medicamento" 
-          placeholder="Buscar medicamento..." 
-          getItemId={i => i.id!} 
-          getItemLabel={i => i.nome} 
-          renderItem={(item) => (
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Pill size={16} /></div>
-              <div>
-                <p className="text-sm font-semibold text-ink-primary">{item.nome}</p>
-                <p className="text-xs text-ink-muted mt-0.5">{item.dosagem}</p>
-              </div>
-            </div>
-          )} 
-          onCreateNew={() => { setIsMedicamentoModalOpen(false); router.push("/saude/medicamentos/novo"); }} 
-          createNewLabel="Cadastrar Novo Medicamento" 
-        />
+        <SelectionModal<Medicamento> isOpen={isMedicamentoModalOpen} onClose={() => setIsMedicamentoModalOpen(false)} onSelect={(item) => { handleAddMedicamento(item); setIsMedicamentoModalOpen(false); }} items={medicamentos.filter(m => !medicamentoIds.includes(m.id!))} title="Vincular Medicamento" placeholder="Buscar medicamento..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Pill size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p><p className="text-xs text-ink-muted mt-0.5">{item.dosagem}</p></div></div>)} onCreateNew={() => { setIsMedicamentoModalOpen(false); router.push("/saude/medicamentos/novo"); }} createNewLabel="Cadastrar Novo Medicamento" />
 
         <AnimatePresence>
           {showAddCidPrompt && (
