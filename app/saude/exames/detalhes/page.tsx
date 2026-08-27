@@ -9,50 +9,52 @@ import {
   FlaskConical,
   Building2,
   Stethoscope,
-  Calendar,
   FileText,
   ExternalLink,
   Trash2,
   Edit3,
-  AlertCircle,
   User,
   Activity,
-  Brain,
-  Flame,
-  HeartPulse,
-  ShieldAlert,
-  ChevronRight,
-  History,
-  AlertOctagon,
   AlertTriangle,
+  AlertOctagon,
   CheckCircle2,
   Plus,
   Copy,
-  X,
-  Clock,
+  ChevronRight,
+  History,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
+
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { useExames } from "@/hooks/useExames";
-import { useToast } from "@/components/ToastProvider";
 import { SelectionModal } from "@/components/SelectionModal";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
-import { isReceitaVencidaSegura } from "@/lib/health-insights";
-import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
-import { useMounted } from "@/hooks/useMounted";
+import { useToast } from "@/components/ToastProvider";
+
+import { useExames } from "@/hooks/useExames";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useLocais } from "@/hooks/useLocais";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { useMounted } from "@/hooks/useMounted";
+
+import { isReceitaVencidaSegura } from "@/lib/health-insights";
+import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
+
 import {
   SectionTitle,
   DetailInfoRow,
-  StatCard,
 } from "@/components/detail/DetailComponents";
-import type { Exame, Medico, Hospital, Tratamento, Cid } from "@/lib/types";
+
+import type {
+  Exame,
+  Medico,
+  Tratamento,
+  Cid,
+  LocalSaude,
+} from "@/lib/types";
 
 /* ============================================================
    HELPERS
@@ -60,6 +62,7 @@ import type { Exame, Medico, Hospital, Tratamento, Cid } from "@/lib/types";
 
 function formatDate(isoStr?: string) {
   if (!isoStr) return "—";
+
   try {
     return new Date(isoStr).toLocaleDateString("pt-BR");
   } catch {
@@ -72,114 +75,231 @@ function formatDate(isoStr?: string) {
    ============================================================ */
 
 function DetalhesExameContent() {
-  const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { user } = useAuth();
+
+  const { trigger } = useHapticFeedback();
+  const { showToast } = useToast();
   const mounted = useMounted();
 
-  const [deleting, setDeleting] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [exame, setExame] = useState<Exame | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
+  const {
+    getExame,
+    updateExame,
+    deleteExame,
+  } = useExames();
 
-  const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
-  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
-  const [isCreatingMedico, setIsCreatingMedico] = useState(false);
-  const [newMedicoNome, setNewMedicoNome] = useState("");
-  const [newMedicoEspecialidade, setNewMedicoEspecialidade] = useState("");
-  const [isCreatingLocal, setIsCreatingLocal] = useState(false);
-  const [newLocalNome, setNewLocalNome] = useState("");
-
-  const { getExame, deleteExame, updateExame } = useExames();
   const { addMedico } = useMedicos();
   const { addLocal } = useLocais();
+
+  const deleteAction = useSubmitAction();
+
+  const [exame, setExame] = useState<Exame | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] =
+    useState(false);
+
+  const [isMedicoModalOpen, setIsMedicoModalOpen] =
+    useState(false);
+
+  const [isLocalModalOpen, setIsLocalModalOpen] =
+    useState(false);
+
+  const [isCreatingMedico, setIsCreatingMedico] =
+    useState(false);
+
+  const [newMedicoNome, setNewMedicoNome] = useState("");
+  const [newMedicoEspecialidade, setNewMedicoEspecialidade] =
+    useState("");
+
+  const [isCreatingLocal, setIsCreatingLocal] = useState(false);
+  const [newLocalNome, setNewLocalNome] = useState("");
 
   /* ==========================================================
      DEXIE
      ========================================================== */
 
-  const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
-  const locais = useLiveQuery(() => db.locais.toArray(), []) || [];
-  const persons = useLiveQuery(() => db.persons.toArray(), []) || [];
+  const medicos =
+    useLiveQuery(() => db.medicos.toArray(), []) || [];
 
-  const tratamentos = useLiveQuery(() => {
-    if (!exame?.tratamento_ids || exame.tratamento_ids.length === 0) return [];
-    return db.tratamentos.where('id').anyOf(exame.tratamento_ids).toArray();
-  }, [exame?.tratamento_ids]) || [];
+  const locais =
+    useLiveQuery(() => db.locais.toArray(), []) || [];
 
-  const cids = useLiveQuery(() => {
-    if (!exame?.cid_ids || exame.cid_ids.length === 0) return [];
-    return db.cids.where('id').anyOf(exame.cid_ids).toArray();
-  }, [exame?.cid_ids]) || [];
+  const persons =
+    useLiveQuery(() => db.persons.toArray(), []) || [];
+
+  const tratamentos =
+    useLiveQuery(() => {
+      if (
+        !exame?.tratamento_ids ||
+        exame.tratamento_ids.length === 0
+      ) {
+        return [];
+      }
+
+      return db.tratamentos
+        .where("id")
+        .anyOf(exame.tratamento_ids)
+        .toArray();
+    }, [exame?.tratamento_ids]) || [];
+
+  const cids =
+    useLiveQuery(() => {
+      if (!exame?.cid_ids || exame.cid_ids.length === 0) {
+        return [];
+      }
+
+      return db.cids
+        .where("id")
+        .anyOf(exame.cid_ids)
+        .toArray();
+    }, [exame?.cid_ids]) || [];
 
   const person = useLiveQuery(
-    () => (exame?.person_id ? db.persons.get(exame.person_id) : undefined),
+    () =>
+      exame?.person_id
+        ? db.persons.get(exame.person_id)
+        : undefined,
     [exame?.person_id]
   );
 
   const medico = useLiveQuery(
-    () => (exame?.medico_id ? db.medicos.get(exame.medico_id) : undefined),
+    () =>
+      exame?.medico_id
+        ? db.medicos.get(exame.medico_id)
+        : undefined,
     [exame?.medico_id]
   );
 
   const local = useLiveQuery(
-    () => (exame?.local_id ? db.locais.get(exame.local_id) : undefined),
+    () =>
+      exame?.local_id
+        ? db.locais.get(exame.local_id)
+        : undefined,
     [exame?.local_id]
   );
 
-  const historicoExames = useLiveQuery(() => {
-    if (!exame) return [];
-    return db.exames
-      .where('nome')
-      .equals(exame.nome)
-      .filter((item) => item.id !== id && item.person_id === exame.person_id)
-      .toArray();
-  }, [exame, id]) || [];
+  const historicoExames =
+    useLiveQuery(() => {
+      if (!exame) return [];
+
+      return db.exames
+        .where("nome")
+        .equals(exame.nome)
+        .filter(
+          (item) =>
+            item.id !== exame.id &&
+            item.person_id === exame.person_id
+        )
+        .toArray();
+    }, [exame]) || [];
+
+  /* ==========================================================
+     CARREGAMENTO
+     ========================================================== */
+
+  useEffect(() => {
+    let active = true;
+
+    if (!id) {
+      router.replace("/saude/exames");
+      return;
+    }
+
+    const loadExame = async () => {
+      try {
+        const data = await getExame(id);
+
+        if (!active) return;
+
+        if (data) {
+          setExame(data);
+        } else {
+          router.replace("/saude/exames");
+        }
+      } catch (error) {
+        console.error("Erro ao carregar exame:", error);
+
+        if (active) {
+          router.replace("/saude/exames");
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadExame();
+
+    return () => {
+      active = false;
+    };
+  }, [id, getExame, router]);
 
   /* ==========================================================
      DADOS DERIVADOS
      ========================================================== */
 
   const exameVencido = useMemo(() => {
-    return exame?.data_retorno ? isReceitaVencidaSegura(exame.data_retorno) : false;
-  }, [exame]);
+    if (!exame?.data_retorno) return false;
+
+    return isReceitaVencidaSegura(exame.data_retorno);
+  }, [exame?.data_retorno]);
 
   const diasParaApresentacao = useMemo(() => {
     if (!exame?.data_retorno) return null;
+
     return getDaysUntil(exame.data_retorno);
-  }, [exame]);
+  }, [exame?.data_retorno]);
 
-  useEffect(() => {
-    if (!id) {
-      router.push("/saude/exames");
-      return;
-    }
-    const loadExame = async () => {
-      if (typeof id !== 'string') {
-        router.push("/saude/exames");
-        return;
-      }
-      const data = await getExame(id);
-      if (data) {
-        setExame(data);
-      } else {
-        router.push("/saude/exames");
-      }
-      setIsLoading(false);
-    };
-    loadExame();
-  }, [id, router, getExame]);
+  /* ==========================================================
+     LOADING
+     ========================================================== */
 
-  if (!mounted) return <DetailSkeleton />;
+  if (!mounted || isLoading) {
+    return <DetailSkeleton />;
+  }
 
-  const temHorario = exame?.horario && exame.horario.trim().length > 0;
+  if (!exame) {
+    return null;
+  }
+
+  const exameId = exame.id;
+
+  const medicoValido = Boolean(medico?.nome);
+  const localValido = Boolean(local?.nome);
+
+  const personName =
+    person?.name ||
+    persons.find((item) => item.id === exame.person_id)?.name ||
+    "Pessoa não encontrada";
+
+  const temHorario =
+    typeof exame.horario === "string" &&
+    exame.horario.trim().length > 0;
+
+  const corBorda =
+    exameVencido
+      ? "#EF4444"
+      : diasParaApresentacao !== null &&
+          diasParaApresentacao <= 3
+        ? "#F59E0B"
+        : "#10B981";
+
+  /* ==========================================================
+     MENU
+     ========================================================== */
 
   const menuOptions = [
-    { id: "duplicar-exame", label: "Solicitar Novamente", icon: Copy, path: `/saude/exames/novo?duplicar=${id}` },
+    {
+      id: "duplicar-exame",
+      label: "Solicitar Novamente",
+      icon: Copy,
+      path: `/saude/exames/novo?duplicar=${exameId}`,
+    },
   ];
 
   const handleMenuOptionClick = (path: string) => {
@@ -188,17 +308,8 @@ function DetalhesExameContent() {
     router.push(path);
   };
 
-  if (isLoading) return <DetailSkeleton />;
-  if (!exame) return null;
-
-  const exameId = typeof id === 'string' ? id : undefined;
-  const medicoValido = medico?.nome;
-  const localValido = local?.nome;
-  const personName = person?.name || persons.find(p => p.id === exame.person_id)?.name || "Pessoa não encontrada";
-  const corBorda = exameVencido ? "#EF4444" : (diasParaApresentacao !== null && diasParaApresentacao <= 3) ? "#F59E0B" : "#10B981";
-
   /* ==========================================================
-     HANDLERS
+     CRIAÇÃO RÁPIDA DE MÉDICO
      ========================================================== */
 
   const handleCreateMedico = async () => {
@@ -206,84 +317,132 @@ function DetalhesExameContent() {
       showToast("Nome do médico é obrigatório", "error");
       return;
     }
+
     if (!exameId) {
       showToast("Erro: ID do exame não encontrado", "error");
       return;
     }
+
     trigger("vibrate");
+
     try {
       const newId = await addMedico({
         nome: newMedicoNome.trim(),
-        especialidade: newMedicoEspecialidade.trim() || undefined,
+        especialidade:
+          newMedicoEspecialidade.trim() || undefined,
       });
-      await updateExame(exameId, { medico_id: newId });
+
+      await updateExame(exameId, {
+        medico_id: newId,
+      });
+
       showToast("Médico vinculado com sucesso!", "success");
+
       setIsCreatingMedico(false);
       setNewMedicoNome("");
       setNewMedicoEspecialidade("");
+
       const updated = await getExame(exameId);
-      if (updated) setExame(updated);
+
+      if (updated) {
+        setExame(updated);
+      }
     } catch (error) {
       console.error("Erro ao criar médico:", error);
       showToast("Erro ao criar médico", "error");
     }
   };
 
+  /* ==========================================================
+     CRIAÇÃO RÁPIDA DE LOCAL
+     ========================================================== */
+
   const handleCreateLocal = async () => {
     if (!newLocalNome.trim()) {
       showToast("Nome do local é obrigatório", "error");
       return;
     }
+
     if (!exameId) {
       showToast("Erro: ID do exame não encontrado", "error");
       return;
     }
+
     trigger("vibrate");
+
     try {
       const newId = await addLocal({
         nome: newLocalNome.trim(),
         tipo: "laboratorio",
       });
-      await updateExame(exameId, { local_id: newId });
+
+      await updateExame(exameId, {
+        local_id: newId,
+      });
+
       showToast("Local vinculado com sucesso!", "success");
+
       setIsCreatingLocal(false);
       setNewLocalNome("");
+
       const updated = await getExame(exameId);
-      if (updated) setExame(updated);
+
+      if (updated) {
+        setExame(updated);
+      }
     } catch (error) {
       console.error("Erro ao criar local:", error);
       showToast("Erro ao criar local", "error");
     }
   };
 
-  const handleDelete = async () => {
+  /* ==========================================================
+     EXCLUSÃO
+     ========================================================== */
+
+  const handleDelete = () => {
     if (!exameId) return;
-    setDeleting(true);
+
     trigger("vibrate");
-    try {
-      await deleteExame(exameId);
-      trigger("success");
-      router.push("/saude/exames");
-    } catch (error) {
-      console.error("Erro ao excluir exame:", error);
-      trigger("error");
-    } finally {
-      setDeleting(false);
-      setShowDeleteModal(false);
-    }
+
+    deleteAction.run(
+      async () => {
+        await deleteExame(exameId);
+        router.replace("/saude/exames");
+      },
+      {
+        successMessage: "Exame excluído com sucesso",
+        errorMessage: "Erro ao excluir exame",
+        goBackOnSuccess: false,
+      }
+    );
   };
+
+  /* ==========================================================
+     SELEÇÃO DE MÉDICO
+     ========================================================== */
 
   const handleSelectMedico = async (item: Medico) => {
     if (!exameId) {
       showToast("Erro: ID do exame não encontrado", "error");
       return;
     }
+
     trigger("vibrate");
+
     try {
-      await updateExame(exameId, { medico_id: item.id });
+      await updateExame(exameId, {
+        medico_id: item.id,
+      });
+
       showToast("Médico atualizado com sucesso!", "success");
+
       const updated = await getExame(exameId);
-      if (updated) setExame(updated);
+
+      if (updated) {
+        setExame(updated);
+      }
+
       setIsMedicoModalOpen(false);
     } catch (error) {
       console.error("Erro ao atualizar médico:", error);
@@ -291,17 +450,31 @@ function DetalhesExameContent() {
     }
   };
 
-  const handleSelectLocal = async (item: any) => {
+  /* ==========================================================
+     SELEÇÃO DE LOCAL
+     ========================================================== */
+
+  const handleSelectLocal = async (item: LocalSaude) => {
     if (!exameId) {
       showToast("Erro: ID do exame não encontrado", "error");
       return;
     }
+
     trigger("vibrate");
+
     try {
-      await updateExame(exameId, { local_id: item.id });
+      await updateExame(exameId, {
+        local_id: item.id,
+      });
+
       showToast("Local atualizado com sucesso!", "success");
+
       const updated = await getExame(exameId);
-      if (updated) setExame(updated);
+
+      if (updated) {
+        setExame(updated);
+      }
+
       setIsLocalModalOpen(false);
     } catch (error) {
       console.error("Erro ao atualizar local:", error);
@@ -315,28 +488,37 @@ function DetalhesExameContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
-        {/* ====================================================
-            HEADER
-        ==================================================== */}
+      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
               <button
-                onClick={() => { trigger("vibrate"); router.back(); }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.back();
+                }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
                 type="button"
                 aria-label="Voltar"
               >
-                <ArrowLeft size={18} className="text-ink-primary" />
+                <ArrowLeft
+                  size={18}
+                  className="text-ink-primary"
+                />
               </button>
+
               <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">Vault · Análise Clínica</p>
-                <h1 className="font-display text-lg font-semibold text-ink-primary truncate">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">
+                  Prontuário
+                </p>
+
+                <h1 className="truncate font-display text-lg font-semibold text-ink-primary">
                   {exame.nome}
                 </h1>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  <User size={12} className="inline mr-1" /> {personName}
+
+                <p className="mt-0.5 text-xs text-ink-muted">
+                  <User size={12} className="mr-1 inline" />
+                  {personName}
                 </p>
               </div>
             </div>
@@ -344,13 +526,17 @@ function DetalhesExameContent() {
             <div className="flex items-center gap-2">
               <div className="relative">
                 <button
-                  onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
+                  onClick={() => {
+                    trigger("vibrate");
+                    setIsMenuFlutuanteOpen((previous) => !previous);
+                  }}
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
                   type="button"
                   aria-label="Adicionar registro"
                 >
                   <Plus size={18} />
                 </button>
+
                 <AnimatePresence>
                   {isMenuFlutuanteOpen && (
                     <>
@@ -359,32 +545,57 @@ function DetalhesExameContent() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.16 }}
-                        onClick={() => setIsMenuFlutuanteOpen(false)}
+                        onClick={() =>
+                          setIsMenuFlutuanteOpen(false)
+                        }
                         className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
                       />
+
                       <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                        initial={{
+                          opacity: 0,
+                          y: 10,
+                          scale: 0.95,
+                        }}
+                        animate={{
+                          opacity: 1,
+                          y: 0,
+                          scale: 1,
+                        }}
+                        exit={{
+                          opacity: 0,
+                          y: 10,
+                          scale: 0.95,
+                        }}
+                        transition={{
+                          duration: 0.18,
+                          ease: [0.16, 1, 0.3, 1],
+                        }}
                         className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
                       >
                         <div className="px-3 pb-2 pt-3.5">
-                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
+                            Adicionar
+                          </p>
                         </div>
+
                         <div className="px-1.5 pb-2">
                           {menuOptions.map((option) => {
                             const Icon = option.icon;
+
                             return (
                               <button
                                 key={option.id}
-                                onClick={() => handleMenuOptionClick(option.path)}
+                                onClick={() =>
+                                  handleMenuOptionClick(option.path)
+                                }
                                 className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
                                 type="button"
                               >
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                                   <Icon size={15} />
                                 </div>
+
                                 <span className="text-sm font-medium text-ink-primary">
                                   {option.label}
                                 </span>
@@ -399,18 +610,25 @@ function DetalhesExameContent() {
               </div>
 
               <button
-                onClick={() => { trigger("vibrate"); router.push(`/saude/exames/editar?id=${exame.id}`); }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice active:scale-95"
-                title="Editar Exame"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push(
+                    `/saude/exames/editar?id=${exame.id}`
+                  );
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
                 type="button"
                 aria-label="Editar exame"
               >
                 <Edit3 size={16} />
               </button>
+
               <button
-                onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral active:scale-95"
-                title="Excluir Exame"
+                onClick={() => {
+                  trigger("vibrate");
+                  setShowDeleteModal(true);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
                 type="button"
                 aria-label="Excluir exame"
               >
@@ -420,66 +638,90 @@ function DetalhesExameContent() {
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
-          {/* ==================================================
-              ALERTA DE PRAZO
-          ================================================== */}
+        <section className="space-y-5 px-5 pt-6">
           {exame.data_retorno && (
             <motion.div
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-sm ${
                 exameVencido
-                  ? 'border-coral/40 bg-coral/10 text-coral'
-                  : diasParaApresentacao !== null && diasParaApresentacao <= 3
-                  ? 'border-amber-400/40 bg-amber-400/10 text-amber-300'
-                  : 'border-surface-border/50 bg-surface text-ink-primary'
+                  ? "border-coral/40 bg-coral/10 text-coral"
+                  : diasParaApresentacao !== null &&
+                      diasParaApresentacao <= 3
+                    ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
+                    : "border-surface-border/50 bg-surface text-ink-primary"
               }`}
             >
-              {exameVencido ? <AlertTriangle size={18} className="shrink-0 mt-0.5" /> : <CheckCircle2 size={18} className="shrink-0 mt-0.5" />}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                  {exameVencido ? "Prazo Vencido" : "Prazo Válido"}
-                  {exameVencido ? (
-                    <span className="text-[8px] font-bold bg-coral/20 text-coral px-1.5 py-0.5 rounded-full">Vencido</span>
-                  ) : (
-                    <span className="text-[8px] font-bold bg-emerald-400/20 text-emerald-400 px-1.5 py-0.5 rounded-full">Válido</span>
-                  )}
-                </p>
-                <p className="text-xs mt-0.5 opacity-90">
+              {exameVencido ? (
+                <AlertTriangle
+                  size={18}
+                  className="mt-0.5 shrink-0"
+                />
+              ) : (
+                <CheckCircle2
+                  size={18}
+                  className="mt-0.5 shrink-0"
+                />
+              )}
+
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
                   {exameVencido
-                    ? `A data limite era ${formatDate(exame.data_retorno)}. Verifique se precisa de uma nova solicitação.`
-                    : `Data limite agendada para ${formatDate(exame.data_retorno)}.`}
+                    ? "Prazo Vencido"
+                    : "Prazo Válido"}
+
+                  <span
+                    className={
+                      exameVencido
+                        ? "rounded-full bg-coral/20 px-1.5 py-0.5 text-[8px] font-bold text-coral"
+                        : "rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[8px] font-bold text-emerald-400"
+                    }
+                  >
+                    {exameVencido ? "Vencido" : "Válido"}
+                  </span>
+                </p>
+
+                <p className="mt-0.5 text-xs opacity-90">
+                  {exameVencido
+                    ? `A data limite era ${formatDate(
+                        exame.data_retorno
+                      )}. Verifique se precisa de uma nova solicitação.`
+                    : `Data limite agendada para ${formatDate(
+                        exame.data_retorno
+                      )}.`}
                 </p>
               </div>
             </motion.div>
           )}
 
-          {/* ==================================================
-              HERO
-          ================================================== */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-4"
+            className="space-y-4 rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm"
             style={{ borderLeft: `6px solid ${corBorda}` }}
           >
-            <div className="flex items-center gap-3.5 pb-4 border-b border-surface-border/40">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+            <div className="flex items-center gap-3.5 border-b border-surface-border/40 pb-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-400">
                 <FlaskConical size={24} />
               </div>
+
               <div className="min-w-0">
-                <h2 className="text-base font-semibold text-ink-primary">{exame.nome}</h2>
-                <p className="text-xs text-ink-muted flex items-center gap-2">
+                <h2 className="text-xl font-bold text-ink-primary">
+                  {exame.nome}
+                </h2>
+
+                <p className="flex items-center gap-2 text-xs text-ink-muted">
                   Registrado em {formatDate(exame.data)}
+
                   {temHorario && (
-                    <span className="text-[10px] font-mono text-ink-muted">• {exame.horario}</span>
+                    <span className="font-mono text-[10px]">
+                      • {exame.horario}
+                    </span>
                   )}
                 </p>
               </div>
             </div>
 
-            {/* SOLICITANTE */}
             <DetailInfoRow
               icon={<Stethoscope size={18} />}
               iconClassName="bg-ice/10 text-ice"
@@ -487,8 +729,11 @@ function DetalhesExameContent() {
               action={
                 !medicoValido && exame.medico ? (
                   <button
-                    onClick={() => { trigger("vibrate"); setIsMedicoModalOpen(true); }}
-                    className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setIsMedicoModalOpen(true);
+                    }}
+                    className="rounded-full bg-ice/10 px-3 py-1.5 text-xs font-bold text-ice transition-colors hover:bg-ice/20"
                     type="button"
                   >
                     Corrigir
@@ -498,26 +743,39 @@ function DetalhesExameContent() {
             >
               {medicoValido ? (
                 <button
-                  onClick={() => { trigger("vibrate"); router.push(`/saude/medicos/detalhes?id=${medico.id}`); }}
-                  className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(
+                      `/saude/medicos/detalhes?id=${medico!.id}`
+                    );
+                  }}
+                  className="flex max-w-full items-center gap-1 truncate text-sm font-semibold text-ink-primary transition-colors hover:text-ice"
                   type="button"
                 >
-                  {medico.nome}
-                  <ChevronRight size={14} className="text-ink-faint" />
+                  <span className="truncate">{medico!.nome}</span>
+                  <ChevronRight
+                    size={14}
+                    className="shrink-0 text-ink-faint"
+                  />
                 </button>
               ) : exame.medico ? (
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-ink-muted line-through">{exame.medico}</p>
-                  <span className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <AlertOctagon size={12} /> Cadastro perdido
+                  <p className="text-sm font-semibold text-ink-muted line-through">
+                    {exame.medico}
+                  </p>
+
+                  <span className="flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-400">
+                    <AlertOctagon size={12} />
+                    Cadastro perdido
                   </span>
                 </div>
               ) : (
-                <p className="text-sm text-ink-muted">Não informado</p>
+                <p className="text-sm text-ink-muted">
+                  Não informado
+                </p>
               )}
             </DetailInfoRow>
 
-            {/* LOCAL */}
             <DetailInfoRow
               icon={<Building2 size={18} />}
               iconClassName="bg-emerald-400/10 text-emerald-400"
@@ -525,8 +783,11 @@ function DetalhesExameContent() {
               action={
                 !localValido && exame.laboratorio ? (
                   <button
-                    onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
-                    className="text-xs font-bold text-ice bg-ice/10 px-3 py-1.5 rounded-full hover:bg-ice/20 transition-colors"
+                    onClick={() => {
+                      trigger("vibrate");
+                      setIsLocalModalOpen(true);
+                    }}
+                    className="rounded-full bg-ice/10 px-3 py-1.5 text-xs font-bold text-ice transition-colors hover:bg-ice/20"
                     type="button"
                   >
                     Corrigir
@@ -536,42 +797,69 @@ function DetalhesExameContent() {
             >
               {localValido ? (
                 <button
-                  onClick={() => { trigger("vibrate"); router.push(`/saude/locais/detalhes?id=${local.id}`); }}
-                  className="text-sm font-semibold text-ink-primary hover:text-ice transition-colors flex items-center gap-1 truncate"
+                  onClick={() => {
+                    trigger("vibrate");
+                    router.push(
+                      `/saude/locais/detalhes?id=${local!.id}`
+                    );
+                  }}
+                  className="flex max-w-full items-center gap-1 truncate text-sm font-semibold text-ink-primary transition-colors hover:text-ice"
                   type="button"
                 >
-                  {local.nome}
-                  <ChevronRight size={14} className="text-ink-faint" />
+                  <span className="truncate">{local!.nome}</span>
+                  <ChevronRight
+                    size={14}
+                    className="shrink-0 text-ink-faint"
+                  />
                 </button>
               ) : exame.laboratorio ? (
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-ink-muted line-through">{exame.laboratorio}</p>
-                  <span className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <AlertOctagon size={12} /> Cadastro perdido
+                  <p className="text-sm font-semibold text-ink-muted line-through">
+                    {exame.laboratorio}
+                  </p>
+
+                  <span className="flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-400">
+                    <AlertOctagon size={12} />
+                    Cadastro perdido
                   </span>
                 </div>
               ) : (
-                <p className="text-sm text-ink-muted">Não informado</p>
+                <p className="text-sm text-ink-muted">
+                  Não informado
+                </p>
               )}
             </DetailInfoRow>
 
-            {/* TRATAMENTOS */}
-            {tratamentos && tratamentos.length > 0 && (
+            {tratamentos.length > 0 && (
               <div className="pt-2">
-                <SectionTitle icon={<Activity size={15} />} title="Tratamentos Relacionados" />
+                <SectionTitle
+                  icon={<Activity size={15} />}
+                  title="Tratamentos Relacionados"
+                />
+
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {tratamentos.map((t: Tratamento) => {
-                    const theme = getClinicalTheme(t.nome);
+                  {tratamentos.map((tratamento: Tratamento) => {
+                    const theme = getClinicalTheme(
+                      tratamento.nome
+                    );
                     const Icon = theme.icon;
+
                     return (
                       <button
-                        key={t.id}
-                        onClick={() => { trigger("vibrate"); router.push(`/saude/tratamentos/detalhes?id=${t.id}`); }}
-                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 hover:opacity-80 transition-opacity ${theme.tagClass}`}
+                        key={tratamento.id}
+                        onClick={() => {
+                          trigger("vibrate");
+                          router.push(
+                            `/saude/tratamentos/detalhes?id=${tratamento.id}`
+                          );
+                        }}
+                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-opacity hover:opacity-80 ${theme.tagClass}`}
                         type="button"
                       >
                         <Icon size={14} />
-                        <span className="text-xs font-medium">{t.nome}</span>
+                        <span className="text-xs font-medium">
+                          {tratamento.nome}
+                        </span>
                       </button>
                     );
                   })}
@@ -579,21 +867,29 @@ function DetalhesExameContent() {
               </div>
             )}
 
-            {/* CIDs */}
-            {cids && cids.length > 0 && (
+            {cids.length > 0 && (
               <div className="pt-2">
-                <SectionTitle icon={<Activity size={15} />} title="CIDs Relacionados" />
+                <SectionTitle
+                  icon={<Activity size={15} />}
+                  title="CIDs Relacionados"
+                />
+
                 <div className="mt-2 flex flex-wrap gap-2">
                   {cids.map((cid: Cid) => {
-                    const theme = getClinicalTheme(cid.descricao || cid.codigo);
+                    const theme = getClinicalTheme(
+                      cid.descricao || cid.codigo
+                    );
                     const Icon = theme.icon;
+
                     return (
                       <span
                         key={cid.id}
                         className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}
                       >
                         <Icon size={14} />
-                        <span className="text-xs font-medium">{cid.codigo}</span>
+                        <span className="text-xs font-medium">
+                          {cid.codigo}
+                        </span>
                       </span>
                     );
                   })}
@@ -601,75 +897,113 @@ function DetalhesExameContent() {
               </div>
             )}
 
-            {/* MOTIVO */}
             {exame.motivo && (
               <div className="pt-2">
-                <SectionTitle icon={<FileText size={15} />} title="Motivo da Solicitação" />
-                <p className="mt-1 text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40">{exame.motivo}</p>
+                <SectionTitle
+                  icon={<FileText size={15} />}
+                  title="Motivo da Solicitação"
+                />
+
+                <p className="mt-1 rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3 text-xs text-ink-primary">
+                  {exame.motivo}
+                </p>
               </div>
             )}
 
-            {/* RESULTADOS */}
             {exame.observacoes && (
               <div className="pt-2">
-                <SectionTitle icon={<FileText size={15} />} title="Resultados / Notas" />
-                <p className="mt-1 text-xs text-ink-primary bg-surface-raised/50 p-3 rounded-xl border border-surface-border/40 whitespace-pre-wrap">{exame.observacoes}</p>
+                <SectionTitle
+                  icon={<FileText size={15} />}
+                  title="Resultados / Notas"
+                />
+
+                <p className="mt-1 whitespace-pre-wrap rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3 text-xs text-ink-primary">
+                  {exame.observacoes}
+                </p>
               </div>
             )}
 
-            {/* ANEXO */}
             {exame.anexo_url && (
               <a
                 href={exame.anexo_url}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 p-3.5 text-ice hover:bg-ice/20 transition-colors mt-2"
+                className="mt-2 flex items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 p-3.5 text-ice transition-colors hover:bg-ice/20"
               >
                 <div className="flex items-center gap-2 text-xs font-semibold">
-                  <FileText size={16} /> Ver Anexo / Documento do Exame
+                  <FileText size={16} />
+                  Ver Anexo / Documento do Exame
                 </div>
+
                 <ExternalLink size={14} />
               </a>
             )}
           </motion.div>
 
-          {/* ==================================================
-              HISTÓRICO
-          ================================================== */}
           {historicoExames.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm space-y-3"
+              transition={{ delay: 0.08 }}
+              className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
-              <SectionTitle icon={<History size={15} />} title="Histórico do Exame" />
-              <p className="text-xs text-ink-muted">Outras vezes que "{exame.nome}" foi realizado para {personName}:</p>
+              <SectionTitle
+                icon={<History size={15} />}
+                title="Histórico do Exame"
+              />
+
+              <p className="text-xs text-ink-muted">
+                Outras vezes que "{exame.nome}" foi realizado para{" "}
+                {personName}:
+              </p>
 
               <div className="space-y-2 pt-1">
-                {[...historicoExames].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map((item: Exame) => (
-                  <button
-                    key={item.id}
-                    onClick={() => { trigger("vibrate"); router.push(`/saude/exames/detalhes?id=${item.id}`); }}
-                    className="w-full flex items-center justify-between p-3 rounded-2xl bg-surface-raised/70 border border-surface-border/40 text-left hover:bg-surface-raised transition-colors"
-                    type="button"
-                  >
-                    <div>
-                      <p className="text-xs font-semibold text-ink-primary">Realizado em {formatDate(item.data)}</p>
-                      {item.laboratorio && <p className="text-[10px] text-ink-muted">{item.laboratorio}</p>}
-                      {item.medico && <p className="text-[10px] text-ink-muted">Solicitante: {item.medico}</p>}
-                    </div>
-                    <span className="text-xs text-ice font-medium">Ver detalhes</span>
-                  </button>
-                ))}
+                {[...historicoExames]
+                  .sort(
+                    (a, b) =>
+                      new Date(b.data).getTime() -
+                      new Date(a.data).getTime()
+                  )
+                  .map((item: Exame) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        trigger("vibrate");
+                        router.push(
+                          `/saude/exames/detalhes?id=${item.id}`
+                        );
+                      }}
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/40 bg-surface-raised/70 p-3 text-left transition-colors hover:bg-surface-raised active:scale-[0.99]"
+                      type="button"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-ink-primary">
+                          Realizado em {formatDate(item.data)}
+                        </p>
+
+                        {item.laboratorio && (
+                          <p className="truncate text-[10px] text-ink-muted">
+                            {item.laboratorio}
+                          </p>
+                        )}
+
+                        {item.medico && (
+                          <p className="truncate text-[10px] text-ink-muted">
+                            Solicitante: {item.medico}
+                          </p>
+                        )}
+                      </div>
+
+                      <span className="ml-3 shrink-0 text-xs font-medium text-ice">
+                        Ver detalhes
+                      </span>
+                    </button>
+                  ))}
               </div>
             </motion.div>
           )}
         </section>
 
-        {/* ====================================================
-            MODAIS
-        ==================================================== */}
         <ConfirmationModal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}
@@ -678,7 +1012,7 @@ function DetalhesExameContent() {
           message={`Tem certeza que deseja excluir o registro de "${exame.nome}"?`}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
-          isLoading={deleting}
+          isLoading={deleteAction.isSubmitting}
           type="danger"
         />
 
@@ -691,13 +1025,23 @@ function DetalhesExameContent() {
           placeholder="Buscar médico..."
           renderItem={(item: Medico) => (
             <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
-              {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
+              <p className="font-medium text-ink-primary">
+                {item.nome}
+              </p>
+
+              {item.especialidade && (
+                <p className="text-xs text-ink-muted">
+                  {item.especialidade}
+                </p>
+              )}
             </div>
           )}
           getItemId={(item: Medico) => item.id!}
           getItemLabel={(item: Medico) => item.nome}
-          onCreateNew={() => { setIsMedicoModalOpen(false); setIsCreatingMedico(true); }}
+          onCreateNew={() => {
+            setIsMedicoModalOpen(false);
+            setIsCreatingMedico(true);
+          }}
           createNewLabel="Cadastrar Novo Médico"
         />
 
@@ -705,95 +1049,178 @@ function DetalhesExameContent() {
           isOpen={isLocalModalOpen}
           onClose={() => setIsLocalModalOpen(false)}
           onSelect={handleSelectLocal}
-          items={locais.filter(l => l.tipo === 'laboratorio')}
+          items={locais.filter(
+            (item) => item.tipo === "laboratorio"
+          )}
           title="Selecionar Local / Laboratório"
           placeholder="Buscar local..."
-          renderItem={(item: any) => (
+          renderItem={(item: LocalSaude) => (
             <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
-              {item.endereco && <p className="text-xs text-ink-muted">{item.endereco}</p>}
+              <p className="font-medium text-ink-primary">
+                {item.nome}
+              </p>
+
+              {item.endereco && (
+                <p className="text-xs text-ink-muted">
+                  {item.endereco}
+                </p>
+              )}
             </div>
           )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
-          onCreateNew={() => { setIsLocalModalOpen(false); setIsCreatingLocal(true); }}
+          getItemId={(item: LocalSaude) => item.id!}
+          getItemLabel={(item: LocalSaude) => item.nome}
+          onCreateNew={() => {
+            setIsLocalModalOpen(false);
+            setIsCreatingLocal(true);
+          }}
           createNewLabel="Cadastrar Novo Local"
         />
 
-        {/* Modais de criação rápida */}
-        {isCreatingMedico && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+        <AnimatePresence>
+          {isCreatingMedico && (
             <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-surface p-6 shadow-vault"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-md sm:items-center"
             >
-              <h3 className="font-display text-lg font-bold text-ink-primary mb-4">Novo Médico</h3>
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Nome do médico"
-                  value={newMedicoNome}
-                  onChange={(e) => setNewMedicoNome(e.target.value)}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice"
-                />
-                <input
-                  type="text"
-                  placeholder="Especialidade (opcional)"
-                  value={newMedicoEspecialidade}
-                  onChange={(e) => setNewMedicoEspecialidade(e.target.value)}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice"
-                />
-                <div className="flex gap-3 pt-2">
-                  <Button variant="secondary" fullWidth onClick={() => { setIsCreatingMedico(false); setNewMedicoNome(""); setNewMedicoEspecialidade(""); }}>
-                    Cancelar
-                  </Button>
-                  <Button variant="primary" fullWidth onClick={handleCreateMedico}>
-                    Salvar e Vincular
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{
+                  type: "spring",
+                  damping: 25,
+                  stiffness: 200,
+                }}
+                className="w-full max-w-md rounded-t-[32px] bg-surface p-6 shadow-vault sm:rounded-[32px]"
+              >
+                <h3 className="mb-4 font-display text-lg font-bold text-ink-primary">
+                  Novo Médico
+                </h3>
 
-        {isCreatingLocal && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-4 backdrop-blur-md">
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-surface p-6 shadow-vault"
-            >
-              <h3 className="font-display text-lg font-bold text-ink-primary mb-4">Novo Local / Laboratório</h3>
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Nome do local"
-                  value={newLocalNome}
-                  onChange={(e) => setNewLocalNome(e.target.value)}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice"
-                />
-                <div className="flex gap-3 pt-2">
-                  <Button variant="secondary" fullWidth onClick={() => { setIsCreatingLocal(false); setNewLocalNome(""); }}>
-                    Cancelar
-                  </Button>
-                  <Button variant="primary" fullWidth onClick={handleCreateLocal}>
-                    Salvar e Vincular
-                  </Button>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Nome do médico"
+                    value={newMedicoNome}
+                    onChange={(event) =>
+                      setNewMedicoNome(event.target.value)
+                    }
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice"
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Especialidade (opcional)"
+                    value={newMedicoEspecialidade}
+                    onChange={(event) =>
+                      setNewMedicoEspecialidade(
+                        event.target.value
+                      )
+                    }
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice"
+                  />
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      variant="secondary"
+                      fullWidth
+                      onClick={() => {
+                        setIsCreatingMedico(false);
+                        setNewMedicoNome("");
+                        setNewMedicoEspecialidade("");
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+
+                    <Button
+                      variant="primary"
+                      fullWidth
+                      onClick={handleCreateMedico}
+                    >
+                      Salvar e Vincular
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isCreatingLocal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-md sm:items-center"
+            >
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{
+                  type: "spring",
+                  damping: 25,
+                  stiffness: 200,
+                }}
+                className="w-full max-w-md rounded-t-[32px] bg-surface p-6 shadow-vault sm:rounded-[32px]"
+              >
+                <h3 className="mb-4 font-display text-lg font-bold text-ink-primary">
+                  Novo Local / Laboratório
+                </h3>
+
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Nome do local"
+                    value={newLocalNome}
+                    onChange={(event) =>
+                      setNewLocalNome(event.target.value)
+                    }
+                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice"
+                  />
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      variant="secondary"
+                      fullWidth
+                      onClick={() => {
+                        setIsCreatingLocal(false);
+                        setNewLocalNome("");
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+
+                    <Button
+                      variant="primary"
+                      fullWidth
+                      onClick={handleCreateLocal}
+                    >
+                      Salvar e Vincular
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </PageTransition>
   );
 }
 
+/* ============================================================
+   PÁGINA
+   ============================================================ */
+
 export default function DetalhesExamePage() {
-  return <Suspense fallback={<DetailSkeleton />}><DetalhesExameContent /></Suspense>;
+  return (
+    <Suspense fallback={<DetailSkeleton />}>
+      <DetalhesExameContent />
+    </Suspense>
+  );
 }

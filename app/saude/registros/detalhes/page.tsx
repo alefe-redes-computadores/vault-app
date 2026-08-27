@@ -48,24 +48,19 @@ const fadeUp = {
 
 function formatDateToDisplay(isoStr: string): string {
   if (!isoStr) return "";
-
   const parts = isoStr.split("-");
-
   if (parts.length !== 3) return isoStr;
-
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
 function getTratamentoIcon(nome: string) {
   const n = nome.toLowerCase();
-
   if (n.includes("tdah")) return Activity;
   if (n.includes("dor") || n.includes("neuropática")) return Flame;
   if (n.includes("depress")) return HeartPulse;
   if (n.includes("ansied") || n.includes("ansiolítico")) {
     return AlertTriangle;
   }
-
   return Activity;
 }
 
@@ -76,7 +71,8 @@ function getTratamentoIcon(nome: string) {
 export default function DetalhesRegistroSaudePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const id = searchParams.get("id");
+  const rawId = searchParams.get("id");
+  const id = rawId ? String(rawId) : null; // BLINDAGEM 1: Garante que o ID é string ou null
 
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
@@ -88,30 +84,26 @@ export default function DetalhesRegistroSaudePage() {
      ========================================================== */
 
   const registro = useLiveQuery<any>(
-    () =>
-      id
-        ? db.table("registros_saude").get(id)
-        : Promise.resolve(undefined),
+    () => {
+      if (!id) return Promise.resolve(null); // BLINDAGEM 2: Previne erro de Keypath
+      return db.table("registros_saude").get(id);
+    },
     [id]
   );
 
   const medicamento = useLiveQuery<any>(
-    () =>
-      registro?.medicamento_id
-        ? db.medicamentos.get(registro.medicamento_id)
-        : Promise.resolve(undefined),
+    () => {
+      if (!registro?.medicamento_id) return Promise.resolve(null);
+      return db.medicamentos.get(registro.medicamento_id);
+    },
     [registro?.medicamento_id]
   );
 
   const tratamentos = useLiveQuery<any[]>(
     async () => {
-      if (
-        !registro?.tratamento_ids ||
-        registro.tratamento_ids.length === 0
-      ) {
+      if (!registro?.tratamento_ids || !Array.isArray(registro.tratamento_ids) || registro.tratamento_ids.length === 0) {
         return [];
       }
-
       return db.tratamentos
         .where("id")
         .anyOf(registro.tratamento_ids)
@@ -122,10 +114,9 @@ export default function DetalhesRegistroSaudePage() {
 
   const cids = useLiveQuery<any[]>(
     async () => {
-      if (!registro?.cid_ids || registro.cid_ids.length === 0) {
+      if (!registro?.cid_ids || !Array.isArray(registro.cid_ids) || registro.cid_ids.length === 0) {
         return [];
       }
-
       return db.cids
         .where("id")
         .anyOf(registro.cid_ids)
@@ -137,15 +128,18 @@ export default function DetalhesRegistroSaudePage() {
   const historicoSimilar = useLiveQuery<any[]>(
     async () => {
       if (!registro?.nome || !registro?.id) return [];
-
-      return db
+      
+      // BLINDAGEM 3: Filtragem em memória para evitar erro de parse no IndexedDB
+      const todosSimilares = await db
         .table("registros_saude")
         .where("nome")
         .equals(registro.nome)
-        .filter((r: any) => r.id !== registro.id)
-        .reverse()
-        .limit(3)
         .toArray();
+        
+      return todosSimilares
+        .filter((r: any) => String(r.id) !== String(registro.id))
+        .reverse()
+        .slice(0, 3);
     },
     [registro?.nome, registro?.id]
   );
@@ -154,11 +148,12 @@ export default function DetalhesRegistroSaudePage() {
      ESTADOS DE CARREGAMENTO
      ========================================================== */
 
-  if (registro === undefined) {
+  // Aguarda carregar o banco e a URL (Impede flash branco ou erros)
+  if (id === null || registro === undefined) {
     return <CardListSkeleton />;
   }
 
-  if (!registro) {
+  if (registro === null) {
     return (
       <PageTransition>
         <main className="flex min-h-screen flex-col items-center justify-center bg-void p-5 text-center">

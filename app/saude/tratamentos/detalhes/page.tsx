@@ -23,6 +23,8 @@ import {
   FileStack,
   Stethoscope,
   ShoppingCart,
+  Building2,
+  MapPin,
 } from "lucide-react";
 
 import { useHapticFeedback } from "@/lib/haptics";
@@ -33,6 +35,8 @@ import { DocumentCard } from "@/components/DocumentCard";
 import { useSafeDb } from "@/hooks/useSafeDb";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicos } from "@/hooks/useMedicos";
+import { useHospitais } from "@/hooks/useHospitais";
+import { useLocais } from "@/hooks/useLocais";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useMounted } from "@/hooks/useMounted";
 
@@ -46,6 +50,8 @@ import type {
   Renovacao,
   Medico,
   Cid,
+  Hospital,
+  LocalSaude,
 } from "@/lib/types";
 
 import {
@@ -132,6 +138,8 @@ function TratamentoContent() {
   const { favorite } = useSafeDb();
   const { medicamentos } = useMedicamentos();
   const { medicos } = useMedicos();
+  const { hospitais } = useHospitais();
+  const { locais } = useLocais();
   const { activePersonId } = useActivePersonId();
 
   const mounted = useMounted();
@@ -231,23 +239,41 @@ function TratamentoContent() {
   }, [allDocuments, id]);
 
   /* ============================================================
-     CUSTO TOTAL
+     CUSTO TOTAL (SOMA DE MEDICAMENTOS + RENOVAÇÕES)
      ============================================================ */
 
   const custoTotalTratamento = useMemo(() => {
     let total = 0;
 
+    // 1. Soma os preços de cadastro dos medicamentos
+    linkedMedicamentos.forEach((med: Medicamento) => {
+      const valor = Number(med.preco || 0);
+      if (!isNaN(valor) && valor > 0) {
+        total += valor;
+      }
+    });
+
+    // 2. Soma todas as renovações/compras
     linkedRenovacoes.forEach((r: Renovacao) => {
-      if (
-        typeof r.preco === "number" &&
-        r.preco > 0
-      ) {
-        total += r.preco;
+      const valor = Number(r.preco || 0);
+      if (!isNaN(valor) && valor > 0) {
+        total += valor;
       }
     });
 
     return total;
-  }, [linkedRenovacoes]);
+  }, [linkedMedicamentos, linkedRenovacoes]);
+
+  /* ============================================================
+     ANÁLISE DE SUS
+     ============================================================ */
+
+  const statsSus = useMemo(() => {
+    const isAllSus = linkedMedicamentos.length > 0 && linkedMedicamentos.every(m => m.tipo_aquisicao === 'sus');
+    const hasSus = linkedMedicamentos.some(m => m.tipo_aquisicao === 'sus');
+    
+    return { isAllSus, hasSus };
+  }, [linkedMedicamentos]);
 
   /* ============================================================
      ECONOMIA
@@ -258,21 +284,45 @@ function TratamentoContent() {
   }, [linkedRenovacoes]);
 
   /* ============================================================
-     MÉDICOS VINCULADOS
+     REDE DE APOIO (MÉDICOS, HOSPITAIS E LOCAIS)
      ============================================================ */
 
   const linkedMedicos = useMemo(() => {
-    const medIds = new Set(
-      linkedMedicamentos
-        .map((m: Medicamento) => m.medico_id)
-        .filter(Boolean)
-    );
+    const medIds = new Set<string>();
+    
+    // Pega os médicos que estão nos medicamentos
+    linkedMedicamentos.forEach((m: Medicamento) => {
+      if (m.medico_id) medIds.add(m.medico_id);
+    });
+    
+    // Pega os médicos que estão direto no tratamento
+    if (tratamento?.medico_ids) {
+      tratamento.medico_ids.forEach(i => medIds.add(i));
+    }
 
     return medicos.filter(
       (med: Medico) =>
         med.id && medIds.has(med.id)
     );
-  }, [linkedMedicamentos, medicos]);
+  }, [linkedMedicamentos, medicos, tratamento?.medico_ids]);
+
+  const linkedHospitais = useMemo(() => {
+    if (!tratamento?.hospital_ids) return [];
+    
+    return hospitais.filter(
+      (h: Hospital) => 
+        h.id && tratamento.hospital_ids!.includes(h.id)
+    );
+  }, [hospitais, tratamento?.hospital_ids]);
+
+  const linkedLocais = useMemo(() => {
+    if (!tratamento?.local_ids) return [];
+    
+    return locais.filter(
+      (l: LocalSaude) => 
+        l.id && tratamento.local_ids!.includes(l.id)
+    );
+  }, [locais, tratamento?.local_ids]);
 
   /* ============================================================
      ALERTAS DOS MEDICAMENTOS
@@ -743,13 +793,14 @@ function TratamentoContent() {
               className={`
                 pointer-events-none
                 absolute
-                -right-4
-                -top-4
-                opacity-5
+                -bottom-8
+                -right-8
+                opacity-[0.03]
+                z-0
                 ${theme.textClass}
               `}
             >
-              <IconComp size={140} />
+              <IconComp size={180} />
             </div>
 
             {/* Identidade */}
@@ -898,6 +949,22 @@ function TratamentoContent() {
             )}
 
             {/* ==================================================
+                TAG DO SUS (Custo Zero)
+            ================================================== */}
+
+            {statsSus.hasSus && (
+              <div className="relative z-10 mt-3 flex items-start gap-2 rounded-lg border border-blue-400/30 bg-blue-400/10 p-2.5">
+                <Building2 size={16} className="mt-0.5 shrink-0 text-blue-400" />
+                <p className="text-[11px] leading-relaxed text-blue-200">
+                  <span className="font-bold text-blue-400">Cobertura SUS:</span>{" "}
+                  {statsSus.isAllSus 
+                    ? "Este tratamento é 100% garantido pela rede pública (Custo Zero)." 
+                    : "Alguns medicamentos deste tratamento são retirados gratuitamente pelo SUS."}
+                </p>
+              </div>
+            )}
+
+            {/* ==================================================
                 MÉTRICAS
             ================================================== */}
 
@@ -924,9 +991,15 @@ function TratamentoContent() {
                     ? formatCurrency(
                         custoTotalTratamento
                       )
-                    : "R$ 0,00"
+                    : statsSus.isAllSus 
+                      ? "SUS" 
+                      : "R$ 0,00"
                 }
-                description="Em renovações"
+                description={
+                  statsSus.isAllSus 
+                    ? "Integral" 
+                    : "Histórico completo"
+                }
               />
             </div>
           </motion.div>
@@ -1045,7 +1118,7 @@ function TratamentoContent() {
             )}
 
           {/* ====================================================
-              EQUIPE CLÍNICA
+              REDE DE APOIO (MÉDICOS, HOSPITAIS E LOCAIS)
           ==================================================== */}
 
           <motion.div
@@ -1057,18 +1130,19 @@ function TratamentoContent() {
           >
             <SectionTitle
               icon={<Users size={15} />}
-              title="Equipe Clínica"
+              title="Rede de Apoio"
             />
 
-            {linkedMedicos.length === 0 ? (
+            {linkedMedicos.length === 0 && linkedHospitais.length === 0 && linkedLocais.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
                 <p className="text-xs text-ink-muted">
-                  Nenhum médico vinculado aos
-                  medicamentos deste tratamento.
+                  Nenhum profissional ou local de saúde vinculado.
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
+                
+                {/* Médicos */}
                 {linkedMedicos.map(
                   (med: Medico) => (
                     <DetailInfoRow
@@ -1114,6 +1188,101 @@ function TratamentoContent() {
                     </DetailInfoRow>
                   )
                 )}
+
+                {/* Hospitais */}
+                {linkedHospitais.map(
+                  (hosp: Hospital) => (
+                    <DetailInfoRow
+                      key={hosp.id}
+                      icon={
+                        <Building2
+                          size={18}
+                        />
+                      }
+                      iconClassName="bg-violet-400/10 text-violet-400"
+                      label="Hospital / Clínica"
+                      action={
+                        <ChevronRight
+                          size={17}
+                          className="text-ink-faint"
+                        />
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          router.push(
+                            `/saude/hospitais/detalhes?id=${hosp.id}`
+                          );
+                        }}
+                        className="
+                          max-w-full
+                          truncate
+                          text-left
+                          text-sm
+                          font-semibold
+                          text-ink-primary
+                          transition-colors
+                          hover:text-violet-400
+                        "
+                      >
+                        {hosp.nome}
+                      </button>
+                    </DetailInfoRow>
+                  )
+                )}
+
+                {/* Locais SUS / Postos */}
+                {linkedLocais.map(
+                  (loc: LocalSaude) => (
+                    <DetailInfoRow
+                      key={loc.id}
+                      icon={
+                        <MapPin
+                          size={18}
+                        />
+                      }
+                      iconClassName="bg-emerald-400/10 text-emerald-400"
+                      label="Posto de Saúde"
+                      action={
+                        <ChevronRight
+                          size={17}
+                          className="text-ink-faint"
+                        />
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          router.push(
+                            `/saude/locais/detalhes?id=${loc.id}`
+                          );
+                        }}
+                        className="
+                          max-w-full
+                          truncate
+                          text-left
+                          text-sm
+                          font-semibold
+                          text-ink-primary
+                          transition-colors
+                          hover:text-emerald-400
+                        "
+                      >
+                        {loc.nome}
+                      </button>
+                    </DetailInfoRow>
+                  )
+                )}
+
               </div>
             )}
           </motion.div>
