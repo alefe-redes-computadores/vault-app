@@ -97,6 +97,7 @@ function EditarTratamentoContent() {
           setHospitalIds(data.hospital_ids || []);
           setLocalIds(data.local_ids || []);
 
+          // Lê o vínculo reverso na inicialização: QUAIS medicamentos têm o ID deste tratamento?
           const todosMeds = await db.medicamentos.toArray();
           const medsVinculados = todosMeds.filter(m => m.tratamento_ids?.includes(id));
           setMedicamentoIds(medsVinculados.map(m => m.id!));
@@ -116,6 +117,8 @@ function EditarTratamentoContent() {
   const medicosVinculados = useMemo(() => medicos.filter(m => medicoIds.includes(m.id!)), [medicos, medicoIds]);
   const hospitaisVinculados = useMemo(() => hospitais.filter(h => hospitalIds.includes(h.id!)), [hospitais, hospitalIds]);
   const locaisVinculados = useMemo(() => locais.filter(l => localIds.includes(l.id!)), [locais, localIds]);
+  
+  // Lista em memória baseada nas seleções da tela atual
   const medicamentosVinculados = useMemo(() => medicamentos.filter(m => medicamentoIds.includes(m.id!)), [medicamentos, medicamentoIds]);
 
   const examesVinculados = useMemo(() => exames.filter(e => e.tratamento_ids?.includes(id!)), [exames, id]);
@@ -136,6 +139,7 @@ function EditarTratamentoContent() {
 
       await runSave(
         async () => {
+          // 1. O TRATAMENTO É SALVO SEM OS MEDICAMENTOS
           await tratamentosRepository.update(id, {
             person_id: personId || undefined,
             nome: nome.trim(),
@@ -148,6 +152,7 @@ function EditarTratamentoContent() {
             local_ids: localIds.length > 0 ? localIds : undefined,
           });
 
+          // 2. DISPARO REVERSO DE MEDICAMENTOS (O Motor de Sincronização Correto)
           const todosMeds = await db.medicamentos.toArray();
           const previousMedIds = todosMeds.filter(m => m.tratamento_ids?.includes(id)).map(m => m.id!);
 
@@ -170,6 +175,7 @@ function EditarTratamentoContent() {
             }
           }
 
+          // 3. Atualização de status derivada (se houver)
           if (status === 'concluido' || status === 'suspenso') {
             for (const mid of medicamentoIds) {
               const med = todosMeds.find(m => m.id === mid);
@@ -179,7 +185,7 @@ function EditarTratamentoContent() {
                   motivo_descontinuacao: `Tratamento original marcado como ${status}`,
                 });
                 if (med.estoque_horarios && med.estoque_horarios.length > 0) {
-                  await cancelDoseNotifications({ id: mid, nome: med.nome, dosagem: med.dosagem, estoque_horarios: med.estoque_horarios });
+                  await cancelDoseNotifications({ id: mid, nome: med.nome, dosagem: med.dosagem, estoque_horarios: med.estoque_horarios } as any);
                 }
               }
             }
@@ -212,6 +218,8 @@ function EditarTratamentoContent() {
   const handleRemoveHospital = (id: string) => { trigger("vibrate"); setHospitalIds(p => p.filter(i => i !== id)); };
   const handleAddLocal = (l: LocalSaude) => { if (l.id && !localIds.includes(l.id)) setLocalIds(p => [...p, l.id!]); };
   const handleRemoveLocal = (id: string) => { trigger("vibrate"); setLocalIds(p => p.filter(i => i !== id)); };
+  
+  // O Estado é guardado apenas na memória até o momento de salvar
   const handleAddMedicamento = (m: Medicamento) => { if (m.id && !medicamentoIds.includes(m.id)) setMedicamentoIds(p => [...p, m.id!]); };
   const handleRemoveMedicamento = (id: string) => { trigger("vibrate"); setMedicamentoIds(p => p.filter(i => i !== id)); };
 
@@ -432,7 +440,14 @@ function EditarTratamentoContent() {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm" onClick={() => setShowAddCidPrompt(false)}>
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-[28px] border border-surface-border bg-surface p-6 shadow-xl space-y-4">
                 <div className="flex items-center gap-3 text-violet-400"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/10"><FolderHeart size={22} /></div><div><h3 className="font-display text-base font-bold text-ink-primary">Adicionar outro CID?</h3><p className="text-xs text-ink-muted">Você pode vincular múltiplos diagnósticos</p></div></div>
-                <div className="flex gap-2 pt-2"><button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); }} className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all" type="button">Não, finalizar</button><button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); setIsCidModalOpen(true); }} className="flex-1 rounded-2xl bg-violet-400 py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-violet-400/20" type="button">Sim, adicionar</button></div>
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); }} className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all" type="button">
+                    Não, finalizar
+                  </button>
+                  <button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); setIsCidModalOpen(true); }} className="flex-1 rounded-2xl bg-violet-400 py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-violet-400/20" type="button">
+                    Sim, adicionar
+                  </button>
+                </div>
               </motion.div>
             </div>
           )}

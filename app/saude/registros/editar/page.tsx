@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -96,7 +97,7 @@ export default function EditarRegistroSaudePage() {
   const { activePersonId } = useActivePersonId();
 
   const isSubmitLocked = useRef(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { run: runSave, isSubmitting } = useSubmitAction();
   const [initialized, setInitialized] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeFields, setShakeFields] = useState<string[]>([]);
@@ -252,35 +253,34 @@ export default function EditarRegistroSaudePage() {
 
     if (isSubmitLocked.current || isSubmitting) return;
     isSubmitLocked.current = true;
-    setIsSubmitting(true);
 
     try {
       const dataISO = parseDateToISO(dataDisplay);
       if (!dataISO) throw new Error("Data inválida");
 
-      await registrosSaudeRepository.update(id, {
-        categoria,
-        tipo: tipoSelecionado,
-        nome: nome.trim(),
-        intensidade: intensidade !== undefined ? Number(intensidade) : undefined,
-        valor_medicao: valorMedicao.trim() || undefined,
-        data: dataISO,
-        horario: horario || "00:00",
-        observacoes: observacoes.trim() || undefined,
-        medicamento_id: medicamentoId || undefined,
-        tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-        cid_ids: cidsSelecionados.length > 0 ? cidsSelecionados : undefined,
-      });
-
-      trigger("success");
-      showToast("Registro atualizado com sucesso", "success");
-      router.back();
-    } catch (error) {
-      console.error(error);
-      trigger("error");
-      showToast("Erro ao atualizar registro", "error");
+      await runSave(
+        async () => {
+          await registrosSaudeRepository.update(id, {
+            categoria,
+            tipo: tipoSelecionado,
+            nome: nome.trim(),
+            intensidade: intensidade !== undefined ? Number(intensidade) : undefined,
+            valor_medicao: valorMedicao.trim() || undefined,
+            data: dataISO,
+            horario: horario || "00:00",
+            observacoes: observacoes.trim() || undefined,
+            medicamento_id: medicamentoId || undefined,
+            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
+            cid_ids: cidsSelecionados.length > 0 ? cidsSelecionados : undefined,
+          });
+        },
+        {
+          successMessage: "Registro atualizado com sucesso",
+          errorMessage: "Erro ao atualizar registro",
+          goBackOnSuccess: true,
+        }
+      );
     } finally {
-      setIsSubmitting(false);
       isSubmitLocked.current = false;
     }
   };
@@ -301,7 +301,6 @@ export default function EditarRegistroSaudePage() {
   return (
     <PageTransition>
       <main className="relative min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        {/* ===== HEADER ===== */}
         <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -332,9 +331,7 @@ export default function EditarRegistroSaudePage() {
           </div>
         </header>
 
-        {/* ===== CONTEÚDO ===== */}
         <section className="space-y-4 px-5 pt-6">
-          {/* Card de preview do tema */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -359,7 +356,6 @@ export default function EditarRegistroSaudePage() {
             </div>
           </motion.div>
 
-          {/* Dados principais */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -413,7 +409,6 @@ export default function EditarRegistroSaudePage() {
             )}
           </motion.div>
 
-          {/* Insight */}
           <AnimatePresence>
             {insight && (
               <motion.div
@@ -474,7 +469,6 @@ export default function EditarRegistroSaudePage() {
             )}
           </AnimatePresence>
 
-          {/* Data e Horário */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -531,7 +525,6 @@ export default function EditarRegistroSaudePage() {
             </div>
           </motion.div>
 
-          {/* Tratamentos e CIDs */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -652,7 +645,6 @@ export default function EditarRegistroSaudePage() {
             </div>
           </motion.div>
 
-          {/* Medicamento relacionado */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -693,7 +685,6 @@ export default function EditarRegistroSaudePage() {
             </button>
           </motion.div>
 
-          {/* Observações */}
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -710,7 +701,6 @@ export default function EditarRegistroSaudePage() {
           </motion.div>
         </section>
 
-        {/* ===== FIXED FOOTER ===== */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button
             variant="primary"
@@ -727,7 +717,6 @@ export default function EditarRegistroSaudePage() {
           </Button>
         </div>
 
-        {/* ===== MODAIS ===== */}
         <SelectionModal
           isOpen={isMedicamentoModalOpen}
           onClose={() => setIsMedicamentoModalOpen(false)}
@@ -829,7 +818,6 @@ export default function EditarRegistroSaudePage() {
           createNewLabel="Cadastrar Novo CID"
         />
 
-        {/* BottomSheets */}
         <BottomSheet
           isOpen={isCreatingTratamento}
           onClose={() => setIsCreatingTratamento(false)}
