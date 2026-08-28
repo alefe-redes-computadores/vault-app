@@ -52,8 +52,8 @@ function EditarTratamentoContent() {
   const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), [], []) || [];
   const exames = useLiveQuery(() => db.exames.toArray(), [], []) || [];
 
-  const { run: runSave, isSubmitting: isSaving } = useSubmitAction();
-  const { run: runDelete, isSubmitting: isDeleting } = useSubmitAction();
+  const saveAction = useSubmitAction();
+  const deleteAction = useSubmitAction();
   const isSubmitLocked = useRef(false);
 
   const [tratamento, setTratamento] = useState<Tratamento | null>(null);
@@ -97,10 +97,11 @@ function EditarTratamentoContent() {
           setHospitalIds(data.hospital_ids || []);
           setLocalIds(data.local_ids || []);
 
-          // Lê o vínculo reverso na inicialização: QUAIS medicamentos têm o ID deste tratamento?
-          const todosMeds = await db.medicamentos.toArray();
-          const medsVinculados = todosMeds.filter(m => m.tratamento_ids?.includes(id));
-          setMedicamentoIds(medsVinculados.map(m => m.id!));
+          // Calculado a partir de medicamentos.tratamento_ids, não de um campo próprio do tratamento
+          const medicamentosDoTratamento = await db.medicamentos
+            .filter((m) => (m.tratamento_ids || []).includes(id))
+            .toArray();
+          setMedicamentoIds(medicamentosDoTratamento.map((m) => m.id!).filter(Boolean));
         } else {
           router.push("/saude");
         }
@@ -117,8 +118,6 @@ function EditarTratamentoContent() {
   const medicosVinculados = useMemo(() => medicos.filter(m => medicoIds.includes(m.id!)), [medicos, medicoIds]);
   const hospitaisVinculados = useMemo(() => hospitais.filter(h => hospitalIds.includes(h.id!)), [hospitais, hospitalIds]);
   const locaisVinculados = useMemo(() => locais.filter(l => localIds.includes(l.id!)), [locais, localIds]);
-  
-  // Lista em memória baseada nas seleções da tela atual
   const medicamentosVinculados = useMemo(() => medicamentos.filter(m => medicamentoIds.includes(m.id!)), [medicamentos, medicamentoIds]);
 
   const examesVinculados = useMemo(() => exames.filter(e => e.tratamento_ids?.includes(id!)), [exames, id]);
@@ -131,61 +130,40 @@ function EditarTratamentoContent() {
     if (!nome.trim()) { setError("Nome do tratamento é obrigatório"); trigger("error"); return; }
     if (!id) return;
 
-    if (isSubmitLocked.current || isSaving) return;
+    if (isSubmitLocked.current || saveAction.isSubmitting) return;
     isSubmitLocked.current = true;
 
     try {
       const cleanCids = cidIds.length > 0 ? Array.from(new Set(cidIds)) : undefined;
 
-      await runSave(
+      await saveAction.run(
         async () => {
-          // 1. O TRATAMENTO É SALVO SEM OS MEDICAMENTOS
+          // medicamento_ids removido daqui de propósito: essa relação é dirigida pelo
+          // lado do Medicamento (medicamento.tratamento_ids), não existe coluna
+          // medicamento_ids em `tratamentos` no Supabase — mandar esse campo aqui
+          // nunca sincronizava e sumia no próximo pull.
           await tratamentosRepository.update(id, {
-            person_id: personId || undefined,
+            person_id: personId,
             nome: nome.trim(),
             cid_ids: cleanCids,
             cor: theme.hex,
             status,
             observacoes: observacoes.trim() || undefined,
-            medico_ids: medicoIds.length > 0 ? medicoIds : undefined,
-            hospital_ids: hospitalIds.length > 0 ? hospitalIds : undefined,
-            local_ids: localIds.length > 0 ? localIds : undefined,
+            medico_ids: medicoIds,
+            hospital_ids: hospitalIds,
+            local_ids: localIds,
           });
 
-          // 2. DISPARO REVERSO DE MEDICAMENTOS (O Motor de Sincronização Correto)
-          const todosMeds = await db.medicamentos.toArray();
-          const previousMedIds = todosMeds.filter(m => m.tratamento_ids?.includes(id)).map(m => m.id!);
-
-          const addedMeds = medicamentoIds.filter(mid => !previousMedIds.includes(mid));
-          const removedMeds = previousMedIds.filter(mid => !medicamentoIds.includes(mid));
-
-          for (const mid of addedMeds) {
-            const med = todosMeds.find(m => m.id === mid);
-            if (med) {
-              const newTratamentoIds = Array.from(new Set([...(med.tratamento_ids || []), id]));
-              await medicamentosRepository.update(mid, { tratamento_ids: newTratamentoIds });
-            }
-          }
-
-          for (const mid of removedMeds) {
-            const med = todosMeds.find(m => m.id === mid);
-            if (med) {
-              const newTratamentoIds = (med.tratamento_ids || []).filter(tid => tid !== id);
-              await medicamentosRepository.update(mid, { tratamento_ids: newTratamentoIds });
-            }
-          }
-
-          // 3. Atualização de status derivada (se houver)
           if (status === 'concluido' || status === 'suspenso') {
             for (const mid of medicamentoIds) {
-              const med = todosMeds.find(m => m.id === mid);
+              const med = await medicamentosRepository.getById(mid);
               if (med && med.status !== 'descontinuado') {
                 await medicamentosRepository.update(mid, {
                   status: 'descontinuado',
                   motivo_descontinuacao: `Tratamento original marcado como ${status}`,
                 });
                 if (med.estoque_horarios && med.estoque_horarios.length > 0) {
-                  await cancelDoseNotifications({ id: mid, nome: med.nome, dosagem: med.dosagem, estoque_horarios: med.estoque_horarios } as any);
+                  await cancelDoseNotifications({ id: mid, nome: med.nome, dosagem: med.dosagem, estoque_horarios: med.estoque_horarios });
                 }
               }
             }
@@ -201,7 +179,7 @@ function EditarTratamentoContent() {
   const handleDelete = () => {
     trigger("vibrate");
     if (!id) return;
-    runDelete(
+    deleteAction.run(
       async () => {
         await deleteTratamentoSafe(id);
         router.replace("/saude");
@@ -218,10 +196,43 @@ function EditarTratamentoContent() {
   const handleRemoveHospital = (id: string) => { trigger("vibrate"); setHospitalIds(p => p.filter(i => i !== id)); };
   const handleAddLocal = (l: LocalSaude) => { if (l.id && !localIds.includes(l.id)) setLocalIds(p => [...p, l.id!]); };
   const handleRemoveLocal = (id: string) => { trigger("vibrate"); setLocalIds(p => p.filter(i => i !== id)); };
-  
-  // O Estado é guardado apenas na memória até o momento de salvar
-  const handleAddMedicamento = (m: Medicamento) => { if (m.id && !medicamentoIds.includes(m.id)) setMedicamentoIds(p => [...p, m.id!]); };
-  const handleRemoveMedicamento = (id: string) => { trigger("vibrate"); setMedicamentoIds(p => p.filter(i => i !== id)); };
+
+  // Grava do lado certo da relação: tratamento_ids do Medicamento (mesmo caminho
+  // que já sincroniza de verdade via syncMedicamento + medicamento_tratamentos).
+  const handleAddMedicamento = async (m: Medicamento) => {
+    if (!m.id || medicamentoIds.includes(m.id) || !id) return;
+    trigger("vibrate");
+    setMedicamentoIds((p) => [...p, m.id!]);
+
+    const tratamentoIdsAtuais = m.tratamento_ids || [];
+    if (!tratamentoIdsAtuais.includes(id)) {
+      try {
+        await medicamentosRepository.update(m.id, {
+          tratamento_ids: [...tratamentoIdsAtuais, id],
+        });
+      } catch (err) {
+        console.error("Erro ao vincular medicamento ao tratamento:", err);
+        setMedicamentoIds((p) => p.filter((i) => i !== m.id));
+      }
+    }
+  };
+
+  const handleRemoveMedicamento = async (medId: string) => {
+    trigger("vibrate");
+    setMedicamentoIds((p) => p.filter((i) => i !== medId));
+
+    const med = medicamentos.find((m) => m.id === medId);
+    if (med && id) {
+      try {
+        await medicamentosRepository.update(medId, {
+          tratamento_ids: (med.tratamento_ids || []).filter((t) => t !== id),
+        });
+      } catch (err) {
+        console.error("Erro ao desvincular medicamento do tratamento:", err);
+        setMedicamentoIds((p) => [...p, medId]);
+      }
+    }
+  };
 
   if (isLoading) return <DetailSkeleton />;
   if (!tratamento) return null;
@@ -398,21 +409,18 @@ function EditarTratamentoContent() {
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={isSaving} className="shadow-lg">
-            {isSaving ? <Loader2 size={18} className="animate-spin" /> : "Salvar alterações"}
+          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saveAction.isSubmitting} className="shadow-lg">
+            {saveAction.isSubmitting ? <Loader2 size={18} className="animate-spin" /> : "Salvar alterações"}
           </Button>
         </div>
 
-        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir Tratamento" message="Tem certeza que deseja excluir este tratamento? O histórico de medicamentos e exames não será apagado, mas perderão este vínculo." isLoading={isDeleting} />
+        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir Tratamento" message="Tem certeza que deseja excluir este tratamento? O histórico de medicamentos e exames não será apagado, mas perderão este vínculo." isLoading={deleteAction.isSubmitting} />
 
         <SelectionModal<Cid> isOpen={isCidModalOpen} onClose={() => setIsCidModalOpen(false)} onSelect={(item) => handleAddCid(item.id!)} items={cids || []} title="Vincular Diagnóstico (CID)" placeholder="Buscar por código ou descrição..." getItemId={i => i.id!} getItemLabel={i => i.descricao} renderItem={(item) => (<div><p className="font-medium text-ink-primary">{item.descricao}</p>{item.codigo && item.codigo !== "N/A" && <p className="text-xs text-ink-muted">CID: {item.codigo}</p>}</div>)} onCreateNew={() => { setIsCidModalOpen(false); router.push("/saude/cids/novo"); }} createNewLabel="Cadastrar Novo CID" />
-
         <SelectionModal<Medico> isOpen={isMedicoModalOpen} onClose={() => setIsMedicoModalOpen(false)} onSelect={(item) => { handleAddMedico(item); setIsMedicoModalOpen(false); }} items={medicos.filter(m => !medicoIds.includes(m.id!))} title="Vincular Médico" placeholder="Buscar médico..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Stethoscope size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">Dr(a). {item.nome}</p></div></div>)} onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }} createNewLabel="Cadastrar Novo Médico" />
-
         <SelectionModal<Hospital> isOpen={isHospitalModalOpen} onClose={() => setIsHospitalModalOpen(false)} onSelect={(item) => { handleAddHospital(item); setIsHospitalModalOpen(false); }} items={hospitais.filter(h => !hospitalIds.includes(h.id!))} title="Vincular Hospital" placeholder="Buscar hospital..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/10 text-violet-400"><Building2 size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }} createNewLabel="Cadastrar Novo Hospital" />
-
         <SelectionModal<LocalSaude> isOpen={isLocalModalOpen} onClose={() => setIsLocalModalOpen(false)} onSelect={(item) => { handleAddLocal(item); setIsLocalModalOpen(false); }} items={locais.filter(l => !localIds.includes(l.id!))} title="Vincular Posto/Local" placeholder="Buscar local..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><MapPin size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }} createNewLabel="Cadastrar Novo Local" />
-
+        
         <SelectionModal<Medicamento> 
           isOpen={isMedicamentoModalOpen} 
           onClose={() => setIsMedicamentoModalOpen(false)} 
@@ -440,14 +448,7 @@ function EditarTratamentoContent() {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm" onClick={() => setShowAddCidPrompt(false)}>
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-[28px] border border-surface-border bg-surface p-6 shadow-xl space-y-4">
                 <div className="flex items-center gap-3 text-violet-400"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/10"><FolderHeart size={22} /></div><div><h3 className="font-display text-base font-bold text-ink-primary">Adicionar outro CID?</h3><p className="text-xs text-ink-muted">Você pode vincular múltiplos diagnósticos</p></div></div>
-                <div className="flex gap-2 pt-2">
-                  <button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); }} className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all" type="button">
-                    Não, finalizar
-                  </button>
-                  <button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); setIsCidModalOpen(true); }} className="flex-1 rounded-2xl bg-violet-400 py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-violet-400/20" type="button">
-                    Sim, adicionar
-                  </button>
-                </div>
+                <div className="flex gap-2 pt-2"><button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); }} className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary active:scale-95 transition-all" type="button">Não, finalizar</button><button onClick={() => { trigger("vibrate"); setShowAddCidPrompt(false); setIsCidModalOpen(true); }} className="flex-1 rounded-2xl bg-violet-400 py-3 text-xs font-semibold text-void active:scale-95 transition-all shadow-md shadow-violet-400/20" type="button">Sim, adicionar</button></div>
               </motion.div>
             </div>
           )}
@@ -459,4 +460,4 @@ function EditarTratamentoContent() {
 
 export default function EditarTratamentoPage() {
   return <Suspense fallback={<DetailSkeleton />}><EditarTratamentoContent /></Suspense>;
-}
+          }
