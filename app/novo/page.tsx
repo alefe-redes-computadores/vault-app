@@ -1,58 +1,64 @@
 // app/novo/page.tsx
-
 "use client";
 
 import {
-  useState,
   useEffect,
-  useRef,
   useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
 } from "react";
 import {
   useRouter,
+  useSearchParams,
 } from "next/navigation";
 import {
-  motion,
   AnimatePresence,
+  motion,
 } from "framer-motion";
-import type {
-  LucideIcon,
-} from "lucide-react";
+import { useLiveQuery } from "dexie-react-hooks";
+import type { LucideIcon } from "lucide-react";
 
 import {
+  AlertCircle,
   ArrowLeft,
-  Upload,
+  Award,
+  Briefcase,
+  Calendar,
   Camera,
-  X,
-  Loader2,
-  Save,
-  Shield,
-  FileText,
-  Image as ImageIcon,
-  ChevronRight,
-  Plus,
   ChevronLeft,
+  ChevronRight,
   Contact,
   CreditCard,
-  Scroll,
-  Landmark,
-  Award,
+  FileText,
   Folder,
-  Briefcase,
+  Landmark,
+  Loader2,
+  Paperclip,
   Plane,
+  Plus,
+  Save,
+  Scroll,
+  Shield,
   ShieldCheck,
-  AlertCircle,
-  Calendar,
-  Layers3,
-  CheckCircle2,
+  Upload,
+  UserRound,
+  X,
 } from "lucide-react";
 
+import { db } from "@/lib/db";
+import { uploadFile } from "@/lib/supabase/storage";
+import {
+  documentsRepository,
+} from "@/lib/repositories/documents";
+import {
+  scheduleDocumentExpiryNotification,
+} from "@/lib/notifications";
+
+import { useAuth } from "@/hooks/useAuth";
 import {
   usePersons,
 } from "@/hooks/usePersons";
-import {
-  useAuth,
-} from "@/hooks/useAuth";
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
@@ -60,21 +66,20 @@ import {
   useHapticFeedback,
 } from "@/lib/haptics";
 import {
-  uploadFile,
-} from "@/lib/supabase/storage";
-import {
   useSubmitAction,
 } from "@/hooks/useSubmitAction";
 import {
-  documentsRepository,
-} from "@/lib/repositories/documents";
+  useToast,
+} from "@/components/ToastProvider";
 
 import {
   CATEGORIES,
   DOCUMENT_FIELDS,
-  type CategoryId,
-  type DocumentType,
+  TYPE_CATEGORY_MAP,
   type Attachment,
+  type CategoryId,
+  type DocumentField,
+  type DocumentType,
   type Person,
   type Vault,
 } from "@/lib/types";
@@ -95,85 +100,67 @@ import {
   BottomSheet,
 } from "@/components/ui/BottomSheet";
 
-import {
-  scheduleDocumentExpiryNotification,
-} from "@/lib/notifications";
+// ============================================================
+// TIPOS LOCAIS
+// ============================================================
 
-import {
-  db,
-} from "@/lib/db";
+interface LocalAttachment {
+  attachmentId: string;
+  file: File;
+  objectUrl: string;
+}
 
-import {
-  useLiveQuery,
-} from "dexie-react-hooks";
+interface CustomField {
+  id: string;
+  label: string;
+  value: string;
+}
 
-const VAULT_CATEGORIES: CategoryId[] = [
+// ============================================================
+// CATEGORIAS DESTE FLUXO
+// ============================================================
+
+const GENERAL_CATEGORIES: CategoryId[] = [
   "pessoal",
   "empresa",
   "outros",
 ];
 
-const VAULT_TYPE_CATEGORY_MAP: Record<
-  string,
-  CategoryId[]
-> = {
-  rg: ["pessoal"],
-  cpf: ["pessoal"],
-  cnh: ["pessoal"],
-  certidao_nascimento: ["pessoal"],
-  titulo_eleitor: ["pessoal"],
-  certificado: ["pessoal", "empresa"],
-  carteira_trabalho: ["pessoal", "empresa"],
-  passaporte: ["pessoal"],
-  dispensa_militar: ["pessoal"],
-  credencial: ["pessoal", "empresa", "outros"],
-  outro: ["pessoal", "empresa", "outros"],
-};
+// ============================================================
+// TIPOS PERMITIDOS
+// ============================================================
 
-const TYPE_ICONS: Record<
-  string,
-  LucideIcon
-> = {
-  rg: Contact,
-  cpf: FileText,
-  cnh: CreditCard,
-  certidao_nascimento: Scroll,
-  titulo_eleitor: Landmark,
-  certificado: Award,
-  carteira_trabalho: Briefcase,
-  passaporte: Plane,
-  dispensa_militar: ShieldCheck,
-  credencial: Contact,
-  outro: Folder,
-};
+const GENERAL_TYPE_CANDIDATES: DocumentType[] = [
+  "rg",
+  "cpf",
+  "cnh",
+  "certidao_nascimento",
+  "titulo_eleitor",
+  "certificado",
+  "carteira_trabalho",
+  "passaporte",
+  "dispensa_militar",
+  "credencial",
+  "outro",
+];
 
-const TYPE_DESCRIPTIONS: Record<
-  string,
-  string
-> = {
-  rg: "Registro Geral ou C.I.N",
-  cpf: "Cadastro de Pessoa Física",
-  cnh: "Carteira Nacional de Habilitação",
-  certidao_nascimento:
-    "Certidão de Nascimento ou Casamento",
-  titulo_eleitor: "Justiça Eleitoral",
-  certificado:
-    "Certificados, cursos e diplomas",
-  carteira_trabalho:
-    "CTPS física ou digital",
-  passaporte:
-    "Viagens internacionais",
-  dispensa_militar:
-    "Certificado de Alistamento ou Dispensa",
-  credencial:
-    "Carteirinhas, crachás e credenciais",
-  outro:
-    "Outros documentos customizados",
-};
+const GENERAL_TYPES: DocumentType[] =
+  GENERAL_TYPE_CANDIDATES.filter(
+    (type) =>
+      TYPE_CATEGORY_MAP[type].some(
+        (category) =>
+          GENERAL_CATEGORIES.includes(
+            category
+          )
+      )
+  );
 
-const DOCUMENT_TYPE_LABELS: Record<
-  string,
-  string
+// ============================================================
+// LABELS
+// ============================================================
+
+const DOCUMENT_TYPE_LABELS: Partial<
+  Record<DocumentType, string>
 > = {
   rg: "C.I.N / Identidade",
   cpf: "CPF",
@@ -196,16 +183,112 @@ const DOCUMENT_TYPE_LABELS: Record<
     "Outro",
 };
 
+const TYPE_DESCRIPTIONS: Partial<
+  Record<DocumentType, string>
+> = {
+  rg:
+    "Registro Geral ou Carteira de Identidade Nacional.",
+
+  cpf:
+    "Cadastro de Pessoa Física.",
+
+  cnh:
+    "Carteira Nacional de Habilitação.",
+
+  certidao_nascimento:
+    "Certidão de nascimento ou outro registro civil.",
+
+  titulo_eleitor:
+    "Documento da Justiça Eleitoral.",
+
+  certificado:
+    "Certificados, diplomas, cursos e qualificações.",
+
+  carteira_trabalho:
+    "Carteira de Trabalho física ou digital.",
+
+  passaporte:
+    "Documento de identificação para viagens internacionais.",
+
+  dispensa_militar:
+    "Certificado de alistamento, reservista ou dispensa.",
+
+  credencial:
+    "Carteirinhas, crachás e credenciais de instituições.",
+
+  outro:
+    "Outros documentos pessoais, empresariais ou personalizados.",
+};
+
+const TYPE_ICONS: Partial<
+  Record<DocumentType, LucideIcon>
+> = {
+  rg: Contact,
+  cpf: FileText,
+  cnh: CreditCard,
+  certidao_nascimento: Scroll,
+  titulo_eleitor: Landmark,
+  certificado: Award,
+  carteira_trabalho: Briefcase,
+  passaporte: Plane,
+  dispensa_militar: ShieldCheck,
+  credencial: Contact,
+  outro: Folder,
+};
+
+const TYPE_TITLE_PLACEHOLDERS: Partial<
+  Record<DocumentType, string>
+> = {
+  rg:
+    "Ex: Minha C.I.N",
+
+  cpf:
+    "Ex: CPF",
+
+  cnh:
+    "Ex: CNH — Categoria B",
+
+  certidao_nascimento:
+    "Ex: Certidão de Nascimento",
+
+  titulo_eleitor:
+    "Ex: Título de Eleitor",
+
+  certificado:
+    "Ex: Certificado Curso de Inglês",
+
+  carteira_trabalho:
+    "Ex: Carteira de Trabalho",
+
+  passaporte:
+    "Ex: Passaporte Brasileiro",
+
+  dispensa_militar:
+    "Ex: Certificado de Dispensa",
+
+  credencial:
+    "Ex: Carteirinha da Empresa",
+
+  outro:
+    "Ex: Contrato, declaração ou documento",
+};
+
+// ============================================================
+// ANIMAÇÃO
+// ============================================================
+
 const slideVariants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 50 : -50,
     opacity: 0,
   }),
+
   center: {
     zIndex: 1,
     x: 0,
     opacity: 1,
   },
+
   exit: (direction: number) => ({
     zIndex: 0,
     x: direction < 0 ? 50 : -50,
@@ -213,7 +296,26 @@ const slideVariants = {
   }),
 };
 
-function handleDateMask(value: string): string {
+// ============================================================
+// HELPERS
+// ============================================================
+
+function isCategoryId(
+  value: string | null
+): value is CategoryId {
+  if (!value) {
+    return false;
+  }
+
+  return Object.prototype.hasOwnProperty.call(
+    CATEGORIES,
+    value
+  );
+}
+
+function handleDateMask(
+  value: string
+): string {
   const clean = value
     .replace(/\D/g, "")
     .slice(0, 8);
@@ -239,12 +341,21 @@ function handleDateMask(value: string): string {
 }
 
 function parseDateToISO(
-  displayStr: string
+  displayValue: string
 ): string {
-  const clean = displayStr.replace(
-    /\D/g,
-    ""
-  );
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      displayValue
+    )
+  ) {
+    return displayValue;
+  }
+
+  const clean =
+    displayValue.replace(
+      /\D/g,
+      ""
+    );
 
   if (clean.length !== 8) {
     return "";
@@ -256,28 +367,64 @@ function parseDateToISO(
   )}-${clean.slice(
     2,
     4
-  )}-${clean.slice(
-    0,
-    2
-  )}`;
+  )}-${clean.slice(0, 2)}`;
 }
 
-type LocalAttachment = {
-  attachmentId: string;
-  file: File;
-};
+function buildMetadataForType(
+  type: DocumentType
+): Record<string, string> {
+  const metadata: Record<
+    string,
+    string
+  > = {};
+
+  DOCUMENT_FIELDS[type].forEach(
+    (field) => {
+      metadata[field.key] =
+        field.type === "select" &&
+        field.options?.[0]
+          ? field.options[0]
+          : "";
+    }
+  );
+
+  return metadata;
+}
+
+function isSupportedFile(
+  file: File
+): boolean {
+  return (
+    file.type.startsWith(
+      "image/"
+    ) ||
+    file.type ===
+      "application/pdf"
+  );
+}
+
+// ============================================================
+// PÁGINA
+// ============================================================
 
 export default function NovoDocumentoPage() {
   const router = useRouter();
+  const searchParams =
+    useSearchParams();
+
+  const { user } =
+    useAuth();
 
   const { trigger } =
     useHapticFeedback();
 
-  const { user } = useAuth();
+  const { showToast } =
+    useToast();
 
   const {
     activePersonId,
-  } = useActivePersonId();
+  } =
+    useActivePersonId();
 
   const persons =
     usePersons() as Person[];
@@ -285,73 +432,77 @@ export default function NovoDocumentoPage() {
   const {
     run,
     isSubmitting,
-  } = useSubmitAction();
+  } =
+    useSubmitAction();
 
   const isSubmitLocked =
     useRef(false);
 
   const fileInputRef =
-    useRef<HTMLInputElement>(null);
+    useRef<HTMLInputElement>(
+      null
+    );
 
   const cameraInputRef =
-    useRef<HTMLInputElement>(null);
+    useRef<HTMLInputElement>(
+      null
+    );
 
-  const [currentStep, setCurrentStep] =
-    useState(1);
+  const objectUrlsRef =
+    useRef<Set<string>>(
+      new Set()
+    );
 
-  const [slideDirection, setSlideDirection] =
-    useState(0);
+  // ==========================================================
+  // PARÂMETROS
+  // ==========================================================
 
-  const [formData, setFormData] =
-    useState({
-      person_id:
-        activePersonId || "",
-      category_id:
-        "pessoal" as CategoryId,
-      type:
-        "rg" as DocumentType,
-      title: "",
-      description: "",
-      metadata:
-        {} as Record<string, string>,
-      attachments:
-        [] as Attachment[],
-      vault_id:
-        undefined as
-          | string
-          | undefined,
-    });
+  const categoryParam =
+    searchParams.get(
+      "categoria"
+    );
 
-  const [
-    customFields,
-    setCustomFields,
-  ] = useState<
-    {
-      id: string;
-      label: string;
-      value: string;
-    }[]
-  >([]);
+  const personParam =
+    searchParams.get(
+      "person_id"
+    );
 
-  const [errors, setErrors] =
-    useState<
-      Record<string, string>
-    >({});
+  const requestedCategory =
+    isCategoryId(
+      categoryParam
+    ) &&
+    GENERAL_CATEGORIES.includes(
+      categoryParam
+    )
+      ? categoryParam
+      : "pessoal";
 
-  /**
-   * Cada arquivo fica vinculado ao seu
-   * attachment específico.
-   */
-  const [
-    localFiles,
-    setLocalFiles,
-  ] = useState<
-    LocalAttachment[]
-  >([]);
+  const initialTypes =
+    GENERAL_TYPES.filter(
+      (type) =>
+        TYPE_CATEGORY_MAP[
+          type
+        ].includes(
+          requestedCategory
+        )
+    );
+
+  const initialType =
+    initialTypes[0] ||
+    "outro";
+
+  // ==========================================================
+  // ESTADOS
+  // ==========================================================
 
   const [
-    uploadProgress,
-    setUploadProgress,
+    currentStep,
+    setCurrentStep,
+  ] = useState(1);
+
+  const [
+    slideDirection,
+    setSlideDirection,
   ] = useState(0);
 
   const [
@@ -362,230 +513,487 @@ export default function NovoDocumentoPage() {
   const [
     expiryWarning,
     setExpiryWarning,
-  ] = useState<string | null>(
-    null
-  );
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    uploadProgress,
+    setUploadProgress,
+  ] = useState(0);
+
+  const [
+    errors,
+    setErrors,
+  ] = useState<
+    Record<string, string>
+  >({});
+
+  const [
+    customFields,
+    setCustomFields,
+  ] = useState<
+    CustomField[]
+  >([]);
+
+  const [
+    localFiles,
+    setLocalFiles,
+  ] = useState<
+    LocalAttachment[]
+  >([]);
+
+  const [
+    formData,
+    setFormData,
+  ] = useState({
+    person_id:
+      personParam ||
+      activePersonId ||
+      "",
+
+    category_id:
+      requestedCategory,
+
+    type:
+      initialType,
+
+    title:
+      "",
+
+    description:
+      "",
+
+    metadata:
+      buildMetadataForType(
+        initialType
+      ),
+
+    attachments:
+      [] as Attachment[],
+
+    vault_id:
+      undefined as
+        | string
+        | undefined,
+  });
+
+  // ==========================================================
+  // VAULTS
+  // ==========================================================
 
   const userVaults =
     useLiveQuery(
-      () =>
-        db.vaults
+      () => {
+        if (!user?.id) {
+          return [];
+        }
+
+        return db.vaults
           .where("user_id")
-          .equals(user?.id || "")
-          .toArray(),
+          .equals(user.id)
+          .toArray();
+      },
       [user?.id],
       []
     ) || [];
 
-  /**
-   * Sempre que existir uma pessoa ativa,
-   * ela tem prioridade no documento.
-   *
-   * Caso não exista pessoa ativa, usamos a
-   * primeira pessoa disponível como fallback.
-   */
+  // ==========================================================
+  // PESSOA INICIAL
+  // ==========================================================
+
   useEffect(() => {
-    if (activePersonId) {
-      setFormData((previous) => ({
-        ...previous,
-        person_id:
-          activePersonId,
-      }));
+    if (
+      personParam &&
+      persons.some(
+        (person) =>
+          person.id ===
+          personParam
+      )
+    ) {
+      setFormData(
+        (previous) => ({
+          ...previous,
+          person_id:
+            personParam,
+        })
+      );
 
       return;
     }
 
     if (
-      !formData.person_id &&
-      persons.length > 0
+      formData.person_id
     ) {
-      setFormData((previous) => ({
-        ...previous,
-        person_id:
-          persons[0].id!,
-      }));
+      return;
+    }
+
+    if (activePersonId) {
+      setFormData(
+        (previous) => ({
+          ...previous,
+          person_id:
+            activePersonId,
+        })
+      );
+
+      return;
+    }
+
+    const firstPerson =
+      persons.find(
+        (person) =>
+          Boolean(
+            person.id
+          )
+      );
+
+    if (firstPerson?.id) {
+      setFormData(
+        (previous) => ({
+          ...previous,
+          person_id:
+            firstPerson.id!,
+        })
+      );
     }
   }, [
     activePersonId,
-    persons,
     formData.person_id,
+    personParam,
+    persons,
   ]);
 
-  /**
-   * Ao trocar o tipo de documento,
-   * reconstruímos os metadados específicos.
-   */
+  // ==========================================================
+  // LIMPEZA DOS PREVIEWS
+  // ==========================================================
+
   useEffect(() => {
-    const fields =
-      DOCUMENT_FIELDS[
-        formData.type
-      ] || [];
+    const urls =
+      objectUrlsRef.current;
 
-    const newMetadata: Record<
-      string,
-      string
-    > = {};
-
-    fields.forEach((field) => {
-      newMetadata[field.key] =
-        field.type === "select" &&
-        field.options?.[0]
-          ? field.options[0]
-          : "";
-    });
-
-    setFormData((previous) => ({
-      ...previous,
-      metadata:
-        newMetadata,
-    }));
-
-    setExpiryWarning(null);
-
-    setErrors((previous) => {
-      const next = {
-        ...previous,
-      };
-
-      fields.forEach(
-        (field) => {
-          delete next[field.key];
+    return () => {
+      urls.forEach(
+        (url) => {
+          URL.revokeObjectURL(
+            url
+          );
         }
       );
 
-      return next;
-    });
-  }, [formData.type]);
+      urls.clear();
+    };
+  }, []);
 
-  const availableTypes =
-    useMemo(() => {
-      return (
-        Object.keys(
-          VAULT_TYPE_CATEGORY_MAP
-        ) as DocumentType[]
-      ).filter((type) =>
-        VAULT_TYPE_CATEGORY_MAP[
-          type
-        ]?.includes(
-          formData.category_id
-        )
-      );
-    }, [
-      formData.category_id,
-    ]);
+  // ==========================================================
+  // DERIVADOS
+  // ==========================================================
 
   const fields =
     DOCUMENT_FIELDS[
       formData.type
     ] || [];
 
-  const activePersonObj =
+  const availableTypes =
+    useMemo(() => {
+      return GENERAL_TYPES.filter(
+        (type) =>
+          TYPE_CATEGORY_MAP[
+            type
+          ].includes(
+            formData.category_id
+          )
+      );
+    }, [
+      formData.category_id,
+    ]);
+
+  const selectedPerson =
     persons.find(
       (person) =>
         person.id ===
         formData.person_id
-    ) ||
-    persons[0];
+    );
 
-  const handleChange = <
-    K extends keyof typeof formData
-  >(
-    field: K,
-    value: (typeof formData)[K]
+  const SelectedTypeIcon =
+    TYPE_ICONS[
+      formData.type
+    ] ||
+    FileText;
+
+  const selectedTypeLabel =
+    DOCUMENT_TYPE_LABELS[
+      formData.type
+    ] ||
+    "Documento";
+
+  const selectedTypeDescription =
+    TYPE_DESCRIPTIONS[
+      formData.type
+    ] ||
+    "";
+
+  const titlePlaceholder =
+    TYPE_TITLE_PLACEHOLDERS[
+      formData.type
+    ] ||
+    "Ex: Documento";
+
+  // ==========================================================
+  // ERROS
+  // ==========================================================
+
+  const clearError = (
+    key: string
   ) => {
-    setFormData((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    setErrors((previous) => {
+      if (
+        !previous[key]
+      ) {
+        return previous;
+      }
 
-    if (errors[field]) {
-      setErrors((previous) => ({
+      const next = {
         ...previous,
-        [field]: "",
-      }));
+      };
+
+      delete next[key];
+
+      return next;
+    });
+  };
+
+  // ==========================================================
+  // FORM
+  // ==========================================================
+
+  const handlePersonChange = (
+    personId: string
+  ) => {
+    trigger("vibrate");
+
+    setFormData(
+      (previous) => ({
+        ...previous,
+        person_id:
+          personId,
+      })
+    );
+
+    clearError(
+      "person_id"
+    );
+  };
+
+  const handleCategoryChange = (
+    categoryId:
+      CategoryId
+  ) => {
+    if (
+      !GENERAL_CATEGORIES.includes(
+        categoryId
+      )
+    ) {
+      return;
     }
+
+    trigger("vibrate");
+
+    setFormData(
+      (previous) => {
+        const currentTypeAllowed =
+          TYPE_CATEGORY_MAP[
+            previous.type
+          ].includes(
+            categoryId
+          );
+
+        if (
+          currentTypeAllowed &&
+          GENERAL_TYPES.includes(
+            previous.type
+          )
+        ) {
+          return {
+            ...previous,
+            category_id:
+              categoryId,
+          };
+        }
+
+        const nextType =
+          GENERAL_TYPES.find(
+            (type) =>
+              TYPE_CATEGORY_MAP[
+                type
+              ].includes(
+                categoryId
+              )
+          );
+
+        if (!nextType) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          category_id:
+            categoryId,
+          type:
+            nextType,
+          metadata:
+            buildMetadataForType(
+              nextType
+            ),
+        };
+      }
+    );
+
+    setCustomFields([]);
+    setErrors({});
+    setExpiryWarning(
+      null
+    );
+  };
+
+  const handleTypeChange = (
+    type: DocumentType
+  ) => {
+    if (
+      !GENERAL_TYPES.includes(
+        type
+      )
+    ) {
+      return;
+    }
+
+    trigger("vibrate");
+
+    setFormData(
+      (previous) => ({
+        ...previous,
+        type,
+        metadata:
+          buildMetadataForType(
+            type
+          ),
+      })
+    );
+
+    setCustomFields([]);
+    setErrors({});
+    setExpiryWarning(
+      null
+    );
+    setIsTypeModalOpen(
+      false
+    );
   };
 
   const handleMetadataChange = (
     key: string,
     value: string
   ) => {
-    setFormData((previous) => ({
-      ...previous,
-      metadata: {
-        ...previous.metadata,
-        [key]: value,
-      },
-    }));
-
-    if (errors[key]) {
-      setErrors((previous) => ({
+    setFormData(
+      (previous) => ({
         ...previous,
-        [key]: "",
-      }));
-    }
+        metadata: {
+          ...previous.metadata,
+          [key]:
+            value,
+        },
+      })
+    );
 
-    const normalizedKey =
+    clearError(key);
+
+    const normalized =
       key.toLowerCase();
 
     if (
-      normalizedKey.includes(
+      normalized.includes(
         "validade"
       ) ||
-      normalizedKey.includes(
+      normalized.includes(
         "expiry"
       )
     ) {
       const iso =
-        parseDateToISO(value);
-
-      if (
-        iso &&
-        new Date(iso) <
-          new Date()
-      ) {
-        setExpiryWarning(
-          "Atenção: A data inserida indica que este documento já está vencido!"
+        parseDateToISO(
+          value
         );
-      } else {
-        setExpiryWarning(null);
+
+      if (iso) {
+        const expiry =
+          new Date(
+            `${iso}T23:59:59`
+          );
+
+        if (
+          expiry <
+          new Date()
+        ) {
+          setExpiryWarning(
+            "Atenção: a data informada indica que este documento já está vencido."
+          );
+
+          return;
+        }
       }
+
+      setExpiryWarning(
+        null
+      );
     }
   };
 
-  const addCustomField = () => {
-    if (customFields.length >= 5) {
-      return;
-    }
+  // ==========================================================
+  // CAMPOS EXTRAS
+  // ==========================================================
 
-    setCustomFields(
-      (previous) => [
-        ...previous,
-        {
-          id:
-            crypto.randomUUID(),
-          label: "",
-          value: "",
-        },
-      ]
-    );
+  const addCustomField =
+    () => {
+      if (
+        customFields.length >=
+        5
+      ) {
+        return;
+      }
 
-    trigger("vibrate");
-  };
+      setCustomFields(
+        (previous) => [
+          ...previous,
+          {
+            id:
+              crypto.randomUUID(),
+            label:
+              "",
+            value:
+              "",
+          },
+        ]
+      );
+
+      trigger("vibrate");
+    };
 
   const updateCustomField = (
     id: string,
-    key: "label" | "value",
+    key:
+      | "label"
+      | "value",
     value: string
   ) => {
     setCustomFields(
       (previous) =>
         previous.map(
           (field) =>
-            field.id === id
+            field.id ===
+            id
               ? {
                   ...field,
-                  [key]: value,
+                  [key]:
+                    value,
                 }
               : field
         )
@@ -599,42 +1007,84 @@ export default function NovoDocumentoPage() {
       (previous) =>
         previous.filter(
           (field) =>
-            field.id !== id
+            field.id !==
+            id
         )
     );
 
     trigger("vibrate");
   };
 
+  // ==========================================================
+  // ANEXOS
+  // ==========================================================
+
   const addLocalFile = (
     file: File,
-    type: Attachment["type"],
     name?: string
   ) => {
     if (
       file.size >
-      10 * 1024 * 1024
+      10 *
+        1024 *
+        1024
     ) {
       trigger("error");
-      alert(
-        "Arquivo muito grande. O limite máximo é 10MB."
+
+      showToast(
+        "O arquivo excede o limite de 10 MB.",
+        "error"
       );
+
+      return;
+    }
+
+    if (
+      !isSupportedFile(
+        file
+      )
+    ) {
+      trigger("error");
+
+      showToast(
+        "O Vault aceita imagens e arquivos PDF.",
+        "error"
+      );
+
       return;
     }
 
     const attachmentId =
       crypto.randomUUID();
 
-    const attachment: Attachment =
-      {
-        id: attachmentId,
+    const objectUrl =
+      URL.createObjectURL(
+        file
+      );
+
+    objectUrlsRef.current.add(
+      objectUrl
+    );
+
+    const attachment:
+      Attachment = {
+        id:
+          attachmentId,
+
         url:
-          URL.createObjectURL(
-            file
-          ),
+          objectUrl,
+
         name:
-          name || file.name,
-        type,
+          name ||
+          file.name,
+
+        type:
+          file.type.startsWith(
+            "image/"
+          )
+            ? "image"
+            : "pdf",
+
         uploaded_at:
           new Date().toISOString(),
       };
@@ -645,6 +1095,7 @@ export default function NovoDocumentoPage() {
         {
           attachmentId,
           file,
+          objectUrl,
         },
       ]
     );
@@ -652,6 +1103,7 @@ export default function NovoDocumentoPage() {
     setFormData(
       (previous) => ({
         ...previous,
+
         attachments: [
           ...previous.attachments,
           attachment,
@@ -663,27 +1115,29 @@ export default function NovoDocumentoPage() {
   };
 
   const handleFileSelect = (
-    event: React.ChangeEvent<HTMLInputElement>
+    event:
+      ChangeEvent<HTMLInputElement>
   ) => {
-    const file =
-      event.target.files?.[0];
-
-    if (file) {
-      addLocalFile(
-        file,
-        file.type.startsWith(
-          "image/"
-        )
-          ? "image"
-          : "pdf"
+    const files =
+      Array.from(
+        event.target.files ||
+          []
       );
-    }
 
-    event.target.value = "";
+    files.forEach(
+      (file) =>
+        addLocalFile(
+          file
+        )
+    );
+
+    event.target.value =
+      "";
   };
 
   const handleCameraCapture = (
-    event: React.ChangeEvent<HTMLInputElement>
+    event:
+      ChangeEvent<HTMLInputElement>
   ) => {
     const file =
       event.target.files?.[0];
@@ -691,30 +1145,31 @@ export default function NovoDocumentoPage() {
     if (file) {
       addLocalFile(
         file,
-        "image",
         `foto_${Date.now()}.jpg`
       );
     }
 
-    event.target.value = "";
+    event.target.value =
+      "";
   };
 
   const removeAttachment = (
     id: string
   ) => {
-    const attachment =
-      formData.attachments.find(
+    const local =
+      localFiles.find(
         (item) =>
-          item.id === id
+          item.attachmentId ===
+          id
       );
 
-    if (
-      attachment?.url.startsWith(
-        "blob:"
-      )
-    ) {
+    if (local) {
       URL.revokeObjectURL(
-        attachment.url
+        local.objectUrl
+      );
+
+      objectUrlsRef.current.delete(
+        local.objectUrl
       );
     }
 
@@ -730,16 +1185,24 @@ export default function NovoDocumentoPage() {
     setFormData(
       (previous) => ({
         ...previous,
+
         attachments:
           previous.attachments.filter(
-            (item) =>
-              item.id !== id
+            (
+              attachment
+            ) =>
+              attachment.id !==
+              id
           ),
       })
     );
 
     trigger("vibrate");
   };
+
+  // ==========================================================
+  // VALIDAÇÃO
+  // ==========================================================
 
   const validateStep = (
     step: number
@@ -751,6 +1214,13 @@ export default function NovoDocumentoPage() {
 
     if (step === 1) {
       if (
+        !formData.person_id
+      ) {
+        newErrors.person_id =
+          "Selecione uma pessoa";
+      }
+
+      if (
         !formData.title.trim()
       ) {
         newErrors.title =
@@ -758,16 +1228,20 @@ export default function NovoDocumentoPage() {
       }
 
       if (
-        !formData.person_id
+        !GENERAL_TYPES.includes(
+          formData.type
+        )
       ) {
-        newErrors.person_id =
-          "Selecione uma pessoa para vincular o documento";
+        newErrors.type =
+          "Tipo de documento inválido";
       }
     }
 
     if (step === 2) {
       fields.forEach(
-        (field) => {
+        (
+          field: DocumentField
+        ) => {
           if (
             field.required &&
             !formData.metadata[
@@ -776,13 +1250,16 @@ export default function NovoDocumentoPage() {
           ) {
             newErrors[
               field.key
-            ] = `${field.label} é obrigatório`;
+            ] =
+              `${field.label} é obrigatório`;
           }
         }
       );
     }
 
-    setErrors(newErrors);
+    setErrors(
+      newErrors
+    );
 
     return (
       Object.keys(
@@ -790,6 +1267,70 @@ export default function NovoDocumentoPage() {
       ).length === 0
     );
   };
+
+  const validateAll =
+    (): boolean => {
+      const newErrors: Record<
+        string,
+        string
+      > = {};
+
+      if (
+        !formData.person_id
+      ) {
+        newErrors.person_id =
+          "Selecione uma pessoa";
+      }
+
+      if (
+        !formData.title.trim()
+      ) {
+        newErrors.title =
+          "O título é obrigatório";
+      }
+
+      if (
+        !GENERAL_TYPES.includes(
+          formData.type
+        )
+      ) {
+        newErrors.type =
+          "Tipo de documento inválido";
+      }
+
+      fields.forEach(
+        (
+          field:
+            DocumentField
+        ) => {
+          if (
+            field.required &&
+            !formData.metadata[
+              field.key
+            ]?.trim()
+          ) {
+            newErrors[
+              field.key
+            ] =
+              `${field.label} é obrigatório`;
+          }
+        }
+      );
+
+      setErrors(
+        newErrors
+      );
+
+      return (
+        Object.keys(
+          newErrors
+        ).length === 0
+      );
+    };
+
+  // ==========================================================
+  // PASSOS
+  // ==========================================================
 
   const nextStep = () => {
     trigger("vibrate");
@@ -828,19 +1369,31 @@ export default function NovoDocumentoPage() {
     );
   };
 
+  // ==========================================================
+  // SALVAR
+  // ==========================================================
+
   const handleSubmit = () => {
     trigger("vibrate");
 
-    const targetPersonId =
-      formData.person_id ||
-      activePersonId ||
-      persons[0]?.id;
+    if (
+      !validateAll()
+    ) {
+      trigger("error");
+
+      showToast(
+        "Revise os campos obrigatórios.",
+        "error"
+      );
+
+      return;
+    }
 
     if (
-      !validateStep(3) ||
       !user?.id ||
-      !targetPersonId
+      !formData.person_id
     ) {
+      trigger("error");
       return;
     }
 
@@ -857,7 +1410,9 @@ export default function NovoDocumentoPage() {
     run(
       async () => {
         try {
-          setUploadProgress(0);
+          setUploadProgress(
+            0
+          );
 
           const cleanMetadata: Record<
             string,
@@ -866,68 +1421,64 @@ export default function NovoDocumentoPage() {
             ...formData.metadata,
           };
 
-          /**
-           * Converte datas de DD/MM/AAAA
-           * para YYYY-MM-DD antes de salvar.
-           */
           fields.forEach(
-            (field) => {
+            (
+              field:
+                DocumentField
+            ) => {
               if (
-                field.type ===
-                  "date" &&
-                cleanMetadata[
+                field.type !==
+                  "date" ||
+                !cleanMetadata[
                   field.key
                 ]
               ) {
-                const iso =
-                  parseDateToISO(
-                    cleanMetadata[
-                      field.key
-                    ]
-                  );
+                return;
+              }
 
-                if (iso) {
+              const iso =
+                parseDateToISO(
                   cleanMetadata[
                     field.key
-                  ] = iso;
-                }
+                  ]
+                );
+
+              if (iso) {
+                cleanMetadata[
+                  field.key
+                ] =
+                  iso;
               }
             }
           );
 
-          /**
-           * Campos personalizados entram
-           * no mesmo objeto de metadata.
-           */
           customFields.forEach(
             (field) => {
               const label =
                 field.label.trim();
 
-              if (label) {
-                cleanMetadata[
-                  label
-                ] =
-                  field.value.trim();
+              if (!label) {
+                return;
               }
+
+              cleanMetadata[
+                label
+              ] =
+                field.value.trim();
             }
           );
 
-          let finalAttachments = [
+          const finalAttachments = [
             ...formData.attachments,
           ];
 
-          /**
-           * Upload baseado no ID do anexo,
-           * nunca na posição do array.
-           */
           if (
-            localFiles.length > 0
+            localFiles.length >
+            0
           ) {
-            setUploadProgress(10);
-
-            const uploadedAttachments: Attachment[] =
-              [];
+            setUploadProgress(
+              5
+            );
 
             for (
               let index = 0;
@@ -935,19 +1486,24 @@ export default function NovoDocumentoPage() {
               localFiles.length;
               index++
             ) {
-              const {
-                attachmentId,
-                file,
-              } = localFiles[index];
+              const local =
+                localFiles[
+                  index
+                ];
 
-              const attachment =
-                formData.attachments.find(
-                  (item) =>
-                    item.id ===
-                    attachmentId
+              const attachmentIndex =
+                finalAttachments.findIndex(
+                  (
+                    attachment
+                  ) =>
+                    attachment.id ===
+                    local.attachmentId
                 );
 
-              if (!attachment) {
+              if (
+                attachmentIndex ===
+                -1
+              ) {
                 continue;
               }
 
@@ -957,123 +1513,122 @@ export default function NovoDocumentoPage() {
               } =
                 await uploadFile(
                   user.id,
-                  file,
+                  local.file,
                   formData.category_id
                 );
 
-              if (error) {
-                console.error(
-                  "Erro no upload:",
-                  error
+              if (
+                error ||
+                !url
+              ) {
+                throw new Error(
+                  `Falha ao enviar ${local.file.name}`
                 );
-                continue;
               }
 
-              uploadedAttachments.push(
-                {
-                  ...attachment,
-                  url,
-                }
-              );
+              finalAttachments[
+                attachmentIndex
+              ] = {
+                ...finalAttachments[
+                  attachmentIndex
+                ],
+                url,
+              };
 
               setUploadProgress(
                 Math.round(
-                  ((index + 1) /
+                  ((index +
+                    1) /
                     localFiles.length) *
-                    80
+                    90
                 )
               );
             }
+          }
 
-            if (
-              uploadedAttachments.length >
-              0
-            ) {
-              finalAttachments =
-                formData.attachments.map(
-                  (attachment) => {
-                    const uploaded =
-                      uploadedAttachments.find(
-                        (item) =>
-                          item.id ===
-                          attachment.id
-                      );
-
-                    return (
-                      uploaded ||
-                      attachment
-                    );
-                  }
-                );
-            }
-
-            /**
-             * Revoga todos os previews locais
-             * somente depois que o upload terminou.
-             */
-            formData.attachments.forEach(
-              (attachment) => {
-                if (
-                  attachment.url.startsWith(
-                    "blob:"
-                  )
-                ) {
-                  URL.revokeObjectURL(
-                    attachment.url
-                  );
-                }
-              }
+          if (
+            finalAttachments.some(
+              (
+                attachment
+              ) =>
+                attachment.url.startsWith(
+                  "blob:"
+                )
+            )
+          ) {
+            throw new Error(
+              "Existem anexos que ainda não foram enviados."
             );
-
-            setLocalFiles([]);
-            setUploadProgress(100);
           }
 
           await documentsRepository.create(
             {
               user_id:
                 user.id,
+
               person_id:
-                targetPersonId,
+                formData.person_id,
+
               category_id:
                 formData.category_id,
+
               type:
                 formData.type,
+
               title:
                 formData.title.trim(),
+
               description:
                 formData.description.trim() ||
                 undefined,
+
               metadata:
                 cleanMetadata,
+
               attachments:
                 finalAttachments,
+
               is_favorite:
                 false,
+
               vault_id:
                 formData.vault_id ||
                 undefined,
             }
           );
 
-          /**
-           * Agenda aviso de vencimento quando
-           * existe uma data válida.
-           */
-          if (
-            cleanMetadata.expiry_date
-          ) {
+          const expiryDate =
+            cleanMetadata.expiry_date ||
+            cleanMetadata.validade;
+
+          if (expiryDate) {
             await scheduleDocumentExpiryNotification(
               crypto.randomUUID(),
               formData.title.trim(),
-              cleanMetadata.expiry_date,
+              expiryDate,
               CATEGORIES[
-                formData
-                  .category_id
+                formData.category_id
               ].name,
               30
             );
           }
+
+          localFiles.forEach(
+            (local) => {
+              URL.revokeObjectURL(
+                local.objectUrl
+              );
+
+              objectUrlsRef.current.delete(
+                local.objectUrl
+              );
+            }
+          );
+
+          setLocalFiles([]);
+          setUploadProgress(
+            100
+          );
 
           router.push(
             "/documentos"
@@ -1086,26 +1641,237 @@ export default function NovoDocumentoPage() {
       {
         successMessage:
           "Documento salvo com sucesso",
+
         errorMessage:
           "Erro ao salvar documento",
+
         goBackOnSuccess:
           false,
       }
     );
   };
 
-  const SelectedTypeIcon =
-    TYPE_ICONS[
-      formData.type
-    ] || Folder;
+  // ==========================================================
+  // RENDER DE CAMPO
+  // ==========================================================
+
+  const renderField = (
+    field: DocumentField
+  ) => {
+    if (
+      formData.type ===
+        "rg" &&
+      field.key ===
+        "rg_number" &&
+      formData.metadata
+        .modelo ===
+        "C.I.N (Nova Identidade)"
+    ) {
+      return null;
+    }
+
+    if (
+      field.type ===
+        "select" &&
+      field.options?.length
+    ) {
+      return (
+        <div
+          key={
+            field.key
+          }
+          className="space-y-2"
+        >
+          <label className="block text-sm font-medium text-ink-primary">
+            {field.label}
+
+            {field.required && (
+              <span className="text-coral">
+                {" "}
+                *
+              </span>
+            )}
+          </label>
+
+          <div className="flex flex-wrap gap-2">
+            {field.options.map(
+              (option) => {
+                const active =
+                  formData.metadata[
+                    field.key
+                  ] === option;
+
+                return (
+                  <button
+                    key={
+                      option
+                    }
+                    type="button"
+                    onClick={() => {
+                      trigger(
+                        "vibrate"
+                      );
+
+                      handleMetadataChange(
+                        field.key,
+                        option
+                      );
+                    }}
+                    className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
+                      active
+                        ? "border-ice bg-ice/12 text-ice"
+                        : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                    }`}
+                  >
+                    {
+                      option
+                    }
+                  </button>
+                );
+              }
+            )}
+          </div>
+
+          {errors[
+            field.key
+          ] && (
+            <p className="text-xs text-coral">
+              {
+                errors[
+                  field.key
+                ]
+              }
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    if (
+      field.type ===
+      "date"
+    ) {
+      return (
+        <div
+          key={
+            field.key
+          }
+          className="space-y-1.5"
+        >
+          <label className="block text-sm font-medium text-ink-primary">
+            {field.label}
+
+            {field.required && (
+              <span className="text-coral">
+                {" "}
+                *
+              </span>
+            )}
+          </label>
+
+          <div className="relative">
+            <Calendar
+              size={16}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted"
+            />
+
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="DD/MM/AAAA"
+              maxLength={10}
+              value={
+                formData.metadata[
+                  field.key
+                ] || ""
+              }
+              onChange={(
+                event
+              ) =>
+                handleMetadataChange(
+                  field.key,
+                  handleDateMask(
+                    event
+                      .target
+                      .value
+                  )
+                )
+              }
+              className={`w-full rounded-2xl border ${
+                errors[
+                  field.key
+                ]
+                  ? "border-coral/50"
+                  : "border-surface-border/50"
+              } bg-surface-raised py-3.5 pl-10 pr-4 font-mono text-sm text-ink-primary outline-none transition-colors focus:border-ice/50`}
+            />
+          </div>
+
+          {errors[
+            field.key
+          ] && (
+            <p className="text-xs text-coral">
+              {
+                errors[
+                  field.key
+                ]
+              }
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <Input
+        key={
+          field.key
+        }
+        label={
+          field.required
+            ? `${field.label} *`
+            : field.label
+        }
+        value={
+          formData.metadata[
+            field.key
+          ] || ""
+        }
+        onChange={(
+          event
+        ) =>
+          handleMetadataChange(
+            field.key,
+            event.target.value
+          )
+        }
+        placeholder={`Digite ${field.label.toLowerCase()}...`}
+        required={
+          field.required
+        }
+        error={
+          errors[
+            field.key
+          ]
+        }
+      />
+    );
+  };
+
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="min-h-[100dvh] overflow-x-hidden bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <input
-          ref={fileInputRef}
+          ref={
+            fileInputRef
+          }
           type="file"
           accept="image/*,application/pdf"
+          multiple
           className="hidden"
           onChange={
             handleFileSelect
@@ -1113,7 +1879,9 @@ export default function NovoDocumentoPage() {
         />
 
         <input
-          ref={cameraInputRef}
+          ref={
+            cameraInputRef
+          }
           type="file"
           accept="image/*"
           capture="environment"
@@ -1123,8 +1891,8 @@ export default function NovoDocumentoPage() {
           }
         />
 
-        <header className="sticky top-0 z-25 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
@@ -1153,7 +1921,7 @@ export default function NovoDocumentoPage() {
 
               <div className="min-w-0">
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                  Vault Pessoal
+                  Vault
                 </p>
 
                 <h1 className="mt-1 font-display text-lg font-semibold text-ink-primary">
@@ -1163,25 +1931,26 @@ export default function NovoDocumentoPage() {
 
                   {currentStep ===
                     2 &&
-                    "Campos Específicos"}
+                    "Dados do documento"}
 
                   {currentStep ===
                     3 &&
-                    "Anexos & Notas"}
+                    "Anexos & notas"}
                 </h1>
               </div>
             </div>
 
-            <div className="shrink-0 rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1 text-xs font-mono font-medium text-ink-muted">
+            <div className="shrink-0 rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1 font-mono text-xs font-medium text-ink-muted">
               {currentStep} / 3
             </div>
           </div>
 
-          <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-surface-border/40">
+          <div className="mx-auto mt-4 h-1 max-w-3xl overflow-hidden rounded-full bg-surface-border/40">
             <motion.div
               className="h-full bg-ice"
               initial={{
-                width: "33%",
+                width:
+                  "33%",
               }}
               animate={{
                 width: `${
@@ -1191,13 +1960,14 @@ export default function NovoDocumentoPage() {
                 }%`,
               }}
               transition={{
-                duration: 0.3,
+                duration:
+                  0.3,
               }}
             />
           </div>
         </header>
 
-        <section className="relative h-full px-5 pt-6">
+        <section className="relative mx-auto max-w-3xl px-5 pt-6">
           <AnimatePresence
             initial={false}
             custom={
@@ -1219,46 +1989,97 @@ export default function NovoDocumentoPage() {
                 animate="center"
                 exit="exit"
                 transition={{
-                  duration: 0.3,
-                  ease: "easeInOut",
+                  duration:
+                    0.3,
+                  ease:
+                    "easeInOut",
                 }}
                 className="space-y-4"
               >
-                <div className="flex items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface px-4 py-3 shadow-sm">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ice/10 text-ice">
-                      <CheckCircle2
-                        size={16}
-                      />
-                    </div>
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                  <div className="mb-3 flex items-center gap-2">
+                    <UserRound
+                      size={15}
+                      className="text-ink-muted"
+                    />
 
-                    <div>
-                      <p className="font-mono text-[10px] uppercase tracking-wider text-ink-muted">
-                        Vinculado ao perfil
-                      </p>
-
-                      <p className="text-xs font-bold text-ink-primary">
-                        {activePersonObj?.name ||
-                          "Perfil Padrão"}
-                      </p>
-                    </div>
+                    <p className="text-sm font-medium text-ink-primary">
+                      Pessoa *
+                    </p>
                   </div>
 
-                  <span className="rounded-lg bg-ice/10 px-2 py-1 text-[10px] font-medium text-ice">
-                    Automático
-                  </span>
+                  {persons.length ===
+                  0 ? (
+                    <p className="text-xs text-ink-muted">
+                      Nenhuma pessoa cadastrada.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {persons.map(
+                        (
+                          person
+                        ) => {
+                          if (
+                            !person.id
+                          ) {
+                            return null;
+                          }
+
+                          const selected =
+                            formData.person_id ===
+                            person.id;
+
+                          return (
+                            <button
+                              key={
+                                person.id
+                              }
+                              type="button"
+                              onClick={() =>
+                                handlePersonChange(
+                                  person.id!
+                                )
+                              }
+                              className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
+                                selected
+                                  ? "border-ice bg-ice/12 text-ice"
+                                  : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                              }`}
+                            >
+                              <span
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{
+                                  backgroundColor:
+                                    person.color,
+                                }}
+                              />
+
+                              {
+                                person.name
+                              }
+                            </button>
+                          );
+                        }
+                      )}
+                    </div>
+                  )}
+
+                  {errors.person_id && (
+                    <p className="mt-2 text-xs text-coral">
+                      {
+                        errors.person_id
+                      }
+                    </p>
+                  )}
                 </div>
 
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
                   <p className="mb-3 text-sm font-medium text-ink-primary">
-                    Categoria{" "}
-                    <span className="text-coral">
-                      *
-                    </span>
+                    Categoria *
                   </p>
 
                   <div className="flex flex-wrap gap-2">
-                    {VAULT_CATEGORIES.map(
+                    {GENERAL_CATEGORIES.map(
                       (
                         categoryId
                       ) => {
@@ -1267,66 +2088,35 @@ export default function NovoDocumentoPage() {
                             categoryId
                           ];
 
-                        if (
-                          !category
-                        ) {
-                          return null;
-                        }
-
-                        const isActive =
+                        const active =
                           formData.category_id ===
-                          category.id;
+                          categoryId;
 
                         return (
                           <button
-                            type="button"
                             key={
-                              category.id
+                              categoryId
                             }
-                            onClick={() => {
-                              trigger(
-                                "vibrate"
-                              );
-
-                              handleChange(
-                                "category_id",
-                                category.id
-                              );
-
-                              const validTypes =
-                                (
-                                  Object.keys(
-                                    VAULT_TYPE_CATEGORY_MAP
-                                  ) as DocumentType[]
-                                ).filter(
-                                  (
-                                    type
-                                  ) =>
-                                    VAULT_TYPE_CATEGORY_MAP[
-                                      type
-                                    ]?.includes(
-                                      category.id
-                                    )
-                                );
-
-                              if (
-                                !validTypes.includes(
-                                  formData.type
-                                ) &&
-                                validTypes[0]
-                              ) {
-                                handleChange(
-                                  "type",
-                                  validTypes[0]
-                                );
-                              }
-                            }}
-                            className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
-                              isActive
+                            type="button"
+                            onClick={() =>
+                              handleCategoryChange(
+                                categoryId
+                              )
+                            }
+                            className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
+                              active
                                 ? "border-ice bg-ice/12 text-ice"
                                 : "border-surface-border/50 bg-surface-raised text-ink-muted"
                             }`}
                           >
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  category.color,
+                              }}
+                            />
+
                             {
                               category.name
                             }
@@ -1338,11 +2128,8 @@ export default function NovoDocumentoPage() {
                 </div>
 
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-                  <label className="mb-2 block text-sm font-medium text-ink-primary">
-                    Tipo de documento{" "}
-                    <span className="text-coral">
-                      *
-                    </span>
+                  <label className="mb-3 block text-sm font-medium text-ink-primary">
+                    Tipo de documento *
                   </label>
 
                   <button
@@ -1351,31 +2138,42 @@ export default function NovoDocumentoPage() {
                       trigger(
                         "vibrate"
                       );
+
                       setIsTypeModalOpen(
                         true
                       );
                     }}
-                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors hover:border-ice/30"
+                    className="flex w-full items-center justify-between gap-3 rounded-[22px] border border-surface-border/50 bg-surface-raised px-4 py-4 text-left transition-all active:scale-[0.99]"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                         <SelectedTypeIcon
-                          size={18}
+                          size={
+                            20
+                          }
                         />
                       </div>
 
-                      <span className="font-semibold">
-                        {DOCUMENT_TYPE_LABELS[
-                          formData
-                            .type
-                        ] ||
-                          "Selecionar tipo..."}
-                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink-primary">
+                          {
+                            selectedTypeLabel
+                          }
+                        </p>
+
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-muted">
+                          {
+                            selectedTypeDescription
+                          }
+                        </p>
+                      </div>
                     </div>
 
                     <ChevronRight
-                      size={16}
-                      className="text-ink-muted"
+                      size={
+                        17
+                      }
+                      className="shrink-0 text-ink-muted"
                     />
                   </button>
                 </div>
@@ -1383,24 +2181,46 @@ export default function NovoDocumentoPage() {
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
                   <Input
                     label="Título do documento *"
-                    placeholder="Ex: Minha CNH, RG, Contrato de Aluguel..."
+                    placeholder={
+                      titlePlaceholder
+                    }
                     value={
                       formData.title
                     }
                     onChange={(
                       event
-                    ) =>
-                      handleChange(
-                        "title",
-                        event.target
-                          .value
-                      )
-                    }
+                    ) => {
+                      setFormData(
+                        (
+                          previous
+                        ) => ({
+                          ...previous,
+                          title:
+                            event.target.value,
+                        })
+                      );
+
+                      clearError(
+                        "title"
+                      );
+                    }}
                     error={
                       errors.title
                     }
                     required
                   />
+
+                  {selectedPerson && (
+                    <p className="mt-3 text-[11px] text-ink-faint">
+                      Documento vinculado a{" "}
+                      <span className="font-medium text-ink-muted">
+                        {
+                          selectedPerson.name
+                        }
+                      </span>
+                      .
+                    </p>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -1419,268 +2239,55 @@ export default function NovoDocumentoPage() {
                 animate="center"
                 exit="exit"
                 transition={{
-                  duration: 0.3,
-                  ease: "easeInOut",
+                  duration:
+                    0.3,
+                  ease:
+                    "easeInOut",
                 }}
                 className="space-y-4"
               >
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-                  <div className="mb-5 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice">
-                      <Layers3
-                        size={18}
+                  <div className="mb-5 flex items-start gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                      <SelectedTypeIcon
+                        size={
+                          19
+                        }
                       />
                     </div>
 
                     <div>
                       <p className="text-sm font-semibold text-ink-primary">
-                        Metadados e Campos Obrigatórios
+                        {
+                          selectedTypeLabel
+                        }
                       </p>
 
-                      <p className="text-xs text-ink-muted">
-                        Preencha conforme o documento oficial.
+                      <p className="mt-0.5 text-xs leading-5 text-ink-muted">
+                        {
+                          selectedTypeDescription
+                        }
                       </p>
                     </div>
                   </div>
 
                   {expiryWarning && (
-                    <motion.div
-                      initial={{
-                        opacity: 0,
-                        y: -5,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                      }}
-                      className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-300"
-                    >
+                    <div className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-300">
                       <AlertCircle
                         size={20}
-                        className="shrink-0 text-amber-400"
                       />
 
-                      <p className="text-xs font-medium leading-relaxed">
+                      <p className="text-xs">
                         {
                           expiryWarning
                         }
                       </p>
-                    </motion.div>
+                    </div>
                   )}
 
                   <div className="space-y-4">
                     {fields.map(
-                      (field) => {
-                        if (
-                          formData.type ===
-                            "rg" &&
-                          field.key ===
-                            "rg_number" &&
-                          formData
-                            .metadata
-                            .modelo ===
-                            "C.I.N (Nova Identidade)"
-                        ) {
-                          return null;
-                        }
-
-                        if (
-                          field.type ===
-                            "select" &&
-                          field.options
-                        ) {
-                          return (
-                            <div
-                              key={
-                                field.key
-                              }
-                            >
-                              <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-                                {
-                                  field.label
-                                }
-                              </label>
-
-                              <div className="flex flex-wrap gap-2">
-                                {field.options.map(
-                                  (
-                                    option: string
-                                  ) => {
-                                    const isActive =
-                                      formData
-                                        .metadata[
-                                        field
-                                          .key
-                                      ] ===
-                                      option;
-
-                                    return (
-                                      <button
-                                        type="button"
-                                        key={
-                                          option
-                                        }
-                                        onClick={() =>
-                                          handleMetadataChange(
-                                            field.key,
-                                            option
-                                          )
-                                        }
-                                        className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all ${
-                                          isActive
-                                            ? "border-ice bg-ice/12 text-ice"
-                                            : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                                        }`}
-                                      >
-                                        {
-                                          option
-                                        }
-                                      </button>
-                                    );
-                                  }
-                                )}
-                              </div>
-
-                              {errors[
-                                field
-                                  .key
-                              ] && (
-                                <p className="mt-1 text-xs text-coral">
-                                  {
-                                    errors[
-                                      field
-                                        .key
-                                    ]
-                                  }
-                                </p>
-                              )}
-                            </div>
-                          );
-                        }
-
-                        if (
-                          field.type ===
-                          "date"
-                        ) {
-                          return (
-                            <div
-                              key={
-                                field.key
-                              }
-                              className="space-y-1.5"
-                            >
-                              <label className="block text-sm font-medium text-ink-primary">
-                                {
-                                  field.label
-                                }{" "}
-                                {field.required && (
-                                  <span className="text-coral">
-                                    *
-                                  </span>
-                                )}
-                              </label>
-
-                              <div className="relative">
-                                <Calendar
-                                  size={
-                                    16
-                                  }
-                                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted"
-                                />
-
-                                <input
-                                  type="text"
-                                  placeholder="DD/MM/AAAA"
-                                  maxLength={
-                                    10
-                                  }
-                                  value={
-                                    formData
-                                      .metadata[
-                                      field
-                                        .key
-                                    ] ||
-                                    ""
-                                  }
-                                  onChange={(
-                                    event
-                                  ) =>
-                                    handleMetadataChange(
-                                      field.key,
-                                      handleDateMask(
-                                        event
-                                          .target
-                                          .value
-                                      )
-                                    )
-                                  }
-                                  className={`w-full rounded-2xl border ${
-                                    errors[
-                                      field
-                                        .key
-                                    ]
-                                      ? "border-coral/50"
-                                      : "border-surface-border/50"
-                                  } bg-surface-raised py-3.5 pl-10 pr-4 font-mono text-sm text-ink-primary outline-none focus:border-ice/50`}
-                                />
-                              </div>
-
-                              {errors[
-                                field.key
-                              ] && (
-                                <p className="ml-1 text-xs text-coral">
-                                  {
-                                    errors[
-                                      field
-                                        .key
-                                    ]
-                                  }
-                                </p>
-                              )}
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <Input
-                            key={
-                              field.key
-                            }
-                            label={
-                              field.label
-                            }
-                            type="text"
-                            value={
-                              formData
-                                .metadata[
-                                field
-                                  .key
-                              ] ||
-                              ""
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              handleMetadataChange(
-                                field.key,
-                                event
-                                  .target
-                                  .value
-                              )
-                            }
-                            placeholder={`Digite ${field.label.toLowerCase()}...`}
-                            required={
-                              field.required
-                            }
-                            error={
-                              errors[
-                                field
-                                  .key
-                              ]
-                            }
-                          />
-                        );
-                      }
+                      renderField
                     )}
                   </div>
                 </div>
@@ -1689,11 +2296,11 @@ export default function NovoDocumentoPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-ink-primary">
-                        Campos Adicionais
+                        Campos adicionais
                       </p>
 
                       <p className="text-xs text-ink-muted">
-                        Adicione até 5 campos customizados (
+                        Até 5 campos (
                         {
                           customFields.length
                         }
@@ -1708,101 +2315,78 @@ export default function NovoDocumentoPage() {
                         onClick={
                           addCustomField
                         }
-                        className="flex items-center gap-1.5 rounded-xl bg-ice/10 px-3 py-2 text-xs font-bold text-ice transition-transform active:scale-95"
+                        className="flex items-center gap-1.5 rounded-xl bg-ice/10 px-3 py-2 text-xs font-bold text-ice"
                       >
                         <Plus
-                          size={14}
+                          size={
+                            14
+                          }
                         />
-                        Novo Campo
+                        Novo campo
                       </button>
                     )}
                   </div>
 
-                  <AnimatePresence initial={false}>
-                    {customFields.map(
-                      (field) => (
-                        <motion.div
-                          key={
-                            field.id
+                  {customFields.map(
+                    (field) => (
+                      <div
+                        key={
+                          field.id
+                        }
+                        className="flex items-center gap-2"
+                      >
+                        <input
+                          value={
+                            field.label
                           }
-                          initial={{
-                            opacity: 0,
-                            height: 0,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            height: "auto",
-                          }}
-                          exit={{
-                            opacity: 0,
-                            height: 0,
-                          }}
-                          className="flex items-center gap-2 pt-2"
+                          onChange={(
+                            event
+                          ) =>
+                            updateCustomField(
+                              field.id,
+                              "label",
+                              event.target.value
+                            )
+                          }
+                          placeholder="Título"
+                          className="w-full rounded-xl border border-surface-border/50 bg-surface-raised px-3 py-2.5 text-xs text-ink-primary"
+                        />
+
+                        <input
+                          value={
+                            field.value
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            updateCustomField(
+                              field.id,
+                              "value",
+                              event.target.value
+                            )
+                          }
+                          placeholder="Valor"
+                          className="w-full rounded-xl border border-surface-border/50 bg-surface-raised px-3 py-2.5 text-xs text-ink-primary"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeCustomField(
+                              field.id
+                            )
+                          }
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coral/10 text-coral"
                         >
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              placeholder="Título (ex: Órgão)"
-                              value={
-                                field.label
-                              }
-                              onChange={(
-                                event
-                              ) =>
-                                updateCustomField(
-                                  field.id,
-                                  "label",
-                                  event
-                                    .target
-                                    .value
-                                )
-                              }
-                              className="w-full rounded-xl border border-surface-border/50 bg-surface-raised px-3.5 py-2.5 text-xs font-medium text-ink-primary outline-none focus:border-ice/50"
-                            />
-                          </div>
-
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              placeholder="Valor"
-                              value={
-                                field.value
-                              }
-                              onChange={(
-                                event
-                              ) =>
-                                updateCustomField(
-                                  field.id,
-                                  "value",
-                                  event
-                                    .target
-                                    .value
-                                )
-                              }
-                              className="w-full rounded-xl border border-surface-border/50 bg-surface-raised px-3.5 py-2.5 text-xs text-ink-primary outline-none focus:border-ice/50"
-                            />
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              removeCustomField(
-                                field.id
-                              )
+                          <X
+                            size={
+                              14
                             }
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coral/10 text-coral transition-colors hover:bg-coral/20"
-                            aria-label="Remover campo"
-                          >
-                            <X
-                              size={
-                                14
-                              }
-                            />
-                          </button>
-                        </motion.div>
-                      )
-                    )}
-                  </AnimatePresence>
+                          />
+                        </button>
+                      </div>
+                    )
+                  )}
                 </div>
               </motion.div>
             )}
@@ -1821,26 +2405,37 @@ export default function NovoDocumentoPage() {
                 animate="center"
                 exit="exit"
                 transition={{
-                  duration: 0.3,
-                  ease: "easeInOut",
+                  duration:
+                    0.3,
+                  ease:
+                    "easeInOut",
                 }}
                 className="space-y-4"
               >
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-                  <div className="mb-3">
-                    <label className="block text-sm font-medium text-ink-primary">
-                      Anexos Físicos
-                    </label>
+                  <div className="mb-4 flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                      <Paperclip
+                        size={
+                          17
+                        }
+                      />
+                    </div>
 
-                    <p className="mt-1 text-xs text-ink-muted">
-                      Digitalize pela câmera ou envie um arquivo em PDF/Imagem.
-                    </p>
+                    <div>
+                      <p className="text-sm font-medium text-ink-primary">
+                        Anexos
+                      </p>
+
+                      <p className="text-xs text-ink-muted">
+                        Imagens ou PDFs, até 10 MB por arquivo.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <Button
                       variant="secondary"
-                      className="flex items-center justify-center gap-2"
                       onClick={() =>
                         fileInputRef.current?.click()
                       }
@@ -1849,14 +2444,15 @@ export default function NovoDocumentoPage() {
                       }
                     >
                       <Upload
-                        size={16}
+                        size={
+                          16
+                        }
                       />
                       Arquivo
                     </Button>
 
                     <Button
                       variant="secondary"
-                      className="flex items-center justify-center gap-2"
                       onClick={() =>
                         cameraInputRef.current?.click()
                       }
@@ -1865,7 +2461,9 @@ export default function NovoDocumentoPage() {
                       }
                     >
                       <Camera
-                        size={16}
+                        size={
+                          16
+                        }
                       />
                       Câmera
                     </Button>
@@ -1875,80 +2473,38 @@ export default function NovoDocumentoPage() {
                     0 &&
                     uploadProgress <
                       100 && (
-                      <div className="mt-4">
-                        <div className="mb-1 flex items-center justify-between text-xs text-ink-muted">
-                          <span>
-                            Enviando anexos...
-                          </span>
-
-                          <span>
-                            {
-                              uploadProgress
-                            }
-                            %
-                          </span>
-                        </div>
-
-                        <div className="h-1.5 overflow-hidden rounded-full bg-surface-border/40">
-                          <motion.div
-                            className="h-full bg-ice"
-                            animate={{
-                              width: `${uploadProgress}%`,
-                            }}
-                          />
-                        </div>
+                      <div className="mt-4 text-xs text-ink-muted">
+                        Enviando:{" "}
+                        {
+                          uploadProgress
+                        }
+                        %
                       </div>
                     )}
 
-                  <AnimatePresence initial={false}>
+                  <div className="mt-4 space-y-2">
                     {formData.attachments.map(
                       (
                         attachment
                       ) => (
-                        <motion.div
+                        <div
                           key={
                             attachment.id
                           }
-                          initial={{
-                            opacity: 0,
-                            y: 8,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                          }}
-                          exit={{
-                            opacity: 0,
-                            y: 8,
-                          }}
-                          className="mt-4 flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3.5 py-3"
+                          className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3"
                         >
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-surface-border/40 bg-surface">
-                            {attachment.type ===
-                            "image" ? (
-                              <ImageIcon
-                                className="text-ice"
-                                size={
-                                  16
-                                }
-                              />
-                            ) : (
-                              <FileText
-                                className="text-ice"
-                                size={
-                                  16
-                                }
-                              />
-                            )}
-                          </div>
+                          <FileText
+                            size={
+                              16
+                            }
+                            className="text-ice"
+                          />
 
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-ink-primary">
-                              {
-                                attachment.name
-                              }
-                            </p>
-                          </div>
+                          <p className="min-w-0 flex-1 truncate text-sm text-ink-primary">
+                            {
+                              attachment.name
+                            }
+                          </p>
 
                           <button
                             type="button"
@@ -1957,36 +2513,40 @@ export default function NovoDocumentoPage() {
                                 attachment.id
                               )
                             }
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:text-ink-primary"
-                            aria-label={`Remover ${attachment.name}`}
+                            disabled={
+                              isSubmitting
+                            }
                           >
                             <X
                               size={
                                 14
                               }
+                              className="text-coral"
                             />
                           </button>
-                        </motion.div>
+                        </div>
                       )
                     )}
-                  </AnimatePresence>
+                  </div>
                 </div>
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
                   <TextArea
-                    label="Notas extras / Observações (Opcional)"
-                    placeholder="Ex: Cópia autenticada guardada na pasta principal..."
+                    label="Notas"
                     value={
                       formData.description
                     }
                     onChange={(
                       event
                     ) =>
-                      handleChange(
-                        "description",
-                        event
-                          .target
-                          .value
+                      setFormData(
+                        (
+                          previous
+                        ) => ({
+                          ...previous,
+                          description:
+                            event.target.value,
+                        })
                       )
                     }
                   />
@@ -1994,74 +2554,61 @@ export default function NovoDocumentoPage() {
 
                 {userVaults.length >
                   0 && (
-                  <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-                    <label className="mb-3 block text-sm font-medium text-ink-primary">
-                      Compartilhar com cofre (Opcional)
-                    </label>
-
+                  <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          trigger(
-                            "vibrate"
-                          );
-
-                          handleChange(
-                            "vault_id",
-                            undefined
-                          );
-                        }}
-                        className={`rounded-full border px-3 py-2 text-xs font-medium transition-all active:scale-95 ${
-                          formData.vault_id ===
-                          undefined
-                            ? "border-ice bg-ice/12 text-ice"
-                            : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                        }`}
+                        onClick={() =>
+                          setFormData(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              vault_id:
+                                undefined,
+                            })
+                          )
+                        }
+                        className="rounded-full border border-surface-border/50 px-3 py-2 text-xs text-ink-muted"
                       >
-                        Nenhum
+                        Nenhum cofre
                       </button>
 
                       {userVaults.map(
                         (
-                          vault: Vault
+                          vault:
+                            Vault
                         ) => {
-                          const isSelected =
-                            formData.vault_id ===
-                            vault.id;
+                          if (
+                            !vault.id
+                          ) {
+                            return null;
+                          }
 
                           return (
                             <button
-                              type="button"
                               key={
                                 vault.id
                               }
-                              onClick={() => {
-                                trigger(
-                                  "vibrate"
-                                );
-
-                                if (
-                                  vault.id
-                                ) {
-                                  handleChange(
-                                    "vault_id",
-                                    vault.id
-                                  );
-                                }
-                              }}
-                              className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition-all active:scale-95 ${
-                                isSelected
-                                  ? "border-ice bg-ice/12 text-ice"
-                                  : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                              }`}
+                              type="button"
+                              onClick={() =>
+                                setFormData(
+                                  (
+                                    previous
+                                  ) => ({
+                                    ...previous,
+                                    vault_id:
+                                      vault.id,
+                                  })
+                                )
+                              }
+                              className="flex items-center gap-1 rounded-full border border-surface-border/50 px-3 py-2 text-xs text-ink-muted"
                             >
                               <Shield
                                 size={
                                   12
                                 }
                               />
-
                               {
                                 vault.name
                               }
@@ -2077,7 +2624,7 @@ export default function NovoDocumentoPage() {
           </AnimatePresence>
         </section>
 
-       <BottomSheet
+        <BottomSheet
           isOpen={
             isTypeModalOpen
           }
@@ -2088,58 +2635,34 @@ export default function NovoDocumentoPage() {
           }
           title="Selecionar tipo de documento"
         >
-          <p className="mb-4 px-1 text-sm text-ink-muted">
-            Escolha o tipo para carregar os campos específicos corretos
-          </p>
-
-          {/* Adicionado max-h-[60vh], overflow-y-auto e touch-pan-y para reter o scroll dentro do modal */}
-          <div className="max-h-[60vh] overflow-y-auto overscroll-contain pr-1 touch-pan-y">
-            <div className="grid grid-cols-2 gap-3 px-1 pb-4">
+          <div className="max-h-[60vh] overflow-y-auto">
+            <div className="grid grid-cols-2 gap-3 pb-4">
               {availableTypes.map(
                 (type) => {
                   const Icon =
                     TYPE_ICONS[
                       type
-                    ] || Folder;
-
-                  const isActive =
-                    formData.type ===
-                    type;
+                    ] ||
+                    FileText;
 
                   return (
                     <motion.button
+                      key={
+                        type
+                      }
                       type="button"
                       whileTap={{
-                        scale: 0.95,
+                        scale:
+                          0.96,
                       }}
-                      key={type}
-                      onClick={() => {
-                        trigger(
-                          "vibrate"
-                        );
-
-                        handleChange(
-                          "type",
+                      onClick={() =>
+                        handleTypeChange(
                           type
-                        );
-
-                        setIsTypeModalOpen(
-                          false
-                        );
-                      }}
-                      className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
-                        isActive
-                          ? "border-ice bg-ice/10"
-                          : "border-surface-border/50 bg-surface hover:bg-surface-raised"
-                      }`}
+                        )
+                      }
+                      className="flex min-h-[165px] flex-col items-start rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left"
                     >
-                      <div
-                        className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${
-                          isActive
-                            ? "bg-ice/20 text-ice"
-                            : "bg-surface-raised text-ink-muted"
-                        }`}
-                      >
+                      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                         <Icon
                           size={
                             20
@@ -2147,27 +2670,21 @@ export default function NovoDocumentoPage() {
                         />
                       </div>
 
-                      <span
-                        className={`mb-1 text-sm font-semibold ${
-                          isActive
-                            ? "text-ice"
-                            : "text-ink-primary"
-                        }`}
-                      >
+                      <p className="text-sm font-semibold text-ink-primary">
                         {
                           DOCUMENT_TYPE_LABELS[
                             type
                           ]
                         }
-                      </span>
+                      </p>
 
-                      <span className="line-clamp-2 text-[11px] leading-tight text-ink-muted">
+                      <p className="mt-2 line-clamp-3 text-[11px] leading-5 text-ink-muted">
                         {
                           TYPE_DESCRIPTIONS[
                             type
                           ]
                         }
-                      </span>
+                      </p>
                     </motion.button>
                   );
                 }
@@ -2176,80 +2693,89 @@ export default function NovoDocumentoPage() {
           </div>
         </BottomSheet>
 
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-3xl gap-3">
+            {currentStep >
+              1 && (
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={
+                  prevStep
+                }
+                disabled={
+                  isSubmitting
+                }
+                className="w-1/3"
+              >
+                <ChevronLeft
+                  size={
+                    20
+                  }
+                />
+              </Button>
+            )}
 
-        <div className="fixed inset-x-0 bottom-0 z-30 flex gap-3 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          {currentStep >
-            1 && (
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={
-                prevStep
-              }
-              disabled={
-                isSubmitting
-              }
-              className="flex w-1/3 items-center justify-center"
-            >
-              <ChevronLeft
-                size={20}
-              />
-            </Button>
-          )}
-
-          {currentStep <
-          3 ? (
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={
-                nextStep
-              }
-              disabled={
-                isSubmitting
-              }
-              className={`${
-                currentStep ===
-                1
-                  ? "w-full"
-                  : "w-2/3"
-              } flex items-center justify-center gap-2 shadow-lg shadow-ice/10`}
-            >
-              Próximo
-              <ChevronRight
-                size={18}
-              />
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={
-                handleSubmit
-              }
-              disabled={
-                isSubmitting
-              }
-              className="flex w-2/3 items-center justify-center gap-2 shadow-lg shadow-ice/10"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2
-                    size={16}
-                    className="animate-spin"
-                  />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Save
-                    size={16}
-                  />
-                  Finalizar Documento
-                </>
-              )}
-            </Button>
-          )}
+            {currentStep <
+            3 ? (
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={
+                  nextStep
+                }
+                disabled={
+                  isSubmitting
+                }
+                className={
+                  currentStep ===
+                  1
+                    ? "w-full"
+                    : "w-2/3"
+                }
+              >
+                Próximo
+                <ChevronRight
+                  size={
+                    18
+                  }
+                />
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={
+                  handleSubmit
+                }
+                disabled={
+                  isSubmitting
+                }
+                className="w-2/3"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2
+                      size={
+                        16
+                      }
+                      className="animate-spin"
+                    />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save
+                      size={
+                        16
+                      }
+                    />
+                    Salvar documento
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </main>
     </PageTransition>

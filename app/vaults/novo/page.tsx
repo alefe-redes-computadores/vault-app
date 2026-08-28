@@ -1,276 +1,669 @@
-// app/vaults/membros/page.tsx
+// app/vaults/novo/page.tsx
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft, UserPlus, X, Loader2, Check, Users, Shield, Edit, Eye, Mail,
+  ArrowLeft,
+  Briefcase,
+  Building2,
+  Check,
+  FileText,
+  FolderLock,
+  Heart,
+  Home,
+  KeyRound,
+  Lock,
+  Shield,
+  Star,
+  UserRound,
+  Users,
+  WalletCards,
 } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { useVaults } from "@/hooks/useVaults";
-import { useAuth } from "@/hooks/useAuth";
-import { useHapticFeedback } from "@/lib/haptics";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { PageTransition } from "@/components/PageTransition";
-import { useToast } from "@/components/ToastProvider";
-import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import {
+  FormEvent,
+  useMemo,
+  useState,
+} from "react";
 
-const PERMISSION_OPTIONS = [
-  { id: "view", label: "Visualizar", icon: Eye },
-  { id: "edit", label: "Editar", icon: Edit },
-  { id: "admin", label: "Admin", icon: Shield },
+import { PageTransition } from "@/components/PageTransition";
+import { useVaults } from "@/hooks/useVaults";
+import { useToast } from "@/components/ToastProvider";
+import { useHapticFeedback } from "@/lib/haptics";
+
+// ============================================================
+// CONFIGURAÇÃO
+// ============================================================
+
+const VAULT_ICONS = [
+  {
+    value: "lock",
+    label: "Cofre",
+    icon: Lock,
+  },
+  {
+    value: "folder",
+    label: "Arquivos",
+    icon: FolderLock,
+  },
+  {
+    value: "family",
+    label: "Família",
+    icon: Users,
+  },
+  {
+    value: "home",
+    label: "Casa",
+    icon: Home,
+  },
+  {
+    value: "user",
+    label: "Pessoal",
+    icon: UserRound,
+  },
+  {
+    value: "heart",
+    label: "Importante",
+    icon: Heart,
+  },
+  {
+    value: "shield",
+    label: "Protegido",
+    icon: Shield,
+  },
+  {
+    value: "star",
+    label: "Favoritos",
+    icon: Star,
+  },
+  {
+    value: "briefcase",
+    label: "Trabalho",
+    icon: Briefcase,
+  },
+  {
+    value: "building",
+    label: "Empresa",
+    icon: Building2,
+  },
+  {
+    value: "documents",
+    label: "Documentos",
+    icon: FileText,
+  },
+  {
+    value: "credentials",
+    label: "Senhas",
+    icon: KeyRound,
+  },
+  {
+    value: "cards",
+    label: "Financeiro",
+    icon: WalletCards,
+  },
 ] as const;
 
-function VaultMembersContent() {
-  const { trigger } = useHapticFeedback();
+const VAULT_COLORS = [
+  "#7DD3FC",
+  "#8B5CF6",
+  "#6366F1",
+  "#14B8A6",
+  "#34D399",
+  "#F59E0B",
+  "#EF4444",
+  "#EC4899",
+] as const;
+
+// ============================================================
+// PAGE
+// ============================================================
+
+export default function NovoVaultPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const vaultId = searchParams.get("cofre_id") || "";
-  const { user } = useAuth();
+
+  const {
+    addVault,
+    activePersonId,
+  } = useVaults();
+
   const { showToast } = useToast();
-  const { addMember, updateMember } = useVaults();
+  const { trigger } = useHapticFeedback();
 
-  const [email, setEmail] = useState("");
-  const [permission, setPermission] = useState<"view" | "edit" | "admin">("view");
-  const [isAdding, setIsAdding] = useState(false);
+  const [name, setName] =
+    useState("");
 
-  const vault = useLiveQuery(() => db.vaults.get(vaultId), [vaultId], null);
-  const members = useLiveQuery(() => db.vaultMembers.where("vault_id").equals(vaultId).toArray(), [vaultId], []);
+  const [description, setDescription] =
+    useState("");
 
-  if (vault === undefined) {
-    return <CardListSkeleton />;
-  }
+  const [icon, setIcon] =
+    useState("lock");
 
-  if (!vault) {
+  const [color, setColor] =
+    useState("#7DD3FC");
+
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+
+  const selectedIcon = useMemo(() => {
     return (
-      <PageTransition>
-        <main className="flex min-h-screen items-center justify-center bg-void px-5">
-          <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
-            <p className="text-sm text-ink-muted">Cofre não encontrado</p>
-            <Button variant="primary" onClick={() => router.push("/vaults")} className="mt-4">Voltar</Button>
-          </div>
-        </main>
-      </PageTransition>
+      VAULT_ICONS.find(
+        (item) => item.value === icon
+      ) ?? VAULT_ICONS[0]
     );
-  }
+  }, [icon]);
 
-  const handleAddMember = async () => {
-    if (!email.trim() || !user) {
-      trigger("error");
-      showToast("Digite um e-mail válido", "error");
+  const SelectedIcon =
+    selectedIcon.icon;
+
+  const canSubmit =
+    !!activePersonId &&
+    !!name.trim() &&
+    !isSubmitting;
+
+  // ==========================================================
+  // AÇÕES
+  // ==========================================================
+
+  const handleBack = () => {
+    trigger("vibrate");
+    router.back();
+  };
+
+  const handleSubmit = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+
+    if (isSubmitting) {
       return;
     }
 
-    setIsAdding(true);
-    try {
-      await addMember({
-        vault_id: vaultId,
-        user_id: "", // ✅ CORRIGIDO: string vazia, pois o ID real será preenchido ao aceitar
-        email: email.trim(),
-        name: email.split("@")[0],
-        permission,
-        status: "pending",
-        invited_at: new Date().toISOString(),
-      });
-      trigger("success");
-      showToast("Membro convidado com sucesso!", "success");
-      setEmail("");
-    } catch (error) {
-      console.error(error);
-      trigger("error");
-      showToast("Erro ao adicionar membro", "error");
-    } finally {
-      setIsAdding(false);
-    }
-  };
+    const normalizedName =
+      name.trim();
 
-  const handleUpdateStatus = async (memberId: string, status: "accepted" | "rejected") => {
+    if (!activePersonId) {
+      trigger("error");
+
+      showToast(
+        "Selecione uma pessoa antes de criar o cofre.",
+        "error"
+      );
+
+      return;
+    }
+
+    if (!normalizedName) {
+      trigger("error");
+
+      showToast(
+        "Informe um nome para o cofre.",
+        "error"
+      );
+
+      return;
+    }
+
     try {
-      await updateMember(memberId, { status });
+      setIsSubmitting(true);
+
       trigger("vibrate");
-      showToast(status === "accepted" ? "Membro aceito!" : "Convite rejeitado", "info");
+
+      const vaultId =
+        await addVault({
+          name: normalizedName,
+          description:
+            description.trim() ||
+            undefined,
+          icon,
+          color,
+        });
+
+      trigger("success");
+
+      showToast(
+        "Cofre criado com sucesso.",
+        "success"
+      );
+
+      router.replace(
+        `/vaults/detalhes?id=${encodeURIComponent(
+          vaultId
+        )}`
+      );
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Erro ao criar cofre:",
+        error
+      );
+
       trigger("error");
-      showToast("Erro ao atualizar status", "error");
+
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível criar o cofre.",
+        "error"
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const permissionTone = {
-    view: "bg-surface-raised text-ink-muted",
-    edit: "bg-ice/10 text-ice",
-    admin: "bg-violet-500/15 text-violet-300",
-  };
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} aria-label="Voltar" className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95">
-              <ArrowLeft size={18} className="text-ink-primary" />
+        {/* ================================================== */}
+        {/* HEADER */}
+        {/* ================================================== */}
+
+        <header className="sticky top-0 z-30 border-b border-surface-border bg-void/90 backdrop-blur-xl">
+          <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 py-4">
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={isSubmitting}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-surface-border bg-surface text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Voltar"
+            >
+              <ArrowLeft
+                size={20}
+                aria-hidden="true"
+              />
             </button>
-            <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Vault</p>
-              <h1 className="max-w-[220px] truncate font-display text-xl font-semibold text-ink-primary">Membros</h1>
-              <p className="truncate text-sm text-ink-muted">{vault.name}</p>
+
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+                Cofre familiar
+              </p>
+
+              <h1 className="truncate font-display text-xl font-bold text-ink-primary">
+                Novo cofre
+              </h1>
             </div>
           </div>
         </header>
 
-        <section className="space-y-5 px-5 pt-6">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.26 }} className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm">
-            <div className="mb-4 flex items-start gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                <UserPlus size={18} />
-              </div>
-              <div>
-                <h3 className="font-display text-sm font-semibold text-ink-primary">Convidar membro</h3>
-                <p className="mt-1 text-xs leading-5 text-ink-muted">Envie acesso com a permissão correta para visualizar, editar ou administrar este cofre.</p>
+        {/* ================================================== */}
+        {/* CONTEÚDO */}
+        {/* ================================================== */}
+
+        <form
+          onSubmit={handleSubmit}
+          className="mx-auto w-full max-w-2xl space-y-6 px-4 py-5"
+        >
+          {/* ================================================= */}
+          {/* PREVIEW */}
+          {/* ================================================= */}
+
+          <section>
+            <div
+              className="relative overflow-hidden rounded-[28px] border bg-surface p-5 shadow-lg"
+              style={{
+                borderColor: `${color}45`,
+              }}
+            >
+              <div
+                className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full blur-3xl"
+                style={{
+                  backgroundColor: `${color}20`,
+                }}
+              />
+
+              <div className="relative flex items-start gap-4">
+                <div
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] border"
+                  style={{
+                    backgroundColor: `${color}15`,
+                    borderColor: `${color}35`,
+                    color,
+                  }}
+                >
+                  <SelectedIcon
+                    size={25}
+                    aria-hidden="true"
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
+                    Prévia
+                  </p>
+
+                  <h2 className="mt-1 truncate font-display text-lg font-bold text-ink-primary">
+                    {name.trim() ||
+                      "Meu cofre"}
+                  </h2>
+
+                  <p className="mt-1 line-clamp-2 text-sm text-ink-muted">
+                    {description.trim() ||
+                      "Organize documentos e informações importantes em um único lugar."}
+                  </p>
+                </div>
               </div>
             </div>
+          </section>
 
-            <div className="space-y-3">
-              <div className="relative">
-                <Mail size={16} className="pointer-events-none absolute left-3 top-[42px] -translate-y-1/2 text-ink-muted" />
-                <Input
-                  label="E-mail do convidado"
-                  placeholder="nome@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-9"
+          {/* ================================================= */}
+          {/* DADOS PRINCIPAIS */}
+          {/* ================================================= */}
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="font-display text-sm font-bold text-ink-primary">
+                Informações
+              </h2>
+
+              <p className="mt-1 text-xs text-ink-faint">
+                Defina como este cofre será identificado.
+              </p>
+            </div>
+
+            <div className="space-y-4 rounded-[24px] border border-surface-border bg-surface p-4">
+              <div>
+                <label
+                  htmlFor="vault-name"
+                  className="mb-2 block text-sm font-medium text-ink-muted"
+                >
+                  Nome
+                </label>
+
+                <input
+                  id="vault-name"
+                  type="text"
+                  value={name}
+                  onChange={(event) =>
+                    setName(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Ex.: Documentos da família"
+                  maxLength={80}
+                  autoComplete="off"
+                  disabled={isSubmitting}
+                  className="w-full rounded-2xl border border-surface-border bg-void px-4 py-3.5 text-sm text-ink-primary outline-none transition-colors placeholder:text-ink-faint focus:border-ice/50 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-ink-primary">Permissão</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {PERMISSION_OPTIONS.map((option) => {
-                    const Icon = option.icon;
-                    const isSelected = permission === option.id;
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => { trigger("vibrate"); setPermission(option.id); }}
-                        className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 text-xs font-medium transition-all active:scale-95 ${
-                          isSelected ? "border-ice bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                        }`}
-                      >
-                        <Icon size={16} />
-                        {option.label}
-                      </button>
-                    );
-                  })}
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label
+                    htmlFor="vault-description"
+                    className="text-sm font-medium text-ink-muted"
+                  >
+                    Descrição
+                  </label>
+
+                  <span className="text-[11px] text-ink-faint">
+                    {description.length}
+                    /160
+                  </span>
                 </div>
+
+                <textarea
+                  id="vault-description"
+                  value={description}
+                  onChange={(event) =>
+                    setDescription(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Uma descrição curta para identificar o conteúdo deste cofre."
+                  maxLength={160}
+                  rows={4}
+                  disabled={isSubmitting}
+                  className="w-full resize-none rounded-2xl border border-surface-border bg-void px-4 py-3.5 text-sm leading-relaxed text-ink-primary outline-none transition-colors placeholder:text-ink-faint focus:border-ice/50 disabled:cursor-not-allowed disabled:opacity-60"
+                />
               </div>
-
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleAddMember}
-                disabled={isAdding}
-                className="flex items-center gap-2"
-              >
-                {isAdding ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    Convidando...
-                  </>
-                ) : (
-                  <>
-                    <UserPlus size={14} />
-                    Convidar membro
-                  </>
-                )}
-              </Button>
             </div>
-          </motion.div>
+          </section>
 
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.26, delay: 0.04 }}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 font-display text-sm font-semibold text-ink-primary">
-                <Users size={16} className="text-ink-muted" />
-                Membros
-              </h3>
-              <span className="text-xs text-ink-muted">{members?.length || 0} total</span>
+          {/* ================================================= */}
+          {/* ÍCONE */}
+          {/* ================================================= */}
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="font-display text-sm font-bold text-ink-primary">
+                Ícone
+              </h2>
+
+              <p className="mt-1 text-xs text-ink-faint">
+                Escolha um símbolo para reconhecer o cofre rapidamente.
+              </p>
             </div>
 
-            {members && members.length > 0 ? (
-              <div className="space-y-2">
-                {members.map((member, index) => {
-                  const perm = PERMISSION_OPTIONS.find((p) => p.id === member.permission) || PERMISSION_OPTIONS[0];
-                  const PermIcon = perm.icon;
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+              {VAULT_ICONS.map(
+                ({
+                  value,
+                  label,
+                  icon: Icon,
+                }) => {
+                  const selected =
+                    icon === value;
 
                   return (
-                    <motion.div
-                      key={member.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.2) }}
-                      className="rounded-[22px] border border-surface-border/50 bg-surface px-4 py-3"
+                    <motion.button
+                      key={value}
+                      type="button"
+                      whileTap={{
+                        scale: 0.95,
+                      }}
+                      onClick={() => {
+                        trigger(
+                          "vibrate"
+                        );
+                        setIcon(value);
+                      }}
+                      disabled={
+                        isSubmitting
+                      }
+                      className="relative flex min-h-[78px] flex-col items-center justify-center gap-2 rounded-[20px] border px-2 py-3 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                      style={{
+                        borderColor:
+                          selected
+                            ? `${color}70`
+                            : undefined,
+                        backgroundColor:
+                          selected
+                            ? `${color}10`
+                            : undefined,
+                      }}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-semibold text-ink-muted">
-                            {member.name?.charAt(0).toUpperCase() || "?"}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-ink-primary">{member.name || member.email}</p>
-                            <p className="truncate text-xs text-ink-muted">{member.email}</p>
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${permissionTone[member.permission as keyof typeof permissionTone] || permissionTone.view}`}>
-                                <PermIcon size={10} />
-                                {perm.label}
-                              </span>
-                              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                                member.status === "accepted" ? "bg-emerald-500/15 text-emerald-300" :
-                                member.status === "pending" ? "bg-ice/10 text-ice" :
-                                "bg-coral/15 text-coral"
-                              }`}>
-                                {member.status === "accepted" ? "Aceito" : member.status === "pending" ? "Pendente" : "Rejeitado"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                      {selected && (
+                        <span
+                          className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full"
+                          style={{
+                            backgroundColor:
+                              color,
+                          }}
+                        >
+                          <Check
+                            size={10}
+                            className="text-void"
+                            strokeWidth={3}
+                            aria-hidden="true"
+                          />
+                        </span>
+                      )}
 
-                        {member.status === "pending" && (
-                          <div className="flex shrink-0 items-center gap-1">
-                            <button onClick={() => handleUpdateStatus(member.id!, "accepted")} aria-label="Aceitar convite" className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-300 transition-colors active:scale-95 hover:bg-surface-raised">
-                              <Check size={15} />
-                            </button>
-                            <button onClick={() => handleUpdateStatus(member.id!, "rejected")} aria-label="Rejeitar convite" className="flex h-9 w-9 items-center justify-center rounded-full text-coral transition-colors active:scale-95 hover:bg-surface-raised">
-                              <X size={15} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
+                      <Icon
+                        size={21}
+                        style={{
+                          color: selected
+                            ? color
+                            : undefined,
+                        }}
+                        className={
+                          selected
+                            ? undefined
+                            : "text-ink-muted"
+                        }
+                        aria-hidden="true"
+                      />
+
+                      <span
+                        className={`text-[10px] font-medium leading-tight ${
+                          selected
+                            ? "text-ink-primary"
+                            : "text-ink-faint"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    </motion.button>
                   );
-                })}
+                }
+              )}
+            </div>
+          </section>
+
+          {/* ================================================= */}
+          {/* COR */}
+          {/* ================================================= */}
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="font-display text-sm font-bold text-ink-primary">
+                Cor de identificação
+              </h2>
+
+              <p className="mt-1 text-xs text-ink-faint">
+                A cor é apenas visual e será salva em formato HEX.
+              </p>
+            </div>
+
+            <div className="rounded-[24px] border border-surface-border bg-surface p-4">
+              <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
+                {VAULT_COLORS.map(
+                  (option) => {
+                    const selected =
+                      color === option;
+
+                    return (
+                      <motion.button
+                        key={option}
+                        type="button"
+                        whileTap={{
+                          scale: 0.9,
+                        }}
+                        onClick={() => {
+                          trigger(
+                            "vibrate"
+                          );
+                          setColor(option);
+                        }}
+                        disabled={
+                          isSubmitting
+                        }
+                        className="relative mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border transition-transform disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{
+                          backgroundColor:
+                            `${option}20`,
+                          borderColor:
+                            selected
+                              ? option
+                              : `${option}40`,
+                        }}
+                        aria-label={`Selecionar cor ${option}`}
+                        aria-pressed={
+                          selected
+                        }
+                      >
+                        <span
+                          className="h-6 w-6 rounded-full"
+                          style={{
+                            backgroundColor:
+                              option,
+                          }}
+                        />
+
+                        {selected && (
+                          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-surface-raised shadow">
+                            <Check
+                              size={12}
+                              style={{
+                                color:
+                                  option,
+                              }}
+                              strokeWidth={3}
+                              aria-hidden="true"
+                            />
+                          </span>
+                        )}
+                      </motion.button>
+                    );
+                  }
+                )}
               </div>
-            ) : (
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface px-5 py-10 text-center">
-                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-raised text-ink-muted">
-                  <Users size={20} />
+            </div>
+          </section>
+
+          {/* ================================================= */}
+          {/* AVISO PESSOA */}
+          {/* ================================================= */}
+
+          {!activePersonId && (
+            <section className="rounded-[22px] border border-coral/25 bg-coral/10 p-4">
+              <div className="flex gap-3">
+                <Shield
+                  size={19}
+                  className="mt-0.5 shrink-0 text-coral"
+                  aria-hidden="true"
+                />
+
+                <div>
+                  <p className="text-sm font-semibold text-ink-primary">
+                    Nenhuma pessoa ativa selecionada
+                  </p>
+
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                    Todo cofre precisa pertencer a uma pessoa do Vault. Selecione uma pessoa antes de criar este registro.
+                  </p>
                 </div>
-                <p className="text-sm font-medium text-ink-primary">Nenhum membro neste cofre</p>
-                <p className="mt-1 text-xs leading-5 text-ink-muted">Convide pessoas para compartilhar documentos com segurança.</p>
               </div>
-            )}
-          </motion.div>
-        </section>
+            </section>
+          )}
+
+          {/* ================================================= */}
+          {/* AÇÃO */}
+          {/* ================================================= */}
+
+          <div className="pt-2">
+            <motion.button
+              type="submit"
+              whileTap={
+                canSubmit
+                  ? {
+                      scale: 0.985,
+                    }
+                  : undefined
+              }
+              disabled={!canSubmit}
+              className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-ice px-5 py-4 text-sm font-bold text-void shadow-lg transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-void/30 border-t-void" />
+                  Criando cofre...
+                </>
+              ) : (
+                <>
+                  <Lock
+                    size={18}
+                    aria-hidden="true"
+                  />
+                  Criar cofre
+                </>
+              )}
+            </motion.button>
+          </div>
+        </form>
       </main>
     </PageTransition>
-  );
-}
-
-export default function VaultMembersPage() {
-  return (
-    <Suspense fallback={<CardListSkeleton />}>
-      <VaultMembersContent />
-    </Suspense>
   );
 }

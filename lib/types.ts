@@ -46,6 +46,11 @@ export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
 
 export type VaultPermission = 'view' | 'edit' | 'admin';
 
+export type VaultMemberStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined';
+
 export type CardType =
   | 'cartao_credito'
   | 'cartao_debito'
@@ -148,8 +153,17 @@ export interface Document {
   attachments: Attachment[];
   is_favorite: boolean;
   vault_id?: string;
+
+  // Relações diretas já indexadas no schema do Dexie.
   hospital_id?: string;
   medico_id?: string;
+
+  // Relacionamento genérico de documentos introduzido no schema v32.
+  // Permite vincular um documento a entidades como medicamento,
+  // tratamento, CID, exame, consulta, cirurgia etc.
+  entidade_tipo?: string;
+  entidade_id?: string;
+
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -223,6 +237,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   cpf: [
     {
       key: 'number',
@@ -231,6 +246,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   cnh: [
     {
       key: 'number',
@@ -258,6 +274,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   certidao_nascimento: [
     {
       key: 'nome_registrado',
@@ -298,6 +315,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   titulo_eleitor: [
     {
       key: 'number',
@@ -318,6 +336,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   certificado: [
     {
       key: 'institution',
@@ -343,6 +362,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       type: 'date',
     },
   ],
+
   carteira_trabalho: [
     {
       key: 'numero',
@@ -366,6 +386,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       type: 'text',
     },
   ],
+
   passaporte: [
     {
       key: 'numero',
@@ -392,6 +413,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   dispensa_militar: [
     {
       key: 'numero',
@@ -412,6 +434,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       type: 'date',
     },
   ],
+
   receita: [
     {
       key: 'medicamento_id',
@@ -449,6 +472,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   prontuario: [
     {
       key: 'hospital_id',
@@ -475,6 +499,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   laudo: [
     {
       key: 'medico_id',
@@ -501,6 +526,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   encaminhamento: [
     {
       key: 'from_medico_id',
@@ -526,6 +552,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   consulta: [
     {
       key: 'medico_id',
@@ -556,6 +583,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       type: 'text',
     },
   ],
+
   cirurgia: [
     {
       key: 'procedure',
@@ -582,10 +610,11 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   exame_sangue: [
     {
-      key: 'laboratorio_id',
-      label: 'Laboratório',
+      key: 'local_id',
+      label: 'Local / Laboratório',
       type: 'select',
       required: true,
     },
@@ -596,6 +625,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   exame_imagem: [
     {
       key: 'hospital_id',
@@ -616,6 +646,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   credencial: [
     {
       key: 'orgao',
@@ -630,6 +661,7 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
       required: true,
     },
   ],
+
   outro: [
     {
       key: 'custom_field_1',
@@ -682,9 +714,8 @@ export interface SyncQueueItem {
   retry_count?: number;
   failed?: boolean;
   next_retry_at?: string | null;
-  error?: string | null; 
+  error?: string | null;
 }
-
 
 // ============================================================
 // 5. ENTIDADES DE SAÚDE
@@ -709,10 +740,10 @@ export interface Medicamento {
   observacoes?: string;
   tipo_receita?: TipoReceita;
   tipo_uso?: 'continuo' | 'esporadico' | 'sos';
-  
+
   // 🛡️ NOVIDADES DO SUS / GOVERNO:
-  tipo_aquisicao?: 'comprado' | 'sus' | 'gratuito'; 
-  data_retorno_sus?: string; // Data em que deve voltar ao posto para nova retirada
+  tipo_aquisicao?: 'comprado' | 'sus' | 'gratuito';
+  data_retorno_sus?: string;
 
   forma_farmaceutica?:
     | 'capsula'
@@ -720,6 +751,7 @@ export interface Medicamento {
     | 'gota'
     | 'injecao'
     | 'adesivo';
+
   cor_principal?: string;
   cor_secundaria?: string;
   status?: 'ativo' | 'descontinuado';
@@ -738,18 +770,19 @@ export interface Medicamento {
   substituido_por_id?: string;
   data_descontinuacao?: string;
   preco?: number;
+
   historico_dosagens?: {
     dosagem_antiga: string;
     data_mudanca: string;
     medico_responsavel: string;
   }[];
+
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
   cid_ids?: string[];
   cid_id?: string;
 }
-
 
 export interface Renovacao {
   id?: string;
@@ -768,17 +801,17 @@ export interface Renovacao {
   data: string;
   anexo_url?: string;
   observacoes?: string;
-  
+
   // 🛡️ Atualizado para aceitar 'sus' explicitamente:
-  tipo_aquisicao?: 'comprado' | 'sus' | 'gratuito'; 
+  tipo_aquisicao?: 'comprado' | 'sus' | 'gratuito';
   data_proxima_retirada?: string;
   exige_nova_receita?: boolean;
+
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
   data_retorno_sus?: string | null;
 }
-
 
 export interface DoseLog {
   id?: string;
@@ -891,32 +924,103 @@ export interface RegistroSaude {
 
 export interface Vault {
   id?: string;
+
+  /**
+   * Conta proprietária/criadora do cofre.
+   */
   user_id: string;
+
+  /**
+   * Pessoa da conta proprietária à qual este cofre pertence.
+   *
+   * Na arquitetura atual todo Vault pertence obrigatoriamente
+   * a uma Person da conta proprietária.
+   */
+  person_id: string;
+
   name: string;
   description?: string;
+
+  /**
+   * Chave visual do ícone.
+   * Ex.: "home", "heart", "users".
+   */
   icon: string;
+
+  /**
+   * Cor canônica em HEX.
+   * Ex.: "#7DD3FC".
+   */
   color: string;
+
   created_at: string;
   updated_at: string;
   synced: boolean;
-  person_id?: string;
 }
 
 export interface VaultMember {
   id?: string;
+
+  /**
+   * Cofre ao qual este convite/membership pertence.
+   */
   vault_id: string;
-  user_id: string;
+
+  /**
+   * Conta do usuário convidado.
+   *
+   * Pode estar ausente enquanto o convite ainda estiver
+   * pendente e não tiver sido associado a uma conta real.
+   */
+  user_id?: string;
+
+  /**
+   * Pessoa da conta convidada à qual o cofre compartilhado
+   * será associado depois da aceitação do convite.
+   *
+   * Não representa a mesma pessoa de Vault.person_id.
+   *
+   * Continua opcional porque convites pending/declined não
+   * precisam ter Person vinculada.
+   */
+  person_id?: string;
+
   email: string;
   name?: string;
+
   permission: VaultPermission;
+
+  /**
+   * ID da conta que enviou o convite.
+   */
   invited_by: string;
-  status: 'pending' | 'accepted' | 'rejected';
+
+  status: VaultMemberStatus;
+
   invited_at: string;
+
+  /**
+   * Campo local legado.
+   *
+   * A tabela atual do Supabase não depende de created_at
+   * para VaultMember, mas mantemos opcionalmente enquanto
+   * houver registros/imports antigos no IndexedDB.
+   */
   created_at?: string;
+
   updated_at: string;
   synced: boolean;
 }
 
+/**
+ * Tipo legado.
+ *
+ * A arquitetura atual persiste o vínculo de documento com
+ * cofre diretamente através de Document.vault_id.
+ *
+ * Mantido temporariamente para não quebrar imports existentes
+ * até fazermos a limpeza global de referências.
+ */
 export interface VaultDocument {
   document_id: string;
   vault_id: string;
@@ -943,6 +1047,13 @@ export interface Medico {
   local_ids?: string[];
   updated_at: string;
   synced: boolean;
+
+  /**
+   * Campo legado local.
+   *
+   * A arquitetura atual trata Médico como entidade global
+   * da conta, não vinculada a uma Person específica.
+   */
   person_id?: string;
 }
 
@@ -953,17 +1064,22 @@ export interface Farmacia {
   endereco?: string;
   telefone?: string;
   observacoes?: string;
-  
+
   // 🛡️ NOVIDADE: Identifica se é uma UBS, Farmácia Popular ou Posto do Estado
-  tipo?: 'particular' | 'sus' | 'posto'; 
-  is_sus?: boolean; 
+  tipo?: 'particular' | 'sus' | 'posto';
+  is_sus?: boolean;
 
   created_at: string;
   updated_at: string;
   synced: boolean;
+
+  /**
+   * Campo legado local.
+   *
+   * Farmácia é global por conta na arquitetura atual.
+   */
   person_id?: string;
 }
-
 
 export interface Hospital {
   id?: string;
@@ -978,6 +1094,12 @@ export interface Hospital {
   created_at: string;
   updated_at: string;
   synced: boolean;
+
+  /**
+   * Campo legado local.
+   *
+   * Hospital é global por conta na arquitetura atual.
+   */
   person_id?: string;
 }
 
@@ -994,6 +1116,12 @@ export interface LocalSaude {
   created_at: string;
   updated_at: string;
   synced: boolean;
+
+  /**
+   * Campo legado local.
+   *
+   * Local é global por conta na arquitetura atual.
+   */
   person_id?: string;
 }
 
@@ -1034,7 +1162,7 @@ export interface Tratamento {
   person_id?: string;
   nome: string;
   cid_ids?: string[];
-  medicamento_ids?: string[]; // 🔥 Adicionado para suportar o vínculo de medicamentos
+  medicamento_ids?: string[];
   condicao?: string;
   medico_ids?: string[];
   hospital_ids?: string[];
@@ -1055,6 +1183,12 @@ export interface Tratamento {
 export interface Credential {
   id?: string;
   user_id: string;
+
+  /**
+   * Toda credencial pertence obrigatoriamente a uma Person.
+   */
+  person_id: string;
+
   vault_id?: string;
   title: string;
   username?: string;
@@ -1062,30 +1196,40 @@ export interface Credential {
   url?: string;
   notes?: string;
   category: 'banco' | 'social' | 'trabalho' | 'outros';
+
   password_history?: {
     encrypted: string;
     date: string;
   }[];
+
   created_at: string;
   updated_at: string;
   synced: boolean;
-  person_id?: string;
 }
 
 export interface BankCard {
   id?: string;
   user_id: string;
+
+  /**
+   * Todo cartão/conta pertence obrigatoriamente a uma Person.
+   */
+  person_id: string;
+
   title: string;
   bank_name: string;
   type: CardType;
+
   card_number_encrypted?: string;
   card_holder?: string;
   brand?: CardBrand;
   expiry_date?: string;
   cvv_encrypted?: string;
+
   agency?: string;
   account?: string;
   notes?: string;
+
   created_at: string;
   updated_at: string;
   synced: boolean;

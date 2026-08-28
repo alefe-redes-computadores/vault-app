@@ -1,8 +1,17 @@
 // contexts/PersonContext.tsx
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+
 import { db } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { settingsRepository } from "@/lib/repositories/settings";
@@ -11,116 +20,401 @@ import { useToast } from "@/components/ToastProvider";
 
 interface PersonContextType {
   activePersonId: string | null;
-  setActivePersonId: (id: string | null) => void;
   changePerson: (id: string) => Promise<void>;
   loading: boolean;
 }
 
-const PersonContext = createContext<PersonContextType | undefined>(undefined);
+const PersonContext =
+  createContext<PersonContextType | undefined>(
+    undefined
+  );
 
-export function PersonProvider({ children }: { children: ReactNode }) {
+export function PersonProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const { user } = useAuth();
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
-  const [activePersonId, setActivePersonId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  const persons = useLiveQuery(() => db.persons.toArray(), [], []);
-  const settings = useLiveQuery(() => db.settings.toArray(), [], []);
+  const [activePersonId, setActivePersonId] =
+    useState<string | null>(null);
 
-  const applyPersonColor = useCallback(async (personId: string) => {
-    try {
-      const person = await db.persons.get(personId);
-      if (person?.color) {
-        document.documentElement.style.setProperty("--person-accent", person.color);
-      } else {
-        document.documentElement.style.setProperty("--person-accent", "#38BDF8");
-      }
-    } catch (error) {
-      console.error("Erro ao aplicar cor da pessoa:", error);
-    }
-  }, []);
+  const [loading, setLoading] =
+    useState(true);
 
-  useEffect(() => {
-    const loadDefaultPerson = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
+  // ==========================================================
+  // PESSOAS DO USUÁRIO ATUAL
+  // ==========================================================
+
+  const persons = useLiveQuery(
+    async () => {
+      if (!user?.id) {
+        return [];
       }
 
-      try {
-        const defaultId = await settingsRepository.getDefaultPersonId(user.id);
+      return db.persons
+        .where("user_id")
+        .equals(user.id)
+        .toArray();
+    },
+    [user?.id],
+    []
+  );
 
-        if (defaultId) {
-          const person = await db.persons.get(defaultId);
-          if (person) {
-            setActivePersonId(defaultId);
-            await applyPersonColor(defaultId);
-            setLoading(false);
-            return;
-          }
-        }
+  // ==========================================================
+  // IDS VÁLIDOS
+  // ==========================================================
 
-        if (persons.length > 0) {
-          const firstPersonId = persons[0].id!;
-          setActivePersonId(firstPersonId);
-          await settingsRepository.setDefaultPersonId(user.id, firstPersonId);
-          await applyPersonColor(firstPersonId);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar pessoa padrão:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const validPersonIds = useMemo(() => {
+    return new Set(
+      persons
+        .map((person) => person.id)
+        .filter(
+          (id): id is string =>
+            Boolean(id)
+        )
+    );
+  }, [persons]);
 
-    loadDefaultPerson();
-  }, [user, persons, settings, applyPersonColor]);
+  // ==========================================================
+  // APLICAR COR
+  // ==========================================================
 
-  const changePerson = useCallback(
-    async (personId: string) => {
-      if (!personId || !user) return;
+  const applyPersonColor =
+    useCallback(
+      async (
+        personId: string | null
+      ) => {
+        if (
+          !personId ||
+          !user?.id
+        ) {
+          document.documentElement.style.setProperty(
+            "--person-accent",
+            "#38BDF8"
+          );
 
-      try {
-        const person = await db.persons.get(personId);
-        if (!person) {
-          console.error("Pessoa não encontrada:", personId);
           return;
         }
 
-        // Aplica a troca imediatamente na UI
-        setActivePersonId(personId);
-        await applyPersonColor(personId);
-
-        // Persiste a preferência, mas não deixa erro de gravação bloquear a experiência
         try {
-          await settingsRepository.setDefaultPersonId(user.id, personId);
-        } catch (persistError) {
-          console.error("Erro ao salvar pessoa padrão (não crítico):", persistError);
+          const person =
+            await db.persons.get(
+              personId
+            );
+
+          if (
+            !person ||
+            person.user_id !==
+              user.id
+          ) {
+            document.documentElement.style.setProperty(
+              "--person-accent",
+              "#38BDF8"
+            );
+
+            return;
+          }
+
+          document.documentElement.style.setProperty(
+            "--person-accent",
+            person.color ||
+              "#38BDF8"
+          );
+        } catch (error) {
+          console.error(
+            "Erro ao aplicar cor da pessoa:",
+            error
+          );
+
+          document.documentElement.style.setProperty(
+            "--person-accent",
+            "#38BDF8"
+          );
+        }
+      },
+      [user?.id]
+    );
+
+  // ==========================================================
+  // CARREGAR PESSOA PADRÃO
+  // ==========================================================
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDefaultPerson =
+      async () => {
+        if (!user?.id) {
+          if (!cancelled) {
+            setActivePersonId(
+              null
+            );
+
+            setLoading(false);
+
+            document.documentElement.style.setProperty(
+              "--person-accent",
+              "#38BDF8"
+            );
+          }
+
+          return;
         }
 
-        trigger("vibrate");
-        showToast(`Pessoa alterada para ${person.name}`, "success");
-      } catch (error) {
-        console.error("Erro ao trocar pessoa:", error);
-        trigger("error");
-        showToast("Erro ao trocar pessoa", "error");
-      }
-    },
-    [user, applyPersonColor, trigger, showToast]
-  );
+        setLoading(true);
+
+        try {
+          // Se já temos uma pessoa ativa válida
+          // para este usuário, preservamos.
+          if (
+            activePersonId &&
+            validPersonIds.has(
+              activePersonId
+            )
+          ) {
+            await applyPersonColor(
+              activePersonId
+            );
+
+            return;
+          }
+
+          const defaultId =
+            await settingsRepository.getDefaultPersonId(
+              user.id
+            );
+
+          if (
+            defaultId &&
+            validPersonIds.has(
+              defaultId
+            )
+          ) {
+            if (!cancelled) {
+              setActivePersonId(
+                defaultId
+              );
+            }
+
+            await applyPersonColor(
+              defaultId
+            );
+
+            return;
+          }
+
+          const firstPerson =
+            persons.find(
+              (person) =>
+                Boolean(
+                  person.id
+                )
+            );
+
+          if (
+            firstPerson?.id
+          ) {
+            if (!cancelled) {
+              setActivePersonId(
+                firstPerson.id
+              );
+            }
+
+            await applyPersonColor(
+              firstPerson.id
+            );
+
+            try {
+              await settingsRepository.setDefaultPersonId(
+                user.id,
+                firstPerson.id
+              );
+            } catch (
+              persistError
+            ) {
+              console.error(
+                "Erro ao salvar pessoa padrão automática:",
+                persistError
+              );
+            }
+
+            return;
+          }
+
+          if (!cancelled) {
+            setActivePersonId(
+              null
+            );
+          }
+
+          await applyPersonColor(
+            null
+          );
+        } catch (error) {
+          console.error(
+            "Erro ao carregar pessoa padrão:",
+            error
+          );
+
+          if (!cancelled) {
+            setActivePersonId(
+              null
+            );
+          }
+
+          await applyPersonColor(
+            null
+          );
+        } finally {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        }
+      };
+
+    void loadDefaultPerson();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    user?.id,
+    persons,
+    validPersonIds,
+    activePersonId,
+    applyPersonColor,
+  ]);
+
+  // ==========================================================
+  // TROCAR PESSOA
+  // ==========================================================
+
+  const changePerson =
+    useCallback(
+      async (
+        personId: string
+      ) => {
+        if (
+          !personId ||
+          !user?.id
+        ) {
+          throw new Error(
+            "Pessoa ou usuário inválido."
+          );
+        }
+
+        try {
+          const person =
+            await db.persons.get(
+              personId
+            );
+
+          if (!person) {
+            throw new Error(
+              "Pessoa não encontrada."
+            );
+          }
+
+          if (
+            person.user_id !==
+            user.id
+          ) {
+            throw new Error(
+              "Acesso negado."
+            );
+          }
+
+          setActivePersonId(
+            personId
+          );
+
+          await applyPersonColor(
+            personId
+          );
+
+          try {
+            await settingsRepository.setDefaultPersonId(
+              user.id,
+              personId
+            );
+          } catch (
+            persistError
+          ) {
+            console.error(
+              "Erro ao salvar pessoa padrão:",
+              persistError
+            );
+          }
+
+          trigger("vibrate");
+
+          showToast(
+            `Pessoa alterada para ${person.name}`,
+            "success"
+          );
+        } catch (error) {
+          console.error(
+            "Erro ao trocar pessoa:",
+            error
+          );
+
+          trigger("error");
+
+          showToast(
+            "Não foi possível alterar a pessoa.",
+            "error"
+          );
+
+          throw error;
+        }
+      },
+      [
+        user?.id,
+        applyPersonColor,
+        trigger,
+        showToast,
+      ]
+    );
+
+  // ==========================================================
+  // CONTEXT
+  // ==========================================================
+
+  const value =
+    useMemo<PersonContextType>(
+      () => ({
+        activePersonId,
+        changePerson,
+        loading,
+      }),
+      [
+        activePersonId,
+        changePerson,
+        loading,
+      ]
+    );
 
   return (
-    <PersonContext.Provider value={{ activePersonId, setActivePersonId, changePerson, loading }}>
+    <PersonContext.Provider
+      value={value}
+    >
       {children}
     </PersonContext.Provider>
   );
 }
 
 export function useActivePersonId() {
-  const context = useContext(PersonContext);
+  const context =
+    useContext(PersonContext);
+
   if (!context) {
-    throw new Error("useActivePersonId deve ser usado dentro de PersonProvider");
+    throw new Error(
+      "useActivePersonId deve ser usado dentro de PersonProvider"
+    );
   }
+
   return context;
 }

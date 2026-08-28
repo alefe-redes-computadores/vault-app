@@ -1,238 +1,681 @@
 // app/pessoas/detalhes/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
-  Edit3,
-  Mail,
-  Phone,
-  User,
-  FileText,
-  Pill,
-  Stethoscope,
-  Calendar,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import {
+  AnimatePresence,
+  motion,
+} from "framer-motion";
+import { useLiveQuery } from "dexie-react-hooks";
+import {
   Activity,
-  Loader2,
-  ChevronRight,
-  Users,
-  CheckCircle,
-  Star,
-  FolderHeart,
+  ArrowLeft,
   Brain,
+  CheckCircle,
+  ChevronRight,
+  Edit3,
+  FileText,
   Flame,
+  FolderHeart,
   HeartPulse,
-  ShieldAlert,
-  Trash2,
+  Mail,
+  Pill,
   Plus,
+  ShieldAlert,
+  Star,
+  Stethoscope,
+  Trash2,
+  User,
+  Users,
 } from "lucide-react";
+
+import { db } from "@/lib/db";
+import { personsRepository } from "@/lib/repositories/persons";
+
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useMounted } from "@/hooks/useMounted";
+
 import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
-import { db } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { personsRepository } from "@/lib/repositories/persons";
-import type {
-  Person,
-  Document,
-  Medicamento,
-  Consulta,
-  Exame,
-  Cirurgia,
-  Tratamento,
-  Cid,
-} from "@/lib/types";
 import { Button } from "@/components/ui/Button";
-import { useAuth } from "@/hooks/useAuth";
-import { useMounted } from "@/hooks/useMounted";
+
 import {
-  SectionTitle,
   DetailInfoRow,
+  SectionTitle,
   StatCard,
 } from "@/components/detail/DetailComponents";
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+import type { Person } from "@/lib/types";
+
+// ============================================================
+// HELPERS
+// ============================================================
 
 function getTratamentoIcon(nome: string) {
-  const n = (nome || "").toLowerCase();
-  if (n.includes("tdah")) return Brain;
-  if (n.includes("dor") || n.includes("neuropática")) return Flame;
-  if (n.includes("depress")) return HeartPulse;
-  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
+  const normalized =
+    (nome || "").toLowerCase();
+
+  if (
+    normalized.includes(
+      "tdah"
+    )
+  ) {
+    return Brain;
+  }
+
+  if (
+    normalized.includes(
+      "dor"
+    ) ||
+    normalized.includes(
+      "neuropática"
+    )
+  ) {
+    return Flame;
+  }
+
+  if (
+    normalized.includes(
+      "depress"
+    )
+  ) {
+    return HeartPulse;
+  }
+
+  if (
+    normalized.includes(
+      "ansied"
+    ) ||
+    normalized.includes(
+      "ansiolítico"
+    )
+  ) {
+    return ShieldAlert;
+  }
+
   return Activity;
 }
 
-function getStatusColor(status: string) {
+function getStatusColor(
+  status: string
+) {
   switch (status) {
     case "ativo":
       return "text-emerald-400 bg-emerald-400/10 border-emerald-400/20";
+
     case "concluido":
       return "text-ice bg-ice/10 border-ice/20";
+
     case "suspenso":
       return "text-coral bg-coral/10 border-coral/20";
+
     default:
       return "text-ink-muted bg-surface-border/20 border-surface-border/30";
   }
 }
 
-function getStatusLabel(status: string) {
+function getStatusLabel(
+  status: string
+) {
   switch (status) {
     case "ativo":
       return "Em andamento";
+
     case "concluido":
       return "Concluído";
+
     case "suspenso":
       return "Suspenso";
+
     default:
       return status;
   }
 }
 
-/* ============================================================
-   CONTEÚDO
-   ============================================================ */
+// ============================================================
+// PAGE
+// ============================================================
 
 export default function PessoaDetalhesPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const id = searchParams.get("id");
-  const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
-  const { activePersonId, changePerson } = useActivePersonId();
-  const { user } = useAuth();
-  const mounted = useMounted();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [showDefaultModal, setShowDefaultModal] = useState(false);
-  const [isSettingDefault, setIsSettingDefault] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
+  const searchParams =
+    useSearchParams();
 
-  /* ==========================================================
-     DEXIE
-     ========================================================== */
+  const id =
+    searchParams.get("id");
 
-  const person = useLiveQuery(
-    () => (id ? db.persons.get(id) : undefined),
-    [id]
-  );
+  const mounted =
+    useMounted();
 
-  const documentos = useLiveQuery(
-    () => (id ? db.documents.where("person_id").equals(id).toArray() : []),
-    [id]
-  );
+  const { trigger } =
+    useHapticFeedback();
 
-  const medicamentos = useLiveQuery(
-    () => (id ? db.medicamentos.where("person_id").equals(id).toArray() : []),
-    [id]
-  );
+  const { showToast } =
+    useToast();
 
-  const consultas = useLiveQuery(
-    () => (id ? db.consultas.where("person_id").equals(id).toArray() : []),
-    [id]
-  );
+  const {
+    activePersonId,
+    changePerson,
+  } = useActivePersonId();
 
-  const exames = useLiveQuery(
-    () => (id ? db.exames.where("person_id").equals(id).toArray() : []),
-    [id]
-  );
+  const [
+    person,
+    setPerson,
+  ] = useState<
+    Person | null | undefined
+  >(undefined);
 
-  const cirurgias = useLiveQuery(
-    () => (id ? db.cirurgias.where("person_id").equals(id).toArray() : []),
-    [id]
-  );
+  const [
+    showDefaultModal,
+    setShowDefaultModal,
+  ] = useState(false);
 
-  const tratamentos = useLiveQuery(
-    () => (id ? db.tratamentos.where("person_id").equals(id).toArray() : []),
-    [id]
-  );
+  const [
+    isSettingDefault,
+    setIsSettingDefault,
+  ] = useState(false);
 
-  const cids = useLiveQuery(
-    () => (id ? db.cids.where("person_id").equals(id).toArray() : []),
-    [id]
-  );
+  const [
+    isDeleting,
+    setIsDeleting,
+  ] = useState(false);
 
-  const isDefault = activePersonId === id;
+  const [
+    showDeleteModal,
+    setShowDeleteModal,
+  ] = useState(false);
 
-  useEffect(() => {
-    if (id === undefined) return;
-    if (person !== undefined) {
-      setIsLoading(false);
-    }
-  }, [person, id]);
+  const [
+    isMenuFlutuanteOpen,
+    setIsMenuFlutuanteOpen,
+  ] = useState(false);
+
+  const isActive =
+    Boolean(
+      id &&
+        activePersonId ===
+          id
+    );
+
+  // ==========================================================
+  // VALIDAR / CARREGAR PESSOA
+  // ==========================================================
 
   useEffect(() => {
-    if (!id) {
-      router.push("/pessoas");
-      return;
-    }
-  }, [id, router]);
+    let cancelled = false;
 
-  if (!mounted) return <DetailSkeleton />;
+    const loadPerson =
+      async () => {
+        if (!id) {
+          if (!cancelled) {
+            setPerson(null);
 
-  const handleSetDefault = async () => {
-    if (!id || !person || !user) return;
-    setIsSettingDefault(true);
-    trigger("vibrate");
-    try {
-      await changePerson(id);
-      trigger("success");
-      showToast(`${person.name} definido como padrão`, "success");
-      setShowDefaultModal(false);
-    } catch (error) {
-      console.error("Erro ao definir pessoa padrão:", error);
-      trigger("error");
-      showToast("Erro ao definir pessoa padrão", "error");
-    } finally {
-      setIsSettingDefault(false);
-    }
-  };
+            router.replace(
+              "/pessoas"
+            );
+          }
 
-  const handleDelete = async () => {
-    if (!id) return;
-    setIsDeleting(true);
-    trigger("vibrate");
-    try {
-      await personsRepository.delete(id);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("sync:process"));
+          return;
+        }
+
+        try {
+          /**
+           * Esta é a validação de ownership que libera
+           * todas as consultas relacionadas abaixo.
+           */
+          const result =
+            await personsRepository.getById(
+              id
+            );
+
+          if (!cancelled) {
+            setPerson(result);
+          }
+        } catch (error) {
+          console.error(
+            "Erro ao carregar pessoa:",
+            error
+          );
+
+          if (!cancelled) {
+            setPerson(null);
+          }
+        }
+      };
+
+    void loadPerson();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    id,
+    router,
+  ]);
+
+  const validatedPersonId =
+    person?.id || null;
+
+  // ==========================================================
+  // DADOS RELACIONADOS
+  //
+  // Por enquanto permanecem como queries locais agregadas.
+  // Elas só executam após personsRepository.getById validar
+  // que a pessoa pertence ao usuário autenticado.
+  //
+  // Na auditoria de Saúde revisaremos repository/hook/sync
+  // individualmente para cada domínio.
+  // ==========================================================
+
+  const documentos =
+    useLiveQuery(
+      async () => {
+        if (
+          !validatedPersonId
+        ) {
+          return [];
+        }
+
+        return db.documents
+          .where("person_id")
+          .equals(
+            validatedPersonId
+          )
+          .toArray();
+      },
+      [
+        validatedPersonId,
+      ],
+      []
+    );
+
+  const medicamentos =
+    useLiveQuery(
+      async () => {
+        if (
+          !validatedPersonId
+        ) {
+          return [];
+        }
+
+        return db.medicamentos
+          .where("person_id")
+          .equals(
+            validatedPersonId
+          )
+          .toArray();
+      },
+      [
+        validatedPersonId,
+      ],
+      []
+    );
+
+  const consultas =
+    useLiveQuery(
+      async () => {
+        if (
+          !validatedPersonId
+        ) {
+          return [];
+        }
+
+        return db.consultas
+          .where("person_id")
+          .equals(
+            validatedPersonId
+          )
+          .toArray();
+      },
+      [
+        validatedPersonId,
+      ],
+      []
+    );
+
+  const exames =
+    useLiveQuery(
+      async () => {
+        if (
+          !validatedPersonId
+        ) {
+          return [];
+        }
+
+        return db.exames
+          .where("person_id")
+          .equals(
+            validatedPersonId
+          )
+          .toArray();
+      },
+      [
+        validatedPersonId,
+      ],
+      []
+    );
+
+  const cirurgias =
+    useLiveQuery(
+      async () => {
+        if (
+          !validatedPersonId
+        ) {
+          return [];
+        }
+
+        return db.cirurgias
+          .where("person_id")
+          .equals(
+            validatedPersonId
+          )
+          .toArray();
+      },
+      [
+        validatedPersonId,
+      ],
+      []
+    );
+
+  const tratamentos =
+    useLiveQuery(
+      async () => {
+        if (
+          !validatedPersonId
+        ) {
+          return [];
+        }
+
+        return db.tratamentos
+          .where("person_id")
+          .equals(
+            validatedPersonId
+          )
+          .toArray();
+      },
+      [
+        validatedPersonId,
+      ],
+      []
+    );
+
+  const cids =
+    useLiveQuery(
+      async () => {
+        if (
+          !validatedPersonId
+        ) {
+          return [];
+        }
+
+        return db.cids
+          .where("person_id")
+          .equals(
+            validatedPersonId
+          )
+          .toArray();
+      },
+      [
+        validatedPersonId,
+      ],
+      []
+    );
+
+  // ==========================================================
+  // DERIVED
+  // ==========================================================
+
+  const medicamentosAtivos =
+    useMemo(
+      () =>
+        medicamentos.filter(
+          (medicamento) =>
+            medicamento.status !==
+            "descontinuado"
+        ),
+      [medicamentos]
+    );
+
+  const consultasFuturas =
+    useMemo(() => {
+      const today =
+        new Date()
+          .toISOString()
+          .slice(0, 10);
+
+      return consultas.filter(
+        (consulta) =>
+          consulta.data >=
+          today
+      );
+    }, [consultas]);
+
+  const examesPendentes =
+    useMemo(() => {
+      const now =
+        new Date();
+
+      return exames.filter(
+        (exame) =>
+          Boolean(
+            exame.data_retorno
+          ) &&
+          new Date(
+            exame.data_retorno!
+          ) >= now
+      );
+    }, [exames]);
+
+  const tratamentosAtivos =
+    useMemo(
+      () =>
+        tratamentos.filter(
+          (tratamento) =>
+            tratamento.status ===
+            "ativo"
+        ),
+      [tratamentos]
+    );
+
+  // ==========================================================
+  // DEFAULT
+  // ==========================================================
+
+  const handleSetDefault =
+    async () => {
+      if (
+        !id ||
+        !person ||
+        isSettingDefault
+      ) {
+        return;
       }
-      trigger("success");
-      showToast(`${person?.name} removido(a) com sucesso`, "success");
-      router.push("/pessoas");
-    } catch (error) {
-      console.error("Erro ao remover pessoa:", error);
-      trigger("error");
-      showToast("Erro ao remover pessoa", "error");
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteModal(false);
-    }
-  };
 
-  const menuOptions = [
-    { id: "adicionar-documento", label: "Adicionar Documento", icon: FileText, path: `/novo?person_id=${id}` },
-    { id: "adicionar-medicamento", label: "Adicionar Medicamento", icon: Pill, path: `/saude/medicamentos/novo?person_id=${id}` },
-    { id: "adicionar-consulta", label: "Adicionar Consulta", icon: Stethoscope, path: `/saude/consultas/nova?person_id=${id}` },
-    { id: "adicionar-exame", label: "Adicionar Exame", icon: Activity, path: `/saude/exames/novo?person_id=${id}` },
-    { id: "editar-pessoa", label: "Editar Pessoa", icon: Edit3, path: `/pessoas/editar?id=${id}` },
-  ];
+      setIsSettingDefault(
+        true
+      );
 
-  const handleMenuOptionClick = (path: string) => {
-    trigger("vibrate");
-    setIsMenuFlutuanteOpen(false);
-    router.push(path);
-  };
+      try {
+        await changePerson(id);
 
-  if (isLoading || person === undefined) {
+        setShowDefaultModal(
+          false
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao definir pessoa ativa:",
+          error
+        );
+      } finally {
+        setIsSettingDefault(
+          false
+        );
+      }
+    };
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const handleDelete =
+    async () => {
+      if (
+        !id ||
+        !person ||
+        isDeleting
+      ) {
+        return;
+      }
+
+      /**
+       * Mesma regra da listagem:
+       * a pessoa ativa não pode ser removida.
+       */
+      if (isActive) {
+        setShowDeleteModal(
+          false
+        );
+
+        trigger("error");
+
+        showToast(
+          "A pessoa ativa não pode ser removida. Selecione outra pessoa primeiro.",
+          "error"
+        );
+
+        return;
+      }
+
+      setIsDeleting(true);
+
+      trigger("vibrate");
+
+      try {
+        await personsRepository.delete(
+          id
+        );
+
+        if (
+          typeof window !==
+          "undefined"
+        ) {
+          window.dispatchEvent(
+            new Event(
+              "sync:process"
+            )
+          );
+        }
+
+        trigger("success");
+
+        showToast(
+          `${person.name} removido(a) com sucesso.`,
+          "success"
+        );
+
+        router.replace(
+          "/pessoas"
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao remover pessoa:",
+          error
+        );
+
+        trigger("error");
+
+        showToast(
+          error instanceof Error
+            ? error.message
+            : "Erro ao remover pessoa.",
+          "error"
+        );
+      } finally {
+        setIsDeleting(false);
+
+        setShowDeleteModal(
+          false
+        );
+      }
+    };
+
+  // ==========================================================
+  // MENU
+  // ==========================================================
+
+  const menuOptions =
+    useMemo(
+      () => [
+        {
+          id: "adicionar-documento",
+          label:
+            "Adicionar Documento",
+          icon: FileText,
+          path: `/novo?person_id=${id}`,
+        },
+        {
+          id: "adicionar-medicamento",
+          label:
+            "Adicionar Medicamento",
+          icon: Pill,
+          path: `/saude/medicamentos/novo?person_id=${id}`,
+        },
+        {
+          id: "adicionar-consulta",
+          label:
+            "Adicionar Consulta",
+          icon: Stethoscope,
+          path: `/saude/consultas/nova?person_id=${id}`,
+        },
+        {
+          id: "adicionar-exame",
+          label:
+            "Adicionar Exame",
+          icon: Activity,
+          path: `/saude/exames/novo?person_id=${id}`,
+        },
+        {
+          id: "editar-pessoa",
+          label:
+            "Editar Pessoa",
+          icon: Edit3,
+          path: `/pessoas/editar?id=${id}`,
+        },
+      ],
+      [id]
+    );
+
+  const handleMenuOptionClick =
+    (path: string) => {
+      trigger("vibrate");
+
+      setIsMenuFlutuanteOpen(
+        false
+      );
+
+      router.push(path);
+    };
+
+  // ==========================================================
+  // LOADING
+  // ==========================================================
+
+  if (
+    !mounted ||
+    person === undefined
+  ) {
     return (
       <PageTransition>
         <DetailSkeleton />
@@ -240,56 +683,84 @@ export default function PessoaDetalhesPage() {
     );
   }
 
+  // ==========================================================
+  // NOT FOUND / ACCESS DENIED
+  // ==========================================================
+
   if (!person) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-void px-5 pt-6">
-          <div className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-8 text-center shadow-sm">
-            <p className="text-ink-muted">Pessoa não encontrada.</p>
+        <main className="flex min-h-[100dvh] items-center justify-center bg-void px-5">
+          <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-5 py-8 text-center shadow-sm">
+            <Users
+              size={28}
+              className="mx-auto text-ink-muted"
+              aria-hidden="true"
+            />
+
+            <h2 className="mt-4 font-display text-lg font-semibold text-ink-primary">
+              Pessoa não encontrada
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-ink-muted">
+              Esta pessoa não
+              existe ou não
+              pertence à sua
+              conta.
+            </p>
+
             <Button
+              type="button"
               variant="secondary"
-              onClick={() => router.push("/pessoas")}
-              className="mt-4"
+              onClick={() =>
+                router.replace(
+                  "/pessoas"
+                )
+              }
+              className="mt-5"
             >
               Voltar
             </Button>
           </div>
-        </div>
+        </main>
       </PageTransition>
     );
   }
 
-  const medicamentosAtivos = (medicamentos || []).filter((m) => m.status !== "descontinuado");
-  const consultasFuturas = (consultas || []).filter(
-    (c) => c.data >= new Date().toISOString().slice(0, 10)
-  );
-  const examesPendentes = (exames || []).filter(
-    (e) => e.data_retorno && new Date(e.data_retorno) >= new Date()
-  );
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
-        {/* ===== HEADER ===== */}
+      <main className="min-h-[100dvh] bg-void pb-32">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
               <button
+                type="button"
                 onClick={() => {
-                  trigger("vibrate");
+                  trigger(
+                    "vibrate"
+                  );
+
                   router.back();
                 }}
                 aria-label="Voltar"
-                type="button"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
-                <ArrowLeft size={18} className="text-ink-primary" />
+                <ArrowLeft
+                  size={18}
+                  className="text-ink-primary"
+                  aria-hidden="true"
+                />
               </button>
 
               <div className="min-w-0">
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
                   Vault
                 </p>
+
                 <h1 className="mt-1 truncate font-display text-xl font-semibold text-ink-primary">
                   {person.name}
                 </h1>
@@ -299,53 +770,126 @@ export default function PessoaDetalhesPage() {
             <div className="flex items-center gap-2">
               <div className="relative">
                 <button
-                  onClick={() => { trigger("vibrate"); setIsMenuFlutuanteOpen(!isMenuFlutuanteOpen); }}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
                   type="button"
+                  onClick={() => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setIsMenuFlutuanteOpen(
+                      (current) =>
+                        !current
+                    );
+                  }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
                   aria-label="Adicionar registro"
                 >
-                  <Plus size={18} />
+                  <Plus
+                    size={18}
+                    aria-hidden="true"
+                  />
                 </button>
+
                 <AnimatePresence>
                   {isMenuFlutuanteOpen && (
                     <>
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.16 }}
-                        onClick={() => setIsMenuFlutuanteOpen(false)}
+                      <motion.button
+                        type="button"
+                        aria-label="Fechar menu"
+                        initial={{
+                          opacity: 0,
+                        }}
+                        animate={{
+                          opacity: 1,
+                        }}
+                        exit={{
+                          opacity: 0,
+                        }}
+                        transition={{
+                          duration: 0.16,
+                        }}
+                        onClick={() =>
+                          setIsMenuFlutuanteOpen(
+                            false
+                          )
+                        }
                         className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
                       />
+
                       <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                        initial={{
+                          opacity: 0,
+                          y: 10,
+                          scale:
+                            0.95,
+                        }}
+                        animate={{
+                          opacity: 1,
+                          y: 0,
+                          scale: 1,
+                        }}
+                        exit={{
+                          opacity: 0,
+                          y: 10,
+                          scale:
+                            0.95,
+                        }}
+                        transition={{
+                          duration: 0.18,
+                          ease: [
+                            0.16,
+                            1,
+                            0.3,
+                            1,
+                          ],
+                        }}
                         className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
                       >
                         <div className="px-3 pb-2 pt-3.5">
-                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">Adicionar</p>
+                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
+                            Adicionar
+                          </p>
                         </div>
+
                         <div className="px-1.5 pb-2">
-                          {menuOptions.map((option) => {
-                            const Icon = option.icon;
-                            return (
-                              <button
-                                key={option.id}
-                                onClick={() => handleMenuOptionClick(option.path)}
-                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
-                                type="button"
-                              >
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                                  <Icon size={15} />
-                                </div>
-                                <span className="text-sm font-medium text-ink-primary">
-                                  {option.label}
-                                </span>
-                              </button>
-                            );
-                          })}
+                          {menuOptions.map(
+                            (
+                              option
+                            ) => {
+                              const Icon =
+                                option.icon;
+
+                              return (
+                                <button
+                                  key={
+                                    option.id
+                                  }
+                                  type="button"
+                                  onClick={() =>
+                                    handleMenuOptionClick(
+                                      option.path
+                                    )
+                                  }
+                                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
+                                >
+                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                    <Icon
+                                      size={
+                                        15
+                                      }
+                                      aria-hidden="true"
+                                    />
+                                  </div>
+
+                                  <span className="text-sm font-medium text-ink-primary">
+                                    {
+                                      option.label
+                                    }
+                                  </span>
+                                </button>
+                              );
+                            }
+                          )}
                         </div>
                       </motion.div>
                     </>
@@ -353,362 +897,733 @@ export default function PessoaDetalhesPage() {
                 </AnimatePresence>
               </div>
 
-              {!isDefault && (
+              {!isActive && (
                 <button
-                  onClick={() => setShowDefaultModal(true)}
-                  className="flex h-10 items-center gap-1.5 rounded-full border border-ice/20 bg-ice/10 px-3.5 py-2 text-xs font-semibold text-ice transition-all active:scale-95 hover:bg-ice/20"
                   type="button"
+                  onClick={() => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setShowDefaultModal(
+                      true
+                    );
+                  }}
+                  className="flex h-10 items-center gap-1.5 rounded-full border border-ice/20 bg-ice/10 px-3.5 py-2 text-xs font-semibold text-ice transition-all active:scale-95 hover:bg-ice/20"
                 >
-                  <Star size={14} />
-                  Definir padrão
+                  <Star
+                    size={14}
+                    aria-hidden="true"
+                  />
+
+                  Definir ativa
                 </button>
               )}
+
               <button
+                type="button"
                 onClick={() => {
-                  trigger("vibrate");
-                  router.push(`/pessoas/editar?id=${id}`);
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.push(
+                    `/pessoas/editar?id=${id}`
+                  );
                 }}
                 aria-label="Editar pessoa"
-                type="button"
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
               >
-                <Edit3 size={18} />
+                <Edit3
+                  size={18}
+                  aria-hidden="true"
+                />
               </button>
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95 hover:bg-coral/20"
-                type="button"
-                aria-label="Excluir pessoa"
-              >
-                <Trash2 size={18} />
-              </button>
+
+              {!isActive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setShowDeleteModal(
+                      true
+                    );
+                  }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95 hover:bg-coral/20"
+                  aria-label="Excluir pessoa"
+                >
+                  <Trash2
+                    size={18}
+                    aria-hidden="true"
+                  />
+                </button>
+              )}
             </div>
           </div>
         </header>
 
-        {/* ===== CONTEÚDO ===== */}
-        <section className="px-5 pt-6 space-y-6">
-          {/* Card principal */}
+        <section className="space-y-6 px-5 pt-6">
+          {/* PERFIL */}
+
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28 }}
+            initial={{
+              opacity: 0,
+              y: 12,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.28,
+            }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
           >
             <div className="flex items-center gap-4">
-              <div
-                className="relative flex h-20 w-20 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 object-cover"
-                style={{ borderColor: `${person.color || "#38BDF8"}55` }}
+              <button
+                type="button"
                 onClick={() => {
-                  trigger("vibrate");
-                  router.push(`/pessoas/editar?id=${id}`);
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.push(
+                    `/pessoas/editar?id=${id}`
+                  );
                 }}
-                title="Clique para editar a foto"
-                role="button"
-                tabIndex={0}
+                className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 object-cover"
+                style={{
+                  borderColor: `${
+                    person.color ||
+                    "#38BDF8"
+                  }55`,
+                }}
+                aria-label="Editar foto da pessoa"
               >
                 {person.avatar_url ? (
                   <img
-                    src={person.avatar_url}
-                    alt={person.name}
+                    src={
+                      person.avatar_url
+                    }
+                    alt={
+                      person.name
+                    }
                     className="h-full w-full rounded-full object-cover"
                   />
                 ) : (
-                  <User size={36} style={{ color: person.color || "#38BDF8" }} />
+                  <User
+                    size={36}
+                    style={{
+                      color:
+                        person.color ||
+                        "#38BDF8",
+                    }}
+                    aria-hidden="true"
+                  />
                 )}
+
                 <div className="absolute bottom-0 right-0 rounded-full border border-surface-border bg-void/80 p-0.5">
                   <div className="rounded-full bg-ice/20 p-0.5">
-                    <Edit3 size={12} className="text-ice" />
+                    <Edit3
+                      size={12}
+                      className="text-ice"
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
-              </div>
+              </button>
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="truncate font-display text-2xl font-bold text-ink-primary">
                     {person.name}
                   </h2>
-                  {isDefault && (
+
+                  {isActive && (
                     <span className="flex items-center gap-0.5 rounded-full border border-ice/20 bg-ice/15 px-2.5 py-0.5 text-[10px] font-bold uppercase text-ice">
-                      <CheckCircle size={12} />
-                      Padrão
+                      <CheckCircle
+                        size={
+                          12
+                        }
+                        aria-hidden="true"
+                      />
+
+                      Ativa
                     </span>
                   )}
                 </div>
 
                 <div className="mt-2 space-y-1.5">
                   {person.email && (
-                    <div className="flex items-center gap-1.5 text-sm text-ink-muted">
-                      <Mail size={14} className="shrink-0" />
-                      <span>{person.email}</span>
-                    </div>
+                    <DetailInfoRow
+                      icon={
+                        <Mail
+                          size={
+                            14
+                          }
+                        />
+                      }
+                      label="E-mail"
+                    >
+                      {person.email}
+                    </DetailInfoRow>
                   )}
+
                   {person.phone && (
-                    <div className="flex items-center gap-1.5 text-sm text-ink-muted">
-                      <Phone size={14} className="shrink-0" />
-                      <span>{person.phone}</span>
-                    </div>
+                    <DetailInfoRow
+                      icon={
+                        <Stethoscope
+                          size={
+                            14
+                          }
+                        />
+                      }
+                      label="Telefone"
+                    >
+                      {person.phone}
+                    </DetailInfoRow>
                   )}
-                  {!person.email && !person.phone && (
-                    <p className="text-sm text-ink-faint">Sem informações de contato</p>
-                  )}
+
+                  {!person.email &&
+                    !person.phone && (
+                      <p className="text-sm text-ink-faint">
+                        Sem informações
+                        de contato
+                      </p>
+                    )}
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Métricas */}
+          {/* MÉTRICAS */}
+
           <div className="grid grid-cols-3 gap-3">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.04 }}
-            >
-              <StatCard
-                icon={<FileText size={20} />}
-                label="Documentos"
-                value={`${documentos?.length || 0}`}
-              />
-            </motion.div>
+            <StatCard
+              icon={
+                <FileText
+                  size={20}
+                />
+              }
+              label="Documentos"
+              value={`${documentos.length}`}
+            />
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.06 }}
-            >
-              <StatCard
-                icon={<Pill size={20} />}
-                label="Ativos"
-                value={`${medicamentosAtivos.length}`}
-                description="Medicamentos"
-              />
-            </motion.div>
+            <StatCard
+              icon={
+                <Pill
+                  size={20}
+                />
+              }
+              label="Ativos"
+              value={`${medicamentosAtivos.length}`}
+              description="Medicamentos"
+            />
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.08 }}
-            >
-              <StatCard
-                icon={<FolderHeart size={20} />}
-                label="Tratamentos"
-                value={`${tratamentos?.length || 0}`}
-              />
-            </motion.div>
+            <StatCard
+              icon={
+                <FolderHeart
+                  size={20}
+                />
+              }
+              label="Tratamentos"
+              value={`${tratamentos.length}`}
+            />
           </div>
 
-          {/* Tratamentos */}
-          {tratamentos && tratamentos.length > 0 && (
+          {/* TRATAMENTOS */}
+
+          {tratamentosAtivos.length >
+            0 && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.1 }}
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.24,
+                delay: 0.1,
+              }}
               className="space-y-3"
             >
               <SectionTitle
-                icon={<FolderHeart size={15} />}
+                icon={
+                  <FolderHeart
+                    size={15}
+                  />
+                }
                 title="Tratamentos em andamento"
               />
+
               <div className="space-y-2">
-                {tratamentos.filter((t) => t.status === "ativo").slice(0, 3).map((t) => {
-                  const Icon = getTratamentoIcon(t.nome);
-                  const cor = t.cor || "#8B5CF6";
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => router.push(`/saude/tratamentos/detalhes?id=${t.id}`)}
-                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
-                      style={{ borderLeft: `4px solid ${cor}` }}
-                      type="button"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-                          style={{ backgroundColor: `${cor}20`, color: cor }}
+                {tratamentosAtivos
+                  .slice(0, 3)
+                  .map(
+                    (
+                      tratamento
+                    ) => {
+                      const Icon =
+                        getTratamentoIcon(
+                          tratamento.nome
+                        );
+
+                      const cor =
+                        tratamento.cor ||
+                        "#8B5CF6";
+
+                      return (
+                        <button
+                          key={
+                            tratamento.id
+                          }
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/saude/tratamentos/detalhes?id=${tratamento.id}`
+                            )
+                          }
+                          className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
+                          style={{
+                            borderLeft: `4px solid ${cor}`,
+                          }}
                         >
-                          <Icon size={16} />
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                              style={{
+                                backgroundColor: `${cor}20`,
+                                color:
+                                  cor,
+                              }}
+                            >
+                              <Icon
+                                size={
+                                  16
+                                }
+                                aria-hidden="true"
+                              />
+                            </div>
+
+                            <span className="truncate text-sm font-medium text-ink-primary">
+                              {
+                                tratamento.nome
+                              }
+                            </span>
+                          </div>
+
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${getStatusColor(
+                              tratamento.status
+                            )}`}
+                          >
+                            {getStatusLabel(
+                              tratamento.status
+                            )}
+                          </span>
+                        </button>
+                      );
+                    }
+                  )}
+
+                {tratamentosAtivos.length >
+                  3 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        "/saude/tratamentos"
+                      )
+                    }
+                    className="ml-1 mt-1 flex items-center gap-1 text-xs font-medium text-ice"
+                  >
+                    Ver todos (
+                    {
+                      tratamentosAtivos.length
+                    }
+                    )
+
+                    <ChevronRight
+                      size={14}
+                      aria-hidden="true"
+                    />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* CIDS */}
+
+          {cids.length > 0 && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.24,
+                delay: 0.12,
+              }}
+              className="space-y-3"
+            >
+              <SectionTitle
+                icon={
+                  <FileText
+                    size={15}
+                  />
+                }
+                title="Diagnósticos (CIDs)"
+              />
+
+              <div className="flex flex-wrap gap-2">
+                {cids
+                  .slice(0, 5)
+                  .map((cid) => (
+                    <span
+                      key={
+                        cid.id
+                      }
+                      className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs font-medium text-violet-300"
+                    >
+                      {
+                        cid.codigo
+                      }{" "}
+                      -{" "}
+                      {
+                        cid.descricao
+                      }
+                    </span>
+                  ))}
+
+                {cids.length >
+                  5 && (
+                  <span className="text-xs text-ink-muted">
+                    +
+                    {cids.length -
+                      5}{" "}
+                    outros
+                  </span>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* DOCUMENTOS */}
+
+          {documentos.length >
+            0 && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.24,
+                delay: 0.14,
+              }}
+              className="space-y-3"
+            >
+              <SectionTitle
+                icon={
+                  <FileText
+                    size={15}
+                  />
+                }
+                title="Últimos documentos"
+              />
+
+              <div className="space-y-2">
+                {documentos
+                  .slice(0, 3)
+                  .map((doc) => (
+                    <button
+                      key={
+                        doc.id
+                      }
+                      type="button"
+                      onClick={() =>
+                        router.push(
+                          `/detalhes?id=${doc.id}`
+                        )
+                      }
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
+                    >
+                      <span className="truncate text-sm font-medium text-ink-primary">
+                        {
+                          doc.title
+                        }
+                      </span>
+
+                      <ChevronRight
+                        size={16}
+                        className="shrink-0 text-ink-faint"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* CONSULTAS */}
+
+          {consultasFuturas.length >
+            0 && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.24,
+                delay: 0.16,
+              }}
+              className="space-y-3"
+            >
+              <SectionTitle
+                icon={
+                  <Stethoscope
+                    size={15}
+                  />
+                }
+                title="Próximas consultas"
+              />
+
+              <div className="space-y-2">
+                {consultasFuturas
+                  .slice(0, 3)
+                  .map(
+                    (consulta) => (
+                      <button
+                        key={
+                          consulta.id
+                        }
+                        type="button"
+                        onClick={() =>
+                          router.push(
+                            `/saude/consultas/detalhes?id=${consulta.id}`
+                          )
+                        }
+                        className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
+                      >
+                        <div className="min-w-0">
+                          <span className="truncate text-sm font-medium text-ink-primary">
+                            {
+                              consulta.especialidade
+                            }
+                          </span>
+
+                          <p className="truncate text-xs text-ink-muted">
+                            Dr(a).{" "}
+                            {
+                              consulta.medico
+                            }
+                          </p>
                         </div>
-                        <span className="truncate text-sm font-medium text-ink-primary">
-                          {t.nome}
+
+                        <span className="shrink-0 font-mono text-xs font-bold text-ice">
+                          {new Date(
+                            consulta.data
+                          ).toLocaleDateString(
+                            "pt-BR",
+                            {
+                              day: "2-digit",
+                              month:
+                                "short",
+                            }
+                          )}
                         </span>
-                      </div>
-                      <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${getStatusColor(t.status)}`}>
-                        {getStatusLabel(t.status)}
+                      </button>
+                    )
+                  )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* EXAMES */}
+
+          {examesPendentes.length >
+            0 && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.24,
+                delay: 0.18,
+              }}
+              className="space-y-3"
+            >
+              <SectionTitle
+                icon={
+                  <Activity
+                    size={15}
+                  />
+                }
+                title="Exames pendentes"
+              />
+
+              <div className="space-y-2">
+                {examesPendentes
+                  .slice(0, 3)
+                  .map((exame) => (
+                    <button
+                      key={
+                        exame.id
+                      }
+                      type="button"
+                      onClick={() =>
+                        router.push(
+                          `/saude/exames/detalhes?id=${exame.id}`
+                        )
+                      }
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
+                    >
+                      <span className="truncate text-sm font-medium text-ink-primary">
+                        {
+                          exame.nome
+                        }
+                      </span>
+
+                      <span className="shrink-0 font-mono text-xs font-bold text-coral">
+                        {exame.data_retorno
+                          ? new Date(
+                              exame.data_retorno
+                            ).toLocaleDateString(
+                              "pt-BR",
+                              {
+                                day: "2-digit",
+                                month:
+                                  "short",
+                              }
+                            )
+                          : "Sem prazo"}
                       </span>
                     </button>
-                  );
-                })}
-                {tratamentos.filter((t) => t.status === "ativo").length > 3 && (
-                  <button
-                    onClick={() => router.push("/saude/tratamentos")}
-                    className="ml-1 mt-1 flex items-center gap-1 text-xs font-medium text-ice"
-                    type="button"
-                  >
-                    Ver todos ({tratamentos.filter((t) => t.status === "ativo").length})
-                    <ChevronRight size={14} />
-                  </button>
-                )}
+                  ))}
               </div>
             </motion.div>
           )}
 
-          {/* CIDs */}
-          {cids && cids.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.12 }}
-              className="space-y-3"
-            >
-              <SectionTitle icon={<FileText size={15} />} title="Diagnósticos (CIDs)" />
-              <div className="flex flex-wrap gap-2">
-                {cids.slice(0, 5).map((cid) => (
-                  <span
-                    key={cid.id}
-                    className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs font-medium text-violet-300"
-                  >
-                    {cid.codigo} - {cid.descricao}
-                  </span>
-                ))}
-                {cids.length > 5 && (
-                  <span className="text-xs text-ink-muted">+{cids.length - 5} outros</span>
-                )}
-              </div>
-            </motion.div>
-          )}
+          {/* CIRURGIAS - CONTAGEM IMPLÍCITA NO EMPTY STATE */}
 
-          {/* Documentos */}
-          {documentos && documentos.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.14 }}
-              className="space-y-3"
-            >
-              <SectionTitle icon={<FileText size={15} />} title="Últimos documentos" />
-              <div className="space-y-2">
-                {documentos.slice(0, 3).map((doc) => (
-                  <button
-                    key={doc.id}
-                    onClick={() => router.push(`/detalhes?id=${doc.id}`)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
-                    type="button"
-                  >
-                    <span className="truncate text-sm font-medium text-ink-primary">
-                      {doc.title}
-                    </span>
-                    <ChevronRight size={16} className="shrink-0 text-ink-faint" />
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Consultas futuras */}
-          {consultas && consultas.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.16 }}
-              className="space-y-3"
-            >
-              <SectionTitle icon={<Stethoscope size={15} />} title="Próximas consultas" />
-              <div className="space-y-2">
-                {consultasFuturas.slice(0, 3).map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
-                    type="button"
-                  >
-                    <div>
-                      <span className="text-sm font-medium text-ink-primary">
-                        {c.especialidade}
-                      </span>
-                      <p className="text-xs text-ink-muted">Dr(a). {c.medico}</p>
-                    </div>
-                    <span className="font-mono text-xs font-bold text-ice">
-                      {new Date(c.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Exames pendentes */}
-          {exames && exames.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.18 }}
-              className="space-y-3"
-            >
-              <SectionTitle icon={<Activity size={15} />} title="Exames pendentes" />
-              <div className="space-y-2">
-                {examesPendentes.slice(0, 3).map((e) => (
-                  <button
-                    key={e.id}
-                    onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
-                    type="button"
-                  >
-                    <span className="truncate text-sm font-medium text-ink-primary">
-                      {e.nome}
-                    </span>
-                    <span className="font-mono text-xs font-bold text-coral">
-                      {e.data_retorno
-                        ? new Date(e.data_retorno).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
-                        : "Sem prazo"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Empty state */}
-          {!documentos?.length &&
-            !medicamentos?.length &&
-            !consultas?.length &&
-            !exames?.length &&
-            !tratamentos?.length &&
-            !cids?.length && (
+          {!documentos.length &&
+            !medicamentos.length &&
+            !consultas.length &&
+            !exames.length &&
+            !cirurgias.length &&
+            !tratamentos.length &&
+            !cids.length && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24, delay: 0.2 }}
+                initial={{
+                  opacity: 0,
+                  y: 10,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                transition={{
+                  duration: 0.24,
+                  delay: 0.2,
+                }}
                 className="rounded-[24px] border border-dashed border-surface-border/50 bg-surface/30 p-8 text-center"
               >
-                <Users size={28} className="mx-auto text-ink-faint" />
-                <p className="mt-3 text-sm text-ink-muted">Nenhum dado vinculado a esta pessoa ainda.</p>
-                <p className="text-xs text-ink-faint">Comece cadastrando documentos, medicamentos ou consultas.</p>
+                <Users
+                  size={28}
+                  className="mx-auto text-ink-faint"
+                  aria-hidden="true"
+                />
+
+                <p className="mt-3 text-sm text-ink-muted">
+                  Nenhum dado
+                  vinculado a esta
+                  pessoa ainda.
+                </p>
+
+                <p className="text-xs text-ink-faint">
+                  Comece cadastrando
+                  documentos,
+                  medicamentos ou
+                  consultas.
+                </p>
               </motion.div>
             )}
         </section>
 
-        {/* ===== MODAIS ===== */}
         <ConfirmationModal
-          isOpen={showDefaultModal}
-          onClose={() => setShowDefaultModal(false)}
-          onConfirm={handleSetDefault}
-          title="Definir pessoa padrão"
-          message={`Definir "${person.name}" como a pessoa padrão? Ela será selecionada automaticamente ao abrir o aplicativo.`}
+          isOpen={
+            showDefaultModal
+          }
+          onClose={() => {
+            if (
+              !isSettingDefault
+            ) {
+              setShowDefaultModal(
+                false
+              );
+            }
+          }}
+          onConfirm={
+            handleSetDefault
+          }
+          title="Definir pessoa ativa"
+          message={`Definir "${person.name}" como a pessoa ativa? O aplicativo passará a usar esta pessoa como referência para os dados filtrados.`}
           confirmLabel="Definir"
           cancelLabel="Cancelar"
-          isLoading={isSettingDefault}
+          isLoading={
+            isSettingDefault
+          }
           type="info"
         />
 
         <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDelete}
+          isOpen={
+            showDeleteModal
+          }
+          onClose={() => {
+            if (
+              !isDeleting
+            ) {
+              setShowDeleteModal(
+                false
+              );
+            }
+          }}
+          onConfirm={
+            handleDelete
+          }
           title="Remover pessoa"
-          message={`Tem certeza que deseja remover "${person.name}"? Todos os dados vinculados a esta pessoa (documentos, medicamentos, consultas, exames, cirurgias, tratamentos e CIDs) também serão removidos permanentemente.`}
+          message={`Tem certeza que deseja remover "${person.name}"? Os dados vinculados serão removidos localmente. A cascata definitiva na nuvem será validada durante a auditoria de sincronização da área de Saúde.`}
           confirmLabel="Remover"
           cancelLabel="Cancelar"
-          isLoading={isDeleting}
+          isLoading={
+            isDeleting
+          }
           type="danger"
         />
       </main>

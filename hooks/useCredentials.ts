@@ -1,82 +1,242 @@
 // hooks/useCredentials.ts
+
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
+
 import { db } from "@/lib/db";
-import { credentialsRepository } from "@/lib/repositories/credentials";
+
+import {
+  credentialsRepository,
+  type CredentialCreateInput,
+  type CredentialUpdateInput,
+} from "@/lib/repositories/credentials";
+
 import { useAuth } from "@/hooks/useAuth";
-import { encryptPassword } from "@/lib/crypto";
-import type { Credential } from "@/lib/types";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 
-type AddCredentialData = Omit<
-  Credential,
-  "id" | "user_id" | "created_at" | "updated_at" | "synced" | "password_encrypted"
-> & {
-  password_plain: string;
-};
-
-type UpdateCredentialData = Partial<
-  Omit<
-    Credential,
-    "id" | "user_id" | "created_at" | "updated_at" | "synced" | "password_encrypted"
-  >
-> & {
-  password_plain?: string;
-};
+// ============================================================
+// HOOK
+// ============================================================
 
 export function useCredentials() {
   const { user } = useAuth();
 
+  const {
+    activePersonId,
+    loading: personLoading,
+  } = useActivePersonId();
+
+  // ==========================================================
+  // CREDENTIALS DA PESSOA ATIVA
+  //
+  // A consulta parte do índice person_id adicionado na v34.
+  //
+  // Mesmo usando o índice da Person, mantemos também a
+  // conferência de user_id para garantir isolamento entre
+  // contas no IndexedDB local.
+  // ==========================================================
+
   const credentials = useLiveQuery(
-    () => db.credentials.where("user_id").equals(user?.id || "").toArray(),
-    [user?.id],
+    async () => {
+      if (
+        !user?.id ||
+        !activePersonId
+      ) {
+        return [];
+      }
+
+      const rows =
+        await db.credentials
+          .where("person_id")
+          .equals(activePersonId)
+          .toArray();
+
+      return rows.filter(
+        (credential) =>
+          credential.user_id ===
+          user.id
+      );
+    },
+    [
+      user?.id,
+      activePersonId,
+    ],
     []
   );
 
-  const addCredential = async (data: AddCredentialData) => {
-    if (!user) throw new Error("Usuário não autenticado");
+  // ==========================================================
+  // CREATE
+  // ==========================================================
 
-    const { password_plain, ...rest } = data;
-    const password_encrypted = encryptPassword(password_plain);
-
-    return credentialsRepository.create({
-      ...rest,
-      password_encrypted,
-    });
-  };
-
-  const updateCredential = async (id: string, changes: UpdateCredentialData) => {
-    if (!user) throw new Error("Usuário não autenticado");
-
-    const { password_plain, ...rest } = changes;
-
-    const payload: Record<string, unknown> = { ...rest };
-
-    if (password_plain) {
-      payload.password_encrypted = encryptPassword(password_plain);
+  const addCredential = async (
+    data: CredentialCreateInput
+  ) => {
+    if (!user) {
+      throw new Error(
+        "Usuário não autenticado"
+      );
     }
 
-    return credentialsRepository.update(id, payload);
+    if (!activePersonId) {
+      throw new Error(
+        "Nenhuma pessoa ativa selecionada"
+      );
+    }
+
+    /**
+     * A pessoa ativa é a autoridade do contexto atual.
+     *
+     * Mesmo que algum formulário envie person_id diferente,
+     * não permitimos criar uma credencial silenciosamente em
+     * outra Person enquanto uma Person diferente está ativa.
+     */
+    if (
+      data.person_id !==
+      activePersonId
+    ) {
+      throw new Error(
+        "A credencial deve pertencer à pessoa ativa"
+      );
+    }
+
+    return credentialsRepository.create(
+      data
+    );
   };
 
-  const deleteCredential = async (id: string) => {
-    if (!user) throw new Error("Usuário não autenticado");
-    return credentialsRepository.delete(id);
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
+
+  const updateCredential = async (
+    id: string,
+    changes: CredentialUpdateInput
+  ) => {
+    if (!user) {
+      throw new Error(
+        "Usuário não autenticado"
+      );
+    }
+
+    if (!activePersonId) {
+      throw new Error(
+        "Nenhuma pessoa ativa selecionada"
+      );
+    }
+
+    /**
+     * O fluxo comum não deve transferir a credencial para
+     * outra Person.
+     *
+     * Se futuramente existir uma tela específica de
+     * transferência, ela pode usar o repository diretamente
+     * com validações próprias.
+     */
+    if (
+      changes.person_id !== undefined &&
+      changes.person_id !==
+        activePersonId
+    ) {
+      throw new Error(
+        "Não é permitido alterar a pessoa da credencial por este fluxo"
+      );
+    }
+
+    return credentialsRepository.update(
+      id,
+      activePersonId,
+      changes
+    );
   };
 
-  const getCredential = async (id: string) => {
-    if (!user) throw new Error("Usuário não autenticado");
-    return credentialsRepository.getById(id);
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const deleteCredential = async (
+    id: string
+  ) => {
+    if (!user) {
+      throw new Error(
+        "Usuário não autenticado"
+      );
+    }
+
+    if (!activePersonId) {
+      throw new Error(
+        "Nenhuma pessoa ativa selecionada"
+      );
+    }
+
+    return credentialsRepository.delete(
+      id,
+      activePersonId
+    );
   };
 
-  const credentialsByVault = (vaultId: string) =>
-    (credentials || []).filter((c) => c.vault_id === vaultId);
+  // ==========================================================
+  // GET BY ID
+  // ==========================================================
+
+  const getCredential = async (
+    id: string
+  ) => {
+    if (!user) {
+      throw new Error(
+        "Usuário não autenticado"
+      );
+    }
+
+    if (!activePersonId) {
+      return null;
+    }
+
+    return credentialsRepository.getById(
+      id,
+      activePersonId
+    );
+  };
+
+  // ==========================================================
+  // FILTROS DERIVADOS
+  // ==========================================================
+
+  const credentialsByVault = (
+    vaultId: string
+  ) =>
+    (credentials || []).filter(
+      (credential) =>
+        credential.vault_id ===
+        vaultId
+    );
 
   const credentialsPersonal = () =>
-    (credentials || []).filter((c) => !c.vault_id);
+    (credentials || []).filter(
+      (credential) =>
+        !credential.vault_id
+    );
+
+  // ==========================================================
+  // RETURN
+  // ==========================================================
 
   return {
-    credentials: credentials || [],
+    credentials:
+      credentials || [],
+
+    activePersonId,
+
+    /**
+     * Útil para telas que precisam distinguir:
+     *
+     * - ainda carregando PersonContext;
+     * - Person realmente inexistente.
+     */
+    loading:
+      personLoading ||
+      credentials === undefined,
+
     addCredential,
     updateCredential,
     deleteCredential,

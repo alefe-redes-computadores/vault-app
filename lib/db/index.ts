@@ -88,6 +88,36 @@ interface AnexoClinico {
 }
 
 // ============================================================
+// TIPOS INTERNOS PARA MIGRAÇÕES LEGADAS
+//
+// Os tipos canônicos atuais exigem person_id em Vault,
+// Credential e BankCard.
+//
+// Porém a migration v34 precisa conseguir ler registros criados
+// antes dessa obrigatoriedade.
+// ============================================================
+
+type LegacyVault = Omit<Vault, 'person_id'> & {
+  person_id?: string;
+};
+
+type LegacyCredential = Omit<Credential, 'person_id'> & {
+  person_id?: string;
+};
+
+type LegacyBankCard = Omit<BankCard, 'person_id'> & {
+  person_id?: string;
+};
+
+type LegacyVaultMember = Omit<VaultMember, 'status'> & {
+  status: VaultMember['status'] | 'rejected';
+};
+
+type LegacySyncQueueItem = Omit<SyncQueueItem, 'payload'> & {
+  payload: Record<string, unknown>;
+};
+
+// ============================================================
 // DATABASE
 // ============================================================
 
@@ -355,7 +385,10 @@ class VaultDB extends Dexie {
         for (const med of medicamentos) {
           const medRaw = med as any;
 
-          if (Array.isArray(medRaw.tratamento_ids) && medRaw.tratamento_ids.length > 0) {
+          if (
+            Array.isArray(medRaw.tratamento_ids) &&
+            medRaw.tratamento_ids.length > 0
+          ) {
             continue;
           }
 
@@ -374,12 +407,15 @@ class VaultDB extends Dexie {
 
         const exames = await tx.table('exames').toArray();
 
-        const vinculosExames = await tx.table('exame_tratamentos').toArray();
+        const vinculosExames = await tx
+          .table('exame_tratamentos')
+          .toArray();
 
         const vinculosPorExame = new Map<string, string[]>();
 
         for (const vinculo of vinculosExames) {
-          const lista = vinculosPorExame.get(vinculo.exame_id) ?? [];
+          const lista =
+            vinculosPorExame.get(vinculo.exame_id) ?? [];
 
           lista.push(vinculo.tratamento_id);
 
@@ -389,7 +425,10 @@ class VaultDB extends Dexie {
         for (const exame of exames) {
           const exameRaw = exame as any;
 
-          if (Array.isArray(exameRaw.tratamento_ids) && exameRaw.tratamento_ids.length > 0) {
+          if (
+            Array.isArray(exameRaw.tratamento_ids) &&
+            exameRaw.tratamento_ids.length > 0
+          ) {
             continue;
           }
 
@@ -644,8 +683,10 @@ class VaultDB extends Dexie {
     // ==========================================================
 
     (this as any).version(26).stores({
-      medicos: 'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
-      hospitais: 'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
+      medicos:
+        'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
+      hospitais:
+        'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
     });
 
     // ==========================================================
@@ -653,8 +694,10 @@ class VaultDB extends Dexie {
     // ==========================================================
 
     (this as any).version(27).stores({
-      medicos: 'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
-      hospitais: 'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
+      medicos:
+        'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
+      hospitais:
+        'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
       versiculos: 'id, user_id, created_at',
     });
 
@@ -784,7 +827,8 @@ class VaultDB extends Dexie {
 
       versiculos: 'id, user_id, created_at',
 
-      registros_saude: 'id, user_id, person_id, data, categoria, tipo, synced',
+      registros_saude:
+        'id, user_id, person_id, data, categoria, tipo, synced',
     });
 
     // ==========================================================
@@ -793,19 +837,553 @@ class VaultDB extends Dexie {
 
     (this as any).version(31).stores({
       vaultMembers: 'id, vault_id, user_id',
-      vaults: 'id, user_id, name'
+      vaults: 'id, user_id, name',
     });
 
     // ==========================================================
-    // VERSÃO 32 — Suporte a Relacionamento Avô-Pai-Filho (DocumentManager)
+    // VERSÃO 32 — Suporte a Relacionamento Avô-Pai-Filho
+    //              (DocumentManager)
     // ==========================================================
 
     (this as any).version(32).stores({
       documents:
         'id, user_id, person_id, category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id, entidade_tipo, entidade_id, [entidade_tipo+entidade_id]',
     });
-  } // Fecha o constructor
-} // Fecha a classe VaultDB
+
+    // ==========================================================
+    // VERSÃO 33 — Vaults: pessoa ativa + compartilhamento
+    //
+    // Esta versão é intencionalmente conservadora:
+    //
+    // - adiciona os índices necessários;
+    // - normaliza user_id vazio em convite pendente;
+    // - mantém created_at local para compatibilidade histórica.
+    //
+    // Não tenta associar person_id automaticamente porque isso
+    // só pode ser feito com segurança depois de conhecermos
+    // settings/persons, trabalho feito na v34.
+    // ==========================================================
+
+    this.version(33)
+      .stores({
+        vaults:
+          'id, user_id, person_id, name',
+
+        vaultMembers:
+          'id, vault_id, user_id, person_id, email, status, permission, [user_id+person_id], [email+status]',
+      })
+      .upgrade(async (tx) => {
+        const members =
+          (await tx
+            .table('vaultMembers')
+            .toArray()) as LegacyVaultMember[];
+
+        for (const member of members) {
+          if (!member.id) {
+            continue;
+          }
+
+          const changes: Record<string, unknown> = {};
+
+          /**
+           * Implementação antiga podia usar string vazia para
+           * representar convite ainda não associado a usuário.
+           */
+          if (
+            typeof member.user_id === 'string' &&
+            member.user_id.trim() === ''
+          ) {
+            changes.user_id = undefined;
+          }
+
+          /**
+           * Registros antigos criados por safeAddVaultMember
+           * podiam não possuir created_at.
+           *
+           * O campo continua apenas como compatibilidade local.
+           */
+          if (!member.created_at) {
+            changes.created_at =
+              member.invited_at ||
+              member.updated_at ||
+              nowIso();
+          }
+
+          if (Object.keys(changes).length > 0) {
+            await tx
+              .table('vaultMembers')
+              .update(member.id, changes);
+          }
+        }
+      });
+
+    // ==========================================================
+    // VERSÃO 34
+    //
+    // Ownership de Cards/Credentials + normalização de Vault.
+    //
+    // Objetivos:
+    //
+    // 1. indexar person_id em credentials e bankCards;
+    // 2. preencher person_id legado somente quando pudermos
+    //    determinar a Person sem adivinhação;
+    // 3. converter rejected -> declined;
+    // 4. corrigir também operações antigas existentes na
+    //    syncQueue para evitar envio de payload incompatível.
+    //
+    // REGRA DE BACKFILL:
+    //
+    // Prioridade:
+    // 1. settings.default_person_id válido;
+    // 2. Person.isDefault === true;
+    // 3. única Person existente para aquela conta.
+    //
+    // Se houver duas ou mais Persons e não existir uma default
+    // determinável, o registro é preservado sem person_id.
+    // Nunca escolhemos arbitrariamente uma Person.
+    // ==========================================================
+
+    this.version(34)
+      .stores({
+        credentials:
+          'id, user_id, person_id, vault_id, category, synced, updated_at',
+
+        bankCards:
+          'id, user_id, person_id, type, synced, updated_at',
+
+        vaults:
+          'id, user_id, person_id, name',
+
+        vaultMembers:
+          'id, vault_id, user_id, person_id, email, status, permission, [user_id+person_id], [email+status]',
+      })
+      .upgrade(async (tx) => {
+        // ------------------------------------------------------
+        // CARREGAMENTO DOS DADOS NECESSÁRIOS
+        // ------------------------------------------------------
+
+        const persons =
+          (await tx
+            .table('persons')
+            .toArray()) as Person[];
+
+        const settings =
+          (await tx
+            .table('settings')
+            .toArray()) as AppSettings[];
+
+        const credentials =
+          (await tx
+            .table('credentials')
+            .toArray()) as LegacyCredential[];
+
+        const cards =
+          (await tx
+            .table('bankCards')
+            .toArray()) as LegacyBankCard[];
+
+        const vaults =
+          (await tx
+            .table('vaults')
+            .toArray()) as LegacyVault[];
+
+        const members =
+          (await tx
+            .table('vaultMembers')
+            .toArray()) as LegacyVaultMember[];
+
+        const queueItems =
+          (await tx
+            .table('syncQueue')
+            .toArray()) as LegacySyncQueueItem[];
+
+        // ------------------------------------------------------
+        // INDEXAÇÃO DE PERSONS POR CONTA
+        // ------------------------------------------------------
+
+        const personsByUser = new Map<string, Person[]>();
+
+        for (const person of persons) {
+          if (!person.user_id) {
+            continue;
+          }
+
+          const userPersons =
+            personsByUser.get(person.user_id) ?? [];
+
+          userPersons.push(person);
+
+          personsByUser.set(
+            person.user_id,
+            userPersons
+          );
+        }
+
+        // ------------------------------------------------------
+        // SETTINGS POR CONTA
+        // ------------------------------------------------------
+
+        const settingsByUser =
+          new Map<string, AppSettings>();
+
+        for (const setting of settings) {
+          if (!setting.user_id) {
+            continue;
+          }
+
+          settingsByUser.set(
+            setting.user_id,
+            setting
+          );
+        }
+
+        // ------------------------------------------------------
+        // RESOLUÇÃO SEGURA DE PERSON
+        // ------------------------------------------------------
+
+        const resolvePersonId = (
+          userId: string
+        ): string | null => {
+          if (!userId) {
+            return null;
+          }
+
+          const userPersons =
+            personsByUser.get(userId) ?? [];
+
+          const validPersons =
+            userPersons.filter(
+              (person): person is Person & { id: string } =>
+                typeof person.id === 'string' &&
+                person.id.length > 0
+            );
+
+          if (validPersons.length === 0) {
+            return null;
+          }
+
+          const setting =
+            settingsByUser.get(userId);
+
+          if (setting?.default_person_id) {
+            const settingsPerson =
+              validPersons.find(
+                (person) =>
+                  person.id ===
+                  setting.default_person_id
+              );
+
+            if (settingsPerson) {
+              return settingsPerson.id;
+            }
+          }
+
+          const defaultPersons =
+            validPersons.filter(
+              (person) =>
+                person.isDefault === true
+            );
+
+          if (defaultPersons.length === 1) {
+            return defaultPersons[0].id;
+          }
+
+          if (validPersons.length === 1) {
+            return validPersons[0].id;
+          }
+
+          return null;
+        };
+
+        // ------------------------------------------------------
+        // CONTROLE DOS BACKFILLS REALIZADOS
+        //
+        // Usado depois para atualizar payloads pendentes da
+        // syncQueue, evitando que uma operação antiga continue
+        // sem person_id mesmo depois da entidade local ter sido
+        // corrigida.
+        // ------------------------------------------------------
+
+        const credentialPersonIds =
+          new Map<string, string>();
+
+        const cardPersonIds =
+          new Map<string, string>();
+
+        const vaultPersonIds =
+          new Map<string, string>();
+
+        // ------------------------------------------------------
+        // CREDENTIALS
+        // ------------------------------------------------------
+
+        for (const credential of credentials) {
+          if (
+            !credential.id ||
+            credential.person_id
+          ) {
+            continue;
+          }
+
+          const personId =
+            resolvePersonId(
+              credential.user_id
+            );
+
+          if (!personId) {
+            console.warn(
+              `⚠️ [Dexie v34] Credencial ${credential.id} permaneceu sem person_id porque não foi possível determinar com segurança a Person correta.`
+            );
+
+            continue;
+          }
+
+          await tx
+            .table('credentials')
+            .update(
+              credential.id,
+              {
+                person_id: personId,
+              }
+            );
+
+          credentialPersonIds.set(
+            credential.id,
+            personId
+          );
+        }
+
+        // ------------------------------------------------------
+        // BANK CARDS
+        // ------------------------------------------------------
+
+        for (const card of cards) {
+          if (
+            !card.id ||
+            card.person_id
+          ) {
+            continue;
+          }
+
+          const personId =
+            resolvePersonId(
+              card.user_id
+            );
+
+          if (!personId) {
+            console.warn(
+              `⚠️ [Dexie v34] Cartão ${card.id} permaneceu sem person_id porque não foi possível determinar com segurança a Person correta.`
+            );
+
+            continue;
+          }
+
+          await tx
+            .table('bankCards')
+            .update(
+              card.id,
+              {
+                person_id: personId,
+              }
+            );
+
+          cardPersonIds.set(
+            card.id,
+            personId
+          );
+        }
+
+        // ------------------------------------------------------
+        // VAULTS LEGADOS
+        // ------------------------------------------------------
+
+        for (const vault of vaults) {
+          if (
+            !vault.id ||
+            vault.person_id
+          ) {
+            continue;
+          }
+
+          const personId =
+            resolvePersonId(
+              vault.user_id
+            );
+
+          if (!personId) {
+            console.warn(
+              `⚠️ [Dexie v34] Vault ${vault.id} permaneceu sem person_id porque não foi possível determinar com segurança a Person correta.`
+            );
+
+            continue;
+          }
+
+          await tx
+            .table('vaults')
+            .update(
+              vault.id,
+              {
+                person_id: personId,
+              }
+            );
+
+          vaultPersonIds.set(
+            vault.id,
+            personId
+          );
+        }
+
+        // ------------------------------------------------------
+        // VAULT MEMBERS
+        //
+        // rejected era o valor histórico.
+        // declined é o valor canônico atual.
+        // ------------------------------------------------------
+
+        for (const member of members) {
+          if (
+            !member.id ||
+            member.status !== 'rejected'
+          ) {
+            continue;
+          }
+
+          await tx
+            .table('vaultMembers')
+            .update(
+              member.id,
+              {
+                status: 'declined',
+              }
+            );
+        }
+
+        // ------------------------------------------------------
+        // SYNC QUEUE
+        //
+        // Essa parte é importante.
+        //
+        // Alterar somente a entidade local não é suficiente se
+        // já existir uma operação antiga pendente com payload
+        // incompatível.
+        // ------------------------------------------------------
+
+        for (const queueItem of queueItems) {
+          if (!queueItem.id) {
+            continue;
+          }
+
+          const payload =
+            queueItem.payload &&
+            typeof queueItem.payload === 'object'
+              ? { ...queueItem.payload }
+              : {};
+
+          const payloadId =
+            typeof payload.id === 'string'
+              ? payload.id
+              : null;
+
+          let changed = false;
+
+          // ----------------------------------------------------
+          // rejected -> declined também dentro da fila
+          // ----------------------------------------------------
+
+          if (
+            queueItem.table === 'vaultMembers' &&
+            payload.status === 'rejected'
+          ) {
+            payload.status = 'declined';
+            changed = true;
+          }
+
+          // ----------------------------------------------------
+          // Vault person_id
+          // ----------------------------------------------------
+
+          if (
+            queueItem.table === 'vaults' &&
+            payloadId &&
+            queueItem.operation !== 'delete'
+          ) {
+            const personId =
+              vaultPersonIds.get(payloadId);
+
+            if (
+              personId &&
+              payload.person_id !== personId
+            ) {
+              payload.person_id = personId;
+              changed = true;
+            }
+          }
+
+          // ----------------------------------------------------
+          // Credential person_id
+          // ----------------------------------------------------
+
+          if (
+            queueItem.table === 'credentials' &&
+            payloadId &&
+            queueItem.operation !== 'delete'
+          ) {
+            const personId =
+              credentialPersonIds.get(
+                payloadId
+              );
+
+            if (
+              personId &&
+              payload.person_id !== personId
+            ) {
+              payload.person_id = personId;
+              changed = true;
+            }
+          }
+
+          // ----------------------------------------------------
+          // Card person_id
+          // ----------------------------------------------------
+
+          if (
+            queueItem.table === 'cards' &&
+            payloadId &&
+            queueItem.operation !== 'delete'
+          ) {
+            const personId =
+              cardPersonIds.get(payloadId);
+
+            if (
+              personId &&
+              payload.person_id !== personId
+            ) {
+              payload.person_id = personId;
+              changed = true;
+            }
+          }
+
+          if (!changed) {
+            continue;
+          }
+
+          await tx
+            .table('syncQueue')
+            .update(
+              queueItem.id,
+              {
+                payload,
+                updated_at: nowIso(),
+                retry_count: 0,
+                failed: false,
+                next_retry_at: null,
+                error: null,
+              }
+            );
+        }
+      });
+  }
+}
 
 // ============================================================
 // INSTÂNCIA ÚNICA
@@ -922,13 +1500,23 @@ export async function safeDeleteDocument(id: string): Promise<void> {
     throw new Error('Documento não encontrado');
   }
 
-  if (document.attachments && document.attachments.length > 0) {
+  if (
+    document.attachments &&
+    document.attachments.length > 0
+  ) {
     for (const attachment of document.attachments) {
-      if (attachment.url && !attachment.url.startsWith('blob:')) {
+      if (
+        attachment.url &&
+        !attachment.url.startsWith('blob:')
+      ) {
         try {
           await deleteFile(attachment.url);
         } catch (error) {
-          console.error('Erro ao deletar anexo:', attachment.url, error);
+          console.error(
+            'Erro ao deletar anexo:',
+            attachment.url,
+            error
+          );
         }
       }
     }
@@ -988,7 +1576,9 @@ export async function safeUpdateMedicamento(
   });
 }
 
-export async function safeDeleteMedicamento(medicamentoId: string): Promise<void> {
+export async function safeDeleteMedicamento(
+  medicamentoId: string
+): Promise<void> {
   await db.medicamentos.delete(medicamentoId);
 }
 
@@ -1031,7 +1621,9 @@ export async function safeUpdateRenovacao(
   });
 }
 
-export async function safeDeleteRenovacao(id: string): Promise<void> {
+export async function safeDeleteRenovacao(
+  id: string
+): Promise<void> {
   await db.renovacoes.delete(id);
 }
 
@@ -1044,12 +1636,17 @@ export async function safeSetDoseLog(
 ): Promise<string> {
   const timestamp = nowIso();
 
-  const targetDate = data.data || getLocalTodayISO();
+  const targetDate =
+    data.data || getLocalTodayISO();
 
   const existing = await db.doseLogs
     .where('medicamento_id')
     .equals(data.medicamento_id)
-    .filter((log) => log.data === targetDate && log.horario === data.horario)
+    .filter(
+      (log) =>
+        log.data === targetDate &&
+        log.horario === data.horario
+    )
     .first();
 
   if (existing) {
@@ -1113,7 +1710,7 @@ export async function safeAddVaultMember(
     ...member,
     id,
     invited_at: timestamp,
-    updated_at: new Date().toISOString(),
+    updated_at: timestamp,
     synced: false,
   };
 
@@ -1142,7 +1739,8 @@ export async function shareDocumentWithVault(
   documentId: string,
   vaultId: string
 ): Promise<void> {
-  const document = await db.documents.get(documentId);
+  const document =
+    await db.documents.get(documentId);
 
   if (!document) {
     throw new Error('Documento não encontrado');
@@ -1154,12 +1752,22 @@ export async function shareDocumentWithVault(
   });
 }
 
-export async function getVaultDocuments(vaultId: string): Promise<Document[]> {
-  return db.documents.where('vault_id').equals(vaultId).toArray();
+export async function getVaultDocuments(
+  vaultId: string
+): Promise<Document[]> {
+  return db.documents
+    .where('vault_id')
+    .equals(vaultId)
+    .toArray();
 }
 
-export async function getVaultMembers(vaultId: string): Promise<VaultMember[]> {
-  return db.vaultMembers.where('vault_id').equals(vaultId).toArray();
+export async function getVaultMembers(
+  vaultId: string
+): Promise<VaultMember[]> {
+  return db.vaultMembers
+    .where('vault_id')
+    .equals(vaultId)
+    .toArray();
 }
 
 // ============================================================
@@ -1201,7 +1809,9 @@ export async function safeUpdateMedico(
   });
 }
 
-export async function safeDeleteMedico(id: string): Promise<void> {
+export async function safeDeleteMedico(
+  id: string
+): Promise<void> {
   await db.medicos.delete(id);
 }
 
@@ -1244,7 +1854,9 @@ export async function safeUpdateFarmacia(
   });
 }
 
-export async function safeDeleteFarmacia(id: string): Promise<void> {
+export async function safeDeleteFarmacia(
+  id: string
+): Promise<void> {
   await db.farmacias.delete(id);
 }
 
@@ -1287,7 +1899,9 @@ export async function safeUpdateHospital(
   });
 }
 
-export async function safeDeleteHospital(id: string): Promise<void> {
+export async function safeDeleteHospital(
+  id: string
+): Promise<void> {
   await db.hospitais.delete(id);
 }
 
@@ -1330,7 +1944,9 @@ export async function safeUpdateLocal(
   });
 }
 
-export async function safeDeleteLocal(id: string): Promise<void> {
+export async function safeDeleteLocal(
+  id: string
+): Promise<void> {
   await db.locais.delete(id);
 }
 
@@ -1373,7 +1989,9 @@ export async function safeUpdateExame(
   });
 }
 
-export async function safeDeleteExame(id: string): Promise<void> {
+export async function safeDeleteExame(
+  id: string
+): Promise<void> {
   await db.exames.delete(id);
 }
 
@@ -1416,7 +2034,9 @@ export async function safeUpdateConsulta(
   });
 }
 
-export async function safeDeleteConsulta(id: string): Promise<void> {
+export async function safeDeleteConsulta(
+  id: string
+): Promise<void> {
   await db.consultas.delete(id);
 }
 
@@ -1459,7 +2079,9 @@ export async function safeUpdateCirurgia(
   });
 }
 
-export async function safeDeleteCirurgia(id: string): Promise<void> {
+export async function safeDeleteCirurgia(
+  id: string
+): Promise<void> {
   await db.cirurgias.delete(id);
 }
 
@@ -1490,7 +2112,8 @@ export async function safeUpdateCredential(
   id: string,
   changes: Partial<Credential>
 ): Promise<void> {
-  const existing = await db.credentials.get(id);
+  const existing =
+    await db.credentials.get(id);
 
   if (!existing) {
     throw new Error('Credencial não encontrada');
@@ -1502,7 +2125,9 @@ export async function safeUpdateCredential(
   });
 }
 
-export async function safeDeleteCredential(id: string): Promise<void> {
+export async function safeDeleteCredential(
+  id: string
+): Promise<void> {
   await db.credentials.delete(id);
 }
 
@@ -1533,7 +2158,8 @@ export async function safeUpdateBankCard(
   id: string,
   changes: Partial<BankCard>
 ): Promise<void> {
-  const existing = await db.bankCards.get(id);
+  const existing =
+    await db.bankCards.get(id);
 
   if (!existing) {
     throw new Error('Cartão não encontrado');
@@ -1545,7 +2171,9 @@ export async function safeUpdateBankCard(
   });
 }
 
-export async function safeDeleteBankCard(id: string): Promise<void> {
+export async function safeDeleteBankCard(
+  id: string
+): Promise<void> {
   await db.bankCards.delete(id);
 }
 
@@ -1554,7 +2182,10 @@ export async function safeDeleteBankCard(id: string): Promise<void> {
 // ============================================================
 
 export async function safeAddInstituicao(
-  data: Omit<InstituicaoEnsino, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    InstituicaoEnsino,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -1576,10 +2207,13 @@ export async function safeUpdateInstituicao(
   id: string,
   changes: Partial<InstituicaoEnsino>
 ): Promise<void> {
-  const existing = await db.instituicoes.get(id);
+  const existing =
+    await db.instituicoes.get(id);
 
   if (!existing) {
-    throw new Error('Instituição de ensino não encontrada');
+    throw new Error(
+      'Instituição de ensino não encontrada'
+    );
   }
 
   await db.instituicoes.update(id, {
@@ -1588,7 +2222,9 @@ export async function safeUpdateInstituicao(
   });
 }
 
-export async function safeDeleteInstituicao(id: string): Promise<void> {
+export async function safeDeleteInstituicao(
+  id: string
+): Promise<void> {
   await db.instituicoes.delete(id);
 }
 
@@ -1619,7 +2255,8 @@ export async function safeUpdateTratamento(
   id: string,
   changes: Partial<Tratamento>
 ): Promise<void> {
-  const existing = await db.tratamentos.get(id);
+  const existing =
+    await db.tratamentos.get(id);
 
   if (!existing) {
     throw new Error('Tratamento não encontrado');
@@ -1631,46 +2268,71 @@ export async function safeUpdateTratamento(
   });
 }
 
-export async function safeDeleteTratamento(id: string): Promise<void> {
-  const existing = await db.tratamentos.get(id);
+export async function safeDeleteTratamento(
+  id: string
+): Promise<void> {
+  const existing =
+    await db.tratamentos.get(id);
 
   if (!existing) {
     return;
   }
 
-  const medicamentos = await db.medicamentos.toArray();
+  const medicamentos =
+    await db.medicamentos.toArray();
 
   for (const medicamento of medicamentos) {
-    if (medicamento.tratamento_ids?.includes(id)) {
-      const tratamentoIds = medicamento.tratamento_ids.filter(
-        (tratamentoId) => tratamentoId !== id
-      );
+    if (
+      medicamento.tratamento_ids?.includes(id)
+    ) {
+      const tratamentoIds =
+        medicamento.tratamento_ids.filter(
+          (tratamentoId) =>
+            tratamentoId !== id
+        );
 
-      await db.medicamentos.update(medicamento.id!, {
-        tratamento_ids: tratamentoIds,
-        synced: false,
-      });
+      await db.medicamentos.update(
+        medicamento.id!,
+        {
+          tratamento_ids: tratamentoIds,
+          synced: false,
+        }
+      );
     }
   }
 
-  const exames = await db.exames.toArray();
+  const exames =
+    await db.exames.toArray();
 
   for (const exame of exames) {
-    if (exame.tratamento_ids?.includes(id)) {
-      const tratamentoIds = exame.tratamento_ids.filter(
-        (tratamentoId) => tratamentoId !== id
-      );
+    if (
+      exame.tratamento_ids?.includes(id)
+    ) {
+      const tratamentoIds =
+        exame.tratamento_ids.filter(
+          (tratamentoId) =>
+            tratamentoId !== id
+        );
 
-      await db.exames.update(exame.id!, {
-        tratamento_ids: tratamentoIds,
-        synced: false,
-      });
+      await db.exames.update(
+        exame.id!,
+        {
+          tratamento_ids: tratamentoIds,
+          synced: false,
+        }
+      );
     }
   }
 
-  await db.medicamento_tratamentos.where('tratamento_id').equals(id).delete();
+  await db.medicamento_tratamentos
+    .where('tratamento_id')
+    .equals(id)
+    .delete();
 
-  await db.exame_tratamentos.where('tratamento_id').equals(id).delete();
+  await db.exame_tratamentos
+    .where('tratamento_id')
+    .equals(id)
+    .delete();
 
   await db.tratamentos.delete(id);
 }
@@ -1714,23 +2376,35 @@ export async function safeUpdateCid(
   });
 }
 
-export async function safeDeleteCid(id: string): Promise<void> {
+export async function safeDeleteCid(
+  id: string
+): Promise<void> {
   const existing = await db.cids.get(id);
 
   if (!existing) {
     return;
   }
 
-  const tratamentos = await db.tratamentos.toArray();
+  const tratamentos =
+    await db.tratamentos.toArray();
 
   for (const tratamento of tratamentos) {
-    if (tratamento.cid_ids?.includes(id)) {
-      const cidIds = tratamento.cid_ids.filter((cidId) => cidId !== id);
+    if (
+      tratamento.cid_ids?.includes(id)
+    ) {
+      const cidIds =
+        tratamento.cid_ids.filter(
+          (cidId) =>
+            cidId !== id
+        );
 
-      await db.tratamentos.update(tratamento.id!, {
-        cid_ids: cidIds,
-        synced: false,
-      });
+      await db.tratamentos.update(
+        tratamento.id!,
+        {
+          cid_ids: cidIds,
+          synced: false,
+        }
+      );
     }
   }
 
@@ -1742,7 +2416,10 @@ export async function safeDeleteCid(id: string): Promise<void> {
 // ============================================================
 
 export async function safeAddAnexoClinico(
-  data: Omit<AnexoClinico, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    AnexoClinico,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -1765,10 +2442,13 @@ export async function safeUpdateAnexoClinico(
   id: string,
   changes: Partial<AnexoClinico>
 ): Promise<void> {
-  const existing = await db.anexos_clinicos.get(id);
+  const existing =
+    await db.anexos_clinicos.get(id);
 
   if (!existing) {
-    throw new Error('Anexo clínico não encontrado');
+    throw new Error(
+      'Anexo clínico não encontrado'
+    );
   }
 
   await db.anexos_clinicos.update(id, {
@@ -1777,7 +2457,9 @@ export async function safeUpdateAnexoClinico(
   });
 }
 
-export async function safeDeleteAnexoClinico(id: string): Promise<void> {
+export async function safeDeleteAnexoClinico(
+  id: string
+): Promise<void> {
   await db.anexos_clinicos.delete(id);
 }
 
@@ -1786,7 +2468,10 @@ export async function safeDeleteAnexoClinico(id: string): Promise<void> {
 // ============================================================
 
 export async function safeAddSettings(
-  data: Omit<AppSettings, 'id' | 'updated_at' | 'created_at' | 'synced'>
+  data: Omit<
+    AppSettings,
+    'id' | 'updated_at' | 'created_at' | 'synced'
+  >
 ): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -1800,6 +2485,7 @@ export async function safeAddSettings(
   };
 
   await db.settings.add(full);
+
   return id;
 }
 
@@ -1809,9 +2495,13 @@ export async function safeUpdateSettings(
 ): Promise<void> {
   const timestamp = nowIso();
 
-  const existing = await db.settings.get(id);
+  const existing =
+    await db.settings.get(id);
+
   if (!existing) {
-    throw new Error('Configuração não encontrada');
+    throw new Error(
+      'Configuração não encontrada'
+    );
   }
 
   await db.settings.update(id, {
@@ -1821,31 +2511,66 @@ export async function safeUpdateSettings(
   });
 }
 
-export async function getDefaultPersonId(userId: string): Promise<string | null> {
-  if (!userId) return null;
-  const settings = await db.settings.where('user_id').equals(userId).first();
+export async function getDefaultPersonId(
+  userId: string
+): Promise<string | null> {
+  if (!userId) {
+    return null;
+  }
+
+  const settings =
+    await db.settings
+      .where('user_id')
+      .equals(userId)
+      .first();
+
   return settings?.default_person_id || null;
 }
 
-export async function updateDefaultPersonId(userId: string, personId: string): Promise<void> {
-  if (!userId) throw new Error('User ID é obrigatório');
+export async function updateDefaultPersonId(
+  userId: string,
+  personId: string
+): Promise<void> {
+  if (!userId) {
+    throw new Error(
+      'User ID é obrigatório'
+    );
+  }
 
-  const settings = await db.settings.where('user_id').equals(userId).first();
+  const settings =
+    await db.settings
+      .where('user_id')
+      .equals(userId)
+      .first();
+
   if (!settings) {
     await safeAddSettings({
       user_id: userId,
       default_person_id: personId,
     });
   } else {
-    await safeUpdateSettings(settings.id!, {
-      default_person_id: personId,
-    });
+    await safeUpdateSettings(
+      settings.id!,
+      {
+        default_person_id: personId,
+      }
+    );
   }
 }
 
-export async function getSettings(userId: string): Promise<AppSettings | null> {
-  if (!userId) return null;
-  return (await db.settings.where('user_id').equals(userId).first()) ?? null;
+export async function getSettings(
+  userId: string
+): Promise<AppSettings | null> {
+  if (!userId) {
+    return null;
+  }
+
+  return (
+    (await db.settings
+      .where('user_id')
+      .equals(userId)
+      .first()) ?? null
+  );
 }
 
 // ============================================================
@@ -1853,7 +2578,10 @@ export async function getSettings(userId: string): Promise<AppSettings | null> {
 // ============================================================
 
 export async function safeAddVersiculo(
-  data: Omit<Versiculo, 'id' | 'created_at' | 'updated_at'>
+  data: Omit<
+    Versiculo,
+    'id' | 'created_at' | 'updated_at'
+  >
 ): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -1866,6 +2594,7 @@ export async function safeAddVersiculo(
   };
 
   await db.versiculos.add(full);
+
   return id;
 }
 
@@ -1875,9 +2604,13 @@ export async function safeUpdateVersiculo(
 ): Promise<void> {
   const timestamp = nowIso();
 
-  const existing = await db.versiculos.get(id);
+  const existing =
+    await db.versiculos.get(id);
+
   if (!existing) {
-    throw new Error('Versículo não encontrado');
+    throw new Error(
+      'Versículo não encontrado'
+    );
   }
 
   await db.versiculos.update(id, {
@@ -1886,7 +2619,9 @@ export async function safeUpdateVersiculo(
   });
 }
 
-export async function safeDeleteVersiculo(id: string): Promise<void> {
+export async function safeDeleteVersiculo(
+  id: string
+): Promise<void> {
   await db.versiculos.delete(id);
 }
 
@@ -1895,7 +2630,10 @@ export async function safeDeleteVersiculo(id: string): Promise<void> {
 // ============================================================
 
 export async function safeAddRegistroSaude(
-  data: Omit<RegistroSaude, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    RegistroSaude,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
   const timestamp = nowIso();
   const id = generateId();
@@ -1909,6 +2647,7 @@ export async function safeAddRegistroSaude(
   };
 
   await db.registros_saude.add(full);
+
   return id;
 }
 
@@ -1916,9 +2655,13 @@ export async function safeUpdateRegistroSaude(
   id: string,
   changes: Partial<RegistroSaude>
 ): Promise<void> {
-  const existing = await db.registros_saude.get(id);
+  const existing =
+    await db.registros_saude.get(id);
+
   if (!existing) {
-    throw new Error('Registro de saúde não encontrado');
+    throw new Error(
+      'Registro de saúde não encontrado'
+    );
   }
 
   await db.registros_saude.update(id, {
@@ -1927,6 +2670,8 @@ export async function safeUpdateRegistroSaude(
   });
 }
 
-export async function safeDeleteRegistroSaude(id: string): Promise<void> {
+export async function safeDeleteRegistroSaude(
+  id: string
+): Promise<void> {
   await db.registros_saude.delete(id);
 }
