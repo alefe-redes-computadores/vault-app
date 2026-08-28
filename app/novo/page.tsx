@@ -2077,7 +2077,7 @@ export default function NovoDocumentoPage() {
           </AnimatePresence>
         </section>
 
-        <BottomSheet
+       <BottomSheet
           isOpen={
             isTypeModalOpen
           }
@@ -2092,86 +2092,90 @@ export default function NovoDocumentoPage() {
             Escolha o tipo para carregar os campos específicos corretos
           </p>
 
-          <div className="grid grid-cols-2 gap-3 px-1 pb-4">
-            {availableTypes.map(
-              (type) => {
-                const Icon =
-                  TYPE_ICONS[
-                    type
-                  ] || Folder;
+          {/* Adicionado max-h-[60vh], overflow-y-auto e touch-pan-y para reter o scroll dentro do modal */}
+          <div className="max-h-[60vh] overflow-y-auto overscroll-contain pr-1 touch-pan-y">
+            <div className="grid grid-cols-2 gap-3 px-1 pb-4">
+              {availableTypes.map(
+                (type) => {
+                  const Icon =
+                    TYPE_ICONS[
+                      type
+                    ] || Folder;
 
-                const isActive =
-                  formData.type ===
-                  type;
+                  const isActive =
+                    formData.type ===
+                    type;
 
-                return (
-                  <motion.button
-                    type="button"
-                    whileTap={{
-                      scale: 0.95,
-                    }}
-                    key={type}
-                    onClick={() => {
-                      trigger(
-                        "vibrate"
-                      );
+                  return (
+                    <motion.button
+                      type="button"
+                      whileTap={{
+                        scale: 0.95,
+                      }}
+                      key={type}
+                      onClick={() => {
+                        trigger(
+                          "vibrate"
+                        );
 
-                      handleChange(
-                        "type",
-                        type
-                      );
+                        handleChange(
+                          "type",
+                          type
+                        );
 
-                      setIsTypeModalOpen(
-                        false
-                      );
-                    }}
-                    className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
-                      isActive
-                        ? "border-ice bg-ice/10"
-                        : "border-surface-border/50 bg-surface hover:bg-surface-raised"
-                    }`}
-                  >
-                    <div
-                      className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${
+                        setIsTypeModalOpen(
+                          false
+                        );
+                      }}
+                      className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
                         isActive
-                          ? "bg-ice/20 text-ice"
-                          : "bg-surface-raised text-ink-muted"
+                          ? "border-ice bg-ice/10"
+                          : "border-surface-border/50 bg-surface hover:bg-surface-raised"
                       }`}
                     >
-                      <Icon
-                        size={
-                          20
+                      <div
+                        className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${
+                          isActive
+                            ? "bg-ice/20 text-ice"
+                            : "bg-surface-raised text-ink-muted"
+                        }`}
+                      >
+                        <Icon
+                          size={
+                            20
+                          }
+                        />
+                      </div>
+
+                      <span
+                        className={`mb-1 text-sm font-semibold ${
+                          isActive
+                            ? "text-ice"
+                            : "text-ink-primary"
+                        }`}
+                      >
+                        {
+                          DOCUMENT_TYPE_LABELS[
+                            type
+                          ]
                         }
-                      />
-                    </div>
+                      </span>
 
-                    <span
-                      className={`mb-1 text-sm font-semibold ${
-                        isActive
-                          ? "text-ice"
-                          : "text-ink-primary"
-                      }`}
-                    >
-                      {
-                        DOCUMENT_TYPE_LABELS[
-                          type
-                        ]
-                      }
-                    </span>
-
-                    <span className="line-clamp-2 text-[11px] leading-tight text-ink-muted">
-                      {
-                        TYPE_DESCRIPTIONS[
-                          type
-                        ]
-                      }
-                    </span>
-                  </motion.button>
-                );
-              }
-            )}
+                      <span className="line-clamp-2 text-[11px] leading-tight text-ink-muted">
+                        {
+                          TYPE_DESCRIPTIONS[
+                            type
+                          ]
+                        }
+                      </span>
+                    </motion.button>
+                  );
+                }
+              )}
+            </div>
           </div>
         </BottomSheet>
+
 
         <div className="fixed inset-x-0 bottom-0 z-30 flex gap-3 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           {currentStep >

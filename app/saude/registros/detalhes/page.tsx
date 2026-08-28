@@ -125,24 +125,23 @@ export default function DetalhesRegistroSaudePage() {
     [registro?.cid_ids]
   );
 
-  const historicoSimilar = useLiveQuery<any[]>(
+    const historicoSimilar = useLiveQuery<any[]>(
     async () => {
       if (!registro?.nome || !registro?.id) return [];
       
-      // BLINDAGEM 3: Filtragem em memória para evitar erro de parse no IndexedDB
-      const todosSimilares = await db
+      // ✅ Correção: Busca todos os registros e filtra em memória para evitar erros de índice/keypath no Dexie
+      const todosRegistros = await db
         .table("registros_saude")
-        .where("nome")
-        .equals(registro.nome)
         .toArray();
         
-      return todosSimilares
-        .filter((r: any) => String(r.id) !== String(registro.id))
-        .reverse()
+      return todosRegistros
+        .filter((r: any) => r.nome === registro.nome && String(r.id) !== String(registro.id))
+        .sort((a: any, b: any) => (b.data || "").localeCompare(a.data || ""))
         .slice(0, 3);
     },
     [registro?.nome, registro?.id]
   );
+
 
   /* ==========================================================
      ESTADOS DE CARREGAMENTO

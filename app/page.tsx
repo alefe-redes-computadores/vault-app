@@ -115,7 +115,7 @@ function AlertRow({
 
   return (
     <div
-      className="flex w-full items-center justify-between gap-2 rounded-[22px] border bg-surface p-3.5 shadow-sm transition-all"
+      className="flex w-full min-w-0 items-center justify-between gap-2 rounded-[22px] border bg-surface p-3.5 shadow-sm transition-all"
       style={{
         borderColor: `${color}30`,
       }}
@@ -137,20 +137,21 @@ function AlertRow({
           {alert.icon}
         </div>
 
-        <div className="min-w-0 flex-1 pr-2">
-          <p className="truncate text-sm font-semibold text-ink-primary">
+        <div className="min-w-0 flex-1 pr-1">
+          {/* Adicionado w-full e block para garantir que o truncate funcione perfeitamente sem cortar antes do tempo */}
+          <p className="w-full truncate text-sm font-semibold text-ink-primary">
             {alert.title}
           </p>
 
-          <p className="truncate text-xs text-ink-muted">
+          <p className="w-full truncate text-xs text-ink-muted">
             {alert.subtitle}
           </p>
         </div>
       </button>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5">
         <span
-          className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
+          className="rounded-full px-2 py-1 text-[10px] font-semibold whitespace-nowrap"
           style={{
             backgroundColor: `${color}18`,
             color,
@@ -163,12 +164,10 @@ function AlertRow({
           <button
             onClick={(event) => {
               event.stopPropagation();
-
               trigger("vibrate");
-
               router.push("/saude/renovacao/nova");
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted shadow-sm transition-all hover:border-emerald-400/50 hover:text-emerald-400 active:scale-95"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted shadow-sm transition-all hover:border-emerald-400/50 hover:text-emerald-400 active:scale-95"
             title="Adicionar renovação"
           >
             <CalendarDays size={15} />
@@ -178,6 +177,7 @@ function AlertRow({
     </div>
   );
 }
+
 
 function gerarAlertasDashboard(
   medicamentos: any[],
@@ -1335,16 +1335,16 @@ export default function HomePage() {
                 {unifiedAlerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className="w-[85%] max-w-[320px] shrink-0 snap-start"
+                    className="w-[90%] max-w-[340px] shrink-0 snap-start"
                   >
                     <AlertRow alert={alert} />
                   </div>
                 ))}
-                {/* Espaçador final */}
                 <div className="w-2 shrink-0" />
               </div>
             </motion.section>
           )}
+
 
           {/* =     =========================================================
               COMPROMISSOS DE HOJE (Carrossel Horizontal)

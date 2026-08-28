@@ -49,8 +49,6 @@ import { PageTransition } from "@/components/PageTransition";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { scheduleDocumentExpiryNotification } from "@/lib/notifications";
 
-const DEFAULT_PERSON_COLOR = "#34D399";
-
 const HEALTH_TYPES: DocumentType[] = [
   "receita",
   "prontuario",
@@ -82,6 +80,17 @@ const HEALTH_TYPE_LABELS: Record<string, string> = {
   cirurgia: "Relatório de Cirurgia",
   exame_sangue: "Exame de Sangue / Laboratório",
   exame_imagem: "Exame de Imagem (Raio-X, RM)",
+};
+
+const HEALTH_TYPE_DESCRIPTIONS: Record<string, string> = {
+  receita: "Prescrições médicas e orientações de uso",
+  prontuario: "Histórico geral de saúde e evolução",
+  laudo: "Pareceres médicos, atestados e laudos",
+  encaminhamento: "Guias para especialistas e exames",
+  consulta: "Notas e resumos de atendimentos",
+  cirurgia: "Relatórios operatórios e pós-cirúrgico",
+  exame_sangue: "Resultados laboratoriais e hemogramas",
+  exame_imagem: "Laudos e imagens de exames gráficos",
 };
 
 const slideVariants = {
@@ -448,7 +457,6 @@ export default function NovoDocumentoSaudePage() {
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="space-y-4"
               >
-                {/* VINCULAÇÃO AUTOMÁTICA AO PERFIL ATIVO (SEM SELECTOR MANUAL) */}
                 <div className="rounded-[24px] border border-surface-border/50 bg-surface px-4 py-3 shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400">
@@ -713,34 +721,41 @@ export default function NovoDocumentoSaudePage() {
 
         <BottomSheet isOpen={isTypeModalOpen} onClose={() => setIsTypeModalOpen(false)} title="Selecionar tipo de documento clínico">
           <p className="mb-4 px-1 text-sm text-ink-muted">Escolha a categoria do registro médico</p>
-          <div className="grid grid-cols-2 gap-3 px-1 pb-4">
-            {HEALTH_TYPES.map((type) => {
-              const Icon = TYPE_ICONS[type] || FileText;
-              const isActive = formData.type === type;
+          
+          {/* Container interno com max-h e rolagem restrita para evitar arrastar o fundo da tela */}
+          <div className="max-h-[60vh] overflow-y-auto overscroll-contain pr-1 touch-pan-y">
+            <div className="grid grid-cols-2 gap-3 px-1 pb-4">
+              {HEALTH_TYPES.map((type) => {
+                const Icon = TYPE_ICONS[type] || FileText;
+                const isActive = formData.type === type;
 
-              return (
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.95 }}
-                  key={type}
-                  onClick={() => {
-                    trigger("vibrate");
-                    handleChange("type", type);
-                    setIsTypeModalOpen(false);
-                  }}
-                  className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
-                    isActive ? "border-emerald-400 bg-emerald-400/10" : "border-surface-border/50 bg-surface hover:bg-surface-raised"
-                  }`}
-                >
-                  <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${isActive ? "bg-emerald-400/20 text-emerald-400" : "bg-surface-raised text-ink-muted"}`}>
-                    <Icon size={20} />
-                  </div>
-                  <span className={`text-sm font-semibold ${isActive ? "text-emerald-400" : "text-ink-primary"}`}>
-                    {HEALTH_TYPE_LABELS[type]}
-                  </span>
-                </motion.button>
-              );
-            })}
+                return (
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.95 }}
+                    key={type}
+                    onClick={() => {
+                      trigger("vibrate");
+                      handleChange("type", type);
+                      setIsTypeModalOpen(false);
+                    }}
+                    className={`relative flex flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
+                      isActive ? "border-emerald-400 bg-emerald-400/10" : "border-surface-border/50 bg-surface hover:bg-surface-raised"
+                    }`}
+                  >
+                    <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ${isActive ? "bg-emerald-400/20 text-emerald-400" : "bg-surface-raised text-ink-muted"}`}>
+                      <Icon size={20} />
+                    </div>
+                    <span className={`mb-1 text-sm font-semibold ${isActive ? "text-emerald-400" : "text-ink-primary"}`}>
+                      {HEALTH_TYPE_LABELS[type]}
+                    </span>
+                    <span className="line-clamp-2 text-[11px] leading-tight text-ink-muted">
+                      {HEALTH_TYPE_DESCRIPTIONS[type]}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
         </BottomSheet>
 
