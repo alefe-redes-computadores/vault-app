@@ -182,8 +182,6 @@ function AlertRow({
   );
 }
 
-
-
 function gerarAlertasDashboard(
   medicamentos: any[],
   renovacoes: any[],
@@ -772,12 +770,13 @@ export default function HomePage() {
   const unifiedAlerts = useMemo<DashboardAlert[]>(() => {
     const alerts: DashboardAlert[] = [];
 
+    // 1. Coleta os alertas do dashboard geral
     for (const alert of alertasAgrupados) {
       alerts.push({
         id: alert.id,
         title: alert.titulo,
         subtitle: alert.descricao,
-                level:
+        level:
           alert.urgencia === "alta"
             ? "urgente"
             : alert.urgencia === "media"
@@ -785,15 +784,13 @@ export default function HomePage() {
             : ("informativo" as AlertLevel),
         kind: "estoque",
         href: alert.acao.rota,
-        daysUntil:
-          alert.urgencia === "alta"
-            ? 0
-            : 3,
+        daysUntil: alert.urgencia === "alta" ? 0 : 3,
         icon: alert.icone,
         color: alert.cor,
       });
     }
 
+    // 2. Coleta os alertas secundários (documentos, exames, estoque, consultas)
     const secondaryAlerts = [
       ...docAlerts,
       ...exameAlerts,
@@ -825,11 +822,31 @@ export default function HomePage() {
       });
     }
 
-    const unique = new Map<string, DashboardAlert>();
+    // 3. 🛡️ Deduplicação Inteligente: Evita que o mesmo remédio/documento gere cards repetidos
+    const uniqueMap = new Map<string, DashboardAlert>();
 
     for (const alert of alerts) {
-      if (!unique.has(alert.id)) {
-        unique.set(alert.id, alert);
+      // Cria uma chave única baseada no nome limpo do item (ex: "Clorpromazina" ou "Pristiq")
+      // Isso impede que a tabela de medicamentos e a tabela de documentos criem dois cards para a mesma receita
+      const nomeChave = alert.title
+        .toLowerCase()
+        .replace(/^receita\s*—\s*/i, "")
+        .trim();
+
+      if (!uniqueMap.has(nomeChave)) {
+        uniqueMap.set(nomeChave, alert);
+      } else {
+        // Se já existe, prioriza o que tiver o nível mais crítico (vencido/urgente)
+        const existente = uniqueMap.get(nomeChave)!;
+        const ordemPrioridade: Record<string, number> = {
+          vencido: 0,
+          urgente: 1,
+          atencao: 2,
+          informativo: 3,
+        };
+        if ((ordemPrioridade[alert.level] ?? 4) < (ordemPrioridade[existente.level] ?? 4)) {
+          uniqueMap.set(nomeChave, alert);
+        }
       }
     }
 
@@ -840,7 +857,7 @@ export default function HomePage() {
       informativo: 2,
     };
 
-    return Array.from(unique.values())
+    return Array.from(uniqueMap.values())
       .sort(
         (a, b) =>
           (levelOrder[a.level] ?? 3) -
