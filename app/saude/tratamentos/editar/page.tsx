@@ -93,15 +93,11 @@ function EditarTratamentoContent() {
           setCidIds(data.cid_ids || []);
           setStatus(data.status || "ativo");
           setObservacoes(data.observacoes || "");
-          
           setMedicoIds(data.medico_ids || []);
           setHospitalIds(data.hospital_ids || []);
           setLocalIds(data.local_ids || []);
-
-          // Bypass de Dexie Array Index: Puxa todos da memória primeiro para garantir que a leitura de arrays não falhe
-          const todosMeds = await db.medicamentos.toArray();
-          const medsVinculados = todosMeds.filter(m => m.tratamento_ids?.includes(id));
-          setMedicamentoIds(medsVinculados.map(m => m.id!));
+          
+          setMedicamentoIds(data.medicamento_ids || []);
         } else {
           router.push("/saude");
         }
@@ -138,7 +134,6 @@ function EditarTratamentoContent() {
 
       await saveAction.run(
         async () => {
-          // 1. Atualizar o tratamento usando o repositório oficial
           await tratamentosRepository.update(id, {
             person_id: personId,
             nome: nome.trim(),
@@ -149,42 +144,20 @@ function EditarTratamentoContent() {
             medico_ids: medicoIds,
             hospital_ids: hospitalIds,
             local_ids: localIds,
+            medicamento_ids: medicamentoIds,
           });
 
-          // 2. Atualizar vínculos com Medicamentos usando bypass memory e o repositório oficial
-          const todosMedsParaSalvar = await db.medicamentos.toArray();
-          const previousMedIds = todosMedsParaSalvar.filter(m => m.tratamento_ids?.includes(id)).map(m => m.id!);
-          
-          const addedMeds = medicamentoIds.filter(mid => !previousMedIds.includes(mid));
-          const removedMeds = previousMedIds.filter(mid => !medicamentoIds.includes(mid));
-
-          for (const mid of addedMeds) {
-            const med = await medicamentosRepository.getById(mid);
-            if (med) {
-              const newTratamentoIds = Array.from(new Set([...(med.tratamento_ids || []), id]));
-              await medicamentosRepository.update(mid, { tratamento_ids: newTratamentoIds });
-            }
-          }
-
-          for (const mid of removedMeds) {
-            const med = await medicamentosRepository.getById(mid);
-            if (med) {
-              const newTratamentoIds = (med.tratamento_ids || []).filter(tid => tid !== id);
-              await medicamentosRepository.update(mid, { tratamento_ids: newTratamentoIds });
-            }
-          }
-
-          // 3. Status Derivado
           if (status === 'concluido' || status === 'suspenso') {
-            const medicamentosAfetados = todosMedsParaSalvar.filter(m => m.tratamento_ids?.includes(id));
-            for (const med of medicamentosAfetados) {
-              if (med.id && med.status !== 'descontinuado') {
-                await medicamentosRepository.update(med.id, {
+            for (const mid of medicamentoIds) {
+              const med = await medicamentosRepository.getById(mid);
+              if (med && med.status !== 'descontinuado') {
+                await medicamentosRepository.update(mid, {
                   status: 'descontinuado',
                   motivo_descontinuacao: `Tratamento original marcado como ${status}`,
                 });
                 if (med.estoque_horarios && med.estoque_horarios.length > 0) {
-                  await cancelDoseNotifications({ id: med.id, nome: med.nome, dosagem: med.dosagem, estoque_horarios: med.estoque_horarios });
+                  // CORREÇÃO: Usando o "mid" (que já é string) para evitar o erro de tipagem TS2322
+                  await cancelDoseNotifications({ id: mid, nome: med.nome, dosagem: med.dosagem, estoque_horarios: med.estoque_horarios });
                 }
               }
             }
@@ -211,16 +184,12 @@ function EditarTratamentoContent() {
 
   const handleAddCid = (cidId: string) => { trigger("vibrate"); if (!cidIds.includes(cidId)) setCidIds([...cidIds, cidId]); setIsCidModalOpen(false); setShowAddCidPrompt(true); };
   const handleRemoveCid = (cidId: string) => { trigger("vibrate"); setCidIds(cidIds.filter((item) => item !== cidId)); };
-
   const handleAddMedico = (m: Medico) => { if (m.id && !medicoIds.includes(m.id)) setMedicoIds(p => [...p, m.id!]); };
   const handleRemoveMedico = (id: string) => { trigger("vibrate"); setMedicoIds(p => p.filter(i => i !== id)); };
-
   const handleAddHospital = (h: Hospital) => { if (h.id && !hospitalIds.includes(h.id)) setHospitalIds(p => [...p, h.id!]); };
   const handleRemoveHospital = (id: string) => { trigger("vibrate"); setHospitalIds(p => p.filter(i => i !== id)); };
-
   const handleAddLocal = (l: LocalSaude) => { if (l.id && !localIds.includes(l.id)) setLocalIds(p => [...p, l.id!]); };
   const handleRemoveLocal = (id: string) => { trigger("vibrate"); setLocalIds(p => p.filter(i => i !== id)); };
-
   const handleAddMedicamento = (m: Medicamento) => { if (m.id && !medicamentoIds.includes(m.id)) setMedicamentoIds(p => [...p, m.id!]); };
   const handleRemoveMedicamento = (id: string) => { trigger("vibrate"); setMedicamentoIds(p => p.filter(i => i !== id)); };
 
@@ -245,7 +214,6 @@ function EditarTratamentoContent() {
         </header>
 
         <section className="px-5 pt-6 space-y-4">
-          {/* IDENTIFICAÇÃO E COR */}
           <motion.div variants={fadeUp} initial="initial" animate="animate" className={`rounded-[28px] border bg-surface p-5 shadow-sm transition-all duration-300 ${theme.borderClass}`} style={{ borderLeft: `6px solid ${theme.hex}` }}>
             <div className="flex items-center gap-4">
               <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}>
@@ -301,7 +269,6 @@ function EditarTratamentoContent() {
           </motion.div>
 
           <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.04 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            {/* MEDICAMENTOS */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Pill size={14} className="text-ice" /> Medicamentos Associados</h2>
@@ -321,7 +288,6 @@ function EditarTratamentoContent() {
               )}
             </div>
 
-            {/* MÉDICOS */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Stethoscope size={14} className="text-ice" /> Médicos Responsáveis</h2>
@@ -341,7 +307,6 @@ function EditarTratamentoContent() {
               )}
             </div>
 
-            {/* HOSPITAIS */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><Building2 size={14} className="text-violet-400" /> Hospitais / Clínicas</h2>
@@ -361,7 +326,6 @@ function EditarTratamentoContent() {
               )}
             </div>
 
-            {/* POSTOS DE SAÚDE */}
             <div>
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5"><MapPin size={14} className="text-emerald-400" /> Postos de Saúde / C.A.P.S</h2>
@@ -382,7 +346,6 @@ function EditarTratamentoContent() {
             </div>
           </motion.div>
 
-          {/* EXAMES */}
           {examesVinculados.length > 0 && (
             <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
               <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5 px-1"><FolderHeart size={14} className="text-coral" /> Histórico Clínico do Tratamento</h2>
@@ -416,7 +379,28 @@ function EditarTratamentoContent() {
         <SelectionModal<Medico> isOpen={isMedicoModalOpen} onClose={() => setIsMedicoModalOpen(false)} onSelect={(item) => { handleAddMedico(item); setIsMedicoModalOpen(false); }} items={medicos.filter(m => !medicoIds.includes(m.id!))} title="Vincular Médico" placeholder="Buscar médico..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Stethoscope size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">Dr(a). {item.nome}</p></div></div>)} onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }} createNewLabel="Cadastrar Novo Médico" />
         <SelectionModal<Hospital> isOpen={isHospitalModalOpen} onClose={() => setIsHospitalModalOpen(false)} onSelect={(item) => { handleAddHospital(item); setIsHospitalModalOpen(false); }} items={hospitais.filter(h => !hospitalIds.includes(h.id!))} title="Vincular Hospital" placeholder="Buscar hospital..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/10 text-violet-400"><Building2 size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }} createNewLabel="Cadastrar Novo Hospital" />
         <SelectionModal<LocalSaude> isOpen={isLocalModalOpen} onClose={() => setIsLocalModalOpen(false)} onSelect={(item) => { handleAddLocal(item); setIsLocalModalOpen(false); }} items={locais.filter(l => !localIds.includes(l.id!))} title="Vincular Posto/Local" placeholder="Buscar local..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><MapPin size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div></div>)} onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }} createNewLabel="Cadastrar Novo Local" />
-        <SelectionModal<Medicamento> isOpen={isMedicamentoModalOpen} onClose={() => setIsMedicamentoModalOpen(false)} onSelect={(item) => { handleAddMedicamento(item); setIsMedicamentoModalOpen(false); }} items={medicamentos.filter(m => !medicamentoIds.includes(m.id!))} title="Vincular Medicamento" placeholder="Buscar medicamento..." getItemId={i => i.id!} getItemLabel={i => i.nome} renderItem={(item) => (<div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Pill size={16} /></div><div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p><p className="text-xs text-ink-muted mt-0.5">{item.dosagem}</p></div></div>)} onCreateNew={() => { setIsMedicamentoModalOpen(false); router.push("/saude/medicamentos/novo"); }} createNewLabel="Cadastrar Novo Medicamento" />
+        
+        <SelectionModal<Medicamento> 
+          isOpen={isMedicamentoModalOpen} 
+          onClose={() => setIsMedicamentoModalOpen(false)} 
+          onSelect={(item) => { handleAddMedicamento(item); setIsMedicamentoModalOpen(false); }} 
+          items={medicamentos.filter(m => !medicamentoIds.includes(m.id!))} 
+          title="Vincular Medicamento" 
+          placeholder="Buscar medicamento..." 
+          getItemId={i => i.id!} 
+          getItemLabel={i => i.nome} 
+          renderItem={(item) => (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Pill size={16} /></div>
+              <div>
+                <p className="text-sm font-semibold text-ink-primary">{item.nome}</p>
+                <p className="text-xs text-ink-muted mt-0.5">{item.dosagem}</p>
+              </div>
+            </div>
+          )} 
+          onCreateNew={() => { setIsMedicamentoModalOpen(false); router.push("/saude/medicamentos/novo"); }} 
+          createNewLabel="Cadastrar Novo Medicamento" 
+        />
 
         <AnimatePresence>
           {showAddCidPrompt && (

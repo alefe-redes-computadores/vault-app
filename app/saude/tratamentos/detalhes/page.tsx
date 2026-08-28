@@ -187,12 +187,13 @@ function TratamentoContent() {
     if (!id || !medicamentos) return [];
 
     return medicamentos.filter((m: Medicamento) => {
-      return (
-        m.tratamento_ids &&
-        m.tratamento_ids.includes(id)
-      );
+      // Procura tanto no padrão antigo (m.tratamento_ids) quanto no novo (tratamento.medicamento_ids)
+      const inMed = m.tratamento_ids && m.tratamento_ids.includes(id);
+      const inTrat = tratamento?.medicamento_ids && m.id && tratamento.medicamento_ids.includes(m.id);
+      
+      return inMed || inTrat;
     });
-  }, [medicamentos, id]);
+  }, [medicamentos, tratamento?.medicamento_ids, id]);
 
   /* ============================================================
      RENOVAÇÕES VINCULADAS
@@ -248,6 +249,7 @@ function TratamentoContent() {
     const getSafeNumber = (val: any) => {
       if (!val) return 0;
       if (typeof val === 'number') return val;
+      // Remove pontos de milhar e troca vírgula por ponto para não falhar
       const parsed = Number(String(val).replace(/\./g, '').replace(',', '.'));
       return isNaN(parsed) ? 0 : parsed;
     };
@@ -263,14 +265,13 @@ function TratamentoContent() {
     return total;
   }, [linkedMedicamentos, linkedRenovacoes]);
 
-  // IMPEDE QUEBRA DE LINHA NO CARD (R$ 0,00)
   const custoDisplay = useMemo(() => {
     if (custoTotalTratamento > 0) {
-      return formatCurrency(custoTotalTratamento).replace(/\s/g, '\u00A0');
+      return formatCurrency(custoTotalTratamento);
     }
     const isAllSus = linkedMedicamentos.length > 0 && linkedMedicamentos.every(m => m.tipo_aquisicao === 'sus');
     if (isAllSus) return "SUS";
-    return "R$\u00A00,00";
+    return "R$ 0,00";
   }, [custoTotalTratamento, linkedMedicamentos]);
 
   /* ============================================================
