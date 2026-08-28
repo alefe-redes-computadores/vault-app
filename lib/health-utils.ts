@@ -60,13 +60,33 @@ export function isControlada(tipo?: TipoReceita): boolean {
 
 export function getDaysUntil(dateStr?: string | null): number | null {
   if (!dateStr) return null;
-  const target = new Date(dateStr);
-  if (isNaN(target.getTime())) return null;
+  
+  // Limpa a string para garantir que pegamos apenas a parte da data (YYYY-MM-DD)
+  const cleanDateStr = dateStr.split('T')[0];
+  const parts = cleanDateStr.split('-');
+  
+  if (parts.length !== 3) {
+    const target = new Date(dateStr);
+    if (isNaN(target.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+    return Math.round((target.getTime() - today.getTime()) / DAY_MS);
+  }
+
+  // Cria a data considerando estritamente o ano, mês e dia locais (evita o bug do fuso UTC)
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  
+  const target = new Date(year, month, day);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   target.setHours(0, 0, 0, 0);
+
   return Math.round((target.getTime() - today.getTime()) / DAY_MS);
 }
+
 
 export function getAlertLevel(
   daysUntil: number | null,
