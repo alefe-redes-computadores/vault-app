@@ -238,7 +238,16 @@ export function getDocumentAlerts(documents: Document[]): HealthAlert[] {
   return documents
     .filter((doc) => doc.category_id === "saude" && !!doc.id)
     .map((doc) => {
-      const expiry = String(doc.metadata?.expiry_date || doc.metadata?.renewal_date || '');
+      // 🛡️ Busca ampliada para pegar qualquer nome de campo de vencimento/renovação que você tenha usado
+      const expiry = String(
+        doc.metadata?.expiry_date || 
+        doc.metadata?.renewal_date || 
+        doc.metadata?.vencimento || 
+        doc.metadata?.validade || 
+        doc.metadata?.proxima_renovacao || 
+        ''
+      );
+      
       const daysUntil = getDaysUntil(expiry);
       return {
         id: doc.id!,
@@ -254,6 +263,7 @@ export function getDocumentAlerts(documents: Document[]): HealthAlert[] {
     .filter((a) => a.date && a.level !== "ok")
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
+
 
 export function getUpcomingAppointments(documents: Document[]): HealthAlert[] {
   const relevantTypes = ["prontuario", "laudo", "encaminhamento"];

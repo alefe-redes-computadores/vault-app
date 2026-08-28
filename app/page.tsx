@@ -113,6 +113,9 @@ function AlertRow({
     alert.title?.toLowerCase().includes("receita") ||
     alert.subtitle?.toLowerCase().includes("receita");
 
+  // Limpa o título redundante se começar com "Receita — " para focar no nome real do item
+  const tituloLimpo = alert.title.replace(/^Receita\s*—\s*/i, "");
+
   return (
     <div
       className="flex w-full min-w-0 items-center justify-between gap-2 rounded-[22px] border bg-surface p-3.5 shadow-sm transition-all"
@@ -138,20 +141,21 @@ function AlertRow({
         </div>
 
         <div className="min-w-0 flex-1 pr-1">
-          {/* Adicionado w-full e block para garantir que o truncate funcione perfeitamente sem cortar antes do tempo */}
-          <p className="w-full truncate text-sm font-semibold text-ink-primary">
-            {alert.title}
-          </p>
-
-          <p className="w-full truncate text-xs text-ink-muted">
-            {alert.subtitle}
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-[9px] font-mono uppercase tracking-wider text-ink-muted bg-surface-raised px-1.5 py-0.5 rounded-md border border-surface-border/40">
+              {alert.kind === "documento" || isReceita ? "Receita" : alert.kind}
+            </span>
+          </div>
+          {/* Permite até 2 linhas caso o nome seja grande, eliminando o corte seco */}
+          <p className="w-full text-xs font-bold text-ink-primary line-clamp-2 leading-tight">
+            {tituloLimpo}
           </p>
         </div>
       </button>
 
       <div className="flex shrink-0 items-center gap-1.5">
         <span
-          className="rounded-full px-2 py-1 text-[10px] font-semibold whitespace-nowrap"
+          className="rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap"
           style={{
             backgroundColor: `${color}18`,
             color,
@@ -177,6 +181,7 @@ function AlertRow({
     </div>
   );
 }
+
 
 
 function gerarAlertasDashboard(
