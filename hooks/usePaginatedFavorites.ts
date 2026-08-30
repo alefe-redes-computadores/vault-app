@@ -1,114 +1,301 @@
+// hooks/usePaginatedFavorites.ts
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { useAuth } from "./useAuth";
-import type { CategoryId, Document } from "@/lib/types";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
+import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
+
+import {
+  documentsRepository,
+} from "@/lib/repositories/documents";
+
+import type {
+  CategoryId,
+  Document,
+} from "@/lib/types";
+
+// ============================================================
+// CONFIGURAÇÃO
+// ============================================================
 
 const PAGE_SIZE = 20;
 
+// ============================================================
+// TIPOS
+// ============================================================
+
 interface UsePaginatedFavoritesOptions {
+  /*
+   * Permite uso explícito por pessoa quando algum consumer
+   * realmente precisar disso.
+   *
+   * Quando omitido, o hook acompanha a pessoa ativa global.
+   *
+   * Importante:
+   * undefined NÃO significa "todas as pessoas".
+   */
   personId?: string;
+
   categoryId?: CategoryId;
+
   initialPage?: number;
 }
+
+// ============================================================
+// HOOK
+// ============================================================
 
 export function usePaginatedFavorites({
   personId,
   categoryId,
   initialPage = 1,
 }: UsePaginatedFavoritesOptions = {}) {
-  const { user } = useAuth();
-  const [page, setPage] = useState(initialPage);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  // Total de favoritos que batem com os filtros (sem paginar)
-  const totalCount = useLiveQuery(
-    async () => {
-      if (!user) return 0;
+  const [
+    page,
+    setPage,
+  ] =
+    useState(
+      initialPage
+    );
 
-      let query = db.documents
-        .where('user_id')
-        .equals(user.id)
-        .and((doc: Document) => doc.is_favorite === true);
+  const [
+    isLoadingMore,
+    setIsLoadingMore,
+  ] =
+    useState(false);
 
-      if (personId) {
-        query = query.and((doc: Document) => doc.person_id === personId);
-      }
-      if (categoryId) {
-        query = query.and((doc: Document) => doc.category_id === categoryId);
-      }
+  // ==========================================================
+  // PESSOA ALVO
+  //
+  // Mesmo contrato adotado nos hooks modernos de documentos:
+  //
+  // personId explícito
+  //       ↓
+  // activePersonId
+  //       ↓
+  // sem pessoa = nenhum documento
+  //
+  // Nunca usamos ausência de personId como "todas as pessoas".
+  // ==========================================================
 
-      return query.count();
-    },
-    [user?.id, personId, categoryId],
-    0
-  );
+  const targetPersonId =
+    personId ||
+    activePersonId ||
+    undefined;
 
-  // Favoritos da página atual (sem efeito colateral aqui dentro —
-  // apenas busca e retorna, sem setState)
-  const favorites = useLiveQuery(
-    async () => {
-      if (!user) return [];
+  // ==========================================================
+  // DOCUMENTOS FAVORITOS
+  // ==========================================================
 
-      let query = db.documents
-        .where('user_id')
-        .equals(user.id)
-        .and((doc: Document) => doc.is_favorite === true);
+  const allFavorites =
+    useLiveQuery(
+      async () => {
+        if (
+          !targetPersonId
+        ) {
+          return [];
+        }
 
-      if (personId) {
-        query = query.and((doc: Document) => doc.person_id === personId);
-      }
-      if (categoryId) {
-        query = query.and((doc: Document) => doc.category_id === categoryId);
-      }
+        const documents =
+          await documentsRepository.getAll(
+            targetPersonId
+          );
 
-      const docs = await query.toArray();
+        const filtered =
+          documents.filter(
+            (
+              document:
+                Document
+            ) => {
+              if (
+                !document.is_favorite
+              ) {
+                return false;
+              }
 
-      docs.sort((a: Document, b: Document) => {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
+              if (
+                categoryId &&
+                document.category_id !==
+                  categoryId
+              ) {
+                return false;
+              }
 
-      return docs.slice(0, page * PAGE_SIZE);
-    },
-    [user?.id, personId, categoryId, page],
-    []
-  );
+              return true;
+            }
+          );
 
-  // allLoaded/hasMore são valores DERIVADOS — calculados no render,
-  // nunca defasados em relação ao que está na tela.
-  const loadedCount = favorites?.length || 0;
-  const total = totalCount || 0;
-  const allLoaded = total > 0 && loadedCount >= total;
-  const hasMore = !allLoaded;
+        filtered.sort(
+          (
+            a,
+            b
+          ) =>
+            new Date(
+              b.created_at
+            ).getTime() -
+            new Date(
+              a.created_at
+            ).getTime()
+        );
 
-  const loadMore = useCallback(() => {
-    if (allLoaded || isLoadingMore) return;
-    setIsLoadingMore(true);
-    setPage((prev) => prev + 1);
-  }, [allLoaded, isLoadingMore]);
+        return filtered;
+      },
+      [
+        targetPersonId,
+        categoryId,
+      ],
+      []
+    );
 
-  // Libera o "carregando" assim que a página de fato aumentou de tamanho
-  // (em vez de um setTimeout arbitrário desligado do carregamento real)
+  // ==========================================================
+  // PAGINAÇÃO LOCAL
+  // ==========================================================
+
+  const totalCount =
+    allFavorites.length;
+
+  const favorites =
+    useMemo(
+      () => {
+        return allFavorites.slice(
+          0,
+          page *
+            PAGE_SIZE
+        );
+      },
+      [
+        allFavorites,
+        page,
+      ]
+    );
+
+  const loadedCount =
+    favorites.length;
+
+  /*
+   * Zero resultados significa que já carregamos tudo.
+   *
+   * O hook antigo retornava:
+   *
+   * total = 0
+   * allLoaded = false
+   * hasMore = true
+   *
+   * o que era semanticamente incorreto.
+   */
+  const allLoaded =
+    totalCount === 0 ||
+    loadedCount >=
+      totalCount;
+
+  const hasMore =
+    !allLoaded;
+
+  // ==========================================================
+  // CARREGAR MAIS
+  // ==========================================================
+
+  const loadMore =
+    useCallback(
+      () => {
+        if (
+          allLoaded ||
+          isLoadingMore
+        ) {
+          return;
+        }
+
+        setIsLoadingMore(
+          true
+        );
+
+        setPage(
+          (
+            previous
+          ) =>
+            previous +
+            1
+        );
+      },
+      [
+        allLoaded,
+        isLoadingMore,
+      ]
+    );
+
+  // ==========================================================
+  // FINALIZAÇÃO DO LOAD MORE
+  // ==========================================================
+
   useEffect(() => {
-    if (isLoadingMore) {
-      setIsLoadingMore(false);
+    if (
+      !isLoadingMore
+    ) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [favorites]);
 
-  const reset = useCallback(() => {
-    setPage(1);
-  }, []);
+    setIsLoadingMore(
+      false
+    );
+  }, [
+    favorites,
+    isLoadingMore,
+  ]);
 
+  // ==========================================================
+  // RESET
+  // ==========================================================
+
+  const reset =
+    useCallback(
+      () => {
+        setPage(
+          initialPage
+        );
+
+        setIsLoadingMore(
+          false
+        );
+      },
+      [
+        initialPage,
+      ]
+    );
+
+  /*
+   * Troca da pessoa ativa ou categoria reinicia
+   * a paginação imediatamente.
+   */
   useEffect(() => {
     reset();
-  }, [personId, categoryId, reset]);
+  }, [
+    targetPersonId,
+    categoryId,
+    reset,
+  ]);
+
+  // ==========================================================
+  // RETORNO
+  // ==========================================================
 
   return {
-    favorites: favorites || [],
-    totalCount: total,
+    favorites,
+    totalCount,
     page,
     hasMore,
     isLoadingMore,

@@ -1,77 +1,181 @@
 // app/favoritos/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Star, User, Heart } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { usePaginatedFavorites } from "@/hooks/usePaginatedFavorites";
-import { usePersons } from "@/hooks/usePersons";
-import { useSafeDb } from "@/hooks/useSafeDb";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useHapticFeedback } from "@/lib/haptics";
-import { DocumentCard } from "@/components/DocumentCard";
-import { AreaTabs } from "@/components/AreaTabs";
-import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
-import { EmptyState } from "@/components/EmptyState";
-import { PageTransition } from "@/components/PageTransition";
-import { ScrollToTop } from "@/components/ScrollToTop";
-import type { CategoryId, Person } from "@/lib/types";
+import {
+  useCallback,
+  useState,
+} from "react";
+import {
+  useRouter,
+} from "next/navigation";
+import {
+  ArrowLeft,
+  Heart,
+  Star,
+} from "lucide-react";
+import {
+  AnimatePresence,
+  motion,
+} from "framer-motion";
+
+import {
+  usePaginatedFavorites,
+} from "@/hooks/usePaginatedFavorites";
+import {
+  useDocumentActions,
+} from "@/hooks/useDocuments";
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+
+import {
+  DocumentCard,
+} from "@/components/DocumentCard";
+import {
+  AreaTabs,
+} from "@/components/AreaTabs";
+import {
+  InfiniteScrollTrigger,
+} from "@/components/InfiniteScrollTrigger";
+import {
+  EmptyState,
+} from "@/components/EmptyState";
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+import {
+  ScrollToTop,
+} from "@/components/ScrollToTop";
+
+import type {
+  CategoryId,
+} from "@/lib/types";
+
+// ============================================================
+// PÁGINA
+// ============================================================
 
 export default function FavoritesPage() {
-  const { trigger } = useHapticFeedback();
-  const router = useRouter();
-  const { favorite } = useSafeDb();
-  const persons = usePersons() as Person[];
-  const { activePersonId } = useActivePersonId();
+  const router =
+    useRouter();
 
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null);
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
 
-  useEffect(() => {
-    if (activePersonId && selectedPersonId === null) {
-      setSelectedPersonId(activePersonId);
-    } else if (persons.length > 0 && selectedPersonId === null) {
-      setSelectedPersonId(persons[0]?.id || null);
-    }
-  }, [persons, selectedPersonId, activePersonId]);
+  const {
+    favoriteDocument,
+  } =
+    useDocumentActions();
 
-  const { favorites, hasMore, isLoadingMore, loadMore } = usePaginatedFavorites({
-    personId: selectedPersonId || undefined,
-    categoryId: selectedCategory || undefined,
-  });
+  // ==========================================================
+  // FILTRO
+  //
+  // Pessoa não é mais um filtro local.
+  //
+  // usePaginatedFavorites acompanha activePersonId
+  // automaticamente.
+  // ==========================================================
 
-  const handleFavoriteToggle = useCallback(
-    async (id: string) => {
-      await favorite(id);
-      trigger("vibrate");
-    },
-    [favorite, trigger]
-  );
+  const [
+    selectedCategory,
+    setSelectedCategory,
+  ] =
+    useState<
+      CategoryId | null
+    >(null);
 
-  const hasFavorites = favorites && favorites.length > 0;
+  // ==========================================================
+  // FAVORITOS
+  // ==========================================================
+
+  const {
+    favorites,
+    totalCount,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+  } =
+    usePaginatedFavorites({
+      categoryId:
+        selectedCategory ||
+        undefined,
+    });
+
+  // ==========================================================
+  // FAVORITAR / DESFAVORITAR
+  // ==========================================================
+
+  const handleFavoriteToggle =
+    useCallback(
+      async (
+        id:
+          string
+      ) => {
+        /*
+         * Não capturamos o erro aqui.
+         *
+         * O DocumentCard aguarda esta Promise e só mostra
+         * feedback de sucesso se favoriteDocument resolver.
+         */
+        await favoriteDocument(
+          id
+        );
+      },
+      [
+        favoriteDocument,
+      ]
+    );
+
+  const hasFavorites =
+    favorites.length >
+    0;
+
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        {/* ====================================================
+            HEADER
+            ==================================================== */}
+
+        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl header-safe-top">
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => {
-                trigger("vibrate");
+                trigger(
+                  "vibrate"
+                );
+
                 router.back();
               }}
               aria-label="Voltar"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
             >
-              <ArrowLeft size={18} className="text-ink-primary" />
+              <ArrowLeft
+                size={
+                  18
+                }
+                className="text-ink-primary"
+              />
             </button>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="ring-gradient flex h-6 w-6 items-center justify-center rounded-full">
-                  <Star size={12} className="fill-void text-void" />
+                  <Star
+                    size={
+                      12
+                    }
+                    className="fill-void text-void"
+                  />
                 </span>
+
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
                   Vault
                 </p>
@@ -82,119 +186,171 @@ export default function FavoritesPage() {
               </h1>
 
               <p className="mt-1 text-sm text-ink-muted">
-                {hasFavorites
-                  ? `${favorites.length} documento${favorites.length !== 1 ? "s" : ""}`
+                {totalCount >
+                0
+                  ? `${totalCount} documento${totalCount !== 1 ? "s" : ""}`
                   : "Nenhum favorito"}
               </p>
             </div>
           </div>
 
+          {/* ==================================================
+              FILTRO POR CATEGORIA
+              ================================================== */}
+
           <div className="mt-5 rounded-[24px] border border-surface-border/40 bg-surface/70 px-4 py-4">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
-                Pessoa
-              </p>
+            <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+              Categoria
+            </p>
 
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                <button
-                  onClick={() => {
-                    trigger("vibrate");
-                    setSelectedPersonId(null);
-                  }}
-                  className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${
-                    selectedPersonId === null
-                      ? "border-ice bg-ice/10 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                  }`}
-                >
-                  Todas pessoas
-                </button>
-
-                {persons.map((person) => (
-                  <button
-                    key={person.id}
-                    onClick={() => {
-                      trigger("vibrate");
-                      setSelectedPersonId(person.id!);
-                    }}
-                    className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${
-                      selectedPersonId === person.id
-                        ? "border-ice bg-ice/10 text-ice"
-                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    {person.avatar_url ? (
-                      <img
-                        src={person.avatar_url}
-                        alt={person.name}
-                        className="h-4 w-4 rounded-full"
-                      />
-                    ) : (
-                      <User size={12} />
-                    )}
-                    {person.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
-                Categoria
-              </p>
-
-              <AreaTabs
-                activeArea={selectedCategory}
-                onAreaChange={setSelectedCategory}
-              />
-            </div>
+            <AreaTabs
+              activeArea={
+                selectedCategory
+              }
+              onAreaChange={
+                setSelectedCategory
+              }
+            />
           </div>
         </header>
 
+        {/* ====================================================
+            CONTEÚDO
+            ==================================================== */}
+
         <section className="px-5 pt-5">
-          <AnimatePresence mode="wait">
+          <AnimatePresence
+            mode="wait"
+          >
             {!hasFavorites ? (
-              <EmptyState
-                icon={Heart}
-                title="Nenhum favorito"
-                description="Marque documentos como favoritos para acessá-los rapidamente. Basta tocar na estrela em qualquer documento."
-                actionLabel="Voltar para a Home"
-                onAction={() => {
-                  trigger("vibrate");
-                  router.push("/");
+              <motion.div
+                key={`empty-${selectedCategory || "all"}`}
+                initial={{
+                  opacity:
+                    0,
+
+                  y:
+                    8,
                 }}
-              />
+                animate={{
+                  opacity:
+                    1,
+
+                  y:
+                    0,
+                }}
+                exit={{
+                  opacity:
+                    0,
+
+                  y:
+                    -6,
+                }}
+                transition={{
+                  duration:
+                    0.22,
+                }}
+              >
+                <EmptyState
+                  icon={
+                    Heart
+                  }
+                  title="Nenhum favorito"
+                  description={
+                    selectedCategory
+                      ? "A pessoa ativa ainda não possui documentos favoritos nesta categoria."
+                      : "Marque documentos como favoritos para acessá-los rapidamente. Basta tocar na estrela em qualquer documento."
+                  }
+                  actionLabel="Voltar para a Home"
+                  onAction={() => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    router.push(
+                      "/"
+                    );
+                  }}
+                />
+              </motion.div>
             ) : (
               <motion.div
-                key="list"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
+                key={`list-${selectedCategory || "all"}`}
+                initial={{
+                  opacity:
+                    0,
+                }}
+                animate={{
+                  opacity:
+                    1,
+                }}
+                exit={{
+                  opacity:
+                    0,
+                }}
+                transition={{
+                  duration:
+                    0.25,
+                }}
               >
                 <InfiniteScrollTrigger
-                  onLoadMore={loadMore}
-                  hasMore={hasMore}
-                  isLoading={isLoadingMore}
+                  onLoadMore={
+                    loadMore
+                  }
+                  hasMore={
+                    hasMore
+                  }
+                  isLoading={
+                    isLoadingMore
+                  }
                 >
                   <div className="space-y-4">
-                    {favorites.map((doc, index) => (
-                      <motion.div
-                        key={doc.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{
-                          duration: 0.22,
-                          delay: Math.min(index * 0.04, 0.4),
-                        }}
-                      >
-                        <DocumentCard
-                          document={doc}
-                          onFavoriteToggle={handleFavoriteToggle}
-                          personName={persons.find((p) => p.id === doc.person_id)?.name}
-                        />
-                      </motion.div>
-                    ))}
+                    {favorites.map(
+                      (
+                        document,
+                        index
+                      ) => (
+                        <motion.div
+                          key={
+                            document.id
+                          }
+                          initial={{
+                            opacity:
+                              0,
+
+                            y:
+                              10,
+                          }}
+                          animate={{
+                            opacity:
+                              1,
+
+                            y:
+                              0,
+                          }}
+                          transition={{
+                            duration:
+                              0.22,
+
+                            delay:
+                              Math.min(
+                                index *
+                                  0.04,
+                                0.4
+                              ),
+                          }}
+                        >
+                          <DocumentCard
+                            document={
+                              document
+                            }
+                            onFavoriteToggle={
+                              handleFavoriteToggle
+                            }
+                          />
+                        </motion.div>
+                      )
+                    )}
                   </div>
                 </InfiniteScrollTrigger>
               </motion.div>
@@ -202,7 +358,11 @@ export default function FavoritesPage() {
           </AnimatePresence>
         </section>
 
-        <ScrollToTop threshold={400} />
+        <ScrollToTop
+          threshold={
+            400
+          }
+        />
       </main>
     </PageTransition>
   );

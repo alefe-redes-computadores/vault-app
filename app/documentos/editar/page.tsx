@@ -1,4 +1,4 @@
-// app/categoria/detalhes/page.tsx
+// app/documentos/editar/page.tsx
 "use client";
 
 import {
@@ -16,7 +16,6 @@ import {
   AnimatePresence,
   motion,
 } from "framer-motion";
-import { useLiveQuery } from "dexie-react-hooks";
 import {
   ArrowLeft,
   Building2,
@@ -24,26 +23,25 @@ import {
   Check,
   ChevronDown,
   FileText,
-  Image as ImageIcon,
+  FolderOpen,
   Layers3,
   Loader2,
-  MapPin,
   Paperclip,
-  Pill,
   Save,
-  Stethoscope,
-  Store,
   Upload,
+  User,
   UserRound,
   X,
 } from "lucide-react";
 
-import { db } from "@/lib/db";
 import { uploadFile } from "@/lib/supabase/storage";
 
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
-import { useSafeDb } from "@/hooks/useSafeDb";
+import {
+  useDocument,
+  useDocumentActions,
+} from "@/hooks/useDocuments";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 
@@ -65,6 +63,36 @@ import { PageTransition } from "@/components/PageTransition";
 import { SelectionModal } from "@/components/SelectionModal";
 
 // ============================================================
+// DOMÍNIO — DOCUMENTOS PESSOAIS
+// ============================================================
+
+const GENERAL_CATEGORIES = [
+  "pessoal",
+  "empresa",
+  "outros",
+] as const satisfies readonly CategoryId[];
+
+type GeneralCategoryId =
+  (typeof GENERAL_CATEGORIES)[number];
+
+const GENERAL_TYPES = [
+  "rg",
+  "cpf",
+  "cnh",
+  "certidao_nascimento",
+  "titulo_eleitor",
+  "certificado",
+  "carteira_trabalho",
+  "passaporte",
+  "dispensa_militar",
+  "credencial",
+  "outro",
+] as const satisfies readonly DocumentType[];
+
+type GeneralDocumentType =
+  (typeof GENERAL_TYPES)[number];
+
+// ============================================================
 // TIPOS LOCAIS
 // ============================================================
 
@@ -75,9 +103,8 @@ interface SelectItem {
 }
 
 interface FormData {
-  person_id: string;
-  category_id: CategoryId;
-  type: DocumentType;
+  category_id: GeneralCategoryId;
+  type: GeneralDocumentType;
   title: string;
   description: string;
   metadata: Record<string, unknown>;
@@ -91,29 +118,38 @@ interface PendingUpload {
 }
 
 // ============================================================
-// LABELS DOS TIPOS
+// LABELS
 // ============================================================
 
-const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+const DOCUMENT_TYPE_LABELS: Record<
+  GeneralDocumentType,
+  string
+> = {
   rg: "C.I.N / RG",
   cpf: "CPF",
   cnh: "CNH",
-  certidao_nascimento: "Certidão de Nascimento",
-  titulo_eleitor: "Título de Eleitor",
+  certidao_nascimento:
+    "Certidão de Nascimento",
+  titulo_eleitor:
+    "Título de Eleitor",
   certificado: "Certificado",
-  carteira_trabalho: "Carteira de Trabalho",
+  carteira_trabalho:
+    "Carteira de Trabalho",
   passaporte: "Passaporte",
-  dispensa_militar: "Dispensa Militar",
-  receita: "Receita",
-  prontuario: "Prontuário",
-  laudo: "Laudo",
-  encaminhamento: "Encaminhamento",
-  consulta: "Consulta",
-  cirurgia: "Cirurgia",
-  exame_sangue: "Exame de Sangue",
-  exame_imagem: "Exame de Imagem",
-  credencial: "Credencial / Carteirinha",
+  dispensa_militar:
+    "Dispensa Militar",
+  credencial:
+    "Credencial / Carteirinha",
   outro: "Outro",
+};
+
+const CATEGORY_ICONS: Record<
+  GeneralCategoryId,
+  typeof User
+> = {
+  pessoal: User,
+  empresa: Building2,
+  outros: FolderOpen,
 };
 
 const sectionMotion = {
@@ -130,6 +166,22 @@ const sectionMotion = {
 // ============================================================
 // HELPERS
 // ============================================================
+
+function isGeneralCategory(
+  value: CategoryId
+): value is GeneralCategoryId {
+  return (
+    GENERAL_CATEGORIES as readonly CategoryId[]
+  ).includes(value);
+}
+
+function isGeneralDocumentType(
+  value: DocumentType
+): value is GeneralDocumentType {
+  return (
+    GENERAL_TYPES as readonly DocumentType[]
+  ).includes(value);
+}
 
 function getMetadataString(
   metadata: Record<string, unknown>,
@@ -151,78 +203,15 @@ function getMetadataString(
   return "";
 }
 
-function belongsToPerson(
-  entityPersonId: string | undefined,
-  personId: string
-): boolean {
-  if (!personId) {
-    return true;
-  }
-
-  /*
-   * Registros antigos podem não possuir person_id.
-   * Não escondemos esses registros para manter
-   * compatibilidade com dados anteriores à v29.
-   */
-  return (
-    !entityPersonId ||
-    entityPersonId === personId
-  );
-}
-
-function migrateLegacyMetadata(
-  metadata: Record<string, unknown>,
-  type: DocumentType
-): Record<string, unknown> {
-  const migrated = {
-    ...metadata,
-  };
-
-  /*
-   * Antes da migration v20, exames utilizavam
-   * laboratorio_id.
-   *
-   * A tabela exames foi migrada, mas documentos
-   * antigos podem continuar trazendo o ID dentro
-   * de metadata.
-   */
-  if (type === "exame_sangue") {
-    const currentLocalId =
-      getMetadataString(
-        migrated,
-        "local_id"
-      );
-
-    const legacyLaboratorioId =
-      getMetadataString(
-        migrated,
-        "laboratorio_id"
-      );
-
-    if (
-      !currentLocalId &&
-      legacyLaboratorioId
-    ) {
-      migrated.local_id =
-        legacyLaboratorioId;
-    }
-
-    delete migrated.laboratorio_id;
-  }
-
-  return migrated;
-}
-
 function changeMetadataType(
   metadata: Record<string, unknown>,
-  previousType: DocumentType,
-  nextType: DocumentType
+  previousType: GeneralDocumentType,
+  nextType: GeneralDocumentType
 ): Record<string, unknown> {
   if (previousType === nextType) {
-    return migrateLegacyMetadata(
-      metadata,
-      nextType
-    );
+    return {
+      ...metadata,
+    };
   }
 
   const result = {
@@ -239,11 +228,11 @@ function changeMetadataType(
   );
 
   /*
-   * Remove somente metadata pertencente ao tipo
-   * anterior e incompatível com o próximo.
+   * Remove somente campos estruturais pertencentes
+   * ao tipo anterior.
    *
-   * Metadata adicional, como cid_id e
-   * tratamento_id, continua preservado.
+   * Campos personalizados adicionados pelo usuário
+   * continuam preservados.
    */
   for (const field of previousFields) {
     if (!nextFieldKeys.has(field.key)) {
@@ -251,57 +240,7 @@ function changeMetadataType(
     }
   }
 
-  return migrateLegacyMetadata(
-    result,
-    nextType
-  );
-}
-
-function hasDocumentField(
-  type: DocumentType,
-  key: string
-): boolean {
-  return DOCUMENT_FIELDS[type].some(
-    (field) => field.key === key
-  );
-}
-
-function getFieldIcon(key: string) {
-  switch (key) {
-    case "medicamento_id":
-      return Pill;
-
-    case "medico_id":
-    case "from_medico_id":
-    case "to_medico_id":
-      return Stethoscope;
-
-    case "hospital_id":
-      return Building2;
-
-    case "local_id":
-      return MapPin;
-
-    case "farmacia_id":
-      return Store;
-
-    default:
-      return Layers3;
-  }
-}
-
-function isEntitySelectField(
-  key: string
-): boolean {
-  return [
-    "medicamento_id",
-    "medico_id",
-    "from_medico_id",
-    "to_medico_id",
-    "hospital_id",
-    "local_id",
-    "farmacia_id",
-  ].includes(key);
+  return result;
 }
 
 function isSupportedAttachment(
@@ -325,8 +264,9 @@ function getAttachmentType(
 // PÁGINA
 // ============================================================
 
-export default function EditarDetalhePage() {
+export default function EditarDocumentoPage() {
   const router = useRouter();
+
   const searchParams =
     useSearchParams();
 
@@ -338,24 +278,39 @@ export default function EditarDetalhePage() {
   const { showToast } =
     useToast();
 
-  const { updateDocument } =
-    useSafeDb();
-
-  const id =
-    searchParams.get("id") || "";
+  const {
+    updateDocument,
+  } = useDocumentActions();
 
   const persons =
     usePersons() as Person[];
 
-  const fileInputRef =
-    useRef<HTMLInputElement>(null);
-
-  const cameraInputRef =
-    useRef<HTMLInputElement>(null);
+  const id =
+    searchParams.get("id") || "";
 
   /*
-   * Mantém referência das URLs blob criadas
-   * nesta tela para limpeza segura no unmount.
+   * Contrato do hook:
+   *
+   * null      = carregando
+   * undefined = não encontrado para a pessoa ativa
+   * Document  = documento válido da pessoa ativa
+   */
+  const doc =
+    useDocument(id);
+
+  const fileInputRef =
+    useRef<HTMLInputElement>(
+      null
+    );
+
+  const cameraInputRef =
+    useRef<HTMLInputElement>(
+      null
+    );
+
+  /*
+   * URLs blob criadas somente nesta tela.
+   * Nunca devem ser persistidas no documento.
    */
   const objectUrlsRef =
     useRef<Set<string>>(
@@ -363,49 +318,20 @@ export default function EditarDetalhePage() {
     );
 
   // ==========================================================
-  // DOCUMENTO
-  //
-  // undefined = Dexie ainda carregando
-  // { document: undefined } = documento realmente não existe
-  // ==========================================================
-
-  const documentQuery =
-    useLiveQuery(
-      async () => {
-        if (!id) {
-          return {
-            document:
-              undefined,
-          };
-        }
-
-        return {
-          document:
-            await db.documents.get(
-              id
-            ),
-        };
-      },
-      [id]
-    );
-
-  const doc =
-    documentQuery?.document;
-
-  const isDocumentLoading =
-    documentQuery === undefined;
-
-  // ==========================================================
   // ESTADOS
   // ==========================================================
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-  const [errors, setErrors] =
-    useState<
-      Record<string, string>
-    >({});
+  const [
+    errors,
+    setErrors,
+  ] = useState<
+    Record<string, string>
+  >({});
 
   const [
     isTypeModalOpen,
@@ -427,19 +353,20 @@ export default function EditarDetalhePage() {
     []
   );
 
-  const [formData, setFormData] =
-    useState<FormData>({
-      person_id: "",
-      category_id: "pessoal",
-      type: "rg",
-      title: "",
-      description: "",
-      metadata: {},
-      attachments: [],
-    });
+  const [
+    formData,
+    setFormData,
+  ] = useState<FormData>({
+    category_id: "pessoal",
+    type: "rg",
+    title: "",
+    description: "",
+    metadata: {},
+    attachments: [],
+  });
 
   // ==========================================================
-  // LIMPEZA DAS URLs TEMPORÁRIAS
+  // LIMPEZA DE OBJECT URLS
   // ==========================================================
 
   useEffect(() => {
@@ -460,107 +387,7 @@ export default function EditarDetalhePage() {
   }, []);
 
   // ==========================================================
-  // DADOS RELACIONAIS
-  // ==========================================================
-
-  const relationData =
-    useLiveQuery(
-      async () => {
-        const [
-          medicos,
-          hospitais,
-          locais,
-          farmacias,
-          medicamentos,
-        ] = await Promise.all([
-          db.medicos.toArray(),
-          db.hospitais.toArray(),
-          db.locais.toArray(),
-          db.farmacias.toArray(),
-          db.medicamentos.toArray(),
-        ]);
-
-        const personId =
-          formData.person_id;
-
-        return {
-          medicos: medicos
-            .filter((item) =>
-              belongsToPerson(
-                item.person_id,
-                personId
-              )
-            )
-            .sort((a, b) =>
-              a.nome.localeCompare(
-                b.nome,
-                "pt-BR"
-              )
-            ),
-
-          hospitais: hospitais
-            .filter((item) =>
-              belongsToPerson(
-                item.person_id,
-                personId
-              )
-            )
-            .sort((a, b) =>
-              a.nome.localeCompare(
-                b.nome,
-                "pt-BR"
-              )
-            ),
-
-          locais: locais
-            .filter((item) =>
-              belongsToPerson(
-                item.person_id,
-                personId
-              )
-            )
-            .sort((a, b) =>
-              a.nome.localeCompare(
-                b.nome,
-                "pt-BR"
-              )
-            ),
-
-          farmacias: farmacias
-            .filter((item) =>
-              belongsToPerson(
-                item.person_id,
-                personId
-              )
-            )
-            .sort((a, b) =>
-              a.nome.localeCompare(
-                b.nome,
-                "pt-BR"
-              )
-            ),
-
-          medicamentos:
-            medicamentos
-              .filter((item) =>
-                belongsToPerson(
-                  item.person_id,
-                  personId
-                )
-              )
-              .sort((a, b) =>
-                a.nome.localeCompare(
-                  b.nome,
-                  "pt-BR"
-                )
-              ),
-        };
-      },
-      [formData.person_id]
-    );
-
-  // ==========================================================
-  // POPULA FORMULÁRIO
+  // POPULA O FORMULÁRIO
   // ==========================================================
 
   useEffect(() => {
@@ -568,74 +395,47 @@ export default function EditarDetalhePage() {
       return;
     }
 
-    let metadata =
-      migrateLegacyMetadata(
-        doc.metadata || {},
-        doc.type
-      );
-
     /*
-     * Alguns documentos possuem medico_id e
-     * hospital_id nas colunas estruturais.
+     * Documento clínico não é transformado silenciosamente
+     * em documento pessoal.
      *
-     * Para o formulário enxergar ambos os formatos,
-     * trazemos esses IDs para metadata quando o tipo
-     * correspondente utiliza a relação.
+     * O guard de renderização abaixo cuida da navegação.
      */
     if (
-      hasDocumentField(
-        doc.type,
-        "medico_id"
-      ) &&
-      !getMetadataString(
-        metadata,
-        "medico_id"
-      ) &&
-      doc.medico_id
+      !isGeneralCategory(
+        doc.category_id
+      ) ||
+      !isGeneralDocumentType(
+        doc.type
+      )
     ) {
-      metadata = {
-        ...metadata,
-        medico_id:
-          doc.medico_id,
-      };
-    }
-
-    if (
-      hasDocumentField(
-        doc.type,
-        "hospital_id"
-      ) &&
-      !getMetadataString(
-        metadata,
-        "hospital_id"
-      ) &&
-      doc.hospital_id
-    ) {
-      metadata = {
-        ...metadata,
-        hospital_id:
-          doc.hospital_id,
-      };
+      return;
     }
 
     setFormData({
-      person_id:
-        doc.person_id || "",
       category_id:
         doc.category_id,
-      type: doc.type,
-      title: doc.title,
+
+      type:
+        doc.type,
+
+      title:
+        doc.title,
+
       description:
         doc.description || "",
-      metadata,
+
+      metadata: {
+        ...(doc.metadata || {}),
+      },
+
       attachments:
         doc.attachments || [],
     });
 
     /*
-     * Ao carregar outro documento, qualquer upload
-     * local pendente da instância anterior precisa
-     * ser descartado.
+     * Se por qualquer motivo o ID mudar enquanto esta tela
+     * permanece montada, descartamos uploads locais antigos.
      */
     setPendingUploads(
       (previous) => {
@@ -654,6 +454,8 @@ export default function EditarDetalhePage() {
         return [];
       }
     );
+
+    setErrors({});
   }, [doc]);
 
   // ==========================================================
@@ -665,34 +467,32 @@ export default function EditarDetalhePage() {
       () =>
         DOCUMENT_FIELDS[
           formData.type
-        ],
+        ] || [],
       [formData.type]
     );
 
   const allowedDocumentTypes =
-    useMemo(() => {
-      return (
-        Object.keys(
-          DOCUMENT_TYPE_LABELS
-        ) as DocumentType[]
-      )
-        .filter((type) =>
-          TYPE_CATEGORY_MAP[
-            type
-          ].includes(
-            formData.category_id
-          )
-        )
-        .map((type) => ({
-          id: type,
-          label:
-            DOCUMENT_TYPE_LABELS[
+    useMemo<SelectItem[]>(
+      () =>
+        GENERAL_TYPES
+          .filter((type) =>
+            TYPE_CATEGORY_MAP[
               type
-            ],
-        }));
-    }, [
-      formData.category_id,
-    ]);
+            ].includes(
+              formData.category_id
+            )
+          )
+          .map((type) => ({
+            id: type,
+            label:
+              DOCUMENT_TYPE_LABELS[
+                type
+              ],
+          })),
+      [
+        formData.category_id,
+      ]
+    );
 
   const selectedTypeLabel =
     DOCUMENT_TYPE_LABELS[
@@ -700,252 +500,119 @@ export default function EditarDetalhePage() {
     ];
 
   const selectedPerson =
-    persons.find(
-      (person) =>
-        person.id ===
-        formData.person_id
+    useMemo(
+      () => {
+        if (!doc) {
+          return undefined;
+        }
+
+        return persons.find(
+          (person) =>
+            person.id ===
+            doc.person_id
+        );
+      },
+      [
+        doc,
+        persons,
+      ]
     );
 
   const personColor =
     selectedPerson?.color ||
     "#38BDF8";
 
+  const CategoryIcon =
+    CATEGORY_ICONS[
+      formData.category_id
+    ];
+
+  const isHealthDocument =
+    Boolean(
+      doc &&
+        (
+          doc.category_id ===
+            "saude" ||
+          !isGeneralCategory(
+            doc.category_id
+          ) ||
+          !isGeneralDocumentType(
+            doc.type
+          )
+        )
+    );
+
   // ==========================================================
-  // OPTIONS DOS SELECTS
+  // SELECTS NATIVOS DOS CAMPOS
+  //
+  // No domínio pessoal não existem selects que precisem
+  // consultar médicos, hospitais, medicamentos etc.
+  //
+  // SelectionModal continua sendo usado para campos do tipo
+  // select definidos em DOCUMENT_FIELDS (ex.: opções fixas).
   // ==========================================================
 
   const selectItems =
     useMemo<SelectItem[]>(
       () => {
         if (
-          !activeSelectField
+          !activeSelectField?.options
+            ?.length
         ) {
           return [];
         }
 
-        if (
-          activeSelectField
-            .options?.length
-        ) {
-          return activeSelectField.options.map(
-            (option) => ({
-              id: option,
-              label: option,
-            })
-          );
-        }
-
-        if (!relationData) {
-          return [];
-        }
-
-        switch (
-          activeSelectField.key
-        ) {
-          case "medicamento_id":
-            return relationData.medicamentos
-              .filter((item) =>
-                Boolean(item.id)
-              )
-              .map((item) => ({
-                id: item.id!,
-                label: item.nome,
-                description:
-                  item.dosagem ||
-                  undefined,
-              }));
-
-          case "medico_id":
-          case "from_medico_id":
-          case "to_medico_id":
-            return relationData.medicos
-              .filter((item) =>
-                Boolean(item.id)
-              )
-              .map((item) => ({
-                id: item.id!,
-                label: item.nome,
-                description:
-                  item.especialidade ||
-                  item.crm ||
-                  undefined,
-              }));
-
-          case "hospital_id":
-            return relationData.hospitais
-              .filter((item) =>
-                Boolean(item.id)
-              )
-              .map((item) => ({
-                id: item.id!,
-                label: item.nome,
-                description:
-                  item.tipo ||
-                  item.endereco ||
-                  undefined,
-              }));
-
-          case "local_id":
-            return relationData.locais
-              .filter((item) =>
-                Boolean(item.id)
-              )
-              .map((item) => ({
-                id: item.id!,
-                label: item.nome,
-                description:
-                  item.tipo ||
-                  item.endereco ||
-                  undefined,
-              }));
-
-          case "farmacia_id":
-            return relationData.farmacias
-              .filter((item) =>
-                Boolean(item.id)
-              )
-              .map((item) => ({
-                id: item.id!,
-                label: item.nome,
-                description:
-                  item.endereco ||
-                  undefined,
-              }));
-
-          default:
-            return [];
-        }
+        return activeSelectField.options.map(
+          (option) => ({
+            id: option,
+            label: option,
+          })
+        );
       },
       [
         activeSelectField,
-        relationData,
       ]
     );
 
   // ==========================================================
-  // DISPLAY VALUE DOS SELECTS
-  // ==========================================================
-
-  const getSelectValueLabel = (
-    field: DocumentField
-  ): string => {
-    const value =
-      getMetadataString(
-        formData.metadata,
-        field.key
-      );
-
-    if (!value) {
-      return "Selecionar";
-    }
-
-    if (
-      field.options?.includes(
-        value
-      )
-    ) {
-      return value;
-    }
-
-    if (!relationData) {
-      return "Carregando...";
-    }
-
-    switch (field.key) {
-      case "medicamento_id":
-        return (
-          relationData.medicamentos.find(
-            (item) =>
-              item.id === value
-          )?.nome ||
-          "Registro não encontrado"
-        );
-
-      case "medico_id":
-      case "from_medico_id":
-      case "to_medico_id":
-        return (
-          relationData.medicos.find(
-            (item) =>
-              item.id === value
-          )?.nome ||
-          "Registro não encontrado"
-        );
-
-      case "hospital_id":
-        return (
-          relationData.hospitais.find(
-            (item) =>
-              item.id === value
-          )?.nome ||
-          "Registro não encontrado"
-        );
-
-      case "local_id":
-        return (
-          relationData.locais.find(
-            (item) =>
-              item.id === value
-          )?.nome ||
-          "Registro não encontrado"
-        );
-
-      case "farmacia_id":
-        return (
-          relationData.farmacias.find(
-            (item) =>
-              item.id === value
-          )?.nome ||
-          "Registro não encontrado"
-        );
-
-      default:
-        return value;
-    }
-  };
-
-  // ==========================================================
-  // ALTERAÇÕES DO FORMULÁRIO
+  // ERROS
   // ==========================================================
 
   const clearError = (
     key: string
   ) => {
-    setErrors((previous) => {
-      if (!previous[key]) {
-        return previous;
+    setErrors(
+      (previous) => {
+        if (
+          !previous[key]
+        ) {
+          return previous;
+        }
+
+        const next = {
+          ...previous,
+        };
+
+        delete next[key];
+
+        return next;
       }
-
-      const next = {
-        ...previous,
-      };
-
-      delete next[key];
-
-      return next;
-    });
+    );
   };
 
-  const handlePersonChange = (
-    personId: string
-  ) => {
-    trigger("vibrate");
-
-    setFormData((previous) => ({
-      ...previous,
-      person_id: personId,
-    }));
-
-    clearError("person_id");
-  };
+  // ==========================================================
+  // ALTERAÇÕES
+  // ==========================================================
 
   const handleTitleChange = (
     value: string
   ) => {
-    setFormData((previous) => ({
-      ...previous,
-      title: value,
-    }));
+    setFormData(
+      (previous) => ({
+        ...previous,
+        title: value,
+      })
+    );
 
     clearError("title");
   };
@@ -953,98 +620,113 @@ export default function EditarDetalhePage() {
   const handleDescriptionChange = (
     value: string
   ) => {
-    setFormData((previous) => ({
-      ...previous,
-      description: value,
-    }));
+    setFormData(
+      (previous) => ({
+        ...previous,
+        description: value,
+      })
+    );
   };
 
   const handleMetadataChange = (
     key: string,
     value: string
   ) => {
-    setFormData((previous) => ({
-      ...previous,
-      metadata: {
-        ...previous.metadata,
-        [key]: value,
-      },
-    }));
+    setFormData(
+      (previous) => ({
+        ...previous,
+
+        metadata: {
+          ...previous.metadata,
+          [key]: value,
+        },
+      })
+    );
 
     clearError(key);
   };
 
   const handleCategoryChange = (
-    categoryId: CategoryId
+    categoryId: GeneralCategoryId
   ) => {
     trigger("vibrate");
 
-    setFormData((previous) => {
-      const currentTypeIsAllowed =
-        TYPE_CATEGORY_MAP[
-          previous.type
-        ].includes(categoryId);
+    setFormData(
+      (previous) => {
+        const currentTypeAllowed =
+          TYPE_CATEGORY_MAP[
+            previous.type
+          ].includes(
+            categoryId
+          );
 
-      if (
-        currentTypeIsAllowed
-      ) {
+        if (
+          currentTypeAllowed
+        ) {
+          return {
+            ...previous,
+            category_id:
+              categoryId,
+          };
+        }
+
+        const nextType =
+          GENERAL_TYPES.find(
+            (type) =>
+              TYPE_CATEGORY_MAP[
+                type
+              ].includes(
+                categoryId
+              )
+          );
+
+        if (!nextType) {
+          return previous;
+        }
+
         return {
           ...previous,
+
           category_id:
             categoryId,
+
+          type:
+            nextType,
+
+          metadata:
+            changeMetadataType(
+              previous.metadata,
+              previous.type,
+              nextType
+            ),
         };
       }
+    );
 
-      const nextType = (
-        Object.keys(
-          DOCUMENT_TYPE_LABELS
-        ) as DocumentType[]
-      ).find((type) =>
-        TYPE_CATEGORY_MAP[
-          type
-        ].includes(categoryId)
-      );
+    setErrors({});
+  };
 
-      if (!nextType) {
-        return {
-          ...previous,
-          category_id:
-            categoryId,
-        };
-      }
+  const handleTypeChange = (
+    nextType:
+      GeneralDocumentType
+  ) => {
+    trigger("vibrate");
 
-      return {
+    setFormData(
+      (previous) => ({
         ...previous,
-        category_id:
-          categoryId,
-        type: nextType,
+
+        type:
+          nextType,
+
         metadata:
           changeMetadataType(
             previous.metadata,
             previous.type,
             nextType
           ),
-      };
-    });
-
-    setErrors({});
-  };
-
-  const handleTypeChange = (
-    nextType: DocumentType
-  ) => {
-    trigger("vibrate");
-
-    setFormData((previous) => ({
-      ...previous,
-      type: nextType,
-      metadata:
-        changeMetadataType(
-          previous.metadata,
-          previous.type,
-          nextType
-        ),
-    }));
+      })
+    );
 
     setErrors({});
     setIsTypeModalOpen(false);
@@ -1056,20 +738,48 @@ export default function EditarDetalhePage() {
 
   const addFiles = (
     files: File[],
-    source: "file" | "camera"
+    source:
+      | "file"
+      | "camera"
   ) => {
+    if (
+      files.length === 0
+    ) {
+      return;
+    }
+
     const supported =
       files.filter(
-        isSupportedAttachment
+        (file) => {
+          if (
+            !isSupportedAttachment(
+              file
+            )
+          ) {
+            return false;
+          }
+
+          if (
+            file.size >
+            10 *
+              1024 *
+              1024
+          ) {
+            return false;
+          }
+
+          return true;
+        }
       );
 
     if (
-      supported.length === 0
+      supported.length ===
+      0
     ) {
       trigger("error");
 
       showToast(
-        "Selecione uma imagem ou arquivo PDF.",
+        "Selecione imagens ou PDFs de até 10 MB.",
         "error"
       );
 
@@ -1081,7 +791,7 @@ export default function EditarDetalhePage() {
       files.length
     ) {
       showToast(
-        "Alguns arquivos foram ignorados. O Vault aceita imagens e PDFs.",
+        "Alguns arquivos foram ignorados. O Vault aceita imagens e PDFs de até 10 MB.",
         "info"
       );
     }
@@ -1093,7 +803,10 @@ export default function EditarDetalhePage() {
       PendingUpload[] = [];
 
     supported.forEach(
-      (file, index) => {
+      (
+        file,
+        index
+      ) => {
         const attachmentId =
           crypto.randomUUID();
 
@@ -1107,18 +820,26 @@ export default function EditarDetalhePage() {
         );
 
         const attachmentName =
-          source === "camera"
+          source ===
+          "camera"
             ? `foto_${Date.now()}_${index + 1}.jpg`
             : file.name;
 
         newAttachments.push({
-          id: attachmentId,
-          url: objectUrl,
-          name: attachmentName,
+          id:
+            attachmentId,
+
+          url:
+            objectUrl,
+
+          name:
+            attachmentName,
+
           type:
             getAttachmentType(
               file
             ),
+
           uploaded_at:
             new Date().toISOString(),
         });
@@ -1131,13 +852,16 @@ export default function EditarDetalhePage() {
       }
     );
 
-    setFormData((previous) => ({
-      ...previous,
-      attachments: [
-        ...previous.attachments,
-        ...newAttachments,
-      ],
-    }));
+    setFormData(
+      (previous) => ({
+        ...previous,
+
+        attachments: [
+          ...previous.attachments,
+          ...newAttachments,
+        ],
+      })
+    );
 
     setPendingUploads(
       (previous) => [
@@ -1150,25 +874,32 @@ export default function EditarDetalhePage() {
   };
 
   const handleFileSelect = (
-    event: ChangeEvent<HTMLInputElement>
+    event:
+      ChangeEvent<HTMLInputElement>
   ) => {
     const files =
       Array.from(
-        event.target.files || []
+        event.target.files ||
+          []
       );
 
-    if (files.length > 0) {
+    if (
+      files.length >
+      0
+    ) {
       addFiles(
         files,
         "file"
       );
     }
 
-    event.target.value = "";
+    event.target.value =
+      "";
   };
 
   const handleCameraCapture = (
-    event: ChangeEvent<HTMLInputElement>
+    event:
+      ChangeEvent<HTMLInputElement>
   ) => {
     const file =
       event.target.files?.[0];
@@ -1180,11 +911,13 @@ export default function EditarDetalhePage() {
       );
     }
 
-    event.target.value = "";
+    event.target.value =
+      "";
   };
 
   const removeAttachment = (
-    attachmentId: string
+    attachmentId:
+      string
   ) => {
     const pending =
       pendingUploads.find(
@@ -1212,15 +945,18 @@ export default function EditarDetalhePage() {
       );
     }
 
-    setFormData((previous) => ({
-      ...previous,
-      attachments:
-        previous.attachments.filter(
-          (attachment) =>
-            attachment.id !==
-            attachmentId
-        ),
-    }));
+    setFormData(
+      (previous) => ({
+        ...previous,
+
+        attachments:
+          previous.attachments.filter(
+            (attachment) =>
+              attachment.id !==
+              attachmentId
+          ),
+      })
+    );
 
     trigger("vibrate");
   };
@@ -1229,69 +965,80 @@ export default function EditarDetalhePage() {
   // VALIDAÇÃO
   // ==========================================================
 
-  const validate = (): boolean => {
-    const newErrors: Record<
-      string,
-      string
-    > = {};
+  const validate =
+    (): boolean => {
+      const newErrors: Record<
+        string,
+        string
+      > = {};
 
-    if (
-      !formData.person_id.trim()
-    ) {
-      newErrors.person_id =
-        "Selecione uma pessoa";
-    }
-
-    if (!formData.title.trim()) {
-      newErrors.title =
-        "Título é obrigatório";
-    }
-
-    const typeAllowed =
-      TYPE_CATEGORY_MAP[
-        formData.type
-      ].includes(
-        formData.category_id
-      );
-
-    if (!typeAllowed) {
-      newErrors.type =
-        "O tipo selecionado não pertence a esta categoria";
-    }
-
-    for (const field of fields) {
-      if (!field.required) {
-        continue;
+      if (
+        !formData.title.trim()
+      ) {
+        newErrors.title =
+          "Título é obrigatório";
       }
 
-      const value =
-        getMetadataString(
-          formData.metadata,
-          field.key
-        ).trim();
+      const typeAllowed =
+        TYPE_CATEGORY_MAP[
+          formData.type
+        ].includes(
+          formData.category_id
+        );
 
-      if (!value) {
-        newErrors[field.key] =
-          `${field.label} é obrigatório`;
+      if (
+        !typeAllowed
+      ) {
+        newErrors.type =
+          "O tipo selecionado não pertence a esta categoria";
       }
-    }
 
-    setErrors(newErrors);
+      for (
+        const field of
+        fields
+      ) {
+        if (
+          !field.required
+        ) {
+          continue;
+        }
 
-    if (
-      Object.keys(newErrors)
-        .length > 0
-    ) {
-      showToast(
-        "Revise os campos obrigatórios.",
-        "error"
+        const value =
+          getMetadataString(
+            formData.metadata,
+            field.key
+          ).trim();
+
+        if (
+          !value
+        ) {
+          newErrors[
+            field.key
+          ] =
+            `${field.label} é obrigatório`;
+        }
+      }
+
+      setErrors(
+        newErrors
       );
 
-      return false;
-    }
+      if (
+        Object.keys(
+          newErrors
+        ).length >
+        0
+      ) {
+        showToast(
+          "Revise os campos obrigatórios.",
+          "error"
+        );
 
-    return true;
-  };
+        return false;
+      }
+
+      return true;
+    };
 
   // ==========================================================
   // UPLOAD DOS NOVOS ANEXOS
@@ -1310,7 +1057,9 @@ export default function EditarDetalhePage() {
         ];
       }
 
-      if (!user) {
+      if (
+        !user?.id
+      ) {
         throw new Error(
           "Usuário não autenticado para upload."
         );
@@ -1325,8 +1074,8 @@ export default function EditarDetalhePage() {
         pendingUploads
       ) {
         /*
-         * Se o usuário removeu o anexo antes do save,
-         * ele não deve mais existir aqui.
+         * O anexo pode ter sido removido depois de entrar
+         * na fila local.
          */
         const attachmentIndex =
           finalAttachments.findIndex(
@@ -1336,21 +1085,28 @@ export default function EditarDetalhePage() {
           );
 
         if (
-          attachmentIndex === -1
+          attachmentIndex ===
+          -1
         ) {
           continue;
         }
 
-        const { url } =
+        const {
+          url,
+          error,
+        } =
           await uploadFile(
             user.id,
             pending.file,
             formData.category_id
           );
 
-        if (!url) {
+        if (
+          error ||
+          !url
+        ) {
           throw new Error(
-            `Upload sem URL para o anexo ${pending.file.name}.`
+            `Falha ao enviar ${pending.file.name}.`
           );
         }
 
@@ -1362,6 +1118,22 @@ export default function EditarDetalhePage() {
           ],
           url,
         };
+      }
+
+      /*
+       * Defesa final: o repository nunca deve receber blob:.
+       */
+      if (
+        finalAttachments.some(
+          (attachment) =>
+            attachment.url.startsWith(
+              "blob:"
+            )
+        )
+      ) {
+        throw new Error(
+          "Existem anexos que ainda não foram enviados."
+        );
       }
 
       return finalAttachments;
@@ -1391,10 +1163,28 @@ export default function EditarDetalhePage() {
   const handleSubmit =
     async () => {
       if (
-        !validate() ||
+        loading ||
         !doc ||
-        !id ||
-        loading
+        !id
+      ) {
+        return;
+      }
+
+      if (
+        isHealthDocument
+      ) {
+        trigger("error");
+
+        showToast(
+          "Documentos clínicos devem ser editados pela área de Saúde.",
+          "error"
+        );
+
+        return;
+      }
+
+      if (
+        !validate()
       ) {
         trigger("error");
         return;
@@ -1403,71 +1193,42 @@ export default function EditarDetalhePage() {
       setLoading(true);
 
       try {
-        const metadata =
-          migrateLegacyMetadata(
-            formData.metadata,
-            formData.type
-          );
-
-        const medicoId =
-          hasDocumentField(
-            formData.type,
-            "medico_id"
-          )
-            ? getMetadataString(
-                metadata,
-                "medico_id"
-              ) || undefined
-            : undefined;
-
-        const hospitalId =
-          hasDocumentField(
-            formData.type,
-            "hospital_id"
-          )
-            ? getMetadataString(
-                metadata,
-                "hospital_id"
-              ) || undefined
-            : undefined;
-
         /*
-         * Os arquivos novos são enviados antes da
-         * atualização para impedir que URLs blob:
-         * sejam persistidas no documento.
+         * Novos arquivos são enviados primeiro.
+         * Assim URLs blob nunca chegam ao repository.
          */
         const finalAttachments =
           await uploadPendingAttachments();
 
-        await updateDocument(id, {
-          category_id:
-            formData.category_id,
+        await updateDocument(
+          id,
+          {
+            category_id:
+              formData.category_id,
 
-          type:
-            formData.type,
+            type:
+              formData.type,
 
-          title:
-            formData.title.trim(),
+            title:
+              formData.title.trim(),
 
-          description:
-            formData.description.trim() ||
-            undefined,
+            /*
+             * null é proposital aqui:
+             * permite realmente limpar uma descrição antiga,
+             * em vez de tratar campo vazio como "não alterar".
+             */
+            description:
+              formData.description.trim() ||
+              null,
 
-          metadata,
+            metadata: {
+              ...formData.metadata,
+            },
 
-          attachments:
-            finalAttachments,
-
-          /*
-           * Mantém os índices estruturais do documento
-           * alinhados às relações canônicas.
-           */
-          medico_id:
-            medicoId,
-
-          hospital_id:
-            hospitalId,
-        });
+            attachments:
+              finalAttachments,
+          }
+        );
 
         clearUploadedBlobUrls();
 
@@ -1479,7 +1240,7 @@ export default function EditarDetalhePage() {
         );
 
         router.replace(
-          `/detalhes?id=${id}`
+          `/documentos/detalhes?id=${id}`
         );
       } catch (error) {
         console.error(
@@ -1490,7 +1251,10 @@ export default function EditarDetalhePage() {
         trigger("error");
 
         showToast(
-          "Erro ao atualizar documento",
+          error instanceof Error &&
+            error.message
+              ? error.message
+              : "Erro ao atualizar documento",
           "error"
         );
       } finally {
@@ -1502,7 +1266,9 @@ export default function EditarDetalhePage() {
   // LOADING
   // ==========================================================
 
-  if (isDocumentLoading) {
+  if (
+    doc === null
+  ) {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void">
@@ -1525,10 +1291,12 @@ export default function EditarDetalhePage() {
   }
 
   // ==========================================================
-  // NÃO ENCONTRADO
+  // NÃO ENCONTRADO / OUTRA PESSOA
   // ==========================================================
 
-  if (!doc) {
+  if (
+    !doc
+  ) {
     return (
       <PageTransition>
         <main className="flex min-h-screen items-center justify-center bg-void px-5">
@@ -1544,18 +1312,80 @@ export default function EditarDetalhePage() {
             </p>
 
             <p className="mt-1 text-xs leading-5 text-ink-muted">
-              Ele pode ter sido removido ou ainda não estar disponível neste dispositivo.
+              Ele pode ter sido removido, pertencer a outra pessoa ou ainda não estar disponível neste dispositivo.
             </p>
 
             <Button
               variant="primary"
               onClick={() =>
-                router.push("/")
+                router.push(
+                  "/documentos"
+                )
               }
               className="mt-5"
             >
-              Voltar
+              Voltar aos documentos
             </Button>
+          </div>
+        </main>
+      </PageTransition>
+    );
+  }
+
+  // ==========================================================
+  // DOCUMENTO CLÍNICO
+  // ==========================================================
+
+  if (
+    isHealthDocument
+  ) {
+    return (
+      <PageTransition>
+        <main className="flex min-h-screen items-center justify-center bg-void px-5">
+          <div className="w-full max-w-sm rounded-[30px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-ice/15 bg-ice/10 text-ice">
+              <FileText
+                size={24}
+              />
+            </div>
+
+            <p className="mt-5 font-display text-lg font-semibold text-ink-primary">
+              Documento clínico
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-ink-muted">
+              Este documento pertence ao Acervo Clínico. A edição de documentos de Saúde é mantida separada do Cofre Pessoal.
+            </p>
+
+            <div className="mt-6 space-y-3">
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.replace(
+                    "/saude/documentos"
+                  );
+                }}
+              >
+                Abrir Acervo Clínico
+              </Button>
+
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() =>
+                  router.replace(
+                    "/documentos"
+                  )
+                }
+              >
+                Voltar ao Cofre Pessoal
+              </Button>
+            </div>
           </div>
         </main>
       </PageTransition>
@@ -1575,27 +1405,20 @@ export default function EditarDetalhePage() {
         : field.label;
 
     if (
-      field.type === "select"
+      field.type ===
+      "select"
     ) {
-      const FieldIcon =
-        getFieldIcon(
-          field.key
-        );
-
       const currentValue =
         getMetadataString(
           formData.metadata,
           field.key
         );
 
-      const valueLabel =
-        getSelectValueLabel(
-          field
-        );
-
       return (
         <div
-          key={field.key}
+          key={
+            field.key
+          }
           className="space-y-2"
         >
           <label className="block text-sm font-medium text-ink-primary">
@@ -1605,14 +1428,18 @@ export default function EditarDetalhePage() {
           <button
             type="button"
             onClick={() => {
-              trigger("vibrate");
+              trigger(
+                "vibrate"
+              );
 
               setActiveSelectField(
                 field
               );
             }}
             className={`flex w-full items-center justify-between gap-3 rounded-2xl border bg-surface-raised px-4 py-3.5 text-left transition-all active:scale-[0.99] ${
-              errors[field.key]
+              errors[
+                field.key
+              ]
                 ? "border-coral/60"
                 : currentValue
                   ? "border-surface-border/60 hover:border-ice/30"
@@ -1627,7 +1454,7 @@ export default function EditarDetalhePage() {
                     : "bg-surface text-ink-muted"
                 }`}
               >
-                <FieldIcon
+                <Layers3
                   size={16}
                 />
               </div>
@@ -1640,16 +1467,9 @@ export default function EditarDetalhePage() {
                       : "text-ink-muted"
                   }`}
                 >
-                  {valueLabel}
+                  {currentValue ||
+                    "Selecionar"}
                 </p>
-
-                {isEntitySelectField(
-                  field.key
-                ) && (
-                  <p className="mt-0.5 text-[10px] text-ink-faint">
-                    Selecione um cadastro do Vault
-                  </p>
-                )}
               </div>
             </div>
 
@@ -1659,9 +1479,15 @@ export default function EditarDetalhePage() {
             />
           </button>
 
-          {errors[field.key] && (
+          {errors[
+            field.key
+          ] && (
             <p className="px-1 text-xs text-coral">
-              {errors[field.key]}
+              {
+                errors[
+                  field.key
+                ]
+              }
             </p>
           )}
         </div>
@@ -1670,10 +1496,15 @@ export default function EditarDetalhePage() {
 
     return (
       <Input
-        key={field.key}
-        label={label}
+        key={
+          field.key
+        }
+        label={
+          label
+        }
         type={
-          field.type === "date"
+          field.type ===
+          "date"
             ? "date"
             : "text"
         }
@@ -1681,14 +1512,18 @@ export default function EditarDetalhePage() {
           formData.metadata,
           field.key
         )}
-        onChange={(event) =>
+        onChange={(
+          event
+        ) =>
           handleMetadataChange(
             field.key,
             event.target.value
           )
         }
         error={
-          errors[field.key]
+          errors[
+            field.key
+          ]
         }
       />
     );
@@ -1727,7 +1562,7 @@ export default function EditarDetalhePage() {
 
             <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                Vault
+                Cofre Pessoal
               </p>
 
               <h1 className="font-display text-xl font-semibold text-ink-primary">
@@ -1767,7 +1602,7 @@ export default function EditarDetalhePage() {
                   boxShadow: `inset 0 0 0 1px ${personColor}20`,
                 }}
               >
-                <FileText
+                <CategoryIcon
                   size={22}
                   className="text-ice"
                 />
@@ -1796,14 +1631,14 @@ export default function EditarDetalhePage() {
                 </h2>
 
                 <p className="mt-1 text-xs leading-5 text-ink-faint">
-                  Atualize os dados, vínculos e anexos deste documento.
+                  Atualize os dados e anexos deste documento.
                 </p>
               </div>
             </div>
           </motion.div>
 
           {/* ==================================================
-              PESSOA
+              PROPRIETÁRIO — SOMENTE LEITURA
               ================================================== */}
 
           <motion.div
@@ -1814,86 +1649,42 @@ export default function EditarDetalhePage() {
             }}
             className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
           >
-            <div className="mb-3 flex items-center gap-2">
-              <UserRound
-                size={15}
-                className="text-ink-muted"
-              />
+            <div className="flex items-start gap-3">
+              <div
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-raised"
+                style={{
+                  boxShadow: `inset 0 0 0 1px ${personColor}25`,
+                }}
+              >
+                <UserRound
+                  size={18}
+                  style={{
+                    color:
+                      personColor,
+                  }}
+                />
+              </div>
 
-              <p className="text-sm font-medium text-ink-primary">
-                Pessoa *
-              </p>
-            </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+                  Pessoa vinculada
+                </p>
 
-            {persons.length ===
-            0 ? (
-              <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/50 px-4 py-4 text-center">
-                <p className="text-xs text-ink-muted">
-                  Nenhuma pessoa cadastrada.
+                <p className="mt-1 truncate text-sm font-semibold text-ink-primary">
+                  {selectedPerson?.name ||
+                    "Pessoa ativa"}
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-ink-muted">
+                  O proprietário deste documento não pode ser alterado durante a edição.
                 </p>
               </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {persons.map(
-                  (person) => {
-                    const selected =
-                      formData.person_id ===
-                      person.id;
 
-                    return (
-                      <button
-                        key={
-                          person.id
-                        }
-                        type="button"
-                        onClick={() => {
-                          if (
-                            person.id
-                          ) {
-                            handlePersonChange(
-                              person.id
-                            );
-                          }
-                        }}
-                        className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
-                          selected
-                            ? "border-ice bg-ice/12 text-ice"
-                            : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                        }`}
-                      >
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{
-                            backgroundColor:
-                              person.color,
-                          }}
-                        />
-
-                        {
-                          person.name
-                        }
-
-                        {selected && (
-                          <Check
-                            size={
-                              13
-                            }
-                          />
-                        )}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-            )}
-
-            {errors.person_id && (
-              <p className="mt-2 px-1 text-xs text-coral">
-                {
-                  errors.person_id
-                }
-              </p>
-            )}
+              <Check
+                size={16}
+                className="mt-1 shrink-0 text-ice"
+              />
+            </div>
           </motion.div>
 
           {/* ==================================================
@@ -1908,28 +1699,37 @@ export default function EditarDetalhePage() {
             }}
             className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
           >
-            <p className="mb-3 text-sm font-medium text-ink-primary">
+            <p className="mb-2 text-sm font-medium text-ink-primary">
               Categoria
             </p>
 
+            <p className="mb-3 text-xs leading-5 text-ink-faint">
+              Documentos clínicos são gerenciados separadamente no Acervo Clínico.
+            </p>
+
             <div className="flex flex-wrap gap-2">
-              {Object.values(
-                CATEGORIES
-              ).map(
-                (category) => {
+              {GENERAL_CATEGORIES.map(
+                (
+                  categoryId
+                ) => {
+                  const category =
+                    CATEGORIES[
+                      categoryId
+                    ];
+
                   const selected =
                     formData.category_id ===
-                    category.id;
+                    categoryId;
 
                   return (
                     <button
                       key={
-                        category.id
+                        categoryId
                       }
                       type="button"
                       onClick={() =>
                         handleCategoryChange(
-                          category.id
+                          categoryId
                         )
                       }
                       className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
@@ -1952,9 +1752,7 @@ export default function EditarDetalhePage() {
 
                       {selected && (
                         <Check
-                          size={
-                            13
-                          }
+                          size={13}
                         />
                       )}
                     </button>
@@ -2038,13 +1836,15 @@ export default function EditarDetalhePage() {
 
             {errors.type && (
               <p className="mt-2 px-1 text-xs text-coral">
-                {errors.type}
+                {
+                  errors.type
+                }
               </p>
             )}
           </motion.div>
 
           {/* ==================================================
-              DADOS DO DOCUMENTO
+              DADOS
               ================================================== */}
 
           <motion.div
@@ -2126,7 +1926,7 @@ export default function EditarDetalhePage() {
                 </p>
 
                 <p className="mt-0.5 text-xs leading-5 text-ink-faint">
-                  Adicione imagens ou PDFs. Novos arquivos serão enviados quando você salvar.
+                  Imagens e PDFs de até 10 MB. Novos arquivos são enviados quando você salva.
                 </p>
               </div>
             </div>
@@ -2146,6 +1946,7 @@ export default function EditarDetalhePage() {
                 <Upload
                   size={16}
                 />
+
                 Arquivo
               </Button>
 
@@ -2163,6 +1964,7 @@ export default function EditarDetalhePage() {
                 <Camera
                   size={16}
                 />
+
                 Câmera
               </Button>
 
@@ -2207,7 +2009,9 @@ export default function EditarDetalhePage() {
               </div>
             ) : (
               <div className="mt-4 space-y-2.5">
-                <AnimatePresence initial={false}>
+                <AnimatePresence
+                  initial={false}
+                >
                   {formData.attachments.map(
                     (
                       attachment
@@ -2255,9 +2059,7 @@ export default function EditarDetalhePage() {
                               />
                             ) : (
                               <FileText
-                                size={
-                                  17
-                                }
+                                size={17}
                                 className="text-ice"
                               />
                             )}
@@ -2300,9 +2102,7 @@ export default function EditarDetalhePage() {
                             aria-label={`Remover anexo ${attachment.name}`}
                           >
                             <X
-                              size={
-                                15
-                              }
+                              size={15}
                             />
                           </button>
                         </motion.div>
@@ -2376,7 +2176,8 @@ export default function EditarDetalhePage() {
             item
           ) =>
             handleTypeChange(
-              item.id as DocumentType
+              item.id as
+                GeneralDocumentType
             )
           }
           items={
@@ -2397,14 +2198,18 @@ export default function EditarDetalhePage() {
           )}
           getItemId={(
             item
-          ) => item.id}
+          ) =>
+            item.id
+          }
           getItemLabel={(
             item
-          ) => item.label}
+          ) =>
+            item.label
+          }
         />
 
         {/* ====================================================
-            MODAL — CAMPOS SELECT
+            MODAL — SELECTS FIXOS DO TIPO
             ==================================================== */}
 
         <SelectionModal
@@ -2467,10 +2272,14 @@ export default function EditarDetalhePage() {
           )}
           getItemId={(
             item
-          ) => item.id}
+          ) =>
+            item.id
+          }
           getItemLabel={(
             item
-          ) => item.label}
+          ) =>
+            item.label
+          }
         />
       </main>
     </PageTransition>

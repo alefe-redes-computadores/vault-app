@@ -5,10 +5,12 @@ import {
   Suspense,
   useState,
 } from "react";
+
 import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
+
 import {
   ArrowLeft,
   BookOpen,
@@ -32,24 +34,55 @@ import {
   WalletCards,
   type LucideIcon,
 } from "lucide-react";
-import { motion } from "framer-motion";
-import { useLiveQuery } from "dexie-react-hooks";
 
-import { Button } from "@/components/ui/Button";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { PageTransition } from "@/components/PageTransition";
-import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
-import { SectionTitle } from "@/components/detail/DetailComponents";
-import { useToast } from "@/components/ToastProvider";
+import {
+  motion,
+} from "framer-motion";
 
-import { useMounted } from "@/hooks/useMounted";
-import { useVaults } from "@/hooks/useVaults";
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
 
-import { useHapticFeedback } from "@/lib/haptics";
+import {
+  Button,
+} from "@/components/ui/Button";
+
+import {
+  ConfirmationModal,
+} from "@/components/ConfirmationModal";
+
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+
+import {
+  DetailSkeleton,
+} from "@/components/loading/DetailSkeleton";
+
+import {
+  SectionTitle,
+} from "@/components/detail/DetailComponents";
+
+import {
+  useToast,
+} from "@/components/ToastProvider";
+
+import {
+  useMounted,
+} from "@/hooks/useMounted";
+
+import {
+  useVaults,
+} from "@/hooks/useVaults";
+
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
 
 import type {
   VaultPermission,
 } from "@/lib/types";
+
 import type {
   VaultAccessRole,
 } from "@/lib/repositories/vaults";
@@ -62,38 +95,59 @@ const ICON_MAP: Record<
   string,
   LucideIcon
 > = {
-  lock: Lock,
-  folder: FolderLock,
+  lock:
+    Lock,
 
-  home: Home,
+  folder:
+    FolderLock,
 
-  family: Users,
-  users: Users,
+  home:
+    Home,
 
-  user: UserRound,
+  family:
+    Users,
 
-  heart: Heart,
+  users:
+    Users,
 
-  shield: Shield,
+  user:
+    UserRound,
 
-  star: Star,
+  heart:
+    Heart,
 
-  briefcase: Briefcase,
+  shield:
+    Shield,
 
-  building: Briefcase,
+  star:
+    Star,
 
-  documents: FileText,
-  file: FileText,
+  briefcase:
+    Briefcase,
 
-  credentials: KeyRound,
+  building:
+    Briefcase,
 
-  cards: WalletCards,
+  documents:
+    FileText,
 
-  // Legado
-  "book-open": BookOpen,
-  plane: Plane,
-  car: Car,
-  "paw-print": PawPrint,
+  file:
+    FileText,
+
+  credentials:
+    KeyRound,
+
+  "book-open":
+    BookOpen,
+
+  plane:
+    Plane,
+
+  car:
+    Car,
+
+  "paw-print":
+    PawPrint,
 };
 
 // ============================================================
@@ -101,9 +155,12 @@ const ICON_MAP: Record<
 // ============================================================
 
 function normalizeVaultColor(
-  color?: string
+  color?:
+    string
 ): string {
-  if (!color) {
+  if (
+    !color
+  ) {
     return "#7DD3FC";
   }
 
@@ -118,32 +175,54 @@ function normalizeVaultColor(
     return normalized.toUpperCase();
   }
 
-  const legacyColors: Record<
-    string,
-    string
-  > = {
-    purple: "#8B5CF6",
-    blue: "#38BDF8",
-    green: "#34D399",
-    amber: "#F59E0B",
-    coral: "#EF4444",
-    red: "#EF4444",
-    pink: "#EC4899",
-    indigo: "#6366F1",
-    teal: "#14B8A6",
+  const legacyColors:
+    Record<
+      string,
+      string
+    > = {
+    purple:
+      "#8B5CF6",
+
+    blue:
+      "#38BDF8",
+
+    green:
+      "#34D399",
+
+    amber:
+      "#F59E0B",
+
+    coral:
+      "#EF4444",
+
+    red:
+      "#EF4444",
+
+    pink:
+      "#EC4899",
+
+    indigo:
+      "#6366F1",
+
+    teal:
+      "#14B8A6",
   };
 
   return (
     legacyColors[
       normalized.toLowerCase()
-    ] ?? "#7DD3FC"
+    ] ??
+    "#7DD3FC"
   );
 }
 
 function getRoleLabel(
-  role: VaultAccessRole
+  role:
+    VaultAccessRole
 ): string {
-  switch (role) {
+  switch (
+    role
+  ) {
     case "owner":
       return "Proprietário";
 
@@ -159,9 +238,12 @@ function getRoleLabel(
 }
 
 function getPermissionLabel(
-  permission: VaultPermission
+  permission:
+    VaultPermission
 ): string {
-  switch (permission) {
+  switch (
+    permission
+  ) {
     case "admin":
       return "Administrador";
 
@@ -178,23 +260,30 @@ function getPermissionLabel(
 // ============================================================
 
 function VaultDetailContent() {
-  const router = useRouter();
+  const router =
+    useRouter();
+
   const searchParams =
     useSearchParams();
 
-  const { trigger } =
+  const {
+    trigger,
+  } =
     useHapticFeedback();
 
   const {
     showSuccess,
     showError,
-  } = useToast();
+  } =
+    useToast();
 
   const mounted =
     useMounted();
 
   const id =
-    searchParams.get("id") ??
+    searchParams.get(
+      "id"
+    ) ??
     "";
 
   const {
@@ -204,17 +293,24 @@ function VaultDetailContent() {
     getMembers,
     getMemberCount,
     getDocuments,
-  } = useVaults();
+  } =
+    useVaults();
 
   const [
     showDeleteModal,
     setShowDeleteModal,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     isDeleting,
     setIsDeleting,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   // ==========================================================
   // CONSULTAS
@@ -223,11 +319,15 @@ function VaultDetailContent() {
   const access =
     useLiveQuery(
       async () => {
-        if (!id) {
+        if (
+          !id
+        ) {
           return null;
         }
 
-        return getAccess(id);
+        return getAccess(
+          id
+        );
       },
       [
         id,
@@ -239,11 +339,16 @@ function VaultDetailContent() {
   const members =
     useLiveQuery(
       async () => {
-        if (!id || !access) {
+        if (
+          !id ||
+          !access
+        ) {
           return [];
         }
 
-        return getMembers(id);
+        return getMembers(
+          id
+        );
       },
       [
         id,
@@ -256,7 +361,10 @@ function VaultDetailContent() {
   const memberCount =
     useLiveQuery(
       async () => {
-        if (!id || !access) {
+        if (
+          !id ||
+          !access
+        ) {
           return 0;
         }
 
@@ -275,11 +383,16 @@ function VaultDetailContent() {
   const documents =
     useLiveQuery(
       async () => {
-        if (!id || !access) {
+        if (
+          !id ||
+          !access
+        ) {
           return [];
         }
 
-        return getDocuments(id);
+        return getDocuments(
+          id
+        );
       },
       [
         id,
@@ -295,7 +408,8 @@ function VaultDetailContent() {
 
   if (
     !mounted ||
-    access === undefined ||
+    access ===
+      undefined ||
     !activePersonId
   ) {
     return (
@@ -307,19 +421,10 @@ function VaultDetailContent() {
   // ACESSO + PESSOA ATIVA
   // ==========================================================
 
-  /**
-   * Owner:
-   * o Vault precisa pertencer diretamente à pessoa ativa.
-   *
-   * Shared:
-   * quem determina o contexto local é o person_id do
-   * VaultMember aceito, não o person_id do Vault do owner.
-   *
-   * Registros legados sem person_id não entram como fallback.
-   */
   const belongsToActivePerson =
     access
-      ? access.role === "owner"
+      ? access.role ===
+          "owner"
         ? access.vault.person_id ===
           activePersonId
         : access.membership?.person_id ===
@@ -336,7 +441,9 @@ function VaultDetailContent() {
           <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-sm">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised">
               <Lock
-                size={24}
+                size={
+                  24
+                }
                 className="text-ink-muted"
                 aria-hidden="true"
               />
@@ -353,15 +460,17 @@ function VaultDetailContent() {
             <Button
               type="button"
               variant="primary"
-              onClick={() => {
-                trigger(
-                  "vibrate"
-                );
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
 
-                router.replace(
-                  "/vaults"
-                );
-              }}
+                  router.replace(
+                    "/vaults"
+                  );
+                }
+              }
               className="mt-6"
             >
               Voltar para cofres
@@ -383,22 +492,28 @@ function VaultDetailContent() {
     access.role;
 
   const isOwner =
-    role === "owner";
+    role ===
+    "owner";
 
   const canManageMembers =
-    role === "owner" ||
-    role === "admin";
+    role ===
+      "owner" ||
+    role ===
+      "admin";
 
   const canConfigureVault =
-    role === "owner";
+    role ===
+    "owner";
 
   const canDeleteVault =
-    role === "owner";
+    role ===
+    "owner";
 
   const Icon =
     ICON_MAP[
       vault.icon?.toLowerCase()
-    ] ?? Lock;
+    ] ??
+    Lock;
 
   const vaultColor =
     normalizeVaultColor(
@@ -406,54 +521,68 @@ function VaultDetailContent() {
     );
 
   const roleLabel =
-    getRoleLabel(role);
+    getRoleLabel(
+      role
+    );
 
   // ==========================================================
   // AÇÕES
   // ==========================================================
 
-  const handleBack = () => {
-    if (isDeleting) {
-      return;
-    }
+  const handleBack =
+    () => {
+      if (
+        isDeleting
+      ) {
+        return;
+      }
 
-    trigger("vibrate");
-    router.back();
-  };
+      trigger(
+        "vibrate"
+      );
 
-  const handleMembers = () => {
-    if (
-      !vault.id ||
-      !canManageMembers
-    ) {
-      return;
-    }
+      router.back();
+    };
 
-    trigger("vibrate");
+  const handleMembers =
+    () => {
+      if (
+        !vault.id ||
+        !canManageMembers
+      ) {
+        return;
+      }
 
-    router.push(
-      `/vaults/membros?cofre_id=${encodeURIComponent(
-        vault.id
-      )}`
-    );
-  };
+      trigger(
+        "vibrate"
+      );
 
-  const handleEdit = () => {
-    if (
-      !vault.id ||
-      !canConfigureVault
-    ) {
-      return;
-    }
+      router.push(
+        `/vaults/membros?cofre_id=${encodeURIComponent(
+          vault.id
+        )}`
+      );
+    };
 
-    trigger("vibrate");
+  const handleEdit =
+    () => {
+      if (
+        !vault.id ||
+        !canConfigureVault
+      ) {
+        return;
+      }
 
-    router.push(
-      `/vaults/editar?id=${encodeURIComponent(
-        vault.id
-      )}`
-    );
-  };
+      trigger(
+        "vibrate"
+      );
+
+      router.push(
+        `/vaults/editar?id=${encodeURIComponent(
+          vault.id
+        )}`
+      );
+    };
 
   const handleRequestDelete =
     () => {
@@ -464,7 +593,9 @@ function VaultDetailContent() {
         return;
       }
 
-      trigger("vibrate");
+      trigger(
+        "vibrate"
+      );
 
       setShowDeleteModal(
         true
@@ -473,7 +604,9 @@ function VaultDetailContent() {
 
   const handleCloseDelete =
     () => {
-      if (isDeleting) {
+      if (
+        isDeleting
+      ) {
         return;
       }
 
@@ -497,13 +630,17 @@ function VaultDetailContent() {
           true
         );
 
-        trigger("vibrate");
+        trigger(
+          "vibrate"
+        );
 
         await deleteVault(
           vault.id
         );
 
-        trigger("success");
+        trigger(
+          "success"
+        );
 
         showSuccess(
           "Cofre excluído. Os documentos foram mantidos e desvinculados."
@@ -512,16 +649,21 @@ function VaultDetailContent() {
         router.replace(
           "/vaults"
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Erro ao excluir cofre:",
           error
         );
 
-        trigger("error");
+        trigger(
+          "error"
+        );
 
         showError(
-          error instanceof Error
+          error instanceof
+            Error
             ? error.message
             : "Não foi possível excluir o cofre."
         );
@@ -543,10 +685,6 @@ function VaultDetailContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        {/* ================================================= */}
-        {/* HEADER */}
-        {/* ================================================= */}
-
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -561,7 +699,9 @@ function VaultDetailContent() {
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ArrowLeft
-                size={18}
+                size={
+                  18
+                }
                 className="text-ink-primary"
                 aria-hidden="true"
               />
@@ -573,21 +713,15 @@ function VaultDetailContent() {
               </p>
 
               <h1 className="mt-1 max-w-[220px] truncate font-display text-xl font-semibold text-ink-primary">
-                {vault.name}
+                {
+                  vault.name
+                }
               </h1>
             </div>
           </div>
         </header>
 
-        {/* ================================================= */}
-        {/* CONTEÚDO */}
-        {/* ================================================= */}
-
         <section className="space-y-5 px-5 pt-6">
-          {/* ================================================= */}
-          {/* CARD PRINCIPAL */}
-          {/* ================================================= */}
-
           <motion.div
             initial={{
               opacity: 0,
@@ -598,7 +732,8 @@ function VaultDetailContent() {
               y: 0,
             }}
             transition={{
-              duration: 0.28,
+              duration:
+                0.28,
             }}
             className="rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm"
           >
@@ -608,12 +743,15 @@ function VaultDetailContent() {
                 style={{
                   backgroundColor:
                     `${vaultColor}18`,
+
                   borderColor:
                     `${vaultColor}30`,
                 }}
               >
                 <Icon
-                  size={28}
+                  size={
+                    28
+                  }
                   style={{
                     color:
                       vaultColor,
@@ -625,16 +763,22 @@ function VaultDetailContent() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="truncate font-display text-lg font-semibold text-ink-primary">
-                    {vault.name}
+                    {
+                      vault.name
+                    }
                   </h2>
 
                   <span className="inline-flex items-center gap-1 rounded-full bg-ice/10 px-2.5 py-1 text-[11px] font-semibold text-ice">
                     <Shield
-                      size={11}
+                      size={
+                        11
+                      }
                       aria-hidden="true"
                     />
 
-                    {roleLabel}
+                    {
+                      roleLabel
+                    }
                   </span>
                 </div>
 
@@ -648,7 +792,9 @@ function VaultDetailContent() {
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className="rounded-full border border-surface-border/50 bg-surface-raised px-3 py-1 text-xs text-ink-muted">
-                    {memberCount}{" "}
+                    {
+                      memberCount
+                    }{" "}
                     membro
                     {memberCount !==
                     1
@@ -657,7 +803,9 @@ function VaultDetailContent() {
                   </span>
 
                   <span className="rounded-full border border-surface-border/50 bg-surface-raised px-3 py-1 text-xs text-ink-muted">
-                    {documents.length}{" "}
+                    {
+                      documents.length
+                    }{" "}
                     documento
                     {documents.length !==
                     1
@@ -667,10 +815,6 @@ function VaultDetailContent() {
                 </div>
               </div>
             </div>
-
-            {/* ============================================= */}
-            {/* AÇÕES */}
-            {/* ============================================= */}
 
             {(canManageMembers ||
               canConfigureVault ||
@@ -691,7 +835,9 @@ function VaultDetailContent() {
                       }
                     >
                       <Users
-                        size={14}
+                        size={
+                          14
+                        }
                         aria-hidden="true"
                       />
 
@@ -713,7 +859,9 @@ function VaultDetailContent() {
                       }
                     >
                       <Edit
-                        size={14}
+                        size={
+                          14
+                        }
                         aria-hidden="true"
                       />
 
@@ -735,7 +883,9 @@ function VaultDetailContent() {
                       }
                     >
                       <Trash2
-                        size={14}
+                        size={
+                          14
+                        }
                         aria-hidden="true"
                       />
 
@@ -746,10 +896,6 @@ function VaultDetailContent() {
               </div>
             )}
           </motion.div>
-
-          {/* ================================================= */}
-          {/* INFORMAÇÃO DE ACESSO COMPARTILHADO */}
-          {/* ================================================= */}
 
           {!isOwner &&
             access.membership && (
@@ -763,14 +909,19 @@ function VaultDetailContent() {
                   y: 0,
                 }}
                 transition={{
-                  duration: 0.24,
-                  delay: 0.04,
+                  duration:
+                    0.24,
+
+                  delay:
+                    0.04,
                 }}
                 className="rounded-[22px] border border-ice/20 bg-ice/10 p-4"
               >
                 <div className="flex gap-3">
                   <Shield
-                    size={19}
+                    size={
+                      19
+                    }
                     className="mt-0.5 shrink-0 text-ice"
                     aria-hidden="true"
                   />
@@ -795,10 +946,6 @@ function VaultDetailContent() {
               </motion.div>
             )}
 
-          {/* ================================================= */}
-          {/* DOCUMENTOS */}
-          {/* ================================================= */}
-
           <motion.div
             initial={{
               opacity: 0,
@@ -809,15 +956,20 @@ function VaultDetailContent() {
               y: 0,
             }}
             transition={{
-              duration: 0.24,
-              delay: 0.06,
+              duration:
+                0.24,
+
+              delay:
+                0.06,
             }}
             className="space-y-3"
           >
             <SectionTitle
               icon={
                 <FileText
-                  size={15}
+                  size={
+                    15
+                  }
                 />
               }
               title="Documentos neste cofre"
@@ -839,7 +991,9 @@ function VaultDetailContent() {
             0 ? (
               <div className="space-y-2">
                 {documents.map(
-                  (doc) => (
+                  (
+                    doc
+                  ) => (
                     <button
                       key={
                         doc.id
@@ -848,33 +1002,33 @@ function VaultDetailContent() {
                       disabled={
                         !doc.id
                       }
-                      onClick={() => {
-                        if (
-                          !doc.id
-                        ) {
-                          return;
+                      onClick={
+                        () => {
+                          if (
+                            !doc.id
+                          ) {
+                            return;
+                          }
+
+                          trigger(
+                            "vibrate"
+                          );
+
+                          router.push(
+                            `/documentos/detalhes?id=${encodeURIComponent(
+                              doc.id
+                            )}`
+                          );
                         }
-
-                        trigger(
-                          "vibrate"
-                        );
-
-                        /**
-                         * Mantido o destino já utilizado
-                         * pelo fluxo existente de documentos.
-                         */
-                        router.push(
-                          `/detalhes?id=${encodeURIComponent(
-                            doc.id
-                          )}`
-                        );
-                      }}
+                      }
                       className="flex w-full items-center justify-between rounded-[22px] border border-surface-border/50 bg-surface px-4 py-3 text-left transition-all duration-200 hover:bg-surface-raised active:scale-[0.99] disabled:cursor-default disabled:opacity-60"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted">
                           <FileText
-                            size={15}
+                            size={
+                              15
+                            }
                             aria-hidden="true"
                           />
                         </div>
@@ -895,7 +1049,9 @@ function VaultDetailContent() {
                       </div>
 
                       <ChevronRight
-                        size={16}
+                        size={
+                          16
+                        }
                         className="shrink-0 text-ink-faint"
                         aria-hidden="true"
                       />
@@ -907,7 +1063,9 @@ function VaultDetailContent() {
               <div className="rounded-[24px] border border-surface-border/50 bg-surface px-5 py-10 text-center">
                 <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-raised text-ink-muted">
                   <FileText
-                    size={20}
+                    size={
+                      20
+                    }
                     aria-hidden="true"
                   />
                 </div>
@@ -923,10 +1081,6 @@ function VaultDetailContent() {
             )}
           </motion.div>
 
-          {/* ================================================= */}
-          {/* MEMBROS - RESUMO */}
-          {/* ================================================= */}
-
           {members.length >
             0 && (
             <motion.div
@@ -939,15 +1093,20 @@ function VaultDetailContent() {
                 y: 0,
               }}
               transition={{
-                duration: 0.24,
-                delay: 0.1,
+                duration:
+                  0.24,
+
+                delay:
+                  0.1,
               }}
               className="space-y-3"
             >
               <SectionTitle
                 icon={
                   <Users
-                    size={15}
+                    size={
+                      15
+                    }
                   />
                 }
                 title="Compartilhamento"
@@ -971,7 +1130,9 @@ function VaultDetailContent() {
                   <span className="font-semibold text-ink-primary">
                     {
                       members.filter(
-                        (member) =>
+                        (
+                          member
+                        ) =>
                           member.status ===
                           "accepted"
                       ).length
@@ -979,10 +1140,13 @@ function VaultDetailContent() {
                   </span>{" "}
                   membro
                   {members.filter(
-                    (member) =>
+                    (
+                      member
+                    ) =>
                       member.status ===
                       "accepted"
-                  ).length !== 1
+                  ).length !==
+                  1
                     ? "s"
                     : ""}{" "}
                   com acesso aceito.
@@ -999,7 +1163,9 @@ function VaultDetailContent() {
                     Ver membros e convites
 
                     <ChevronRight
-                      size={14}
+                      size={
+                        14
+                      }
                       aria-hidden="true"
                     />
                   </button>
@@ -1008,10 +1174,6 @@ function VaultDetailContent() {
             </motion.div>
           )}
         </section>
-
-        {/* ================================================= */}
-        {/* MODAL DE EXCLUSÃO */}
-        {/* ================================================= */}
 
         <ConfirmationModal
           isOpen={

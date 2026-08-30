@@ -6,15 +6,21 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
+
 import {
   AnimatePresence,
   motion,
 } from "framer-motion";
-import { useLiveQuery } from "dexie-react-hooks";
+
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
 import {
   Activity,
   ArrowLeft,
@@ -37,18 +43,45 @@ import {
   Users,
 } from "lucide-react";
 
-import { db } from "@/lib/db";
-import { personsRepository } from "@/lib/repositories/persons";
+import {
+  db,
+} from "@/lib/db";
 
-import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useHapticFeedback } from "@/lib/haptics";
-import { useMounted } from "@/hooks/useMounted";
+import {
+  personsRepository,
+} from "@/lib/repositories/persons";
 
-import { useToast } from "@/components/ToastProvider";
-import { PageTransition } from "@/components/PageTransition";
-import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { Button } from "@/components/ui/Button";
+import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
+
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+
+import {
+  useMounted,
+} from "@/hooks/useMounted";
+
+import {
+  useToast,
+} from "@/components/ToastProvider";
+
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+
+import {
+  DetailSkeleton,
+} from "@/components/loading/DetailSkeleton";
+
+import {
+  ConfirmationModal,
+} from "@/components/ConfirmationModal";
+
+import {
+  Button,
+} from "@/components/ui/Button";
 
 import {
   DetailInfoRow,
@@ -56,15 +89,23 @@ import {
   StatCard,
 } from "@/components/detail/DetailComponents";
 
-import type { Person } from "@/lib/types";
+import type {
+  Person,
+} from "@/lib/types";
 
 // ============================================================
 // HELPERS
 // ============================================================
 
-function getTratamentoIcon(nome: string) {
+function getTratamentoIcon(
+  nome:
+    string
+) {
   const normalized =
-    (nome || "").toLowerCase();
+    (
+      nome ||
+      ""
+    ).toLowerCase();
 
   if (
     normalized.includes(
@@ -108,9 +149,12 @@ function getTratamentoIcon(nome: string) {
 }
 
 function getStatusColor(
-  status: string
+  status:
+    string
 ) {
-  switch (status) {
+  switch (
+    status
+  ) {
     case "ativo":
       return "text-emerald-400 bg-emerald-400/10 border-emerald-400/20";
 
@@ -126,9 +170,12 @@ function getStatusColor(
 }
 
 function getStatusLabel(
-  status: string
+  status:
+    string
 ) {
-  switch (status) {
+  switch (
+    status
+  ) {
     case "ativo":
       return "Em andamento";
 
@@ -148,59 +195,85 @@ function getStatusLabel(
 // ============================================================
 
 export default function PessoaDetalhesPage() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const searchParams =
     useSearchParams();
 
   const id =
-    searchParams.get("id");
+    searchParams.get(
+      "id"
+    );
 
   const mounted =
     useMounted();
 
-  const { trigger } =
+  const {
+    trigger,
+  } =
     useHapticFeedback();
 
-  const { showToast } =
+  const {
+    showToast,
+  } =
     useToast();
 
   const {
     activePersonId,
     changePerson,
-  } = useActivePersonId();
+  } =
+    useActivePersonId();
 
   const [
     person,
     setPerson,
-  ] = useState<
-    Person | null | undefined
-  >(undefined);
+  ] =
+    useState<
+      Person | null | undefined
+    >(
+      undefined
+    );
 
   const [
     showDefaultModal,
     setShowDefaultModal,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     isSettingDefault,
     setIsSettingDefault,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     isDeleting,
     setIsDeleting,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     showDeleteModal,
     setShowDeleteModal,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     isMenuFlutuanteOpen,
     setIsMenuFlutuanteOpen,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const isActive =
     Boolean(
@@ -213,70 +286,81 @@ export default function PessoaDetalhesPage() {
   // VALIDAR / CARREGAR PESSOA
   // ==========================================================
 
-  useEffect(() => {
-    let cancelled = false;
+  useEffect(
+    () => {
+      let cancelled =
+        false;
 
-    const loadPerson =
-      async () => {
-        if (!id) {
-          if (!cancelled) {
-            setPerson(null);
+      const loadPerson =
+        async () => {
+          if (
+            !id
+          ) {
+            if (
+              !cancelled
+            ) {
+              setPerson(
+                null
+              );
 
-            router.replace(
-              "/pessoas"
-            );
+              router.replace(
+                "/pessoas"
+              );
+            }
+
+            return;
           }
 
-          return;
-        }
+          try {
+            const result =
+              await personsRepository.getById(
+                id
+              );
 
-        try {
-          /**
-           * Esta é a validação de ownership que libera
-           * todas as consultas relacionadas abaixo.
-           */
-          const result =
-            await personsRepository.getById(
-              id
-            );
-
-          if (!cancelled) {
-            setPerson(result);
-          }
-        } catch (error) {
-          console.error(
-            "Erro ao carregar pessoa:",
+            if (
+              !cancelled
+            ) {
+              setPerson(
+                result
+              );
+            }
+          } catch (
             error
-          );
+          ) {
+            console.error(
+              "Erro ao carregar pessoa:",
+              error
+            );
 
-          if (!cancelled) {
-            setPerson(null);
+            if (
+              !cancelled
+            ) {
+              setPerson(
+                null
+              );
+            }
           }
-        }
+        };
+
+      void loadPerson();
+
+      return () => {
+        cancelled =
+          true;
       };
-
-    void loadPerson();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    id,
-    router,
-  ]);
+    },
+    [
+      id,
+      router,
+    ]
+  );
 
   const validatedPersonId =
-    person?.id || null;
+    person?.id ||
+    null;
 
   // ==========================================================
   // DADOS RELACIONADOS
-  //
-  // Por enquanto permanecem como queries locais agregadas.
-  // Elas só executam após personsRepository.getById validar
-  // que a pessoa pertence ao usuário autenticado.
-  //
-  // Na auditoria de Saúde revisaremos repository/hook/sync
-  // individualmente para cada domínio.
   // ==========================================================
 
   const documentos =
@@ -289,7 +373,9 @@ export default function PessoaDetalhesPage() {
         }
 
         return db.documents
-          .where("person_id")
+          .where(
+            "person_id"
+          )
           .equals(
             validatedPersonId
           )
@@ -311,7 +397,9 @@ export default function PessoaDetalhesPage() {
         }
 
         return db.medicamentos
-          .where("person_id")
+          .where(
+            "person_id"
+          )
           .equals(
             validatedPersonId
           )
@@ -333,7 +421,9 @@ export default function PessoaDetalhesPage() {
         }
 
         return db.consultas
-          .where("person_id")
+          .where(
+            "person_id"
+          )
           .equals(
             validatedPersonId
           )
@@ -355,7 +445,9 @@ export default function PessoaDetalhesPage() {
         }
 
         return db.exames
-          .where("person_id")
+          .where(
+            "person_id"
+          )
           .equals(
             validatedPersonId
           )
@@ -377,7 +469,9 @@ export default function PessoaDetalhesPage() {
         }
 
         return db.cirurgias
-          .where("person_id")
+          .where(
+            "person_id"
+          )
           .equals(
             validatedPersonId
           )
@@ -399,7 +493,9 @@ export default function PessoaDetalhesPage() {
         }
 
         return db.tratamentos
-          .where("person_id")
+          .where(
+            "person_id"
+          )
           .equals(
             validatedPersonId
           )
@@ -421,7 +517,9 @@ export default function PessoaDetalhesPage() {
         }
 
         return db.cids
-          .where("person_id")
+          .where(
+            "person_id"
+          )
           .equals(
             validatedPersonId
           )
@@ -441,52 +539,78 @@ export default function PessoaDetalhesPage() {
     useMemo(
       () =>
         medicamentos.filter(
-          (medicamento) =>
+          (
+            medicamento
+          ) =>
             medicamento.status !==
             "descontinuado"
         ),
-      [medicamentos]
+      [
+        medicamentos,
+      ]
     );
 
   const consultasFuturas =
-    useMemo(() => {
-      const today =
-        new Date()
-          .toISOString()
-          .slice(0, 10);
+    useMemo(
+      () => {
+        const today =
+          new Date()
+            .toISOString()
+            .slice(
+              0,
+              10
+            );
 
-      return consultas.filter(
-        (consulta) =>
-          consulta.data >=
-          today
-      );
-    }, [consultas]);
+        return consultas.filter(
+          (
+            consulta
+          ) =>
+            consulta.data >=
+            today
+        );
+      },
+      [
+        consultas,
+      ]
+    );
 
   const examesPendentes =
-    useMemo(() => {
-      const now =
-        new Date();
+    useMemo(
+      () => {
+        const now =
+          new Date();
 
-      return exames.filter(
-        (exame) =>
-          Boolean(
-            exame.data_retorno
-          ) &&
-          new Date(
-            exame.data_retorno!
-          ) >= now
-      );
-    }, [exames]);
+        return exames.filter(
+          (
+            exame
+          ) =>
+            Boolean(
+              exame.data_retorno
+            ) &&
+            new Date(
+              exame.data_retorno!
+            ) >=
+              now
+        );
+      },
+      [
+        exames,
+      ]
+    );
 
   const tratamentosAtivos =
     useMemo(
       () =>
         tratamentos.filter(
-          (tratamento) =>
+          (
+            tratamento
+          ) =>
             tratamento.status ===
             "ativo"
         ),
-      [tratamentos]
+      [
+        tratamentos,
+      ]
     );
 
   // ==========================================================
@@ -508,12 +632,16 @@ export default function PessoaDetalhesPage() {
       );
 
       try {
-        await changePerson(id);
+        await changePerson(
+          id
+        );
 
         setShowDefaultModal(
           false
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Erro ao definir pessoa ativa:",
           error
@@ -539,16 +667,16 @@ export default function PessoaDetalhesPage() {
         return;
       }
 
-      /**
-       * Mesma regra da listagem:
-       * a pessoa ativa não pode ser removida.
-       */
-      if (isActive) {
+      if (
+        isActive
+      ) {
         setShowDeleteModal(
           false
         );
 
-        trigger("error");
+        trigger(
+          "error"
+        );
 
         showToast(
           "A pessoa ativa não pode ser removida. Selecione outra pessoa primeiro.",
@@ -558,9 +686,13 @@ export default function PessoaDetalhesPage() {
         return;
       }
 
-      setIsDeleting(true);
+      setIsDeleting(
+        true
+      );
 
-      trigger("vibrate");
+      trigger(
+        "vibrate"
+      );
 
       try {
         await personsRepository.delete(
@@ -578,7 +710,9 @@ export default function PessoaDetalhesPage() {
           );
         }
 
-        trigger("success");
+        trigger(
+          "success"
+        );
 
         showToast(
           `${person.name} removido(a) com sucesso.`,
@@ -588,22 +722,29 @@ export default function PessoaDetalhesPage() {
         router.replace(
           "/pessoas"
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
           "Erro ao remover pessoa:",
           error
         );
 
-        trigger("error");
+        trigger(
+          "error"
+        );
 
         showToast(
-          error instanceof Error
+          error instanceof
+            Error
             ? error.message
             : "Erro ao remover pessoa.",
           "error"
         );
       } finally {
-        setIsDeleting(false);
+        setIsDeleting(
+          false
+        );
 
         setShowDeleteModal(
           false
@@ -619,53 +760,141 @@ export default function PessoaDetalhesPage() {
     useMemo(
       () => [
         {
-          id: "adicionar-documento",
+          id:
+            "adicionar-documento",
+
           label:
             "Adicionar Documento",
-          icon: FileText,
-          path: `/novo?person_id=${id}`,
+
+          icon:
+            FileText,
+
+          path:
+            "/documentos/novo",
         },
+
         {
-          id: "adicionar-medicamento",
+          id:
+            "adicionar-medicamento",
+
           label:
             "Adicionar Medicamento",
-          icon: Pill,
-          path: `/saude/medicamentos/novo?person_id=${id}`,
+
+          icon:
+            Pill,
+
+          path:
+            `/saude/medicamentos/novo?person_id=${id}`,
         },
+
         {
-          id: "adicionar-consulta",
+          id:
+            "adicionar-consulta",
+
           label:
             "Adicionar Consulta",
-          icon: Stethoscope,
-          path: `/saude/consultas/nova?person_id=${id}`,
+
+          icon:
+            Stethoscope,
+
+          path:
+            `/saude/consultas/nova?person_id=${id}`,
         },
+
         {
-          id: "adicionar-exame",
+          id:
+            "adicionar-exame",
+
           label:
             "Adicionar Exame",
-          icon: Activity,
-          path: `/saude/exames/novo?person_id=${id}`,
+
+          icon:
+            Activity,
+
+          path:
+            `/saude/exames/novo?person_id=${id}`,
         },
+
         {
-          id: "editar-pessoa",
+          id:
+            "editar-pessoa",
+
           label:
             "Editar Pessoa",
-          icon: Edit3,
-          path: `/pessoas/editar?id=${id}`,
+
+          icon:
+            Edit3,
+
+          path:
+            `/pessoas/editar?id=${id}`,
         },
       ],
-      [id]
+      [
+        id,
+      ]
     );
 
   const handleMenuOptionClick =
-    (path: string) => {
-      trigger("vibrate");
+    async (
+      optionId:
+        string,
+      path:
+        string
+    ) => {
+      trigger(
+        "vibrate"
+      );
 
       setIsMenuFlutuanteOpen(
         false
       );
 
-      router.push(path);
+      try {
+        /*
+         * O novo fluxo de Documentos Pessoais não aceita
+         * person_id pela URL.
+         *
+         * Ele sempre cria para a pessoa ativa.
+         *
+         * Portanto, ao adicionar um documento pela tela de
+         * uma pessoa que não está ativa, tornamos primeiro
+         * essa pessoa ativa pelo fluxo oficial.
+         */
+        if (
+          optionId ===
+            "adicionar-documento" &&
+          id &&
+          activePersonId !==
+            id
+        ) {
+          await changePerson(
+            id
+          );
+        }
+
+        router.push(
+          path
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao abrir opção do menu:",
+          error
+        );
+
+        trigger(
+          "error"
+        );
+
+        showToast(
+          error instanceof
+            Error
+            ? error.message
+            : "Não foi possível abrir esta opção.",
+          "error"
+        );
+      }
     };
 
   // ==========================================================
@@ -674,7 +903,8 @@ export default function PessoaDetalhesPage() {
 
   if (
     !mounted ||
-    person === undefined
+    person ===
+      undefined
   ) {
     return (
       <PageTransition>
@@ -687,13 +917,17 @@ export default function PessoaDetalhesPage() {
   // NOT FOUND / ACCESS DENIED
   // ==========================================================
 
-  if (!person) {
+  if (
+    !person
+  ) {
     return (
       <PageTransition>
         <main className="flex min-h-[100dvh] items-center justify-center bg-void px-5">
           <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-5 py-8 text-center shadow-sm">
             <Users
-              size={28}
+              size={
+                28
+              }
               className="mx-auto text-ink-muted"
               aria-hidden="true"
             />
@@ -703,19 +937,17 @@ export default function PessoaDetalhesPage() {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-ink-muted">
-              Esta pessoa não
-              existe ou não
-              pertence à sua
-              conta.
+              Esta pessoa não existe ou não pertence à sua conta.
             </p>
 
             <Button
               type="button"
               variant="secondary"
-              onClick={() =>
-                router.replace(
-                  "/pessoas"
-                )
+              onClick={
+                () =>
+                  router.replace(
+                    "/pessoas"
+                  )
               }
               className="mt-5"
             >
@@ -739,18 +971,22 @@ export default function PessoaDetalhesPage() {
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
 
-                  router.back();
-                }}
+                    router.back();
+                  }
+                }
                 aria-label="Voltar"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
                 <ArrowLeft
-                  size={18}
+                  size={
+                    18
+                  }
                   className="text-ink-primary"
                   aria-hidden="true"
                 />
@@ -762,7 +998,9 @@ export default function PessoaDetalhesPage() {
                 </p>
 
                 <h1 className="mt-1 truncate font-display text-xl font-semibold text-ink-primary">
-                  {person.name}
+                  {
+                    person.name
+                  }
                 </h1>
               </div>
             </div>
@@ -771,21 +1009,27 @@ export default function PessoaDetalhesPage() {
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => {
-                    trigger(
-                      "vibrate"
-                    );
+                  onClick={
+                    () => {
+                      trigger(
+                        "vibrate"
+                      );
 
-                    setIsMenuFlutuanteOpen(
-                      (current) =>
-                        !current
-                    );
-                  }}
+                      setIsMenuFlutuanteOpen(
+                        (
+                          current
+                        ) =>
+                          !current
+                      );
+                    }
+                  }
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
                   aria-label="Adicionar registro"
                 >
                   <Plus
-                    size={18}
+                    size={
+                      18
+                    }
                     aria-hidden="true"
                   />
                 </button>
@@ -806,12 +1050,14 @@ export default function PessoaDetalhesPage() {
                           opacity: 0,
                         }}
                         transition={{
-                          duration: 0.16,
+                          duration:
+                            0.16,
                         }}
-                        onClick={() =>
-                          setIsMenuFlutuanteOpen(
-                            false
-                          )
+                        onClick={
+                          () =>
+                            setIsMenuFlutuanteOpen(
+                              false
+                            )
                         }
                         className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
                       />
@@ -835,7 +1081,9 @@ export default function PessoaDetalhesPage() {
                             0.95,
                         }}
                         transition={{
-                          duration: 0.18,
+                          duration:
+                            0.18,
+
                           ease: [
                             0.16,
                             1,
@@ -865,10 +1113,12 @@ export default function PessoaDetalhesPage() {
                                     option.id
                                   }
                                   type="button"
-                                  onClick={() =>
-                                    handleMenuOptionClick(
-                                      option.path
-                                    )
+                                  onClick={
+                                    () =>
+                                      void handleMenuOptionClick(
+                                        option.id,
+                                        option.path
+                                      )
                                   }
                                   className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
                                 >
@@ -900,19 +1150,23 @@ export default function PessoaDetalhesPage() {
               {!isActive && (
                 <button
                   type="button"
-                  onClick={() => {
-                    trigger(
-                      "vibrate"
-                    );
+                  onClick={
+                    () => {
+                      trigger(
+                        "vibrate"
+                      );
 
-                    setShowDefaultModal(
-                      true
-                    );
-                  }}
+                      setShowDefaultModal(
+                        true
+                      );
+                    }
+                  }
                   className="flex h-10 items-center gap-1.5 rounded-full border border-ice/20 bg-ice/10 px-3.5 py-2 text-xs font-semibold text-ice transition-all active:scale-95 hover:bg-ice/20"
                 >
                   <Star
-                    size={14}
+                    size={
+                      14
+                    }
                     aria-hidden="true"
                   />
 
@@ -922,20 +1176,24 @@ export default function PessoaDetalhesPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
 
-                  router.push(
-                    `/pessoas/editar?id=${id}`
-                  );
-                }}
+                    router.push(
+                      `/pessoas/editar?id=${id}`
+                    );
+                  }
+                }
                 aria-label="Editar pessoa"
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
               >
                 <Edit3
-                  size={18}
+                  size={
+                    18
+                  }
                   aria-hidden="true"
                 />
               </button>
@@ -943,20 +1201,24 @@ export default function PessoaDetalhesPage() {
               {!isActive && (
                 <button
                   type="button"
-                  onClick={() => {
-                    trigger(
-                      "vibrate"
-                    );
+                  onClick={
+                    () => {
+                      trigger(
+                        "vibrate"
+                      );
 
-                    setShowDeleteModal(
-                      true
-                    );
-                  }}
+                      setShowDeleteModal(
+                        true
+                      );
+                    }
+                  }
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95 hover:bg-coral/20"
                   aria-label="Excluir pessoa"
                 >
                   <Trash2
-                    size={18}
+                    size={
+                      18
+                    }
                     aria-hidden="true"
                   />
                 </button>
@@ -966,8 +1228,6 @@ export default function PessoaDetalhesPage() {
         </header>
 
         <section className="space-y-6 px-5 pt-6">
-          {/* PERFIL */}
-
           <motion.div
             initial={{
               opacity: 0,
@@ -978,28 +1238,32 @@ export default function PessoaDetalhesPage() {
               y: 0,
             }}
             transition={{
-              duration: 0.28,
+              duration:
+                0.28,
             }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
           >
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
 
-                  router.push(
-                    `/pessoas/editar?id=${id}`
-                  );
-                }}
+                    router.push(
+                      `/pessoas/editar?id=${id}`
+                    );
+                  }
+                }
                 className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 object-cover"
                 style={{
-                  borderColor: `${
-                    person.color ||
-                    "#38BDF8"
-                  }55`,
+                  borderColor:
+                    `${
+                      person.color ||
+                      "#38BDF8"
+                    }55`,
                 }}
                 aria-label="Editar foto da pessoa"
               >
@@ -1015,7 +1279,9 @@ export default function PessoaDetalhesPage() {
                   />
                 ) : (
                   <User
-                    size={36}
+                    size={
+                      36
+                    }
                     style={{
                       color:
                         person.color ||
@@ -1028,7 +1294,9 @@ export default function PessoaDetalhesPage() {
                 <div className="absolute bottom-0 right-0 rounded-full border border-surface-border bg-void/80 p-0.5">
                   <div className="rounded-full bg-ice/20 p-0.5">
                     <Edit3
-                      size={12}
+                      size={
+                        12
+                      }
                       className="text-ice"
                       aria-hidden="true"
                     />
@@ -1039,7 +1307,9 @@ export default function PessoaDetalhesPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="truncate font-display text-2xl font-bold text-ink-primary">
-                    {person.name}
+                    {
+                      person.name
+                    }
                   </h2>
 
                   {isActive && (
@@ -1068,7 +1338,9 @@ export default function PessoaDetalhesPage() {
                       }
                       label="E-mail"
                     >
-                      {person.email}
+                      {
+                        person.email
+                      }
                     </DetailInfoRow>
                   )}
 
@@ -1083,15 +1355,16 @@ export default function PessoaDetalhesPage() {
                       }
                       label="Telefone"
                     >
-                      {person.phone}
+                      {
+                        person.phone
+                      }
                     </DetailInfoRow>
                   )}
 
                   {!person.email &&
                     !person.phone && (
                       <p className="text-sm text-ink-faint">
-                        Sem informações
-                        de contato
+                        Sem informações de contato
                       </p>
                     )}
                 </div>
@@ -1099,13 +1372,13 @@ export default function PessoaDetalhesPage() {
             </div>
           </motion.div>
 
-          {/* MÉTRICAS */}
-
           <div className="grid grid-cols-3 gap-3">
             <StatCard
               icon={
                 <FileText
-                  size={20}
+                  size={
+                    20
+                  }
                 />
               }
               label="Documentos"
@@ -1115,7 +1388,9 @@ export default function PessoaDetalhesPage() {
             <StatCard
               icon={
                 <Pill
-                  size={20}
+                  size={
+                    20
+                  }
                 />
               }
               label="Ativos"
@@ -1126,15 +1401,15 @@ export default function PessoaDetalhesPage() {
             <StatCard
               icon={
                 <FolderHeart
-                  size={20}
+                  size={
+                    20
+                  }
                 />
               }
               label="Tratamentos"
               value={`${tratamentos.length}`}
             />
           </div>
-
-          {/* TRATAMENTOS */}
 
           {tratamentosAtivos.length >
             0 && (
@@ -1148,15 +1423,20 @@ export default function PessoaDetalhesPage() {
                 y: 0,
               }}
               transition={{
-                duration: 0.24,
-                delay: 0.1,
+                duration:
+                  0.24,
+
+                delay:
+                  0.1,
               }}
               className="space-y-3"
             >
               <SectionTitle
                 icon={
                   <FolderHeart
-                    size={15}
+                    size={
+                      15
+                    }
                   />
                 }
                 title="Tratamentos em andamento"
@@ -1164,7 +1444,10 @@ export default function PessoaDetalhesPage() {
 
               <div className="space-y-2">
                 {tratamentosAtivos
-                  .slice(0, 3)
+                  .slice(
+                    0,
+                    3
+                  )
                   .map(
                     (
                       tratamento
@@ -1184,21 +1467,25 @@ export default function PessoaDetalhesPage() {
                             tratamento.id
                           }
                           type="button"
-                          onClick={() =>
-                            router.push(
-                              `/saude/tratamentos/detalhes?id=${tratamento.id}`
-                            )
+                          onClick={
+                            () =>
+                              router.push(
+                                `/saude/tratamentos/detalhes?id=${tratamento.id}`
+                              )
                           }
                           className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
                           style={{
-                            borderLeft: `4px solid ${cor}`,
+                            borderLeft:
+                              `4px solid ${cor}`,
                           }}
                         >
                           <div className="flex min-w-0 items-center gap-3">
                             <div
                               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
                               style={{
-                                backgroundColor: `${cor}20`,
+                                backgroundColor:
+                                  `${cor}20`,
+
                                 color:
                                   cor,
                               }}
@@ -1236,10 +1523,11 @@ export default function PessoaDetalhesPage() {
                   3 && (
                   <button
                     type="button"
-                    onClick={() =>
-                      router.push(
-                        "/saude/tratamentos"
-                      )
+                    onClick={
+                      () =>
+                        router.push(
+                          "/saude/tratamentos"
+                        )
                     }
                     className="ml-1 mt-1 flex items-center gap-1 text-xs font-medium text-ice"
                   >
@@ -1250,7 +1538,9 @@ export default function PessoaDetalhesPage() {
                     )
 
                     <ChevronRight
-                      size={14}
+                      size={
+                        14
+                      }
                       aria-hidden="true"
                     />
                   </button>
@@ -1259,9 +1549,8 @@ export default function PessoaDetalhesPage() {
             </motion.div>
           )}
 
-          {/* CIDS */}
-
-          {cids.length > 0 && (
+          {cids.length >
+            0 && (
             <motion.div
               initial={{
                 opacity: 0,
@@ -1272,15 +1561,20 @@ export default function PessoaDetalhesPage() {
                 y: 0,
               }}
               transition={{
-                duration: 0.24,
-                delay: 0.12,
+                duration:
+                  0.24,
+
+                delay:
+                  0.12,
               }}
               className="space-y-3"
             >
               <SectionTitle
                 icon={
                   <FileText
-                    size={15}
+                    size={
+                      15
+                    }
                   />
                 }
                 title="Diagnósticos (CIDs)"
@@ -1288,23 +1582,30 @@ export default function PessoaDetalhesPage() {
 
               <div className="flex flex-wrap gap-2">
                 {cids
-                  .slice(0, 5)
-                  .map((cid) => (
-                    <span
-                      key={
-                        cid.id
-                      }
-                      className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs font-medium text-violet-300"
-                    >
-                      {
-                        cid.codigo
-                      }{" "}
-                      -{" "}
-                      {
-                        cid.descricao
-                      }
-                    </span>
-                  ))}
+                  .slice(
+                    0,
+                    5
+                  )
+                  .map(
+                    (
+                      cid
+                    ) => (
+                      <span
+                        key={
+                          cid.id
+                        }
+                        className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs font-medium text-violet-300"
+                      >
+                        {
+                          cid.codigo
+                        }{" "}
+                        -{" "}
+                        {
+                          cid.descricao
+                        }
+                      </span>
+                    )
+                  )}
 
                 {cids.length >
                   5 && (
@@ -1319,8 +1620,6 @@ export default function PessoaDetalhesPage() {
             </motion.div>
           )}
 
-          {/* DOCUMENTOS */}
-
           {documentos.length >
             0 && (
             <motion.div
@@ -1333,15 +1632,20 @@ export default function PessoaDetalhesPage() {
                 y: 0,
               }}
               transition={{
-                duration: 0.24,
-                delay: 0.14,
+                duration:
+                  0.24,
+
+                delay:
+                  0.14,
               }}
               className="space-y-3"
             >
               <SectionTitle
                 icon={
                   <FileText
-                    size={15}
+                    size={
+                      15
+                    }
                   />
                 }
                 title="Últimos documentos"
@@ -1349,38 +1653,55 @@ export default function PessoaDetalhesPage() {
 
               <div className="space-y-2">
                 {documentos
-                  .slice(0, 3)
-                  .map((doc) => (
-                    <button
-                      key={
-                        doc.id
-                      }
-                      type="button"
-                      onClick={() =>
-                        router.push(
-                          `/detalhes?id=${doc.id}`
-                        )
-                      }
-                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
-                    >
-                      <span className="truncate text-sm font-medium text-ink-primary">
-                        {
-                          doc.title
+                  .slice(
+                    0,
+                    3
+                  )
+                  .map(
+                    (
+                      doc
+                    ) => (
+                      <button
+                        key={
+                          doc.id
                         }
-                      </span>
+                        type="button"
+                        onClick={
+                          () => {
+                            if (
+                              !doc.id
+                            ) {
+                              return;
+                            }
 
-                      <ChevronRight
-                        size={16}
-                        className="shrink-0 text-ink-faint"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  ))}
+                            router.push(
+                              `/documentos/detalhes?id=${encodeURIComponent(
+                                doc.id
+                              )}`
+                            );
+                          }
+                        }
+                        className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
+                      >
+                        <span className="truncate text-sm font-medium text-ink-primary">
+                          {
+                            doc.title
+                          }
+                        </span>
+
+                        <ChevronRight
+                          size={
+                            16
+                          }
+                          className="shrink-0 text-ink-faint"
+                          aria-hidden="true"
+                        />
+                      </button>
+                    )
+                  )}
               </div>
             </motion.div>
           )}
-
-          {/* CONSULTAS */}
 
           {consultasFuturas.length >
             0 && (
@@ -1394,15 +1715,20 @@ export default function PessoaDetalhesPage() {
                 y: 0,
               }}
               transition={{
-                duration: 0.24,
-                delay: 0.16,
+                duration:
+                  0.24,
+
+                delay:
+                  0.16,
               }}
               className="space-y-3"
             >
               <SectionTitle
                 icon={
                   <Stethoscope
-                    size={15}
+                    size={
+                      15
+                    }
                   />
                 }
                 title="Próximas consultas"
@@ -1410,18 +1736,24 @@ export default function PessoaDetalhesPage() {
 
               <div className="space-y-2">
                 {consultasFuturas
-                  .slice(0, 3)
+                  .slice(
+                    0,
+                    3
+                  )
                   .map(
-                    (consulta) => (
+                    (
+                      consulta
+                    ) => (
                       <button
                         key={
                           consulta.id
                         }
                         type="button"
-                        onClick={() =>
-                          router.push(
-                            `/saude/consultas/detalhes?id=${consulta.id}`
-                          )
+                        onClick={
+                          () =>
+                            router.push(
+                              `/saude/consultas/detalhes?id=${consulta.id}`
+                            )
                         }
                         className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
                       >
@@ -1446,7 +1778,9 @@ export default function PessoaDetalhesPage() {
                           ).toLocaleDateString(
                             "pt-BR",
                             {
-                              day: "2-digit",
+                              day:
+                                "2-digit",
+
                               month:
                                 "short",
                             }
@@ -1458,8 +1792,6 @@ export default function PessoaDetalhesPage() {
               </div>
             </motion.div>
           )}
-
-          {/* EXAMES */}
 
           {examesPendentes.length >
             0 && (
@@ -1473,15 +1805,20 @@ export default function PessoaDetalhesPage() {
                 y: 0,
               }}
               transition={{
-                duration: 0.24,
-                delay: 0.18,
+                duration:
+                  0.24,
+
+                delay:
+                  0.18,
               }}
               className="space-y-3"
             >
               <SectionTitle
                 icon={
                   <Activity
-                    size={15}
+                    size={
+                      15
+                    }
                   />
                 }
                 title="Exames pendentes"
@@ -1489,47 +1826,55 @@ export default function PessoaDetalhesPage() {
 
               <div className="space-y-2">
                 {examesPendentes
-                  .slice(0, 3)
-                  .map((exame) => (
-                    <button
-                      key={
-                        exame.id
-                      }
-                      type="button"
-                      onClick={() =>
-                        router.push(
-                          `/saude/exames/detalhes?id=${exame.id}`
-                        )
-                      }
-                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
-                    >
-                      <span className="truncate text-sm font-medium text-ink-primary">
-                        {
-                          exame.nome
+                  .slice(
+                    0,
+                    3
+                  )
+                  .map(
+                    (
+                      exame
+                    ) => (
+                      <button
+                        key={
+                          exame.id
                         }
-                      </span>
-
-                      <span className="shrink-0 font-mono text-xs font-bold text-coral">
-                        {exame.data_retorno
-                          ? new Date(
-                              exame.data_retorno
-                            ).toLocaleDateString(
-                              "pt-BR",
-                              {
-                                day: "2-digit",
-                                month:
-                                  "short",
-                              }
+                        type="button"
+                        onClick={
+                          () =>
+                            router.push(
+                              `/saude/exames/detalhes?id=${exame.id}`
                             )
-                          : "Sem prazo"}
-                      </span>
-                    </button>
-                  ))}
+                        }
+                        className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
+                      >
+                        <span className="truncate text-sm font-medium text-ink-primary">
+                          {
+                            exame.nome
+                          }
+                        </span>
+
+                        <span className="shrink-0 font-mono text-xs font-bold text-coral">
+                          {exame.data_retorno
+                            ? new Date(
+                                exame.data_retorno
+                              ).toLocaleDateString(
+                                "pt-BR",
+                                {
+                                  day:
+                                    "2-digit",
+
+                                  month:
+                                    "short",
+                                }
+                              )
+                            : "Sem prazo"}
+                        </span>
+                      </button>
+                    )
+                  )}
               </div>
             </motion.div>
           )}
-
-          {/* CIRURGIAS - CONTAGEM IMPLÍCITA NO EMPTY STATE */}
 
           {!documentos.length &&
             !medicamentos.length &&
@@ -1548,28 +1893,28 @@ export default function PessoaDetalhesPage() {
                   y: 0,
                 }}
                 transition={{
-                  duration: 0.24,
-                  delay: 0.2,
+                  duration:
+                    0.24,
+
+                  delay:
+                    0.2,
                 }}
                 className="rounded-[24px] border border-dashed border-surface-border/50 bg-surface/30 p-8 text-center"
               >
                 <Users
-                  size={28}
+                  size={
+                    28
+                  }
                   className="mx-auto text-ink-faint"
                   aria-hidden="true"
                 />
 
                 <p className="mt-3 text-sm text-ink-muted">
-                  Nenhum dado
-                  vinculado a esta
-                  pessoa ainda.
+                  Nenhum dado vinculado a esta pessoa ainda.
                 </p>
 
                 <p className="text-xs text-ink-faint">
-                  Comece cadastrando
-                  documentos,
-                  medicamentos ou
-                  consultas.
+                  Comece cadastrando documentos, medicamentos ou consultas.
                 </p>
               </motion.div>
             )}
@@ -1579,15 +1924,17 @@ export default function PessoaDetalhesPage() {
           isOpen={
             showDefaultModal
           }
-          onClose={() => {
-            if (
-              !isSettingDefault
-            ) {
-              setShowDefaultModal(
-                false
-              );
+          onClose={
+            () => {
+              if (
+                !isSettingDefault
+              ) {
+                setShowDefaultModal(
+                  false
+                );
+              }
             }
-          }}
+          }
           onConfirm={
             handleSetDefault
           }
@@ -1605,15 +1952,17 @@ export default function PessoaDetalhesPage() {
           isOpen={
             showDeleteModal
           }
-          onClose={() => {
-            if (
-              !isDeleting
-            ) {
-              setShowDeleteModal(
-                false
-              );
+          onClose={
+            () => {
+              if (
+                !isDeleting
+              ) {
+                setShowDeleteModal(
+                  false
+                );
+              }
             }
-          }}
+          }
           onConfirm={
             handleDelete
           }

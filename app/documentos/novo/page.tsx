@@ -1,4 +1,4 @@
-// app/novo/page.tsx
+// app/documentos/novo/page.tsx
 "use client";
 
 import {
@@ -49,9 +49,6 @@ import {
 import { db } from "@/lib/db";
 import { uploadFile } from "@/lib/supabase/storage";
 import {
-  documentsRepository,
-} from "@/lib/repositories/documents";
-import {
   scheduleDocumentExpiryNotification,
 } from "@/lib/notifications";
 
@@ -62,6 +59,9 @@ import {
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
+import {
+  useDocumentActions,
+} from "@/hooks/useDocuments";
 import {
   useHapticFeedback,
 } from "@/lib/haptics";
@@ -436,6 +436,11 @@ export default function NovoDocumentoPage() {
   } =
     useActivePersonId();
 
+  const {
+    createDocument,
+  } =
+    useDocumentActions();
+
   const persons =
     usePersons() as Person[];
 
@@ -593,6 +598,7 @@ export default function NovoDocumentoPage() {
 
         return {
           ...previous,
+
           person_id:
             personId,
 
@@ -791,6 +797,7 @@ export default function NovoDocumentoPage() {
         ) {
           return {
             ...previous,
+
             category_id:
               categoryId,
           };
@@ -812,6 +819,7 @@ export default function NovoDocumentoPage() {
 
         return {
           ...previous,
+
           category_id:
             categoryId,
 
@@ -1560,7 +1568,7 @@ export default function NovoDocumentoPage() {
               userVaults.find(
                 (vault) =>
                   vault.id ===
-                  formData.vault_id &&
+                    formData.vault_id &&
                   vault.person_id ===
                     activePersonId
               );
@@ -1577,50 +1585,49 @@ export default function NovoDocumentoPage() {
 
           // ================================================
           // DOCUMENTO
+          //
+          // person_id é injetado pelo useDocumentActions().
+          // A página não controla ownership diretamente.
           // ================================================
 
           const documentId =
-          await documentsRepository.create(
-         {
-            
-            person_id:
-            activePersonId,
+            await createDocument(
+              {
+                category_id:
+                  formData.category_id,
 
-            category_id:
-            formData.category_id,
+                type:
+                  formData.type,
 
-            type:
-            formData.type,
+                title:
+                  formData.title.trim(),
 
-            title:
-            formData.title.trim(),
+                description:
+                  formData.description.trim() ||
+                  undefined,
 
-            description:
-            formData.description.trim() ||
-            undefined,
+                metadata:
+                  cleanMetadata,
 
-            metadata:
-            cleanMetadata,
+                attachments:
+                  finalAttachments,
 
-            attachments:
-            finalAttachments,
+                is_favorite:
+                  false,
 
-            is_favorite:
-            false,
+                vault_id:
+                  vaultId,
+              }
+            );
 
-            vault_id:
-            vaultId,
-          }
-        );
-
-    // ================================================
-    // VENCIMENTO
-    // ================================================
+          // ================================================
+          // VENCIMENTO
+          // ================================================
 
           const expiryDate =
             cleanMetadata.expiry_date ||
             cleanMetadata.validade;
-          
+
           if (expiryDate) {
             await scheduleDocumentExpiryNotification(
               documentId,

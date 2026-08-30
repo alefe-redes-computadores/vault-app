@@ -1,4 +1,4 @@
-// app/detalhes/page.tsx
+// app/documentos/detalhes/page.tsx
 "use client";
 
 import {
@@ -15,30 +15,23 @@ import {
   AnimatePresence,
   motion,
 } from "framer-motion";
-import { useLiveQuery } from "dexie-react-hooks";
 import {
   ArrowLeft,
   Building2,
   CalendarDays,
   CheckCircle2,
-  ChevronRight,
   Download,
   Edit,
   File,
   FileText,
   FolderOpen,
   Heart,
-  Hospital,
   Image as ImageIcon,
   Loader2,
-  MapPin,
   Paperclip,
   Pencil,
-  Pill,
   Share2,
   Star,
-  Stethoscope,
-  Store,
   Trash2,
   User,
   Users,
@@ -49,9 +42,10 @@ import {
 import {
   format,
 } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import {
+  ptBR,
+} from "date-fns/locale";
 
-import { db } from "@/lib/db";
 import {
   CATEGORIES,
   DOCUMENT_FIELDS,
@@ -60,38 +54,49 @@ import {
   type Document,
   type DocumentField,
   type DocumentType,
+  type Person,
 } from "@/lib/types";
-import { useSafeDb } from "@/hooks/useSafeDb";
-import { useHapticFeedback } from "@/lib/haptics";
-import { useMounted } from "@/hooks/useMounted";
 
-import { Button } from "@/components/ui/Button";
-import { PageTransition } from "@/components/PageTransition";
-import { useToast } from "@/components/ToastProvider";
-import { ExportCardButton } from "@/components/ExportCardButton";
-import { ScrollToTop } from "@/components/ScrollToTop";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
+import {
+  useDocument,
+  useDocumentActions,
+} from "@/hooks/useDocuments";
+import {
+  usePersons,
+} from "@/hooks/usePersons";
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+import {
+  useMounted,
+} from "@/hooks/useMounted";
+
+import {
+  Button,
+} from "@/components/ui/Button";
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+import {
+  useToast,
+} from "@/components/ToastProvider";
+import {
+  ExportCardButton,
+} from "@/components/ExportCardButton";
+import {
+  ScrollToTop,
+} from "@/components/ScrollToTop";
+import {
+  ConfirmationModal,
+} from "@/components/ConfirmationModal";
 import {
   SectionTitle,
   DetailInfoRow,
 } from "@/components/detail/DetailComponents";
 
-/* ============================================================
-   TIPOS LOCAIS
-   ============================================================ */
-
-interface RelatedEntity {
-  key: string;
-  label: string;
-  value: string;
-  description?: string;
-  icon: typeof FileText;
-  href?: string;
-}
-
-/* ============================================================
-   CONSTANTES
-   ============================================================ */
+// ============================================================
+// CONSTANTES
+// ============================================================
 
 const CATEGORY_ICONS: Record<
   CategoryId,
@@ -107,114 +112,157 @@ const DOCUMENT_TYPE_LABELS: Record<
   DocumentType,
   string
 > = {
-  rg: "C.I.N / RG",
-  cpf: "CPF",
-  cnh: "CNH",
+  rg:
+    "C.I.N / RG",
+
+  cpf:
+    "CPF",
+
+  cnh:
+    "CNH",
+
   certidao_nascimento:
     "Certidão de Nascimento",
+
   titulo_eleitor:
     "Título de Eleitor",
-  certificado: "Certificado",
+
+  certificado:
+    "Certificado",
+
   carteira_trabalho:
     "Carteira de Trabalho",
-  passaporte: "Passaporte",
+
+  passaporte:
+    "Passaporte",
+
   dispensa_militar:
     "Dispensa Militar",
-  receita: "Receita",
-  prontuario: "Prontuário",
-  laudo: "Laudo",
+
+  receita:
+    "Receita",
+
+  prontuario:
+    "Prontuário",
+
+  laudo:
+    "Laudo",
+
   encaminhamento:
     "Encaminhamento",
-  consulta: "Consulta",
-  cirurgia: "Cirurgia",
+
+  consulta:
+    "Consulta",
+
+  cirurgia:
+    "Cirurgia",
+
   exame_sangue:
     "Exame de Sangue",
+
   exame_imagem:
     "Exame de Imagem",
+
   credencial:
     "Credencial / Carteirinha",
-  outro: "Outro",
+
+  outro:
+    "Outro",
 };
 
-const RELATION_KEYS = new Set([
-  "medico_id",
-  "from_medico_id",
-  "to_medico_id",
-  "hospital_id",
-  "local_id",
-  "farmacia_id",
-  "medicamento_id",
-  "tratamento_id",
-  "cid_id",
-]);
+/*
+ * Esses campos representam referências estruturais antigas.
+ *
+ * Na área de Documentos Pessoais não exibimos IDs crus como
+ * metadados para o usuário.
+ *
+ * Documentos clínicos possuem seu próprio acervo.
+ */
+const INTERNAL_RELATION_KEYS =
+  new Set([
+    "medico_id",
+    "from_medico_id",
+    "to_medico_id",
+    "hospital_id",
+    "local_id",
+    "laboratorio_id",
+    "farmacia_id",
+    "medicamento_id",
+    "tratamento_id",
+    "cid_id",
+    "entidade_tipo",
+    "entidade_id",
+  ]);
 
-const DATE_KEYS = new Set([
-  "issue_date",
-  "expiry_date",
-  "prescription_date",
-  "renewal_date",
-  "date",
-  "data_nascimento",
-  "data_exame",
-  "validade",
-  "completion_date",
-  "data_emissao",
-  "data_validade",
-]);
+const DATE_KEYS =
+  new Set([
+    "issue_date",
+    "expiry_date",
+    "prescription_date",
+    "renewal_date",
+    "date",
+    "data_nascimento",
+    "data_exame",
+    "validade",
+    "completion_date",
+    "data_emissao",
+    "data_validade",
+  ]);
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+// ============================================================
+// HELPERS
+// ============================================================
 
 function getMetadataString(
-  metadata: Record<string, unknown>,
-  key: string
+  metadata:
+    Record<
+      string,
+      unknown
+    >,
+  key:
+    string
 ): string {
-  const value = metadata[key];
+  const value =
+    metadata[
+      key
+    ];
 
-  if (typeof value === "string") {
+  if (
+    typeof value ===
+    "string"
+  ) {
     return value;
   }
 
   if (
-    typeof value === "number" ||
-    typeof value === "boolean"
+    typeof value ===
+      "number" ||
+    typeof value ===
+      "boolean"
   ) {
-    return String(value);
-  }
-
-  return "";
-}
-
-function getFirstMetadataString(
-  metadata: Record<string, unknown>,
-  keys: string[]
-): string {
-  for (const key of keys) {
-    const value =
-      getMetadataString(
-        metadata,
-        key
-      );
-
-    if (value) {
-      return value;
-    }
+    return String(
+      value
+    );
   }
 
   return "";
 }
 
 function formatCreationDate(
-  dateString?: string
+  dateString?:
+    string
 ): string {
-  if (!dateString) {
+  if (
+    !dateString
+  ) {
     return "";
   }
 
   try {
     const date =
-      new Date(dateString);
+      new Date(
+        dateString
+      );
 
     if (
       Number.isNaN(
@@ -228,7 +276,8 @@ function formatCreationDate(
       date,
       "dd/MM/yyyy 'às' HH:mm",
       {
-        locale: ptBR,
+        locale:
+          ptBR,
       }
     );
   } catch {
@@ -237,9 +286,12 @@ function formatCreationDate(
 }
 
 function formatDateValue(
-  dateString?: string
+  dateString?:
+    string
 ): string {
-  if (!dateString?.trim()) {
+  if (
+    !dateString?.trim()
+  ) {
     return "";
   }
 
@@ -279,9 +331,14 @@ function formatDateValue(
         year,
         month,
         day,
-      ] = dateString
-        .split("-")
-        .map(Number);
+      ] =
+        dateString
+          .split(
+            "-"
+          )
+          .map(
+            Number
+          );
 
       return format(
         new Date(
@@ -291,13 +348,16 @@ function formatDateValue(
         ),
         "dd 'de' MMMM 'de' yyyy",
         {
-          locale: ptBR,
+          locale:
+            ptBR,
         }
       );
     }
 
     const parsed =
-      new Date(dateString);
+      new Date(
+        dateString
+      );
 
     if (
       Number.isNaN(
@@ -311,7 +371,8 @@ function formatDateValue(
       parsed,
       "dd 'de' MMMM 'de' yyyy",
       {
-        locale: ptBR,
+        locale:
+          ptBR,
       }
     );
   } catch {
@@ -320,12 +381,19 @@ function formatDateValue(
 }
 
 function formatCPF(
-  value: string
+  value:
+    string
 ): string {
   const digits =
-    value.replace(/\D/g, "");
+    value.replace(
+      /\D/g,
+      ""
+    );
 
-  if (digits.length !== 11) {
+  if (
+    digits.length !==
+    11
+  ) {
     return value;
   }
 
@@ -336,43 +404,67 @@ function formatCPF(
 }
 
 function formatMetadataValue(
-  documentType: DocumentType,
-  field: DocumentField,
-  value: string
+  documentType:
+    DocumentType,
+  field:
+    DocumentField,
+  value:
+    string
 ): string {
-  if (!value) {
+  if (
+    !value
+  ) {
     return "";
   }
 
   if (
-    DATE_KEYS.has(field.key) ||
-    field.type === "date"
+    DATE_KEYS.has(
+      field.key
+    ) ||
+    field.type ===
+      "date"
   ) {
     return (
-      formatDateValue(value) ||
+      formatDateValue(
+        value
+      ) ||
       value
     );
   }
 
   if (
-    field.key === "cpf" ||
-    (documentType === "cpf" &&
-      field.key === "number")
+    field.key ===
+      "cpf" ||
+    (
+      documentType ===
+        "cpf" &&
+      field.key ===
+        "number"
+    )
   ) {
-    return formatCPF(value);
+    return formatCPF(
+      value
+    );
   }
 
   return value;
 }
 
 function getFileIcon(
-  type: string
+  type:
+    string
 ) {
-  if (type === "image") {
+  if (
+    type ===
+    "image"
+  ) {
     return ImageIcon;
   }
 
-  if (type === "pdf") {
+  if (
+    type ===
+    "pdf"
+  ) {
     return FileText;
   }
 
@@ -380,12 +472,18 @@ function getFileIcon(
 }
 
 function getBaseName(
-  filename: string
+  filename:
+    string
 ): string {
   const lastDot =
-    filename.lastIndexOf(".");
+    filename.lastIndexOf(
+      "."
+    );
 
-  if (lastDot === -1) {
+  if (
+    lastDot ===
+    -1
+  ) {
     return filename;
   }
 
@@ -396,12 +494,18 @@ function getBaseName(
 }
 
 function getExtension(
-  filename: string
+  filename:
+    string
 ): string {
   const lastDot =
-    filename.lastIndexOf(".");
+    filename.lastIndexOf(
+      "."
+    );
 
-  if (lastDot === -1) {
+  if (
+    lastDot ===
+    -1
+  ) {
     return "";
   }
 
@@ -411,14 +515,17 @@ function getExtension(
 }
 
 function buildFullName(
-  baseName: string,
-  extension: string
+  baseName:
+    string,
+  extension:
+    string
 ): string {
   return `${baseName}${extension}`;
 }
 
 function buildShareText(
-  doc: Document
+  doc:
+    Document
 ): string {
   const typeLabel =
     DOCUMENT_TYPE_LABELS[
@@ -433,229 +540,227 @@ function buildShareText(
   return [
     doc.title,
     `${typeLabel} • ${category}`,
-    doc.description || "",
+    doc.description ||
+      "",
   ]
-    .filter(Boolean)
-    .join("\n");
+    .filter(
+      Boolean
+    )
+    .join(
+      "\n"
+    );
 }
 
 function getFieldLabel(
-  type: DocumentType,
-  key: string
+  type:
+    DocumentType,
+  key:
+    string
 ): string {
   const field =
     DOCUMENT_FIELDS[
       type
     ].find(
-      (item) =>
-        item.key === key
+      (
+        item
+      ) =>
+        item.key ===
+        key
     );
 
-  if (field) {
+  if (
+    field
+  ) {
     return field.label;
   }
 
-  const fallbackLabels: Record<
-    string,
-    string
-  > = {
-    cid_id: "CID",
-    tratamento_id:
-      "Tratamento",
-    local_id:
-      "Local de saúde",
-    laboratorio_id:
-      "Local / Laboratório",
-  };
-
-  return (
-    fallbackLabels[key] ||
-    key
-      .replace(/_/g, " ")
-      .replace(
-        /\b\w/g,
-        (letter) =>
-          letter.toUpperCase()
-      )
-  );
+  return key
+    .replace(
+      /_/g,
+      " "
+    )
+    .replace(
+      /\b\w/g,
+      (
+        letter
+      ) =>
+        letter.toUpperCase()
+    );
 }
 
-/* ============================================================
-   COMPONENTE
-   ============================================================ */
+// ============================================================
+// COMPONENTE
+// ============================================================
 
 export default function DocumentDetailPage() {
-  const router = useRouter();
+  const router =
+    useRouter();
+
   const searchParams =
     useSearchParams();
 
   const mounted =
     useMounted();
 
-  const { trigger } =
+  const {
+    trigger,
+  } =
     useHapticFeedback();
 
-  const { showToast } =
+  const {
+    showToast,
+  } =
     useToast();
+
+  const persons =
+    usePersons() as
+      Person[];
 
   const {
     deleteDocument,
-    favorite,
+    favoriteDocument,
     updateDocument,
-  } = useSafeDb();
+  } =
+    useDocumentActions();
 
   const id =
-    searchParams.get("id") || "";
+    searchParams.get(
+      "id"
+    ) ||
+    "";
+
+  /*
+   * null      = carregando
+   * undefined = não encontrado para a pessoa ativa
+   * Document  = documento válido
+   */
+  const doc =
+    useDocument(
+      id
+    );
 
   const cardRef =
     useRef<HTMLDivElement>(
       null
     );
 
-/* ==========================================================
-     DADOS
-     ========================================================== */
-
-  const queryData =
-    useLiveQuery(
-      async () => {
-        if (!id) {
-          return {
-            document: undefined,
-            person: undefined,
-            medicos: [],
-            hospitais: [],
-            locais: [],
-            farmacias: [],
-            medicamentos: [],
-            tratamentos: [],
-            cids: [],
-          };
-        }
-
-        const document =
-          await db.documents.get(id);
-
-        if (!document) {
-          return {
-            document: undefined,
-            person: undefined,
-            medicos: [],
-            hospitais: [],
-            locais: [],
-            farmacias: [],
-            medicamentos: [],
-            tratamentos: [],
-            cids: [],
-          };
-        }
-
-        const [
-          person,
-          medicos,
-          hospitais,
-          locais,
-          farmacias,
-          medicamentos,
-          tratamentos,
-          cids,
-        ] = await Promise.all([
-          document.person_id
-            ? db.persons.get(
-                document.person_id
-              )
-            : undefined,
-
-          db.medicos.toArray(),
-          db.hospitais.toArray(),
-          db.locais.toArray(),
-          db.farmacias.toArray(),
-          db.medicamentos.toArray(),
-          db.tratamentos.toArray(),
-          db.cids.toArray(),
-        ]);
-
-        return {
-          document,
-          person,
-          medicos,
-          hospitais,
-          locais,
-          farmacias,
-          medicamentos,
-          tratamentos,
-          cids,
-        };
-      },
-      [id]
-    );
-
-  const doc =
-    queryData?.document;
-
-  const isLoading =
-    !mounted ||
-    queryData === undefined;
-  /* ==========================================================
-     ESTADOS
-     ========================================================== */
+  // ==========================================================
+  // ESTADOS
+  // ==========================================================
 
   const [
     selectedAttachment,
     setSelectedAttachment,
   ] =
-    useState<Attachment | null>(
+    useState<
+      Attachment | null
+    >(
       null
     );
 
   const [
     originalAttachmentName,
     setOriginalAttachmentName,
-  ] = useState("");
+  ] =
+    useState(
+      ""
+    );
 
   const [
     isModalOpen,
     setIsModalOpen,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     isRenaming,
     setIsRenaming,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     isDownloading,
     setIsDownloading,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     zoomLevel,
     setZoomLevel,
-  ] = useState(1);
+  ] =
+    useState(
+      1
+    );
 
   const [
     imageError,
     setImageError,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     isDeleting,
     setIsDeleting,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     deleteModalOpen,
     setDeleteModalOpen,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     isFavoriteUpdating,
     setIsFavoriteUpdating,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
-  /* ==========================================================
-     DERIVADOS
-     ========================================================== */
+  // ==========================================================
+  // DERIVADOS
+  // ==========================================================
+
+  const isLoading =
+    !mounted ||
+    doc ===
+      null;
+
+  const person =
+    useMemo(
+      () => {
+        if (
+          !doc
+        ) {
+          return undefined;
+        }
+
+        return persons.find(
+          (
+            item
+          ) =>
+            item.id ===
+            doc.person_id
+        );
+      },
+      [
+        doc,
+        persons,
+      ]
+    );
 
   const category =
     doc
@@ -680,549 +785,159 @@ export default function DocumentDetailPage() {
     doc
       ? DOCUMENT_FIELDS[
           doc.type
-        ]
+        ] ||
+        []
       : [];
 
   const genericMetadata =
-    useMemo(() => {
-      if (!doc) {
-        return [];
-      }
-
-      const canonicalKeys =
-        new Set(
-          typeFields.map(
-            (field) =>
-              field.key
-          )
-        );
-
-      const canonical =
-        typeFields
-          .filter(
-            (field) =>
-              !RELATION_KEYS.has(
-                field.key
-              )
-          )
-          .map((field) => {
-            const value =
-              getMetadataString(
-                doc.metadata || {},
-                field.key
-              );
-
-            if (!value) {
-              return null;
-            }
-
-            return {
-              key: field.key,
-              label:
-                field.label,
-              value:
-                formatMetadataValue(
-                  doc.type,
-                  field,
-                  value
-                ),
-            };
-          })
-          .filter(
-            (
-              item
-            ): item is {
-              key: string;
-              label: string;
-              value: string;
-            } =>
-              Boolean(item)
-          );
-
-      const extra =
-        Object.entries(
-          doc.metadata || {}
-        )
-          .filter(
-            ([key, value]) =>
-              !canonicalKeys.has(
-                key
-              ) &&
-              !RELATION_KEYS.has(
-                key
-              ) &&
-              key !==
-                "laboratorio_id" &&
-              value !== null &&
-              value !==
-                undefined &&
-              value !== ""
-          )
-          .map(
-            ([key, value]) => ({
-              key,
-              label:
-                getFieldLabel(
-                  doc.type,
-                  key
-                ),
-              value:
-                typeof value ===
-                "string" &&
-                (/^\d{4}-\d{2}-\d{2}/.test(
-                  value
-                ) ||
-                  DATE_KEYS.has(
-                    key
-                  ))
-                  ? formatDateValue(
-                      value
-                    )
-                  : String(value),
-            })
-          );
-
-      return [
-        ...canonical,
-        ...extra,
-      ];
-    }, [doc, typeFields]);
-
-  const relatedEntities =
-    useMemo<RelatedEntity[]>(
+    useMemo(
       () => {
         if (
-          !doc ||
-          !queryData
+          !doc
         ) {
           return [];
         }
 
-        const metadata =
-          doc.metadata || {};
-
-        const result:
-          RelatedEntity[] =
-          [];
-
-        const addEntity = (
-          entity:
-            RelatedEntity | null
-        ) => {
-          if (!entity) {
-            return;
-          }
-
-          if (
-            result.some(
-              (item) =>
-                item.key ===
-                  entity.key &&
-                item.value ===
-                  entity.value
+        const canonicalKeys =
+          new Set(
+            typeFields.map(
+              (
+                field
+              ) =>
+                field.key
             )
-          ) {
-            return;
-          }
-
-          result.push(entity);
-        };
-
-        const medicoId =
-          doc.medico_id ||
-          getMetadataString(
-            metadata,
-            "medico_id"
           );
 
-        if (medicoId) {
-          const medico =
-            queryData.medicos.find(
-              (item) =>
-                item.id ===
-                medicoId
+        const canonical =
+          typeFields
+            .filter(
+              (
+                field
+              ) =>
+                !INTERNAL_RELATION_KEYS.has(
+                  field.key
+                )
+            )
+            .map(
+              (
+                field
+              ) => {
+                const value =
+                  getMetadataString(
+                    doc.metadata ||
+                      {},
+                    field.key
+                  );
+
+                if (
+                  !value
+                ) {
+                  return null;
+                }
+
+                return {
+                  key:
+                    field.key,
+
+                  label:
+                    field.label,
+
+                  value:
+                    formatMetadataValue(
+                      doc.type,
+                      field,
+                      value
+                    ),
+                };
+              }
+            )
+            .filter(
+              (
+                item
+              ): item is {
+                key:
+                  string;
+
+                label:
+                  string;
+
+                value:
+                  string;
+              } =>
+                Boolean(
+                  item
+                )
             );
 
-          addEntity({
-            key: "medico_id",
-            label: "Médico",
-            value:
-              medico?.nome ||
-              "Médico não encontrado",
-            description:
-              medico?.especialidade ||
-              medico?.crm ||
-              undefined,
-            icon:
-              Stethoscope,
-            href: medico?.id
-              ? `/saude/medicos/detalhes?id=${medico.id}`
-              : undefined,
-          });
-        }
+        const extra =
+          Object.entries(
+            doc.metadata ||
+              {}
+          )
+            .filter(
+              (
+                [
+                  key,
+                  value,
+                ]
+              ) =>
+                !canonicalKeys.has(
+                  key
+                ) &&
+                !INTERNAL_RELATION_KEYS.has(
+                  key
+                ) &&
+                value !==
+                  null &&
+                value !==
+                  undefined &&
+                value !==
+                  ""
+            )
+            .map(
+              (
+                [
+                  key,
+                  value,
+                ]
+              ) => ({
+                key,
 
-        const fromMedicoId =
-          getMetadataString(
-            metadata,
-            "from_medico_id"
-          );
+                label:
+                  getFieldLabel(
+                    doc.type,
+                    key
+                  ),
 
-        if (fromMedicoId) {
-          const medico =
-            queryData.medicos.find(
-              (item) =>
-                item.id ===
-                fromMedicoId
+                value:
+                  typeof value ===
+                    "string" &&
+                  (
+                    /^\d{4}-\d{2}-\d{2}/.test(
+                      value
+                    ) ||
+                    DATE_KEYS.has(
+                      key
+                    )
+                  )
+                    ? formatDateValue(
+                        value
+                      )
+                    : String(
+                        value
+                      ),
+              })
             );
 
-          addEntity({
-            key: "from_medico_id",
-            label:
-              "Encaminhado por",
-            value:
-              medico?.nome ||
-              "Médico não encontrado",
-            description:
-              medico?.especialidade ||
-              medico?.crm ||
-              undefined,
-            icon:
-              Stethoscope,
-            href: medico?.id
-              ? `/saude/medicos/detalhes?id=${medico.id}`
-              : undefined,
-          });
-        }
-
-        const toMedicoId =
-          getMetadataString(
-            metadata,
-            "to_medico_id"
-          );
-
-        if (toMedicoId) {
-          const medico =
-            queryData.medicos.find(
-              (item) =>
-                item.id ===
-                toMedicoId
-            );
-
-          addEntity({
-            key: "to_medico_id",
-            label:
-              "Encaminhado para",
-            value:
-              medico?.nome ||
-              "Médico não encontrado",
-            description:
-              medico?.especialidade ||
-              medico?.crm ||
-              undefined,
-            icon:
-              Stethoscope,
-            href: medico?.id
-              ? `/saude/medicos/detalhes?id=${medico.id}`
-              : undefined,
-          });
-        }
-
-        const hospitalId =
-          doc.hospital_id ||
-          getMetadataString(
-            metadata,
-            "hospital_id"
-          );
-
-        if (hospitalId) {
-          const hospital =
-            queryData.hospitais.find(
-              (item) =>
-                item.id ===
-                hospitalId
-            );
-
-          addEntity({
-            key:
-              "hospital_id",
-            label:
-              "Hospital / Clínica",
-            value:
-              hospital?.nome ||
-              "Hospital não encontrado",
-            description:
-              hospital?.tipo ||
-              hospital?.endereco ||
-              undefined,
-            icon: Hospital,
-            href: hospital?.id
-              ? `/saude/hospitais/detalhes?id=${hospital.id}`
-              : undefined,
-          });
-        }
-
-        const localId =
-          getFirstMetadataString(
-            metadata,
-            [
-              "local_id",
-              "laboratorio_id",
-            ]
-          );
-
-        if (localId) {
-          const local =
-            queryData.locais.find(
-              (item) =>
-                item.id ===
-                localId
-            );
-
-          addEntity({
-            key: "local_id",
-            label:
-              "Local de saúde",
-            value:
-              local?.nome ||
-              "Local não encontrado",
-            description:
-              local?.tipo ||
-              local?.endereco ||
-              undefined,
-            icon: MapPin,
-            href: local?.id
-              ? `/saude/locais/detalhes?id=${local.id}`
-              : undefined,
-          });
-        }
-
-        const farmaciaId =
-          getMetadataString(
-            metadata,
-            "farmacia_id"
-          );
-
-        if (farmaciaId) {
-          const farmacia =
-            queryData.farmacias.find(
-              (item) =>
-                item.id ===
-                farmaciaId
-            );
-
-          addEntity({
-            key:
-              "farmacia_id",
-            label: "Farmácia",
-            value:
-              farmacia?.nome ||
-              "Farmácia não encontrada",
-            description:
-              farmacia?.tipo ||
-              farmacia?.endereco ||
-              undefined,
-            icon: Store,
-            href: farmacia?.id
-              ? `/saude/farmacias/detalhes?id=${farmacia.id}`
-              : undefined,
-          });
-        }
-
-        const medicamentoId =
-          getMetadataString(
-            metadata,
-            "medicamento_id"
-          );
-
-        if (medicamentoId) {
-          const medicamento =
-            queryData.medicamentos.find(
-              (item) =>
-                item.id ===
-                medicamentoId
-            );
-
-          addEntity({
-            key:
-              "medicamento_id",
-            label:
-              "Medicamento",
-            value:
-              medicamento?.nome ||
-              "Medicamento não encontrado",
-            description:
-              medicamento?.dosagem ||
-              undefined,
-            icon: Pill,
-            href:
-              medicamento?.id
-                ? `/saude/medicamentos/detalhes?id=${medicamento.id}`
-                : undefined,
-          });
-        }
-
-        const tratamentoId =
-          getMetadataString(
-            metadata,
-            "tratamento_id"
-          );
-
-        if (tratamentoId) {
-          const tratamento =
-            queryData.tratamentos.find(
-              (item) =>
-                item.id ===
-                tratamentoId
-            );
-
-          addEntity({
-            key:
-              "tratamento_id",
-            label:
-              "Tratamento",
-            value:
-              tratamento?.nome ||
-              "Tratamento não encontrado",
-            description:
-              tratamento?.status
-                ? `Status: ${tratamento.status}`
-                : undefined,
-            icon: Heart,
-            href:
-              tratamento?.id
-                ? `/saude/tratamentos/detalhes?id=${tratamento.id}`
-                : undefined,
-          });
-        }
-
-        const cidId =
-          getMetadataString(
-            metadata,
-            "cid_id"
-          );
-
-        if (cidId) {
-          const cid =
-            queryData.cids.find(
-              (item) =>
-                item.id ===
-                cidId
-            );
-
-          addEntity({
-            key: "cid_id",
-            label: "CID",
-            value:
-              cid
-                ? `${cid.codigo}${cid.descricao ? ` — ${cid.descricao}` : ""}`
-                : "CID não encontrado",
-            icon: Heart,
-            href: cid?.id
-              ? `/saude/cids/detalhes?id=${cid.id}`
-              : undefined,
-          });
-        }
-
-        /*
-         * Relação genérica da versão 32.
-         * Só adicionamos quando não representa
-         * uma relação já mostrada acima.
-         */
-        if (
-          doc.entidade_tipo &&
-          doc.entidade_id
-        ) {
-          const type =
-            doc.entidade_tipo;
-
-          const entityId =
-            doc.entidade_id;
-
-          if (
-            type ===
-            "medicamento"
-          ) {
-            const entity =
-              queryData.medicamentos.find(
-                (item) =>
-                  item.id ===
-                  entityId
-              );
-
-            addEntity({
-              key:
-                "entidade_medicamento",
-              label:
-                "Vinculado ao medicamento",
-              value:
-                entity?.nome ||
-                "Medicamento não encontrado",
-              description:
-                entity?.dosagem,
-              icon: Pill,
-              href: entity?.id
-                ? `/saude/medicamentos/detalhes?id=${entity.id}`
-                : undefined,
-            });
-          }
-
-          if (
-            type ===
-            "tratamento"
-          ) {
-            const entity =
-              queryData.tratamentos.find(
-                (item) =>
-                  item.id ===
-                  entityId
-              );
-
-            addEntity({
-              key:
-                "entidade_tratamento",
-              label:
-                "Vinculado ao tratamento",
-              value:
-                entity?.nome ||
-                "Tratamento não encontrado",
-              description:
-                entity?.status
-                  ? `Status: ${entity.status}`
-                  : undefined,
-              icon: Heart,
-              href: entity?.id
-                ? `/saude/tratamentos/detalhes?id=${entity.id}`
-                : undefined,
-            });
-          }
-
-          if (type === "cid") {
-            const entity =
-              queryData.cids.find(
-                (item) =>
-                  item.id ===
-                  entityId
-              );
-
-            addEntity({
-              key:
-                "entidade_cid",
-              label:
-                "Vinculado ao CID",
-              value: entity
-                ? `${entity.codigo}${entity.descricao ? ` — ${entity.descricao}` : ""}`
-                : "CID não encontrado",
-              icon: Heart,
-              href: entity?.id
-                ? `/saude/cids/detalhes?id=${entity.id}`
-                : undefined,
-            });
-          }
-        }
-
-        return result;
+        return [
+          ...canonical,
+          ...extra,
+        ];
       },
-      [doc, queryData]
+      [
+        doc,
+        typeFields,
+      ]
     );
 
   const hasAttachments =
@@ -1230,196 +945,297 @@ export default function DocumentDetailPage() {
       doc?.attachments?.length
     );
 
-  /* ==========================================================
-     AÇÕES
-     ========================================================== */
+  const isHealthDocument =
+    doc?.category_id ===
+    "saude";
 
-  const handleDelete =
-    useCallback(async () => {
-      if (
-        !doc?.id ||
-        isDeleting
-      ) {
-        return;
-      }
+  // ==========================================================
+  // NAVEGAÇÃO
+  // ==========================================================
 
-      setIsDeleting(true);
-
-      try {
-        await deleteDocument(
-          doc.id
+  const goToDocuments =
+    useCallback(
+      () => {
+        trigger(
+          "vibrate"
         );
 
-        trigger("success");
-
-        showToast(
-          `"${doc.title}" foi excluído.`,
-          "success"
+        router.push(
+          "/documentos"
         );
+      },
+      [
+        router,
+        trigger,
+      ]
+    );
 
-        setDeleteModalOpen(
-          false
-        );
-
-        router.replace("/");
-      } catch (error) {
-        console.error(
-          "Erro ao excluir documento:",
-          error
-        );
-
-        trigger("error");
-
-        showToast(
-          "Erro ao excluir documento.",
-          "error"
-        );
-      } finally {
-        setIsDeleting(false);
-      }
-    }, [
-      doc,
-      deleteDocument,
-      isDeleting,
-      router,
-      showToast,
-      trigger,
-    ]);
-
-  const handleFavoriteToggle =
-    useCallback(async () => {
-      if (
-        !doc?.id ||
-        isFavoriteUpdating
-      ) {
-        return;
-      }
-
-      setIsFavoriteUpdating(
-        true
-      );
-
-      try {
-        const wasFavorite =
-          doc.is_favorite;
-
-        await favorite(doc.id);
-
-        trigger("success");
-
-        showToast(
-          wasFavorite
-            ? "Removido dos favoritos."
-            : "Adicionado aos favoritos.",
-          "success"
-        );
-      } catch (error) {
-        console.error(
-          "Erro ao alterar favorito:",
-          error
-        );
-
-        trigger("error");
-
-        showToast(
-          "Não foi possível alterar o favorito.",
-          "error"
-        );
-      } finally {
-        setIsFavoriteUpdating(
-          false
-        );
-      }
-    }, [
-      doc,
-      favorite,
-      isFavoriteUpdating,
-      showToast,
-      trigger,
-    ]);
-
-  const handleShare =
-    useCallback(async () => {
-      if (!doc) {
-        return;
-      }
-
-      const text =
-        buildShareText(doc);
-
-      try {
+  const goToEdit =
+    useCallback(
+      () => {
         if (
-          typeof navigator !==
-            "undefined" &&
-          navigator.share
+          !doc?.id
         ) {
-          await navigator.share({
-            title: doc.title,
-            text,
-          });
-
           return;
         }
 
+        trigger(
+          "vibrate"
+        );
+
+        router.push(
+          `/documentos/editar?id=${doc.id}`
+        );
+      },
+      [
+        doc?.id,
+        router,
+        trigger,
+      ]
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const handleDelete =
+    useCallback(
+      async () => {
         if (
-          typeof navigator !==
-            "undefined" &&
-          navigator.clipboard
+          !doc?.id ||
+          isDeleting
         ) {
-          await navigator.clipboard.writeText(
-            text
+          return;
+        }
+
+        setIsDeleting(
+          true
+        );
+
+        try {
+          await deleteDocument(
+            doc.id
           );
 
-          trigger("success");
-
-          showToast(
-            "Resumo do documento copiado.",
+          trigger(
             "success"
           );
 
-          return;
-        }
+          showToast(
+            `"${doc.title}" foi excluído.`,
+            "success"
+          );
 
-        showToast(
-          "Compartilhamento indisponível neste dispositivo.",
-          "info"
-        );
-      } catch (error) {
-        /*
-         * AbortError normalmente significa que
-         * o usuário fechou o share sheet.
-         */
+          setDeleteModalOpen(
+            false
+          );
+
+          router.replace(
+            "/documentos"
+          );
+        } catch (
+          error
+        ) {
+          console.error(
+            "Erro ao excluir documento:",
+            error
+          );
+
+          trigger(
+            "error"
+          );
+
+          showToast(
+            "Erro ao excluir documento.",
+            "error"
+          );
+        } finally {
+          setIsDeleting(
+            false
+          );
+        }
+      },
+      [
+        doc,
+        deleteDocument,
+        isDeleting,
+        router,
+        showToast,
+        trigger,
+      ]
+    );
+
+  // ==========================================================
+  // FAVORITO
+  // ==========================================================
+
+  const handleFavoriteToggle =
+    useCallback(
+      async () => {
         if (
-          error instanceof
-            DOMException &&
-          error.name ===
-            "AbortError"
+          !doc?.id ||
+          isFavoriteUpdating
         ) {
           return;
         }
 
-        console.error(
-          "Erro ao compartilhar documento:",
+        setIsFavoriteUpdating(
+          true
+        );
+
+        try {
+          const wasFavorite =
+            doc.is_favorite;
+
+          await favoriteDocument(
+            doc.id
+          );
+
+          trigger(
+            "success"
+          );
+
+          showToast(
+            wasFavorite
+              ? "Removido dos favoritos."
+              : "Adicionado aos favoritos.",
+            "success"
+          );
+        } catch (
           error
-        );
+        ) {
+          console.error(
+            "Erro ao alterar favorito:",
+            error
+          );
 
-        trigger("error");
+          trigger(
+            "error"
+          );
 
-        showToast(
-          "Não foi possível compartilhar o documento.",
-          "error"
-        );
-      }
-    }, [
-      doc,
-      showToast,
-      trigger,
-    ]);
+          showToast(
+            "Não foi possível alterar o favorito.",
+            "error"
+          );
+        } finally {
+          setIsFavoriteUpdating(
+            false
+          );
+        }
+      },
+      [
+        doc,
+        favoriteDocument,
+        isFavoriteUpdating,
+        showToast,
+        trigger,
+      ]
+    );
+
+  // ==========================================================
+  // COMPARTILHAR
+  // ==========================================================
+
+  const handleShare =
+    useCallback(
+      async () => {
+        if (
+          !doc
+        ) {
+          return;
+        }
+
+        const text =
+          buildShareText(
+            doc
+          );
+
+        try {
+          if (
+            typeof navigator !==
+              "undefined" &&
+            navigator.share
+          ) {
+            await navigator.share(
+              {
+                title:
+                  doc.title,
+
+                text,
+              }
+            );
+
+            return;
+          }
+
+          if (
+            typeof navigator !==
+              "undefined" &&
+            navigator.clipboard
+          ) {
+            await navigator.clipboard.writeText(
+              text
+            );
+
+            trigger(
+              "success"
+            );
+
+            showToast(
+              "Resumo do documento copiado.",
+              "success"
+            );
+
+            return;
+          }
+
+          showToast(
+            "Compartilhamento indisponível neste dispositivo.",
+            "info"
+          );
+        } catch (
+          error
+        ) {
+          if (
+            error instanceof
+              DOMException &&
+            error.name ===
+              "AbortError"
+          ) {
+            return;
+          }
+
+          console.error(
+            "Erro ao compartilhar documento:",
+            error
+          );
+
+          trigger(
+            "error"
+          );
+
+          showToast(
+            "Não foi possível compartilhar o documento.",
+            "error"
+          );
+        }
+      },
+      [
+        doc,
+        showToast,
+        trigger,
+      ]
+    );
+
+  // ==========================================================
+  // ANEXOS
+  // ==========================================================
 
   const openAttachment =
     useCallback(
       (
-        attachment: Attachment
+        attachment:
+          Attachment
       ) => {
         setSelectedAttachment(
           attachment
@@ -1429,40 +1245,76 @@ export default function DocumentDetailPage() {
           attachment.name
         );
 
-        setIsRenaming(false);
-        setZoomLevel(1);
-        setImageError(false);
-        setIsModalOpen(true);
+        setIsRenaming(
+          false
+        );
 
-        trigger("vibrate");
+        setZoomLevel(
+          1
+        );
+
+        setImageError(
+          false
+        );
+
+        setIsModalOpen(
+          true
+        );
+
+        trigger(
+          "vibrate"
+        );
       },
-      [trigger]
+      [
+        trigger,
+      ]
     );
 
   const closeAttachment =
-    useCallback(() => {
-      setIsModalOpen(false);
-      setIsRenaming(false);
-      setZoomLevel(1);
-      setImageError(false);
-      setSelectedAttachment(
-        null
-      );
-      setOriginalAttachmentName(
-        ""
-      );
-    }, []);
+    useCallback(
+      () => {
+        setIsModalOpen(
+          false
+        );
+
+        setIsRenaming(
+          false
+        );
+
+        setZoomLevel(
+          1
+        );
+
+        setImageError(
+          false
+        );
+
+        setSelectedAttachment(
+          null
+        );
+
+        setOriginalAttachmentName(
+          ""
+        );
+      },
+      []
+    );
 
   const downloadAttachment =
     useCallback(
       async (
-        attachment: Attachment
+        attachment:
+          Attachment
       ) => {
-        if (isDownloading) {
+        if (
+          isDownloading
+        ) {
           return;
         }
 
-        setIsDownloading(true);
+        setIsDownloading(
+          true
+        );
 
         try {
           const response =
@@ -1470,7 +1322,9 @@ export default function DocumentDetailPage() {
               attachment.url
             );
 
-          if (!response.ok) {
+          if (
+            !response.ok
+          ) {
             throw new Error(
               `HTTP ${response.status}`
             );
@@ -1479,21 +1333,23 @@ export default function DocumentDetailPage() {
           const blob =
             await response.blob();
 
-          const url =
+          const objectUrl =
             URL.createObjectURL(
               blob
             );
 
           const anchor =
-            document.createElement(
+            window.document.createElement(
               "a"
             );
 
-          anchor.href = url;
+          anchor.href =
+            objectUrl;
+
           anchor.download =
             attachment.name;
 
-          document.body.appendChild(
+          window.document.body.appendChild(
             anchor
           );
 
@@ -1501,22 +1357,28 @@ export default function DocumentDetailPage() {
           anchor.remove();
 
           URL.revokeObjectURL(
-            url
+            objectUrl
           );
 
-          trigger("success");
+          trigger(
+            "success"
+          );
 
           showToast(
             "Download concluído.",
             "success"
           );
-        } catch (error) {
+        } catch (
+          error
+        ) {
           console.error(
             "Erro ao baixar anexo:",
             error
           );
 
-          trigger("error");
+          trigger(
+            "error"
+          );
 
           showToast(
             "Erro ao baixar o arquivo.",
@@ -1536,127 +1398,160 @@ export default function DocumentDetailPage() {
     );
 
   const cancelRename =
-    useCallback(() => {
-      if (
-        !selectedAttachment
-      ) {
-        return;
-      }
+    useCallback(
+      () => {
+        if (
+          !selectedAttachment
+        ) {
+          return;
+        }
 
-      setSelectedAttachment({
-        ...selectedAttachment,
-        name:
-          originalAttachmentName ||
-          selectedAttachment.name,
-      });
-
-      setIsRenaming(false);
-    }, [
-      originalAttachmentName,
-      selectedAttachment,
-    ]);
-
-  const updateAttachmentName =
-    useCallback(async () => {
-      if (
-        !selectedAttachment ||
-        !doc?.id
-      ) {
-        return;
-      }
-
-      const baseName =
-        getBaseName(
-          selectedAttachment.name
-        ).trim();
-
-      if (!baseName) {
-        showToast(
-          "Informe um nome para o anexo.",
-          "error"
-        );
-
-        return;
-      }
-
-      const extension =
-        getExtension(
-          originalAttachmentName ||
-            selectedAttachment.name
-        );
-
-      const newFullName =
-        buildFullName(
-          baseName,
-          extension
-        );
-
-      const updatedAttachments =
-        doc.attachments.map(
-          (attachment) =>
-            attachment.id ===
-            selectedAttachment.id
-              ? {
-                  ...attachment,
-                  name:
-                    newFullName,
-                }
-              : attachment
-        );
-
-      try {
-        await updateDocument(
-          doc.id,
+        setSelectedAttachment(
           {
-            attachments:
-              updatedAttachments,
+            ...selectedAttachment,
+
+            name:
+              originalAttachmentName ||
+              selectedAttachment.name,
           }
         );
 
-        setSelectedAttachment({
-          ...selectedAttachment,
-          name: newFullName,
-        });
-
-        setOriginalAttachmentName(
-          newFullName
+        setIsRenaming(
+          false
         );
+      },
+      [
+        originalAttachmentName,
+        selectedAttachment,
+      ]
+    );
 
-        setIsRenaming(false);
+  const updateAttachmentName =
+    useCallback(
+      async () => {
+        if (
+          !selectedAttachment ||
+          !doc?.id
+        ) {
+          return;
+        }
 
-        trigger("success");
+        const baseName =
+          getBaseName(
+            selectedAttachment.name
+          ).trim();
 
-        showToast(
-          "Nome do anexo atualizado.",
-          "success"
-        );
-      } catch (error) {
-        console.error(
-          "Erro ao renomear anexo:",
+        if (
+          !baseName
+        ) {
+          showToast(
+            "Informe um nome para o anexo.",
+            "error"
+          );
+
+          return;
+        }
+
+        const extension =
+          getExtension(
+            originalAttachmentName ||
+              selectedAttachment.name
+          );
+
+        const newFullName =
+          buildFullName(
+            baseName,
+            extension
+          );
+
+        const updatedAttachments =
+          (
+            doc.attachments ||
+            []
+          ).map(
+            (
+              attachment
+            ) =>
+              attachment.id ===
+              selectedAttachment.id
+                ? {
+                    ...attachment,
+
+                    name:
+                      newFullName,
+                  }
+                : attachment
+          );
+
+        try {
+          await updateDocument(
+            doc.id,
+            {
+              attachments:
+                updatedAttachments,
+            }
+          );
+
+          setSelectedAttachment(
+            {
+              ...selectedAttachment,
+
+              name:
+                newFullName,
+            }
+          );
+
+          setOriginalAttachmentName(
+            newFullName
+          );
+
+          setIsRenaming(
+            false
+          );
+
+          trigger(
+            "success"
+          );
+
+          showToast(
+            "Nome do anexo atualizado.",
+            "success"
+          );
+        } catch (
           error
-        );
+        ) {
+          console.error(
+            "Erro ao renomear anexo:",
+            error
+          );
 
-        trigger("error");
+          trigger(
+            "error"
+          );
 
-        showToast(
-          "Erro ao renomear anexo.",
-          "error"
-        );
-      }
-    }, [
-      doc,
-      originalAttachmentName,
-      selectedAttachment,
-      showToast,
-      trigger,
-      updateDocument,
-    ]);
+          showToast(
+            "Erro ao renomear anexo.",
+            "error"
+          );
+        }
+      },
+      [
+        doc,
+        originalAttachmentName,
+        selectedAttachment,
+        showToast,
+        trigger,
+        updateDocument,
+      ]
+    );
 
-  /* ==========================================================
-     LOADING
-     ========================================================== */
+  // ==========================================================
+  // LOADING
+  // ==========================================================
 
-  if (isLoading) {
+  if (
+    isLoading
+  ) {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void pb-28">
@@ -1666,6 +1561,7 @@ export default function DocumentDetailPage() {
 
               <div className="space-y-2">
                 <div className="h-3 w-16 animate-pulse rounded bg-surface-border/40" />
+
                 <div className="h-5 w-40 animate-pulse rounded bg-surface-border/40" />
               </div>
             </div>
@@ -1673,7 +1569,9 @@ export default function DocumentDetailPage() {
 
           <section className="mx-auto max-w-3xl space-y-5 px-5 pt-6">
             <div className="h-48 animate-pulse rounded-[28px] bg-surface" />
+
             <div className="h-40 animate-pulse rounded-[28px] bg-surface" />
+
             <div className="h-56 animate-pulse rounded-[28px] bg-surface" />
           </section>
         </main>
@@ -1681,18 +1579,22 @@ export default function DocumentDetailPage() {
     );
   }
 
-  /* ==========================================================
-     NÃO ENCONTRADO
-     ========================================================== */
+  // ==========================================================
+  // NÃO ENCONTRADO / OWNERSHIP INVÁLIDO
+  // ==========================================================
 
-  if (!doc) {
+  if (
+    !doc
+  ) {
     return (
       <PageTransition>
         <main className="flex min-h-screen items-center justify-center bg-void px-5">
           <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-raised text-ink-muted">
               <FileText
-                size={22}
+                size={
+                  22
+                }
               />
             </div>
 
@@ -1701,17 +1603,17 @@ export default function DocumentDetailPage() {
             </p>
 
             <p className="mt-1 text-xs leading-5 text-ink-muted">
-              Ele pode ter sido removido ou ainda não estar disponível neste dispositivo.
+              Ele pode ter sido removido, pertencer a outra pessoa ou ainda não estar disponível neste dispositivo.
             </p>
 
             <Button
               variant="primary"
-              onClick={() =>
-                router.push("/")
+              onClick={
+                goToDocuments
               }
               className="mt-5"
             >
-              Voltar
+              Voltar aos documentos
             </Button>
           </div>
         </main>
@@ -1719,9 +1621,79 @@ export default function DocumentDetailPage() {
     );
   }
 
-  /* ==========================================================
-     RENDER
-     ========================================================== */
+  // ==========================================================
+  // DOCUMENTO DE SAÚDE
+  //
+  // Esta rota pertence ao Cofre Pessoal.
+  // Não duplicamos a UI clínica nem voltamos a carregar
+  // tabelas de Saúde nesta página.
+  // ==========================================================
+
+  if (
+    isHealthDocument
+  ) {
+    return (
+      <PageTransition>
+        <main className="flex min-h-screen items-center justify-center bg-void px-5">
+          <div className="w-full max-w-sm rounded-[30px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-ice/15 bg-ice/10 text-ice">
+              <Heart
+                size={
+                  24
+                }
+              />
+            </div>
+
+            <p className="mt-5 font-display text-lg font-semibold text-ink-primary">
+              Documento clínico
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-ink-muted">
+              Este documento pertence ao Acervo Clínico e é gerenciado na área de Saúde do Vault.
+            </p>
+
+            <div className="mt-6 space-y-3">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.replace(
+                    "/saude/documentos"
+                  );
+                }}
+                className="w-full"
+              >
+                <Heart
+                  size={
+                    16
+                  }
+                />
+
+                Abrir Acervo Clínico
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={
+                  goToDocuments
+                }
+                className="w-full"
+              >
+                Voltar ao Cofre Pessoal
+              </Button>
+            </div>
+          </div>
+        </main>
+      </PageTransition>
+    );
+  }
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
     <PageTransition>
@@ -1739,28 +1711,33 @@ export default function DocumentDetailPage() {
                   trigger(
                     "vibrate"
                   );
+
                   router.back();
                 }}
                 aria-label="Voltar"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
                 <ArrowLeft
-                  size={18}
+                  size={
+                    18
+                  }
                   className="text-ink-primary"
                 />
               </button>
 
               <div className="min-w-0">
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                  Documento
+                  Cofre Pessoal
                 </p>
 
                 <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary sm:text-xl">
-                  {doc.title}
+                  {
+                    doc.title
+                  }
                 </h1>
 
                 <p className="mt-0.5 text-xs text-ink-muted">
-                  Detalhes e vínculos
+                  Detalhes do documento
                 </p>
               </div>
             </div>
@@ -1787,12 +1764,16 @@ export default function DocumentDetailPage() {
               >
                 {isFavoriteUpdating ? (
                   <Loader2
-                    size={17}
+                    size={
+                      17
+                    }
                     className="animate-spin text-ice"
                   />
                 ) : (
                   <Star
-                    size={18}
+                    size={
+                      18
+                    }
                     className={
                       doc.is_favorite
                         ? "fill-ice text-ice"
@@ -1811,27 +1792,25 @@ export default function DocumentDetailPage() {
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               >
                 <Share2
-                  size={18}
+                  size={
+                    18
+                  }
                   className="text-ink-muted"
                 />
               </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    `/categoria/detalhes?id=${doc.id}`
-                  );
-                }}
+                onClick={
+                  goToEdit
+                }
                 aria-label="Editar documento"
                 className="hidden h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95 sm:flex"
               >
                 <Edit
-                  size={17}
+                  size={
+                    17
+                  }
                   className="text-ink-muted"
                 />
               </button>
@@ -1845,17 +1824,26 @@ export default function DocumentDetailPage() {
               ================================================== */}
 
           <motion.div
-            ref={cardRef}
+            ref={
+              cardRef
+            }
             initial={{
-              opacity: 0,
-              y: 10,
+              opacity:
+                0,
+
+              y:
+                10,
             }}
             animate={{
-              opacity: 1,
-              y: 0,
+              opacity:
+                1,
+
+              y:
+                0,
             }}
             transition={{
-              duration: 0.28,
+              duration:
+                0.28,
             }}
             className="relative overflow-hidden rounded-[30px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             style={{
@@ -1878,7 +1866,9 @@ export default function DocumentDetailPage() {
                 }}
               >
                 <CategoryIcon
-                  size={27}
+                  size={
+                    27
+                  }
                   style={{
                     color:
                       categoryColor,
@@ -1892,7 +1882,9 @@ export default function DocumentDetailPage() {
                     className="rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider"
                     style={{
                       backgroundColor: `${categoryColor}12`,
+
                       borderColor: `${categoryColor}28`,
+
                       color:
                         categoryColor,
                     }}
@@ -1912,39 +1904,42 @@ export default function DocumentDetailPage() {
                   {doc.is_favorite && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-ice/20 bg-ice/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-ice">
                       <Star
-                        size={10}
+                        size={
+                          10
+                        }
                         className="fill-current"
                       />
+
                       Favorito
                     </span>
                   )}
                 </div>
 
                 <h2 className="mt-3 font-display text-xl font-semibold leading-tight text-ink-primary">
-                  {doc.title}
+                  {
+                    doc.title
+                  }
                 </h2>
 
-                {queryData?.person && (
+                {person && (
                   <div className="mt-3 flex items-center gap-2 text-xs text-ink-muted">
                     <span
                       className="h-2.5 w-2.5 rounded-full"
                       style={{
                         backgroundColor:
-                          queryData
-                            .person
-                            .color,
+                          person.color,
                       }}
                     />
 
                     <Users
-                      size={13}
+                      size={
+                        13
+                      }
                     />
 
                     <span>
                       {
-                        queryData
-                          .person
-                          .name
+                        person.name
                       }
                     </span>
                   </div>
@@ -1956,23 +1951,30 @@ export default function DocumentDetailPage() {
               <div className="rounded-2xl bg-surface-raised/60 px-3 py-3">
                 <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-ink-faint">
                   <CalendarDays
-                    size={12}
+                    size={
+                      12
+                    }
                   />
+
                   Criado
                 </div>
 
                 <p className="mt-1 text-xs font-medium text-ink-primary">
                   {formatCreationDate(
                     doc.created_at
-                  ) || "—"}
+                  ) ||
+                    "—"}
                 </p>
               </div>
 
               <div className="rounded-2xl bg-surface-raised/60 px-3 py-3">
                 <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-ink-faint">
                   <CheckCircle2
-                    size={12}
+                    size={
+                      12
+                    }
                   />
+
                   Sincronização
                 </div>
 
@@ -1992,30 +1994,41 @@ export default function DocumentDetailPage() {
           </motion.div>
 
           {/* ==================================================
-              INFORMAÇÕES DO DOCUMENTO
+              INFORMAÇÕES
               ================================================== */}
 
           {genericMetadata.length >
             0 && (
             <motion.div
               initial={{
-                opacity: 0,
-                y: 10,
+                opacity:
+                  0,
+
+                y:
+                  10,
               }}
               animate={{
-                opacity: 1,
-                y: 0,
+                opacity:
+                  1,
+
+                y:
+                  0,
               }}
               transition={{
-                duration: 0.28,
-                delay: 0.03,
+                duration:
+                  0.28,
+
+                delay:
+                  0.03,
               }}
               className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
               <SectionTitle
                 icon={
                   <FileText
-                    size={15}
+                    size={
+                      15
+                    }
                   />
                 }
                 title="Informações do documento"
@@ -2023,7 +2036,9 @@ export default function DocumentDetailPage() {
 
               <div className="mt-4 space-y-2.5">
                 {genericMetadata.map(
-                  (item) => (
+                  (
+                    item
+                  ) => (
                     <DetailInfoRow
                       key={
                         item.key
@@ -2063,180 +2078,88 @@ export default function DocumentDetailPage() {
           )}
 
           {/* ==================================================
-              RELAÇÕES
-              ================================================== */}
-
-          {relatedEntities.length >
-            0 && (
-            <motion.div
-              initial={{
-                opacity: 0,
-                y: 10,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 0.28,
-                delay: 0.06,
-              }}
-              className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
-            >
-              <SectionTitle
-                icon={
-                  <Heart
-                    size={15}
-                  />
-                }
-                title="Contexto relacionado"
-              />
-
-              <div className="mt-4 space-y-2">
-                {relatedEntities.map(
-                  (entity) => {
-                    const Icon =
-                      entity.icon;
-
-                    const content = (
-                      <>
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-raised text-ice">
-                          <Icon
-                            size={
-                              17
-                            }
-                          />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
-                            {
-                              entity.label
-                            }
-                          </p>
-
-                          <p className="mt-0.5 truncate text-sm font-medium text-ink-primary">
-                            {
-                              entity.value
-                            }
-                          </p>
-
-                          {entity.description && (
-                            <p className="mt-0.5 truncate text-xs text-ink-muted">
-                              {
-                                entity.description
-                              }
-                            </p>
-                          )}
-                        </div>
-
-                        {entity.href && (
-                          <ChevronRight
-                            size={
-                              16
-                            }
-                            className="shrink-0 text-ink-faint"
-                          />
-                        )}
-                      </>
-                    );
-
-                    if (
-                      entity.href
-                    ) {
-                      return (
-                        <button
-                          key={`${entity.key}-${entity.value}`}
-                          type="button"
-                          onClick={() => {
-                            trigger(
-                              "vibrate"
-                            );
-
-                            router.push(
-                              entity.href!
-                            );
-                          }}
-                          className="flex w-full items-center gap-3 rounded-[20px] border border-surface-border/40 bg-surface-raised/45 p-3 text-left transition-all hover:border-ice/20 hover:bg-surface-raised active:scale-[0.99]"
-                        >
-                          {content}
-                        </button>
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={`${entity.key}-${entity.value}`}
-                        className="flex items-center gap-3 rounded-[20px] border border-surface-border/40 bg-surface-raised/45 p-3"
-                      >
-                        {content}
-                      </div>
-                    );
-                  }
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* ==================================================
               NOTAS
               ================================================== */}
 
           {doc.description && (
             <motion.div
               initial={{
-                opacity: 0,
-                y: 10,
+                opacity:
+                  0,
+
+                y:
+                  10,
               }}
               animate={{
-                opacity: 1,
-                y: 0,
+                opacity:
+                  1,
+
+                y:
+                  0,
               }}
               transition={{
-                duration: 0.28,
-                delay: 0.09,
+                duration:
+                  0.28,
+
+                delay:
+                  0.06,
               }}
               className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
               <SectionTitle
                 icon={
                   <FileText
-                    size={15}
+                    size={
+                      15
+                    }
                   />
                 }
                 title="Notas"
               />
 
               <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-ink-muted">
-                {doc.description}
+                {
+                  doc.description
+                }
               </p>
             </motion.div>
           )}
 
           {/* ==================================================
-              ANEXOS DO PRÓPRIO DOCUMENTO
+              ANEXOS
               ================================================== */}
 
           {hasAttachments ? (
             <motion.div
               initial={{
-                opacity: 0,
-                y: 10,
+                opacity:
+                  0,
+
+                y:
+                  10,
               }}
               animate={{
-                opacity: 1,
-                y: 0,
+                opacity:
+                  1,
+
+                y:
+                  0,
               }}
               transition={{
-                duration: 0.28,
-                delay: 0.12,
+                duration:
+                  0.28,
+
+                delay:
+                  0.09,
               }}
               className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
               <SectionTitle
                 icon={
                   <Paperclip
-                    size={15}
+                    size={
+                      15
+                    }
                   />
                 }
                 title={`Anexos (${doc.attachments.length})`}
@@ -2309,21 +2232,32 @@ export default function DocumentDetailPage() {
           ) : (
             <motion.div
               initial={{
-                opacity: 0,
-                y: 10,
+                opacity:
+                  0,
+
+                y:
+                  10,
               }}
               animate={{
-                opacity: 1,
-                y: 0,
+                opacity:
+                  1,
+
+                y:
+                  0,
               }}
               transition={{
-                duration: 0.28,
-                delay: 0.12,
+                duration:
+                  0.28,
+
+                delay:
+                  0.09,
               }}
               className="rounded-[24px] border border-dashed border-surface-border/50 bg-surface/50 px-5 py-6 text-center"
             >
               <Paperclip
-                size={20}
+                size={
+                  20
+                }
                 className="mx-auto text-ink-faint"
               />
 
@@ -2339,23 +2273,34 @@ export default function DocumentDetailPage() {
 
           <motion.div
             initial={{
-              opacity: 0,
-              y: 10,
+              opacity:
+                0,
+
+              y:
+                10,
             }}
             animate={{
-              opacity: 1,
-              y: 0,
+              opacity:
+                1,
+
+              y:
+                0,
             }}
             transition={{
-              duration: 0.28,
-              delay: 0.15,
+              duration:
+                0.28,
+
+              delay:
+                0.12,
             }}
             className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
           >
             <SectionTitle
               icon={
                 <CalendarDays
-                  size={15}
+                  size={
+                    15
+                  }
                 />
               }
               title="Registro"
@@ -2365,7 +2310,9 @@ export default function DocumentDetailPage() {
               <DetailInfoRow
                 icon={
                   <CalendarDays
-                    size={14}
+                    size={
+                      14
+                    }
                   />
                 }
                 iconClassName="bg-surface-raised text-ink-muted"
@@ -2374,14 +2321,17 @@ export default function DocumentDetailPage() {
                 <span className="text-right text-sm font-medium text-ink-primary">
                   {formatCreationDate(
                     doc.created_at
-                  ) || "—"}
+                  ) ||
+                    "—"}
                 </span>
               </DetailInfoRow>
 
               <DetailInfoRow
                 icon={
                   <CalendarDays
-                    size={14}
+                    size={
+                      14
+                    }
                   />
                 }
                 iconClassName="bg-surface-raised text-ink-muted"
@@ -2390,14 +2340,17 @@ export default function DocumentDetailPage() {
                 <span className="text-right text-sm font-medium text-ink-primary">
                   {formatCreationDate(
                     doc.updated_at
-                  ) || "—"}
+                  ) ||
+                    "—"}
                 </span>
               </DetailInfoRow>
 
               <DetailInfoRow
                 icon={
                   <CheckCircle2
-                    size={14}
+                    size={
+                      14
+                    }
                   />
                 }
                 iconClassName={
@@ -2428,16 +2381,25 @@ export default function DocumentDetailPage() {
 
           <motion.div
             initial={{
-              opacity: 0,
-              y: 10,
+              opacity:
+                0,
+
+              y:
+                10,
             }}
             animate={{
-              opacity: 1,
-              y: 0,
+              opacity:
+                1,
+
+              y:
+                0,
             }}
             transition={{
-              duration: 0.28,
-              delay: 0.18,
+              duration:
+                0.28,
+
+              delay:
+                0.15,
             }}
             className="space-y-3"
           >
@@ -2457,19 +2419,16 @@ export default function DocumentDetailPage() {
               <Button
                 variant="secondary"
                 className="flex items-center justify-center gap-2"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    `/categoria/detalhes?id=${doc.id}`
-                  );
-                }}
+                onClick={
+                  goToEdit
+                }
               >
                 <Edit
-                  size={16}
+                  size={
+                    16
+                  }
                 />
+
                 Editar
               </Button>
             </div>
@@ -2488,8 +2447,11 @@ export default function DocumentDetailPage() {
               className="flex w-full items-center justify-center gap-2 rounded-2xl border border-coral/20 bg-coral/5 px-4 py-3.5 text-sm font-medium text-coral transition-all hover:bg-coral/10 active:scale-[0.99]"
             >
               <Trash2
-                size={16}
+                size={
+                  16
+                }
               />
+
               Excluir documento
             </button>
           </motion.div>
@@ -2504,13 +2466,16 @@ export default function DocumentDetailPage() {
             selectedAttachment && (
               <motion.div
                 initial={{
-                  opacity: 0,
+                  opacity:
+                    0,
                 }}
                 animate={{
-                  opacity: 1,
+                  opacity:
+                    1,
                 }}
                 exit={{
-                  opacity: 0,
+                  opacity:
+                    0,
                 }}
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
                 onClick={
@@ -2519,22 +2484,38 @@ export default function DocumentDetailPage() {
               >
                 <motion.div
                   initial={{
-                    scale: 0.94,
-                    opacity: 0,
-                    y: 10,
+                    scale:
+                      0.94,
+
+                    opacity:
+                      0,
+
+                    y:
+                      10,
                   }}
                   animate={{
-                    scale: 1,
-                    opacity: 1,
-                    y: 0,
+                    scale:
+                      1,
+
+                    opacity:
+                      1,
+
+                    y:
+                      0,
                   }}
                   exit={{
-                    scale: 0.96,
-                    opacity: 0,
-                    y: 8,
+                    scale:
+                      0.96,
+
+                    opacity:
+                      0,
+
+                    y:
+                      8,
                   }}
                   transition={{
-                    duration: 0.22,
+                    duration:
+                      0.22,
                   }}
                   className="shadow-vault relative w-full max-w-4xl rounded-[28px] border border-surface-border bg-surface-raised p-4"
                   onClick={(
@@ -2543,8 +2524,6 @@ export default function DocumentDetailPage() {
                     event.stopPropagation()
                   }
                 >
-                  {/* HEADER MODAL */}
-
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       {isRenaming ? (
@@ -2566,11 +2545,10 @@ export default function DocumentDetailPage() {
                               setSelectedAttachment(
                                 {
                                   ...selectedAttachment,
+
                                   name:
                                     buildFullName(
-                                      event
-                                        .target
-                                        .value,
+                                      event.target.value,
                                       extension
                                     ),
                                 }
@@ -2656,13 +2634,13 @@ export default function DocumentDetailPage() {
                       aria-label="Fechar"
                     >
                       <X
-                        size={20}
+                        size={
+                          20
+                        }
                         className="text-ink-muted"
                       />
                     </button>
                   </div>
-
-                  {/* PREVIEW */}
 
                   <div className="relative flex min-h-[320px] items-center justify-center overflow-auto rounded-[22px] border border-surface-border/50 bg-surface p-4">
                     {selectedAttachment.type ===
@@ -2714,7 +2692,9 @@ export default function DocumentDetailPage() {
                     ) : (
                       <div className="flex flex-col items-center gap-4 py-16 text-ink-muted">
                         <FileText
-                          size={64}
+                          size={
+                            64
+                          }
                           className="text-ice/30"
                         />
 
@@ -2732,8 +2712,6 @@ export default function DocumentDetailPage() {
                       </div>
                     )}
                   </div>
-
-                  {/* CONTROLES */}
 
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     {selectedAttachment.type ===
@@ -2885,7 +2863,9 @@ export default function DocumentDetailPage() {
             deleteModalOpen
           }
           onClose={() => {
-            if (!isDeleting) {
+            if (
+              !isDeleting
+            ) {
               setDeleteModalOpen(
                 false
               );
@@ -2899,7 +2879,9 @@ export default function DocumentDetailPage() {
         />
 
         <ScrollToTop
-          threshold={300}
+          threshold={
+            300
+          }
         />
       </main>
     </PageTransition>

@@ -58,10 +58,6 @@ export interface HealthAlert {
 
   tipoReceita?: TipoReceita;
 
-  /*
-   * Para estoque SOS/esporádico, "dias restantes"
-   * não representa corretamente a disponibilidade.
-   */
   stockMetric?:
     | "days"
     | "doses"
@@ -72,65 +68,18 @@ export interface HealthAlert {
 
 export interface EstoqueInfo {
   consumoDiario: number;
-
-  /**
-   * Mantido por compatibilidade com consumidores atuais.
-   *
-   * Representa a quantidade disponível para apresentação
-   * e nunca fica abaixo de zero.
-   */
   quantidadeInicial: number;
-
-  /**
-   * Quantidade utilizável/exibível.
-   *
-   * Um saldo real negativo continua preservado separadamente
-   * em saldoRegistrado.
-   */
   quantidadeRestante: number;
-
-  /**
-   * Saldo exatamente persistido no medicamento.
-   *
-   * Pode ser negativo.
-   */
   saldoRegistrado: number;
-
-  /**
-   * Permite ao cérebro/UI identificar que os registros de uso
-   * ultrapassaram o saldo informado.
-   */
   estoqueNegativo: boolean;
-
-  /*
-   * null = não existe informação suficiente para
-   * estimar duração em dias.
-   */
   diasRestantes:
     number | null;
-
-  /**
-   * Mantido como number por compatibilidade.
-   *
-   * Quando estimativaDosesDisponivel === false, este valor não
-   * deve ser interpretado como uma estimativa real.
-   */
   dosesRestantes: number;
-
   unidade: string;
-
   textoEstoque: string;
-
   isSOS: boolean;
-
   temFrequenciaConfigurada: boolean;
-
   estimativaDosesDisponivel: boolean;
-
-  /**
-   * Indica se existe quantidade por dose suficiente para fazer
-   * cálculos de consumo.
-   */
   temUnidadePorDoseConfigurada: boolean;
 }
 
@@ -162,12 +111,6 @@ const URGENTE_DIAS_ESTOQUE =
 const ATENCAO_DIAS_ESTOQUE =
   7;
 
-/*
- * Para SOS não usamos "dias".
- *
- * Estes limites são exclusivamente de inventário:
- * quantas doses estimadas ainda existem.
- */
 const URGENTE_DOSES_ESTOQUE_SOS =
   2;
 
@@ -293,9 +236,6 @@ function parseDateParts(
     return null;
   }
 
-  /*
-   * Validamos também combinações como 31/02.
-   */
   const validationDate =
     new Date(
       year,
@@ -344,10 +284,6 @@ export function parseLocalDate(
     );
   }
 
-  /*
-   * Fallback apenas para valores que realmente carreguem
-   * horário/timestamp em outro formato.
-   */
   const parsed =
     new Date(
       value
@@ -394,9 +330,6 @@ export function getDaysUntil(
   const today =
     new Date();
 
-  /*
-   * Usamos calendário civil, e não diferença de horas.
-   */
   const targetDay =
     localDateToUtcDay(
       target
@@ -595,14 +528,6 @@ export function temEstoqueConfigurado(
   );
 }
 
-/**
- * Retorna null quando a quantidade por dose não está
- * explicitamente configurada.
- *
- * IMPORTANTE:
- *
- * Nunca usamos fallback 1.
- */
 function getUnidadePorDose(
   med: Medicamento
 ): number | null {
@@ -685,7 +610,9 @@ function normalizeHorarios(
         []
       )
         .map(
-          (horario) =>
+          (
+            horario
+          ) =>
             String(
               horario ||
                 ""
@@ -732,11 +659,6 @@ export function computeEstoqueInfo(
     unidadePorDose !==
     null;
 
-  /*
-   * Saldo exatamente persistido.
-   *
-   * Pode ser negativo para manter a movimentação reversível.
-   */
   const saldoRegistrado =
     Number(
       med.estoque_quantidade
@@ -746,11 +668,6 @@ export function computeEstoqueInfo(
     saldoRegistrado <
     0;
 
-  /*
-   * Disponibilidade exibível.
-   *
-   * O saldo bruto continua preservado em saldoRegistrado.
-   */
   const quantidadeRestante =
     Math.max(
       0,
@@ -781,21 +698,12 @@ export function computeEstoqueInfo(
   let dosesRestantes =
     0;
 
-  /*
-   * Uma estimativa exige quantidade por dose.
-   *
-   * Conversões específicas podem exigir dados adicionais.
-   */
   let estimativaDosesDisponivel =
     temUnidadePorDoseConfigurada;
 
   let textoEstoque =
     `${quantidadeRestante} ${unidadeOriginal}`;
 
-  /*
-   * Sem quantidade por dose, sabemos o saldo físico,
-   * mas não quantas doses ele representa.
-   */
   if (
     unidadePorDose ===
     null
@@ -835,10 +743,6 @@ export function computeEstoqueInfo(
         false,
     };
   }
-
-  // ==========================================================
-  // GOTAS COM ESTOQUE EM ML
-  // ==========================================================
 
   if (
     isGotas &&
@@ -892,9 +796,6 @@ export function computeEstoqueInfo(
             : "s"
         })`;
     } else {
-      /*
-       * Sem gotas/ml não convertemos ml em gotas.
-       */
       estimativaDosesDisponivel =
         false;
 
@@ -904,13 +805,7 @@ export function computeEstoqueInfo(
       diasRestantes =
         null;
     }
-  }
-
-  // ==========================================================
-  // GOTAS COM ESTOQUE EM FRASCO
-  // ==========================================================
-
-  else if (
+  } else if (
     isGotas &&
     unidade.includes(
       "frasco"
@@ -926,12 +821,6 @@ export function computeEstoqueInfo(
         med.estoque_ml_total
       );
 
-    /*
-     * "frasco" sozinho não informa volume.
-     *
-     * Só estimamos doses quando o volume total configurado
-     * e gotas/ml são conhecidos.
-     */
     if (
       gotasPorMl !==
         null &&
@@ -987,13 +876,7 @@ export function computeEstoqueInfo(
       diasRestantes =
         null;
     }
-  }
-
-  // ==========================================================
-  // COMPRIMIDOS / CÁPSULAS / DEMAIS UNIDADES
-  // ==========================================================
-
-  else {
+  } else {
     dosesRestantes =
       Math.floor(
         quantidadeRestante /
@@ -1055,17 +938,6 @@ export function computeEstoqueInfo(
 // ESTOQUE RETROATIVO
 // ============================================================
 
-/**
- * Calcula o saldo estimado quando o usuário informa
- * uma quantidade adquirida em uma data passada.
- *
- * Importante:
- * - só calcula consumo automático se houver horários;
- * - só calcula consumo quando unidadePorDose foi informada;
- * - não inventa "1 unidade por dose";
- * - YYYY-MM-DD é interpretado como data local;
- * - data futura não gera consumo negativo.
- */
 export function calcularEstoqueRetroativo(
   quantidadeComprada:
     number,
@@ -1104,9 +976,6 @@ export function calcularEstoqueRetroativo(
       horariosDiarios
     );
 
-  /*
-   * Sem frequência explícita, não presumimos consumo.
-   */
   if (
     horarios.length ===
     0
@@ -1114,9 +983,6 @@ export function calcularEstoqueRetroativo(
     return quantidadeComprada;
   }
 
-  /*
-   * Sem quantidade por dose explícita, não presumimos 1.
-   */
   if (
     typeof unidadePorDose !==
       "number" ||
@@ -1181,13 +1047,6 @@ export function calcularEstoqueRetroativo(
     quantidadeComprada -
     totalConsumido;
 
-  /*
-   * Esta função é uma estimativa de saldo inicial calculado a
-   * partir de uma aquisição histórica.
-   *
-   * Diferentemente da movimentação real de DoseLogs, aqui não
-   * faz sentido criar saldo inicial negativo.
-   */
   return Math.max(
     0,
     Number(
@@ -1237,10 +1096,6 @@ export function getEstoqueAlerts(
           return null;
         }
 
-        // ====================================================
-        // ESTOQUE ZERADO / NEGATIVO — TODOS OS TIPOS
-        // ====================================================
-
         if (
           info.quantidadeRestante <=
           0
@@ -1283,17 +1138,9 @@ export function getEstoqueAlerts(
           };
         }
 
-        // ====================================================
-        // SOS / ESPORÁDICO
-        // ====================================================
-
         if (
           info.isSOS
         ) {
-          /*
-           * Não existe "acaba em X dias" para medicamento
-           * usado conforme necessidade.
-           */
           if (
             !info.estimativaDosesDisponivel
           ) {
@@ -1348,9 +1195,6 @@ export function getEstoqueAlerts(
                   : "s"
               }`,
 
-            /*
-             * Mantido por compatibilidade.
-             */
             daysUntil:
               info.dosesRestantes,
 
@@ -1373,18 +1217,10 @@ export function getEstoqueAlerts(
           };
         }
 
-        // ====================================================
-        // CONTÍNUO
-        // ====================================================
-
         if (
           info.diasRestantes ===
           null
         ) {
-          /*
-           * Sem frequência ou quantidade por dose suficiente
-           * não inventamos duração.
-           */
           return null;
         }
 
@@ -1672,7 +1508,7 @@ export function getDocumentAlerts(
             ),
 
           href:
-            `/detalhes?id=${doc.id}`,
+            `/saude/documentos/detalhes?id=${doc.id}`,
         };
       }
     )
@@ -1772,7 +1608,7 @@ export function getUpcomingAppointments(
             "ok" as AlertLevel,
 
           href:
-            `/detalhes?id=${doc.id}`,
+            `/saude/documentos/detalhes?id=${doc.id}`,
         };
       }
     )
@@ -1876,6 +1712,7 @@ export function getExameAlerts(
         b.daysUntil
     );
 }
+
 // ============================================================
 // LABELS / CORES DE ALERTA
 // ============================================================
@@ -2036,7 +1873,9 @@ export function formatDateDisplay(
   isoStr:
     string
 ): string {
-  if (!isoStr) {
+  if (
+    !isoStr
+  ) {
     return "";
   }
 
@@ -2045,7 +1884,9 @@ export function formatDateDisplay(
       isoStr
     );
 
-  if (!parts) {
+  if (
+    !parts
+  ) {
     return isoStr;
   }
 
@@ -2159,10 +2000,6 @@ export function getClinicalTheme(
       ""
     ).toLowerCase();
 
-  // ==========================================================
-  // OFTALMOLOGIA
-  // ==========================================================
-
   if (
     lower.includes(
       "ceratocone"
@@ -2198,10 +2035,6 @@ export function getClinicalTheme(
     };
   }
 
-  // ==========================================================
-  // SONO
-  // ==========================================================
-
   if (
     lower.includes(
       "insônia"
@@ -2230,10 +2063,6 @@ export function getClinicalTheme(
         "bg-indigo-400/10 border-indigo-400/20 text-indigo-400",
     };
   }
-
-  // ==========================================================
-  // NEUROLOGIA / PSIQUIATRIA
-  // ==========================================================
 
   if (
     lower.includes(
@@ -2279,10 +2108,6 @@ export function getClinicalTheme(
     };
   }
 
-  // ==========================================================
-  // HUMOR
-  // ==========================================================
-
   if (
     lower.includes(
       "depressão"
@@ -2311,10 +2136,6 @@ export function getClinicalTheme(
         "bg-coral/10 border-coral/20 text-coral",
     };
   }
-
-  // ==========================================================
-  // ANSIEDADE
-  // ==========================================================
 
   if (
     lower.includes(
@@ -2350,10 +2171,6 @@ export function getClinicalTheme(
         "bg-ice/10 border-ice/20 text-ice",
     };
   }
-
-  // ==========================================================
-  // DOR / LESÕES
-  // ==========================================================
 
   if (
     lower.includes(
@@ -2405,10 +2222,6 @@ export function getClinicalTheme(
     };
   }
 
-  // ==========================================================
-  // FALLBACK
-  // ==========================================================
-
   return {
     icon:
       Activity,
@@ -2451,10 +2264,6 @@ export function getRegistroTheme(
       ""
     ).toLowerCase();
 
-  // ==========================================================
-  // PRESSÃO ARTERIAL
-  // ==========================================================
-
   if (
     lower.includes(
       "pressao"
@@ -2485,10 +2294,6 @@ export function getRegistroTheme(
         "bg-coral/10 border-coral/20 text-coral",
     };
   }
-
-  // ==========================================================
-  // GLICEMIA
-  // ==========================================================
 
   if (
     lower.includes(
@@ -2522,10 +2327,6 @@ export function getRegistroTheme(
     };
   }
 
-  // ==========================================================
-  // TEMPERATURA
-  // ==========================================================
-
   if (
     lower.includes(
       "temperatura"
@@ -2554,10 +2355,6 @@ export function getRegistroTheme(
         "bg-amber-400/10 border-amber-400/20 text-amber-400",
     };
   }
-
-  // ==========================================================
-  // FREQUÊNCIA CARDÍACA
-  // ==========================================================
 
   if (
     lower.includes(
@@ -2597,10 +2394,6 @@ export function getRegistroTheme(
     };
   }
 
-  // ==========================================================
-  // ANSIEDADE / HUMOR
-  // ==========================================================
-
   if (
     lower.includes(
       "ansiedade"
@@ -2635,10 +2428,6 @@ export function getRegistroTheme(
         "bg-violet-400/10 border-violet-400/20 text-violet-400",
     };
   }
-
-  // ==========================================================
-  // FALLBACK
-  // ==========================================================
 
   return {
     icon:

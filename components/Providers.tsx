@@ -47,6 +47,10 @@ import {
 } from "@/hooks/useSupabaseRealtime";
 
 import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
+
+import {
   BottomNav,
 } from "./BottomNav";
 
@@ -141,6 +145,12 @@ export function Providers({
     loading,
   } =
     useAuth();
+
+  const {
+    activePersonId,
+    changePerson,
+  } =
+    useActivePersonId();
 
   const {
     handleNotificationAction,
@@ -486,9 +496,72 @@ export function Providers({
                 "document_expiry" &&
               data.docId
             ) {
-              router.push(
-                `/detalhes?id=${data.docId}`
-              );
+              const documentId =
+                data.docId;
+
+              void (
+                async () => {
+                  try {
+                    const document =
+                      await db.documents.get(
+                        documentId
+                      );
+
+                    if (
+                      !document
+                    ) {
+                      console.warn(
+                        "[Providers] Documento da notificação não encontrado:",
+                        documentId
+                      );
+
+                      router.push(
+                        "/documentos"
+                      );
+
+                      return;
+                    }
+
+                    /*
+                     * Os detalhes modernos são person-scoped.
+                     *
+                     * Se a notificação pertence a outra pessoa,
+                     * primeiro tornamos essa pessoa ativa pelo
+                     * fluxo oficial do Vault.
+                     */
+                    if (
+                      document.person_id &&
+                      document.person_id !==
+                        activePersonId
+                    ) {
+                      await changePerson(
+                        document.person_id
+                      );
+                    }
+
+                    const destination =
+                      document.category_id ===
+                      "saude"
+                        ? `/saude/documentos/detalhes?id=${encodeURIComponent(
+                            documentId
+                          )}`
+                        : `/documentos/detalhes?id=${encodeURIComponent(
+                            documentId
+                          )}`;
+
+                    router.push(
+                      destination
+                    );
+                  } catch (
+                    error
+                  ) {
+                    console.error(
+                      "[Providers] Erro ao abrir documento da notificação:",
+                      error
+                    );
+                  }
+                }
+              )();
 
               return;
             }
@@ -510,6 +583,8 @@ export function Providers({
       };
     },
     [
+      activePersonId,
+      changePerson,
       handleNotificationAction,
       router,
     ]

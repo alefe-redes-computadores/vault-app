@@ -338,10 +338,6 @@ function TratamentoContent() {
   } =
     useTratamentos();
 
-  /*
-   * Medicamentos, Renovações e CIDs já são person-scoped
-   * pelos respectivos hooks.
-   */
   const {
     medicamentos = [],
   } =
@@ -357,10 +353,6 @@ function TratamentoContent() {
   } =
     useCids();
 
-  /*
-   * Médicos, Hospitais e Locais são entidades globais da conta.
-   * O vínculo exibido parte do Tratamento person-owned.
-   */
   const {
     medicos = [],
   } =
@@ -417,11 +409,6 @@ function TratamentoContent() {
 
   // ==========================================================
   // DOCUMENTOS
-  //
-  // Ainda usamos Dexie diretamente porque não temos aqui uma
-  // API confirmada de Documentos adequada para esta consulta.
-  //
-  // A leitura, porém, é obrigatoriamente person-scoped.
   // ==========================================================
 
   const documentosDaPessoa =
@@ -617,12 +604,6 @@ function TratamentoContent() {
 
   // ==========================================================
   // MEDICAMENTOS VINCULADOS
-  //
-  // ÚNICA fonte canônica:
-  //
-  // Medicamento.tratamento_ids
-  //
-  // Não lemos mais tratamento.medicamento_ids.
   // ==========================================================
 
   const linkedMedicamentos =
@@ -729,9 +710,6 @@ function TratamentoContent() {
             (
               document
             ) => {
-              /*
-               * Defesa adicional de ownership.
-               */
               if (
                 document.person_id !==
                 activePersonId
@@ -843,9 +821,6 @@ function TratamentoContent() {
         const ids =
           new Set<string>();
 
-        /*
-         * Médicos explicitamente vinculados ao Tratamento.
-         */
         for (
           const medicoId of
           tratamento?.medico_ids ||
@@ -856,10 +831,6 @@ function TratamentoContent() {
           );
         }
 
-        /*
-         * Também consideramos médicos atuais dos medicamentos,
-         * pois fazem parte da rede clínica real deste tratamento.
-         */
         for (
           const medicamento of
           linkedMedicamentos
@@ -1024,11 +995,6 @@ function TratamentoContent() {
 
   // ==========================================================
   // HISTÓRICO FINANCEIRO
-  //
-  // Só Renovação representa aquisição histórica.
-  //
-  // Não somamos Medicamento.preco, porque isso duplicaria o
-  // valor atual junto com compras que já estão no histórico.
   // ==========================================================
 
   const custoHistorico =
@@ -1069,15 +1035,6 @@ function TratamentoContent() {
 
   // ==========================================================
   // ECONOMIA
-  //
-  // IMPORTANTE:
-  //
-  // O código antigo passava as renovações de TODOS os
-  // medicamentos juntas para calcularEconomia().
-  //
-  // Isso podia comparar preço de remédios diferentes.
-  //
-  // Agora calculamos por medicamento.
   // ==========================================================
 
   const economiasPorMedicamento =
@@ -1141,9 +1098,6 @@ function TratamentoContent() {
 
   // ==========================================================
   // SUS
-  //
-  // É somente leitura do cadastro atual.
-  // Não significa garantia futura de fornecimento/cobertura.
   // ==========================================================
 
   const statsSus =
@@ -1362,7 +1316,7 @@ function TratamentoContent() {
         FileText,
 
       path:
-        `/novo?tratamento_id=${id}`,
+        `/saude/documentos/novo?tratamento_id=${id}`,
     },
 
     {
@@ -1417,10 +1371,6 @@ function TratamentoContent() {
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        {/* ====================================================
-            HEADER
-            ==================================================== */}
-
         <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -1460,10 +1410,6 @@ function TratamentoContent() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* ==============================================
-                  MENU
-                  ============================================== */}
-
               <div className="relative">
                 <button
                   type="button"
@@ -1608,10 +1554,6 @@ function TratamentoContent() {
                 </AnimatePresence>
               </div>
 
-              {/* ==============================================
-                  EDITAR
-                  ============================================== */}
-
               <button
                 type="button"
                 onClick={
@@ -1638,15 +1580,7 @@ function TratamentoContent() {
           </div>
         </header>
 
-        {/* ====================================================
-            CONTENT
-            ==================================================== */}
-
         <section className="space-y-6 px-5 pt-6">
-          {/* ==================================================
-              CARD PRINCIPAL
-              ================================================== */}
-
           <motion.div
             variants={
               fadeUp
@@ -1668,10 +1602,6 @@ function TratamentoContent() {
                 }
               />
             </div>
-
-            {/* ================================================
-                IDENTIDADE
-                ================================================ */}
 
             <div className="relative z-10 flex items-start gap-4">
               <div
@@ -1715,10 +1645,6 @@ function TratamentoContent() {
                 </div>
               </div>
             </div>
-
-            {/* ================================================
-                CIDS
-                ================================================ */}
 
             {cidsVinculados.length >
               0 && (
@@ -1850,10 +1776,6 @@ function TratamentoContent() {
               </div>
             )}
 
-            {/* ================================================
-                SUS
-                ================================================ */}
-
             {statsSus.hasSus && (
               <div className="relative z-10 mt-3 flex items-start gap-2 rounded-xl border border-blue-400/20 bg-blue-400/10 p-2.5">
                 <Building2
@@ -1873,10 +1795,6 @@ function TratamentoContent() {
                 </p>
               </div>
             )}
-
-            {/* ================================================
-                MÉTRICAS
-                ================================================ */}
 
             <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5">
               <StatCard
@@ -1919,10 +1837,6 @@ function TratamentoContent() {
               />
             </div>
           </motion.div>
-
-          {/* ==================================================
-              PANORAMA LONGITUDINAL
-              ================================================== */}
 
           <motion.div
             variants={
@@ -2007,10 +1921,6 @@ function TratamentoContent() {
               )}
           </motion.div>
 
-          {/* ==================================================
-              HISTÓRICO FINANCEIRO
-              ================================================== */}
-
           <motion.div
             variants={
               fadeUp
@@ -2071,10 +1981,6 @@ function TratamentoContent() {
               </div>
             </div>
           </motion.div>
-
-          {/* ==================================================
-              ECONOMIA / VARIAÇÃO
-              ================================================== */}
 
           {economiasPorMedicamento.length >
             0 &&
@@ -2209,10 +2115,6 @@ function TratamentoContent() {
                 </div>
               </motion.div>
             )}
-
-          {/* ==================================================
-              REDE DE APOIO
-              ================================================== */}
 
           <motion.div
             variants={
@@ -2401,10 +2303,6 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          {/* ==================================================
-              ÚLTIMAS AQUISIÇÕES
-              ================================================== */}
-
           {linkedRenovacoes.length >
             0 && (
             <motion.div
@@ -2544,10 +2442,6 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          {/* ==================================================
-              MEDICAMENTOS EM USO
-              ================================================== */}
-
           <motion.div
             variants={
               fadeUp
@@ -2680,10 +2574,6 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          {/* ==================================================
-              HISTÓRICO DESCONTINUADOS
-              ================================================== */}
-
           {medicamentosDescontinuados.length >
             0 && (
             <motion.div
@@ -2787,10 +2677,6 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          {/* ==================================================
-              DOCUMENTOS
-              ================================================== */}
-
           <motion.div
             variants={
               fadeUp
@@ -2860,6 +2746,13 @@ function TratamentoContent() {
                       <DocumentCard
                         document={
                           document
+                        }
+                        href={
+                          document.id
+                            ? `/saude/documentos/detalhes?id=${encodeURIComponent(
+                                document.id
+                              )}`
+                            : "/saude/documentos"
                         }
                         onFavoriteToggle={
                           handleFavoriteToggle
