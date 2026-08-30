@@ -1,11 +1,16 @@
 // lib/db/index.ts
 
-import Dexie, { type Table } from 'dexie';
+import Dexie, {
+  type Table,
+  type UpdateSpec,
+} from 'dexie';
+
 import type {
   Person,
   Document,
   SyncQueueItem,
   Medicamento,
+  UpdateMedicamentoInput,
   Renovacao,
   Vault,
   VaultMember,
@@ -26,6 +31,7 @@ import type {
   Versiculo,
   RegistroSaude,
 } from '@/lib/types';
+
 import { deleteFile } from '@/lib/supabase/storage';
 import { getLocalTodayISO } from '@/lib/health-utils';
 
@@ -685,6 +691,7 @@ class VaultDB extends Dexie {
     (this as any).version(26).stores({
       medicos:
         'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
+
       hospitais:
         'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
     });
@@ -696,9 +703,12 @@ class VaultDB extends Dexie {
     (this as any).version(27).stores({
       medicos:
         'id, user_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
+
       hospitais:
         'id, user_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
-      versiculos: 'id, user_id, created_at',
+
+      versiculos:
+        'id, user_id, created_at',
     });
 
     // ==========================================================
@@ -715,7 +725,8 @@ class VaultDB extends Dexie {
     // ==========================================================
 
     (this as any).version(29).stores({
-      persons: 'id, user_id, name, synced, updated_at',
+      persons:
+        'id, user_id, name, synced, updated_at',
 
       documents:
         'id, user_id, person_id, category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id',
@@ -729,12 +740,14 @@ class VaultDB extends Dexie {
       medicos:
         'id, user_id, person_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
 
-      farmacias: 'id, user_id, person_id, nome, synced, updated_at',
+      farmacias:
+        'id, user_id, person_id, nome, synced, updated_at',
 
       hospitais:
         'id, user_id, person_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
 
-      locais: 'id, user_id, person_id, nome, synced, updated_at',
+      locais:
+        'id, user_id, person_id, nome, synced, updated_at',
 
       exames:
         'id, user_id, person_id, medico_id, local_id, document_id, data, synced, updated_at, *tratamento_ids',
@@ -748,11 +761,14 @@ class VaultDB extends Dexie {
       doseLogs:
         'id, user_id, person_id, medicamento_id, data, horario, synced, updated_at',
 
-      credentials: 'id, user_id, vault_id, category, synced, updated_at',
+      credentials:
+        'id, user_id, vault_id, category, synced, updated_at',
 
-      bankCards: 'id, user_id, type, synced, updated_at',
+      bankCards:
+        'id, user_id, type, synced, updated_at',
 
-      instituicoes: 'id, user_id, nome, synced, updated_at',
+      instituicoes:
+        'id, user_id, nome, synced, updated_at',
 
       tratamentos:
         'id, user_id, person_id, nome, status, synced, updated_at, *cid_ids',
@@ -760,21 +776,26 @@ class VaultDB extends Dexie {
       cids:
         'id, user_id, person_id, codigo, medico_id, hospital_id, local_id, synced, updated_at',
 
-      anexos_clinicos: 'id, user_id, person_id, synced, updated_at',
+      anexos_clinicos:
+        'id, user_id, person_id, synced, updated_at',
 
-      syncQueue: 'id, chave, table, operation, created_at, retry_count, failed',
+      syncQueue:
+        'id, chave, table, operation, created_at, retry_count, failed',
 
-      settings: 'id, user_id, default_person_id, updated_at',
+      settings:
+        'id, user_id, default_person_id, updated_at',
 
-      versiculos: 'id, user_id, created_at',
+      versiculos:
+        'id, user_id, created_at',
     });
 
     // ==========================================================
-    // VERSÃO 30 — Registros de Saúde (sintomas, medições, humor)
+    // VERSÃO 30 — Registros de Saúde
     // ==========================================================
 
     (this as any).version(30).stores({
-      persons: 'id, user_id, name, synced, updated_at',
+      persons:
+        'id, user_id, name, synced, updated_at',
 
       documents:
         'id, user_id, person_id, category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id',
@@ -788,12 +809,14 @@ class VaultDB extends Dexie {
       medicos:
         'id, user_id, person_id, nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
 
-      farmacias: 'id, user_id, person_id, nome, synced, updated_at',
+      farmacias:
+        'id, user_id, person_id, nome, synced, updated_at',
 
       hospitais:
         'id, user_id, person_id, nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
 
-      locais: 'id, user_id, person_id, nome, synced, updated_at',
+      locais:
+        'id, user_id, person_id, nome, synced, updated_at',
 
       exames:
         'id, user_id, person_id, medico_id, local_id, document_id, data, synced, updated_at, *tratamento_ids',
@@ -807,11 +830,14 @@ class VaultDB extends Dexie {
       doseLogs:
         'id, user_id, person_id, medicamento_id, data, horario, synced, updated_at',
 
-      credentials: 'id, user_id, vault_id, category, synced, updated_at',
+      credentials:
+        'id, user_id, vault_id, category, synced, updated_at',
 
-      bankCards: 'id, user_id, type, synced, updated_at',
+      bankCards:
+        'id, user_id, type, synced, updated_at',
 
-      instituicoes: 'id, user_id, nome, synced, updated_at',
+      instituicoes:
+        'id, user_id, nome, synced, updated_at',
 
       tratamentos:
         'id, user_id, person_id, nome, status, synced, updated_at, *cid_ids',
@@ -819,30 +845,36 @@ class VaultDB extends Dexie {
       cids:
         'id, user_id, person_id, codigo, medico_id, hospital_id, local_id, synced, updated_at',
 
-      anexos_clinicos: 'id, user_id, person_id, synced, updated_at',
+      anexos_clinicos:
+        'id, user_id, person_id, synced, updated_at',
 
-      syncQueue: 'id, chave, table, operation, created_at, retry_count, failed',
+      syncQueue:
+        'id, chave, table, operation, created_at, retry_count, failed',
 
-      settings: 'id, user_id, default_person_id, updated_at',
+      settings:
+        'id, user_id, default_person_id, updated_at',
 
-      versiculos: 'id, user_id, created_at',
+      versiculos:
+        'id, user_id, created_at',
 
       registros_saude:
         'id, user_id, person_id, data, categoria, tipo, synced',
     });
 
     // ==========================================================
-    // VERSÃO 31 — Correção do Cofre (Indexação do vault_id)
+    // VERSÃO 31 — Correção do Cofre
     // ==========================================================
 
     (this as any).version(31).stores({
-      vaultMembers: 'id, vault_id, user_id',
-      vaults: 'id, user_id, name',
+      vaultMembers:
+        'id, vault_id, user_id',
+
+      vaults:
+        'id, user_id, name',
     });
 
     // ==========================================================
-    // VERSÃO 32 — Suporte a Relacionamento Avô-Pai-Filho
-    //              (DocumentManager)
+    // VERSÃO 32 — DocumentManager
     // ==========================================================
 
     (this as any).version(32).stores({
@@ -851,17 +883,7 @@ class VaultDB extends Dexie {
     });
 
     // ==========================================================
-    // VERSÃO 33 — Vaults: pessoa ativa + compartilhamento
-    //
-    // Esta versão é intencionalmente conservadora:
-    //
-    // - adiciona os índices necessários;
-    // - normaliza user_id vazio em convite pendente;
-    // - mantém created_at local para compatibilidade histórica.
-    //
-    // Não tenta associar person_id automaticamente porque isso
-    // só pode ser feito com segurança depois de conhecermos
-    // settings/persons, trabalho feito na v34.
+    // VERSÃO 33
     // ==========================================================
 
     this.version(33)
@@ -885,10 +907,6 @@ class VaultDB extends Dexie {
 
           const changes: Record<string, unknown> = {};
 
-          /**
-           * Implementação antiga podia usar string vazia para
-           * representar convite ainda não associado a usuário.
-           */
           if (
             typeof member.user_id === 'string' &&
             member.user_id.trim() === ''
@@ -896,12 +914,6 @@ class VaultDB extends Dexie {
             changes.user_id = undefined;
           }
 
-          /**
-           * Registros antigos criados por safeAddVaultMember
-           * podiam não possuir created_at.
-           *
-           * O campo continua apenas como compatibilidade local.
-           */
           if (!member.created_at) {
             changes.created_at =
               member.invited_at ||
@@ -919,28 +931,6 @@ class VaultDB extends Dexie {
 
     // ==========================================================
     // VERSÃO 34
-    //
-    // Ownership de Cards/Credentials + normalização de Vault.
-    //
-    // Objetivos:
-    //
-    // 1. indexar person_id em credentials e bankCards;
-    // 2. preencher person_id legado somente quando pudermos
-    //    determinar a Person sem adivinhação;
-    // 3. converter rejected -> declined;
-    // 4. corrigir também operações antigas existentes na
-    //    syncQueue para evitar envio de payload incompatível.
-    //
-    // REGRA DE BACKFILL:
-    //
-    // Prioridade:
-    // 1. settings.default_person_id válido;
-    // 2. Person.isDefault === true;
-    // 3. única Person existente para aquela conta.
-    //
-    // Se houver duas ou mais Persons e não existir uma default
-    // determinável, o registro é preservado sem person_id.
-    // Nunca escolhemos arbitrariamente uma Person.
     // ==========================================================
 
     this.version(34)
@@ -958,10 +948,6 @@ class VaultDB extends Dexie {
           'id, vault_id, user_id, person_id, email, status, permission, [user_id+person_id], [email+status]',
       })
       .upgrade(async (tx) => {
-        // ------------------------------------------------------
-        // CARREGAMENTO DOS DADOS NECESSÁRIOS
-        // ------------------------------------------------------
-
         const persons =
           (await tx
             .table('persons')
@@ -997,11 +983,8 @@ class VaultDB extends Dexie {
             .table('syncQueue')
             .toArray()) as LegacySyncQueueItem[];
 
-        // ------------------------------------------------------
-        // INDEXAÇÃO DE PERSONS POR CONTA
-        // ------------------------------------------------------
-
-        const personsByUser = new Map<string, Person[]>();
+        const personsByUser =
+          new Map<string, Person[]>();
 
         for (const person of persons) {
           if (!person.user_id) {
@@ -1019,10 +1002,6 @@ class VaultDB extends Dexie {
           );
         }
 
-        // ------------------------------------------------------
-        // SETTINGS POR CONTA
-        // ------------------------------------------------------
-
         const settingsByUser =
           new Map<string, AppSettings>();
 
@@ -1036,10 +1015,6 @@ class VaultDB extends Dexie {
             setting
           );
         }
-
-        // ------------------------------------------------------
-        // RESOLUÇÃO SEGURA DE PERSON
-        // ------------------------------------------------------
 
         const resolvePersonId = (
           userId: string
@@ -1095,15 +1070,6 @@ class VaultDB extends Dexie {
           return null;
         };
 
-        // ------------------------------------------------------
-        // CONTROLE DOS BACKFILLS REALIZADOS
-        //
-        // Usado depois para atualizar payloads pendentes da
-        // syncQueue, evitando que uma operação antiga continue
-        // sem person_id mesmo depois da entidade local ter sido
-        // corrigida.
-        // ------------------------------------------------------
-
         const credentialPersonIds =
           new Map<string, string>();
 
@@ -1112,10 +1078,6 @@ class VaultDB extends Dexie {
 
         const vaultPersonIds =
           new Map<string, string>();
-
-        // ------------------------------------------------------
-        // CREDENTIALS
-        // ------------------------------------------------------
 
         for (const credential of credentials) {
           if (
@@ -1153,10 +1115,6 @@ class VaultDB extends Dexie {
           );
         }
 
-        // ------------------------------------------------------
-        // BANK CARDS
-        // ------------------------------------------------------
-
         for (const card of cards) {
           if (
             !card.id ||
@@ -1192,10 +1150,6 @@ class VaultDB extends Dexie {
             personId
           );
         }
-
-        // ------------------------------------------------------
-        // VAULTS LEGADOS
-        // ------------------------------------------------------
 
         for (const vault of vaults) {
           if (
@@ -1233,13 +1187,6 @@ class VaultDB extends Dexie {
           );
         }
 
-        // ------------------------------------------------------
-        // VAULT MEMBERS
-        //
-        // rejected era o valor histórico.
-        // declined é o valor canônico atual.
-        // ------------------------------------------------------
-
         for (const member of members) {
           if (
             !member.id ||
@@ -1257,16 +1204,6 @@ class VaultDB extends Dexie {
               }
             );
         }
-
-        // ------------------------------------------------------
-        // SYNC QUEUE
-        //
-        // Essa parte é importante.
-        //
-        // Alterar somente a entidade local não é suficiente se
-        // já existir uma operação antiga pendente com payload
-        // incompatível.
-        // ------------------------------------------------------
 
         for (const queueItem of queueItems) {
           if (!queueItem.id) {
@@ -1286,10 +1223,6 @@ class VaultDB extends Dexie {
 
           let changed = false;
 
-          // ----------------------------------------------------
-          // rejected -> declined também dentro da fila
-          // ----------------------------------------------------
-
           if (
             queueItem.table === 'vaultMembers' &&
             payload.status === 'rejected'
@@ -1297,10 +1230,6 @@ class VaultDB extends Dexie {
             payload.status = 'declined';
             changed = true;
           }
-
-          // ----------------------------------------------------
-          // Vault person_id
-          // ----------------------------------------------------
 
           if (
             queueItem.table === 'vaults' &&
@@ -1318,10 +1247,6 @@ class VaultDB extends Dexie {
               changed = true;
             }
           }
-
-          // ----------------------------------------------------
-          // Credential person_id
-          // ----------------------------------------------------
 
           if (
             queueItem.table === 'credentials' &&
@@ -1341,10 +1266,6 @@ class VaultDB extends Dexie {
               changed = true;
             }
           }
-
-          // ----------------------------------------------------
-          // Card person_id
-          // ----------------------------------------------------
 
           if (
             queueItem.table === 'cards' &&
@@ -1399,16 +1320,27 @@ export async function syncMedicamentoTratamentos(
   medicamentoId: string,
   tratamentoIds: string[]
 ): Promise<void> {
-  const existing = await db.medicamentos.get(medicamentoId);
+  const existing =
+    await db.medicamentos.get(
+      medicamentoId
+    );
 
   if (!existing) {
-    throw new Error('Medicamento não encontrado');
+    throw new Error(
+      'Medicamento não encontrado'
+    );
   }
 
-  await db.medicamentos.update(medicamentoId, {
-    tratamento_ids: tratamentoIds,
-    synced: false,
-  });
+  await db.medicamentos.update(
+    medicamentoId,
+    {
+      tratamento_ids:
+        tratamentoIds,
+
+      synced:
+        false,
+    }
+  );
 }
 
 // ============================================================
@@ -1416,20 +1348,35 @@ export async function syncMedicamentoTratamentos(
 // ============================================================
 
 export async function safeAddPerson(
-  person: Omit<Person, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  person: Omit<
+    Person,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
+
+  const id =
+    generateId();
 
   const full: Person = {
     ...person,
+
     id,
-    synced: false,
-    created_at: timestamp,
-    updated_at: timestamp,
+
+    synced:
+      false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
   };
 
-  await db.persons.add(full);
+  await db.persons.add(
+    full
+  );
 
   return id;
 }
@@ -1438,20 +1385,34 @@ export async function safeUpdatePerson(
   id: string,
   changes: Partial<Person>
 ): Promise<void> {
-  const existing = await db.persons.get(id);
+  const existing =
+    await db.persons.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Pessoa não encontrada');
+    throw new Error(
+      'Pessoa não encontrada'
+    );
   }
 
-  await db.persons.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.persons.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
-export async function safeDeletePerson(id: string): Promise<void> {
-  await db.persons.delete(id);
+export async function safeDeletePerson(
+  id: string
+): Promise<void> {
+  await db.persons.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -1459,20 +1420,35 @@ export async function safeDeletePerson(id: string): Promise<void> {
 // ============================================================
 
 export async function safeAddDocument(
-  doc: Omit<Document, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  doc: Omit<
+    Document,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
+
+  const id =
+    generateId();
 
   const full: Document = {
     ...doc,
+
     id,
-    synced: false,
-    created_at: timestamp,
-    updated_at: timestamp,
+
+    synced:
+      false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
   };
 
-  await db.documents.add(full);
+  await db.documents.add(
+    full
+  );
 
   return id;
 }
@@ -1481,36 +1457,61 @@ export async function safeUpdateDocument(
   id: string,
   changes: Partial<Document>
 ): Promise<void> {
-  const document = await db.documents.get(id);
+  const document =
+    await db.documents.get(
+      id
+    );
 
   if (!document) {
-    throw new Error('Documento não encontrado');
+    throw new Error(
+      'Documento não encontrado'
+    );
   }
 
-  await db.documents.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.documents.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
-export async function safeDeleteDocument(id: string): Promise<void> {
-  const document = await db.documents.get(id);
+export async function safeDeleteDocument(
+  id: string
+): Promise<void> {
+  const document =
+    await db.documents.get(
+      id
+    );
 
   if (!document) {
-    throw new Error('Documento não encontrado');
+    throw new Error(
+      'Documento não encontrado'
+    );
   }
 
   if (
     document.attachments &&
-    document.attachments.length > 0
+    document.attachments.length >
+      0
   ) {
-    for (const attachment of document.attachments) {
+    for (
+      const attachment of
+      document.attachments
+    ) {
       if (
         attachment.url &&
-        !attachment.url.startsWith('blob:')
+        !attachment.url.startsWith(
+          'blob:'
+        )
       ) {
         try {
-          await deleteFile(attachment.url);
+          await deleteFile(
+            attachment.url
+          );
         } catch (error) {
           console.error(
             'Erro ao deletar anexo:',
@@ -1522,19 +1523,30 @@ export async function safeDeleteDocument(id: string): Promise<void> {
     }
   }
 
-  await db.documents.delete(id);
+  await db.documents.delete(
+    id
+  );
 }
 
-export async function toggleFavorite(id: string): Promise<void> {
-  const document = await db.documents.get(id);
+export async function toggleFavorite(
+  id: string
+): Promise<void> {
+  const document =
+    await db.documents.get(
+      id
+    );
 
   if (!document) {
     return;
   }
 
-  await safeUpdateDocument(id, {
-    is_favorite: !document.is_favorite,
-  });
+  await safeUpdateDocument(
+    id,
+    {
+      is_favorite:
+        !document.is_favorite,
+    }
+  );
 }
 
 // ============================================================
@@ -1542,44 +1554,105 @@ export async function toggleFavorite(id: string): Promise<void> {
 // ============================================================
 
 export async function safeAddMedicamento(
-  med: Omit<Medicamento, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  med: Omit<
+    Medicamento,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  > &
+    Partial<
+      Pick<
+        Medicamento,
+        'id' | 'created_at' | 'updated_at' | 'synced'
+      >
+    >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Medicamento = {
+  /*
+   * Se o repository já criou o ID do medicamento,
+   * esse ID precisa ser preservado.
+   *
+   * O mesmo UUID será usado no Dexie e na syncQueue,
+   * evitando divergência local ↔ Supabase.
+   */
+  const id =
+    med.id ||
+    generateId();
+
+  const full:
+    Medicamento = {
     ...med,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      med.created_at ||
+      timestamp,
+
+    updated_at:
+      med.updated_at ||
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.medicamentos.add(full);
+  await db.medicamentos.add(
+    full
+  );
 
   return id;
 }
 
 export async function safeUpdateMedicamento(
   id: string,
-  changes: Partial<Medicamento>
+  changes: UpdateMedicamentoInput
 ): Promise<void> {
-  const existing = await db.medicamentos.get(id);
+  const existing =
+    await db.medicamentos.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Medicamento não encontrado');
+    throw new Error(
+      'Medicamento não encontrado'
+    );
   }
 
-  await db.medicamentos.update(id, {
+  /*
+   * UpdateMedicamentoInput representa corretamente a semântica
+   * da atualização de Medicamento:
+   *
+   * undefined = não alterar
+   * null      = limpar explicitamente
+   *
+   * A entidade Medicamento continua usando undefined como
+   * representação canônica de ausência para leitura.
+   *
+   * O cast fica isolado nesta fronteira de persistência porque
+   * UpdateSpec<Medicamento> é derivado da entidade canônica e,
+   * por isso, não conhece os nulls aceitos especificamente pelo
+   * contrato de atualização.
+   */
+  const updateSpec = {
     ...changes,
-    synced: false,
-  });
+
+    synced:
+      false,
+  } as unknown as UpdateSpec<Medicamento>;
+
+  await db.medicamentos.update(
+    id,
+    updateSpec
+  );
 }
 
 export async function safeDeleteMedicamento(
   medicamentoId: string
 ): Promise<void> {
-  await db.medicamentos.delete(medicamentoId);
+  await db.medicamentos.delete(
+    medicamentoId
+  );
 }
 
 // ============================================================
@@ -1587,20 +1660,35 @@ export async function safeDeleteMedicamento(
 // ============================================================
 
 export async function safeAddRenovacao(
-  ren: Omit<Renovacao, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  ren: Omit<
+    Renovacao,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
+
+  const id =
+    generateId();
 
   const full: Renovacao = {
     ...ren,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.renovacoes.add(full);
+  await db.renovacoes.add(
+    full
+  );
 
   return id;
 }
@@ -1609,22 +1697,34 @@ export async function safeUpdateRenovacao(
   id: string,
   changes: Partial<Renovacao>
 ): Promise<void> {
-  const existing = await db.renovacoes.get(id);
+  const existing =
+    await db.renovacoes.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Renovação não encontrada');
+    throw new Error(
+      'Renovação não encontrada'
+    );
   }
 
-  await db.renovacoes.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.renovacoes.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteRenovacao(
   id: string
 ): Promise<void> {
-  await db.renovacoes.delete(id);
+  await db.renovacoes.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -1632,47 +1732,135 @@ export async function safeDeleteRenovacao(
 // ============================================================
 
 export async function safeSetDoseLog(
-  data: Omit<DoseLog, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    DoseLog,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
+  const timestamp =
+    nowIso();
+
+  const personId =
+    data.person_id?.trim();
+
+  if (!personId) {
+    throw new Error(
+      'Pessoa ativa não identificada.'
+    );
+  }
+
+  const medicamentoId =
+    data.medicamento_id?.trim();
+
+  if (!medicamentoId) {
+    throw new Error(
+      'Medicamento não identificado.'
+    );
+  }
+
+  const horario =
+    data.horario?.trim();
+
+  if (!horario) {
+    throw new Error(
+      'Horário da dose não identificado.'
+    );
+  }
 
   const targetDate =
-    data.data || getLocalTodayISO();
+    data.data ||
+    getLocalTodayISO();
 
-  const existing = await db.doseLogs
-    .where('medicamento_id')
-    .equals(data.medicamento_id)
-    .filter(
-      (log) =>
-        log.data === targetDate &&
-        log.horario === data.horario
-    )
-    .first();
+  const medicamento =
+    await db.medicamentos.get(
+      medicamentoId
+    );
+
+  if (
+    !medicamento ||
+    medicamento.person_id !==
+      personId
+  ) {
+    throw new Error(
+      'Medicamento não encontrado para a pessoa informada.'
+    );
+  }
+
+  const existing =
+    await db.doseLogs
+      .where(
+        'medicamento_id'
+      )
+      .equals(
+        medicamentoId
+      )
+      .filter(
+        (log) =>
+          log.person_id ===
+            personId &&
+          log.data ===
+            targetDate &&
+          log.horario ===
+            horario
+      )
+      .first();
 
   if (existing) {
-    await db.doseLogs.update(existing.id!, {
-      ...data,
-      data: targetDate,
-      tomado_em: data.tomado_em,
-      ignorado_em: data.ignorado_em,
-      synced: false,
-    });
+    await db.doseLogs.update(
+      existing.id!,
+      {
+        quantidade:
+          data.quantidade,
+
+        tomado_em:
+          data.tomado_em,
+
+        ignorado_em:
+          data.ignorado_em,
+
+        updated_at:
+          timestamp,
+
+        synced:
+          false,
+      }
+    );
 
     return existing.id!;
   }
 
-  const id = generateId();
+  const id =
+    generateId();
 
   const full: DoseLog = {
     ...data,
-    data: targetDate,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    person_id:
+      personId,
+
+    medicamento_id:
+      medicamentoId,
+
+    data:
+      targetDate,
+
+    horario,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.doseLogs.add(full);
+  await db.doseLogs.add(
+    full
+  );
 
   return id;
 }
@@ -1682,39 +1870,70 @@ export async function safeSetDoseLog(
 // ============================================================
 
 export async function safeAddVault(
-  vault: Omit<Vault, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  vault: Omit<
+    Vault,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
+
+  const id =
+    generateId();
 
   const full: Vault = {
     ...vault,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.vaults.add(full);
+  await db.vaults.add(
+    full
+  );
 
   return id;
 }
 
 export async function safeAddVaultMember(
-  member: Omit<VaultMember, 'id' | 'invited_at' | 'updated_at' | 'synced'>
+  member: Omit<
+    VaultMember,
+    'id' | 'invited_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: VaultMember = {
+  const id =
+    generateId();
+
+  const full:
+    VaultMember = {
     ...member,
+
     id,
-    invited_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    invited_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.vaultMembers.add(full);
+  await db.vaultMembers.add(
+    full
+  );
 
   return id;
 }
@@ -1723,16 +1942,26 @@ export async function safeUpdateVaultMember(
   id: string,
   changes: Partial<VaultMember>
 ): Promise<void> {
-  const existing = await db.vaultMembers.get(id);
+  const existing =
+    await db.vaultMembers.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Membro do vault não encontrado');
+    throw new Error(
+      'Membro do vault não encontrado'
+    );
   }
 
-  await db.vaultMembers.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.vaultMembers.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function shareDocumentWithVault(
@@ -1740,24 +1969,38 @@ export async function shareDocumentWithVault(
   vaultId: string
 ): Promise<void> {
   const document =
-    await db.documents.get(documentId);
+    await db.documents.get(
+      documentId
+    );
 
   if (!document) {
-    throw new Error('Documento não encontrado');
+    throw new Error(
+      'Documento não encontrado'
+    );
   }
 
-  await db.documents.update(documentId, {
-    vault_id: vaultId,
-    synced: false,
-  });
+  await db.documents.update(
+    documentId,
+    {
+      vault_id:
+        vaultId,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function getVaultDocuments(
   vaultId: string
 ): Promise<Document[]> {
   return db.documents
-    .where('vault_id')
-    .equals(vaultId)
+    .where(
+      'vault_id'
+    )
+    .equals(
+      vaultId
+    )
     .toArray();
 }
 
@@ -1765,8 +2008,12 @@ export async function getVaultMembers(
   vaultId: string
 ): Promise<VaultMember[]> {
   return db.vaultMembers
-    .where('vault_id')
-    .equals(vaultId)
+    .where(
+      'vault_id'
+    )
+    .equals(
+      vaultId
+    )
     .toArray();
 }
 
@@ -1775,20 +2022,36 @@ export async function getVaultMembers(
 // ============================================================
 
 export async function safeAddMedico(
-  data: Omit<Medico, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    Medico,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Medico = {
+  const id =
+    generateId();
+
+  const full:
+    Medico = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.medicos.add(full);
+  await db.medicos.add(
+    full
+  );
 
   return id;
 }
@@ -1797,22 +2060,34 @@ export async function safeUpdateMedico(
   id: string,
   changes: Partial<Medico>
 ): Promise<void> {
-  const existing = await db.medicos.get(id);
+  const existing =
+    await db.medicos.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Médico não encontrado');
+    throw new Error(
+      'Médico não encontrado'
+    );
   }
 
-  await db.medicos.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.medicos.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteMedico(
   id: string
 ): Promise<void> {
-  await db.medicos.delete(id);
+  await db.medicos.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -1820,20 +2095,36 @@ export async function safeDeleteMedico(
 // ============================================================
 
 export async function safeAddFarmacia(
-  data: Omit<Farmacia, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    Farmacia,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Farmacia = {
+  const id =
+    generateId();
+
+  const full:
+    Farmacia = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.farmacias.add(full);
+  await db.farmacias.add(
+    full
+  );
 
   return id;
 }
@@ -1842,22 +2133,34 @@ export async function safeUpdateFarmacia(
   id: string,
   changes: Partial<Farmacia>
 ): Promise<void> {
-  const existing = await db.farmacias.get(id);
+  const existing =
+    await db.farmacias.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Farmácia não encontrada');
+    throw new Error(
+      'Farmácia não encontrada'
+    );
   }
 
-  await db.farmacias.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.farmacias.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteFarmacia(
   id: string
 ): Promise<void> {
-  await db.farmacias.delete(id);
+  await db.farmacias.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -1865,20 +2168,36 @@ export async function safeDeleteFarmacia(
 // ============================================================
 
 export async function safeAddHospital(
-  data: Omit<Hospital, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    Hospital,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Hospital = {
+  const id =
+    generateId();
+
+  const full:
+    Hospital = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.hospitais.add(full);
+  await db.hospitais.add(
+    full
+  );
 
   return id;
 }
@@ -1887,22 +2206,34 @@ export async function safeUpdateHospital(
   id: string,
   changes: Partial<Hospital>
 ): Promise<void> {
-  const existing = await db.hospitais.get(id);
+  const existing =
+    await db.hospitais.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Hospital não encontrado');
+    throw new Error(
+      'Hospital não encontrado'
+    );
   }
 
-  await db.hospitais.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.hospitais.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteHospital(
   id: string
 ): Promise<void> {
-  await db.hospitais.delete(id);
+  await db.hospitais.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -1910,20 +2241,36 @@ export async function safeDeleteHospital(
 // ============================================================
 
 export async function safeAddLocal(
-  data: Omit<LocalSaude, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    LocalSaude,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: LocalSaude = {
+  const id =
+    generateId();
+
+  const full:
+    LocalSaude = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.locais.add(full);
+  await db.locais.add(
+    full
+  );
 
   return id;
 }
@@ -1932,22 +2279,34 @@ export async function safeUpdateLocal(
   id: string,
   changes: Partial<LocalSaude>
 ): Promise<void> {
-  const existing = await db.locais.get(id);
+  const existing =
+    await db.locais.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Local não encontrado');
+    throw new Error(
+      'Local não encontrado'
+    );
   }
 
-  await db.locais.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.locais.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteLocal(
   id: string
 ): Promise<void> {
-  await db.locais.delete(id);
+  await db.locais.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -1955,20 +2314,36 @@ export async function safeDeleteLocal(
 // ============================================================
 
 export async function safeAddExame(
-  data: Omit<Exame, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    Exame,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Exame = {
+  const id =
+    generateId();
+
+  const full:
+    Exame = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.exames.add(full);
+  await db.exames.add(
+    full
+  );
 
   return id;
 }
@@ -1977,22 +2352,34 @@ export async function safeUpdateExame(
   id: string,
   changes: Partial<Exame>
 ): Promise<void> {
-  const existing = await db.exames.get(id);
+  const existing =
+    await db.exames.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Exame não encontrado');
+    throw new Error(
+      'Exame não encontrado'
+    );
   }
 
-  await db.exames.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.exames.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteExame(
   id: string
 ): Promise<void> {
-  await db.exames.delete(id);
+  await db.exames.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -2000,20 +2387,36 @@ export async function safeDeleteExame(
 // ============================================================
 
 export async function safeAddConsulta(
-  data: Omit<Consulta, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    Consulta,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Consulta = {
+  const id =
+    generateId();
+
+  const full:
+    Consulta = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.consultas.add(full);
+  await db.consultas.add(
+    full
+  );
 
   return id;
 }
@@ -2022,22 +2425,34 @@ export async function safeUpdateConsulta(
   id: string,
   changes: Partial<Consulta>
 ): Promise<void> {
-  const existing = await db.consultas.get(id);
+  const existing =
+    await db.consultas.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Consulta não encontrada');
+    throw new Error(
+      'Consulta não encontrada'
+    );
   }
 
-  await db.consultas.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.consultas.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteConsulta(
   id: string
 ): Promise<void> {
-  await db.consultas.delete(id);
+  await db.consultas.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -2045,20 +2460,36 @@ export async function safeDeleteConsulta(
 // ============================================================
 
 export async function safeAddCirurgia(
-  data: Omit<Cirurgia, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    Cirurgia,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Cirurgia = {
+  const id =
+    generateId();
+
+  const full:
+    Cirurgia = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.cirurgias.add(full);
+  await db.cirurgias.add(
+    full
+  );
 
   return id;
 }
@@ -2067,22 +2498,34 @@ export async function safeUpdateCirurgia(
   id: string,
   changes: Partial<Cirurgia>
 ): Promise<void> {
-  const existing = await db.cirurgias.get(id);
+  const existing =
+    await db.cirurgias.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Cirurgia não encontrada');
+    throw new Error(
+      'Cirurgia não encontrada'
+    );
   }
 
-  await db.cirurgias.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.cirurgias.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteCirurgia(
   id: string
 ): Promise<void> {
-  await db.cirurgias.delete(id);
+  await db.cirurgias.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -2090,20 +2533,36 @@ export async function safeDeleteCirurgia(
 // ============================================================
 
 export async function safeAddCredential(
-  cred: Omit<Credential, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  cred: Omit<
+    Credential,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Credential = {
+  const id =
+    generateId();
+
+  const full:
+    Credential = {
     ...cred,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.credentials.add(full);
+  await db.credentials.add(
+    full
+  );
 
   return id;
 }
@@ -2113,22 +2572,33 @@ export async function safeUpdateCredential(
   changes: Partial<Credential>
 ): Promise<void> {
   const existing =
-    await db.credentials.get(id);
+    await db.credentials.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Credencial não encontrada');
+    throw new Error(
+      'Credencial não encontrada'
+    );
   }
 
-  await db.credentials.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.credentials.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteCredential(
   id: string
 ): Promise<void> {
-  await db.credentials.delete(id);
+  await db.credentials.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -2136,20 +2606,36 @@ export async function safeDeleteCredential(
 // ============================================================
 
 export async function safeAddBankCard(
-  card: Omit<BankCard, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  card: Omit<
+    BankCard,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: BankCard = {
+  const id =
+    generateId();
+
+  const full:
+    BankCard = {
     ...card,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.bankCards.add(full);
+  await db.bankCards.add(
+    full
+  );
 
   return id;
 }
@@ -2159,22 +2645,33 @@ export async function safeUpdateBankCard(
   changes: Partial<BankCard>
 ): Promise<void> {
   const existing =
-    await db.bankCards.get(id);
+    await db.bankCards.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Cartão não encontrado');
+    throw new Error(
+      'Cartão não encontrado'
+    );
   }
 
-  await db.bankCards.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.bankCards.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteBankCard(
   id: string
 ): Promise<void> {
-  await db.bankCards.delete(id);
+  await db.bankCards.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -2187,18 +2684,31 @@ export async function safeAddInstituicao(
     'id' | 'created_at' | 'updated_at' | 'synced'
   >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: InstituicaoEnsino = {
+  const id =
+    generateId();
+
+  const full:
+    InstituicaoEnsino = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.instituicoes.add(full);
+  await db.instituicoes.add(
+    full
+  );
 
   return id;
 }
@@ -2208,7 +2718,9 @@ export async function safeUpdateInstituicao(
   changes: Partial<InstituicaoEnsino>
 ): Promise<void> {
   const existing =
-    await db.instituicoes.get(id);
+    await db.instituicoes.get(
+      id
+    );
 
   if (!existing) {
     throw new Error(
@@ -2216,16 +2728,23 @@ export async function safeUpdateInstituicao(
     );
   }
 
-  await db.instituicoes.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.instituicoes.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteInstituicao(
   id: string
 ): Promise<void> {
-  await db.instituicoes.delete(id);
+  await db.instituicoes.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -2233,20 +2752,36 @@ export async function safeDeleteInstituicao(
 // ============================================================
 
 export async function safeAddTratamento(
-  data: Omit<Tratamento, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    Tratamento,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Tratamento = {
+  const id =
+    generateId();
+
+  const full:
+    Tratamento = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.tratamentos.add(full);
+  await db.tratamentos.add(
+    full
+  );
 
   return id;
 }
@@ -2256,23 +2791,34 @@ export async function safeUpdateTratamento(
   changes: Partial<Tratamento>
 ): Promise<void> {
   const existing =
-    await db.tratamentos.get(id);
+    await db.tratamentos.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('Tratamento não encontrado');
+    throw new Error(
+      'Tratamento não encontrado'
+    );
   }
 
-  await db.tratamentos.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.tratamentos.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteTratamento(
   id: string
 ): Promise<void> {
   const existing =
-    await db.tratamentos.get(id);
+    await db.tratamentos.get(
+      id
+    );
 
   if (!existing) {
     return;
@@ -2281,21 +2827,32 @@ export async function safeDeleteTratamento(
   const medicamentos =
     await db.medicamentos.toArray();
 
-  for (const medicamento of medicamentos) {
+  for (
+    const medicamento of
+    medicamentos
+  ) {
     if (
-      medicamento.tratamento_ids?.includes(id)
+      medicamento.tratamento_ids?.includes(
+        id
+      )
     ) {
       const tratamentoIds =
         medicamento.tratamento_ids.filter(
-          (tratamentoId) =>
-            tratamentoId !== id
+          (
+            tratamentoId
+          ) =>
+            tratamentoId !==
+            id
         );
 
       await db.medicamentos.update(
         medicamento.id!,
         {
-          tratamento_ids: tratamentoIds,
-          synced: false,
+          tratamento_ids:
+            tratamentoIds,
+
+          synced:
+            false,
         }
       );
     }
@@ -2304,37 +2861,60 @@ export async function safeDeleteTratamento(
   const exames =
     await db.exames.toArray();
 
-  for (const exame of exames) {
+  for (
+    const exame of
+    exames
+  ) {
     if (
-      exame.tratamento_ids?.includes(id)
+      exame.tratamento_ids?.includes(
+        id
+      )
     ) {
       const tratamentoIds =
         exame.tratamento_ids.filter(
-          (tratamentoId) =>
-            tratamentoId !== id
+          (
+            tratamentoId
+          ) =>
+            tratamentoId !==
+            id
         );
 
       await db.exames.update(
         exame.id!,
         {
-          tratamento_ids: tratamentoIds,
-          synced: false,
+          tratamento_ids:
+            tratamentoIds,
+
+          synced:
+            false,
         }
       );
     }
   }
 
   await db.medicamento_tratamentos
-    .where('tratamento_id')
-    .equals(id)
+    .filter(
+      (
+        vinculo
+      ) =>
+        vinculo.tratamento_id ===
+        id
+    )
     .delete();
 
   await db.exame_tratamentos
-    .where('tratamento_id')
-    .equals(id)
+    .filter(
+      (
+        vinculo
+      ) =>
+        vinculo.tratamento_id ===
+        id
+    )
     .delete();
 
-  await db.tratamentos.delete(id);
+  await db.tratamentos.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -2342,20 +2922,36 @@ export async function safeDeleteTratamento(
 // ============================================================
 
 export async function safeAddCid(
-  data: Omit<Cid, 'id' | 'created_at' | 'updated_at' | 'synced'>
+  data: Omit<
+    Cid,
+    'id' | 'created_at' | 'updated_at' | 'synced'
+  >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Cid = {
+  const id =
+    generateId();
+
+  const full:
+    Cid = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.cids.add(full);
+  await db.cids.add(
+    full
+  );
 
   return id;
 }
@@ -2364,22 +2960,35 @@ export async function safeUpdateCid(
   id: string,
   changes: Partial<Cid>
 ): Promise<void> {
-  const existing = await db.cids.get(id);
+  const existing =
+    await db.cids.get(
+      id
+    );
 
   if (!existing) {
-    throw new Error('CID não encontrado');
+    throw new Error(
+      'CID não encontrado'
+    );
   }
 
-  await db.cids.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.cids.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteCid(
   id: string
 ): Promise<void> {
-  const existing = await db.cids.get(id);
+  const existing =
+    await db.cids.get(
+      id
+    );
 
   if (!existing) {
     return;
@@ -2388,27 +2997,40 @@ export async function safeDeleteCid(
   const tratamentos =
     await db.tratamentos.toArray();
 
-  for (const tratamento of tratamentos) {
+  for (
+    const tratamento of
+    tratamentos
+  ) {
     if (
-      tratamento.cid_ids?.includes(id)
+      tratamento.cid_ids?.includes(
+        id
+      )
     ) {
       const cidIds =
         tratamento.cid_ids.filter(
-          (cidId) =>
-            cidId !== id
+          (
+            cidId
+          ) =>
+            cidId !==
+            id
         );
 
       await db.tratamentos.update(
         tratamento.id!,
         {
-          cid_ids: cidIds,
-          synced: false,
+          cid_ids:
+            cidIds,
+
+          synced:
+            false,
         }
       );
     }
   }
 
-  await db.cids.delete(id);
+  await db.cids.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -2421,19 +3043,37 @@ export async function safeAddAnexoClinico(
     'id' | 'created_at' | 'updated_at' | 'synced'
   >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: AnexoClinico = {
+  const id =
+    generateId();
+
+  const full:
+    AnexoClinico = {
     ...data,
+
     id,
-    user_id: String(data.user_id || ''),
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    user_id:
+      String(
+        data.user_id ||
+        ''
+      ),
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.anexos_clinicos.add(full);
+  await db.anexos_clinicos.add(
+    full
+  );
 
   return id;
 }
@@ -2443,7 +3083,9 @@ export async function safeUpdateAnexoClinico(
   changes: Partial<AnexoClinico>
 ): Promise<void> {
   const existing =
-    await db.anexos_clinicos.get(id);
+    await db.anexos_clinicos.get(
+      id
+    );
 
   if (!existing) {
     throw new Error(
@@ -2451,20 +3093,27 @@ export async function safeUpdateAnexoClinico(
     );
   }
 
-  await db.anexos_clinicos.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.anexos_clinicos.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteAnexoClinico(
   id: string
 ): Promise<void> {
-  await db.anexos_clinicos.delete(id);
+  await db.anexos_clinicos.delete(
+    id
+  );
 }
 
 // ============================================================
-// SETTINGS (CONFIGURAÇÕES DO USUÁRIO)
+// SETTINGS
 // ============================================================
 
 export async function safeAddSettings(
@@ -2473,18 +3122,31 @@ export async function safeAddSettings(
     'id' | 'updated_at' | 'created_at' | 'synced'
   >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: AppSettings = {
+  const id =
+    generateId();
+
+  const full:
+    AppSettings = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.settings.add(full);
+  await db.settings.add(
+    full
+  );
 
   return id;
 }
@@ -2493,10 +3155,13 @@ export async function safeUpdateSettings(
   id: string,
   changes: Partial<AppSettings>
 ): Promise<void> {
-  const timestamp = nowIso();
+  const timestamp =
+    nowIso();
 
   const existing =
-    await db.settings.get(id);
+    await db.settings.get(
+      id
+    );
 
   if (!existing) {
     throw new Error(
@@ -2504,11 +3169,18 @@ export async function safeUpdateSettings(
     );
   }
 
-  await db.settings.update(id, {
-    ...changes,
-    updated_at: timestamp,
-    synced: false,
-  });
+  await db.settings.update(
+    id,
+    {
+      ...changes,
+
+      updated_at:
+        timestamp,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function getDefaultPersonId(
@@ -2520,11 +3192,18 @@ export async function getDefaultPersonId(
 
   const settings =
     await db.settings
-      .where('user_id')
-      .equals(userId)
+      .where(
+        'user_id'
+      )
+      .equals(
+        userId
+      )
       .first();
 
-  return settings?.default_person_id || null;
+  return (
+    settings?.default_person_id ||
+    null
+  );
 }
 
 export async function updateDefaultPersonId(
@@ -2539,23 +3218,33 @@ export async function updateDefaultPersonId(
 
   const settings =
     await db.settings
-      .where('user_id')
-      .equals(userId)
+      .where(
+        'user_id'
+      )
+      .equals(
+        userId
+      )
       .first();
 
   if (!settings) {
     await safeAddSettings({
-      user_id: userId,
-      default_person_id: personId,
+      user_id:
+        userId,
+
+      default_person_id:
+        personId,
     });
-  } else {
-    await safeUpdateSettings(
-      settings.id!,
-      {
-        default_person_id: personId,
-      }
-    );
+
+    return;
   }
+
+  await safeUpdateSettings(
+    settings.id!,
+    {
+      default_person_id:
+        personId,
+    }
+  );
 }
 
 export async function getSettings(
@@ -2567,9 +3256,14 @@ export async function getSettings(
 
   return (
     (await db.settings
-      .where('user_id')
-      .equals(userId)
-      .first()) ?? null
+      .where(
+        'user_id'
+      )
+      .equals(
+        userId
+      )
+      .first()) ??
+    null
   );
 }
 
@@ -2583,17 +3277,28 @@ export async function safeAddVersiculo(
     'id' | 'created_at' | 'updated_at'
   >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: Versiculo = {
+  const id =
+    generateId();
+
+  const full:
+    Versiculo = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
   };
 
-  await db.versiculos.add(full);
+  await db.versiculos.add(
+    full
+  );
 
   return id;
 }
@@ -2602,10 +3307,13 @@ export async function safeUpdateVersiculo(
   id: string,
   changes: Partial<Versiculo>
 ): Promise<void> {
-  const timestamp = nowIso();
+  const timestamp =
+    nowIso();
 
   const existing =
-    await db.versiculos.get(id);
+    await db.versiculos.get(
+      id
+    );
 
   if (!existing) {
     throw new Error(
@@ -2613,16 +3321,23 @@ export async function safeUpdateVersiculo(
     );
   }
 
-  await db.versiculos.update(id, {
-    ...changes,
-    updated_at: timestamp,
-  });
+  await db.versiculos.update(
+    id,
+    {
+      ...changes,
+
+      updated_at:
+        timestamp,
+    }
+  );
 }
 
 export async function safeDeleteVersiculo(
   id: string
 ): Promise<void> {
-  await db.versiculos.delete(id);
+  await db.versiculos.delete(
+    id
+  );
 }
 
 // ============================================================
@@ -2635,18 +3350,31 @@ export async function safeAddRegistroSaude(
     'id' | 'created_at' | 'updated_at' | 'synced'
   >
 ): Promise<string> {
-  const timestamp = nowIso();
-  const id = generateId();
+  const timestamp =
+    nowIso();
 
-  const full: RegistroSaude = {
+  const id =
+    generateId();
+
+  const full:
+    RegistroSaude = {
     ...data,
+
     id,
-    created_at: timestamp,
-    updated_at: timestamp,
-    synced: false,
+
+    created_at:
+      timestamp,
+
+    updated_at:
+      timestamp,
+
+    synced:
+      false,
   };
 
-  await db.registros_saude.add(full);
+  await db.registros_saude.add(
+    full
+  );
 
   return id;
 }
@@ -2656,7 +3384,9 @@ export async function safeUpdateRegistroSaude(
   changes: Partial<RegistroSaude>
 ): Promise<void> {
   const existing =
-    await db.registros_saude.get(id);
+    await db.registros_saude.get(
+      id
+    );
 
   if (!existing) {
     throw new Error(
@@ -2664,14 +3394,21 @@ export async function safeUpdateRegistroSaude(
     );
   }
 
-  await db.registros_saude.update(id, {
-    ...changes,
-    synced: false,
-  });
+  await db.registros_saude.update(
+    id,
+    {
+      ...changes,
+
+      synced:
+        false,
+    }
+  );
 }
 
 export async function safeDeleteRegistroSaude(
   id: string
 ): Promise<void> {
-  await db.registros_saude.delete(id);
+  await db.registros_saude.delete(
+    id
+  );
 }

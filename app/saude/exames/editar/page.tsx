@@ -1,34 +1,56 @@
 // app/saude/exames/editar/page.tsx
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
-  Save,
-  Loader2,
-  Stethoscope,
-  Building2,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import { motion } from "framer-motion";
+import {
   Activity,
-  Plus,
-  X,
+  ArrowLeft,
   Brain,
-  Flame,
-  HeartPulse,
-  ShieldAlert,
+  Building2,
   Calendar,
+  Camera,
   Clock,
   Eraser,
-  Upload,
-  Camera,
+  Flame,
+  HeartPulse,
   Image as ImageIcon,
-  FileText,
-  FlaskConical,
+  Loader2,
+  Plus,
+  Save,
+  ShieldAlert,
+  Stethoscope,
+  Upload,
+  X,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
+
+import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
+import { getClinicalTheme } from "@/lib/health-utils";
+import {
+  deleteFile,
+  uploadFile,
+} from "@/lib/supabase/storage";
+import { cidsRepository } from "@/lib/repositories/cids";
+
+import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useExames } from "@/hooks/useExames";
+import { useLocais } from "@/hooks/useLocais";
+import { useMedicos } from "@/hooks/useMedicos";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
+import { useTratamentos } from "@/hooks/useTratamentos";
+
 import { useToast } from "@/components/ToastProvider";
 import { PageTransition } from "@/components/PageTransition";
 import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
@@ -37,632 +59,2325 @@ import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { SelectionModal } from "@/components/SelectionModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { useMedicos } from "@/hooks/useMedicos";
-import { useLocais } from "@/hooks/useLocais";
-import { useTratamentos } from "@/hooks/useTratamentos";
-import { useExames } from "@/hooks/useExames";
-import { useAuth } from "@/hooks/useAuth";
-import { uploadFile } from "@/lib/supabase/storage";
-import { db } from "@/lib/db";
-import { examesRepository } from "@/lib/repositories/exames";
-import { getClinicalTheme } from "@/lib/health-utils";
-import { cidsRepository } from "@/lib/repositories/cids";
-import type { Medico, LocalSaude, Tratamento, Attachment, Exame, Cid } from "@/lib/types";
+
+import type {
+  Attachment,
+  Cid,
+  Exame,
+  LocalSaude,
+  Medico,
+  Tratamento,
+} from "@/lib/types";
+
+// ============================================================
+// ANIMATION
+// ============================================================
 
 const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
+  initial: {
+    opacity: 0,
+    y: 12,
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+  },
 };
 
-function formatDateToDisplay(isoStr: string): string {
-  if (!isoStr) return "";
-  const parts = isoStr.split("-");
-  if (parts.length !== 3) return isoStr;
+// ============================================================
+// HELPERS
+// ============================================================
+
+function formatDateToDisplay(
+  isoStr?: string
+): string {
+  if (!isoStr) {
+    return "";
+  }
+
+  const datePart =
+    isoStr.includes("T")
+      ? isoStr.split("T")[0]
+      : isoStr;
+
+  const parts =
+    datePart.split("-");
+
+  if (parts.length !== 3) {
+    return isoStr;
+  }
+
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function parseDateToISO(displayStr: string): string {
-  const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return "";
-  const day = clean.slice(0, 2);
-  const month = clean.slice(2, 4);
-  const year = clean.slice(4, 8);
-  return `${year}-${month}-${day}`;
+function parseDateToISO(
+  displayStr: string
+): string | undefined {
+  const clean =
+    displayStr.replace(/\D/g, "");
+
+  if (clean.length !== 8) {
+    return undefined;
+  }
+
+  const day = Number(
+    clean.slice(0, 2)
+  );
+
+  const month = Number(
+    clean.slice(2, 4)
+  );
+
+  const year = Number(
+    clean.slice(4, 8)
+  );
+
+  const parsed =
+    new Date(
+      year,
+      month - 1,
+      day
+    );
+
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return `${String(year).padStart(
+    4,
+    "0"
+  )}-${String(month).padStart(
+    2,
+    "0"
+  )}-${String(day).padStart(
+    2,
+    "0"
+  )}`;
 }
 
-function handleDateMask(value: string): string {
-  const clean = value.replace(/\D/g, "").slice(0, 8);
+function handleDateMask(
+  value: string
+): string {
+  const clean =
+    value
+      .replace(/\D/g, "")
+      .slice(0, 8);
+
   if (clean.length > 4) {
-    return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
+    return `${clean.slice(
+      0,
+      2
+    )}/${clean.slice(
+      2,
+      4
+    )}/${clean.slice(4)}`;
   }
+
   if (clean.length > 2) {
-    return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+    return `${clean.slice(
+      0,
+      2
+    )}/${clean.slice(2)}`;
   }
+
   return clean;
 }
 
-function handleTimeMask(value: string): string {
-  const clean = value.replace(/\D/g, "").slice(0, 4);
+function handleTimeMask(
+  value: string
+): string {
+  const clean =
+    value
+      .replace(/\D/g, "")
+      .slice(0, 4);
+
   if (clean.length > 2) {
-    return `${clean.slice(0, 2)}:${clean.slice(2)}`;
+    return `${clean.slice(
+      0,
+      2
+    )}:${clean.slice(2)}`;
   }
+
   return clean;
 }
 
-function getTratamentoIcon(nome: string) {
-  const n = nome.toLowerCase();
-  if (n.includes("tdah")) return Brain;
-  if (n.includes("dor") || n.includes("neuropática")) return Flame;
-  if (n.includes("depress")) return HeartPulse;
-  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
+function isValidTime(
+  value: string
+): boolean {
+  if (!value) {
+    return true;
+  }
+
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(
+    value
+  );
+}
+
+function isVaultStorageUrl(
+  url?: string
+): boolean {
+  return Boolean(
+    url &&
+      url.includes(
+        "/storage/v1/object/public/vault-attachments/"
+      )
+  );
+}
+
+function getTratamentoIcon(
+  nome: string
+) {
+  const normalized =
+    nome.toLowerCase();
+
+  if (
+    normalized.includes("tdah")
+  ) {
+    return Brain;
+  }
+
+  if (
+    normalized.includes("dor") ||
+    normalized.includes("neuropática")
+  ) {
+    return Flame;
+  }
+
+  if (
+    normalized.includes("depress")
+  ) {
+    return HeartPulse;
+  }
+
+  if (
+    normalized.includes("ansied") ||
+    normalized.includes("ansiolítico")
+  ) {
+    return ShieldAlert;
+  }
+
   return Activity;
 }
 
+function sanitizeIds(
+  ids: string[] | undefined,
+  validIds: Set<string>
+): string[] {
+  if (!ids?.length) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      ids.filter((id) =>
+        validIds.has(id)
+      )
+    )
+  );
+}
+
+// ============================================================
+// PAGE
+// ============================================================
+
 export default function EditarExamePage() {
   return (
-    <Suspense fallback={<DetailSkeleton />}>
+    <Suspense
+      fallback={<DetailSkeleton />}
+    >
       <EditarExameContent />
     </Suspense>
   );
 }
 
+// ============================================================
+// CONTENT
+// ============================================================
+
 function EditarExameContent() {
-  const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const id = searchParams.get("id");
-  const { user } = useAuth();
+  const searchParams =
+    useSearchParams();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const id =
+    searchParams.get("id");
 
-  const { medicos, addMedico } = useMedicos();
-  const { locais, addLocal } = useLocais();
-  const { tratamentos: allTratamentos, addTratamento } = useTratamentos();
-  const { getExame, deleteExame, updateExame } = useExames();
-  const { run, isSubmitting } = useSubmitAction();
-  const isSubmitLocked = useRef(false);
+  const { trigger } =
+    useHapticFeedback();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [exame, setExame] = useState<Exame | null>(null);
+  const { showToast } =
+    useToast();
 
-  const [personId, setPersonId] = useState("");
-  const [nome, setNome] = useState("");
+  /*
+   * Auth permanece apenas por causa do Storage.
+   */
+  const { user } =
+    useAuth();
 
-  const [laboratorio, setLaboratorio] = useState("");
-  const [localId, setLocalId] = useState("");
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  const [medico, setMedico] = useState("");
-  const [medicoId, setMedicoId] = useState("");
+  const {
+    getExame,
+    updateExame,
+  } =
+    useExames();
 
-  const [dataSolicitacaoDisplay, setDataSolicitacaoDisplay] = useState("");
-  const [horario, setHorario] = useState("");
-  const [dataRetornoDisplay, setDataRetornoDisplay] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [observacoes, setObservacoes] = useState("");
-  const [anexoUrl, setAnexoUrl] = useState("");
+  const {
+    medicos,
+    addMedico,
+  } =
+    useMedicos();
 
-  const [attachment, setAttachment] = useState<Attachment | null>(null);
-  const [localFile, setLocalFile] = useState<File | null>(null);
+  const {
+    locais,
+    addLocal,
+  } =
+    useLocais();
 
-  const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
-  const [cidsSelecionados, setCidsSelecionados] = useState<string[]>([]);
-  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
-  const [isCidModalOpen, setIsCidModalOpen] = useState(false);
-  const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
-  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
+  const {
+    addTratamento,
+  } =
+    useTratamentos();
 
-  const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
-  const [newTratamentoName, setNewTratamentoName] = useState("");
+  const {
+    run,
+    isSubmitting,
+  } =
+    useSubmitAction();
 
-  const [isCreatingDoctor, setIsCreatingDoctor] = useState(false);
-  const [newDocName, setNewDocName] = useState("");
-  const [newDocEspecialidade, setNewDocEspecialidade] = useState("");
+  const isSubmitLocked =
+    useRef(false);
 
-  const [isCreatingLocal, setIsCreatingLocal] = useState(false);
-  const [newLocalName, setNewLocalName] = useState("");
+  const fileInputRef =
+    useRef<HTMLInputElement>(
+      null
+    );
 
-  const [isCreatingCid, setIsCreatingCid] = useState(false);
-  const [newCidCodigo, setNewCidCodigo] = useState("");
-  const [newCidDescricao, setNewCidDescricao] = useState("");
+  const cameraInputRef =
+    useRef<HTMLInputElement>(
+      null
+    );
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // ==========================================================
+  // DATA
+  // ==========================================================
 
-  const allCids = useLiveQuery(() => db.cids.toArray(), []) || [];
-
-  useEffect(() => {
-    if (!id) {
-      router.push("/saude/exames");
-      return;
-    }
-
-    const loadExame = async () => {
-      const data = await getExame(id);
-      if (data) {
-        setExame(data);
-        setPersonId(data.person_id || "");
-        setNome(data.nome || "");
-        setLaboratorio(data.laboratorio || "");
-        setLocalId(data.local_id || "");
-        setMedico(data.medico || "");
-        setMedicoId(data.medico_id || "");
-        setDataSolicitacaoDisplay(data.data ? formatDateToDisplay(data.data) : "");
-        setHorario((data as any).horario || "");
-        setDataRetornoDisplay(data.data_retorno ? formatDateToDisplay(data.data_retorno) : "");
-        setMotivo(data.motivo || "");
-        setObservacoes(data.observacoes || "");
-        setAnexoUrl(data.anexo_url || "");
-        setTratamentosSelecionados(data.tratamento_ids || []);
-        setCidsSelecionados(data.cid_ids || []);
-      } else {
-        router.push("/saude/exames");
-      }
-      setIsLoading(false);
-    };
-
-    loadExame();
-  }, [id, router, getExame]);
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      trigger("vibrate");
-      setLocalFile(file);
-      setAttachment({
-        id: crypto.randomUUID(),
-        url: URL.createObjectURL(file),
-        name: file.name,
-        type: file.type.startsWith("image") ? "image" : "pdf",
-        uploaded_at: new Date().toISOString(),
-      });
-    }
-    e.target.value = "";
-  };
-
-  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      trigger("vibrate");
-      setLocalFile(file);
-      setAttachment({
-        id: crypto.randomUUID(),
-        url: URL.createObjectURL(file),
-        name: `exame_${Date.now()}.jpg`,
-        type: "image",
-        uploaded_at: new Date().toISOString(),
-      });
-    }
-    e.target.value = "";
-  };
-
-  const removeAttachment = () => {
-    if (attachment?.url.startsWith("blob:")) URL.revokeObjectURL(attachment.url);
-    setAttachment(null);
-    setLocalFile(null);
-    setAnexoUrl("");
-    trigger("vibrate");
-  };
-
-  const handleCreateDoctor = async () => {
-    if (!newDocName.trim()) return;
-    trigger("vibrate");
-    try {
-      const newId = await addMedico({
-        nome: newDocName.trim(),
-        especialidade: newDocEspecialidade.trim() || "Geral",
-      });
-      setMedicoId(newId);
-      setMedico(newDocName.trim());
-      setIsCreatingDoctor(false);
-      setNewDocName("");
-      setNewDocEspecialidade("");
-      trigger("success");
-      showToast("Médico cadastrado", "success");
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao cadastrar médico", "error");
-    }
-  };
-
-  const handleCreateLocal = async () => {
-    if (!newLocalName.trim()) return;
-    trigger("vibrate");
-    try {
-      const newId = await addLocal({
-        nome: newLocalName.trim(),
-        tipo: "laboratorio",
-      });
-      setLocalId(newId);
-      setLaboratorio(newLocalName.trim());
-      setIsCreatingLocal(false);
-      setNewLocalName("");
-      trigger("success");
-      showToast("Local cadastrado", "success");
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao cadastrar local", "error");
-    }
-  };
-
-  const handleCreateTratamento = async () => {
-    if (!newTratamentoName.trim()) return;
-    trigger("vibrate");
-    try {
-      const newId = await addTratamento({
-        person_id: personId || undefined,
-        nome: newTratamentoName.trim(),
-        status: "ativo",
-      });
-      setTratamentosSelecionados((prev) => [...prev, newId]);
-      setIsCreatingTratamento(false);
-      setNewTratamentoName("");
-      trigger("success");
-      showToast("Tratamento cadastrado", "success");
-    } catch (error) {
-      trigger("error");
-      showToast("Erro ao cadastrar tratamento", "error");
-    }
-  };
-
-  const handleCreateCid = async () => {
-    if (!newCidCodigo.trim() || !newCidDescricao.trim()) return;
-    trigger("vibrate");
-    try {
-      const newId = await cidsRepository.create({
-        user_id: user?.id || "",
-        person_id: personId || undefined,
-        codigo: newCidCodigo.trim(),
-        descricao: newCidDescricao.trim(),
-      });
-      setCidsSelecionados((prev) => [...prev, newId]);
-      showToast("CID cadastrado", "success");
-      setIsCreatingCid(false);
-      setNewCidCodigo("");
-      setNewCidDescricao("");
-    } catch (error) {
-      console.error(error);
-      showToast("Erro ao cadastrar CID", "error");
-    }
-  };
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
-    if (!dataSolicitacaoDisplay || dataSolicitacaoDisplay.length < 10) newErrors.data = "Data inválida";
-
-    if (horario) {
-      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-      if (!timeRegex.test(horario)) {
-        newErrors.horario = "Horário inválido (use HH:MM)";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSave = () => {
-    if (!id) return;
-    trigger("vibrate");
-    if (!validate()) {
-      trigger("error");
-      return;
-    }
-
-    if (isSubmitLocked.current || isSubmitting) return;
-    isSubmitLocked.current = true;
-
-    run(
+  const tratamentos =
+    useLiveQuery<Tratamento[]>(
       async () => {
-        const dataSolicitacaoISO = parseDateToISO(dataSolicitacaoDisplay);
-        if (!dataSolicitacaoISO) throw new Error("Data inválida");
-
-        const dataRetornoISO = dataRetornoDisplay ? parseDateToISO(dataRetornoDisplay) : undefined;
-
-        let urlUpload = anexoUrl;
-        if (localFile && user) {
-          const { url, error } = await uploadFile(user.id, localFile, "saude");
-          if (!error && url) {
-            urlUpload = url;
-            if (attachment?.url.startsWith("blob:")) URL.revokeObjectURL(attachment.url);
-          }
+        if (!activePersonId) {
+          return [];
         }
 
-        await updateExame(id, {
-          person_id: personId || undefined,
-          nome: nome.trim(),
-          laboratorio: laboratorio.trim() || undefined,
-          local_id: localId || undefined,
-          medico: medico.trim() || undefined,
-          medico_id: medicoId || undefined,
-          data: dataSolicitacaoISO,
-          horario: horario || undefined,
-          data_retorno: dataRetornoISO,
-          motivo: motivo.trim() || undefined,
-          observacoes: observacoes.trim() || undefined,
-          anexo_url: urlUpload.trim() || undefined,
-          tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-          cid_ids: cidsSelecionados.length > 0 ? cidsSelecionados : undefined,
-        });
+        return db.tratamentos
+          .where("person_id")
+          .equals(activePersonId)
+          .toArray();
       },
-      {
-        successMessage: "Exame atualizado com sucesso",
-        errorMessage: "Erro ao atualizar exame",
-        goBackOnSuccess: false,
+      [activePersonId]
+    ) ?? [];
+
+  const cids =
+    useLiveQuery<Cid[]>(
+      async () => {
+        if (!activePersonId) {
+          return [];
+        }
+
+        return db.cids
+          .where("person_id")
+          .equals(activePersonId)
+          .toArray();
+      },
+      [activePersonId]
+    ) ?? [];
+
+  // ==========================================================
+  // BASE STATE
+  // ==========================================================
+
+  const [
+    exame,
+    setExame,
+  ] =
+    useState<Exame | null>(
+      null
+    );
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(true);
+
+  const [
+    nome,
+    setNome,
+  ] =
+    useState("");
+
+  const [
+    laboratorio,
+    setLaboratorio,
+  ] =
+    useState("");
+
+  const [
+    localId,
+    setLocalId,
+  ] =
+    useState("");
+
+  const [
+    medico,
+    setMedico,
+  ] =
+    useState("");
+
+  const [
+    medicoId,
+    setMedicoId,
+  ] =
+    useState("");
+
+  const [
+    dataSolicitacaoDisplay,
+    setDataSolicitacaoDisplay,
+  ] =
+    useState("");
+
+  const [
+    horario,
+    setHorario,
+  ] =
+    useState("");
+
+  const [
+    dataRetornoDisplay,
+    setDataRetornoDisplay,
+  ] =
+    useState("");
+
+  const [
+    motivo,
+    setMotivo,
+  ] =
+    useState("");
+
+  const [
+    observacoes,
+    setObservacoes,
+  ] =
+    useState("");
+
+  const [
+    anexoUrl,
+    setAnexoUrl,
+  ] =
+    useState("");
+
+  // ==========================================================
+  // ATTACHMENT
+  // ==========================================================
+
+  const [
+    attachment,
+    setAttachment,
+  ] =
+    useState<Attachment | null>(
+      null
+    );
+
+  const [
+    localFile,
+    setLocalFile,
+  ] =
+    useState<File | null>(
+      null
+    );
+
+  // ==========================================================
+  // RELATIONS
+  // ==========================================================
+
+  const [
+    tratamentosSelecionados,
+    setTratamentosSelecionados,
+  ] =
+    useState<string[]>([]);
+
+  const [
+    cidsSelecionados,
+    setCidsSelecionados,
+  ] =
+    useState<string[]>([]);
+
+  // ==========================================================
+  // MODALS
+  // ==========================================================
+
+  const [
+    isTratamentoModalOpen,
+    setIsTratamentoModalOpen,
+  ] =
+    useState(false);
+
+  const [
+    isCidModalOpen,
+    setIsCidModalOpen,
+  ] =
+    useState(false);
+
+  const [
+    isDoctorModalOpen,
+    setIsDoctorModalOpen,
+  ] =
+    useState(false);
+
+  const [
+    isLocalModalOpen,
+    setIsLocalModalOpen,
+  ] =
+    useState(false);
+
+  // ==========================================================
+  // QUICK CREATE
+  // ==========================================================
+
+  const [
+    isCreatingTratamento,
+    setIsCreatingTratamento,
+  ] =
+    useState(false);
+
+  const [
+    newTratamentoName,
+    setNewTratamentoName,
+  ] =
+    useState("");
+
+  const [
+    isSavingTratamento,
+    setIsSavingTratamento,
+  ] =
+    useState(false);
+
+  const [
+    isCreatingDoctor,
+    setIsCreatingDoctor,
+  ] =
+    useState(false);
+
+  const [
+    newDocName,
+    setNewDocName,
+  ] =
+    useState("");
+
+  const [
+    newDocEspecialidade,
+    setNewDocEspecialidade,
+  ] =
+    useState("");
+
+  const [
+    isCreatingLocal,
+    setIsCreatingLocal,
+  ] =
+    useState(false);
+
+  const [
+    newLocalName,
+    setNewLocalName,
+  ] =
+    useState("");
+
+  const [
+    isCreatingCid,
+    setIsCreatingCid,
+  ] =
+    useState(false);
+
+  const [
+    newCidCodigo,
+    setNewCidCodigo,
+  ] =
+    useState("");
+
+  const [
+    newCidDescricao,
+    setNewCidDescricao,
+  ] =
+    useState("");
+
+  const [
+    isSavingCid,
+    setIsSavingCid,
+  ] =
+    useState(false);
+
+  // ==========================================================
+  // ERRORS
+  // ==========================================================
+
+  const [
+    errors,
+    setErrors,
+  ] =
+    useState<
+      Record<string, string>
+    >({});
+
+  const clearError = (
+    key: string
+  ) => {
+    setErrors((previous) => {
+      if (!previous[key]) {
+        return previous;
       }
-    ).then(() => router.replace(`/saude/exames/detalhes?id=${id}`)).catch(() => {}).finally(() => {
-      isSubmitLocked.current = false;
+
+      const next = {
+        ...previous,
+      };
+
+      delete next[key];
+
+      return next;
     });
   };
 
-  if (isLoading) return <DetailSkeleton />;
-  if (!exame) return null;
+  // ==========================================================
+  // LOAD
+  // ==========================================================
+
+  useEffect(() => {
+    if (!id) {
+      router.replace(
+        "/saude/exames"
+      );
+      return;
+    }
+
+    if (!activePersonId) {
+      setExame(null);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const load =
+      async () => {
+        setIsLoading(true);
+
+        try {
+          const data =
+            await getExame(id);
+
+          if (cancelled) {
+            return;
+          }
+
+          if (!data) {
+            showToast(
+              "Exame não encontrado para a pessoa ativa.",
+              "error"
+            );
+
+            router.replace(
+              "/saude/exames"
+            );
+
+            return;
+          }
+
+          const [
+            allowedTratamentos,
+            allowedCids,
+          ] =
+            await Promise.all([
+              db.tratamentos
+                .where("person_id")
+                .equals(
+                  activePersonId
+                )
+                .toArray(),
+
+              db.cids
+                .where("person_id")
+                .equals(
+                  activePersonId
+                )
+                .toArray(),
+            ]);
+
+          if (cancelled) {
+            return;
+          }
+
+          const tratamentoIds =
+            new Set<string>(
+              allowedTratamentos
+                .map((item) =>
+                  item.id
+                )
+                .filter(
+                  (
+                    relationId
+                  ): relationId is string =>
+                    Boolean(
+                      relationId
+                    )
+                )
+            );
+
+          const cidIds =
+            new Set<string>(
+              allowedCids
+                .map((item) =>
+                  item.id
+                )
+                .filter(
+                  (
+                    relationId
+                  ): relationId is string =>
+                    Boolean(
+                      relationId
+                    )
+                )
+            );
+
+          setExame(data);
+
+          setNome(
+            data.nome || ""
+          );
+
+          setLaboratorio(
+            data.laboratorio ||
+              ""
+          );
+
+          setLocalId(
+            data.local_id ||
+              ""
+          );
+
+          setMedico(
+            data.medico || ""
+          );
+
+          setMedicoId(
+            data.medico_id ||
+              ""
+          );
+
+          setDataSolicitacaoDisplay(
+            formatDateToDisplay(
+              data.data
+            )
+          );
+
+          setHorario(
+            data.horario ||
+              ""
+          );
+
+          setDataRetornoDisplay(
+            formatDateToDisplay(
+              data.data_retorno
+            )
+          );
+
+          setMotivo(
+            data.motivo ||
+              ""
+          );
+
+          setObservacoes(
+            data.observacoes ||
+              ""
+          );
+
+          setAnexoUrl(
+            data.anexo_url ||
+              ""
+          );
+
+          setTratamentosSelecionados(
+            sanitizeIds(
+              data.tratamento_ids,
+              tratamentoIds
+            )
+          );
+
+          setCidsSelecionados(
+            sanitizeIds(
+              data.cid_ids,
+              cidIds
+            )
+          );
+        } catch (error) {
+          console.error(
+            "Erro ao carregar exame:",
+            error
+          );
+
+          if (!cancelled) {
+            showToast(
+              "Não foi possível carregar o exame.",
+              "error"
+            );
+
+            router.replace(
+              "/saude/exames"
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    id,
+    activePersonId,
+    getExame,
+    router,
+    showToast,
+  ]);
+
+  // ==========================================================
+  // SELECTED GLOBAL ENTITIES
+  // ==========================================================
+
+  const selectedMedico =
+    medicos.find(
+      (item) =>
+        item.id === medicoId
+    );
+
+  const selectedLocal =
+    locais.find(
+      (item) =>
+        item.id === localId
+    );
+
+  // ==========================================================
+  // FILE
+  // ==========================================================
+
+  const setPreviewFile = (
+    file: File,
+    name: string
+  ) => {
+    if (
+      attachment?.url.startsWith(
+        "blob:"
+      )
+    ) {
+      URL.revokeObjectURL(
+        attachment.url
+      );
+    }
+
+    const objectUrl =
+      URL.createObjectURL(file);
+
+    setLocalFile(file);
+
+    setAttachment({
+      id: crypto.randomUUID(),
+      url: objectUrl,
+      name,
+      type:
+        file.type.startsWith(
+          "image"
+        )
+          ? "image"
+          : "pdf",
+      uploaded_at:
+        new Date().toISOString(),
+    });
+  };
+
+  const handleFileSelect = (
+    event:
+      React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file =
+      event.target.files?.[0];
+
+    if (file) {
+      trigger("vibrate");
+
+      setPreviewFile(
+        file,
+        file.name
+      );
+    }
+
+    event.target.value = "";
+  };
+
+  const handleCameraCapture = (
+    event:
+      React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file =
+      event.target.files?.[0];
+
+    if (file) {
+      trigger("vibrate");
+
+      setPreviewFile(
+        file,
+        `exame_${Date.now()}.jpg`
+      );
+    }
+
+    event.target.value = "";
+  };
+
+  const removeNewAttachment =
+    () => {
+      if (
+        attachment?.url.startsWith(
+          "blob:"
+        )
+      ) {
+        URL.revokeObjectURL(
+          attachment.url
+        );
+      }
+
+      setAttachment(null);
+      setLocalFile(null);
+
+      trigger("vibrate");
+    };
+
+  const removeCurrentAttachment =
+    () => {
+      setAnexoUrl("");
+
+      trigger("vibrate");
+    };
+
+  // ==========================================================
+  // QUICK MEDICO
+  // ==========================================================
+
+  const handleCreateDoctor =
+    async () => {
+      const doctorName =
+        newDocName.trim();
+
+      if (!doctorName) {
+        return;
+      }
+
+      trigger("vibrate");
+
+      try {
+        const newId =
+          await addMedico({
+            nome:
+              doctorName,
+
+            especialidade:
+              newDocEspecialidade.trim() ||
+              "Geral",
+          });
+
+        setMedicoId(newId);
+        setMedico(doctorName);
+
+        setIsCreatingDoctor(
+          false
+        );
+
+        setNewDocName("");
+        setNewDocEspecialidade(
+          ""
+        );
+
+        trigger("success");
+
+        showToast(
+          "Médico cadastrado",
+          "success"
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao cadastrar médico:",
+          error
+        );
+
+        trigger("error");
+
+        showToast(
+          "Erro ao cadastrar médico",
+          "error"
+        );
+      }
+    };
+
+  // ==========================================================
+  // QUICK LOCAL
+  // ==========================================================
+
+  const handleCreateLocal =
+    async () => {
+      const localName =
+        newLocalName.trim();
+
+      if (!localName) {
+        return;
+      }
+
+      trigger("vibrate");
+
+      try {
+        const newId =
+          await addLocal({
+            nome:
+              localName,
+
+            tipo:
+              "laboratorio",
+          });
+
+        setLocalId(newId);
+
+        setLaboratorio(
+          localName
+        );
+
+        setIsCreatingLocal(
+          false
+        );
+
+        setNewLocalName("");
+
+        trigger("success");
+
+        showToast(
+          "Local cadastrado",
+          "success"
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao cadastrar local:",
+          error
+        );
+
+        trigger("error");
+
+        showToast(
+          "Erro ao cadastrar local",
+          "error"
+        );
+      }
+    };
+
+  // ==========================================================
+  // QUICK TRATAMENTO
+  // ==========================================================
+
+  const handleCreateTratamento =
+    async () => {
+      const treatmentName =
+        newTratamentoName.trim();
+
+      if (
+        !treatmentName ||
+        isSavingTratamento
+      ) {
+        return;
+      }
+
+      if (!activePersonId) {
+        showToast(
+          "Pessoa ativa não identificada.",
+          "error"
+        );
+
+        trigger("error");
+
+        return;
+      }
+
+      setIsSavingTratamento(
+        true
+      );
+
+      trigger("vibrate");
+
+      try {
+        const newId =
+          await addTratamento({
+            nome:
+              treatmentName,
+
+            status:
+              "ativo",
+          });
+
+        setTratamentosSelecionados(
+          (previous) =>
+            previous.includes(
+              newId
+            )
+              ? previous
+              : [
+                  ...previous,
+                  newId,
+                ]
+        );
+
+        setIsCreatingTratamento(
+          false
+        );
+
+        setNewTratamentoName(
+          ""
+        );
+
+        trigger("success");
+
+        showToast(
+          "Tratamento cadastrado",
+          "success"
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao cadastrar tratamento:",
+          error
+        );
+
+        trigger("error");
+
+        showToast(
+          "Erro ao cadastrar tratamento",
+          "error"
+        );
+      } finally {
+        setIsSavingTratamento(
+          false
+        );
+      }
+    };
+
+  // ==========================================================
+  // QUICK CID
+  // ==========================================================
+
+  const handleCreateCid =
+    async () => {
+      const codigo =
+        newCidCodigo.trim();
+
+      const descricao =
+        newCidDescricao.trim();
+
+      if (
+        !codigo ||
+        !descricao ||
+        isSavingCid
+      ) {
+        return;
+      }
+
+      if (!activePersonId) {
+        showToast(
+          "Pessoa ativa não identificada.",
+          "error"
+        );
+
+        trigger("error");
+
+        return;
+      }
+
+      setIsSavingCid(true);
+
+      trigger("vibrate");
+
+      try {
+        const newId =
+          await cidsRepository.create(
+            {
+              person_id:
+                activePersonId,
+
+              codigo,
+
+              descricao,
+            }
+          );
+
+        setCidsSelecionados(
+          (previous) =>
+            previous.includes(
+              newId
+            )
+              ? previous
+              : [
+                  ...previous,
+                  newId,
+                ]
+        );
+
+        setIsCreatingCid(
+          false
+        );
+
+        setNewCidCodigo("");
+        setNewCidDescricao("");
+
+        trigger("success");
+
+        showToast(
+          "CID cadastrado",
+          "success"
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao cadastrar CID:",
+          error
+        );
+
+        trigger("error");
+
+        showToast(
+          "Erro ao cadastrar CID",
+          "error"
+        );
+      } finally {
+        setIsSavingCid(false);
+      }
+    };
+
+  // ==========================================================
+  // VALIDATE
+  // ==========================================================
+
+  const validate = (): boolean => {
+    const newErrors:
+      Record<string, string> =
+      {};
+
+    if (
+      !activePersonId ||
+      !exame ||
+      exame.person_id !==
+        activePersonId
+    ) {
+      newErrors.person =
+        "O exame não pertence à pessoa ativa";
+    }
+
+    if (!nome.trim()) {
+      newErrors.nome =
+        "Nome é obrigatório";
+    }
+
+    if (
+      !parseDateToISO(
+        dataSolicitacaoDisplay
+      )
+    ) {
+      newErrors.data =
+        "Informe uma data válida";
+    }
+
+    if (
+      dataRetornoDisplay &&
+      !parseDateToISO(
+        dataRetornoDisplay
+      )
+    ) {
+      newErrors.dataRetorno =
+        "Informe uma data de retorno válida";
+    }
+
+    if (
+      !isValidTime(horario)
+    ) {
+      newErrors.horario =
+        "Horário inválido (use HH:MM)";
+    }
+
+    setErrors(newErrors);
+
+    return (
+      Object.keys(newErrors)
+        .length === 0
+    );
+  };
+
+  // ==========================================================
+  // SAVE
+  // ==========================================================
+
+  const handleSave = () => {
+    if (!id) {
+      return;
+    }
+
+    trigger("vibrate");
+
+    if (!validate()) {
+      trigger("error");
+
+      showToast(
+        "Revise os campos antes de salvar.",
+        "error"
+      );
+
+      return;
+    }
+
+    if (
+      !activePersonId ||
+      !exame ||
+      exame.person_id !==
+        activePersonId
+    ) {
+      trigger("error");
+
+      showToast(
+        "Não foi possível validar o exame para a pessoa ativa.",
+        "error"
+      );
+
+      return;
+    }
+
+    if (
+      isSubmitLocked.current ||
+      isSubmitting
+    ) {
+      return;
+    }
+
+    isSubmitLocked.current =
+      true;
+
+    run(
+      async () => {
+        let uploadedNewUrl:
+          | string
+          | undefined;
+
+        let updateSucceeded =
+          false;
+
+        try {
+          const dataISO =
+            parseDateToISO(
+              dataSolicitacaoDisplay
+            );
+
+          if (!dataISO) {
+            throw new Error(
+              "Data inválida"
+            );
+          }
+
+          const retornoISO =
+            dataRetornoDisplay
+              ? parseDateToISO(
+                  dataRetornoDisplay
+                )
+              : undefined;
+
+          if (
+            dataRetornoDisplay &&
+            !retornoISO
+          ) {
+            throw new Error(
+              "Data de retorno inválida"
+            );
+          }
+
+          const validTreatmentIds =
+            new Set<string>(
+              tratamentos
+                .map(
+                  (item) =>
+                    item.id
+                )
+                .filter(
+                  (
+                    relationId
+                  ): relationId is string =>
+                    Boolean(
+                      relationId
+                    )
+                )
+            );
+
+          const validCidIds =
+            new Set<string>(
+              cids
+                .map(
+                  (item) =>
+                    item.id
+                )
+                .filter(
+                  (
+                    relationId
+                  ): relationId is string =>
+                    Boolean(
+                      relationId
+                    )
+                )
+            );
+
+          const safeTreatmentIds =
+            sanitizeIds(
+              tratamentosSelecionados,
+              validTreatmentIds
+            );
+
+          const safeCidIds =
+            sanitizeIds(
+              cidsSelecionados,
+              validCidIds
+            );
+
+          let finalAttachmentUrl =
+            anexoUrl.trim() ||
+            undefined;
+
+          if (localFile) {
+            if (!user?.id) {
+              throw new Error(
+                "Usuário não autenticado para upload."
+              );
+            }
+
+            const {
+              url,
+              error,
+            } =
+              await uploadFile(
+                user.id,
+                localFile,
+                "saude"
+              );
+
+            if (error) {
+              throw error;
+            }
+
+            if (!url) {
+              throw new Error(
+                "Upload concluído sem URL."
+              );
+            }
+
+            uploadedNewUrl =
+              url;
+
+            finalAttachmentUrl =
+              url;
+          }
+
+          const finalDoctorName =
+            medicoId
+              ? selectedMedico?.nome ||
+                medico.trim() ||
+                undefined
+              : medico.trim() ||
+                undefined;
+
+          const finalLabName =
+            localId
+              ? selectedLocal?.nome ||
+                laboratorio.trim() ||
+                undefined
+              : laboratorio.trim() ||
+                undefined;
+
+          await updateExame(
+            id,
+            {
+              nome:
+                nome.trim(),
+
+              laboratorio:
+                finalLabName,
+
+              local_id:
+                localId ||
+                undefined,
+
+              medico:
+                finalDoctorName,
+
+              medico_id:
+                medicoId ||
+                undefined,
+
+              data:
+                dataISO,
+
+              horario:
+                horario ||
+                undefined,
+
+              data_retorno:
+                retornoISO,
+
+              motivo:
+                motivo.trim() ||
+                undefined,
+
+              observacoes:
+                observacoes.trim() ||
+                undefined,
+
+              anexo_url:
+                finalAttachmentUrl,
+
+              tratamento_ids:
+                safeTreatmentIds.length >
+                0
+                  ? safeTreatmentIds
+                  : undefined,
+
+              cid_ids:
+                safeCidIds.length >
+                0
+                  ? safeCidIds
+                  : undefined,
+            }
+          );
+
+          updateSucceeded =
+            true;
+
+          const oldUrl =
+            exame.anexo_url?.trim();
+
+          const newUrl =
+            finalAttachmentUrl?.trim();
+
+          if (
+            oldUrl &&
+            oldUrl !== newUrl &&
+            isVaultStorageUrl(
+              oldUrl
+            )
+          ) {
+            const {
+              error:
+                deleteError,
+            } =
+              await deleteFile(
+                oldUrl
+              );
+
+            if (deleteError) {
+              console.error(
+                "Exame atualizado, mas o arquivo antigo não pôde ser removido:",
+                deleteError
+              );
+
+              showToast(
+                "Exame salvo, mas o arquivo antigo não pôde ser removido.",
+                "info"
+              );
+            }
+          }
+
+          if (
+            attachment?.url.startsWith(
+              "blob:"
+            )
+          ) {
+            URL.revokeObjectURL(
+              attachment.url
+            );
+          }
+        } catch (error) {
+          if (
+            uploadedNewUrl &&
+            !updateSucceeded &&
+            isVaultStorageUrl(
+              uploadedNewUrl
+            )
+          ) {
+            const {
+              error:
+                rollbackError,
+            } =
+              await deleteFile(
+                uploadedNewUrl
+              );
+
+            if (rollbackError) {
+              console.error(
+                "Falha ao remover upload órfão após erro no update:",
+                rollbackError
+              );
+            }
+          }
+
+          throw error;
+        } finally {
+          isSubmitLocked.current =
+            false;
+        }
+      },
+      {
+        successMessage:
+          "Exame atualizado com sucesso",
+
+        errorMessage:
+          "Erro ao atualizar exame",
+
+        goBackOnSuccess:
+          false,
+      }
+    )
+      .then(() => {
+        router.replace(
+          `/saude/exames/detalhes?id=${id}`
+        );
+      })
+      .catch(() => {
+        // useSubmitAction já trata a apresentação do erro.
+      });
+  };
+
+  if (isLoading) {
+    return (
+      <DetailSkeleton />
+    );
+  }
+
+  if (
+    !activePersonId ||
+    !exame
+  ) {
+    return null;
+  }
 
   return (
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          className="hidden"
+          onChange={
+            handleFileSelect
+          }
+        />
+
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={
+            handleCameraCapture
+          }
+        />
 
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
               type="button"
-              aria-label="Voltar"
+              onClick={() => {
+                trigger(
+                  "vibrate"
+                );
+
+                router.replace(
+                  `/saude/exames/detalhes?id=${id}`
+                );
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
+              aria-label="Voltar para detalhes"
             >
-              <ArrowLeft size={18} className="text-ink-primary" />
+              <ArrowLeft
+                size={18}
+                className="text-ink-primary"
+              />
             </button>
+
             <div className="min-w-0">
-              <h1 className="font-display text-xl font-semibold text-ink-primary">Editar Exame</h1>
-              <p className="text-xs text-ink-muted">Atualizar dados e laudos</p>
+              <h1 className="font-display text-xl font-semibold text-ink-primary">
+                Editar Exame
+              </h1>
+
+              <p className="text-xs text-ink-muted">
+                Atualizar dados e laudos
+              </p>
             </div>
           </div>
         </header>
 
-        <section className="px-5 pt-6 space-y-4">
-          {/* TRATAMENTOS E CIDs COM LIMPAR */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-500/30 bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Activity size={16} className="text-violet-400" />
-                <label className="text-sm font-semibold text-ink-primary">Tratamentos e CIDs Vinculados</label>
+        <section className="space-y-4 px-5 pt-6">
+          <motion.div
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <Activity
+                  size={16}
+                  className="shrink-0 text-violet-400"
+                />
+
+                <label className="text-sm font-semibold text-ink-primary">
+                  Tratamentos e CIDs Vinculados
+                </label>
               </div>
-              {(tratamentosSelecionados.length > 0 || cidsSelecionados.length > 0) && (
+
+              {(tratamentosSelecionados.length >
+                0 ||
+                cidsSelecionados.length >
+                  0) && (
                 <button
                   type="button"
                   onClick={() => {
-                    trigger("vibrate");
-                    setTratamentosSelecionados([]);
-                    setCidsSelecionados([]);
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setTratamentosSelecionados(
+                      []
+                    );
+
+                    setCidsSelecionados(
+                      []
+                    );
                   }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
-                  aria-label="Limpar todos"
+                  className="flex shrink-0 items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
+                  aria-label="Limpar relações"
                 >
-                  <Eraser size={12} /> Limpar todos
+                  <Eraser
+                    size={12}
+                  />
+
+                  Limpar
                 </button>
               )}
             </div>
 
-            {/* Tratamentos selecionados */}
-            {tratamentosSelecionados.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {tratamentosSelecionados.map((tId) => {
-                  const t = allTratamentos.find((x) => x.id === tId);
-                  if (!t) return null;
-                  const IconComp = getTratamentoIcon(t.nome);
-                  return (
-                    <div key={tId} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
-                      <IconComp size={14} className="text-violet-400" />
-                      <span className="text-xs font-medium text-violet-300">{t.nome}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== tId)); }}
-                        className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
-                        type="button"
-                        aria-label={`Remover ${t.nome}`}
+            {tratamentosSelecionados.length >
+              0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {tratamentosSelecionados.map(
+                  (tratamentoId) => {
+                    const tratamento =
+                      tratamentos.find(
+                        (item) =>
+                          item.id ===
+                          tratamentoId
+                      );
+
+                    if (!tratamento) {
+                      return null;
+                    }
+
+                    const Icon =
+                      getTratamentoIcon(
+                        tratamento.nome
+                      );
+
+                    return (
+                      <div
+                        key={
+                          tratamentoId
+                        }
+                        className="flex items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5"
                       >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  );
-                })}
+                        <Icon
+                          size={14}
+                          className="text-violet-400"
+                        />
+
+                        <span className="text-xs font-medium text-violet-300">
+                          {
+                            tratamento.nome
+                          }
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            trigger(
+                              "vibrate"
+                            );
+
+                            setTratamentosSelecionados(
+                              (
+                                previous
+                              ) =>
+                                previous.filter(
+                                  (item) =>
+                                    item !==
+                                    tratamentoId
+                                )
+                            );
+                          }}
+                          className="ml-1 text-violet-400/60 transition-colors hover:text-coral"
+                          aria-label={`Remover ${tratamento.nome}`}
+                        >
+                          <X
+                            size={14}
+                          />
+                        </button>
+                      </div>
+                    );
+                  }
+                )}
               </div>
             )}
 
-            {/* CIDs selecionados */}
-            {cidsSelecionados.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {cidsSelecionados.map((cId) => {
-                  const c = allCids.find((x) => x.id === cId);
-                  if (!c) return null;
-                  const theme = getClinicalTheme(c.descricao || c.codigo);
-                  const IconComp = theme.icon;
-                  return (
-                    <div key={cId} className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}>
-                      <IconComp size={14} />
-                      <span className="text-xs font-medium">{c.codigo}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setCidsSelecionados((prev) => prev.filter((item) => item !== cId)); }}
-                        className="ml-1 text-current/60 hover:text-coral transition-colors"
-                        type="button"
-                        aria-label={`Remover ${c.codigo}`}
+            {cidsSelecionados.length >
+              0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {cidsSelecionados.map(
+                  (cidId) => {
+                    const cid =
+                      cids.find(
+                        (item) =>
+                          item.id ===
+                          cidId
+                      );
+
+                    if (!cid) {
+                      return null;
+                    }
+
+                    const theme =
+                      getClinicalTheme(
+                        cid.descricao ||
+                          cid.codigo
+                      );
+
+                    const Icon =
+                      theme.icon;
+
+                    return (
+                      <div
+                        key={cidId}
+                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}
                       >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  );
-                })}
+                        <Icon
+                          size={14}
+                        />
+
+                        <span className="text-xs font-medium">
+                          {cid.codigo}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            trigger(
+                              "vibrate"
+                            );
+
+                            setCidsSelecionados(
+                              (
+                                previous
+                              ) =>
+                                previous.filter(
+                                  (item) =>
+                                    item !==
+                                    cidId
+                                )
+                            );
+                          }}
+                          className="ml-1 text-current/60 transition-colors hover:text-coral"
+                          aria-label={`Remover ${cid.codigo}`}
+                        >
+                          <X
+                            size={14}
+                          />
+                        </button>
+                      </div>
+                    );
+                  }
+                )}
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <button
-                onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
-                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
                 type="button"
-                aria-label="Adicionar tratamento"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setIsTratamentoModalOpen(
+                    true
+                  );
+                }}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300"
               >
                 <Plus size={16} />
-                <span className="text-sm font-medium">Adicionar Tratamento</span>
+
+                Adicionar Tratamento
               </button>
+
               <button
-                onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }}
-                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300 transition-colors hover:bg-emerald-400/10"
                 type="button"
-                aria-label="Adicionar CID"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setIsCidModalOpen(
+                    true
+                  );
+                }}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300"
               >
                 <Plus size={16} />
-                <span className="text-sm font-medium">Adicionar CID</span>
+
+                Adicionar CID
               </button>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay: 0.03,
+            }}
             className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <div>
-              <Input
-                label="Nome do Exame *"
-                placeholder="Ex: Hemograma..."
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                error={errors.nome}
-                required
-              />
-            </div>
+            <Input
+              label="Nome do Exame *"
+              placeholder="Ex: Hemograma..."
+              value={nome}
+              onChange={(event) => {
+                setNome(
+                  event.target.value
+                );
 
-            {/* LABORATÓRIO COM LIMPAR */}
+                clearError("nome");
+              }}
+              error={errors.nome}
+              required
+            />
+
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Laboratório / Hospital</label>
-                {localId && laboratorio && (
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-sm font-medium text-ink-primary">
+                  Laboratório / Local
+                </label>
+
+                {(localId ||
+                  laboratorio) && (
                   <button
                     type="button"
                     onClick={() => {
-                      trigger("vibrate");
+                      trigger(
+                        "vibrate"
+                      );
+
                       setLocalId("");
-                      setLaboratorio("");
+                      setLaboratorio(
+                        ""
+                      );
                     }}
-                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
-                    aria-label="Limpar local"
+                    className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
                   >
-                    <Eraser size={12} /> Limpar
+                    <Eraser
+                      size={12}
+                    />
+
+                    Limpar
                   </button>
                 )}
               </div>
+
               <button
                 type="button"
-                onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
-                aria-label="Selecionar laboratório ou hospital"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setIsLocalModalOpen(
+                    true
+                  );
+                }}
+                className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
               >
-                <span className="truncate">{laboratorio || "Selecionar laboratório ou hospital"}</span>
-                <Building2 size={16} className="text-ink-muted shrink-0" />
+                <span className="truncate">
+                  {selectedLocal?.nome ||
+                    laboratorio ||
+                    "Selecionar laboratório ou local"}
+                </span>
+
+                <Building2
+                  size={16}
+                  className="shrink-0 text-ink-muted"
+                />
               </button>
             </div>
 
-            {/* MÉDICO COM LIMPAR */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Médico Solicitante</label>
-                {medicoId && medico && (
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-sm font-medium text-ink-primary">
+                  Médico Solicitante
+                </label>
+
+                {(medicoId ||
+                  medico) && (
                   <button
                     type="button"
                     onClick={() => {
-                      trigger("vibrate");
+                      trigger(
+                        "vibrate"
+                      );
+
                       setMedicoId("");
                       setMedico("");
                     }}
-                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
-                    aria-label="Limpar médico"
+                    className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
                   >
-                    <Eraser size={12} /> Limpar
+                    <Eraser
+                      size={12}
+                    />
+
+                    Limpar
                   </button>
                 )}
               </div>
+
               <button
                 type="button"
-                onClick={() => { trigger("vibrate"); setIsDoctorModalOpen(true); }}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary flex items-center justify-between"
-                aria-label="Selecionar médico"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setIsDoctorModalOpen(
+                    true
+                  );
+                }}
+                className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left text-ink-primary"
               >
-                <span className="truncate">{medico || "Selecionar médico"}</span>
-                <Stethoscope size={16} className="text-ink-muted shrink-0" />
+                <span className="truncate">
+                  {selectedMedico?.nome ||
+                    medico ||
+                    "Selecionar médico"}
+                </span>
+
+                <Stethoscope
+                  size={16}
+                  className="shrink-0 text-ink-muted"
+                />
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Data da Coleta <span className="text-coral">*</span></label>
+                <label className="text-sm font-medium text-ink-primary">
+                  Data da Coleta{" "}
+                  <span className="text-coral">
+                    *
+                  </span>
+                </label>
+
                 <div className="relative">
-                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <Calendar
+                    size={16}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  />
+
                   <input
                     type="text"
+                    inputMode="numeric"
                     placeholder="DD/MM/AAAA"
                     maxLength={10}
-                    value={dataSolicitacaoDisplay}
-                    onChange={(e) => setDataSolicitacaoDisplay(handleDateMask(e.target.value))}
-                    className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50`}
-                    aria-label="Data da coleta"
+                    value={
+                      dataSolicitacaoDisplay
+                    }
+                    onChange={(event) => {
+                      setDataSolicitacaoDisplay(
+                        handleDateMask(
+                          event.target.value
+                        )
+                      );
+
+                      clearError("data");
+                    }}
+                    className={`w-full rounded-2xl border ${
+                      errors.data
+                        ? "border-coral/50"
+                        : "border-surface-border/50"
+                    } bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none focus:border-ice/50`}
                   />
                 </div>
-                {errors.data && <p className="text-xs text-coral ml-1">{errors.data}</p>}
+
+                {errors.data && (
+                  <p className="ml-1 text-xs text-coral">
+                    {errors.data}
+                  </p>
+                )}
               </div>
+
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Horário</label>
+                <label className="text-sm font-medium text-ink-primary">
+                  Horário
+                </label>
+
                 <div className="relative">
-                  <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <Clock
+                    size={16}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  />
+
                   <input
                     type="text"
+                    inputMode="numeric"
                     placeholder="00:00"
                     maxLength={5}
                     value={horario}
-                    onChange={(e) => setHorario(handleTimeMask(e.target.value))}
-                    className={`w-full rounded-2xl border ${errors.horario ? "border-coral/50 text-coral" : "border-surface-border/50 text-ink-primary"} bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50`}
-                    aria-label="Horário"
+                    onChange={(event) => {
+                      setHorario(
+                        handleTimeMask(
+                          event.target.value
+                        )
+                      );
+
+                      clearError(
+                        "horario"
+                      );
+                    }}
+                    className={`w-full rounded-2xl border ${
+                      errors.horario
+                        ? "border-coral/50 text-coral"
+                        : "border-surface-border/50 text-ink-primary"
+                    } bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm outline-none focus:border-ice/50`}
                   />
                 </div>
-                {errors.horario && <p className="text-xs text-coral ml-1">{errors.horario}</p>}
+
+                {errors.horario && (
+                  <p className="ml-1 text-xs text-coral">
+                    {
+                      errors.horario
+                    }
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="space-y-1.5 pt-2 border-t border-surface-border/30">
-              <label className="block text-sm font-medium text-ink-primary">Data Previsão / Retorno</label>
+            <div className="space-y-1.5 border-t border-surface-border/30 pt-2">
+              <label className="text-sm font-medium text-ink-primary">
+                Data Previsão / Retorno
+              </label>
+
               <div className="relative">
-                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                <Calendar
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                />
+
                 <input
                   type="text"
+                  inputMode="numeric"
                   placeholder="DD/MM/AAAA"
                   maxLength={10}
-                  value={dataRetornoDisplay}
-                  onChange={(e) => setDataRetornoDisplay(handleDateMask(e.target.value))}
-                  className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50"
-                  aria-label="Data de retorno"
+                  value={
+                    dataRetornoDisplay
+                  }
+                  onChange={(event) => {
+                    setDataRetornoDisplay(
+                      handleDateMask(
+                        event.target.value
+                      )
+                    );
+
+                    clearError(
+                      "dataRetorno"
+                    );
+                  }}
+                  className={`w-full rounded-2xl border ${
+                    errors.dataRetorno
+                      ? "border-coral/50"
+                      : "border-surface-border/50"
+                  } bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none focus:border-ice/50`}
                 />
               </div>
+
+              {errors.dataRetorno && (
+                <p className="ml-1 text-xs text-coral">
+                  {
+                    errors.dataRetorno
+                  }
+                </p>
+              )}
             </div>
 
-            <Input label="Motivo da Solicitação" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
-            <TextArea label="Observações / Resultados" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
-            <Input label="Link Externo (URL)" value={anexoUrl} onChange={(e) => setAnexoUrl(e.target.value)} />
+            <Input
+              label="Motivo da Solicitação"
+              value={motivo}
+              onChange={(event) =>
+                setMotivo(
+                  event.target.value
+                )
+              }
+            />
 
-            {/* ANEXO / LAUDO */}
-            <div className="pt-2 border-t border-surface-border/30">
-              <div className="mb-2"><label className="block text-sm font-medium text-ink-primary">Comprovante / Laudo</label></div>
-              {!attachment && !anexoUrl ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <Button variant="secondary" onClick={() => fileInputRef.current?.click()}><Upload size={16} />Arquivo</Button>
-                  <Button variant="secondary" onClick={() => cameraInputRef.current?.click()}><Camera size={16} />Câmera</Button>
+            <TextArea
+              label="Observações / Resultados"
+              value={observacoes}
+              onChange={(event) =>
+                setObservacoes(
+                  event.target.value
+                )
+              }
+            />
+
+            <Input
+              label="Link Externo (URL)"
+              value={anexoUrl}
+              onChange={(event) =>
+                setAnexoUrl(
+                  event.target.value
+                )
+              }
+            />
+
+            <div className="border-t border-surface-border/30 pt-3">
+              <label className="mb-2 block text-sm font-medium text-ink-primary">
+                Comprovante / Laudo
+              </label>
+
+              {attachment ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 rounded-2xl border border-ice/20 bg-ice/5 px-3 py-3">
+                    <ImageIcon
+                      size={16}
+                      className="shrink-0 text-ice"
+                    />
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink-primary">
+                        {
+                          attachment.name
+                        }
+                      </p>
+
+                      <p className="text-[10px] text-ice">
+                        Novo arquivo selecionado
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={
+                        removeNewAttachment
+                      }
+                      className="text-ink-muted transition-colors hover:text-coral"
+                      aria-label="Cancelar novo arquivo"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              ) : anexoUrl ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
+                    <ImageIcon
+                      size={16}
+                      className="shrink-0 text-ice"
+                    />
+
+                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink-primary">
+                      {anexoUrl}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={
+                        removeCurrentAttachment
+                      }
+                      className="text-ink-muted transition-colors hover:text-coral"
+                      aria-label="Remover anexo atual"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        fileInputRef.current?.click()
+                      }
+                    >
+                      <Upload size={16} />
+                      Substituir
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        cameraInputRef.current?.click()
+                      }
+                    >
+                      <Camera size={16} />
+                      Nova foto
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
-                  <ImageIcon size={16} className="text-ice" />
-                  <p className="truncate text-sm font-medium flex-1 text-ink-primary">{attachment?.name || anexoUrl}</p>
-                  <button onClick={() => { removeAttachment(); setAnexoUrl(""); }} className="text-ink-muted" type="button" aria-label="Remover anexo"><X size={14} /></button>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      fileInputRef.current?.click()
+                    }
+                  >
+                    <Upload size={16} />
+                    Arquivo
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      cameraInputRef.current?.click()
+                    }
+                  >
+                    <Camera size={16} />
+                    Câmera
+                  </Button>
                 </div>
               )}
             </div>
@@ -670,137 +2385,542 @@ function EditarExameContent() {
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSave} disabled={isSubmitting} className="flex items-center justify-center gap-2">
-            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={handleSave}
+            disabled={
+              isSubmitting ||
+              !activePersonId
+            }
+            className="flex items-center justify-center gap-2"
+          >
+            {isSubmitting ? (
+              <Loader2
+                size={16}
+                className="animate-spin"
+              />
+            ) : (
+              <Save size={16} />
+            )}
+
+            {isSubmitting
+              ? "Salvando..."
+              : "Salvar Alterações"}
           </Button>
         </div>
 
-        {/* Modais (mesmos do novo) */}
         <SelectionModal<LocalSaude>
-          isOpen={isLocalModalOpen}
-          onClose={() => setIsLocalModalOpen(false)}
-          onSelect={(item) => { trigger("vibrate"); setLocalId(item.id!); setLaboratorio(item.nome); }}
+          isOpen={
+            isLocalModalOpen
+          }
+          onClose={() =>
+            setIsLocalModalOpen(
+              false
+            )
+          }
+          onSelect={(item) => {
+            if (!item.id) {
+              return;
+            }
+
+            trigger("vibrate");
+
+            setLocalId(
+              item.id
+            );
+
+            setLaboratorio(
+              item.nome
+            );
+
+            setIsLocalModalOpen(
+              false
+            );
+          }}
           items={locais}
           title="Selecionar Hospital / Laboratório"
           placeholder="Buscar local..."
-          renderItem={(item) => <p className="font-medium text-ink-primary">{item.nome}</p>}
-          getItemId={(item) => item.id!}
-          getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsLocalModalOpen(false); trigger("vibrate"); setIsCreatingLocal(true); }}
+          renderItem={(item) => (
+            <div>
+              <p className="font-medium text-ink-primary">
+                {item.nome}
+              </p>
+
+              {item.endereco && (
+                <p className="text-xs text-ink-muted">
+                  {
+                    item.endereco
+                  }
+                </p>
+              )}
+            </div>
+          )}
+          getItemId={(item) =>
+            item.id!
+          }
+          getItemLabel={(item) =>
+            item.nome
+          }
+          onCreateNew={() => {
+            setIsLocalModalOpen(
+              false
+            );
+
+            setIsCreatingLocal(
+              true
+            );
+          }}
           createNewLabel="Cadastrar Novo Local"
         />
 
         <SelectionModal<Medico>
-          isOpen={isDoctorModalOpen}
-          onClose={() => setIsDoctorModalOpen(false)}
-          onSelect={(item) => { trigger("vibrate"); setMedicoId(item.id!); setMedico(item.nome); }}
+          isOpen={
+            isDoctorModalOpen
+          }
+          onClose={() =>
+            setIsDoctorModalOpen(
+              false
+            )
+          }
+          onSelect={(item) => {
+            if (!item.id) {
+              return;
+            }
+
+            trigger("vibrate");
+
+            setMedicoId(
+              item.id
+            );
+
+            setMedico(
+              item.nome
+            );
+
+            setIsDoctorModalOpen(
+              false
+            );
+          }}
           items={medicos}
           title="Selecionar Médico"
           placeholder="Buscar médico..."
           renderItem={(item) => (
             <div>
-              <p className="font-medium text-ink-primary">Dr(a). {item.nome}</p>
-              {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
+              <p className="font-medium text-ink-primary">
+                Dr(a).{" "}
+                {item.nome}
+              </p>
+
+              {item.especialidade && (
+                <p className="text-xs text-ink-muted">
+                  {
+                    item.especialidade
+                  }
+                </p>
+              )}
             </div>
           )}
-          getItemId={(item) => item.id!}
-          getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsDoctorModalOpen(false); trigger("vibrate"); setIsCreatingDoctor(true); }}
+          getItemId={(item) =>
+            item.id!
+          }
+          getItemLabel={(item) =>
+            item.nome
+          }
+          onCreateNew={() => {
+            setIsDoctorModalOpen(
+              false
+            );
+
+            setIsCreatingDoctor(
+              true
+            );
+          }}
           createNewLabel="Cadastrar Novo Médico"
         />
 
         <SelectionModal<Tratamento>
-          isOpen={isTratamentoModalOpen}
-          onClose={() => setIsTratamentoModalOpen(false)}
+          isOpen={
+            isTratamentoModalOpen
+          }
+          onClose={() =>
+            setIsTratamentoModalOpen(
+              false
+            )
+          }
           onSelect={(item) => {
-            trigger("vibrate");
-            if (!tratamentosSelecionados.includes(item.id!)) {
-              setTratamentosSelecionados((prev) => [...prev, item.id!]);
+            if (!item.id) {
+              return;
             }
+
+            trigger("vibrate");
+
+            setTratamentosSelecionados(
+              (previous) =>
+                previous.includes(
+                  item.id!
+                )
+                  ? previous
+                  : [
+                      ...previous,
+                      item.id!,
+                    ]
+            );
           }}
-          items={allTratamentos}
+          items={tratamentos}
           title="Vincular Tratamentos"
           placeholder="Buscar tratamento..."
           renderItem={(item) => {
-            const IconComp = getTratamentoIcon(item.nome);
-            const isSelected = tratamentosSelecionados.includes(item.id!);
+            const Icon =
+              getTratamentoIcon(
+                item.nome
+              );
+
+            const isSelected =
+              Boolean(
+                item.id &&
+                  tratamentosSelecionados.includes(
+                    item.id
+                  )
+              );
+
             return (
-              <div className="flex items-center gap-2 w-full">
-                <IconComp size={16} className="text-violet-400" />
-                <span className={`text-sm font-medium ${isSelected ? "text-violet-400" : "text-ink-primary"}`}>
+              <div className="flex w-full items-center gap-2">
+                <Icon
+                  size={16}
+                  className="text-violet-400"
+                />
+
+                <span
+                  className={`text-sm font-medium ${
+                    isSelected
+                      ? "text-violet-400"
+                      : "text-ink-primary"
+                  }`}
+                >
                   {item.nome}
                 </span>
-                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
+
+                {isSelected && (
+                  <span className="ml-auto text-[10px] text-emerald-400">
+                    Selecionado
+                  </span>
+                )}
               </div>
             );
           }}
-          getItemId={(item) => item.id!}
-          getItemLabel={(item) => item.nome}
-          onCreateNew={() => { setIsTratamentoModalOpen(false); trigger("vibrate"); setIsCreatingTratamento(true); }}
+          getItemId={(item) =>
+            item.id!
+          }
+          getItemLabel={(item) =>
+            item.nome
+          }
+          onCreateNew={() => {
+            setIsTratamentoModalOpen(
+              false
+            );
+
+            setIsCreatingTratamento(
+              true
+            );
+          }}
           createNewLabel="Cadastrar Novo Tratamento"
         />
 
         <SelectionModal<Cid>
-          isOpen={isCidModalOpen}
-          onClose={() => setIsCidModalOpen(false)}
+          isOpen={
+            isCidModalOpen
+          }
+          onClose={() =>
+            setIsCidModalOpen(
+              false
+            )
+          }
           onSelect={(item) => {
-            trigger("vibrate");
-            if (!cidsSelecionados.includes(item.id!)) {
-              setCidsSelecionados((prev) => [...prev, item.id!]);
+            if (!item.id) {
+              return;
             }
+
+            trigger("vibrate");
+
+            setCidsSelecionados(
+              (previous) =>
+                previous.includes(
+                  item.id!
+                )
+                  ? previous
+                  : [
+                      ...previous,
+                      item.id!,
+                    ]
+            );
           }}
-          items={allCids}
+          items={cids}
           title="Vincular CIDs"
           placeholder="Buscar CID..."
           renderItem={(item) => {
-            const theme = getClinicalTheme(item.descricao || item.codigo);
-            const IconComp = theme.icon;
-            const isSelected = cidsSelecionados.includes(item.id!);
+            const theme =
+              getClinicalTheme(
+                item.descricao ||
+                  item.codigo
+              );
+
+            const Icon =
+              theme.icon;
+
+            const isSelected =
+              Boolean(
+                item.id &&
+                  cidsSelecionados.includes(
+                    item.id
+                  )
+              );
+
             return (
-              <div className="flex items-center gap-2 w-full">
-                <IconComp size={16} className={theme.textClass} />
-                <span className={`text-sm font-medium ${isSelected ? theme.textClass : "text-ink-primary"}`}>
-                  {item.codigo} - {item.descricao}
+              <div className="flex w-full items-center gap-2">
+                <Icon
+                  size={16}
+                  className={
+                    theme.textClass
+                  }
+                />
+
+                <span
+                  className={`text-sm font-medium ${
+                    isSelected
+                      ? theme.textClass
+                      : "text-ink-primary"
+                  }`}
+                >
+                  {item.codigo} -{" "}
+                  {item.descricao}
                 </span>
-                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
+
+                {isSelected && (
+                  <span className="ml-auto text-[10px] text-emerald-400">
+                    Selecionado
+                  </span>
+                )}
               </div>
             );
           }}
-          getItemId={(item) => item.id!}
-          getItemLabel={(item) => `${item.codigo} - ${item.descricao}`}
-          onCreateNew={() => { setIsCidModalOpen(false); trigger("vibrate"); setIsCreatingCid(true); }}
+          getItemId={(item) =>
+            item.id!
+          }
+          getItemLabel={(item) =>
+            `${item.codigo} - ${item.descricao}`
+          }
+          onCreateNew={() => {
+            setIsCidModalOpen(
+              false
+            );
+
+            setIsCreatingCid(
+              true
+            );
+          }}
           createNewLabel="Cadastrar Novo CID"
         />
 
-        <BottomSheet isOpen={isCreatingTratamento} onClose={() => setIsCreatingTratamento(false)} title="Novo Tratamento">
+        <BottomSheet
+          isOpen={
+            isCreatingTratamento
+          }
+          onClose={() =>
+            setIsCreatingTratamento(
+              false
+            )
+          }
+          title="Novo Tratamento"
+        >
           <div className="space-y-4 px-1 pb-2">
-            <Input label="Nome do Tratamento" value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus />
-            <Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={!newTratamentoName.trim()}>Salvar e Selecionar</Button>
+            <Input
+              label="Nome do Tratamento"
+              value={
+                newTratamentoName
+              }
+              onChange={(event) =>
+                setNewTratamentoName(
+                  event.target.value
+                )
+              }
+              autoFocus
+            />
+
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={
+                handleCreateTratamento
+              }
+              disabled={
+                !newTratamentoName.trim() ||
+                isSavingTratamento
+              }
+            >
+              {isSavingTratamento ? (
+                <Loader2
+                  size={16}
+                  className="animate-spin"
+                />
+              ) : (
+                "Salvar e Selecionar"
+              )}
+            </Button>
           </div>
         </BottomSheet>
 
-        <BottomSheet isOpen={isCreatingDoctor} onClose={() => setIsCreatingDoctor(false)} title="Novo Médico">
+        <BottomSheet
+          isOpen={
+            isCreatingDoctor
+          }
+          onClose={() =>
+            setIsCreatingDoctor(
+              false
+            )
+          }
+          title="Novo Médico"
+        >
           <div className="space-y-4 px-1 pb-2">
-            <Input label="Nome" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} autoFocus />
-            <Input label="Especialidade" value={newDocEspecialidade} onChange={(e) => setNewDocEspecialidade(e.target.value)} />
-            <Button variant="primary" fullWidth onClick={handleCreateDoctor} disabled={!newDocName.trim()}>Salvar e Selecionar</Button>
-          </div>
-        </BottomSheet>
+            <Input
+              label="Nome"
+              value={
+                newDocName
+              }
+              onChange={(event) =>
+                setNewDocName(
+                  event.target.value
+                )
+              }
+              autoFocus
+            />
 
-        <BottomSheet isOpen={isCreatingLocal} onClose={() => setIsCreatingLocal(false)} title="Novo Local">
-          <div className="space-y-4 px-1 pb-2">
-            <Input label="Nome" value={newLocalName} onChange={(e) => setNewLocalName(e.target.value)} autoFocus />
-            <Button variant="primary" fullWidth onClick={handleCreateLocal} disabled={!newLocalName.trim()}>Salvar e Selecionar</Button>
-          </div>
-        </BottomSheet>
+            <Input
+              label="Especialidade"
+              value={
+                newDocEspecialidade
+              }
+              onChange={(event) =>
+                setNewDocEspecialidade(
+                  event.target.value
+                )
+              }
+            />
 
-        <BottomSheet isOpen={isCreatingCid} onClose={() => setIsCreatingCid(false)} title="Novo CID">
-          <div className="space-y-4 px-1 pb-2">
-            <Input label="Código CID" placeholder="Ex: F90.0" value={newCidCodigo} onChange={(e) => setNewCidCodigo(e.target.value)} autoFocus />
-            <Input label="Descrição" placeholder="Ex: Transtorno de déficit de atenção" value={newCidDescricao} onChange={(e) => setNewCidDescricao(e.target.value)} />
-            <Button variant="primary" fullWidth onClick={handleCreateCid} disabled={!newCidCodigo.trim() || !newCidDescricao.trim()}>
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={
+                handleCreateDoctor
+              }
+              disabled={
+                !newDocName.trim()
+              }
+            >
               Salvar e Selecionar
+            </Button>
+          </div>
+        </BottomSheet>
+
+        <BottomSheet
+          isOpen={
+            isCreatingLocal
+          }
+          onClose={() =>
+            setIsCreatingLocal(
+              false
+            )
+          }
+          title="Novo Local"
+        >
+          <div className="space-y-4 px-1 pb-2">
+            <Input
+              label="Nome"
+              value={
+                newLocalName
+              }
+              onChange={(event) =>
+                setNewLocalName(
+                  event.target.value
+                )
+              }
+              autoFocus
+            />
+
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={
+                handleCreateLocal
+              }
+              disabled={
+                !newLocalName.trim()
+              }
+            >
+              Salvar e Selecionar
+            </Button>
+          </div>
+        </BottomSheet>
+
+        <BottomSheet
+          isOpen={
+            isCreatingCid
+          }
+          onClose={() =>
+            setIsCreatingCid(
+              false
+            )
+          }
+          title="Novo CID"
+        >
+          <div className="space-y-4 px-1 pb-2">
+            <Input
+              label="Código CID"
+              placeholder="Ex: F90.0"
+              value={
+                newCidCodigo
+              }
+              onChange={(event) =>
+                setNewCidCodigo(
+                  event.target.value
+                )
+              }
+              autoFocus
+            />
+
+            <Input
+              label="Descrição"
+              value={
+                newCidDescricao
+              }
+              onChange={(event) =>
+                setNewCidDescricao(
+                  event.target.value
+                )
+              }
+            />
+
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={
+                handleCreateCid
+              }
+              disabled={
+                !newCidCodigo.trim() ||
+                !newCidDescricao.trim() ||
+                isSavingCid
+              }
+            >
+              {isSavingCid ? (
+                <Loader2
+                  size={16}
+                  className="animate-spin"
+                />
+              ) : (
+                "Salvar e Selecionar"
+              )}
             </Button>
           </div>
         </BottomSheet>

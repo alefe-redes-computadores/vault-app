@@ -1,9 +1,19 @@
 // app/saude/locais/detalhes/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import {
+  motion,
+} from "framer-motion";
 import {
   Activity,
   ArrowLeft,
@@ -13,22 +23,82 @@ import {
   Clock,
   DollarSign,
   Edit3,
+  ExternalLink,
   FileText,
   FileWarning,
   FlaskConical,
   FolderHeart,
   MapPin,
+  Navigation,
+  Phone,
   Pill,
-  Plus,
   PlusCircle,
   Stethoscope,
   Trash2,
+  User,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
-
-import { db } from "@/lib/db";
 import type {
+  LucideIcon,
+} from "lucide-react";
+
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+
+import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
+import {
+  useLocais,
+} from "@/hooks/useLocais";
+import {
+  useMedicos,
+} from "@/hooks/useMedicos";
+import {
+  useConsultas,
+} from "@/hooks/useConsultas";
+import {
+  useExames,
+} from "@/hooks/useExames";
+import {
+  useCirurgias,
+} from "@/hooks/useCirurgias";
+import {
+  useRenovacoes,
+} from "@/hooks/useRenovacoes";
+import {
+  useTratamentos,
+} from "@/hooks/useTratamentos";
+import {
+  useMedicamentos,
+} from "@/hooks/useMedicamentos";
+import {
+  useCids,
+} from "@/hooks/useCids";
+import {
+  useMounted,
+} from "@/hooks/useMounted";
+import {
+  useSubmitAction,
+} from "@/hooks/useSubmitAction";
+
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+import {
+  DetailSkeleton,
+} from "@/components/loading/DetailSkeleton";
+import {
+  ConfirmationModal,
+} from "@/components/ConfirmationModal";
+import {
+  SectionTitle,
+  StatCard,
+} from "@/components/detail/DetailComponents";
+
+import type {
+  Cid,
+  Cirurgia,
   Consulta,
   Exame,
   LocalSaude,
@@ -37,485 +107,1123 @@ import type {
   Tratamento,
 } from "@/lib/types";
 
-import { useLocais } from "@/hooks/useLocais";
-import { useMounted } from "@/hooks/useMounted";
-import { useHapticFeedback } from "@/lib/haptics";
-import { useSubmitAction } from "@/hooks/useSubmitAction";
-
-import { PageTransition } from "@/components/PageTransition";
-import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
-import {
-  SectionTitle,
-  StatCard,
-} from "@/components/detail/DetailComponents";
-
-import { formatDateDisplay } from "@/lib/health-utils";
-
-/* ============================================================
-   CONSTANTES / TIPOS
-   ============================================================ */
-
-const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-};
+// ============================================================
+// TYPES
+// ============================================================
 
 interface LocalTypeStyle {
+  label: string;
+  shortLabel: string;
   color: string;
   icon: LucideIcon;
 }
 
-interface MenuOption {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  path: string;
+type ActivityType =
+  | "consulta"
+  | "exame"
+  | "cirurgia"
+  | "renovacao";
+
+interface LastActivity {
+  type: ActivityType;
+  data: string;
 }
 
-interface RenovacaoComMedicamento
-  extends Renovacao {
-  medicamento_nome: string;
-}
-
-interface AnaliseLocal {
-  totalGasto: number;
-  ultimaRenovacao: Renovacao | null;
-  renovacoesComMed: RenovacaoComMedicamento[];
-  consultasLocal: Consulta[];
-  examesLocal: Exame[];
-  proximasConsultas: Consulta[];
-  consultasPassadas: Consulta[];
-}
-
-/* ============================================================
-   ESTILOS DOS TIPOS DE LOCAL
-   ============================================================ */
+// ============================================================
+// CONFIG
+// ============================================================
 
 const LOCAL_TYPE_STYLE: Record<
   string,
   LocalTypeStyle
 > = {
   posto_saude: {
-    color: "#34D399",
-    icon: PlusCircle,
+    label:
+      "Posto de Saúde / UBS",
+    shortLabel:
+      "Posto / UBS",
+    color:
+      "#34D399",
+    icon:
+      PlusCircle,
   },
+
   laboratorio: {
-    color: "#A78BFA",
-    icon: FlaskConical,
+    label:
+      "Laboratório",
+    shortLabel:
+      "Laboratório",
+    color:
+      "#A78BFA",
+    icon:
+      FlaskConical,
   },
+
   clinica: {
-    color: "#38BDF8",
-    icon: Building2,
+    label:
+      "Clínica",
+    shortLabel:
+      "Clínica",
+    color:
+      "#38BDF8",
+    icon:
+      Building2,
   },
+
   outro: {
-    color: "#F59E0B",
-    icon: MapPin,
+    label:
+      "Outro Local de Saúde",
+    shortLabel:
+      "Outro",
+    color:
+      "#F59E0B",
+    icon:
+      MapPin,
   },
 };
 
-/* ============================================================
-   CORES DOS TRATAMENTOS
-   ============================================================ */
+const fadeUp = {
+  initial: {
+    opacity: 0,
+    y: 12,
+  },
 
-const TREATMENT_COLORS: Record<string, string> = {
-  tdah: "#8B5CF6",
-  ansiedade: "#F59E0B",
-  depressão: "#EF4444",
-  insônia: "#6366F1",
-  enxaqueca: "#8B5CF6",
-  neuropatia: "#EC4899",
-  hipertensão: "#EF4444",
-  colesterol: "#F59E0B",
-  diabetes: "#3B82F6",
-  tireoide: "#8B5CF6",
-  "dor crônica": "#EC4899",
-  fibromialgia: "#F472B6",
-  asma: "#06B6D4",
-  dpoc: "#06B6D4",
-  refluxo: "#F59E0B",
-  gastrite: "#F59E0B",
-  "transtorno bipolar": "#8B5CF6",
-  esquizofrenia: "#8B5CF6",
-  lúpus: "#EC4899",
-  "esclerose múltipla": "#EC4899",
-  "artrite reumatoide": "#EC4899",
-  câncer: "#EF4444",
-  obesidade: "#F59E0B",
-  alergia: "#06B6D4",
+  animate: {
+    opacity: 1,
+    y: 0,
+  },
 };
 
-const DEFAULT_TREATMENT_COLOR = "#38BDF8";
+// ============================================================
+// HELPERS
+// ============================================================
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+function formatDateDisplay(
+  isoStr?: string
+): string {
+  if (!isoStr) {
+    return "";
+  }
+
+  const datePart =
+    isoStr.includes("T")
+      ? isoStr.split("T")[0]
+      : isoStr;
+
+  const parts =
+    datePart.split("-");
+
+  if (
+    parts.length !== 3
+  ) {
+    return isoStr;
+  }
+
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
 
 function formatCurrency(
-  value: number | undefined | null
+  value: number
 ): string {
-  const amount =
-    typeof value === "number" ? value : 0;
-
-  return `R$ ${amount
+  return `R$ ${value
     .toFixed(2)
     .replace(".", ",")}`;
 }
 
-function getTreatmentColor(nome: string): string {
-  const normalizedName = nome.toLowerCase();
+function getTodayIso(): string {
+  const date =
+    new Date();
 
-  for (const [key, color] of Object.entries(
-    TREATMENT_COLORS
-  )) {
-    if (normalizedName.includes(key)) {
-      return color;
-    }
-  }
-
-  return DEFAULT_TREATMENT_COLOR;
+  return [
+    date.getFullYear(),
+    String(
+      date.getMonth() +
+        1
+    ).padStart(
+      2,
+      "0"
+    ),
+    String(
+      date.getDate()
+    ).padStart(
+      2,
+      "0"
+    ),
+  ].join("-");
 }
 
-/* ============================================================
-   CONTEÚDO
-   ============================================================ */
+// ============================================================
+// CONTENT
+// ============================================================
 
 function DetalhesLocalContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const id = searchParams.get("id");
+  const router =
+    useRouter();
 
-  const { trigger } = useHapticFeedback();
-  const { deleteLocal } = useLocais();
-  const deleteAction = useSubmitAction();
-  const mounted = useMounted();
+  const searchParams =
+    useSearchParams();
 
-  const [local, setLocal] =
-    useState<LocalSaude | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showDeleteModal, setShowDeleteModal] =
+  const id =
+    searchParams.get(
+      "id"
+    );
+
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
+
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
+
+  const {
+    getLocal,
+    deleteLocalSafe,
+  } =
+    useLocais();
+
+  const {
+    medicos = [],
+  } =
+    useMedicos();
+
+  const {
+    consultas = [],
+  } =
+    useConsultas();
+
+  const {
+    exames = [],
+  } =
+    useExames();
+
+  const {
+    cirurgias = [],
+  } =
+    useCirurgias();
+
+  const {
+    renovacoes = [],
+  } =
+    useRenovacoes();
+
+  const {
+    tratamentos = [],
+  } =
+    useTratamentos();
+
+  const {
+    medicamentos = [],
+  } =
+    useMedicamentos();
+
+  const {
+    cids = [],
+  } =
+    useCids();
+
+  const deleteAction =
+    useSubmitAction();
+
+  const mounted =
+    useMounted();
+
+  // ==========================================================
+  // STATE
+  // ==========================================================
+
+  const [
+    local,
+    setLocal,
+  ] =
+    useState<LocalSaude | null>(
+      null
+    );
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(true);
+
+  const [
+    showDeleteModal,
+    setShowDeleteModal,
+  ] =
     useState(false);
-  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] =
+
+  const [
+    showAllRenovacoes,
+    setShowAllRenovacoes,
+  ] =
     useState(false);
-  const [showAllRetiradas, setShowAllRetiradas] =
-    useState(false);
 
-  /* ==========================================================
-     DEXIE
-     ========================================================== */
-
-  const renovacoes = useLiveQuery(
-    () =>
-      id
-        ? db.renovacoes
-            .where("local_id")
-            .equals(id)
-            .toArray()
-        : Promise.resolve([] as Renovacao[]),
-    [id]
-  ) ?? [];
-
-  const medicamentos = useLiveQuery(
-    () => db.medicamentos.toArray(),
-    []
-  ) ?? [];
-
-  const consultas = useLiveQuery(
-    () => db.consultas.toArray(),
-    []
-  ) ?? [];
-
-  const exames = useLiveQuery(
-    () => db.exames.toArray(),
-    []
-  ) ?? [];
-
-  /* ==========================================================
-     VÍNCULOS
-     ========================================================== */
-
-  const medicoIds = useMemo(
-    () =>
-      [...(local?.medico_ids ?? [])]
-        .filter(Boolean)
-        .sort(),
-    [local?.medico_ids]
-  );
-
-  const tratamentoIds = useMemo(
-    () =>
-      [...(local?.tratamento_ids ?? [])]
-        .filter(Boolean)
-        .sort(),
-    [local?.tratamento_ids]
-  );
-
-  const medicosVinculados = useLiveQuery(
-    () =>
-      medicoIds.length > 0
-        ? db.medicos
-            .where("id")
-            .anyOf(medicoIds)
-            .toArray()
-        : Promise.resolve([] as Medico[]),
-    [medicoIds]
-  ) ?? [];
-
-  const tratamentosVinculados = useLiveQuery(
-    () =>
-      tratamentoIds.length > 0
-        ? db.tratamentos
-            .where("id")
-            .anyOf(tratamentoIds)
-            .toArray()
-        : Promise.resolve([] as Tratamento[]),
-    [tratamentoIds]
-  ) ?? [];
-
-  /* ==========================================================
-     CARREGAMENTO DO LOCAL
-     ========================================================== */
+  // ==========================================================
+  // LOAD GLOBAL LOCAL
+  // ==========================================================
 
   useEffect(() => {
     if (!id) {
-      router.replace("/saude/locais");
+      router.replace(
+        "/saude/locais"
+      );
+
       return;
     }
 
-    let active = true;
+    let cancelled =
+      false;
 
-    setIsLoading(true);
-
-    db.locais
-      .get(id)
-      .then((result) => {
-        if (!active) return;
-
-        setLocal(result ?? null);
-
-        if (!result) {
-          router.replace("/saude/locais");
-        }
-      })
-      .catch(() => {
-        if (active) {
-          router.replace("/saude/locais");
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [id, router]);
-
-  /* ==========================================================
-     ANÁLISE DO LOCAL
-     ========================================================== */
-
-  const analiseLocal = useMemo<AnaliseLocal>(() => {
-    if (!id) {
-      return {
-        totalGasto: 0,
-        ultimaRenovacao: null,
-        renovacoesComMed: [],
-        consultasLocal: [],
-        examesLocal: [],
-        proximasConsultas: [],
-        consultasPassadas: [],
-      };
-    }
-
-    const renovacoesComMed: RenovacaoComMedicamento[] =
-      renovacoes.map((renovacao) => {
-        const medicamento = medicamentos.find(
-          (item) =>
-            item.id === renovacao.medicamento_id
+    const load =
+      async () => {
+        setIsLoading(
+          true
         );
 
-        return {
-          ...renovacao,
-          medicamento_nome:
-            medicamento?.nome || "Medicamento",
-        };
-      });
+        try {
+          const result =
+            await getLocal(
+              id
+            );
 
-    const renovacoesOrdenadas = [
-      ...renovacoesComMed,
-    ].sort(
-      (a, b) =>
-        new Date(b.data).getTime() -
-        new Date(a.data).getTime()
-    );
+          if (
+            cancelled
+          ) {
+            return;
+          }
 
-    const totalGasto = renovacoes.reduce(
-      (total, renovacao) => {
-        const preco =
-          typeof renovacao.preco === "number"
-            ? renovacao.preco
-            : Number(renovacao.preco) || 0;
+          if (
+            !result
+          ) {
+            router.replace(
+              "/saude/locais"
+            );
 
-        return preco > 0 ? total + preco : total;
-      },
-      0
-    );
+            return;
+          }
 
-    const consultasLocal = consultas
-      .filter(
-        (consulta) => consulta.local_id === id
-      )
-      .sort((a, b) =>
-        (b.data || "").localeCompare(
-          a.data || ""
-        )
-      );
+          setLocal(
+            result
+          );
+        } catch (error) {
+          console.error(
+            "Erro ao carregar local:",
+            error
+          );
 
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+          if (
+            !cancelled
+          ) {
+            router.replace(
+              "/saude/locais"
+            );
+          }
+        } finally {
+          if (
+            !cancelled
+          ) {
+            setIsLoading(
+              false
+            );
+          }
+        }
+      };
 
-    const proximasConsultas = consultasLocal
-      .filter(
-        (consulta) =>
-          !!consulta.data &&
-          new Date(consulta.data) >= hoje
-      )
-      .sort((a, b) =>
-        (a.data || "").localeCompare(
-          b.data || ""
-        )
-      );
+    void load();
 
-    const consultasPassadas = consultasLocal
-      .filter(
-        (consulta) =>
-          !!consulta.data &&
-          new Date(consulta.data) < hoje
-      )
-      .sort((a, b) =>
-        (b.data || "").localeCompare(
-          a.data || ""
-        )
-      );
-
-    const examesLocal = exames
-      .filter((exame) => exame.local_id === id)
-      .sort((a, b) =>
-        (b.data || "").localeCompare(
-          a.data || ""
-        )
-      );
-
-    return {
-      totalGasto,
-      ultimaRenovacao:
-        renovacoesOrdenadas[0] ?? null,
-      renovacoesComMed: renovacoesOrdenadas,
-      consultasLocal,
-      examesLocal,
-      proximasConsultas,
-      consultasPassadas,
+    return () => {
+      cancelled =
+        true;
     };
   }, [
-    consultas,
-    exames,
+    getLocal,
     id,
-    medicamentos,
-    renovacoes,
+    router,
   ]);
 
-  /* ==========================================================
-     ESTADOS
-     ========================================================== */
+  // ==========================================================
+  // STYLE
+  // ==========================================================
 
-  if (!mounted || isLoading) {
-    return <DetailSkeleton />;
+  const localStyle =
+    useMemo(() => {
+      if (!local) {
+        return LOCAL_TYPE_STYLE.outro;
+      }
+
+      return (
+        LOCAL_TYPE_STYLE[
+          local.tipo ||
+            "outro"
+        ] ||
+        {
+          ...LOCAL_TYPE_STYLE.outro,
+          label:
+            local.tipo ||
+            "Outro Local de Saúde",
+          shortLabel:
+            local.tipo ||
+            "Outro",
+        }
+      );
+    }, [
+      local,
+    ]);
+
+  const LocalIcon =
+    localStyle.icon;
+
+  // ==========================================================
+  // INDEXES
+  // ==========================================================
+
+  const medicosById =
+    useMemo(() => {
+      const map =
+        new Map<
+          string,
+          Medico
+        >();
+
+      medicos.forEach(
+        (
+          medico
+        ) => {
+          if (
+            medico.id
+          ) {
+            map.set(
+              medico.id,
+              medico
+            );
+          }
+        }
+      );
+
+      return map;
+    }, [
+      medicos,
+    ]);
+
+  const medicamentosById =
+    useMemo(() => {
+      const map =
+        new Map<
+          string,
+          (typeof medicamentos)[number]
+        >();
+
+      medicamentos.forEach(
+        (
+          medicamento
+        ) => {
+          if (
+            medicamento.id
+          ) {
+            map.set(
+              medicamento.id,
+              medicamento
+            );
+          }
+        }
+      );
+
+      return map;
+    }, [
+      medicamentos,
+    ]);
+
+  // ==========================================================
+  // GLOBAL DIRECT MEDICOS
+  // ==========================================================
+
+  const medicosDiretos =
+    useMemo(() => {
+      const ids =
+        new Set(
+          local?.medico_ids ||
+            []
+        );
+
+      return medicos.filter(
+        (
+          medico
+        ) =>
+          Boolean(
+            medico.id &&
+              ids.has(
+                medico.id
+              )
+          )
+      );
+    }, [
+      local?.medico_ids,
+      medicos,
+    ]);
+
+  // ==========================================================
+  // PERSON-SCOPED RELATIONS
+  // ==========================================================
+
+  const consultasLocal =
+    useMemo(() => {
+      if (!id) {
+        return [];
+      }
+
+      return consultas
+        .filter(
+          (
+            consulta:
+              Consulta
+          ) =>
+            consulta.local_id ===
+            id
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            (
+              second.data ||
+              ""
+            ).localeCompare(
+              first.data ||
+                ""
+            )
+        );
+    }, [
+      consultas,
+      id,
+    ]);
+
+  const examesLocal =
+    useMemo(() => {
+      if (!id) {
+        return [];
+      }
+
+      return exames
+        .filter(
+          (
+            exame:
+              Exame
+          ) =>
+            exame.local_id ===
+            id
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            (
+              second.data ||
+              ""
+            ).localeCompare(
+              first.data ||
+                ""
+            )
+        );
+    }, [
+      exames,
+      id,
+    ]);
+
+  const cirurgiasLocal =
+    useMemo(() => {
+      if (!id) {
+        return [];
+      }
+
+      return cirurgias
+        .filter(
+          (
+            cirurgia:
+              Cirurgia
+          ) =>
+            cirurgia.local_id ===
+            id
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            (
+              second.data ||
+              ""
+            ).localeCompare(
+              first.data ||
+                ""
+            )
+        );
+    }, [
+      cirurgias,
+      id,
+    ]);
+
+  const renovacoesLocal =
+    useMemo(() => {
+      if (!id) {
+        return [];
+      }
+
+      return renovacoes
+        .filter(
+          (
+            renovacao:
+              Renovacao
+          ) =>
+            renovacao.local_id ===
+            id
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            (
+              second.data ||
+              ""
+            ).localeCompare(
+              first.data ||
+                ""
+            )
+        );
+    }, [
+      renovacoes,
+      id,
+    ]);
+
+  const cidsLocal =
+    useMemo(() => {
+      if (!id) {
+        return [];
+      }
+
+      return cids
+        .filter(
+          (
+            cid:
+              Cid
+          ) =>
+            cid.local_id ===
+            id
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            (
+              second.data_diagnostico ||
+              ""
+            ).localeCompare(
+              first.data_diagnostico ||
+                ""
+            )
+        );
+    }, [
+      cids,
+      id,
+    ]);
+
+  const medicamentosLocal =
+    useMemo(() => {
+      if (!id) {
+        return [];
+      }
+
+      return medicamentos.filter(
+        (
+          medicamento
+        ) =>
+          medicamento.local_id ===
+          id
+      );
+    }, [
+      medicamentos,
+      id,
+    ]);
+
+  // ==========================================================
+  // TRATAMENTOS
+  // ==========================================================
+
+  const tratamentoIdsDerivados =
+    useMemo(() => {
+      const ids =
+        new Set<string>();
+
+      consultasLocal.forEach(
+        (
+          consulta
+        ) => {
+          (
+            consulta.tratamento_ids ||
+            []
+          ).forEach(
+            (
+              tratamentoId
+            ) =>
+              ids.add(
+                tratamentoId
+              )
+          );
+        }
+      );
+
+      examesLocal.forEach(
+        (
+          exame
+        ) => {
+          (
+            exame.tratamento_ids ||
+            []
+          ).forEach(
+            (
+              tratamentoId
+            ) =>
+              ids.add(
+                tratamentoId
+              )
+          );
+        }
+      );
+
+      cirurgiasLocal.forEach(
+        (
+          cirurgia
+        ) => {
+          (
+            cirurgia.tratamento_ids ||
+            []
+          ).forEach(
+            (
+              tratamentoId
+            ) =>
+              ids.add(
+                tratamentoId
+              )
+          );
+        }
+      );
+
+      return ids;
+    }, [
+      consultasLocal,
+      examesLocal,
+      cirurgiasLocal,
+    ]);
+
+  const tratamentosLocal =
+    useMemo(() => {
+      if (!id) {
+        return [];
+      }
+
+      return tratamentos.filter(
+        (
+          tratamento:
+            Tratamento
+        ) => {
+          if (
+            activePersonId &&
+            tratamento.person_id &&
+            tratamento.person_id !==
+              activePersonId
+          ) {
+            return false;
+          }
+
+          const direct =
+            (
+              tratamento.local_ids ||
+              []
+            ).includes(
+              id
+            );
+
+          const derived =
+            Boolean(
+              tratamento.id &&
+                tratamentoIdsDerivados.has(
+                  tratamento.id
+                )
+            );
+
+          return (
+            direct ||
+            derived
+          );
+        }
+      );
+    }, [
+      activePersonId,
+      id,
+      tratamentos,
+      tratamentoIdsDerivados,
+    ]);
+
+  // ==========================================================
+  // HISTORICAL MEDICOS
+  // ==========================================================
+
+  const medicosHistorico =
+    useMemo(() => {
+      const ids =
+        new Set<string>();
+
+      consultasLocal.forEach(
+        (
+          consulta
+        ) => {
+          if (
+            consulta.medico_id
+          ) {
+            ids.add(
+              consulta.medico_id
+            );
+          }
+        }
+      );
+
+      examesLocal.forEach(
+        (
+          exame
+        ) => {
+          if (
+            exame.medico_id
+          ) {
+            ids.add(
+              exame.medico_id
+            );
+          }
+        }
+      );
+
+      cirurgiasLocal.forEach(
+        (
+          cirurgia
+        ) => {
+          if (
+            cirurgia.medico_id
+          ) {
+            ids.add(
+              cirurgia.medico_id
+            );
+          }
+        }
+      );
+
+      cidsLocal.forEach(
+        (
+          cid
+        ) => {
+          if (
+            cid.medico_id
+          ) {
+            ids.add(
+              cid.medico_id
+            );
+          }
+        }
+      );
+
+      return Array.from(
+        ids
+      )
+        .map(
+          (
+            medicoId
+          ) =>
+            medicosById.get(
+              medicoId
+            )
+        )
+        .filter(
+          (
+            medico
+          ): medico is Medico =>
+            Boolean(
+              medico
+            )
+        );
+    }, [
+      consultasLocal,
+      examesLocal,
+      cirurgiasLocal,
+      cidsLocal,
+      medicosById,
+    ]);
+
+  // ==========================================================
+  // UPCOMING CONSULTATIONS
+  // ==========================================================
+
+  const hoje =
+    useMemo(
+      () =>
+        getTodayIso(),
+      []
+    );
+
+  const proximasConsultas =
+    useMemo(() => {
+      return consultasLocal
+        .filter(
+          (
+            consulta
+          ) =>
+            Boolean(
+              consulta.data &&
+                consulta.data >=
+                  hoje &&
+                consulta.status !==
+                  "cancelada"
+            )
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            (
+              first.data ||
+              ""
+            ).localeCompare(
+              second.data ||
+                ""
+            )
+        );
+    }, [
+      consultasLocal,
+      hoje,
+    ]);
+
+  // ==========================================================
+  // TOTAL COST
+  // ==========================================================
+
+  const totalRegistrado =
+    useMemo(() => {
+      return renovacoesLocal.reduce(
+        (
+          total,
+          renovacao
+        ) => {
+          if (
+            typeof renovacao.preco !==
+              "number" ||
+            renovacao.preco <=
+              0
+          ) {
+            return total;
+          }
+
+          return (
+            total +
+            renovacao.preco
+          );
+        },
+        0
+      );
+    }, [
+      renovacoesLocal,
+    ]);
+
+  // ==========================================================
+  // LAST ACTIVITY
+  // ==========================================================
+
+  const ultimaAtividade =
+    useMemo<LastActivity | null>(
+      () => {
+        const activities:
+          LastActivity[] =
+          [];
+
+        consultasLocal.forEach(
+          (
+            consulta
+          ) => {
+            if (
+              consulta.data
+            ) {
+              activities.push({
+                type:
+                  "consulta",
+
+                data:
+                  consulta.data,
+              });
+            }
+          }
+        );
+
+        examesLocal.forEach(
+          (
+            exame
+          ) => {
+            if (
+              exame.data
+            ) {
+              activities.push({
+                type:
+                  "exame",
+
+                data:
+                  exame.data,
+              });
+            }
+          }
+        );
+
+        cirurgiasLocal.forEach(
+          (
+            cirurgia
+          ) => {
+            if (
+              cirurgia.data
+            ) {
+              activities.push({
+                type:
+                  "cirurgia",
+
+                data:
+                  cirurgia.data,
+              });
+            }
+          }
+        );
+
+        renovacoesLocal.forEach(
+          (
+            renovacao
+          ) => {
+            if (
+              renovacao.data
+            ) {
+              activities.push({
+                type:
+                  "renovacao",
+
+                data:
+                  renovacao.data,
+              });
+            }
+          }
+        );
+
+        activities.sort(
+          (
+            first,
+            second
+          ) =>
+            second.data.localeCompare(
+              first.data
+            )
+        );
+
+        return (
+          activities[0] ||
+          null
+        );
+      },
+      [
+        consultasLocal,
+        examesLocal,
+        cirurgiasLocal,
+        renovacoesLocal,
+      ]
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const handleDelete =
+    () => {
+      if (
+        !local?.id
+      ) {
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      deleteAction.run(
+        async () => {
+          await deleteLocalSafe(
+            local.id!
+          );
+
+          router.replace(
+            "/saude/locais"
+          );
+        },
+        {
+          successMessage:
+            "Local excluído com sucesso",
+
+          errorMessage:
+            "Erro ao excluir local",
+
+          goBackOnSuccess:
+            false,
+        }
+      );
+    };
+
+  // ==========================================================
+  // STATES
+  // ==========================================================
+
+  if (
+    !mounted ||
+    isLoading
+  ) {
+    return (
+      <DetailSkeleton />
+    );
   }
 
-  if (!local) {
+  if (
+    !local
+  ) {
     return null;
   }
 
-  /* ==========================================================
-     CONFIGURAÇÕES
-     ========================================================== */
+  const renovacoesVisiveis =
+    showAllRenovacoes
+      ? renovacoesLocal
+      : renovacoesLocal.slice(
+          0,
+          5
+        );
 
-  const localStyle =
-    LOCAL_TYPE_STYLE[local.tipo || "outro"] ??
-    LOCAL_TYPE_STYLE.outro;
-
-  const LocalIcon = localStyle.icon;
-
-  const retiradasVisiveis = showAllRetiradas
-    ? analiseLocal.renovacoesComMed
-    : analiseLocal.renovacoesComMed.slice(0, 5);
-
-  /* ==========================================================
-     MENU
-     ========================================================== */
-
-  const menuOptions: MenuOption[] = [
-    {
-      id: "nova-renovacao",
-      label: "Nova Retirada/Renovação",
-      icon: FileWarning,
-      path: `/saude/renovacao/nova?local_id=${id}`,
-    },
-    {
-      id: "novo-medicamento",
-      label: "Novo Medicamento",
-      icon: Pill,
-      path: `/saude/medicamentos/novo?local_id=${id}`,
-    },
-  ];
-
-  const handleMenuToggle = () => {
-    trigger("vibrate");
-    setIsMenuFlutuanteOpen((open) => !open);
-  };
-
-  const handleMenuOptionClick = (path: string) => {
-    trigger("vibrate");
-    setIsMenuFlutuanteOpen(false);
-    router.push(path);
-  };
-
-  const handleDelete = () => {
-    if (!id) return;
-
-    deleteAction.run(
-      async () => {
-        await deleteLocal(id);
-        router.replace("/saude/locais");
-      },
-      {
-        successMessage: "Local excluído com sucesso",
-        errorMessage: "Erro ao excluir local",
-        goBackOnSuccess: false,
-      }
-    );
-  };
-
-  /* ==========================================================
-     RENDER
-     ========================================================== */
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        {/* ====================================================
-            HEADER
-        ==================================================== */}
-
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl header-safe-top">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => {
-                trigger("vibrate");
+                trigger(
+                  "vibrate"
+                );
+
                 router.back();
               }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
@@ -528,8 +1236,8 @@ function DetalhesLocalContent() {
             </button>
 
             <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-emerald-400">
-                Unidade de Saúde
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice">
+                Local global
               </p>
 
               <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
@@ -539,362 +1247,840 @@ function DetalhesLocalContent() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* MENU */}
-
-            <div className="relative">
-              <button
-                type="button"
-                onClick={handleMenuToggle}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all hover:bg-ice/20 active:scale-95"
-                aria-label="Adicionar registro"
-                aria-expanded={isMenuFlutuanteOpen}
-              >
-                <Plus size={18} />
-              </button>
-
-              <AnimatePresence>
-                {isMenuFlutuanteOpen && (
-                  <>
-                    <motion.button
-                      type="button"
-                      aria-label="Fechar menu"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.16 }}
-                      onClick={() =>
-                        setIsMenuFlutuanteOpen(false)
-                      }
-                      className="fixed inset-0 z-40 cursor-default bg-black/50 backdrop-blur-sm"
-                    />
-
-                    <motion.div
-                      initial={{
-                        opacity: 0,
-                        y: 10,
-                        scale: 0.95,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                        scale: 1,
-                      }}
-                      exit={{
-                        opacity: 0,
-                        y: 10,
-                        scale: 0.95,
-                      }}
-                      transition={{
-                        duration: 0.18,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                      className="absolute right-0 top-12 z-50 w-60 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
-                    >
-                      <div className="px-3 pb-2 pt-3.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
-                          Ações
-                        </p>
-                      </div>
-
-                      <div className="px-1.5 pb-2">
-                        {menuOptions.map((option) => {
-                          const Icon = option.icon;
-
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              onClick={() =>
-                                handleMenuOptionClick(
-                                  option.path
-                                )
-                              }
-                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-ice/8 active:scale-[0.98]"
-                            >
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                                <Icon size={15} />
-                              </span>
-
-                              <span className="text-sm font-medium text-ink-primary">
-                                {option.label}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* EDITAR */}
-
             <button
               type="button"
               onClick={() => {
-                trigger("vibrate");
+                trigger(
+                  "vibrate"
+                );
+
                 router.push(
                   `/saude/locais/editar?id=${local.id}`
                 );
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all hover:text-emerald-400 active:scale-95"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all hover:border-ice/30 hover:text-ice active:scale-95"
               aria-label="Editar local"
             >
-              <Edit3 size={16} />
+              <Edit3
+                size={16}
+              />
             </button>
-
-            {/* EXCLUIR */}
 
             <button
               type="button"
               onClick={() => {
-                trigger("vibrate");
-                setShowDeleteModal(true);
+                trigger(
+                  "vibrate"
+                );
+
+                setShowDeleteModal(
+                  true
+                );
               }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
               aria-label="Excluir local"
             >
-              <Trash2 size={16} />
+              <Trash2
+                size={16}
+              />
             </button>
           </div>
         </header>
 
-        {/* ====================================================
-            CONTEÚDO
-        ==================================================== */}
-
         <section className="space-y-5 px-5 pt-6">
-          {/* ==================================================
-              HERO
-          ================================================== */}
-
           <motion.div
-            variants={fadeUp}
+            variants={
+              fadeUp
+            }
             initial="initial"
             animate="animate"
-            className="space-y-4 rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm"
+            className="space-y-5 rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm"
             style={{
-              borderLeft: `6px solid ${localStyle.color}`,
+              borderLeft:
+                `6px solid ${localStyle.color}`,
             }}
           >
-            <div className="flex items-start gap-4">
-              <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border"
-                style={{
-                  backgroundColor: `${localStyle.color}15`,
-                  color: localStyle.color,
-                  borderColor: `${localStyle.color}30`,
-                }}
-              >
-                <LocalIcon size={24} />
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 items-start gap-4">
+                <div
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
+                  style={{
+                    backgroundColor:
+                      `${localStyle.color}15`,
+
+                    borderColor:
+                      `${localStyle.color}35`,
+
+                    color:
+                      localStyle.color,
+                  }}
+                >
+                  <LocalIcon
+                    size={28}
+                  />
+                </div>
+
+                <div className="min-w-0 pt-0.5">
+                  <div className="mb-2">
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide"
+                      style={{
+                        backgroundColor:
+                          `${localStyle.color}15`,
+
+                        borderColor:
+                          `${localStyle.color}35`,
+
+                        color:
+                          localStyle.color,
+                      }}
+                    >
+                      <LocalIcon
+                        size={10}
+                      />
+
+                      {
+                        localStyle.label
+                      }
+                    </span>
+                  </div>
+
+                  <h2 className="truncate font-display text-2xl font-bold text-ink-primary">
+                    {
+                      local.nome
+                    }
+                  </h2>
+
+                  {local.endereco && (
+                    <p className="mt-3 flex items-start gap-1.5 text-xs leading-5 text-ink-muted">
+                      <MapPin
+                        size={13}
+                        className="mt-0.5 shrink-0 text-ink-faint"
+                      />
+
+                      {
+                        local.endereco
+                      }
+                    </p>
+                  )}
+
+                  {local.telefone && (
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted">
+                      <Phone
+                        size={13}
+                        className="shrink-0 text-ink-faint"
+                      />
+
+                      {
+                        local.telefone
+                      }
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <div className="min-w-0 pt-1">
-                <h2 className="truncate font-display text-xl font-bold text-ink-primary">
-                  {local.nome}
-                </h2>
-
-                <p className="mt-1 leading-relaxed text-sm text-ink-muted">
-                  {local.endereco ||
-                    "Endereço não informado."}
-                </p>
-
+              <div className="flex shrink-0 items-center gap-2">
                 {local.telefone && (
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted">
-                    <MapPin size={12} />
-                    {local.telefone}
-                  </p>
+                  <a
+                    href={`tel:${local.telefone}`}
+                    onClick={() =>
+                      trigger(
+                        "vibrate"
+                      )
+                    }
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all hover:text-ice active:scale-95"
+                    aria-label="Ligar para o local"
+                  >
+                    <Phone
+                      size={16}
+                    />
+                  </a>
+                )}
+
+                {local.endereco && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      local.endereco
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() =>
+                      trigger(
+                        "vibrate"
+                      )
+                    }
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/25 bg-ice/10 text-ice transition-all active:scale-95"
+                    aria-label="Abrir endereço no mapa"
+                  >
+                    <Navigation
+                      size={16}
+                    />
+                  </a>
                 )}
               </div>
             </div>
 
-            {/* VÍNCULOS RESUMIDOS */}
+            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/50 px-3.5 py-3">
+              <div className="flex items-start gap-2.5">
+                <User
+                  size={15}
+                  className="mt-0.5 shrink-0 text-ice"
+                />
 
-            {(medicosVinculados.length > 0 ||
-              tratamentosVinculados.length > 0) && (
-              <div className="flex flex-wrap gap-2 border-t border-surface-border/40 pt-2">
-                {medicosVinculados.map((medico) => (
-                  <span
-                    key={medico.id}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-ice/10 px-2.5 py-1 text-xs text-ice"
-                  >
-                    <Stethoscope size={12} />
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">
+                    Contexto clínico
+                  </p>
 
-                    Dr(a).{" "}
-                    {medico.nome.split(" ")[0]}
-                  </span>
-                ))}
-
-                {tratamentosVinculados.map(
-                  (tratamento) => {
-                    const color = getTreatmentColor(
-                      tratamento.nome
-                    );
-
-                    return (
-                      <span
-                        key={tratamento.id}
-                        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase"
-                        style={{
-                          backgroundColor: `${color}20`,
-                          color,
-                        }}
-                      >
-                        <Activity size={10} />
-                        {tratamento.nome}
-                      </span>
-                    );
-                  }
-                )}
+                  {activePersonId ? (
+                    <p className="mt-0.5 text-xs leading-5 text-ink-muted">
+                      CIDs, medicamentos, consultas, exames, cirurgias, tratamentos e retiradas abaixo pertencem à pessoa ativa.
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-xs leading-5 text-ink-muted">
+                      Selecione uma pessoa para visualizar o histórico clínico deste local.
+                    </p>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
 
-            {/* MÉTRICAS */}
-
-            <div className="grid grid-cols-3 gap-3 border-t border-surface-border/40 pt-4">
+            <div className="grid grid-cols-2 gap-2 border-t border-surface-border/40 pt-4">
               <StatCard
-                icon={<Stethoscope size={14} />}
-                label="Médicos"
+                icon={
+                  <Calendar
+                    size={14}
+                  />
+                }
+                label="Consultas"
                 value={String(
-                  medicosVinculados.length
+                  consultasLocal.length
                 )}
               />
 
               <StatCard
-                icon={<FolderHeart size={14} />}
+                icon={
+                  <FlaskConical
+                    size={14}
+                  />
+                }
+                label="Exames"
+                value={String(
+                  examesLocal.length
+                )}
+              />
+
+              <StatCard
+                icon={
+                  <FileWarning
+                    size={14}
+                  />
+                }
+                label="CIDs"
+                value={String(
+                  cidsLocal.length
+                )}
+              />
+
+              <StatCard
+                icon={
+                  <FolderHeart
+                    size={14}
+                  />
+                }
                 label="Tratamentos"
                 value={String(
-                  tratamentosVinculados.length
+                  tratamentosLocal.length
                 )}
               />
 
               <StatCard
-                icon={<FileWarning size={14} />}
-                label="Retiradas"
+                icon={
+                  <Pill
+                    size={14}
+                  />
+                }
+                label="Medicamentos"
                 value={String(
-                  analiseLocal.renovacoesComMed.length
+                  medicamentosLocal.length
+                )}
+              />
+
+              <StatCard
+                icon={
+                  <Activity
+                    size={14}
+                  />
+                }
+                label="Cirurgias"
+                value={String(
+                  cirurgiasLocal.length
                 )}
               />
             </div>
 
-            {analiseLocal.ultimaRenovacao && (
-              <div className="border-t border-surface-border/40 pt-2">
+            {ultimaAtividade && (
+              <div className="border-t border-surface-border/40 pt-3">
                 <div className="flex items-center gap-2 text-xs text-ink-muted">
                   <Clock
                     size={14}
                     style={{
-                      color: localStyle.color,
+                      color:
+                        localStyle.color,
                     }}
                   />
 
-                  <span>
-                    Última retirada:{" "}
-                    <span className="font-medium text-ink-primary">
-                      {formatDateDisplay(
-                        analiseLocal.ultimaRenovacao
-                          .data
-                      )}
-                    </span>
+                  Última atividade:{" "}
+                  <span className="font-medium text-ink-primary">
+                    {formatDateDisplay(
+                      ultimaAtividade.data
+                    )}
                   </span>
                 </div>
               </div>
             )}
           </motion.div>
 
-          {/* ==================================================
-              MÉDICOS
-          ================================================== */}
-
-          {medicosVinculados.length > 0 && (
+          {local.observacoes && (
             <motion.div
-              variants={fadeUp}
+              variants={
+                fadeUp
+              }
               initial="initial"
               animate="animate"
-              transition={{ delay: 0.02 }}
+              transition={{
+                delay:
+                  0.02,
+              }}
+              className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm"
+            >
+              <SectionTitle
+                icon={
+                  <FileText
+                    size={15}
+                  />
+                }
+                title="Observações"
+              />
+
+              <p className="mt-3 whitespace-pre-wrap text-xs leading-6 text-ink-muted">
+                {
+                  local.observacoes
+                }
+              </p>
+            </motion.div>
+          )}
+
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.03,
+            }}
+            className="space-y-3"
+          >
+            <SectionTitle
+              icon={
+                <Stethoscope
+                  size={15}
+                />
+              }
+              title={`Profissionais vinculados (${medicosDiretos.length})`}
+            />
+
+            {medicosDiretos.length ===
+            0 ? (
+              <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
+                <p className="text-xs text-ink-muted">
+                  Nenhum médico está cadastrado diretamente nesta unidade.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {medicosDiretos.map(
+                  (
+                    medico
+                  ) => (
+                    <button
+                      key={
+                        medico.id
+                      }
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !medico.id
+                        ) {
+                          return;
+                        }
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/medicos/detalhes?id=${medico.id}`
+                        );
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all hover:border-ice/30 active:scale-[0.98]"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                          <Stethoscope
+                            size={16}
+                          />
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink-primary">
+                            Dr(a).{" "}
+                            {
+                              medico.nome
+                            }
+                          </p>
+
+                          {medico.especialidade && (
+                            <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+                              {
+                                medico.especialidade
+                              }
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <ExternalLink
+                        size={15}
+                        className="shrink-0 text-ink-faint"
+                      />
+                    </button>
+                  )
+                )}
+              </div>
+            )}
+          </motion.div>
+
+          {medicosHistorico.length >
+            0 && (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay:
+                  0.04,
+              }}
               className="space-y-3"
             >
               <SectionTitle
-                icon={<Stethoscope size={15} />}
-                title="Médicos que atendem aqui"
+                icon={
+                  <User
+                    size={15}
+                  />
+                }
+                title="Médicos no histórico da pessoa ativa"
               />
 
-              <div className="grid grid-cols-1 gap-2">
-                {medicosVinculados.map((medico) => (
-                  <button
-                    key={medico.id}
-                    type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      router.push(
-                        `/saude/medicos/detalhes?id=${medico.id}`
-                      );
-                    }}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-colors hover:border-ice/30 active:scale-[0.98]"
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
-                      <Stethoscope size={18} />
-                    </span>
+              <div className="flex flex-wrap gap-2">
+                {medicosHistorico.map(
+                  (
+                    medico
+                  ) => (
+                    <button
+                      key={
+                        medico.id
+                      }
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !medico.id
+                        ) {
+                          return;
+                        }
 
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-ink-primary">
-                        Dr(a). {medico.nome}
-                      </span>
+                        trigger(
+                          "vibrate"
+                        );
 
-                      {medico.especialidade && (
-                        <span className="block text-[11px] text-ink-muted">
-                          {medico.especialidade}
-                        </span>
-                      )}
-                    </span>
-
-                    <ChevronRight
-                      size={16}
-                      className="shrink-0 text-ink-faint"
-                    />
-                  </button>
-                ))}
+                        router.push(
+                          `/saude/medicos/detalhes?id=${medico.id}`
+                        );
+                      }}
+                      className="rounded-full border border-surface-border/60 bg-surface px-3.5 py-2 text-xs font-medium text-ink-primary transition-all hover:border-ice/30 active:scale-95"
+                    >
+                      Dr(a).{" "}
+                      {
+                        medico.nome
+                      }
+                    </button>
+                  )
+                )}
               </div>
             </motion.div>
           )}
 
-          {/* ==================================================
-              TRATAMENTOS
-          ================================================== */}
-
-          {tratamentosVinculados.length > 0 && (
+          {cidsLocal.length >
+            0 && (
             <motion.div
-              variants={fadeUp}
+              variants={
+                fadeUp
+              }
               initial="initial"
               animate="animate"
-              transition={{ delay: 0.03 }}
-              className="rounded-[24px] border border-surface-border/50 bg-surface p-5 shadow-sm"
+              transition={{
+                delay:
+                  0.05,
+              }}
+              className="space-y-3"
             >
               <SectionTitle
-                icon={<FolderHeart size={15} />}
-                title="Tratamentos neste local"
+                icon={
+                  <FileWarning
+                    size={15}
+                  />
+                }
+                title={`Diagnósticos / CIDs (${cidsLocal.length})`}
               />
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {tratamentosVinculados.map(
-                  (tratamento) => {
-                    const color = getTreatmentColor(
-                      tratamento.nome
-                    );
+              <div className="space-y-2">
+                {cidsLocal.map(
+                  (
+                    cid
+                  ) => (
+                    <button
+                      key={
+                        cid.id
+                      }
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !cid.id
+                        ) {
+                          return;
+                        }
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/cids/detalhes?id=${cid.id}`
+                        );
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all hover:border-coral/25 active:scale-[0.98]"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wider text-coral">
+                          CID{" "}
+                          {
+                            cid.codigo
+                          }
+                        </p>
+
+                        <p className="mt-1 truncate text-sm font-semibold text-ink-primary">
+                          {
+                            cid.descricao
+                          }
+                        </p>
+
+                        {cid.data_diagnostico && (
+                          <p className="mt-1 text-[10px] text-ink-muted">
+                            Diagnóstico em{" "}
+                            {formatDateDisplay(
+                              cid.data_diagnostico
+                            )}
+                          </p>
+                        )}
+                      </div>
+
+                      <ChevronRight
+                        size={16}
+                        className="shrink-0 text-ink-faint"
+                      />
+                    </button>
+                  )
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {tratamentosLocal.length >
+            0 && (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay:
+                  0.06,
+              }}
+              className="space-y-3"
+            >
+              <SectionTitle
+                icon={
+                  <FolderHeart
+                    size={15}
+                  />
+                }
+                title={`Tratamentos relacionados (${tratamentosLocal.length})`}
+              />
+
+              <div className="space-y-2">
+                {tratamentosLocal.map(
+                  (
+                    tratamento
+                  ) => (
+                    <button
+                      key={
+                        tratamento.id
+                      }
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !tratamento.id
+                        ) {
+                          return;
+                        }
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/tratamentos/detalhes?id=${tratamento.id}`
+                        );
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all active:scale-[0.98]"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                          style={{
+                            backgroundColor:
+                              `${tratamento.cor || "#8B5CF6"}18`,
+
+                            color:
+                              tratamento.cor ||
+                              "#8B5CF6",
+                          }}
+                        >
+                          <FolderHeart
+                            size={16}
+                          />
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink-primary">
+                            {
+                              tratamento.nome
+                            }
+                          </p>
+
+                          <p className="mt-0.5 text-[10px] text-ink-muted">
+                            {(
+                              tratamento.local_ids ||
+                              []
+                            ).includes(
+                              local.id!
+                            )
+                              ? "Vinculado diretamente a esta unidade"
+                              : "Relacionado pelo histórico clínico"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <ChevronRight
+                        size={16}
+                        className="shrink-0 text-ink-faint"
+                      />
+                    </button>
+                  )
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {medicamentosLocal.length >
+            0 && (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay:
+                  0.07,
+              }}
+              className="space-y-3"
+            >
+              <SectionTitle
+                icon={
+                  <Pill
+                    size={15}
+                  />
+                }
+                title={`Medicamentos vinculados (${medicamentosLocal.length})`}
+              />
+
+              <div className="space-y-2">
+                {medicamentosLocal.map(
+                  (
+                    medicamento
+                  ) => (
+                    <button
+                      key={
+                        medicamento.id
+                      }
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !medicamento.id
+                        ) {
+                          return;
+                        }
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/medicamentos/detalhes?id=${medicamento.id}`
+                        );
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all hover:border-ice/30 active:scale-[0.98]"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                          <Pill
+                            size={16}
+                          />
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink-primary">
+                            {
+                              medicamento.nome
+                            }
+                          </p>
+
+                          {medicamento.dosagem && (
+                            <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+                              {
+                                medicamento.dosagem
+                              }
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <ChevronRight
+                        size={16}
+                        className="shrink-0 text-ink-faint"
+                      />
+                    </button>
+                  )
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {proximasConsultas.length >
+            0 && (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay:
+                  0.08,
+              }}
+              className="space-y-3"
+            >
+              <SectionTitle
+                icon={
+                  <Calendar
+                    size={15}
+                  />
+                }
+                title={`Próximas consultas (${proximasConsultas.length})`}
+              />
+
+              <div className="space-y-2">
+                {proximasConsultas.map(
+                  (
+                    consulta
+                  ) => {
+                    const medico =
+                      consulta.medico_id
+                        ? medicosById.get(
+                            consulta.medico_id
+                          )
+                        : undefined;
 
                     return (
-                      <span
-                        key={tratamento.id}
-                        className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-bold uppercase"
-                        style={{
-                          backgroundColor: `${color}20`,
-                          borderColor: `${color}40`,
-                          color,
+                      <button
+                        key={
+                          consulta.id
+                        }
+                        type="button"
+                        onClick={() => {
+                          if (
+                            !consulta.id
+                          ) {
+                            return;
+                          }
+
+                          trigger(
+                            "vibrate"
+                          );
+
+                          router.push(
+                            `/saude/consultas/detalhes?id=${consulta.id}`
+                          );
                         }}
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-ice/20 bg-ice/5 p-3.5 text-left transition-all active:scale-[0.98]"
                       >
-                        <Activity size={10} />
-                        {tratamento.nome}
-                      </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink-primary">
+                            {consulta.especialidade ||
+                              "Consulta"}
+                          </p>
+
+                          <p className="mt-0.5 text-[11px] text-ink-muted">
+                            {formatDateDisplay(
+                              consulta.data
+                            )}
+
+                            {consulta.horario
+                              ? ` às ${consulta.horario}`
+                              : ""}
+                          </p>
+
+                          {medico && (
+                            <p className="mt-0.5 truncate text-[10px] text-ink-faint">
+                              Dr(a).{" "}
+                              {
+                                medico.nome
+                              }
+                            </p>
+                          )}
+                        </div>
+
+                        <ChevronRight
+                          size={16}
+                          className="shrink-0 text-ice"
+                        />
+                      </button>
                     );
                   }
                 )}
@@ -902,118 +2088,244 @@ function DetalhesLocalContent() {
             </motion.div>
           )}
 
-          {/* ==================================================
-              PRÓXIMAS CONSULTAS
-          ================================================== */}
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.09,
+            }}
+            className="space-y-3"
+          >
+            <SectionTitle
+              icon={
+                <FlaskConical
+                  size={15}
+                />
+              }
+              title={`Exames (${examesLocal.length})`}
+            />
 
-          {analiseLocal.proximasConsultas.length >
-            0 && (
-            <motion.div
-              variants={fadeUp}
-              initial="initial"
-              animate="animate"
-              transition={{ delay: 0.04 }}
-              className="space-y-3"
-            >
-              <SectionTitle
-                icon={<Calendar size={15} />}
-                title="Próximas consultas"
-              />
-
-              <div className="space-y-2">
-                {analiseLocal.proximasConsultas.map(
-                  (consulta) => (
-                    <button
-                      key={consulta.id}
-                      type="button"
-                      onClick={() => {
-                        trigger("vibrate");
-                        router.push(
-                          `/saude/consultas/detalhes?id=${consulta.id}`
-                        );
-                      }}
-                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all hover:border-emerald-400/30 active:scale-[0.98]"
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
-                          <Calendar size={16} />
-                        </span>
-
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-ink-primary">
-                            {consulta.especialidade ||
-                              "Consulta"}
-                          </span>
-
-                          <span className="block text-[11px] text-ink-muted">
-                            {formatDateDisplay(
-                              consulta.data
-                            )}
-                            {consulta.horario &&
-                              ` às ${consulta.horario}`}
-                          </span>
-                        </span>
-                      </span>
-
-                      <ChevronRight
-                        size={16}
-                        className="shrink-0 text-ink-faint"
-                      />
-                    </button>
-                  )
-                )}
+            {examesLocal.length ===
+            0 ? (
+              <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
+                <p className="text-xs text-ink-muted">
+                  Nenhum exame da pessoa ativa está vinculado a este local.
+                </p>
               </div>
-            </motion.div>
-          )}
-
-          {/* ==================================================
-              EXAMES
-          ================================================== */}
-
-          {analiseLocal.examesLocal.length > 0 && (
-            <motion.div
-              variants={fadeUp}
-              initial="initial"
-              animate="animate"
-              transition={{ delay: 0.05 }}
-              className="space-y-3"
-            >
-              <SectionTitle
-                icon={<FlaskConical size={15} />}
-                title="Exames realizados"
-              />
-
+            ) : (
               <div className="space-y-2">
-                {analiseLocal.examesLocal.map(
-                  (exame) => (
-                    <button
-                      key={exame.id}
-                      type="button"
-                      onClick={() => {
-                        trigger("vibrate");
-                        router.push(
-                          `/saude/exames/detalhes?id=${exame.id}`
-                        );
-                      }}
-                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all hover:border-violet-400/30 active:scale-[0.98]"
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
-                          <FlaskConical size={16} />
-                        </span>
+                {examesLocal
+                  .slice(
+                    0,
+                    8
+                  )
+                  .map(
+                    (
+                      exame
+                    ) => (
+                      <button
+                        key={
+                          exame.id
+                        }
+                        type="button"
+                        onClick={() => {
+                          if (
+                            !exame.id
+                          ) {
+                            return;
+                          }
 
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-ink-primary">
-                            {exame.nome}
-                          </span>
+                          trigger(
+                            "vibrate"
+                          );
 
-                          <span className="block text-[11px] text-ink-muted">
+                          router.push(
+                            `/saude/exames/detalhes?id=${exame.id}`
+                          );
+                        }}
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all hover:border-ice/30 active:scale-[0.98]"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink-primary">
+                            {
+                              exame.nome
+                            }
+                          </p>
+
+                          <p className="mt-0.5 text-[11px] text-ink-muted">
                             {formatDateDisplay(
                               exame.data
                             )}
-                          </span>
-                        </span>
-                      </span>
+
+                            {exame.horario
+                              ? ` às ${exame.horario}`
+                              : ""}
+                          </p>
+                        </div>
+
+                        <ChevronRight
+                          size={16}
+                          className="shrink-0 text-ink-faint"
+                        />
+                      </button>
+                    )
+                  )}
+              </div>
+            )}
+          </motion.div>
+
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.1,
+            }}
+            className="space-y-3"
+          >
+            <SectionTitle
+              icon={
+                <Calendar
+                  size={15}
+                />
+              }
+              title={`Consultas (${consultasLocal.length})`}
+            />
+
+            {consultasLocal.length ===
+            0 ? (
+              <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
+                <p className="text-xs text-ink-muted">
+                  Nenhuma consulta da pessoa ativa está vinculada a este local.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {consultasLocal
+                  .slice(
+                    0,
+                    8
+                  )
+                  .map(
+                    (
+                      consulta
+                    ) => (
+                      <button
+                        key={
+                          consulta.id
+                        }
+                        type="button"
+                        onClick={() => {
+                          if (
+                            !consulta.id
+                          ) {
+                            return;
+                          }
+
+                          trigger(
+                            "vibrate"
+                          );
+
+                          router.push(
+                            `/saude/consultas/detalhes?id=${consulta.id}`
+                          );
+                        }}
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all hover:border-ice/30 active:scale-[0.98]"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink-primary">
+                            {consulta.especialidade ||
+                              "Consulta"}
+                          </p>
+
+                          <p className="mt-0.5 text-[11px] text-ink-muted">
+                            {formatDateDisplay(
+                              consulta.data
+                            )}
+                          </p>
+                        </div>
+
+                        <ChevronRight
+                          size={16}
+                          className="shrink-0 text-ink-faint"
+                        />
+                      </button>
+                    )
+                  )}
+              </div>
+            )}
+          </motion.div>
+
+          {cirurgiasLocal.length >
+            0 && (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay:
+                  0.11,
+              }}
+              className="space-y-3"
+            >
+              <SectionTitle
+                icon={
+                  <Activity
+                    size={15}
+                  />
+                }
+                title={`Cirurgias (${cirurgiasLocal.length})`}
+              />
+
+              <div className="space-y-2">
+                {cirurgiasLocal.map(
+                  (
+                    cirurgia
+                  ) => (
+                    <button
+                      key={
+                        cirurgia.id
+                      }
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !cirurgia.id
+                        ) {
+                          return;
+                        }
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/cirurgias/detalhes?id=${cirurgia.id}`
+                        );
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left transition-all hover:border-coral/30 active:scale-[0.98]"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink-primary">
+                          {
+                            cirurgia.procedimento
+                          }
+                        </p>
+
+                        <p className="mt-0.5 text-[11px] text-ink-muted">
+                          {formatDateDisplay(
+                            cirurgia.data
+                          )}
+                        </p>
+                      </div>
 
                       <ChevronRight
                         size={16}
@@ -1026,155 +2338,177 @@ function DetalhesLocalContent() {
             </motion.div>
           )}
 
-          {/* ==================================================
-              RETIRADAS
-          ================================================== */}
-
           <motion.div
-            variants={fadeUp}
+            variants={
+              fadeUp
+            }
             initial="initial"
             animate="animate"
-            transition={{ delay: 0.06 }}
-            className="space-y-4 pt-2"
+            transition={{
+              delay:
+                0.12,
+            }}
+            className="space-y-3"
           >
             <SectionTitle
-              icon={<FileWarning size={15} />}
-              title={`Últimas retiradas (${analiseLocal.renovacoesComMed.length})`}
+              icon={
+                <FileWarning
+                  size={15}
+                />
+              }
+              title={`Retiradas / renovações (${renovacoesLocal.length})`}
             />
 
-            <div className="space-y-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-              {analiseLocal.renovacoesComMed.length ===
-              0 ? (
-                <p className="py-2 text-xs text-ink-muted">
-                  Nenhum registro de retirada vinculado a
-                  este local.
+            {renovacoesLocal.length ===
+            0 ? (
+              <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
+                <p className="text-xs text-ink-muted">
+                  Nenhuma retirada ou renovação da pessoa ativa está vinculada a este local.
                 </p>
-              ) : (
-                <>
-                  {retiradasVisiveis.map((renovacao) => (
-                    <button
-                      key={renovacao.id}
-                      type="button"
-                      onClick={() => {
-                        trigger("vibrate");
-                        router.push(
-                          `/saude/renovacao/detalhes?id=${renovacao.id}`
-                        );
-                      }}
-                      className="flex w-full items-center justify-between rounded-xl border border-surface-border/40 bg-surface-raised p-3.5 text-left transition-colors hover:border-emerald-400/30 active:scale-[0.98]"
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-surface-border/40 bg-surface">
-                          <FileText
-                            size={14}
-                            className="text-ink-muted"
-                          />
-                        </span>
-
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-ink-primary">
-                            {
-                              renovacao.medicamento_nome
-                            }
-                          </span>
-
-                          <span className="block text-[11px] text-ink-muted">
-                            {formatDateDisplay(
-                              renovacao.data
-                            )}
-                          </span>
-                        </span>
-                      </span>
-
-                      {typeof renovacao.preco ===
-                        "number" &&
-                      renovacao.preco > 0 ? (
-                        <span className="shrink-0 text-sm font-semibold text-emerald-400">
-                          {formatCurrency(
-                            renovacao.preco
-                          )}
-                        </span>
-                      ) : (
-                        <span className="shrink-0 rounded-md bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-400">
-                          Gratuito (SUS)
-                        </span>
-                      )}
-                    </button>
-                  ))}
-
-                  {analiseLocal.renovacoesComMed.length >
-                    5 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        trigger("vibrate");
-                        setShowAllRetiradas(
-                          (value) => !value
-                        );
-                      }}
-                      className="w-full py-2 text-center text-xs font-bold text-ice transition-colors hover:text-ice-light"
-                    >
-                      {showAllRetiradas
-                        ? "Ver menos"
-                        : `Ver todas (${analiseLocal.renovacoesComMed.length})`}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          </motion.div>
-
-          {/* ==================================================
-              CUSTOS EVENTUAIS
-          ================================================== */}
-
-          {analiseLocal.totalGasto > 0 && (
-            <motion.div
-              variants={fadeUp}
-              initial="initial"
-              animate="animate"
-              transition={{ delay: 0.07 }}
-              className="flex items-center justify-between rounded-2xl border border-surface-border/40 bg-surface-raised p-4"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
-                  <DollarSign size={18} />
-                </div>
-
-                <div>
-                  <p className="text-xs font-medium text-ink-primary">
-                    Custos eventuais (fora do SUS)
-                  </p>
-
-                  <p className="text-[11px] text-ink-muted">
-                    Gastos particulares registrados nesta
-                    unidade
-                  </p>
-                </div>
               </div>
+            ) : (
+              <div className="space-y-2">
+                {renovacoesVisiveis.map(
+                  (
+                    renovacao
+                  ) => {
+                    const medicamento =
+                      medicamentosById.get(
+                        renovacao.medicamento_id
+                      );
 
-              <p className="text-base font-bold text-emerald-400">
-                {formatCurrency(
-                  analiseLocal.totalGasto
+                    return (
+                      <div
+                        key={
+                          renovacao.id
+                        }
+                        className="rounded-2xl border border-surface-border/50 bg-surface p-3.5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-ink-primary">
+                              {medicamento?.nome ||
+                                "Medicamento"}
+                            </p>
+
+                            <p className="mt-0.5 text-[11px] text-ink-muted">
+                              {formatDateDisplay(
+                                renovacao.data
+                              )}
+                            </p>
+
+                            {renovacao.tipo_aquisicao && (
+                              <p className="mt-1 text-[10px] font-medium uppercase text-ink-faint">
+                                {renovacao.tipo_aquisicao ===
+                                "sus"
+                                  ? "Aquisição SUS"
+                                  : renovacao.tipo_aquisicao ===
+                                      "gratuito"
+                                    ? "Aquisição gratuita"
+                                    : "Compra registrada"}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="shrink-0 text-right">
+                            {typeof renovacao.preco ===
+                              "number" &&
+                            renovacao.preco >
+                              0 ? (
+                              <span className="text-xs font-semibold text-ink-primary">
+                                {formatCurrency(
+                                  renovacao.preco
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-ink-faint">
+                                Sem preço
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {renovacao.data_proxima_retirada && (
+                          <p className="mt-2 border-t border-surface-border/40 pt-2 text-[10px] text-ink-muted">
+                            Próxima retirada prevista:{" "}
+                            <span className="font-medium text-ink-primary">
+                              {formatDateDisplay(
+                                renovacao.data_proxima_retirada
+                              )}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
                 )}
-              </p>
-            </motion.div>
-          )}
+
+                {renovacoesLocal.length >
+                  5 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger(
+                        "vibrate"
+                      );
+
+                      setShowAllRenovacoes(
+                        (
+                          value
+                        ) =>
+                          !value
+                      );
+                    }}
+                    className="w-full py-2 text-center text-xs font-semibold text-ice"
+                  >
+                    {showAllRenovacoes
+                      ? "Ver menos"
+                      : `Ver todas (${renovacoesLocal.length})`}
+                  </button>
+                )}
+
+                {totalRegistrado >
+                  0 && (
+                  <div className="flex items-center justify-between border-t border-surface-border/40 px-1 pt-3">
+                    <span className="flex items-center gap-1.5 text-xs text-ink-muted">
+                      <DollarSign
+                        size={13}
+                      />
+
+                      Total de preços registrados
+                    </span>
+
+                    <span className="text-sm font-bold text-ink-primary">
+                      {formatCurrency(
+                        totalRegistrado
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </motion.div>
         </section>
 
-        {/* ====================================================
-            CONFIRMAÇÃO DE EXCLUSÃO
-        ==================================================== */}
-
         <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDelete}
-          title="Excluir Local"
-          message="Tem certeza que deseja excluir este posto/clínica? Os registros associados não serão apagados, mas perderão a referência a este local."
+          isOpen={
+            showDeleteModal
+          }
+          onClose={() =>
+            setShowDeleteModal(
+              false
+            )
+          }
+          onConfirm={
+            handleDelete
+          }
+          title="Excluir local"
+          message={`Tem certeza que deseja excluir "${local.nome}"? Este Local é global. Ele será removido dos vínculos de CIDs, tratamentos, consultas, exames, cirurgias, medicamentos e retiradas de todas as pessoas, mas esses registros clínicos serão preservados.`}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
-          isLoading={deleteAction.isSubmitting}
+          isLoading={
+            deleteAction.isSubmitting
+          }
           type="danger"
         />
       </main>
@@ -1182,13 +2516,17 @@ function DetalhesLocalContent() {
   );
 }
 
-/* ============================================================
-   PÁGINA
-   ============================================================ */
+// ============================================================
+// PAGE
+// ============================================================
 
 export default function DetalhesLocalPage() {
   return (
-    <Suspense fallback={<DetailSkeleton />}>
+    <Suspense
+      fallback={
+        <DetailSkeleton />
+      }
+    >
       <DetalhesLocalContent />
     </Suspense>
   );

@@ -1,41 +1,162 @@
 // hooks/useSafeDb.ts
 "use client";
 
-import { useCallback } from "react";
-import { documentsRepository } from "@/lib/repositories/documents";
-import { useAuth } from "./useAuth";
-import type { Document } from "@/lib/types";
+import {
+  useCallback,
+} from "react";
+
+import {
+  documentsRepository,
+} from "@/lib/repositories/documents";
+
+import {
+  useActivePersonId,
+} from "./useActivePersonId";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type RepositoryCreateInput =
+  Parameters<
+    typeof documentsRepository.create
+  >[0];
+
+type AddDocumentInput =
+  Omit<
+    RepositoryCreateInput,
+    "person_id"
+  >;
+
+type UpdateDocumentInput =
+  Parameters<
+    typeof documentsRepository.update
+  >[2];
+
+// ============================================================
+// HOOK
+// ============================================================
 
 export function useSafeDb() {
-  const { user } = useAuth();
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  const addDocument = useCallback(
-    async (doc: Omit<Document, "id" | "user_id" | "created_at" | "updated_at" | "synced">) => {
-      return documentsRepository.create({ ...doc, user_id: user?.id || "" });
-    },
-    [user]
-  );
+  const requireActivePerson =
+    useCallback(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
 
-  const updateDocument = useCallback(
-    async (id: string, changes: Partial<Document>) => {
-      return documentsRepository.update(id, changes);
-    },
-    []
-  );
+        return activePersonId;
+      },
+      [
+        activePersonId,
+      ]
+    );
 
-  const deleteDocument = useCallback(
-    async (id: string) => {
-      return documentsRepository.delete(id);
-    },
-    []
-  );
+  // ==========================================================
+  // CREATE
+  // ==========================================================
 
-  const favorite = useCallback(
-    async (id: string) => {
-      return documentsRepository.favorite(id);
-    },
-    []
-  );
+  const addDocument =
+    useCallback(
+      async (
+        doc:
+          AddDocumentInput
+      ) => {
+        const personId =
+          requireActivePerson();
+
+        return documentsRepository.create({
+          ...doc,
+
+          person_id:
+            personId,
+        });
+      },
+      [
+        requireActivePerson,
+      ]
+    );
+
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
+
+  const updateDocument =
+    useCallback(
+      async (
+        id:
+          string,
+        changes:
+          UpdateDocumentInput
+      ) => {
+        const personId =
+          requireActivePerson();
+
+        return documentsRepository.update(
+          id,
+          personId,
+          changes
+        );
+      },
+      [
+        requireActivePerson,
+      ]
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const deleteDocument =
+    useCallback(
+      async (
+        id:
+          string
+      ) => {
+        const personId =
+          requireActivePerson();
+
+        return documentsRepository.delete(
+          id,
+          personId
+        );
+      },
+      [
+        requireActivePerson,
+      ]
+    );
+
+  // ==========================================================
+  // FAVORITE
+  // ==========================================================
+
+  const favorite =
+    useCallback(
+      async (
+        id:
+          string
+      ) => {
+        const personId =
+          requireActivePerson();
+
+        return documentsRepository.favorite(
+          id,
+          personId
+        );
+      },
+      [
+        requireActivePerson,
+      ]
+    );
 
   return {
     addDocument,

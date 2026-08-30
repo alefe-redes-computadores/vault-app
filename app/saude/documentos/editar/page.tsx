@@ -1,7 +1,8 @@
-// app/saude/documentos/novo/page.tsx
+// app/saude/documentos/editar/page.tsx
 "use client";
 
 import {
+  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -11,6 +12,7 @@ import {
 
 import {
   useRouter,
+  useSearchParams,
 } from "next/navigation";
 
 import {
@@ -25,6 +27,7 @@ import type {
 import {
   Activity,
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   Building2,
   Calendar,
@@ -60,6 +63,7 @@ import {
 } from "@/lib/supabase/storage";
 
 import {
+  cancelDocumentExpiryNotification,
   scheduleDocumentExpiryNotification,
 } from "@/lib/notifications";
 
@@ -68,20 +72,13 @@ import {
 } from "@/hooks/useAuth";
 
 import {
-  useActivePersonId,
-} from "@/hooks/useActivePersonId";
-
-import {
-  useHapticFeedback,
-} from "@/lib/haptics";
-
-import {
-  useSubmitAction,
-} from "@/hooks/useSubmitAction";
-
-import {
+  useDocument,
   useDocumentActions,
 } from "@/hooks/useDocuments";
+
+import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
 
 import {
   useMedicamentos,
@@ -122,6 +119,14 @@ import {
 import {
   useLocais,
 } from "@/hooks/useLocais";
+
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+
+import {
+  useSubmitAction,
+} from "@/hooks/useSubmitAction";
 
 import {
   DOCUMENT_FIELDS,
@@ -183,7 +188,7 @@ type HealthDocumentType =
   (typeof HEALTH_TYPES)[number];
 
 // ============================================================
-// ENTIDADES CLÍNICAS
+// ENTIDADES CLÍNICAS EDITÁVEIS NESTA TELA
 // ============================================================
 
 type HealthEntityType =
@@ -207,14 +212,22 @@ interface ClinicalEntityItem {
 // TIPOS LOCAIS
 // ============================================================
 
-interface FormData {
+interface EditFormData {
   type: HealthDocumentType;
   title: string;
   description: string;
   metadata: Record<string, string>;
   attachments: Attachment[];
+
   entidade_tipo?: HealthEntityType;
   entidade_id?: string;
+}
+
+interface OriginalRelationState {
+  entidade_tipo?: string;
+  entidade_id?: string;
+  medico_id?: string;
+  hospital_id?: string;
 }
 
 interface LocalAttachment {
@@ -236,7 +249,7 @@ interface SelectItem {
 }
 
 // ============================================================
-// CONFIGURAÇÃO
+// CONFIG
 // ============================================================
 
 const HEALTH_TYPE_LABELS: Record<
@@ -273,28 +286,28 @@ const HEALTH_TYPE_DESCRIPTIONS: Record<
   string
 > = {
   receita:
-    "Documento de prescrição ligado a um medicamento da pessoa ativa.",
+    "Prescrição vinculada ao medicamento correspondente.",
 
   prontuario:
-    "Registro clínico que pode ser relacionado a uma consulta, tratamento, exame, cirurgia ou CID.",
+    "Registro clínico que pode ser relacionado ao histórico da pessoa.",
 
   laudo:
-    "Laudo ou parecer que pode ser associado ao evento ou condição clínica correspondente.",
+    "Laudo ou parecer associado a uma entidade clínica.",
 
   encaminhamento:
-    "Documento de encaminhamento entre profissionais ou serviços de saúde.",
+    "Documento de encaminhamento entre profissionais ou serviços.",
 
   consulta:
-    "Documento pertencente a uma consulta já cadastrada no histórico clínico.",
+    "Documento pertencente a uma consulta cadastrada.",
 
   cirurgia:
-    "Documento pertencente a uma cirurgia já cadastrada no histórico clínico.",
+    "Documento pertencente a uma cirurgia cadastrada.",
 
   exame_sangue:
-    "Resultado laboratorial vinculado a um exame cadastrado.",
+    "Resultado laboratorial vinculado a um exame.",
 
   exame_imagem:
-    "Laudo, imagem ou arquivo vinculado a um exame cadastrado.",
+    "Imagem ou laudo vinculado a um exame.",
 };
 
 const TYPE_TITLE_PLACEHOLDERS: Record<
@@ -356,24 +369,21 @@ const TYPE_ICONS: Record<
 };
 
 const slideVariants = {
-  enter:
-    (
-      direction: number
-    ) => ({
-      x:
-        direction >
-        0
-          ? 50
-          : -50,
+  enter: (
+    direction:
+      number
+  ) => ({
+    x:
+      direction >
+      0
+        ? 50
+        : -50,
 
-      opacity:
-        0,
-    }),
+    opacity:
+      0,
+  }),
 
   center: {
-    zIndex:
-      1,
-
     x:
       0,
 
@@ -381,22 +391,19 @@ const slideVariants = {
       1,
   },
 
-  exit:
-    (
-      direction: number
-    ) => ({
-      zIndex:
-        0,
+  exit: (
+    direction:
+      number
+  ) => ({
+    x:
+      direction <
+      0
+        ? 50
+        : -50,
 
-      x:
-        direction <
-        0
-          ? 50
-          : -50,
-
-      opacity:
-        0,
-    }),
+    opacity:
+      0,
+  }),
 };
 
 // ============================================================
@@ -405,18 +412,14 @@ const slideVariants = {
 
 function getMetadataString(
   metadata:
-    Record<
-      string,
-      string
-    >,
-  key: string
+    Record<string, string>,
+  key:
+    string
 ): string {
-  return (
-    metadata[
-      key
-    ] ||
-    ""
-  );
+  return metadata[
+    key
+  ] ||
+    "";
 }
 
 function buildMetadataForType(
@@ -424,10 +427,8 @@ function buildMetadataForType(
     HealthDocumentType
 ): Record<string, string> {
   const metadata:
-    Record<
-      string,
-      string
-    > = {};
+    Record<string, string> =
+    {};
 
   DOCUMENT_FIELDS[
     type
@@ -457,10 +458,7 @@ function buildMetadataForTypePreservingSharedValues(
   type:
     HealthDocumentType,
   currentMetadata:
-    Record<
-      string,
-      string
-    >
+    Record<string, string>
 ): Record<string, string> {
   const next =
     buildMetadataForType(
@@ -492,8 +490,93 @@ function buildMetadataForTypePreservingSharedValues(
   return next;
 }
 
+function metadataToStrings(
+  metadata:
+    Record<string, unknown>
+): Record<string, string> {
+  const result:
+    Record<string, string> =
+    {};
+
+  Object.entries(
+    metadata ||
+      {}
+  ).forEach(
+    (
+      [
+        key,
+        value,
+      ]
+    ) => {
+      if (
+        value ===
+          undefined ||
+        value ===
+          null
+      ) {
+        return;
+      }
+
+      if (
+        typeof value ===
+        "string"
+      ) {
+        result[
+          key
+        ] =
+          value;
+
+        return;
+      }
+
+      if (
+        typeof value ===
+          "number" ||
+        typeof value ===
+          "boolean"
+      ) {
+        result[
+          key
+        ] =
+          String(
+            value
+          );
+      }
+    }
+  );
+
+  return result;
+}
+
+function isHealthType(
+  type:
+    DocumentType
+): type is HealthDocumentType {
+  return HEALTH_TYPES.includes(
+    type as HealthDocumentType
+  );
+}
+
+function isHealthEntityType(
+  value?:
+    string
+): value is HealthEntityType {
+  return [
+    "medicamento",
+    "tratamento",
+    "cid",
+    "consulta",
+    "exame",
+    "cirurgia",
+  ].includes(
+    value ||
+      ""
+  );
+}
+
 function isEntitySelectField(
-  key: string
+  key:
+    string
 ): boolean {
   return [
     "medicamento_id",
@@ -509,7 +592,8 @@ function isEntitySelectField(
 }
 
 function getFieldIcon(
-  key: string
+  key:
+    string
 ): LucideIcon {
   switch (
     key
@@ -537,7 +621,8 @@ function getFieldIcon(
 }
 
 function handleDateMask(
-  value: string
+  value:
+    string
 ): string {
   const clean =
     value
@@ -581,7 +666,8 @@ function handleDateMask(
 }
 
 function parseDateToISO(
-  displayValue: string
+  displayValue:
+    string
 ): string {
   if (
     /^\d{4}-\d{2}-\d{2}$/.test(
@@ -628,6 +714,14 @@ function parseDateToISO(
       )
     );
 
+  const date =
+    new Date(
+      year,
+      month -
+        1,
+      day
+    );
+
   if (
     year <
       1900 ||
@@ -638,20 +732,7 @@ function parseDateToISO(
     day <
       1 ||
     day >
-      31
-  ) {
-    return "";
-  }
-
-  const date =
-    new Date(
-      year,
-      month -
-        1,
-      day
-    );
-
-  if (
+      31 ||
     date.getFullYear() !==
       year ||
     date.getMonth() !==
@@ -690,7 +771,8 @@ function parseDateToISO(
 }
 
 function formatDateDisplay(
-  value?: string
+  value?:
+    string
 ): string {
   if (
     !value
@@ -732,7 +814,8 @@ function formatDateDisplay(
 }
 
 function isSupportedFile(
-  file: File
+  file:
+    File
 ): boolean {
   return (
     file.type.startsWith(
@@ -746,7 +829,8 @@ function isSupportedFile(
 function hasDocumentField(
   type:
     HealthDocumentType,
-  key: string
+  key:
+    string
 ): boolean {
   return DOCUMENT_FIELDS[
     type
@@ -756,38 +840,6 @@ function hasDocumentField(
     ) =>
       field.key ===
       key
-  );
-}
-
-function isPrescriptionExpiryField(
-  key:
-    string
-): boolean {
-  return [
-    "expiry_date",
-    "expiration_date",
-    "validade",
-  ].includes(
-    key
-      .trim()
-      .toLocaleLowerCase(
-        "pt-BR"
-      )
-  );
-}
-
-function getPrescriptionExpiryDate(
-  metadata:
-    Record<
-      string,
-      string
-    >
-): string {
-  return (
-    metadata.expiry_date ||
-    metadata.expiration_date ||
-    metadata.validade ||
-    ""
   );
 }
 
@@ -814,45 +866,46 @@ function getEntitySectionTitle(
     type
   ) {
     case "receita":
-      return "Qual medicamento recebeu esta receita?";
+      return "Medicamento";
 
     case "consulta":
-      return "A qual consulta este documento pertence?";
+      return "Consulta";
 
     case "cirurgia":
-      return "A qual cirurgia este documento pertence?";
+      return "Cirurgia";
 
     case "exame_sangue":
     case "exame_imagem":
-      return "A qual exame este documento pertence?";
+      return "Exame";
 
     case "prontuario":
-      return "Relacionar ao histórico clínico";
+      return "Vínculo clínico";
 
     case "laudo":
-      return "Relacionar o laudo";
+      return "Vínculo do laudo";
 
     case "encaminhamento":
-      return "Relacionar o encaminhamento";
+      return "Vínculo do encaminhamento";
 
     default:
       return "Vínculo clínico";
   }
 }
 
-function getEntitySectionDescription(
+function getKnownKeys(
   type:
     HealthDocumentType
-): string {
-  if (
-    requiresCanonicalEntity(
+): Set<string> {
+  return new Set(
+    DOCUMENT_FIELDS[
       type
+    ].map(
+      (
+        field
+      ) =>
+        field.key
     )
-  ) {
-    return "Este vínculo organiza o documento dentro do Acervo Clínico e evita duplicar dados que já existem no Vault.";
-  }
-
-  return "Opcional. Vincule o documento a uma entidade clínica para que ele apareça dentro da árvore correspondente.";
+  );
 }
 
 function shouldHideMetadataField(
@@ -947,7 +1000,7 @@ async function rollbackUploadedFiles(
         error
       ) {
         console.error(
-          "[NovoDocumentoSaude] Falha ao desfazer upload parcial:",
+          "[EditarDocumentoSaude] Falha ao desfazer upload:",
           url,
           error
         );
@@ -956,7 +1009,7 @@ async function rollbackUploadedFiles(
       error
     ) {
       console.error(
-        "[NovoDocumentoSaude] Erro inesperado no rollback de upload:",
+        "[EditarDocumentoSaude] Erro inesperado no rollback do upload:",
         url,
         error
       );
@@ -968,9 +1021,34 @@ async function rollbackUploadedFiles(
 // PAGE
 // ============================================================
 
-export default function NovoDocumentoSaudePage() {
+export default function EditarDocumentoSaudePage() {
+  return (
+    <Suspense
+      fallback={
+        <EditLoading />
+      }
+    >
+      <EditarDocumentoSaudeContent />
+    </Suspense>
+  );
+}
+
+// ============================================================
+// CONTENT
+// ============================================================
+
+function EditarDocumentoSaudeContent() {
   const router =
     useRouter();
+
+  const searchParams =
+    useSearchParams();
+
+  const id =
+    searchParams.get(
+      "id"
+    )?.trim() ||
+    "";
 
   const {
     trigger,
@@ -982,10 +1060,6 @@ export default function NovoDocumentoSaudePage() {
   } =
     useToast();
 
-  /*
-   * Mantido somente porque uploadFile() exige user.id.
-   * Ownership do documento continua no hook/repository.
-   */
   const {
     user,
   } =
@@ -996,8 +1070,14 @@ export default function NovoDocumentoSaudePage() {
   } =
     useActivePersonId();
 
+  const document =
+    useDocument(
+      id
+    );
+
   const {
-    createDocument,
+    getDocument,
+    updateDocument,
   } =
     useDocumentActions();
 
@@ -1057,17 +1137,36 @@ export default function NovoDocumentoSaudePage() {
   } =
     useSubmitAction();
 
-  const isSubmitLocked =
+  const initializedDocumentIdRef =
+    useRef<
+      string | null
+    >(
+      null
+    );
+
+  const originalRelationsRef =
+    useRef<OriginalRelationState>({
+      entidade_tipo:
+        undefined,
+
+      entidade_id:
+        undefined,
+
+      medico_id:
+        undefined,
+
+      hospital_id:
+        undefined,
+    });
+
+  const canonicalRelationTouchedRef =
     useRef(
       false
     );
 
-  const previousActivePersonIdRef =
-    useRef<
-      string | undefined
-    >(
-      activePersonId ||
-      undefined
+  const isSubmitLocked =
+    useRef(
+      false
     );
 
   const fileInputRef =
@@ -1134,6 +1233,14 @@ export default function NovoDocumentoSaudePage() {
     );
 
   const [
+    uploadProgress,
+    setUploadProgress,
+  ] =
+    useState(
+      0
+    );
+
+  const [
     expiryWarning,
     setExpiryWarning,
   ] =
@@ -1144,23 +1251,14 @@ export default function NovoDocumentoSaudePage() {
     );
 
   const [
-    uploadProgress,
-    setUploadProgress,
-  ] =
-    useState(
-      0
-    );
-
-  const [
     errors,
     setErrors,
   ] =
     useState<
-      Record<
-        string,
-        string
-      >
-    >({});
+      Record<string, string>
+    >(
+      {}
+    );
 
   const [
     customFields,
@@ -1186,158 +1284,186 @@ export default function NovoDocumentoSaudePage() {
     formData,
     setFormData,
   ] =
-    useState<FormData>({
-      type:
-        "receita",
-
-      title:
-        "",
-
-      description:
-        "",
-
-      metadata:
-        buildMetadataForType(
-          "receita"
-        ),
-
-      attachments:
-        [],
-
-      entidade_tipo:
-        undefined,
-
-      entidade_id:
-        undefined,
-    });
+    useState<
+      EditFormData | null
+    >(
+      null
+    );
 
   // ==========================================================
-  // ACTIVE PERSON CHANGE
+  // INITIALIZE FROM DOCUMENT
   // ==========================================================
 
   useEffect(
     () => {
-      const previousOwner =
-        previousActivePersonIdRef.current;
-
-      const currentOwner =
-        activePersonId ||
-        undefined;
+      if (
+        !document ||
+        !document.id ||
+        initializedDocumentIdRef.current ===
+          document.id
+      ) {
+        return;
+      }
 
       if (
-        previousOwner &&
-        currentOwner &&
-        previousOwner !==
-          currentOwner
+        document.category_id !==
+        "saude"
       ) {
-        setLocalFiles(
-          (
-            previousFiles
-          ) => {
-            previousFiles.forEach(
-              (
-                local
-              ) => {
-                URL.revokeObjectURL(
-                  local.objectUrl
-                );
+        return;
+      }
 
-                objectUrlsRef.current.delete(
-                  local.objectUrl
-                );
-              }
+      if (
+        !isHealthType(
+          document.type
+        )
+      ) {
+        return;
+      }
+
+      const rawMetadata =
+        metadataToStrings(
+          document.metadata
+        );
+
+      const knownKeys =
+        getKnownKeys(
+          document.type
+        );
+
+      const baseMetadata =
+        buildMetadataForType(
+          document.type
+        );
+
+      Object.entries(
+        rawMetadata
+      ).forEach(
+        (
+          [
+            key,
+            value,
+          ]
+        ) => {
+          if (
+            !knownKeys.has(
+              key
+            )
+          ) {
+            return;
+          }
+
+          const field =
+            DOCUMENT_FIELDS[
+              document.type
+            ].find(
+              (
+                item
+              ) =>
+                item.key ===
+                key
             );
 
-            return [];
-          }
-        );
+          baseMetadata[
+            key
+          ] =
+            field?.type ===
+            "date"
+              ? formatDateDisplay(
+                  value
+                )
+              : value;
+        }
+      );
 
-        setFormData(
-          (
-            existing
-          ) => ({
-            type:
-              existing.type,
+      const restoredCustomFields =
+        Object.entries(
+          rawMetadata
+        )
+          .filter(
+            (
+              [
+                key,
+              ]
+            ) =>
+              !knownKeys.has(
+                key
+              )
+          )
+          .map(
+            (
+              [
+                label,
+                value,
+              ]
+            ) => ({
+              id:
+                crypto.randomUUID(),
 
-            title:
-              "",
+              label,
 
-            description:
-              "",
+              value,
+            }));
 
-            metadata:
-              buildMetadataForType(
-                existing.type
-              ),
+      const safeEntityType =
+        isHealthEntityType(
+          document.entidade_tipo
+        )
+          ? document.entidade_tipo
+          : undefined;
 
-            attachments:
-              [],
+      setCustomFields(
+        restoredCustomFields
+      );
 
-            entidade_tipo:
-              undefined,
+      setFormData({
+        type:
+          document.type,
 
-            entidade_id:
-              undefined,
-          })
-        );
+        title:
+          document.title,
 
-        setCustomFields(
-          []
-        );
+        description:
+          document.description ||
+          "",
 
-        setCurrentStep(
-          1
-        );
+        metadata:
+          baseMetadata,
 
-        setSlideDirection(
-          -1
-        );
+        attachments:
+          document.attachments ||
+          [],
 
-        setErrors(
-          {}
-        );
+        entidade_tipo:
+          safeEntityType,
 
-        setExpiryWarning(
-          null
-        );
+        entidade_id:
+          safeEntityType
+            ? document.entidade_id
+            : undefined,
+      });
 
-        setUploadProgress(
-          0
-        );
+      originalRelationsRef.current = {
+        entidade_tipo:
+          document.entidade_tipo,
 
-        setActiveSelectField(
-          null
-        );
+        entidade_id:
+          document.entidade_id,
 
-        setIsClinicalEntityModalOpen(
-          false
-        );
+        medico_id:
+          document.medico_id,
 
-        setIsTypeModalOpen(
-          false
-        );
+        hospital_id:
+          document.hospital_id,
+      };
 
-        trigger(
-          "vibrate"
-        );
+      canonicalRelationTouchedRef.current =
+        false;
 
-        showToast(
-          "A pessoa ativa mudou. O novo documento foi reiniciado para evitar mistura entre perfis.",
-          "info"
-        );
-      }
-
-      if (
-        currentOwner
-      ) {
-        previousActivePersonIdRef.current =
-          currentOwner;
-      }
+      initializedDocumentIdRef.current =
+        document.id;
     },
     [
-      activePersonId,
-      showToast,
-      trigger,
+      document,
     ]
   );
 
@@ -1368,7 +1494,7 @@ export default function NovoDocumentoSaudePage() {
   );
 
   // ==========================================================
-  // PERSON-SCOPED DOMAIN DATA
+  // PERSON-SCOPED DATA
   // ==========================================================
 
   const scopedMedicamentos =
@@ -1510,19 +1636,27 @@ export default function NovoDocumentoSaudePage() {
     );
 
   // ==========================================================
-  // FIELDS
+  // DERIVED
   // ==========================================================
 
   const fields =
-    DOCUMENT_FIELDS[
-      formData.type
-    ] ||
-    [];
+    formData
+      ? DOCUMENT_FIELDS[
+          formData.type
+        ] ||
+        []
+      : [];
 
   const visibleFields =
     useMemo(
-      () =>
-        fields.filter(
+      () => {
+        if (
+          !formData
+        ) {
+          return [];
+        }
+
+        return fields.filter(
           (
             field
           ) =>
@@ -1530,10 +1664,11 @@ export default function NovoDocumentoSaudePage() {
               field,
               formData.entidade_tipo
             )
-        ),
+        );
+      },
       [
         fields,
-        formData.entidade_tipo,
+        formData,
       ]
     );
 
@@ -1556,24 +1691,32 @@ export default function NovoDocumentoSaudePage() {
     );
 
   const SelectedTypeIcon =
-    TYPE_ICONS[
-      formData.type
-    ];
+    formData
+      ? TYPE_ICONS[
+          formData.type
+        ]
+      : FileText;
 
   const selectedTypeLabel =
-    HEALTH_TYPE_LABELS[
-      formData.type
-    ];
+    formData
+      ? HEALTH_TYPE_LABELS[
+          formData.type
+        ]
+      : "";
 
   const selectedTypeDescription =
-    HEALTH_TYPE_DESCRIPTIONS[
-      formData.type
-    ];
+    formData
+      ? HEALTH_TYPE_DESCRIPTIONS[
+          formData.type
+        ]
+      : "";
 
   const titlePlaceholder =
-    TYPE_TITLE_PLACEHOLDERS[
-      formData.type
-    ];
+    formData
+      ? TYPE_TITLE_PLACEHOLDERS[
+          formData.type
+        ]
+      : "";
 
   // ==========================================================
   // CLINICAL ENTITY OPTIONS
@@ -1584,6 +1727,12 @@ export default function NovoDocumentoSaudePage() {
       ClinicalEntityItem[]
     >(
       () => {
+        if (
+          !formData
+        ) {
+          return [];
+        }
+
         const items:
           ClinicalEntityItem[] =
           [];
@@ -1614,7 +1763,6 @@ export default function NovoDocumentoSaudePage() {
                   description:
                     [
                       medicamento.dosagem,
-
                       medicamento.status ===
                         "descontinuado"
                         ? "Descontinuado"
@@ -1666,7 +1814,6 @@ export default function NovoDocumentoSaudePage() {
                   description:
                     [
                       consulta.especialidade,
-
                       formatDateDisplay(
                         consulta.data
                       ),
@@ -1716,7 +1863,6 @@ export default function NovoDocumentoSaudePage() {
                       formatDateDisplay(
                         cirurgia.data
                       ),
-
                       cirurgia.status,
                     ]
                       .filter(
@@ -1906,7 +2052,7 @@ export default function NovoDocumentoSaudePage() {
         );
       },
       [
-        formData.type,
+        formData,
         scopedMedicamentos,
         scopedConsultas,
         scopedCirurgias,
@@ -1918,8 +2064,14 @@ export default function NovoDocumentoSaudePage() {
 
   const selectedClinicalEntity =
     useMemo(
-      () =>
-        clinicalEntityItems.find(
+      () => {
+        if (
+          !formData
+        ) {
+          return undefined;
+        }
+
+        return clinicalEntityItems.find(
           (
             item
           ) =>
@@ -1927,19 +2079,39 @@ export default function NovoDocumentoSaudePage() {
               formData.entidade_id &&
             item.entityType ===
               formData.entidade_tipo
-        ),
+        );
+      },
       [
         clinicalEntityItems,
-        formData.entidade_id,
-        formData.entidade_tipo,
+        formData,
       ]
     );
 
   const SelectedClinicalEntityIcon =
     selectedClinicalEntity?.icon;
 
+  const hasUnresolvedOriginalCanonicalRelation =
+    Boolean(
+      document &&
+      document.entidade_tipo &&
+      document.entidade_id &&
+      !canonicalRelationTouchedRef.current &&
+      (
+        !isHealthEntityType(
+          document.entidade_tipo
+        ) ||
+        (
+          formData?.entidade_tipo ===
+            document.entidade_tipo &&
+          formData?.entidade_id ===
+            document.entidade_id &&
+          !selectedClinicalEntity
+        )
+      )
+    );
+
   // ==========================================================
-  // RELATIONAL FIELD OPTIONS
+  // RELATIONAL SELECT OPTIONS
   // ==========================================================
 
   const selectItems =
@@ -2122,7 +2294,7 @@ export default function NovoDocumentoSaudePage() {
     );
 
   // ==========================================================
-  // SELECT LABEL
+  // LABEL RESOLUTION
   // ==========================================================
 
   const getSelectValueLabel =
@@ -2130,6 +2302,12 @@ export default function NovoDocumentoSaudePage() {
       field:
         DocumentField
     ): string => {
+      if (
+        !formData
+      ) {
+        return "";
+      }
+
       const value =
         getMetadataString(
           formData.metadata,
@@ -2255,7 +2433,86 @@ export default function NovoDocumentoSaudePage() {
     };
 
   // ==========================================================
-  // PREFILL FROM CANONICAL ENTITY
+  // TYPE CHANGE
+  // ==========================================================
+
+  const handleTypeChange =
+    (
+      type:
+        HealthDocumentType
+    ) => {
+      if (
+        !formData
+      ) {
+        return;
+      }
+
+      if (
+        type ===
+        formData.type
+      ) {
+        setIsTypeModalOpen(
+          false
+        );
+
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      const nextMetadata =
+        buildMetadataForTypePreservingSharedValues(
+          type,
+          formData.metadata
+        );
+
+      canonicalRelationTouchedRef.current =
+        true;
+
+      setFormData(
+        (
+          previous
+        ) => {
+          if (
+            !previous
+          ) {
+            return previous;
+          }
+
+          return {
+            ...previous,
+
+            type,
+
+            metadata:
+              nextMetadata,
+
+            entidade_tipo:
+              undefined,
+
+            entidade_id:
+              undefined,
+          };
+        }
+      );
+
+      setExpiryWarning(
+        null
+      );
+
+      setErrors(
+        {}
+      );
+
+      setIsTypeModalOpen(
+        false
+      );
+    };
+
+  // ==========================================================
+  // ENTITY PREFILL
   // ==========================================================
 
   const applyEntityPrefill =
@@ -2263,16 +2520,15 @@ export default function NovoDocumentoSaudePage() {
       item:
         ClinicalEntityItem
     ) => {
+      if (
+        !formData
+      ) {
+        return;
+      }
+
       const nextMetadata = {
         ...formData.metadata,
       };
-
-      let suggestedTitle =
-        formData.title;
-
-      // -------------------------------------------------------
-      // MEDICAMENTO
-      // -------------------------------------------------------
 
       if (
         item.entityType ===
@@ -2335,15 +2591,13 @@ export default function NovoDocumentoSaudePage() {
           }
 
           /*
-           * Campos confirmados no contrato real de Medicamento:
+           * Estas datas são snapshots documentais vindos
+           * do Medicamento canônico.
            *
-           * data_receita       -> data da receita
-           * proxima_renovacao  -> próxima renovação
+           * prescription_date = data da receita.
+           * renewal_date      = contexto de próxima renovação.
            *
-           * São conceitos diferentes.
-           *
-           * proxima_renovacao NÃO representa validade e nunca
-           * deve alimentar expiry_date/validade.
+           * renewal_date NÃO representa validade.
            */
           if (
             hasDocumentField(
@@ -2352,11 +2606,9 @@ export default function NovoDocumentoSaudePage() {
             )
           ) {
             nextMetadata.prescription_date =
-              medicamento.data_receita
-                ? formatDateDisplay(
-                    medicamento.data_receita
-                  )
-                : "";
+              formatDateDisplay(
+                medicamento.data_receita
+              );
           }
 
           if (
@@ -2366,25 +2618,12 @@ export default function NovoDocumentoSaudePage() {
             )
           ) {
             nextMetadata.renewal_date =
-              medicamento.proxima_renovacao
-                ? formatDateDisplay(
-                    medicamento.proxima_renovacao
-                  )
-                : "";
-          }
-
-          if (
-            !suggestedTitle.trim()
-          ) {
-            suggestedTitle =
-              `Receita — ${medicamento.nome}`;
+              formatDateDisplay(
+                medicamento.proxima_renovacao
+              );
           }
         }
       }
-
-      // -------------------------------------------------------
-      // CONSULTA
-      // -------------------------------------------------------
 
       if (
         item.entityType ===
@@ -2457,23 +2696,8 @@ export default function NovoDocumentoSaudePage() {
               consulta.motivo ||
               "";
           }
-
-          if (
-            !suggestedTitle.trim()
-          ) {
-            suggestedTitle =
-              `Consulta — ${
-                consulta.medico ||
-                consulta.especialidade ||
-                "registro"
-              }`;
-          }
         }
       }
-
-      // -------------------------------------------------------
-      // CIRURGIA
-      // -------------------------------------------------------
 
       if (
         item.entityType ===
@@ -2534,19 +2758,8 @@ export default function NovoDocumentoSaudePage() {
                 cirurgia.data
               );
           }
-
-          if (
-            !suggestedTitle.trim()
-          ) {
-            suggestedTitle =
-              `Cirurgia — ${cirurgia.procedimento}`;
-          }
         }
       }
-
-      // -------------------------------------------------------
-      // EXAME
-      // -------------------------------------------------------
 
       if (
         item.entityType ===
@@ -2596,86 +2809,35 @@ export default function NovoDocumentoSaudePage() {
             nextMetadata.tipo =
               exame.nome;
           }
-
-          if (
-            !suggestedTitle.trim()
-          ) {
-            suggestedTitle =
-              `Exame — ${exame.nome}`;
-          }
         }
       }
 
-      // -------------------------------------------------------
-      // TRATAMENTO
-      // -------------------------------------------------------
-
-      if (
-        item.entityType ===
-        "tratamento"
-      ) {
-        const tratamento =
-          scopedTratamentos.find(
-            (
-              entity
-            ) =>
-              entity.id ===
-              item.id
-          );
-
-        if (
-          tratamento &&
-          !suggestedTitle.trim()
-        ) {
-          suggestedTitle =
-            `${selectedTypeLabel} — ${tratamento.nome}`;
-        }
-      }
-
-      // -------------------------------------------------------
-      // CID
-      // -------------------------------------------------------
-
-      if (
-        item.entityType ===
-        "cid"
-      ) {
-        const cid =
-          scopedCids.find(
-            (
-              entity
-            ) =>
-              entity.id ===
-              item.id
-          );
-
-        if (
-          cid &&
-          !suggestedTitle.trim()
-        ) {
-          suggestedTitle =
-            `${selectedTypeLabel} — ${cid.codigo}`;
-        }
-      }
+      canonicalRelationTouchedRef.current =
+        true;
 
       setFormData(
         (
           previous
-        ) => ({
-          ...previous,
+        ) => {
+          if (
+            !previous
+          ) {
+            return previous;
+          }
 
-          title:
-            suggestedTitle,
+          return {
+            ...previous,
 
-          metadata:
-            nextMetadata,
+            metadata:
+              nextMetadata,
 
-          entidade_tipo:
-            item.entityType,
+            entidade_tipo:
+              item.entityType,
 
-          entidade_id:
-            item.id,
-        })
+            entidade_id:
+              item.id,
+          };
+        }
       );
 
       clearError(
@@ -2684,22 +2846,14 @@ export default function NovoDocumentoSaudePage() {
     };
 
   // ==========================================================
-  // TYPE CHANGE
+  // REMOVE CANONICAL ENTITY
   // ==========================================================
 
-  const handleTypeChange =
-    (
-      type:
-        HealthDocumentType
-    ) => {
+  const removeCanonicalEntity =
+    () => {
       if (
-        type ===
-        formData.type
+        !formData
       ) {
-        setIsTypeModalOpen(
-          false
-        );
-
         return;
       }
 
@@ -2707,38 +2861,50 @@ export default function NovoDocumentoSaudePage() {
         "vibrate"
       );
 
+      canonicalRelationTouchedRef.current =
+        true;
+
       setFormData(
         (
           previous
-        ) => ({
-          ...previous,
+        ) => {
+          if (
+            !previous
+          ) {
+            return previous;
+          }
 
-          type,
+          const nextMetadata = {
+            ...previous.metadata,
+          };
 
-          metadata:
-            buildMetadataForTypePreservingSharedValues(
-              type,
-              previous.metadata
-            ),
+          if (
+            hasDocumentField(
+              previous.type,
+              "medicamento_id"
+            )
+          ) {
+            nextMetadata.medicamento_id =
+              "";
+          }
 
-          entidade_tipo:
-            undefined,
+          return {
+            ...previous,
 
-          entidade_id:
-            undefined,
-        })
+            metadata:
+              nextMetadata,
+
+            entidade_tipo:
+              undefined,
+
+            entidade_id:
+              undefined,
+          };
+        }
       );
 
-      setExpiryWarning(
-        null
-      );
-
-      setErrors(
-        {}
-      );
-
-      setIsTypeModalOpen(
-        false
+      clearError(
+        "entidade"
       );
     };
 
@@ -2756,18 +2922,26 @@ export default function NovoDocumentoSaudePage() {
       setFormData(
         (
           previous
-        ) => ({
-          ...previous,
+        ) => {
+          if (
+            !previous
+          ) {
+            return previous;
+          }
 
-          metadata: {
-            ...previous.metadata,
+          return {
+            ...previous,
 
-            [
-              key
-            ]:
-              value,
-          },
-        })
+            metadata: {
+              ...previous.metadata,
+
+              [
+                key
+              ]:
+                value,
+            },
+          };
+        }
       );
 
       clearError(
@@ -2775,7 +2949,7 @@ export default function NovoDocumentoSaudePage() {
       );
 
       if (
-        formData.type !==
+        formData?.type !==
         "receita"
       ) {
         setExpiryWarning(
@@ -2785,48 +2959,58 @@ export default function NovoDocumentoSaudePage() {
         return;
       }
 
-      /*
-       * Somente campos explicitamente de validade entram nesta
-       * interpretação.
-       *
-       * renewal_date é "próxima renovação" e fica fora.
-       */
-      if (
-        !isPrescriptionExpiryField(
-          key
-        )
-      ) {
-        return;
-      }
-
-      const iso =
-        parseDateToISO(
-          value
+      const normalized =
+        key.toLocaleLowerCase(
+          "pt-BR"
         );
 
+      /*
+       * renewal_date NÃO representa validade.
+       *
+       * Renovação pertence ao contexto longitudinal do
+       * medicamento e não pode produzir alerta de receita
+       * vencida.
+       */
       if (
-        iso
+        normalized.includes(
+          "validade"
+        ) ||
+        normalized.includes(
+          "expiry"
+        ) ||
+        normalized.includes(
+          "expiration"
+        )
       ) {
-        const expiry =
-          new Date(
-            `${iso}T23:59:59`
+        const iso =
+          parseDateToISO(
+            value
           );
 
         if (
-          expiry <
-          new Date()
+          iso
         ) {
-          setExpiryWarning(
-            "A data de validade informada já passou. O Vault manterá a receita no histórico clínico."
-          );
+          const expiry =
+            new Date(
+              `${iso}T23:59:59`
+            );
 
-          return;
+          if (
+            expiry <
+            new Date()
+          ) {
+            setExpiryWarning(
+              "A data informada já passou. O documento continuará preservado no histórico."
+            );
+
+            return;
+          }
         }
-      }
 
-      setExpiryWarning(
-        null
-      );
+        setExpiryWarning(
+          null
+        );
+      }
     };
 
   // ==========================================================
@@ -3028,15 +3212,23 @@ export default function NovoDocumentoSaudePage() {
       setFormData(
         (
           previous
-        ) => ({
-          ...previous,
+        ) => {
+          if (
+            !previous
+          ) {
+            return previous;
+          }
 
-          attachments: [
-            ...previous.attachments,
+          return {
+            ...previous,
 
-            attachment,
-          ],
-        })
+            attachments: [
+              ...previous.attachments,
+
+              attachment,
+            ],
+          };
+        }
       );
 
       trigger(
@@ -3049,13 +3241,10 @@ export default function NovoDocumentoSaudePage() {
       event:
         ChangeEvent<HTMLInputElement>
     ) => {
-      const files =
-        Array.from(
-          event.target.files ||
-            []
-        );
-
-      files.forEach(
+      Array.from(
+        event.target.files ||
+          []
+      ).forEach(
         (
           file
         ) =>
@@ -3093,7 +3282,7 @@ export default function NovoDocumentoSaudePage() {
 
   const removeAttachment =
     (
-      id:
+      attachmentId:
         string
     ) => {
       const local =
@@ -3102,7 +3291,7 @@ export default function NovoDocumentoSaudePage() {
             item
           ) =>
             item.attachmentId ===
-            id
+            attachmentId
         );
 
       if (
@@ -3115,36 +3304,44 @@ export default function NovoDocumentoSaudePage() {
         objectUrlsRef.current.delete(
           local.objectUrl
         );
-      }
 
-      setLocalFiles(
-        (
-          previous
-        ) =>
-          previous.filter(
-            (
-              item
-            ) =>
-              item.attachmentId !==
-              id
-          )
-      );
+        setLocalFiles(
+          (
+            previous
+          ) =>
+            previous.filter(
+              (
+                item
+              ) =>
+                item.attachmentId !==
+                attachmentId
+            )
+        );
+      }
 
       setFormData(
         (
           previous
-        ) => ({
-          ...previous,
+        ) => {
+          if (
+            !previous
+          ) {
+            return previous;
+          }
 
-          attachments:
-            previous.attachments.filter(
-              (
-                attachment
-              ) =>
-                attachment.id !==
-                id
-            ),
-        })
+          return {
+            ...previous,
+
+            attachments:
+              previous.attachments.filter(
+                (
+                  attachment
+                ) =>
+                  attachment.id !==
+                  attachmentId
+              ),
+          };
+        }
       );
 
       trigger(
@@ -3158,15 +3355,16 @@ export default function NovoDocumentoSaudePage() {
 
   const validateFields =
     (
-      targetFields:
-        DocumentField[],
       nextErrors:
-        Record<
-          string,
-          string
-        >
+        Record<string, string>
     ) => {
-      targetFields.forEach(
+      if (
+        !formData
+      ) {
+        return;
+      }
+
+      fields.forEach(
         (
           field
         ) => {
@@ -3208,10 +3406,7 @@ export default function NovoDocumentoSaudePage() {
   const validateCustomFields =
     (
       nextErrors:
-        Record<
-          string,
-          string
-        >
+        Record<string, string>
     ) => {
       const conflict =
         getCustomFieldConflict(
@@ -3232,11 +3427,15 @@ export default function NovoDocumentoSaudePage() {
       step:
         number
     ): boolean => {
-      const newErrors:
-        Record<
-          string,
-          string
-        > = {};
+      if (
+        !formData
+      ) {
+        return false;
+      }
+
+      const nextErrors:
+        Record<string, string> =
+        {};
 
       if (
         step ===
@@ -3245,14 +3444,14 @@ export default function NovoDocumentoSaudePage() {
         if (
           !activePersonId
         ) {
-          newErrors.person_id =
-            "Não foi possível identificar a pessoa ativa.";
+          nextErrors.person_id =
+            "Pessoa ativa não identificada.";
         }
 
         if (
           !formData.title.trim()
         ) {
-          newErrors.title =
+          nextErrors.title =
             "O título é obrigatório.";
         }
 
@@ -3263,10 +3462,11 @@ export default function NovoDocumentoSaudePage() {
           (
             !formData.entidade_tipo ||
             !formData.entidade_id
-          )
+          ) &&
+          !hasUnresolvedOriginalCanonicalRelation
         ) {
-          newErrors.entidade =
-            "Selecione o registro clínico ao qual este documento pertence.";
+          nextErrors.entidade =
+            "Selecione o registro clínico correspondente.";
         }
       }
 
@@ -3275,22 +3475,21 @@ export default function NovoDocumentoSaudePage() {
         2
       ) {
         validateFields(
-          fields,
-          newErrors
+          nextErrors
         );
 
         validateCustomFields(
-          newErrors
+          nextErrors
         );
       }
 
       setErrors(
-        newErrors
+        nextErrors
       );
 
       return (
         Object.keys(
-          newErrors
+          nextErrors
         ).length ===
         0
       );
@@ -3298,23 +3497,27 @@ export default function NovoDocumentoSaudePage() {
 
   const validateAll =
     (): boolean => {
-      const newErrors:
-        Record<
-          string,
-          string
-        > = {};
+      if (
+        !formData
+      ) {
+        return false;
+      }
+
+      const nextErrors:
+        Record<string, string> =
+        {};
 
       if (
         !activePersonId
       ) {
-        newErrors.person_id =
-          "Não foi possível identificar a pessoa ativa.";
+        nextErrors.person_id =
+          "Pessoa ativa não identificada.";
       }
 
       if (
         !formData.title.trim()
       ) {
-        newErrors.title =
+        nextErrors.title =
           "O título é obrigatório.";
       }
 
@@ -3325,28 +3528,28 @@ export default function NovoDocumentoSaudePage() {
         (
           !formData.entidade_tipo ||
           !formData.entidade_id
-        )
+        ) &&
+        !hasUnresolvedOriginalCanonicalRelation
       ) {
-        newErrors.entidade =
-          "O vínculo clínico é obrigatório para este tipo de documento.";
+        nextErrors.entidade =
+          "O vínculo clínico é obrigatório.";
       }
 
       validateFields(
-        fields,
-        newErrors
+        nextErrors
       );
 
       validateCustomFields(
-        newErrors
+        nextErrors
       );
 
       setErrors(
-        newErrors
+        nextErrors
       );
 
       return (
         Object.keys(
-          newErrors
+          nextErrors
         ).length ===
         0
       );
@@ -3418,6 +3621,25 @@ export default function NovoDocumentoSaudePage() {
 
   const handleSubmit =
     () => {
+      if (
+        !formData ||
+        !document ||
+        !document.id
+      ) {
+        return;
+      }
+
+      /*
+       * Document.id é opcional no tipo geral porque o mesmo
+       * modelo também representa objetos antes da criação.
+       *
+       * Nesta tela, porém, estamos editando um documento já
+       * persistido. Guardar o ID aqui preserva o narrowing
+       * dentro de todas as callbacks assíncronas abaixo.
+       */
+      const documentId =
+        document.id;
+
       trigger(
         "vibrate"
       );
@@ -3445,7 +3667,7 @@ export default function NovoDocumentoSaudePage() {
         );
 
         showToast(
-          "Selecione uma pessoa antes de salvar o documento.",
+          "Pessoa ativa não identificada.",
           "error"
         );
 
@@ -3462,7 +3684,7 @@ export default function NovoDocumentoSaudePage() {
         );
 
         showToast(
-          "Não foi possível preparar o envio dos anexos.",
+          "Não foi possível preparar os novos anexos.",
           "error"
         );
 
@@ -3482,10 +3704,8 @@ export default function NovoDocumentoSaudePage() {
       run(
         async () => {
           const uploadedUrls:
-            string[] = [];
-
-          let createAttemptStarted =
-            false;
+            string[] =
+            [];
 
           try {
             setUploadProgress(
@@ -3493,16 +3713,9 @@ export default function NovoDocumentoSaudePage() {
             );
 
             const cleanMetadata:
-              Record<
-                string,
-                string
-              > = {
+              Record<string, string> = {
                 ...formData.metadata,
               };
-
-            // ================================================
-            // DATES
-            // ================================================
 
             fields.forEach(
               (
@@ -3510,7 +3723,7 @@ export default function NovoDocumentoSaudePage() {
               ) => {
                 if (
                   field.type !==
-                  "date"
+                    "date"
                 ) {
                   return;
                 }
@@ -3546,10 +3759,6 @@ export default function NovoDocumentoSaudePage() {
               }
             );
 
-            // ================================================
-            // CUSTOM FIELDS
-            // ================================================
-
             customFields.forEach(
               (
                 field
@@ -3569,10 +3778,6 @@ export default function NovoDocumentoSaudePage() {
                   field.value.trim();
               }
             );
-
-            // ================================================
-            // ATTACHMENTS
-            // ================================================
 
             const finalAttachments =
               [
@@ -3689,10 +3894,6 @@ export default function NovoDocumentoSaudePage() {
               );
             }
 
-            // ================================================
-            // STRUCTURAL RELATIONS
-            // ================================================
-
             const medicoId =
               hasDocumentField(
                 formData.type,
@@ -3711,18 +3912,79 @@ export default function NovoDocumentoSaudePage() {
                   undefined
                 : undefined;
 
-            // ================================================
-            // CREATE
-            // ================================================
+            const originalRelations =
+              originalRelationsRef.current;
 
-            createAttemptStarted =
-              true;
+            const nextMedicoId:
+              string |
+              null |
+              undefined =
+              medicoId
+                ? medicoId
+                : originalRelations.medico_id
+                  ? null
+                  : undefined;
 
-            const documentId =
-              await createDocument({
-                category_id:
-                  "saude",
+            const nextHospitalId:
+              string |
+              null |
+              undefined =
+              hospitalId
+                ? hospitalId
+                : originalRelations.hospital_id
+                  ? null
+                  : undefined;
 
+            let nextEntityType:
+              string |
+              null |
+              undefined;
+
+            let nextEntityId:
+              string |
+              null |
+              undefined;
+
+            if (
+              canonicalRelationTouchedRef.current
+            ) {
+              if (
+                formData.entidade_tipo &&
+                formData.entidade_id
+              ) {
+                nextEntityType =
+                  formData.entidade_tipo;
+
+                nextEntityId =
+                  formData.entidade_id;
+              } else {
+                const hadOriginalRelation =
+                  Boolean(
+                    originalRelations.entidade_tipo ||
+                    originalRelations.entidade_id
+                  );
+
+                nextEntityType =
+                  hadOriginalRelation
+                    ? null
+                    : undefined;
+
+                nextEntityId =
+                  hadOriginalRelation
+                    ? null
+                    : undefined;
+              }
+            } else {
+              nextEntityType =
+                undefined;
+
+              nextEntityId =
+                undefined;
+            }
+
+            await updateDocument(
+              documentId,
+              {
                 type:
                   formData.type,
 
@@ -3731,7 +3993,7 @@ export default function NovoDocumentoSaudePage() {
 
                 description:
                   formData.description.trim() ||
-                  undefined,
+                  null,
 
                 metadata:
                   cleanMetadata,
@@ -3739,62 +4001,78 @@ export default function NovoDocumentoSaudePage() {
                 attachments:
                   finalAttachments,
 
-                is_favorite:
-                  false,
-
                 medico_id:
-                  medicoId,
+                  nextMedicoId,
 
                 hospital_id:
-                  hospitalId,
+                  nextHospitalId,
 
                 entidade_tipo:
-                  formData.entidade_tipo,
+                  nextEntityType,
 
                 entidade_id:
-                  formData.entidade_id,
-              });
+                  nextEntityId,
+              }
+            );
 
-            // ================================================
+            // ==================================================
             // EXPIRY NOTIFICATION
             //
-            // renewal_date NÃO entra aqui.
-            // ================================================
+            // renewal_date NÃO é validade.
+            //
+            // Somente datas documentais realmente relacionadas
+            // à expiração podem criar o agendamento.
+            // ==================================================
+
+            const expiryDate =
+              formData.type ===
+                "receita"
+                ? cleanMetadata.expiry_date ||
+                  cleanMetadata.expiration_date ||
+                  cleanMetadata.validade ||
+                  ""
+                : "";
 
             if (
               formData.type ===
-              "receita"
+                "receita" &&
+              expiryDate
             ) {
-              const expiryDate =
-                getPrescriptionExpiryDate(
-                  cleanMetadata
+              try {
+                await scheduleDocumentExpiryNotification(
+                  documentId,
+                  formData.title.trim(),
+                  expiryDate,
+                  "Saúde",
+                  7
                 );
-
-              if (
-                expiryDate
+              } catch (
+                error
               ) {
-                try {
-                  await scheduleDocumentExpiryNotification(
-                    documentId,
-                    formData.title.trim(),
-                    expiryDate,
-                    "Saúde",
-                    7
-                  );
-                } catch (
+                console.warn(
+                  "[EditarDocumentoSaude] Documento atualizado, mas a notificação não pôde ser reagendada:",
                   error
-                ) {
-                  console.warn(
-                    "[NovoDocumentoSaude] Documento salvo, mas a notificação de validade não pôde ser agendada:",
-                    error
-                  );
-                }
+                );
+              }
+            } else if (
+              document.type ===
+                "receita" ||
+              formData.type ===
+                "receita"
+            ) {
+              try {
+                await cancelDocumentExpiryNotification(
+                  documentId
+                );
+              } catch (
+                error
+              ) {
+                console.warn(
+                  "[EditarDocumentoSaude] Documento atualizado, mas a notificação antiga não pôde ser cancelada:",
+                  error
+                );
               }
             }
-
-            // ================================================
-            // CLEAN LOCAL BLOBS
-            // ================================================
 
             localFiles.forEach(
               (
@@ -3818,27 +4096,68 @@ export default function NovoDocumentoSaudePage() {
               100
             );
 
-            router.push(
-              "/saude/documentos"
+            router.replace(
+              `/saude/documentos/detalhes?id=${documentId}`
             );
           } catch (
             error
           ) {
+            let urlsToRollback =
+              [
+                ...uploadedUrls,
+              ];
+
             if (
-              !createAttemptStarted &&
               uploadedUrls.length >
-                0
+              0
+            ) {
+              try {
+                const persistedDocument =
+                  await getDocument(
+                    documentId
+                  );
+
+                const persistedUrls =
+                  new Set(
+                    (
+                      persistedDocument?.attachments ||
+                      []
+                    ).map(
+                      (
+                        attachment
+                      ) =>
+                        attachment.url
+                    )
+                  );
+
+                urlsToRollback =
+                  uploadedUrls.filter(
+                    (
+                      url
+                    ) =>
+                      !persistedUrls.has(
+                        url
+                      )
+                  );
+              } catch (
+                readError
+              ) {
+                console.warn(
+                  "[EditarDocumentoSaude] Não foi possível confirmar o estado persistido antes do rollback:",
+                  readError
+                );
+
+                urlsToRollback =
+                  [];
+              }
+            }
+
+            if (
+              urlsToRollback.length >
+              0
             ) {
               await rollbackUploadedFiles(
-                uploadedUrls
-              );
-            } else if (
-              createAttemptStarted &&
-              uploadedUrls.length >
-                0
-            ) {
-              console.warn(
-                "[NovoDocumentoSaude] A criação falhou após iniciar o repository. Os uploads não foram removidos automaticamente porque o commit local pode já ter ocorrido."
+                urlsToRollback
               );
             }
 
@@ -3854,10 +4173,10 @@ export default function NovoDocumentoSaudePage() {
         },
         {
           successMessage:
-            "Documento de saúde salvo com sucesso",
+            "Documento atualizado com sucesso",
 
           errorMessage:
-            "Erro ao salvar documento de saúde",
+            "Erro ao atualizar documento",
 
           goBackOnSuccess:
             false,
@@ -3874,6 +4193,12 @@ export default function NovoDocumentoSaudePage() {
       field:
         DocumentField
     ) => {
+      if (
+        !formData
+      ) {
+        return null;
+      }
+
       const label =
         field.required
           ? `${field.label} *`
@@ -3948,7 +4273,7 @@ export default function NovoDocumentoSaudePage() {
             {errors[
               field.key
             ] && (
-              <p className="ml-1 text-xs text-coral">
+              <p className="text-xs text-coral">
                 {
                   errors[
                     field.key
@@ -3972,7 +4297,7 @@ export default function NovoDocumentoSaudePage() {
             field.key
           );
 
-        const currentValue =
+        const value =
           getMetadataString(
             formData.metadata,
             field.key
@@ -4015,7 +4340,7 @@ export default function NovoDocumentoSaudePage() {
               <div className="flex min-w-0 items-center gap-3">
                 <div
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                    currentValue
+                    value
                       ? "bg-ice/10 text-ice"
                       : "bg-surface text-ink-muted"
                   }`}
@@ -4030,7 +4355,7 @@ export default function NovoDocumentoSaudePage() {
                 <div className="min-w-0">
                   <p
                     className={`truncate text-sm ${
-                      currentValue
+                      value
                         ? "font-medium text-ink-primary"
                         : "text-ink-muted"
                     }`}
@@ -4041,7 +4366,7 @@ export default function NovoDocumentoSaudePage() {
                   </p>
 
                   <p className="mt-0.5 text-[10px] text-ink-faint">
-                    Dado complementar deste documento
+                    Informação deste documento
                   </p>
                 </div>
               </div>
@@ -4057,7 +4382,7 @@ export default function NovoDocumentoSaudePage() {
             {errors[
               field.key
             ] && (
-              <p className="ml-1 text-xs text-coral">
+              <p className="text-xs text-coral">
                 {
                   errors[
                     field.key
@@ -4131,7 +4456,7 @@ export default function NovoDocumentoSaudePage() {
             {errors[
               field.key
             ] && (
-              <p className="ml-1 text-xs text-coral">
+              <p className="text-xs text-coral">
                 {
                   errors[
                     field.key
@@ -4180,6 +4505,126 @@ export default function NovoDocumentoSaudePage() {
     };
 
   // ==========================================================
+  // INVALID / LOADING STATES
+  // ==========================================================
+
+  if (
+    !id
+  ) {
+    return (
+      <PageTransition>
+        <StatePage
+          title="Documento não identificado"
+          description="O endereço não contém um documento válido."
+          onBack={
+            () =>
+              router.replace(
+                "/saude/documentos"
+              )
+          }
+        />
+      </PageTransition>
+    );
+  }
+
+  if (
+    !activePersonId
+  ) {
+    return (
+      <PageTransition>
+        <StatePage
+          title="Pessoa ativa necessária"
+          description="Selecione uma pessoa antes de editar documentos clínicos."
+          onBack={
+            () =>
+              router.replace(
+                "/saude/documentos"
+              )
+          }
+        />
+      </PageTransition>
+    );
+  }
+
+  if (
+    document ===
+    null
+  ) {
+    return (
+      <EditLoading />
+    );
+  }
+
+  if (
+    document ===
+    undefined
+  ) {
+    return (
+      <PageTransition>
+        <StatePage
+          title="Documento não encontrado"
+          description="O documento não existe ou não pertence à pessoa ativa."
+          onBack={
+            () =>
+              router.replace(
+                "/saude/documentos"
+              )
+          }
+        />
+      </PageTransition>
+    );
+  }
+
+  if (
+    document.category_id !==
+    "saude"
+  ) {
+    return (
+      <PageTransition>
+        <StatePage
+          title="Documento incompatível"
+          description="Este documento não pertence ao Acervo Clínico de Saúde."
+          onBack={
+            () =>
+              router.replace(
+                "/saude/documentos"
+              )
+          }
+        />
+      </PageTransition>
+    );
+  }
+
+  if (
+    !isHealthType(
+      document.type
+    )
+  ) {
+    return (
+      <PageTransition>
+        <StatePage
+          title="Documento incompatível"
+          description="Este arquivo não pertence aos tipos clínicos suportados por esta tela."
+          onBack={
+            () =>
+              router.replace(
+                "/saude/documentos"
+              )
+          }
+        />
+      </PageTransition>
+    );
+  }
+
+  if (
+    !formData
+  ) {
+    return (
+      <EditLoading />
+    );
+  }
+
+  // ==========================================================
   // UI
   // ==========================================================
 
@@ -4212,7 +4657,7 @@ export default function NovoDocumentoSaudePage() {
           }
         />
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/88 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button
@@ -4233,7 +4678,7 @@ export default function NovoDocumentoSaudePage() {
                     }
                   }
                 }
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
                 aria-label="Voltar"
               >
                 <ArrowLeft
@@ -4245,14 +4690,14 @@ export default function NovoDocumentoSaudePage() {
               </button>
 
               <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ice">
                   Acervo Clínico
                 </p>
 
                 <h1 className="mt-1 font-display text-lg font-semibold text-ink-primary">
                   {currentStep ===
                     1 &&
-                    "Novo documento"}
+                    "Editar documento"}
 
                   {currentStep ===
                     2 &&
@@ -4265,7 +4710,7 @@ export default function NovoDocumentoSaudePage() {
               </div>
             </div>
 
-            <div className="shrink-0 rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1 font-mono text-xs font-medium text-ink-muted">
+            <div className="rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1 font-mono text-xs text-ink-muted">
               {
                 currentStep
               }{" "}
@@ -4276,10 +4721,6 @@ export default function NovoDocumentoSaudePage() {
           <div className="mx-auto mt-4 h-1 max-w-3xl overflow-hidden rounded-full bg-surface-border/40">
             <motion.div
               className="h-full bg-ice"
-              initial={{
-                width:
-                  "33%",
-              }}
               animate={{
                 width:
                   `${
@@ -4289,10 +4730,6 @@ export default function NovoDocumentoSaudePage() {
                     ) *
                     100
                   }%`,
-              }}
-              transition={{
-                duration:
-                  0.3,
               }}
             />
           </div>
@@ -4321,16 +4758,9 @@ export default function NovoDocumentoSaudePage() {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{
-                  duration:
-                    0.3,
-
-                  ease:
-                    "easeInOut",
-                }}
                 className="space-y-4"
               >
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                       <UserRound
@@ -4340,25 +4770,23 @@ export default function NovoDocumentoSaudePage() {
                       />
                     </div>
 
-                    <div className="min-w-0 flex-1">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-                        Pessoa ativa
+                    <div className="min-w-0">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+                        Pessoa
                       </p>
 
-                      <p className="mt-1 truncate text-sm font-semibold text-ink-primary">
-                        {activePersonId
-                          ? "Perfil clínico selecionado"
-                          : "Nenhuma pessoa ativa"}
+                      <p className="mt-1 text-sm font-semibold text-ink-primary">
+                        Perfil clínico atual
                       </p>
 
                       <p className="mt-1 text-xs leading-5 text-ink-muted">
-                        Todo documento deste acervo pertence exclusivamente à pessoa ativa.
+                        A pessoa proprietária deste documento não pode ser alterada durante a edição.
                       </p>
                     </div>
                   </div>
 
                   {errors.person_id && (
-                    <div className="mt-3 flex items-center gap-2 rounded-2xl border border-coral/30 bg-coral/10 px-3.5 py-3">
+                    <div className="mt-3 flex gap-2 rounded-2xl border border-coral/30 bg-coral/10 p-3">
                       <AlertCircle
                         size={
                           15
@@ -4375,14 +4803,9 @@ export default function NovoDocumentoSaudePage() {
                   )}
                 </div>
 
-                <div className="relative overflow-hidden rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-ice/10 blur-3xl" />
-
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
                   <label className="mb-3 block text-sm font-medium text-ink-primary">
-                    Tipo de documento{" "}
-                    <span className="text-coral">
-                      *
-                    </span>
+                    Tipo de documento
                   </label>
 
                   <button
@@ -4398,7 +4821,7 @@ export default function NovoDocumentoSaudePage() {
                         );
                       }
                     }
-                    className="relative flex w-full items-center justify-between gap-3 rounded-[22px] border border-surface-border/50 bg-surface-raised px-4 py-4 text-left transition-all hover:border-ice/30 active:scale-[0.99]"
+                    className="flex w-full items-center justify-between gap-3 rounded-[22px] border border-surface-border/50 bg-surface-raised px-4 py-4 text-left transition-all hover:border-ice/30 active:scale-[0.99]"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
@@ -4416,7 +4839,7 @@ export default function NovoDocumentoSaudePage() {
                           }
                         </p>
 
-                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-muted">
+                        <p className="mt-1 line-clamp-2 text-xs text-ink-muted">
                           {
                             selectedTypeDescription
                           }
@@ -4433,7 +4856,7 @@ export default function NovoDocumentoSaudePage() {
                   </button>
                 </div>
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
                   <div className="mb-3">
                     <div className="flex items-center gap-2">
                       <CircleDot
@@ -4459,9 +4882,7 @@ export default function NovoDocumentoSaudePage() {
                     </div>
 
                     <p className="mt-1 text-xs leading-5 text-ink-muted">
-                      {getEntitySectionDescription(
-                        formData.type
-                      )}
+                      Este vínculo define onde o documento aparece dentro da árvore do Acervo Clínico.
                     </p>
                   </div>
 
@@ -4493,7 +4914,7 @@ export default function NovoDocumentoSaudePage() {
                           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10">
                             <SelectedClinicalEntityIcon
                               size={
-                                19
+                                18
                               }
                               className={
                                 selectedClinicalEntity.colorClass
@@ -4517,25 +4938,39 @@ export default function NovoDocumentoSaudePage() {
                             )}
                           </div>
                         </>
+                      ) : hasUnresolvedOriginalCanonicalRelation ? (
+                        <>
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-300">
+                            <AlertTriangle
+                              size={
+                                18
+                              }
+                            />
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-amber-200">
+                              Vínculo atual preservado
+                            </p>
+
+                            <p className="mt-0.5 text-[10px] leading-4 text-ink-muted">
+                              O vínculo não está disponível nesta tela. Ele será mantido se você não o substituir.
+                            </p>
+                          </div>
+                        </>
                       ) : (
                         <>
                           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface text-ink-muted">
                             <Layers3
                               size={
-                                19
+                                18
                               }
                             />
                           </div>
 
-                          <div>
-                            <p className="text-sm font-medium text-ink-muted">
-                              Selecionar vínculo clínico
-                            </p>
-
-                            <p className="mt-0.5 text-[10px] text-ink-faint">
-                              Este será o pai do documento no Acervo Clínico
-                            </p>
-                          </div>
+                          <p className="text-sm text-ink-muted">
+                            Selecionar vínculo clínico
+                          </p>
                         </>
                       )}
                     </div>
@@ -4548,32 +4983,15 @@ export default function NovoDocumentoSaudePage() {
                     />
                   </button>
 
-                  {selectedClinicalEntity &&
+                  {formData.entidade_tipo &&
+                    formData.entidade_id &&
                     !requiresCanonicalEntity(
                       formData.type
                     ) && (
                       <button
                         type="button"
                         onClick={
-                          () => {
-                            trigger(
-                              "vibrate"
-                            );
-
-                            setFormData(
-                              (
-                                previous
-                              ) => ({
-                                ...previous,
-
-                                entidade_tipo:
-                                  undefined,
-
-                                entidade_id:
-                                  undefined,
-                              })
-                            );
-                          }
+                          removeCanonicalEntity
                         }
                         className="mt-2 text-xs font-medium text-coral"
                       >
@@ -4593,13 +5011,13 @@ export default function NovoDocumentoSaudePage() {
                     0 && (
                     <div className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-3">
                       <p className="text-xs leading-5 text-amber-300">
-                        Não há registros compatíveis cadastrados para esta pessoa. Cadastre primeiro a entidade clínica correspondente.
+                        Não há registros compatíveis disponíveis para esta pessoa.
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
                   <Input
                     label="Título do documento *"
                     placeholder={
@@ -4615,12 +5033,15 @@ export default function NovoDocumentoSaudePage() {
                         setFormData(
                           (
                             previous
-                          ) => ({
-                            ...previous,
+                          ) =>
+                            previous
+                              ? {
+                                  ...previous,
 
-                            title:
-                              event.target.value,
-                          })
+                                  title:
+                                    event.target.value,
+                                }
+                              : previous
                         );
 
                         clearError(
@@ -4650,19 +5071,12 @@ export default function NovoDocumentoSaudePage() {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{
-                  duration:
-                    0.3,
-
-                  ease:
-                    "easeInOut",
-                }}
                 className="space-y-4"
               >
                 {selectedClinicalEntity && (
                   <div className="rounded-[24px] border border-violet-400/20 bg-violet-400/5 p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-violet-300">
-                      Vínculo clínico principal
+                      Vínculo clínico
                     </p>
 
                     <p className="mt-1 text-sm font-semibold text-ink-primary">
@@ -4672,67 +5086,27 @@ export default function NovoDocumentoSaudePage() {
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-ink-muted">
-                      Informações já existentes no registro clínico podem aparecer preenchidas abaixo como contexto deste documento. O vínculo principal continua sendo o registro selecionado acima.
+                      O registro acima é o vínculo principal. Os dados abaixo descrevem o documento e podem guardar snapshots de contexto.
                     </p>
                   </div>
                 )}
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-                  <div className="mb-5 flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                      <SelectedTypeIcon
-                        size={
-                          19
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-semibold text-ink-primary">
-                        {
-                          selectedTypeLabel
-                        }
-                      </p>
-
-                      <p className="mt-0.5 text-xs leading-5 text-ink-muted">
-                        {
-                          selectedTypeDescription
-                        }
-                      </p>
-                    </div>
-                  </div>
-
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5">
                   {expiryWarning && (
-                    <motion.div
-                      initial={{
-                        opacity:
-                          0,
-
-                        y:
-                          -5,
-                      }}
-                      animate={{
-                        opacity:
-                          1,
-
-                        y:
-                          0,
-                      }}
-                      className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-300"
-                    >
+                    <div className="mb-4 flex gap-3 rounded-2xl border border-amber-400/25 bg-amber-400/8 p-4">
                       <AlertCircle
                         size={
-                          20
+                          18
                         }
-                        className="shrink-0 text-amber-400"
+                        className="shrink-0 text-amber-300"
                       />
 
-                      <p className="text-xs font-medium leading-relaxed">
+                      <p className="text-xs leading-5 text-amber-200">
                         {
                           expiryWarning
                         }
                       </p>
-                    </motion.div>
+                    </div>
                   )}
 
                   <div className="space-y-4">
@@ -4742,7 +5116,7 @@ export default function NovoDocumentoSaudePage() {
                   </div>
                 </div>
 
-                <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-ink-primary">
@@ -4750,11 +5124,10 @@ export default function NovoDocumentoSaudePage() {
                       </p>
 
                       <p className="mt-0.5 text-xs text-ink-muted">
-                        Até 5 campos personalizados (
                         {
                           customFields.length
                         }
-                        /5)
+                        /5 campos personalizados
                       </p>
                     </div>
 
@@ -4765,7 +5138,7 @@ export default function NovoDocumentoSaudePage() {
                         onClick={
                           addCustomField
                         }
-                        className="flex items-center gap-1.5 rounded-xl bg-ice/10 px-3 py-2 text-xs font-bold text-ice transition-transform active:scale-95"
+                        className="flex items-center gap-1.5 rounded-xl bg-ice/10 px-3 py-2 text-xs font-semibold text-ice transition-transform active:scale-95"
                       >
                         <Plus
                           size={
@@ -4779,7 +5152,7 @@ export default function NovoDocumentoSaudePage() {
                   </div>
 
                   {errors.custom_fields && (
-                    <div className="flex items-start gap-2 rounded-2xl border border-coral/30 bg-coral/10 px-3.5 py-3">
+                    <div className="mt-4 flex gap-2 rounded-2xl border border-coral/30 bg-coral/10 p-3">
                       <AlertCircle
                         size={
                           15
@@ -4795,83 +5168,52 @@ export default function NovoDocumentoSaudePage() {
                     </div>
                   )}
 
-                  <AnimatePresence
-                    initial={
-                      false
-                    }
-                  >
+                  <div className="mt-4 space-y-3">
                     {customFields.map(
                       (
                         field
                       ) => (
-                        <motion.div
+                        <div
                           key={
                             field.id
                           }
-                          initial={{
-                            opacity:
-                              0,
-
-                            height:
-                              0,
-                          }}
-                          animate={{
-                            opacity:
-                              1,
-
-                            height:
-                              "auto",
-                          }}
-                          exit={{
-                            opacity:
-                              0,
-
-                            height:
-                              0,
-                          }}
-                          className="flex items-center gap-2 pt-2"
+                          className="flex items-center gap-2"
                         >
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              placeholder="Título"
-                              value={
-                                field.label
-                              }
-                              onChange={
-                                (
-                                  event
-                                ) =>
-                                  updateCustomField(
-                                    field.id,
-                                    "label",
-                                    event.target.value
-                                  )
-                              }
-                              className="w-full rounded-xl border border-surface-border/50 bg-surface-raised px-3.5 py-2.5 text-xs font-medium text-ink-primary outline-none focus:border-ice/50"
-                            />
-                          </div>
+                          <input
+                            value={
+                              field.label
+                            }
+                            onChange={
+                              (
+                                event
+                              ) =>
+                                updateCustomField(
+                                  field.id,
+                                  "label",
+                                  event.target.value
+                                )
+                            }
+                            placeholder="Título"
+                            className="min-w-0 flex-1 rounded-xl border border-surface-border/50 bg-surface-raised px-3 py-2.5 text-xs text-ink-primary outline-none focus:border-ice/50"
+                          />
 
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              placeholder="Valor"
-                              value={
-                                field.value
-                              }
-                              onChange={
-                                (
-                                  event
-                                ) =>
-                                  updateCustomField(
-                                    field.id,
-                                    "value",
-                                    event.target.value
-                                  )
-                              }
-                              className="w-full rounded-xl border border-surface-border/50 bg-surface-raised px-3.5 py-2.5 text-xs text-ink-primary outline-none focus:border-ice/50"
-                            />
-                          </div>
+                          <input
+                            value={
+                              field.value
+                            }
+                            onChange={
+                              (
+                                event
+                              ) =>
+                                updateCustomField(
+                                  field.id,
+                                  "value",
+                                  event.target.value
+                                )
+                            }
+                            placeholder="Valor"
+                            className="min-w-0 flex-1 rounded-xl border border-surface-border/50 bg-surface-raised px-3 py-2.5 text-xs text-ink-primary outline-none focus:border-ice/50"
+                          />
 
                           <button
                             type="button"
@@ -4890,10 +5232,10 @@ export default function NovoDocumentoSaudePage() {
                               }
                             />
                           </button>
-                        </motion.div>
+                        </div>
                       )
                     )}
-                  </AnimatePresence>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -4911,16 +5253,9 @@ export default function NovoDocumentoSaudePage() {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{
-                  duration:
-                    0.3,
-
-                  ease:
-                    "easeInOut",
-                }}
                 className="space-y-4"
               >
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
                   <div className="mb-4 flex items-start gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                       <Paperclip
@@ -4931,12 +5266,12 @@ export default function NovoDocumentoSaudePage() {
                     </div>
 
                     <div>
-                      <p className="text-sm font-medium text-ink-primary">
-                        Documento digital
+                      <p className="text-sm font-semibold text-ink-primary">
+                        Arquivos do documento
                       </p>
 
                       <p className="mt-0.5 text-xs leading-5 text-ink-muted">
-                        Fotografe ou anexe o documento original em imagem ou PDF.
+                        Você pode manter, remover ou adicionar imagens e PDFs. Arquivos removidos serão limpos pelo Vault após a atualização.
                       </p>
                     </div>
                   </div>
@@ -4944,7 +5279,6 @@ export default function NovoDocumentoSaudePage() {
                   <div className="grid grid-cols-2 gap-3">
                     <Button
                       variant="secondary"
-                      className="flex items-center justify-center gap-2"
                       onClick={
                         () =>
                           fileInputRef.current?.click()
@@ -4952,6 +5286,7 @@ export default function NovoDocumentoSaudePage() {
                       disabled={
                         isSubmitting
                       }
+                      className="flex items-center justify-center gap-2"
                     >
                       <Upload
                         size={
@@ -4964,7 +5299,6 @@ export default function NovoDocumentoSaudePage() {
 
                     <Button
                       variant="secondary"
-                      className="flex items-center justify-center gap-2"
                       onClick={
                         () =>
                           cameraInputRef.current?.click()
@@ -4972,6 +5306,7 @@ export default function NovoDocumentoSaudePage() {
                       disabled={
                         isSubmitting
                       }
+                      className="flex items-center justify-center gap-2"
                     >
                       <Camera
                         size={
@@ -4988,9 +5323,9 @@ export default function NovoDocumentoSaudePage() {
                     uploadProgress <
                       100 && (
                       <div className="mt-4">
-                        <div className="mb-1 flex items-center justify-between text-xs text-ink-muted">
+                        <div className="mb-1 flex justify-between text-xs text-ink-muted">
                           <span>
-                            Enviando anexos...
+                            Enviando...
                           </span>
 
                           <span>
@@ -5013,128 +5348,100 @@ export default function NovoDocumentoSaudePage() {
                       </div>
                     )}
 
-                  {formData.attachments.length ===
-                  0 ? (
-                    <div className="mt-4 rounded-[20px] border border-dashed border-surface-border/50 bg-surface-raised/30 px-4 py-6 text-center">
-                      <Paperclip
-                        size={
-                          20
-                        }
-                        className="mx-auto text-ink-faint"
-                      />
+                  <div className="mt-4 space-y-2.5">
+                    {formData.attachments.length ===
+                    0 ? (
+                      <div className="rounded-[20px] border border-dashed border-surface-border/50 px-4 py-7 text-center">
+                        <Paperclip
+                          size={
+                            20
+                          }
+                          className="mx-auto text-ink-faint"
+                        />
 
-                      <p className="mt-2 text-xs text-ink-muted">
-                        Nenhum arquivo anexado.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="mt-4 space-y-2.5">
-                      <AnimatePresence
-                        initial={
-                          false
-                        }
-                      >
-                        {formData.attachments.map(
-                          (
-                            attachment
-                          ) => (
-                            <motion.div
-                              key={
-                                attachment.id
-                              }
-                              initial={{
-                                opacity:
-                                  0,
-
-                                y:
-                                  8,
-                              }}
-                              animate={{
-                                opacity:
-                                  1,
-
-                                y:
-                                  0,
-                              }}
-                              exit={{
-                                opacity:
-                                  0,
-
-                                y:
-                                  8,
-                              }}
-                              className="flex items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface-raised px-3.5 py-3"
-                            >
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-surface-border/40 bg-surface">
-                                {attachment.type ===
-                                "image" ? (
-                                  <img
-                                    src={
-                                      attachment.url
-                                    }
-                                    alt={
-                                      attachment.name
-                                    }
-                                    loading="lazy"
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <FileText
-                                    size={
-                                      17
-                                    }
-                                    className="text-ice"
-                                  />
-                                )}
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-ink-primary">
-                                  {
+                        <p className="mt-2 text-xs text-ink-muted">
+                          Nenhum arquivo anexado.
+                        </p>
+                      </div>
+                    ) : (
+                      formData.attachments.map(
+                        (
+                          attachment
+                        ) => (
+                          <div
+                            key={
+                              attachment.id
+                            }
+                            className="flex items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface-raised p-3"
+                          >
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface">
+                              {attachment.type ===
+                              "image" ? (
+                                <img
+                                  src={
+                                    attachment.url
+                                  }
+                                  alt={
                                     attachment.name
                                   }
-                                </p>
-
-                                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-faint">
-                                  {attachment.type ===
-                                  "image"
-                                    ? "Imagem"
-                                    : "PDF"}
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={
-                                  () =>
-                                    removeAttachment(
-                                      attachment.id
-                                    )
-                                }
-                                disabled={
-                                  isSubmitting
-                                }
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-coral/10 hover:text-coral disabled:opacity-40"
-                                aria-label={`Remover ${attachment.name}`}
-                              >
-                                <X
-                                  size={
-                                    14
-                                  }
+                                  loading="lazy"
+                                  className="h-full w-full object-cover"
                                 />
-                              </button>
-                            </motion.div>
-                          )
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  )}
+                              ) : (
+                                <FileText
+                                  size={
+                                    18
+                                  }
+                                  className="text-ice"
+                                />
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-ink-primary">
+                                {
+                                  attachment.name
+                                }
+                              </p>
+
+                              <p className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-faint">
+                                {attachment.type ===
+                                "image"
+                                  ? "Imagem"
+                                  : "PDF"}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={
+                                isSubmitting
+                              }
+                              onClick={
+                                () =>
+                                  removeAttachment(
+                                    attachment.id
+                                  )
+                              }
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-coral/10 hover:text-coral disabled:opacity-40"
+                              aria-label={`Remover ${attachment.name}`}
+                            >
+                              <X
+                                size={
+                                  14
+                                }
+                              />
+                            </button>
+                          </div>
+                        )
+                      )
+                    )}
+                  </div>
                 </div>
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
                   <TextArea
                     label="Observações"
-                    placeholder="Informações complementares, orientações ou contexto deste documento..."
                     value={
                       formData.description
                     }
@@ -5145,14 +5452,18 @@ export default function NovoDocumentoSaudePage() {
                         setFormData(
                           (
                             previous
-                          ) => ({
-                            ...previous,
+                          ) =>
+                            previous
+                              ? {
+                                  ...previous,
 
-                            description:
-                              event.target.value,
-                          })
+                                  description:
+                                    event.target.value,
+                                }
+                              : previous
                         )
                     }
+                    placeholder="Informações complementares sobre este documento..."
                   />
                 </div>
               </motion.div>
@@ -5170,12 +5481,8 @@ export default function NovoDocumentoSaudePage() {
                 false
               )
           }
-          title="Tipo de documento de saúde"
+          title="Tipo de documento"
         >
-          <p className="mb-4 px-1 text-sm leading-5 text-ink-muted">
-            O tipo descreve o arquivo. O vínculo clínico define onde ele ficará organizado no Acervo Clínico.
-          </p>
-
           <div className="max-h-[62vh] touch-pan-y overflow-y-auto overscroll-contain pr-1">
             <div className="grid grid-cols-2 gap-3 px-1 pb-4">
               {HEALTH_TYPES.map(
@@ -5192,63 +5499,53 @@ export default function NovoDocumentoSaudePage() {
                     type;
 
                   return (
-                    <motion.button
+                    <button
                       key={
                         type
                       }
                       type="button"
-                      whileTap={{
-                        scale:
-                          0.96,
-                      }}
                       onClick={
                         () =>
                           handleTypeChange(
                             type
                           )
                       }
-                      className={`relative flex min-h-[170px] flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
+                      className={`min-h-[150px] rounded-[22px] border p-4 text-left transition-all active:scale-[0.98] ${
                         active
                           ? "border-ice bg-ice/10"
                           : "border-surface-border/50 bg-surface hover:bg-surface-raised"
                       }`}
                     >
                       <div
-                        className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl ${
+                        className={`flex h-10 w-10 items-center justify-center rounded-xl ${
                           active
-                            ? "bg-ice/20 text-ice"
+                            ? "bg-ice/15 text-ice"
                             : "bg-surface-raised text-ink-muted"
                         }`}
                       >
                         <Icon
                           size={
-                            20
+                            18
                           }
                         />
                       </div>
 
-                      <span
-                        className={`text-sm font-semibold leading-tight ${
-                          active
-                            ? "text-ice"
-                            : "text-ink-primary"
-                        }`}
-                      >
+                      <p className="mt-3 text-sm font-semibold text-ink-primary">
                         {
                           HEALTH_TYPE_LABELS[
                             type
                           ]
                         }
-                      </span>
+                      </p>
 
-                      <span className="mt-2 line-clamp-3 text-[11px] leading-[1.45] text-ink-muted">
+                      <p className="mt-1 line-clamp-3 text-[10px] leading-4 text-ink-muted">
                         {
                           HEALTH_TYPE_DESCRIPTIONS[
                             type
                           ]
                         }
-                      </span>
-                    </motion.button>
+                      </p>
+                    </button>
                   );
                 }
               )}
@@ -5424,7 +5721,7 @@ export default function NovoDocumentoSaudePage() {
           }
         />
 
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/90 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <div className="mx-auto flex max-w-3xl gap-3">
             {currentStep >
               1 && (
@@ -5464,7 +5761,7 @@ export default function NovoDocumentoSaudePage() {
                   1
                     ? "w-full"
                     : "w-2/3"
-                } flex items-center justify-center gap-2 shadow-lg shadow-ice/10`}
+                } flex items-center justify-center gap-2`}
               >
                 Próximo
 
@@ -5485,7 +5782,7 @@ export default function NovoDocumentoSaudePage() {
                   isSubmitting ||
                   !activePersonId
                 }
-                className="flex w-2/3 items-center justify-center gap-2 shadow-lg shadow-ice/10"
+                className="flex w-2/3 items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
@@ -5506,7 +5803,7 @@ export default function NovoDocumentoSaudePage() {
                       }
                     />
 
-                    Salvar documento
+                    Salvar alterações
                   </>
                 )}
               </Button>
@@ -5515,5 +5812,83 @@ export default function NovoDocumentoSaudePage() {
         </div>
       </main>
     </PageTransition>
+  );
+}
+
+// ============================================================
+// STATE
+// ============================================================
+
+interface StatePageProps {
+  title: string;
+  description: string;
+  onBack: () => void;
+}
+
+function StatePage({
+  title,
+  description,
+  onBack,
+}: StatePageProps) {
+  return (
+    <main className="flex min-h-[100dvh] items-center justify-center bg-void px-5">
+      <div className="w-full max-w-sm rounded-[30px] border border-surface-border/50 bg-surface p-6 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-300">
+          <AlertTriangle
+            size={
+              22
+            }
+          />
+        </div>
+
+        <h1 className="mt-4 font-display text-lg font-semibold text-ink-primary">
+          {
+            title
+          }
+        </h1>
+
+        <p className="mt-2 text-sm leading-6 text-ink-muted">
+          {
+            description
+          }
+        </p>
+
+        <button
+          type="button"
+          onClick={
+            onBack
+          }
+          className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-ice px-4 py-3 text-sm font-semibold text-void transition-transform active:scale-95"
+        >
+          <ArrowLeft
+            size={
+              16
+            }
+          />
+
+          Voltar ao acervo
+        </button>
+      </div>
+    </main>
+  );
+}
+
+// ============================================================
+// LOADING
+// ============================================================
+
+function EditLoading() {
+  return (
+    <main className="min-h-[100dvh] bg-void px-5 pt-[max(1.5rem,env(safe-area-inset-top))]">
+      <div className="mx-auto max-w-3xl animate-pulse space-y-4">
+        <div className="h-14 rounded-2xl bg-surface" />
+
+        <div className="h-32 rounded-[28px] bg-surface" />
+
+        <div className="h-40 rounded-[28px] bg-surface" />
+
+        <div className="h-20 rounded-[28px] bg-surface" />
+      </div>
+    </main>
   );
 }

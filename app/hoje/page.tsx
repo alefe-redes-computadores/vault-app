@@ -17,7 +17,6 @@ import {
   DollarSign,
   Filter,
   XCircle,
-  Building2,
   FileWarning,
   AlertOctagon,
   Info,
@@ -211,6 +210,8 @@ export default function HojePage() {
     doseLogs,
     marcarComoTomada: marcarDose,
     marcarComoIgnorada,
+    desmarcarDose,
+    removerDosePorId,
   } = useDoseLogs(hoje);
 
   const tratamentos =
@@ -533,7 +534,8 @@ export default function HojePage() {
       if (!med) continue;
 
       const chaveProgramada = `${med.id}-${log.horario}`;
-      const isOficialTomada = chavesProgramadas.has(chaveProgramada);
+      const isOficialTomada =
+        chavesProgramadas.has(chaveProgramada);
 
       if (
         !isOficialTomada &&
@@ -819,88 +821,103 @@ export default function HojePage() {
   const handleToggle = async (
     item: DoseItemExt
   ) => {
-    if (processandoDoseId) return;
+    if (
+      processandoDoseId ||
+      !item.medicamentoId
+    ) {
+      return;
+    }
 
     const chaveDose = item.logId
       ? `log-${item.logId}`
       : `${item.medicamentoId}-${item.horario}`;
 
-    setProcessandoDoseId(chaveDose);
-
-    const proximaTomada =
-      !item.tomada;
-
-    trigger(
-      proximaTomada
-        ? "success"
-        : "vibrate"
+    setProcessandoDoseId(
+      chaveDose
     );
 
     try {
+      // ======================================================
+      // DOSE AVULSA / SOS
+      //
+      // A remoção passa obrigatoriamente pelo repository.
+      //
+      // Ele é responsável por:
+      //
+      // - validar person_id;
+      // - validar usuário;
+      // - recuperar a quantidade histórica;
+      // - restaurar estoque quando calculável;
+      // - excluir o DoseLog;
+      // - enfileirar DELETE para sincronização.
+      // ======================================================
+
       if (
         item.isAvulsa &&
         item.logId
       ) {
-        if (!proximaTomada) {
-          await db.doseLogs.delete(
-            item.logId
-          );
-        }
-      } else {
-        await marcarDose(
-          item.medicamentoId!,
-          hoje,
+        await removerDosePorId(
+          item.logId
+        );
+
+        trigger(
+          "vibrate"
+        );
+
+        showToast(
+          "Dose avulsa removida",
+          "info"
+        );
+
+        return;
+      }
+
+      // ======================================================
+      // DOSE PROGRAMADA JÁ TOMADA → DESFAZER
+      //
+      // Nenhuma alteração manual de estoque é feita aqui.
+      //
+      // O repository usa a quantidade histórica do DoseLog para
+      // restaurar exatamente o consumo que havia sido registrado.
+      // ======================================================
+
+      if (
+        item.tomada
+      ) {
+        await desmarcarDose(
+          item.medicamentoId,
           item.horario
         );
 
-        const medOriginal =
-          medicamentos?.find(
-            (m) =>
-              m.id === item.medicamentoId
-          );
+        trigger(
+          "vibrate"
+        );
 
-        if (
-          medOriginal &&
-          typeof medOriginal.estoque_quantidade ===
-            "number"
-        ) {
-          const delta = proximaTomada
-            ? -(item.unidadePorDose || 1)
-            : item.unidadePorDose || 1;
-
-          const novoEstoque =
-            Math.max(
-              0,
-              (medOriginal.estoque_quantidade ||
-                0) + delta
-            );
-
-          await safeUpdateMedicamento(
-            item.medicamentoId!,
-            {
-              estoque_quantidade:
-                novoEstoque,
-              estoque_data_referencia:
-                hoje,
-            }
-          );
-
-          if (
-            proximaTomada &&
-            novoEstoque <= 3
-          ) {
-            setMedicamentoSelecionado(
-              medOriginal
-            );
-
-            setModalAberto(true);
-          }
-        }
+        return;
       }
+
+      // ======================================================
+      // DOSE PROGRAMADA PENDENTE → TOMADA
+      //
+      // O repository registra o DoseLog e movimenta o estoque.
+      // ======================================================
+
+      await marcarDose(
+        item.medicamentoId,
+        item.horario
+      );
+
+      trigger(
+        "success"
+      );
     } catch (error) {
       console.error(
         "Erro ao atualizar dose:",
         error
+      );
+
+      trigger(
+        "error"
       );
 
       showToast(
@@ -908,7 +925,9 @@ export default function HojePage() {
         "error"
       );
     } finally {
-      setProcessandoDoseId(null);
+      setProcessandoDoseId(
+        null
+      );
     }
   };
 
@@ -931,7 +950,6 @@ export default function HojePage() {
     try {
       await marcarComoIgnorada(
         item.medicamentoId,
-        hoje,
         item.horario
       );
 
@@ -943,6 +961,10 @@ export default function HojePage() {
       console.error(
         "Erro ao ignorar dose:",
         error
+      );
+
+      trigger(
+        "error"
       );
 
       showToast(
@@ -1589,7 +1611,6 @@ export default function HojePage() {
                     key={key}
                     className="space-y-3"
                   >
-                    {/* CABEÇALHO DO PERÍODO */}
                     <div className="flex items-end justify-between gap-4 px-1">
                       <div className="flex items-center gap-2">
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-raised text-ice border border-surface-border/40">
@@ -1622,7 +1643,6 @@ export default function HojePage() {
                       </div>
                     </div>
 
-                    {/* CARDS */}
                     <div className="space-y-2.5">
                       {grupo.items.map(
                         (item) => {
@@ -1754,12 +1774,6 @@ export default function HojePage() {
                             item.horario >=
                               horaAtual &&
                             !item.isAvulsa;
-
-                          const isEstoqueCritico =
-                            (item.estoqueRestante ??
-                              0) <= 3 &&
-                            (item.estoqueRestante ??
-                              0) > 0;
 
                           const isEstoqueZerado =
                             (item.estoqueRestante ??
@@ -2166,7 +2180,11 @@ export default function HojePage() {
                                           item
                                         );
                                       }}
-                                      className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-2 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95"
+                                      disabled={
+                                        isProcessando ||
+                                        isProcessing
+                                      }
+                                      className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-2 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
                                     >
                                       {item.isAvulsa ? (
                                         <>

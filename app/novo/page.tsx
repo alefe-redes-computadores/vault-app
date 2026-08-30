@@ -101,6 +101,40 @@ import {
 } from "@/components/ui/BottomSheet";
 
 // ============================================================
+// CATEGORIAS DESTE FLUXO
+// ============================================================
+
+const GENERAL_CATEGORIES = [
+  "pessoal",
+  "empresa",
+  "outros",
+] as const satisfies readonly CategoryId[];
+
+type GeneralCategoryId =
+  (typeof GENERAL_CATEGORIES)[number];
+
+// ============================================================
+// TIPOS DE DOCUMENTOS GERAIS
+// ============================================================
+
+const GENERAL_TYPES = [
+  "rg",
+  "cpf",
+  "cnh",
+  "certidao_nascimento",
+  "titulo_eleitor",
+  "certificado",
+  "carteira_trabalho",
+  "passaporte",
+  "dispensa_militar",
+  "credencial",
+  "outro",
+] as const satisfies readonly DocumentType[];
+
+type GeneralDocumentType =
+  (typeof GENERAL_TYPES)[number];
+
+// ============================================================
 // TIPOS LOCAIS
 // ============================================================
 
@@ -116,51 +150,24 @@ interface CustomField {
   value: string;
 }
 
-// ============================================================
-// CATEGORIAS DESTE FLUXO
-// ============================================================
-
-const GENERAL_CATEGORIES: CategoryId[] = [
-  "pessoal",
-  "empresa",
-  "outros",
-];
-
-// ============================================================
-// TIPOS PERMITIDOS
-// ============================================================
-
-const GENERAL_TYPE_CANDIDATES: DocumentType[] = [
-  "rg",
-  "cpf",
-  "cnh",
-  "certidao_nascimento",
-  "titulo_eleitor",
-  "certificado",
-  "carteira_trabalho",
-  "passaporte",
-  "dispensa_militar",
-  "credencial",
-  "outro",
-];
-
-const GENERAL_TYPES: DocumentType[] =
-  GENERAL_TYPE_CANDIDATES.filter(
-    (type) =>
-      TYPE_CATEGORY_MAP[type].some(
-        (category) =>
-          GENERAL_CATEGORIES.includes(
-            category
-          )
-      )
-  );
+interface FormData {
+  person_id: string;
+  category_id: GeneralCategoryId;
+  type: GeneralDocumentType;
+  title: string;
+  description: string;
+  metadata: Record<string, string>;
+  attachments: Attachment[];
+  vault_id?: string;
+}
 
 // ============================================================
 // LABELS
 // ============================================================
 
-const DOCUMENT_TYPE_LABELS: Partial<
-  Record<DocumentType, string>
+const DOCUMENT_TYPE_LABELS: Record<
+  GeneralDocumentType,
+  string
 > = {
   rg: "C.I.N / Identidade",
   cpf: "CPF",
@@ -183,8 +190,9 @@ const DOCUMENT_TYPE_LABELS: Partial<
     "Outro",
 };
 
-const TYPE_DESCRIPTIONS: Partial<
-  Record<DocumentType, string>
+const TYPE_DESCRIPTIONS: Record<
+  GeneralDocumentType,
+  string
 > = {
   rg:
     "Registro Geral ou Carteira de Identidade Nacional.",
@@ -220,8 +228,9 @@ const TYPE_DESCRIPTIONS: Partial<
     "Outros documentos pessoais, empresariais ou personalizados.",
 };
 
-const TYPE_ICONS: Partial<
-  Record<DocumentType, LucideIcon>
+const TYPE_ICONS: Record<
+  GeneralDocumentType,
+  LucideIcon
 > = {
   rg: Contact,
   cpf: FileText,
@@ -236,8 +245,9 @@ const TYPE_ICONS: Partial<
   outro: Folder,
 };
 
-const TYPE_TITLE_PLACEHOLDERS: Partial<
-  Record<DocumentType, string>
+const TYPE_TITLE_PLACEHOLDERS: Record<
+  GeneralDocumentType,
+  string
 > = {
   rg:
     "Ex: Minha C.I.N",
@@ -300,17 +310,16 @@ const slideVariants = {
 // HELPERS
 // ============================================================
 
-function isCategoryId(
+function isGeneralCategoryId(
   value: string | null
-): value is CategoryId {
+): value is GeneralCategoryId {
   if (!value) {
     return false;
   }
 
-  return Object.prototype.hasOwnProperty.call(
-    CATEGORIES,
-    value
-  );
+  return (
+    GENERAL_CATEGORIES as readonly string[]
+  ).includes(value);
 }
 
 function handleDateMask(
@@ -371,7 +380,7 @@ function parseDateToISO(
 }
 
 function buildMetadataForType(
-  type: DocumentType
+  type: GeneralDocumentType
 ): Record<string, string> {
   const metadata: Record<
     string,
@@ -409,6 +418,7 @@ function isSupportedFile(
 
 export default function NovoDocumentoPage() {
   const router = useRouter();
+
   const searchParams =
     useSearchParams();
 
@@ -462,34 +472,23 @@ export default function NovoDocumentoPage() {
       "categoria"
     );
 
-  const personParam =
-    searchParams.get(
-      "person_id"
-    );
+  const requestedCategory:
+    GeneralCategoryId =
+      isGeneralCategoryId(
+        categoryParam
+      )
+        ? categoryParam
+        : "pessoal";
 
-  const requestedCategory =
-    isCategoryId(
-      categoryParam
-    ) &&
-    GENERAL_CATEGORIES.includes(
-      categoryParam
-    )
-      ? categoryParam
-      : "pessoal";
-
-  const initialTypes =
-    GENERAL_TYPES.filter(
+  const initialType =
+    GENERAL_TYPES.find(
       (type) =>
         TYPE_CATEGORY_MAP[
           type
         ].includes(
           requestedCategory
         )
-    );
-
-  const initialType =
-    initialTypes[0] ||
-    "outro";
+    ) || "outro";
 
   // ==========================================================
   // ESTADOS
@@ -546,9 +545,8 @@ export default function NovoDocumentoPage() {
   const [
     formData,
     setFormData,
-  ] = useState({
+  ] = useState<FormData>({
     person_id:
-      personParam ||
       activePersonId ||
       "",
 
@@ -570,99 +568,107 @@ export default function NovoDocumentoPage() {
       ),
 
     attachments:
-      [] as Attachment[],
+      [],
 
     vault_id:
-      undefined as
-        | string
-        | undefined,
+      undefined,
   });
 
   // ==========================================================
-  // VAULTS
-  // ==========================================================
-
-  const userVaults =
-    useLiveQuery(
-      () => {
-        if (!user?.id) {
-          return [];
-        }
-
-        return db.vaults
-          .where("user_id")
-          .equals(user.id)
-          .toArray();
-      },
-      [user?.id],
-      []
-    ) || [];
-
-  // ==========================================================
-  // PESSOA INICIAL
+  // PESSOA ATIVA
   // ==========================================================
 
   useEffect(() => {
+    setFormData(
+      (previous) => {
+        const personId =
+          activePersonId || "";
+
+        if (
+          previous.person_id ===
+          personId
+        ) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          person_id:
+            personId,
+
+          /*
+           * Um Vault pertence a uma pessoa.
+           * Se a pessoa ativa mudar durante
+           * a criação, removemos qualquer
+           * Vault selecionado anteriormente.
+           */
+          vault_id:
+            undefined,
+        };
+      }
+    );
+
     if (
-      personParam &&
-      persons.some(
-        (person) =>
-          person.id ===
-          personParam
-      )
+      activePersonId
     ) {
-      setFormData(
-        (previous) => ({
-          ...previous,
-          person_id:
-            personParam,
-        })
-      );
+      setErrors(
+        (previous) => {
+          if (
+            !previous.person_id
+          ) {
+            return previous;
+          }
 
-      return;
-    }
+          const next = {
+            ...previous,
+          };
 
-    if (
-      formData.person_id
-    ) {
-      return;
-    }
+          delete next.person_id;
 
-    if (activePersonId) {
-      setFormData(
-        (previous) => ({
-          ...previous,
-          person_id:
-            activePersonId,
-        })
-      );
-
-      return;
-    }
-
-    const firstPerson =
-      persons.find(
-        (person) =>
-          Boolean(
-            person.id
-          )
-      );
-
-    if (firstPerson?.id) {
-      setFormData(
-        (previous) => ({
-          ...previous,
-          person_id:
-            firstPerson.id!,
-        })
+          return next;
+        }
       );
     }
   }, [
     activePersonId,
-    formData.person_id,
-    personParam,
-    persons,
   ]);
+
+  // ==========================================================
+  // VAULTS DA PESSOA ATIVA
+  // ==========================================================
+
+  const userVaults =
+    useLiveQuery(
+      async () => {
+        if (
+          !user?.id ||
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        const vaults =
+          await db.vaults
+            .where(
+              "user_id"
+            )
+            .equals(
+              user.id
+            )
+            .toArray();
+
+        return vaults.filter(
+          (vault) =>
+            vault.person_id ===
+            activePersonId
+        );
+      },
+      [
+        user?.id,
+        activePersonId,
+      ],
+      []
+    ) || [];
 
   // ==========================================================
   // LIMPEZA DOS PREVIEWS
@@ -695,7 +701,9 @@ export default function NovoDocumentoPage() {
     ] || [];
 
   const availableTypes =
-    useMemo(() => {
+    useMemo<
+      GeneralDocumentType[]
+    >(() => {
       return GENERAL_TYPES.filter(
         (type) =>
           TYPE_CATEGORY_MAP[
@@ -712,32 +720,28 @@ export default function NovoDocumentoPage() {
     persons.find(
       (person) =>
         person.id ===
-        formData.person_id
+        activePersonId
     );
 
   const SelectedTypeIcon =
     TYPE_ICONS[
       formData.type
-    ] ||
-    FileText;
+    ];
 
   const selectedTypeLabel =
     DOCUMENT_TYPE_LABELS[
       formData.type
-    ] ||
-    "Documento";
+    ];
 
   const selectedTypeDescription =
     TYPE_DESCRIPTIONS[
       formData.type
-    ] ||
-    "";
+    ];
 
   const titlePlaceholder =
     TYPE_TITLE_PLACEHOLDERS[
       formData.type
-    ] ||
-    "Ex: Documento";
+    ];
 
   // ==========================================================
   // ERROS
@@ -767,36 +771,10 @@ export default function NovoDocumentoPage() {
   // FORM
   // ==========================================================
 
-  const handlePersonChange = (
-    personId: string
-  ) => {
-    trigger("vibrate");
-
-    setFormData(
-      (previous) => ({
-        ...previous,
-        person_id:
-          personId,
-      })
-    );
-
-    clearError(
-      "person_id"
-    );
-  };
-
   const handleCategoryChange = (
     categoryId:
-      CategoryId
+      GeneralCategoryId
   ) => {
-    if (
-      !GENERAL_CATEGORIES.includes(
-        categoryId
-      )
-    ) {
-      return;
-    }
-
     trigger("vibrate");
 
     setFormData(
@@ -809,10 +787,7 @@ export default function NovoDocumentoPage() {
           );
 
         if (
-          currentTypeAllowed &&
-          GENERAL_TYPES.includes(
-            previous.type
-          )
+          currentTypeAllowed
         ) {
           return {
             ...previous,
@@ -839,8 +814,10 @@ export default function NovoDocumentoPage() {
           ...previous,
           category_id:
             categoryId,
+
           type:
             nextType,
+
           metadata:
             buildMetadataForType(
               nextType
@@ -857,22 +834,16 @@ export default function NovoDocumentoPage() {
   };
 
   const handleTypeChange = (
-    type: DocumentType
+    type: GeneralDocumentType
   ) => {
-    if (
-      !GENERAL_TYPES.includes(
-        type
-      )
-    ) {
-      return;
-    }
-
     trigger("vibrate");
 
     setFormData(
       (previous) => ({
         ...previous,
+
         type,
+
         metadata:
           buildMetadataForType(
             type
@@ -897,8 +868,10 @@ export default function NovoDocumentoPage() {
     setFormData(
       (previous) => ({
         ...previous,
+
         metadata: {
           ...previous.metadata,
+
           [key]:
             value,
         },
@@ -966,8 +939,10 @@ export default function NovoDocumentoPage() {
           {
             id:
               crypto.randomUUID(),
+
             label:
               "",
+
             value:
               "",
           },
@@ -992,6 +967,7 @@ export default function NovoDocumentoPage() {
             id
               ? {
                   ...field,
+
                   [key]:
                     value,
                 }
@@ -1214,10 +1190,12 @@ export default function NovoDocumentoPage() {
 
     if (step === 1) {
       if (
-        !formData.person_id
+        !formData.person_id ||
+        formData.person_id !==
+          activePersonId
       ) {
         newErrors.person_id =
-          "Selecione uma pessoa";
+          "Não foi possível identificar a pessoa ativa";
       }
 
       if (
@@ -1225,15 +1203,6 @@ export default function NovoDocumentoPage() {
       ) {
         newErrors.title =
           "O título é obrigatório";
-      }
-
-      if (
-        !GENERAL_TYPES.includes(
-          formData.type
-        )
-      ) {
-        newErrors.type =
-          "Tipo de documento inválido";
       }
     }
 
@@ -1276,10 +1245,12 @@ export default function NovoDocumentoPage() {
       > = {};
 
       if (
-        !formData.person_id
+        !formData.person_id ||
+        formData.person_id !==
+          activePersonId
       ) {
         newErrors.person_id =
-          "Selecione uma pessoa";
+          "Não foi possível identificar a pessoa ativa";
       }
 
       if (
@@ -1287,15 +1258,6 @@ export default function NovoDocumentoPage() {
       ) {
         newErrors.title =
           "O título é obrigatório";
-      }
-
-      if (
-        !GENERAL_TYPES.includes(
-          formData.type
-        )
-      ) {
-        newErrors.type =
-          "Tipo de documento inválido";
       }
 
       fields.forEach(
@@ -1341,6 +1303,7 @@ export default function NovoDocumentoPage() {
       )
     ) {
       trigger("error");
+
       return;
     }
 
@@ -1391,9 +1354,17 @@ export default function NovoDocumentoPage() {
 
     if (
       !user?.id ||
-      !formData.person_id
+      !activePersonId ||
+      formData.person_id !==
+        activePersonId
     ) {
       trigger("error");
+
+      showToast(
+        "Não foi possível identificar o usuário ou a pessoa ativa.",
+        "error"
+      );
+
       return;
     }
 
@@ -1420,6 +1391,10 @@ export default function NovoDocumentoPage() {
           > = {
             ...formData.metadata,
           };
+
+          // ================================================
+          // DATAS
+          // ================================================
 
           fields.forEach(
             (
@@ -1452,6 +1427,10 @@ export default function NovoDocumentoPage() {
             }
           );
 
+          // ================================================
+          // CAMPOS PERSONALIZADOS
+          // ================================================
+
           customFields.forEach(
             (field) => {
               const label =
@@ -1467,6 +1446,10 @@ export default function NovoDocumentoPage() {
                 field.value.trim();
             }
           );
+
+          // ================================================
+          // UPLOAD
+          // ================================================
 
           const finalAttachments = [
             ...formData.attachments,
@@ -1532,6 +1515,7 @@ export default function NovoDocumentoPage() {
                 ...finalAttachments[
                   attachmentIndex
                 ],
+
                 url,
               };
 
@@ -1561,49 +1545,85 @@ export default function NovoDocumentoPage() {
             );
           }
 
-          await documentsRepository.create(
-            {
-              user_id:
-                user.id,
+          // ================================================
+          // VALIDAÇÃO DO VAULT
+          // ================================================
 
-              person_id:
-                formData.person_id,
+          let vaultId:
+            | string
+            | undefined;
 
-              category_id:
-                formData.category_id,
+          if (
+            formData.vault_id
+          ) {
+            const validVault =
+              userVaults.find(
+                (vault) =>
+                  vault.id ===
+                  formData.vault_id &&
+                  vault.person_id ===
+                    activePersonId
+              );
 
-              type:
-                formData.type,
-
-              title:
-                formData.title.trim(),
-
-              description:
-                formData.description.trim() ||
-                undefined,
-
-              metadata:
-                cleanMetadata,
-
-              attachments:
-                finalAttachments,
-
-              is_favorite:
-                false,
-
-              vault_id:
-                formData.vault_id ||
-                undefined,
+            if (!validVault) {
+              throw new Error(
+                "O cofre selecionado não pertence à pessoa ativa."
+              );
             }
-          );
+
+            vaultId =
+              validVault.id;
+          }
+
+          // ================================================
+          // DOCUMENTO
+          // ================================================
+
+          const documentId =
+          await documentsRepository.create(
+         {
+            
+            person_id:
+            activePersonId,
+
+            category_id:
+            formData.category_id,
+
+            type:
+            formData.type,
+
+            title:
+            formData.title.trim(),
+
+            description:
+            formData.description.trim() ||
+            undefined,
+
+            metadata:
+            cleanMetadata,
+
+            attachments:
+            finalAttachments,
+
+            is_favorite:
+            false,
+
+            vault_id:
+            vaultId,
+          }
+        );
+
+    // ================================================
+    // VENCIMENTO
+    // ================================================
 
           const expiryDate =
             cleanMetadata.expiry_date ||
             cleanMetadata.validade;
-
+          
           if (expiryDate) {
             await scheduleDocumentExpiryNotification(
-              crypto.randomUUID(),
+              documentId,
               formData.title.trim(),
               expiryDate,
               CATEGORIES[
@@ -1612,6 +1632,10 @@ export default function NovoDocumentoPage() {
               30
             );
           }
+
+          // ================================================
+          // LIMPEZA
+          // ================================================
 
           localFiles.forEach(
             (local) => {
@@ -1626,6 +1650,7 @@ export default function NovoDocumentoPage() {
           );
 
           setLocalFiles([]);
+
           setUploadProgress(
             100
           );
@@ -1997,79 +2022,49 @@ export default function NovoDocumentoPage() {
                 className="space-y-4"
               >
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-                  <div className="mb-3 flex items-center gap-2">
-                    <UserRound
-                      size={15}
-                      className="text-ink-muted"
-                    />
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                      <UserRound
+                        size={
+                          19
+                        }
+                      />
+                    </div>
 
-                    <p className="text-sm font-medium text-ink-primary">
-                      Pessoa *
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+                        Pessoa ativa
+                      </p>
+
+                      <p className="mt-1 truncate text-sm font-semibold text-ink-primary">
+                        {selectedPerson
+                          ? selectedPerson.name
+                          : activePersonId
+                            ? "Carregando pessoa..."
+                            : "Nenhuma pessoa ativa"}
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-ink-muted">
+                        O documento será vinculado automaticamente à pessoa selecionada no Vault.
+                      </p>
+                    </div>
                   </div>
 
-                  {persons.length ===
-                  0 ? (
-                    <p className="text-xs text-ink-muted">
-                      Nenhuma pessoa cadastrada.
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {persons.map(
-                        (
-                          person
-                        ) => {
-                          if (
-                            !person.id
-                          ) {
-                            return null;
-                          }
-
-                          const selected =
-                            formData.person_id ===
-                            person.id;
-
-                          return (
-                            <button
-                              key={
-                                person.id
-                              }
-                              type="button"
-                              onClick={() =>
-                                handlePersonChange(
-                                  person.id!
-                                )
-                              }
-                              className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium transition-all active:scale-95 ${
-                                selected
-                                  ? "border-ice bg-ice/12 text-ice"
-                                  : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                              }`}
-                            >
-                              <span
-                                className="h-2.5 w-2.5 rounded-full"
-                                style={{
-                                  backgroundColor:
-                                    person.color,
-                                }}
-                              />
-
-                              {
-                                person.name
-                              }
-                            </button>
-                          );
-                        }
-                      )}
-                    </div>
-                  )}
-
                   {errors.person_id && (
-                    <p className="mt-2 text-xs text-coral">
-                      {
-                        errors.person_id
-                      }
-                    </p>
+                    <div className="mt-3 flex items-center gap-2 rounded-2xl border border-coral/30 bg-coral/10 px-3.5 py-3">
+                      <AlertCircle
+                        size={
+                          15
+                        }
+                        className="shrink-0 text-coral"
+                      />
+
+                      <p className="text-xs text-coral">
+                        {
+                          errors.person_id
+                        }
+                      </p>
+                    </div>
                   )}
                 </div>
 
@@ -2195,6 +2190,7 @@ export default function NovoDocumentoPage() {
                           previous
                         ) => ({
                           ...previous,
+
                           title:
                             event.target.value,
                         })
@@ -2209,18 +2205,6 @@ export default function NovoDocumentoPage() {
                     }
                     required
                   />
-
-                  {selectedPerson && (
-                    <p className="mt-3 text-[11px] text-ink-faint">
-                      Documento vinculado a{" "}
-                      <span className="font-medium text-ink-muted">
-                        {
-                          selectedPerson.name
-                        }
-                      </span>
-                      .
-                    </p>
-                  )}
                 </div>
               </motion.div>
             )}
@@ -2274,7 +2258,9 @@ export default function NovoDocumentoPage() {
                   {expiryWarning && (
                     <div className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-300">
                       <AlertCircle
-                        size={20}
+                        size={
+                          20
+                        }
                       />
 
                       <p className="text-xs">
@@ -2322,6 +2308,7 @@ export default function NovoDocumentoPage() {
                             14
                           }
                         />
+
                         Novo campo
                       </button>
                     )}
@@ -2377,6 +2364,7 @@ export default function NovoDocumentoPage() {
                             )
                           }
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coral/10 text-coral"
+                          aria-label="Remover campo"
                         >
                           <X
                             size={
@@ -2448,6 +2436,7 @@ export default function NovoDocumentoPage() {
                           16
                         }
                       />
+
                       Arquivo
                     </Button>
 
@@ -2465,6 +2454,7 @@ export default function NovoDocumentoPage() {
                           16
                         }
                       />
+
                       Câmera
                     </Button>
                   </div>
@@ -2516,6 +2506,7 @@ export default function NovoDocumentoPage() {
                             disabled={
                               isSubmitting
                             }
+                            aria-label={`Remover ${attachment.name}`}
                           >
                             <X
                               size={
@@ -2544,6 +2535,7 @@ export default function NovoDocumentoPage() {
                           previous
                         ) => ({
                           ...previous,
+
                           description:
                             event.target.value,
                         })
@@ -2555,6 +2547,16 @@ export default function NovoDocumentoPage() {
                 {userVaults.length >
                   0 && (
                   <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
+                    <div className="mb-3">
+                      <p className="text-sm font-medium text-ink-primary">
+                        Cofre
+                      </p>
+
+                      <p className="mt-1 text-xs text-ink-muted">
+                        Somente cofres da pessoa ativa são exibidos.
+                      </p>
+                    </div>
+
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -2564,12 +2566,17 @@ export default function NovoDocumentoPage() {
                               previous
                             ) => ({
                               ...previous,
+
                               vault_id:
                                 undefined,
                             })
                           )
                         }
-                        className="rounded-full border border-surface-border/50 px-3 py-2 text-xs text-ink-muted"
+                        className={`rounded-full border px-3 py-2 text-xs transition-all ${
+                          !formData.vault_id
+                            ? "border-ice bg-ice/12 text-ice"
+                            : "border-surface-border/50 text-ink-muted"
+                        }`}
                       >
                         Nenhum cofre
                       </button>
@@ -2585,6 +2592,10 @@ export default function NovoDocumentoPage() {
                             return null;
                           }
 
+                          const active =
+                            formData.vault_id ===
+                            vault.id;
+
                           return (
                             <button
                               key={
@@ -2597,18 +2608,24 @@ export default function NovoDocumentoPage() {
                                     previous
                                   ) => ({
                                     ...previous,
+
                                     vault_id:
                                       vault.id,
                                   })
                                 )
                               }
-                              className="flex items-center gap-1 rounded-full border border-surface-border/50 px-3 py-2 text-xs text-ink-muted"
+                              className={`flex items-center gap-1 rounded-full border px-3 py-2 text-xs transition-all ${
+                                active
+                                  ? "border-ice bg-ice/12 text-ice"
+                                  : "border-surface-border/50 text-ink-muted"
+                              }`}
                             >
                               <Shield
                                 size={
                                   12
                                 }
                               />
+
                               {
                                 vault.name
                               }
@@ -2642,8 +2659,11 @@ export default function NovoDocumentoPage() {
                   const Icon =
                     TYPE_ICONS[
                       type
-                    ] ||
-                    FileText;
+                    ];
+
+                  const active =
+                    formData.type ===
+                    type;
 
                   return (
                     <motion.button
@@ -2660,9 +2680,19 @@ export default function NovoDocumentoPage() {
                           type
                         )
                       }
-                      className="flex min-h-[165px] flex-col items-start rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left"
+                      className={`flex min-h-[165px] flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
+                        active
+                          ? "border-ice bg-ice/10"
+                          : "border-surface-border/50 bg-surface"
+                      }`}
                     >
-                      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                      <div
+                        className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl ${
+                          active
+                            ? "bg-ice/20 text-ice"
+                            : "bg-ice/10 text-ice"
+                        }`}
+                      >
                         <Icon
                           size={
                             20
@@ -2670,7 +2700,13 @@ export default function NovoDocumentoPage() {
                         />
                       </div>
 
-                      <p className="text-sm font-semibold text-ink-primary">
+                      <p
+                        className={`text-sm font-semibold ${
+                          active
+                            ? "text-ice"
+                            : "text-ink-primary"
+                        }`}
+                      >
                         {
                           DOCUMENT_TYPE_LABELS[
                             type
@@ -2735,6 +2771,7 @@ export default function NovoDocumentoPage() {
                 }
               >
                 Próximo
+
                 <ChevronRight
                   size={
                     18
@@ -2761,6 +2798,7 @@ export default function NovoDocumentoPage() {
                       }
                       className="animate-spin"
                     />
+
                     Salvando...
                   </>
                 ) : (
@@ -2770,6 +2808,7 @@ export default function NovoDocumentoPage() {
                         16
                       }
                     />
+
                     Salvar documento
                   </>
                 )}

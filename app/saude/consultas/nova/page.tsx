@@ -1,698 +1,3783 @@
 // app/saude/consultas/novo/page.tsx
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
-  ArrowLeft,
-  Loader2,
-  Stethoscope,
-  Calendar,
-  Building2,
-  UserCheck,
-  Upload,
-  Camera,
-  X,
-  MapPin,
-  Clock,
-  Image as ImageIcon,
-  Eraser,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+
+import {
+  motion,
+} from "framer-motion";
+
+import {
   Activity,
+  ArrowLeft,
   Brain,
+  Building2,
+  Calendar,
+  Camera,
+  Check,
+  Clock,
+  Eraser,
   Flame,
   HeartPulse,
-  ShieldAlert,
+  Image as ImageIcon,
+  Loader2,
+  MapPin,
   Plus,
+  ShieldAlert,
+  Stethoscope,
+  Upload,
+  UserCheck,
+  X,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useHapticFeedback } from "@/lib/haptics";
-import { uploadFile } from "@/lib/supabase/storage";
-import { db } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { TextArea } from "@/components/ui/TextArea";
-import { PageTransition } from "@/components/PageTransition";
-import { SelectionModal } from "@/components/SelectionModal";
-import { BottomSheet } from "@/components/ui/BottomSheet";
-import type { Attachment, Medico, Hospital, LocalSaude, Consulta, Tratamento, Cid } from "@/lib/types";
-import { useToast } from "@/components/ToastProvider";
-import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { consultasRepository } from "@/lib/repositories/consultas";
-import { getClinicalTheme } from "@/lib/health-utils";
-import { tratamentosRepository } from "@/lib/repositories/tratamentos";
-import { cidsRepository } from "@/lib/repositories/cids";
+
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
+import {
+  db,
+} from "@/lib/db";
+
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+
+import {
+  getClinicalTheme,
+} from "@/lib/health-utils";
+
+import {
+  uploadFile,
+} from "@/lib/supabase/storage";
+
+import {
+  tratamentosRepository,
+} from "@/lib/repositories/tratamentos";
+
+import {
+  cidsRepository,
+} from "@/lib/repositories/cids";
+
+import {
+  useAuth,
+} from "@/hooks/useAuth";
+
+import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
+
+import {
+  useConsultas,
+} from "@/hooks/useConsultas";
+
+import {
+  useSubmitAction,
+} from "@/hooks/useSubmitAction";
+
+import {
+  Button,
+} from "@/components/ui/Button";
+
+import {
+  Input,
+} from "@/components/ui/Input";
+
+import {
+  TextArea,
+} from "@/components/ui/TextArea";
+
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+
+import {
+  SelectionModal,
+} from "@/components/SelectionModal";
+
+import {
+  BottomSheet,
+} from "@/components/ui/BottomSheet";
+
+import {
+  useToast,
+} from "@/components/ToastProvider";
+
+import type {
+  Attachment,
+  Cid,
+  Hospital,
+  LocalSaude,
+  Medico,
+  Tratamento,
+} from "@/lib/types";
+
+// ============================================================
+// ANIMAÇÃO
+// ============================================================
 
 const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
+  initial: {
+    opacity:
+      0,
+
+    y:
+      12,
+  },
+
+  animate: {
+    opacity:
+      1,
+
+    y:
+      0,
+  },
 };
 
-function formatDateToDisplay(isoStr: string): string {
-  if (!isoStr) return "";
-  const parts = isoStr.split("-");
-  if (parts.length !== 3) return isoStr;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
+// ============================================================
+// HELPERS
+// ============================================================
 
-function parseDateToISO(displayStr: string): string {
-  const clean = displayStr.replace(/\D/g, "");
-  if (clean.length !== 8) return "";
-  const day = clean.slice(0, 2);
-  const month = clean.slice(2, 4);
-  const year = clean.slice(4, 8);
+function getTodayISO(): string {
+  const now =
+    new Date();
+
+  const year =
+    now.getFullYear();
+
+  const month =
+    String(
+      now.getMonth() +
+        1
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const day =
+    String(
+      now.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
   return `${year}-${month}-${day}`;
 }
 
-function handleDateMask(value: string): string {
-  const clean = value.replace(/\D/g, "").slice(0, 8);
-  if (clean.length > 4) {
-    return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
+function formatDateToDisplay(
+  isoStr: string
+): string {
+  if (
+    !isoStr
+  ) {
+    return "";
   }
-  if (clean.length > 2) {
-    return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+
+  const parts =
+    isoStr.split(
+      "-"
+    );
+
+  if (
+    parts.length !==
+    3
+  ) {
+    return isoStr;
   }
+
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function parseDateToISO(
+  displayStr: string
+): string | undefined {
+  const clean =
+    displayStr.replace(
+      /\D/g,
+      ""
+    );
+
+  if (
+    clean.length !==
+    8
+  ) {
+    return undefined;
+  }
+
+  const day =
+    Number(
+      clean.slice(
+        0,
+        2
+      )
+    );
+
+  const month =
+    Number(
+      clean.slice(
+        2,
+        4
+      )
+    );
+
+  const year =
+    Number(
+      clean.slice(
+        4,
+        8
+      )
+    );
+
+  const parsed =
+    new Date(
+      year,
+      month -
+        1,
+      day
+    );
+
+  if (
+    parsed.getFullYear() !==
+      year ||
+    parsed.getMonth() !==
+      month -
+        1 ||
+    parsed.getDate() !==
+      day
+  ) {
+    return undefined;
+  }
+
+  return `${String(
+    year
+  ).padStart(
+    4,
+    "0"
+  )}-${String(
+    month
+  ).padStart(
+    2,
+    "0"
+  )}-${String(
+    day
+  ).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function handleDateMask(
+  value: string
+): string {
+  const clean =
+    value
+      .replace(
+        /\D/g,
+        ""
+      )
+      .slice(
+        0,
+        8
+      );
+
+  if (
+    clean.length >
+    4
+  ) {
+    return `${clean.slice(
+      0,
+      2
+    )}/${clean.slice(
+      2,
+      4
+    )}/${clean.slice(4)}`;
+  }
+
+  if (
+    clean.length >
+    2
+  ) {
+    return `${clean.slice(
+      0,
+      2
+    )}/${clean.slice(2)}`;
+  }
+
   return clean;
 }
 
-function handleTimeMask(value: string): string {
-  const clean = value.replace(/\D/g, "").slice(0, 4);
-  if (clean.length > 2) {
-    return `${clean.slice(0, 2)}:${clean.slice(2)}`;
+function handleTimeMask(
+  value: string
+): string {
+  const clean =
+    value
+      .replace(
+        /\D/g,
+        ""
+      )
+      .slice(
+        0,
+        4
+      );
+
+  if (
+    clean.length >
+    2
+  ) {
+    return `${clean.slice(
+      0,
+      2
+    )}:${clean.slice(2)}`;
   }
+
   return clean;
 }
 
-function getTratamentoIcon(nome: string) {
-  const n = nome.toLowerCase();
-  if (n.includes("tdah")) return Brain;
-  if (n.includes("dor") || n.includes("neuropática")) return Flame;
-  if (n.includes("depress")) return HeartPulse;
-  if (n.includes("ansied") || n.includes("ansiolítico")) return ShieldAlert;
+function isValidTime(
+  value: string
+): boolean {
+  if (
+    !value
+  ) {
+    return true;
+  }
+
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(
+    value
+  );
+}
+
+function getTratamentoIcon(
+  nome: string
+) {
+  const normalized =
+    nome.toLowerCase();
+
+  if (
+    normalized.includes(
+      "tdah"
+    )
+  ) {
+    return Brain;
+  }
+
+  if (
+    normalized.includes(
+      "dor"
+    ) ||
+    normalized.includes(
+      "neuropática"
+    )
+  ) {
+    return Flame;
+  }
+
+  if (
+    normalized.includes(
+      "depress"
+    )
+  ) {
+    return HeartPulse;
+  }
+
+  if (
+    normalized.includes(
+      "ansied"
+    ) ||
+    normalized.includes(
+      "ansiolítico"
+    )
+  ) {
+    return ShieldAlert;
+  }
+
   return Activity;
 }
 
+function parseIdsParam(
+  value: string | null
+): string[] {
+  if (
+    !value
+  ) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .split(
+          ","
+        )
+        .map(
+          (
+            item
+          ) =>
+            item.trim()
+        )
+        .filter(
+          Boolean
+        )
+    )
+  );
+}
+
+// ============================================================
+// PAGE
+// ============================================================
+
 export default function NovaConsultaPage() {
-  const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
-  const router = useRouter();
-  const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
-  const { run, isSubmitting } = useSubmitAction();
-  const isSubmitLocked = useRef(false);
+  const router =
+    useRouter();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const searchParams =
+    useSearchParams();
 
-  const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
-  const hospitais = useLiveQuery(() => db.hospitais.toArray(), []) || [];
-  const locais = useLiveQuery(() => db.locais.toArray(), []) || [];
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const cids = useLiveQuery(() => db.cids.toArray(), []) || [];
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
 
-  const [medicoId, setMedicoId] = useState("");
-  const [hospitalId, setHospitalId] = useState("");
-  const [localId, setLocalId] = useState("");
+  const {
+    showToast,
+  } =
+    useToast();
 
-  const [isMedicoModalOpen, setIsMedicoModalOpen] = useState(false);
-  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
-  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
+  /*
+   * Auth continua necessário aqui somente para uploadFile().
+   * CRUD da consulta não recebe mais user_id do caller.
+   */
+  const {
+    user,
+  } =
+    useAuth();
 
-  // Múltipla seleção
-  const [tratamentosSelecionados, setTratamentosSelecionados] = useState<string[]>([]);
-  const [cidsSelecionados, setCidsSelecionados] = useState<string[]>([]);
-  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
-  const [isCidModalOpen, setIsCidModalOpen] = useState(false);
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  // Criação rápida
-  const [isCreatingTratamento, setIsCreatingTratamento] = useState(false);
-  const [newTratamentoName, setNewTratamentoName] = useState("");
-  const [isSavingTratamento, setIsSavingTratamento] = useState(false);
+  const {
+    addConsulta,
+  } =
+    useConsultas();
 
-  const [isCreatingCid, setIsCreatingCid] = useState(false);
-  const [newCidCodigo, setNewCidCodigo] = useState("");
-  const [newCidDescricao, setNewCidDescricao] = useState("");
+  const {
+    run,
+    isSubmitting,
+  } =
+    useSubmitAction();
 
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const [dataDisplay, setDataDisplay] = useState(formatDateToDisplay(todayISO));
-  const [horario, setHorario] = useState("");
+  const isSubmitLocked =
+    useRef(
+      false
+    );
 
-  const [status, setStatus] = useState<"agendada" | "realizada" | "cancelada">("agendada");
-  const [motivo, setMotivo] = useState("");
-  const [observacoes, setObservacoes] = useState("");
+  const fileInputRef =
+    useRef<HTMLInputElement>(
+      null
+    );
 
-  const [attachment, setAttachment] = useState<Attachment | null>(null);
-  const [localFile, setLocalFile] = useState<File | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const cameraInputRef =
+    useRef<HTMLInputElement>(
+      null
+    );
 
-  const selectedMedico = medicos.find((m: any) => m.id === medicoId);
-  const selectedHospital = hospitais.find((h: any) => h.id === hospitalId);
-  const selectedLocal = locais.find((l: any) => l.id === localId);
+  /*
+   * Impede que um query param seja reaplicado depois que
+   * o usuário limpou ou alterou manualmente a seleção.
+   */
+  const appliedMedicoParamRef =
+    useRef<string | null>(
+      null
+    );
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      trigger("vibrate");
-      setLocalFile(file);
-      setAttachment({
-        id: crypto.randomUUID(),
-        url: URL.createObjectURL(file),
-        name: file.name,
-        type: file.type.startsWith("image") ? "image" : "pdf",
-        uploaded_at: new Date().toISOString(),
-      });
-    }
-    e.target.value = "";
-  };
+  const appliedHospitalParamRef =
+    useRef<string | null>(
+      null
+    );
 
-  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      trigger("vibrate");
-      setLocalFile(file);
-      setAttachment({
-        id: crypto.randomUUID(),
-        url: URL.createObjectURL(file),
-        name: `consulta_${Date.now()}.jpg`,
-        type: "image",
-        uploaded_at: new Date().toISOString(),
-      });
-    }
-    e.target.value = "";
-  };
+  const appliedLocalParamRef =
+    useRef<string | null>(
+      null
+    );
 
-  const removeAttachment = () => {
-    if (attachment?.url.startsWith("blob:")) URL.revokeObjectURL(attachment.url);
-    setAttachment(null);
-    setLocalFile(null);
-    trigger("vibrate");
-  };
+  const appliedTratamentosParamRef =
+    useRef<string | null>(
+      null
+    );
 
-  const handleCreateTratamento = async () => {
-    if (!newTratamentoName.trim()) return;
-    setIsSavingTratamento(true);
-    trigger("vibrate");
-    try {
-      const newId = await tratamentosRepository.create({
-        nome: newTratamentoName.trim(),
-        status: "ativo",
-        user_id: user?.id || "",
-        person_id: activePersonId || undefined,
-      });
-      setTratamentosSelecionados((prev) => [...prev, newId]);
-      showToast("Tratamento cadastrado", "success");
-      setIsCreatingTratamento(false);
-      setNewTratamentoName("");
-    } catch (error) {
-      console.error(error);
-      showToast("Erro ao cadastrar tratamento", "error");
-    } finally {
-      setIsSavingTratamento(false);
-    }
-  };
+  const appliedCidsParamRef =
+    useRef<string | null>(
+      null
+    );
 
-  const handleCreateCid = async () => {
-    if (!newCidCodigo.trim() || !newCidDescricao.trim()) return;
-    trigger("vibrate");
-    try {
-      const newId = await cidsRepository.create({
-        codigo: newCidCodigo.trim(),
-        descricao: newCidDescricao.trim(),
-        user_id: user?.id || "",
-        person_id: activePersonId || undefined,
-      });
-      setCidsSelecionados((prev) => [...prev, newId]);
-      showToast("CID cadastrado", "success");
-      setIsCreatingCid(false);
-      setNewCidCodigo("");
-      setNewCidDescricao("");
-    } catch (error) {
-      console.error(error);
-      showToast("Erro ao cadastrar CID", "error");
-    }
-  };
+  const previousPersonIdRef =
+    useRef<string | null>(
+      null
+    );
 
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!medicoId) newErrors.medicoId = "Selecione o médico";
-    if (!dataDisplay || dataDisplay.length < 10) newErrors.data = "Data inválida";
+  const attachmentUrlRef =
+    useRef<string | null>(
+      null
+    );
 
-    // Validação de horário com Regex (só valida se o campo não estiver vazio)
-    if (horario) {
-      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-      if (!timeRegex.test(horario)) {
-        newErrors.horario = "Horário inválido (use HH:MM)";
+  // ==========================================================
+  // GLOBAL
+  // ==========================================================
+
+  const medicos =
+    useLiveQuery(
+      () =>
+        db.medicos.toArray(),
+      [],
+      []
+    ) ||
+    [];
+
+  const hospitais =
+    useLiveQuery(
+      () =>
+        db.hospitais.toArray(),
+      [],
+      []
+    ) ||
+    [];
+
+  const locais =
+    useLiveQuery(
+      () =>
+        db.locais.toArray(),
+      [],
+      []
+    ) ||
+    [];
+
+  // ==========================================================
+  // PERSON-OWNED
+  // ==========================================================
+
+  const tratamentos =
+    useLiveQuery(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        return db.tratamentos
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ],
+      []
+    ) ||
+    [];
+
+  const cids =
+    useLiveQuery(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        return db.cids
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ],
+      []
+    ) ||
+    [];
+
+  // ==========================================================
+  // RELAÇÕES
+  // ==========================================================
+
+  const [
+    medicoId,
+    setMedicoId,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    hospitalId,
+    setHospitalId,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    localId,
+    setLocalId,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    isMedicoModalOpen,
+    setIsMedicoModalOpen,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    isHospitalModalOpen,
+    setIsHospitalModalOpen,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    isLocalModalOpen,
+    setIsLocalModalOpen,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    tratamentosSelecionados,
+    setTratamentosSelecionados,
+  ] =
+    useState<string[]>(
+      []
+    );
+
+  const [
+    cidsSelecionados,
+    setCidsSelecionados,
+  ] =
+    useState<string[]>(
+      []
+    );
+
+  const [
+    isTratamentoModalOpen,
+    setIsTratamentoModalOpen,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    isCidModalOpen,
+    setIsCidModalOpen,
+  ] =
+    useState(
+      false
+    );
+
+  // ==========================================================
+  // QUICK CREATE
+  // ==========================================================
+
+  const [
+    isCreatingTratamento,
+    setIsCreatingTratamento,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    newTratamentoName,
+    setNewTratamentoName,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    isSavingTratamento,
+    setIsSavingTratamento,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    isCreatingCid,
+    setIsCreatingCid,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    newCidCodigo,
+    setNewCidCodigo,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    newCidDescricao,
+    setNewCidDescricao,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    isSavingCid,
+    setIsSavingCid,
+  ] =
+    useState(
+      false
+    );
+
+  // ==========================================================
+  // FORM
+  // ==========================================================
+
+  const [
+    dataDisplay,
+    setDataDisplay,
+  ] =
+    useState(
+      formatDateToDisplay(
+        getTodayISO()
+      )
+    );
+
+  const [
+    horario,
+    setHorario,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    status,
+    setStatus,
+  ] =
+    useState<
+      | "agendada"
+      | "realizada"
+      | "cancelada"
+    >(
+      "agendada"
+    );
+
+  const [
+    motivo,
+    setMotivo,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    observacoes,
+    setObservacoes,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    attachment,
+    setAttachment,
+  ] =
+    useState<Attachment | null>(
+      null
+    );
+
+  const [
+    localFile,
+    setLocalFile,
+  ] =
+    useState<File | null>(
+      null
+    );
+
+  const [
+    errors,
+    setErrors,
+  ] =
+    useState<
+      Record<
+        string,
+        string
+      >
+    >({});
+
+  // ==========================================================
+  // QUERY PARAMS
+  //
+  // Atalhos suportados:
+  //
+  // ?medico_id=...
+  // ?hospital_id=...
+  // ?local_id=...
+  // ?tratamento_id=...
+  // ?tratamento_ids=id1,id2
+  // ?cid_id=...
+  // ?cid_ids=id1,id2
+  //
+  // Nenhum ID vindo da URL é aceito cegamente.
+  // Ele precisa existir no conjunto permitido da tela.
+  // ==========================================================
+
+  const medicoParam =
+    searchParams.get(
+      "medico_id"
+    )?.trim() ||
+    "";
+
+  const hospitalParam =
+    searchParams.get(
+      "hospital_id"
+    )?.trim() ||
+    "";
+
+  const localParam =
+    searchParams.get(
+      "local_id"
+    )?.trim() ||
+    "";
+
+  const tratamentoParamKey =
+    [
+      searchParams.get(
+        "tratamento_id"
+      ) ||
+        "",
+      searchParams.get(
+        "tratamento_ids"
+      ) ||
+        "",
+    ].join(
+      "|"
+    );
+
+  const cidParamKey =
+    [
+      searchParams.get(
+        "cid_id"
+      ) ||
+        "",
+      searchParams.get(
+        "cid_ids"
+      ) ||
+        "",
+    ].join(
+      "|"
+    );
+
+  useEffect(
+    () => {
+      if (
+        !medicoParam ||
+        appliedMedicoParamRef.current ===
+          medicoParam
+      ) {
+        return;
       }
-    }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+      const exists =
+        medicos.some(
+          (
+            medico
+          ) =>
+            medico.id ===
+            medicoParam
+        );
 
-  const handleSubmit = async () => {
-    trigger("vibrate");
-    if (!validate()) { trigger("error"); return; }
-    if (!user?.id) return;
+      if (
+        !exists
+      ) {
+        return;
+      }
 
-    if (isSubmitLocked.current || isSubmitting) return;
-    isSubmitLocked.current = true;
+      setMedicoId(
+        medicoParam
+      );
 
-    try {
-      await run(
-        async () => {
-          let anexoUrl: string | undefined;
-          if (localFile && user) {
-            const { url, error } = await uploadFile(user.id, localFile, "saude");
-            if (!error && url) anexoUrl = url;
+      appliedMedicoParamRef.current =
+        medicoParam;
+
+      setErrors(
+        (
+          previous
+        ) => {
+          if (
+            !previous.medicoId
+          ) {
+            return previous;
           }
 
-          const dataISO = parseDateToISO(dataDisplay);
-          if (!dataISO) throw new Error("Data inválida");
+          const next = {
+            ...previous,
+          };
 
-          await consultasRepository.create({
-            user_id: user.id,
-            person_id: activePersonId || undefined,
-            especialidade: selectedMedico?.especialidade || "Geral",
-            medico: selectedMedico?.nome || "Médico",
-            medico_id: medicoId,
-            hospital_id: hospitalId || undefined,
-            local_id: localId || undefined,
-            data: dataISO,
-            horario: horario || undefined,
-            status,
-            motivo: motivo.trim() || undefined,
-            observacoes: observacoes.trim() || undefined,
-            anexo_url: anexoUrl,
-            tratamento_ids: tratamentosSelecionados.length > 0 ? tratamentosSelecionados : undefined,
-            cid_ids: cidsSelecionados.length > 0 ? cidsSelecionados : undefined,
-          });
-        },
-        { successMessage: "Consulta criada", errorMessage: "Erro ao salvar", goBackOnSuccess: true }
+          delete next.medicoId;
+
+          return next;
+        }
       );
-    } finally {
-      isSubmitLocked.current = false;
-    }
+    },
+    [
+      medicoParam,
+      medicos,
+    ]
+  );
+
+  useEffect(
+    () => {
+      if (
+        !hospitalParam ||
+        appliedHospitalParamRef.current ===
+          hospitalParam
+      ) {
+        return;
+      }
+
+      const exists =
+        hospitais.some(
+          (
+            hospital
+          ) =>
+            hospital.id ===
+            hospitalParam
+        );
+
+      if (
+        !exists
+      ) {
+        return;
+      }
+
+      setHospitalId(
+        hospitalParam
+      );
+
+      appliedHospitalParamRef.current =
+        hospitalParam;
+    },
+    [
+      hospitalParam,
+      hospitais,
+    ]
+  );
+
+  useEffect(
+    () => {
+      if (
+        !localParam ||
+        appliedLocalParamRef.current ===
+          localParam
+      ) {
+        return;
+      }
+
+      const exists =
+        locais.some(
+          (
+            local
+          ) =>
+            local.id ===
+            localParam
+        );
+
+      if (
+        !exists
+      ) {
+        return;
+      }
+
+      setLocalId(
+        localParam
+      );
+
+      appliedLocalParamRef.current =
+        localParam;
+    },
+    [
+      localParam,
+      locais,
+    ]
+  );
+
+  useEffect(
+    () => {
+      if (
+        !activePersonId ||
+        appliedTratamentosParamRef.current ===
+          `${activePersonId}:${tratamentoParamKey}`
+      ) {
+        return;
+      }
+
+      const requestedIds =
+        Array.from(
+          new Set([
+            ...parseIdsParam(
+              searchParams.get(
+                "tratamento_id"
+              )
+            ),
+
+            ...parseIdsParam(
+              searchParams.get(
+                "tratamento_ids"
+              )
+            ),
+          ])
+        );
+
+      if (
+        requestedIds.length ===
+        0
+      ) {
+        appliedTratamentosParamRef.current =
+          `${activePersonId}:${tratamentoParamKey}`;
+
+        return;
+      }
+
+      const availableIds =
+        new Set(
+          tratamentos
+            .map(
+              (
+                tratamento
+              ) =>
+                tratamento.id
+            )
+            .filter(
+              (
+                id
+              ): id is string =>
+                Boolean(
+                  id
+                )
+            )
+        );
+
+      const validIds =
+        requestedIds.filter(
+          (
+            id
+          ) =>
+            availableIds.has(
+              id
+            )
+        );
+
+      /*
+       * Se a coleção ainda estiver carregando e nenhum ID
+       * tiver sido localizado, aguardamos a próxima emissão do
+       * live query em vez de consumir o parâmetro cedo demais.
+       */
+      if (
+        validIds.length ===
+          0 &&
+        tratamentos.length ===
+          0
+      ) {
+        return;
+      }
+
+      if (
+        validIds.length >
+        0
+      ) {
+        setTratamentosSelecionados(
+          (
+            previous
+          ) =>
+            Array.from(
+              new Set([
+                ...previous,
+                ...validIds,
+              ])
+            )
+        );
+      }
+
+      appliedTratamentosParamRef.current =
+        `${activePersonId}:${tratamentoParamKey}`;
+    },
+    [
+      activePersonId,
+      tratamentoParamKey,
+      tratamentos,
+      searchParams,
+    ]
+  );
+
+  useEffect(
+    () => {
+      if (
+        !activePersonId ||
+        appliedCidsParamRef.current ===
+          `${activePersonId}:${cidParamKey}`
+      ) {
+        return;
+      }
+
+      const requestedIds =
+        Array.from(
+          new Set([
+            ...parseIdsParam(
+              searchParams.get(
+                "cid_id"
+              )
+            ),
+
+            ...parseIdsParam(
+              searchParams.get(
+                "cid_ids"
+              )
+            ),
+          ])
+        );
+
+      if (
+        requestedIds.length ===
+        0
+      ) {
+        appliedCidsParamRef.current =
+          `${activePersonId}:${cidParamKey}`;
+
+        return;
+      }
+
+      const availableIds =
+        new Set(
+          cids
+            .map(
+              (
+                cid
+              ) =>
+                cid.id
+            )
+            .filter(
+              (
+                id
+              ): id is string =>
+                Boolean(
+                  id
+                )
+            )
+        );
+
+      const validIds =
+        requestedIds.filter(
+          (
+            id
+          ) =>
+            availableIds.has(
+              id
+            )
+        );
+
+      if (
+        validIds.length ===
+          0 &&
+        cids.length ===
+          0
+      ) {
+        return;
+      }
+
+      if (
+        validIds.length >
+        0
+      ) {
+        setCidsSelecionados(
+          (
+            previous
+          ) =>
+            Array.from(
+              new Set([
+                ...previous,
+                ...validIds,
+              ])
+            )
+        );
+      }
+
+      appliedCidsParamRef.current =
+        `${activePersonId}:${cidParamKey}`;
+    },
+    [
+      activePersonId,
+      cidParamKey,
+      cids,
+      searchParams,
+    ]
+  );
+
+  // ==========================================================
+  // PERSON CHANGE
+  //
+  // Tratamentos e CIDs são person-owned.
+  //
+  // Se a pessoa ativa mudar enquanto o formulário estiver
+  // aberto, nunca carregamos relações clínicas da pessoa
+  // anterior para a nova consulta.
+  // ==========================================================
+
+  useEffect(
+    () => {
+      const previousPersonId =
+        previousPersonIdRef.current;
+
+      if (
+        previousPersonId &&
+        activePersonId &&
+        previousPersonId !==
+          activePersonId
+      ) {
+        setTratamentosSelecionados(
+          []
+        );
+
+        setCidsSelecionados(
+          []
+        );
+
+        setIsTratamentoModalOpen(
+          false
+        );
+
+        setIsCidModalOpen(
+          false
+        );
+
+        setIsCreatingTratamento(
+          false
+        );
+
+        setIsCreatingCid(
+          false
+        );
+
+        setNewTratamentoName(
+          ""
+        );
+
+        setNewCidCodigo(
+          ""
+        );
+
+        setNewCidDescricao(
+          ""
+        );
+
+        /*
+         * Permite avaliar novamente os query params no novo
+         * contexto, mas somente se realmente pertencerem à
+         * nova pessoa.
+         */
+        appliedTratamentosParamRef.current =
+          null;
+
+        appliedCidsParamRef.current =
+          null;
+      }
+
+      if (
+        activePersonId
+      ) {
+        previousPersonIdRef.current =
+          activePersonId;
+      }
+    },
+    [
+      activePersonId,
+    ]
+  );
+
+  // ==========================================================
+  // SELECTED
+  // ==========================================================
+
+  const selectedMedico =
+    medicos.find(
+      (
+        medico
+      ) =>
+        medico.id ===
+        medicoId
+    );
+
+  const selectedHospital =
+    hospitais.find(
+      (
+        hospital
+      ) =>
+        hospital.id ===
+        hospitalId
+    );
+
+  const selectedLocal =
+    locais.find(
+      (
+        local
+      ) =>
+        local.id ===
+        localId
+    );
+
+  // ==========================================================
+  // ERROR
+  // ==========================================================
+
+  const clearError =
+    (
+      key: string
+    ) => {
+      setErrors(
+        (
+          previous
+        ) => {
+          if (
+            !previous[
+              key
+            ]
+          ) {
+            return previous;
+          }
+
+          const next = {
+            ...previous,
+          };
+
+          delete next[
+            key
+          ];
+
+          return next;
+        }
+      );
+    };
+
+  // ==========================================================
+  // BLOB CLEANUP
+  // ==========================================================
+
+  const releaseTemporaryAttachment =
+    () => {
+      const currentUrl =
+        attachmentUrlRef.current;
+
+      if (
+        currentUrl?.startsWith(
+          "blob:"
+        )
+      ) {
+        URL.revokeObjectURL(
+          currentUrl
+        );
+      }
+
+      attachmentUrlRef.current =
+        null;
   };
+
+  useEffect(
+    () => {
+      return () => {
+        const currentUrl =
+          attachmentUrlRef.current;
+
+        if (
+          currentUrl?.startsWith(
+            "blob:"
+          )
+        ) {
+          URL.revokeObjectURL(
+            currentUrl
+          );
+        }
+      };
+    },
+    []
+  );
+
+  // ==========================================================
+  // FILE
+  // ==========================================================
+
+  const handleFileSelect =
+    (
+      event:
+        React.ChangeEvent<HTMLInputElement>
+    ) => {
+      const file =
+        event.target.files?.[0];
+
+      if (
+        file
+      ) {
+        trigger(
+          "vibrate"
+        );
+
+        releaseTemporaryAttachment();
+
+        const objectUrl =
+          URL.createObjectURL(
+            file
+          );
+
+        attachmentUrlRef.current =
+          objectUrl;
+
+        setLocalFile(
+          file
+        );
+
+        setAttachment({
+          id:
+            crypto.randomUUID(),
+
+          url:
+            objectUrl,
+
+          name:
+            file.name,
+
+          type:
+            file.type.startsWith(
+              "image"
+            )
+              ? "image"
+              : "pdf",
+
+          uploaded_at:
+            new Date().toISOString(),
+        });
+      }
+
+      event.target.value =
+        "";
+    };
+
+  const handleCameraCapture =
+    (
+      event:
+        React.ChangeEvent<HTMLInputElement>
+    ) => {
+      const file =
+        event.target.files?.[0];
+
+      if (
+        file
+      ) {
+        trigger(
+          "vibrate"
+        );
+
+        releaseTemporaryAttachment();
+
+        const objectUrl =
+          URL.createObjectURL(
+            file
+          );
+
+        attachmentUrlRef.current =
+          objectUrl;
+
+        setLocalFile(
+          file
+        );
+
+        setAttachment({
+          id:
+            crypto.randomUUID(),
+
+          url:
+            objectUrl,
+
+          name:
+            `consulta_${Date.now()}.jpg`,
+
+          type:
+            "image",
+
+          uploaded_at:
+            new Date().toISOString(),
+        });
+      }
+
+      event.target.value =
+        "";
+    };
+
+  const removeAttachment =
+    () => {
+      releaseTemporaryAttachment();
+
+      setAttachment(
+        null
+      );
+
+      setLocalFile(
+        null
+      );
+
+      trigger(
+        "vibrate"
+      );
+    };
+
+  // ==========================================================
+  // QUICK TREATMENT
+  // ==========================================================
+
+  const handleCreateTratamento =
+    async () => {
+      const nome =
+        newTratamentoName.trim();
+
+      if (
+        !nome ||
+        isSavingTratamento
+      ) {
+        return;
+      }
+
+      if (
+        !activePersonId
+      ) {
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Selecione uma pessoa antes de criar um tratamento.",
+          "error"
+        );
+
+        return;
+      }
+
+      setIsSavingTratamento(
+        true
+      );
+
+      trigger(
+        "vibrate"
+      );
+
+      try {
+        const newId =
+          await tratamentosRepository.create({
+            nome,
+
+            status:
+              "ativo",
+
+            person_id:
+              activePersonId,
+          });
+
+        setTratamentosSelecionados(
+          (
+            previous
+          ) =>
+            previous.includes(
+              newId
+            )
+              ? previous
+              : [
+                  ...previous,
+                  newId,
+                ]
+        );
+
+        showToast(
+          "Tratamento cadastrado",
+          "success"
+        );
+
+        setIsCreatingTratamento(
+          false
+        );
+
+        setNewTratamentoName(
+          ""
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao criar tratamento:",
+          error
+        );
+
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Erro ao cadastrar tratamento",
+          "error"
+        );
+      } finally {
+        setIsSavingTratamento(
+          false
+        );
+      }
+    };
+
+  // ==========================================================
+  // QUICK CID
+  // ==========================================================
+
+  const handleCreateCid =
+    async () => {
+      const codigo =
+        newCidCodigo.trim();
+
+      const descricao =
+        newCidDescricao.trim();
+
+      if (
+        !codigo ||
+        !descricao ||
+        isSavingCid
+      ) {
+        return;
+      }
+
+      if (
+        !activePersonId
+      ) {
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Selecione uma pessoa antes de criar um CID.",
+          "error"
+        );
+
+        return;
+      }
+
+      setIsSavingCid(
+        true
+      );
+
+      trigger(
+        "vibrate"
+      );
+
+      try {
+        const newId =
+          await cidsRepository.create({
+            codigo,
+
+            descricao,
+
+            person_id:
+              activePersonId,
+          });
+
+        setCidsSelecionados(
+          (
+            previous
+          ) =>
+            previous.includes(
+              newId
+            )
+              ? previous
+              : [
+                  ...previous,
+                  newId,
+                ]
+        );
+
+        showToast(
+          "CID cadastrado",
+          "success"
+        );
+
+        setIsCreatingCid(
+          false
+        );
+
+        setNewCidCodigo(
+          ""
+        );
+
+        setNewCidDescricao(
+          ""
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao criar CID:",
+          error
+        );
+
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Erro ao cadastrar CID",
+          "error"
+        );
+      } finally {
+        setIsSavingCid(
+          false
+        );
+      }
+    };
+
+  // ==========================================================
+  // VALIDATE
+  // ==========================================================
+
+  const validate =
+    (): boolean => {
+      const newErrors:
+        Record<
+          string,
+          string
+        > = {};
+
+      if (
+        !activePersonId
+      ) {
+        newErrors.person_id =
+          "Pessoa ativa não identificada";
+      }
+
+      if (
+        !medicoId
+      ) {
+        newErrors.medicoId =
+          "Selecione o médico";
+      }
+
+      if (
+        medicoId &&
+        !selectedMedico
+      ) {
+        newErrors.medicoId =
+          "O médico selecionado não está mais disponível";
+      }
+
+      if (
+        hospitalId &&
+        !selectedHospital
+      ) {
+        newErrors.hospitalId =
+          "O hospital selecionado não está mais disponível";
+      }
+
+      if (
+        localId &&
+        !selectedLocal
+      ) {
+        newErrors.localId =
+          "O local selecionado não está mais disponível";
+      }
+
+      if (
+        !parseDateToISO(
+          dataDisplay
+        )
+      ) {
+        newErrors.data =
+          "Informe uma data válida";
+      }
+
+      if (
+        !isValidTime(
+          horario
+        )
+      ) {
+        newErrors.horario =
+          "Horário inválido (use HH:MM)";
+      }
+
+      const tratamentoIdsDisponiveis =
+        new Set(
+          tratamentos
+            .map(
+              (
+                tratamento
+              ) =>
+                tratamento.id
+            )
+            .filter(
+              (
+                id
+              ): id is string =>
+                Boolean(
+                  id
+                )
+            )
+        );
+
+      if (
+        tratamentosSelecionados.some(
+          (
+            id
+          ) =>
+            !tratamentoIdsDisponiveis.has(
+              id
+            )
+        )
+      ) {
+        newErrors.tratamentos =
+          "Há um tratamento selecionado que não pertence à pessoa ativa";
+      }
+
+      const cidIdsDisponiveis =
+        new Set(
+          cids
+            .map(
+              (
+                cid
+              ) =>
+                cid.id
+            )
+            .filter(
+              (
+                id
+              ): id is string =>
+                Boolean(
+                  id
+                )
+            )
+        );
+
+      if (
+        cidsSelecionados.some(
+          (
+            id
+          ) =>
+            !cidIdsDisponiveis.has(
+              id
+            )
+        )
+      ) {
+        newErrors.cids =
+          "Há um CID selecionado que não pertence à pessoa ativa";
+      }
+
+      setErrors(
+        newErrors
+      );
+
+      return (
+        Object.keys(
+          newErrors
+        ).length ===
+        0
+      );
+    };
+
+  // ==========================================================
+  // SUBMIT
+  // ==========================================================
+
+  const handleSubmit =
+    () => {
+      trigger(
+        "vibrate"
+      );
+
+      if (
+        !validate()
+      ) {
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Revise os campos antes de salvar.",
+          "error"
+        );
+
+        return;
+      }
+
+      if (
+        !activePersonId
+      ) {
+        return;
+      }
+
+      if (
+        isSubmitLocked.current ||
+        isSubmitting
+      ) {
+        return;
+      }
+
+      isSubmitLocked.current =
+        true;
+
+      run(
+        async () => {
+          try {
+            let anexoUrl:
+              | string
+              | undefined;
+
+            if (
+              localFile
+            ) {
+              if (
+                !user?.id
+              ) {
+                throw new Error(
+                  "Usuário não autenticado para upload."
+                );
+              }
+
+              const {
+                url,
+                error,
+              } =
+                await uploadFile(
+                  user.id,
+                  localFile,
+                  "saude"
+                );
+
+              if (
+                error
+              ) {
+                throw error;
+              }
+
+              if (
+                url
+              ) {
+                anexoUrl =
+                  url;
+              }
+            }
+
+            const dataISO =
+              parseDateToISO(
+                dataDisplay
+              );
+
+            if (
+              !dataISO
+            ) {
+              throw new Error(
+                "Data inválida"
+              );
+            }
+
+            /*
+             * person_id é injetado por useConsultas().
+             * user_id é injetado pelo repository.
+             */
+            await addConsulta({
+              especialidade:
+                selectedMedico?.especialidade ||
+                "Geral",
+
+              medico:
+                selectedMedico?.nome ||
+                "Médico",
+
+              medico_id:
+                medicoId,
+
+              hospital_id:
+                hospitalId ||
+                undefined,
+
+              local_id:
+                localId ||
+                undefined,
+
+              data:
+                dataISO,
+
+              horario:
+                horario ||
+                undefined,
+
+              status,
+
+              motivo:
+                motivo.trim() ||
+                undefined,
+
+              observacoes:
+                observacoes.trim() ||
+                undefined,
+
+              anexo_url:
+                anexoUrl,
+
+              tratamento_ids:
+                tratamentosSelecionados.length >
+                0
+                  ? Array.from(
+                      new Set(
+                        tratamentosSelecionados
+                      )
+                    )
+                  : undefined,
+
+              cid_ids:
+                cidsSelecionados.length >
+                0
+                  ? Array.from(
+                      new Set(
+                        cidsSelecionados
+                      )
+                    )
+                  : undefined,
+            });
+
+            /*
+             * O blob temporário não é mais necessário depois
+             * que a consulta foi persistida com URL remota.
+             */
+            releaseTemporaryAttachment();
+          } finally {
+            isSubmitLocked.current =
+              false;
+          }
+        },
+        {
+          successMessage:
+            "Consulta criada",
+
+          errorMessage:
+            "Erro ao salvar",
+
+          goBackOnSuccess:
+            true,
+        }
+      );
+    };
+
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraCapture} />
+        <input
+          ref={
+            fileInputRef
+          }
+          type="file"
+          accept="image/*,application/pdf"
+          className="hidden"
+          onChange={
+            handleFileSelect
+          }
+        />
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        <input
+          ref={
+            cameraInputRef
+          }
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={
+            handleCameraCapture
+          }
+        />
+
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"><ArrowLeft size={18} className="text-ink-primary" /></button>
+            <button
+              type="button"
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.back();
+                }
+              }
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              aria-label="Voltar"
+            >
+              <ArrowLeft
+                size={
+                  18
+                }
+                className="text-ink-primary"
+              />
+            </button>
+
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <Stethoscope size={16} className="text-ice" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">Agenda</p>
+                <Stethoscope
+                  size={
+                    16
+                  }
+                  className="text-ice"
+                />
+
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                  Agenda
+                </p>
               </div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">Nova Consulta</h1>
+
+              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
+                Nova Consulta
+              </h1>
             </div>
           </div>
         </header>
 
         <section className="space-y-4 px-5 pt-6">
-          {/* TRATAMENTOS E CIDs COM LIMPAR */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.01 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Activity size={16} className="text-violet-400" />
-                <label className="text-sm font-semibold text-ink-primary">Tratamentos e CIDs Relacionados</label>
+          {!activePersonId && (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              className="rounded-[24px] border border-coral/30 bg-coral/10 p-4"
+            >
+              <p className="text-sm font-semibold text-coral">
+                Pessoa ativa não identificada
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-ink-muted">
+                Selecione uma pessoa no Vault antes de cadastrar uma consulta.
+              </p>
+            </motion.div>
+          )}
+
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.01,
+            }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <Activity
+                  size={
+                    16
+                  }
+                  className="shrink-0 text-violet-400"
+                />
+
+                <label className="text-sm font-semibold text-ink-primary">
+                  Tratamentos e CIDs Relacionados
+                </label>
               </div>
-              {(tratamentosSelecionados.length > 0 || cidsSelecionados.length > 0) && (
+
+              {(tratamentosSelecionados.length >
+                0 ||
+                cidsSelecionados.length >
+                  0) && (
                 <button
                   type="button"
-                  onClick={() => {
-                    trigger("vibrate");
-                    setTratamentosSelecionados([]);
-                    setCidsSelecionados([]);
-                  }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
+                  onClick={
+                    () => {
+                      trigger(
+                        "vibrate"
+                      );
+
+                      setTratamentosSelecionados(
+                        []
+                      );
+
+                      setCidsSelecionados(
+                        []
+                      );
+                    }
+                  }
+                  className="flex shrink-0 items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
                 >
-                  <Eraser size={12} /> Limpar todos
+                  <Eraser
+                    size={
+                      12
+                    }
+                  />
+
+                  Limpar
                 </button>
               )}
             </div>
 
-            {/* Tratamentos selecionados */}
-            {tratamentosSelecionados.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {tratamentosSelecionados.map((tId) => {
-                  const t = tratamentos.find((x) => x.id === tId);
-                  if (!t) return null;
-                  const IconComp = getTratamentoIcon(t.nome);
-                  return (
-                    <div key={tId} className="flex items-center gap-1.5 rounded-full bg-violet-400/10 border border-violet-400/20 px-3 py-1.5">
-                      <IconComp size={14} className="text-violet-400" />
-                      <span className="text-xs font-medium text-violet-300">{t.nome}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setTratamentosSelecionados((prev) => prev.filter((item) => item !== tId)); }}
-                        className="ml-1 text-violet-400/60 hover:text-coral transition-colors"
+            {errors.tratamentos && (
+              <p className="mb-2 text-xs text-coral">
+                {
+                  errors.tratamentos
+                }
+              </p>
+            )}
+
+            {errors.cids && (
+              <p className="mb-2 text-xs text-coral">
+                {
+                  errors.cids
+                }
+              </p>
+            )}
+
+            {tratamentosSelecionados.length >
+              0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {tratamentosSelecionados.map(
+                  (
+                    tratamentoId
+                  ) => {
+                    const tratamento =
+                      tratamentos.find(
+                        (
+                          item
+                        ) =>
+                          item.id ===
+                          tratamentoId
+                      );
+
+                    if (
+                      !tratamento
+                    ) {
+                      return null;
+                    }
+
+                    const IconComp =
+                      getTratamentoIcon(
+                        tratamento.nome
+                      );
+
+                    return (
+                      <div
+                        key={
+                          tratamentoId
+                        }
+                        className="flex items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5"
                       >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  );
-                })}
+                        <IconComp
+                          size={
+                            14
+                          }
+                          className="text-violet-400"
+                        />
+
+                        <span className="text-xs font-medium text-violet-300">
+                          {
+                            tratamento.nome
+                          }
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={
+                            (
+                              event
+                            ) => {
+                              event.stopPropagation();
+
+                              trigger(
+                                "vibrate"
+                              );
+
+                              setTratamentosSelecionados(
+                                (
+                                  previous
+                                ) =>
+                                  previous.filter(
+                                    (
+                                      item
+                                    ) =>
+                                      item !==
+                                      tratamentoId
+                                  )
+                              );
+
+                              clearError(
+                                "tratamentos"
+                              );
+                            }
+                          }
+                          className="ml-1 text-violet-400/60 transition-colors hover:text-coral"
+                          aria-label={`Remover ${tratamento.nome}`}
+                        >
+                          <X
+                            size={
+                              14
+                            }
+                          />
+                        </button>
+                      </div>
+                    );
+                  }
+                )}
               </div>
             )}
 
-            {/* CIDs selecionados */}
-            {cidsSelecionados.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {cidsSelecionados.map((cId) => {
-                  const c = cids.find((x) => x.id === cId);
-                  if (!c) return null;
-                  const theme = getClinicalTheme(c.descricao || c.codigo);
-                  const IconComp = theme.icon;
-                  return (
-                    <div key={cId} className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}>
-                      <IconComp size={14} />
-                      <span className="text-xs font-medium">{c.codigo}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); trigger("vibrate"); setCidsSelecionados((prev) => prev.filter((item) => item !== cId)); }}
-                        className="ml-1 text-current/60 hover:text-coral transition-colors"
+            {cidsSelecionados.length >
+              0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {cidsSelecionados.map(
+                  (
+                    cidId
+                  ) => {
+                    const cid =
+                      cids.find(
+                        (
+                          item
+                        ) =>
+                          item.id ===
+                          cidId
+                      );
+
+                    if (
+                      !cid
+                    ) {
+                      return null;
+                    }
+
+                    const theme =
+                      getClinicalTheme(
+                        cid.descricao ||
+                          cid.codigo
+                      );
+
+                    const IconComp =
+                      theme.icon;
+
+                    return (
+                      <div
+                        key={
+                          cidId
+                        }
+                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}
                       >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  );
-                })}
+                        <IconComp
+                          size={
+                            14
+                          }
+                        />
+
+                        <span className="text-xs font-medium">
+                          {
+                            cid.codigo
+                          }
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={
+                            (
+                              event
+                            ) => {
+                              event.stopPropagation();
+
+                              trigger(
+                                "vibrate"
+                              );
+
+                              setCidsSelecionados(
+                                (
+                                  previous
+                                ) =>
+                                  previous.filter(
+                                    (
+                                      item
+                                    ) =>
+                                      item !==
+                                      cidId
+                                  )
+                              );
+
+                              clearError(
+                                "cids"
+                              );
+                            }
+                          }
+                          className="ml-1 text-current/60 transition-colors hover:text-coral"
+                          aria-label={`Remover ${cid.codigo}`}
+                        >
+                          <X
+                            size={
+                              14
+                            }
+                          />
+                        </button>
+                      </div>
+                    );
+                  }
+                )}
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <button
-                onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }}
-                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10"
+                type="button"
+                disabled={
+                  !activePersonId
+                }
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setIsTratamentoModalOpen(
+                      true
+                    );
+                  }
+                }
+                className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Plus size={16} />
-                <span className="text-sm font-medium">Vincular Tratamento</span>
+                <Plus
+                  size={
+                    16
+                  }
+                />
+
+                <span className="text-sm font-medium">
+                  Vincular Tratamento
+                </span>
               </button>
+
               <button
-                onClick={() => { trigger("vibrate"); setIsCidModalOpen(true); }}
-                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300 transition-colors hover:bg-emerald-400/10"
+                type="button"
+                disabled={
+                  !activePersonId
+                }
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setIsCidModalOpen(
+                      true
+                    );
+                  }
+                }
+                className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-300 transition-colors hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Plus size={16} />
-                <span className="text-sm font-medium">Vincular CID</span>
+                <Plus
+                  size={
+                    16
+                  }
+                />
+
+                <span className="text-sm font-medium">
+                  Vincular CID
+                </span>
               </button>
             </div>
           </motion.div>
 
-          {/* MÉDICO COM LIMPAR */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.02 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-ink-primary">Médico <span className="text-coral">*</span></label>
-              {medicoId && selectedMedico && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    trigger("vibrate");
-                    setMedicoId("");
-                  }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
-                >
-                  <Eraser size={12} /> Limpar
-                </button>
-              )}
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.02,
+            }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-sm font-medium text-ink-primary">
+                Médico{" "}
+                <span className="text-coral">
+                  *
+                </span>
+              </label>
+
+              {medicoId &&
+                selectedMedico && (
+                  <button
+                    type="button"
+                    onClick={
+                      () => {
+                        trigger(
+                          "vibrate"
+                        );
+
+                        setMedicoId(
+                          ""
+                        );
+
+                        clearError(
+                          "medicoId"
+                        );
+                      }
+                    }
+                    className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
+                  >
+                    <Eraser
+                      size={
+                        12
+                      }
+                    />
+
+                    Limpar
+                  </button>
+                )}
             </div>
+
             <button
               type="button"
-              onClick={() => setIsMedicoModalOpen(true)}
-              className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${errors.medicoId ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised flex items-center justify-between`}
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setIsMedicoModalOpen(
+                    true
+                  );
+                }
+              }
+              className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-colors ${
+                errors.medicoId
+                  ? "border-coral/50"
+                  : "border-surface-border/50"
+              } bg-surface-raised`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <UserCheck size={16} className="text-ice shrink-0" />
-                <span className="truncate text-ink-primary">{selectedMedico ? `Dr(a). ${selectedMedico.nome} (${selectedMedico.especialidade || 'Geral'})` : "Selecionar médico"}</span>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <UserCheck
+                  size={
+                    16
+                  }
+                  className="shrink-0 text-ice"
+                />
+
+                <span className="truncate text-ink-primary">
+                  {selectedMedico
+                    ? `Dr(a). ${selectedMedico.nome} (${selectedMedico.especialidade || "Geral"})`
+                    : "Selecionar médico"}
+                </span>
               </div>
             </button>
-            {errors.medicoId && <p className="mt-1 text-xs text-coral ml-1">{errors.medicoId}</p>}
+
+            {errors.medicoId && (
+              <p className="ml-1 mt-1 text-xs text-coral">
+                {
+                  errors.medicoId
+                }
+              </p>
+            )}
           </motion.div>
 
-          {/* HOSPITAL E LOCAL COM LIMPAR */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.03 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-3">
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.03,
+            }}
+            className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Hospital (Opcional)</label>
-                {hospitalId && selectedHospital && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setHospitalId("");
-                    }}
-                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
-                  >
-                    <Eraser size={12} /> Limpar
-                  </button>
-                )}
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="block text-sm font-medium text-ink-primary">
+                  Hospital
+                </label>
+
+                {hospitalId &&
+                  selectedHospital && (
+                    <button
+                      type="button"
+                      onClick={
+                        () => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          setHospitalId(
+                            ""
+                          );
+
+                          clearError(
+                            "hospitalId"
+                          );
+                        }
+                      }
+                      className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
+                    >
+                      <Eraser
+                        size={
+                          12
+                        }
+                      />
+
+                      Limpar
+                    </button>
+                  )}
               </div>
+
               <button
                 type="button"
-                onClick={() => setIsHospitalModalOpen(true)}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between text-ink-primary"
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setIsHospitalModalOpen(
+                      true
+                    );
+                  }
+                }
+                className={`flex w-full items-center justify-between rounded-2xl border bg-surface-raised px-4 py-3 text-left text-ink-primary ${
+                  errors.hospitalId
+                    ? "border-coral/50"
+                    : "border-surface-border/50"
+                }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Building2 size={16} className="text-violet-400 shrink-0" />
-                  <span className="truncate">{selectedHospital ? selectedHospital.nome : "Vincular hospital..."}</span>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <Building2
+                    size={
+                      16
+                    }
+                    className="shrink-0 text-violet-400"
+                  />
+
+                  <span className="truncate">
+                    {selectedHospital
+                      ? selectedHospital.nome
+                      : "Vincular hospital..."}
+                  </span>
                 </div>
               </button>
+
+              {errors.hospitalId && (
+                <p className="ml-1 mt-1 text-xs text-coral">
+                  {
+                    errors.hospitalId
+                  }
+                </p>
+              )}
             </div>
+
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Clínica / Posto (Opcional)</label>
-                {localId && selectedLocal && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      trigger("vibrate");
-                      setLocalId("");
-                    }}
-                    className="flex items-center gap-1 text-[10px] font-bold text-coral bg-coral/10 px-2 py-0.5 rounded-md uppercase"
-                  >
-                    <Eraser size={12} /> Limpar
-                  </button>
-                )}
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="block text-sm font-medium text-ink-primary">
+                  Clínica / Posto
+                </label>
+
+                {localId &&
+                  selectedLocal && (
+                    <button
+                      type="button"
+                      onClick={
+                        () => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          setLocalId(
+                            ""
+                          );
+
+                          clearError(
+                            "localId"
+                          );
+                        }
+                      }
+                      className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
+                    >
+                      <Eraser
+                        size={
+                          12
+                        }
+                      />
+
+                      Limpar
+                    </button>
+                  )}
               </div>
+
               <button
                 type="button"
-                onClick={() => setIsLocalModalOpen(true)}
-                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left flex items-center justify-between text-ink-primary"
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setIsLocalModalOpen(
+                      true
+                    );
+                  }
+                }
+                className={`flex w-full items-center justify-between rounded-2xl border bg-surface-raised px-4 py-3 text-left text-ink-primary ${
+                  errors.localId
+                    ? "border-coral/50"
+                    : "border-surface-border/50"
+                }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <MapPin size={16} className="text-emerald-400 shrink-0" />
-                  <span className="truncate">{selectedLocal ? selectedLocal.nome : "Vincular local / laboratório..."}</span>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <MapPin
+                    size={
+                      16
+                    }
+                    className="shrink-0 text-emerald-400"
+                  />
+
+                  <span className="truncate">
+                    {selectedLocal
+                      ? selectedLocal.nome
+                      : "Vincular local..."}
+                  </span>
                 </div>
               </button>
+
+              {errors.localId && (
+                <p className="ml-1 mt-1 text-xs text-coral">
+                  {
+                    errors.localId
+                  }
+                </p>
+              )}
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.06 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm space-y-4">
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.06,
+            }}
+            className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Data <span className="text-coral">*</span></label>
+                <label className="block text-sm font-medium text-ink-primary">
+                  Data{" "}
+                  <span className="text-coral">
+                    *
+                  </span>
+                </label>
+
                 <div className="relative">
-                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <Calendar
+                    size={
+                      16
+                    }
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  />
+
                   <input
                     type="text"
+                    inputMode="numeric"
                     placeholder="DD/MM/AAAA"
-                    maxLength={10}
-                    value={dataDisplay}
-                    onChange={(e) => setDataDisplay(handleDateMask(e.target.value))}
-                    className={`w-full rounded-2xl border ${errors.data ? "border-coral/50" : "border-surface-border/50"} bg-surface-raised pl-9 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice/50`}
+                    maxLength={
+                      10
+                    }
+                    value={
+                      dataDisplay
+                    }
+                    onChange={
+                      (
+                        event
+                      ) => {
+                        setDataDisplay(
+                          handleDateMask(
+                            event.target.value
+                          )
+                        );
+
+                        clearError(
+                          "data"
+                        );
+                      }
+                    }
+                    className={`w-full rounded-2xl border ${
+                      errors.data
+                        ? "border-coral/50"
+                        : "border-surface-border/50"
+                    } bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none focus:border-ice/50`}
                   />
                 </div>
-                {errors.data && <p className="text-xs text-coral ml-1">{errors.data}</p>}
+
+                {errors.data && (
+                  <p className="ml-1 text-xs text-coral">
+                    {
+                      errors.data
+                    }
+                  </p>
+                )}
               </div>
+
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-ink-primary">Horário</label>
+                <label className="block text-sm font-medium text-ink-primary">
+                  Horário
+                </label>
+
                 <div className="relative">
-                  <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <Clock
+                    size={
+                      16
+                    }
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  />
+
                   <input
                     type="text"
+                    inputMode="numeric"
                     placeholder="00:00"
-                    maxLength={5}
-                    value={horario}
-                    onChange={(e) => setHorario(handleTimeMask(e.target.value))}
-                    className={`w-full rounded-2xl border ${errors.horario ? "border-coral/50 text-coral" : "border-surface-border/50 text-ink-primary"} bg-surface-raised pl-9 pr-4 py-3 font-mono text-sm outline-none focus:border-ice/50`}
+                    maxLength={
+                      5
+                    }
+                    value={
+                      horario
+                    }
+                    onChange={
+                      (
+                        event
+                      ) => {
+                        setHorario(
+                          handleTimeMask(
+                            event.target.value
+                          )
+                        );
+
+                        clearError(
+                          "horario"
+                        );
+                      }
+                    }
+                    className={`w-full rounded-2xl border ${
+                      errors.horario
+                        ? "border-coral/50 text-coral"
+                        : "border-surface-border/50 text-ink-primary"
+                    } bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm outline-none focus:border-ice/50`}
                   />
                 </div>
-                {errors.horario && <p className="text-xs text-coral ml-1">{errors.horario}</p>}
+
+                {errors.horario && (
+                  <p className="ml-1 text-xs text-coral">
+                    {
+                      errors.horario
+                    }
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="space-y-1.5 pt-2 border-t border-surface-border/30">
-              <label className="text-sm font-medium text-ink-primary">Status</label>
+            <div className="space-y-1.5 border-t border-surface-border/30 pt-2">
+              <label className="text-sm font-medium text-ink-primary">
+                Status
+              </label>
+
               <div className="grid grid-cols-3 gap-1.5">
-                {(["agendada", "realizada", "cancelada"] as const).map(st => (
-                  <button key={st} onClick={() => { trigger("vibrate"); setStatus(st); }} className={`text-[11px] font-bold uppercase tracking-wider py-2.5 rounded-xl transition-colors ${status === st ? 'bg-ice text-void shadow-sm' : 'bg-surface-raised text-ink-muted border border-surface-border/50'}`}>{st}</button>
-                ))}
+                {(
+                  [
+                    "agendada",
+                    "realizada",
+                    "cancelada",
+                  ] as const
+                ).map(
+                  (
+                    item
+                  ) => (
+                    <button
+                      key={
+                        item
+                      }
+                      type="button"
+                      onClick={
+                        () => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          setStatus(
+                            item
+                          );
+                        }
+                      }
+                      className={`rounded-xl py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                        status ===
+                        item
+                          ? "bg-ice text-void shadow-sm"
+                          : "border border-surface-border/50 bg-surface-raised text-ink-muted"
+                      }`}
+                      aria-pressed={
+                        status ===
+                        item
+                      }
+                    >
+                      {
+                        item
+                      }
+                    </button>
+                  )
+                )}
               </div>
             </div>
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.09 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <Input label="Motivo / Assunto (Opcional)" placeholder="Ex: Retorno..." value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.09,
+            }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <Input
+              label="Motivo / Assunto"
+              placeholder="Ex: Retorno..."
+              value={
+                motivo
+              }
+              onChange={
+                (
+                  event
+                ) =>
+                  setMotivo(
+                    event.target.value
+                  )
+              }
+            />
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.12 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <TextArea label="Anotações (Opcional)" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Instruções do médico, exames solicitados..." />
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.12,
+            }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <TextArea
+              label="Anotações"
+              value={
+                observacoes
+              }
+              onChange={
+                (
+                  event
+                ) =>
+                  setObservacoes(
+                    event.target.value
+                  )
+              }
+              placeholder="Instruções do médico, exames solicitados..."
+            />
           </motion.div>
 
-          <motion.div variants={fadeUp} initial="initial" animate="animate" transition={{ delay: 0.15 }} className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="mb-3"><label className="block text-sm font-medium text-ink-primary">Comprovante / Anexo</label></div>
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.15,
+            }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-ink-primary">
+                Comprovante / Anexo
+              </label>
+            </div>
+
             {!attachment ? (
               <div className="grid grid-cols-2 gap-3">
-                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}><Upload size={16} />Arquivo</Button>
-                <Button variant="secondary" onClick={() => cameraInputRef.current?.click()}><Camera size={16} />Câmera</Button>
+                <Button
+                  variant="secondary"
+                  onClick={
+                    () =>
+                      fileInputRef.current?.click()
+                  }
+                >
+                  <Upload
+                    size={
+                      16
+                    }
+                  />
+
+                  Arquivo
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  onClick={
+                    () =>
+                      cameraInputRef.current?.click()
+                  }
+                >
+                  <Camera
+                    size={
+                      16
+                    }
+                  />
+
+                  Câmera
+                </Button>
               </div>
             ) : (
               <div className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3">
-                <ImageIcon size={16} className="text-ice" />
-                <p className="truncate text-sm font-medium flex-1 text-ink-primary">{attachment.name}</p>
-                <button onClick={removeAttachment} className="text-ink-muted"><X size={14} /></button>
+                <ImageIcon
+                  size={
+                    16
+                  }
+                  className="shrink-0 text-ice"
+                />
+
+                <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink-primary">
+                  {
+                    attachment.name
+                  }
+                </p>
+
+                <button
+                  type="button"
+                  onClick={
+                    removeAttachment
+                  }
+                  className="text-ink-muted transition-colors hover:text-coral"
+                  aria-label="Remover anexo"
+                >
+                  <X
+                    size={
+                      14
+                    }
+                  />
+                </button>
               </div>
             )}
           </motion.div>
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : "Salvar Consulta"}</Button>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={
+              handleSubmit
+            }
+            disabled={
+              isSubmitting ||
+              !activePersonId
+            }
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2
+                  size={
+                    16
+                  }
+                  className="animate-spin"
+                />
+
+                Salvando...
+              </>
+            ) : (
+              "Salvar Consulta"
+            )}
+          </Button>
         </div>
 
-        {/* Modais de seleção - mesmos padrões das cirurgias */}
-        <SelectionModal
-          isOpen={isMedicoModalOpen}
-          onClose={() => setIsMedicoModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setMedicoId(item.id!); }}
-          items={medicos}
+        <SelectionModal<Medico>
+          isOpen={
+            isMedicoModalOpen
+          }
+          onClose={
+            () =>
+              setIsMedicoModalOpen(
+                false
+              )
+          }
+          onSelect={
+            (
+              item
+            ) => {
+              if (
+                !item.id
+              ) {
+                return;
+              }
+
+              trigger(
+                "vibrate"
+              );
+
+              setMedicoId(
+                item.id
+              );
+
+              clearError(
+                "medicoId"
+              );
+
+              setIsMedicoModalOpen(
+                false
+              );
+            }
+          }
+          items={
+            medicos
+          }
           title="Selecionar Médico"
-          renderItem={(item: any) => (
-            <div>
-              <p className="font-medium text-ink-primary">Dr(a). {item.nome}</p>
-              {item.especialidade && <p className="text-xs text-ink-muted">{item.especialidade}</p>}
-            </div>
-          )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
-          onCreateNew={() => { setIsMedicoModalOpen(false); router.push("/saude/medicos/novo"); }}
+          renderItem={
+            (
+              item
+            ) => (
+              <div>
+                <p className="font-medium text-ink-primary">
+                  Dr(a).{" "}
+                  {
+                    item.nome
+                  }
+                </p>
+
+                {item.especialidade && (
+                  <p className="text-xs text-ink-muted">
+                    {
+                      item.especialidade
+                    }
+                  </p>
+                )}
+              </div>
+            )
+          }
+          getItemId={
+            (
+              item
+            ) =>
+              item.id!
+          }
+          getItemLabel={
+            (
+              item
+            ) =>
+              item.nome
+          }
+          onCreateNew={
+            () => {
+              setIsMedicoModalOpen(
+                false
+              );
+
+              router.push(
+                "/saude/medicos/novo"
+              );
+            }
+          }
           createNewLabel="Cadastrar Médico"
         />
-        <SelectionModal
-          isOpen={isHospitalModalOpen}
-          onClose={() => setIsHospitalModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setHospitalId(item.id!); }}
-          items={hospitais}
+
+        <SelectionModal<Hospital>
+          isOpen={
+            isHospitalModalOpen
+          }
+          onClose={
+            () =>
+              setIsHospitalModalOpen(
+                false
+              )
+          }
+          onSelect={
+            (
+              item
+            ) => {
+              if (
+                !item.id
+              ) {
+                return;
+              }
+
+              trigger(
+                "vibrate"
+              );
+
+              setHospitalId(
+                item.id
+              );
+
+              clearError(
+                "hospitalId"
+              );
+
+              setIsHospitalModalOpen(
+                false
+              );
+            }
+          }
+          items={
+            hospitais
+          }
           title="Selecionar Hospital"
-          renderItem={(item: any) => (
-            <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
-            </div>
-          )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
-          onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
+          renderItem={
+            (
+              item
+            ) => (
+              <div>
+                <p className="font-medium text-ink-primary">
+                  {
+                    item.nome
+                  }
+                </p>
+              </div>
+            )
+          }
+          getItemId={
+            (
+              item
+            ) =>
+              item.id!
+          }
+          getItemLabel={
+            (
+              item
+            ) =>
+              item.nome
+          }
+          onCreateNew={
+            () => {
+              setIsHospitalModalOpen(
+                false
+              );
+
+              router.push(
+                "/saude/hospitais/novo"
+              );
+            }
+          }
           createNewLabel="Cadastrar Hospital"
         />
-        <SelectionModal
-          isOpen={isLocalModalOpen}
-          onClose={() => setIsLocalModalOpen(false)}
-          onSelect={(item: any) => { trigger("vibrate"); setLocalId(item.id!); }}
-          items={locais}
+
+        <SelectionModal<LocalSaude>
+          isOpen={
+            isLocalModalOpen
+          }
+          onClose={
+            () =>
+              setIsLocalModalOpen(
+                false
+              )
+          }
+          onSelect={
+            (
+              item
+            ) => {
+              if (
+                !item.id
+              ) {
+                return;
+              }
+
+              trigger(
+                "vibrate"
+              );
+
+              setLocalId(
+                item.id
+              );
+
+              clearError(
+                "localId"
+              );
+
+              setIsLocalModalOpen(
+                false
+              );
+            }
+          }
+          items={
+            locais
+          }
           title="Selecionar Local / Posto"
-          renderItem={(item: any) => (
-            <div>
-              <p className="font-medium text-ink-primary">{item.nome}</p>
-            </div>
-          )}
-          getItemId={(item: any) => item.id!}
-          getItemLabel={(item: any) => item.nome}
-          onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }}
+          renderItem={
+            (
+              item
+            ) => (
+              <div>
+                <p className="font-medium text-ink-primary">
+                  {
+                    item.nome
+                  }
+                </p>
+              </div>
+            )
+          }
+          getItemId={
+            (
+              item
+            ) =>
+              item.id!
+          }
+          getItemLabel={
+            (
+              item
+            ) =>
+              item.nome
+          }
+          onCreateNew={
+            () => {
+              setIsLocalModalOpen(
+                false
+              );
+
+              router.push(
+                "/saude/locais/novo"
+              );
+            }
+          }
           createNewLabel="Cadastrar Local"
         />
 
-        <SelectionModal
-          isOpen={isTratamentoModalOpen}
-          onClose={() => setIsTratamentoModalOpen(false)}
-          onSelect={(item: Tratamento) => {
-            trigger("vibrate");
-            if (!tratamentosSelecionados.includes(item.id!)) {
-              setTratamentosSelecionados((prev) => [...prev, item.id!]);
+        <SelectionModal<Tratamento>
+          isOpen={
+            isTratamentoModalOpen
+          }
+          onClose={
+            () =>
+              setIsTratamentoModalOpen(
+                false
+              )
+          }
+          onSelect={
+            (
+              item
+            ) => {
+              if (
+                !item.id
+              ) {
+                return;
+              }
+
+              trigger(
+                "vibrate"
+              );
+
+              setTratamentosSelecionados(
+                (
+                  previous
+                ) =>
+                  previous.includes(
+                    item.id!
+                  )
+                    ? previous
+                    : [
+                        ...previous,
+                        item.id!,
+                      ]
+              );
+
+              clearError(
+                "tratamentos"
+              );
             }
-          }}
-          items={tratamentos}
+          }
+          items={
+            tratamentos
+          }
           title="Vincular Tratamentos"
           placeholder="Buscar tratamento..."
-          renderItem={(item: Tratamento) => {
-            const IconComp = getTratamentoIcon(item.nome);
-            const isSelected = tratamentosSelecionados.includes(item.id!);
-            return (
-              <div className="flex items-center gap-2 w-full">
-                <IconComp size={16} className="text-violet-400" />
-                <span className={`text-sm font-medium ${isSelected ? "text-violet-400" : "text-ink-primary"}`}>
-                  {item.nome}
-                </span>
-                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
-              </div>
-            );
-          }}
-          getItemId={(item: Tratamento) => item.id!}
-          getItemLabel={(item: Tratamento) => item.nome}
-          onCreateNew={() => { setIsTratamentoModalOpen(false); setIsCreatingTratamento(true); }}
+          renderItem={
+            (
+              item
+            ) => {
+              const IconComp =
+                getTratamentoIcon(
+                  item.nome
+                );
+
+              const isSelected =
+                Boolean(
+                  item.id &&
+                    tratamentosSelecionados.includes(
+                      item.id
+                    )
+                );
+
+              return (
+                <div className="flex w-full items-center gap-2">
+                  <IconComp
+                    size={
+                      16
+                    }
+                    className="text-violet-400"
+                  />
+
+                  <span
+                    className={`text-sm font-medium ${
+                      isSelected
+                        ? "text-violet-400"
+                        : "text-ink-primary"
+                    }`}
+                  >
+                    {
+                      item.nome
+                    }
+                  </span>
+
+                  {isSelected && (
+                    <Check
+                      size={
+                        14
+                      }
+                      className="ml-auto text-emerald-400"
+                    />
+                  )}
+                </div>
+              );
+            }
+          }
+          getItemId={
+            (
+              item
+            ) =>
+              item.id!
+          }
+          getItemLabel={
+            (
+              item
+            ) =>
+              item.nome
+          }
+          onCreateNew={
+            () => {
+              setIsTratamentoModalOpen(
+                false
+              );
+
+              setIsCreatingTratamento(
+                true
+              );
+            }
+          }
           createNewLabel="Cadastrar Novo Tratamento"
         />
 
-        <SelectionModal
-          isOpen={isCidModalOpen}
-          onClose={() => setIsCidModalOpen(false)}
-          onSelect={(item: Cid) => {
-            trigger("vibrate");
-            if (!cidsSelecionados.includes(item.id!)) {
-              setCidsSelecionados((prev) => [...prev, item.id!]);
+        <SelectionModal<Cid>
+          isOpen={
+            isCidModalOpen
+          }
+          onClose={
+            () =>
+              setIsCidModalOpen(
+                false
+              )
+          }
+          onSelect={
+            (
+              item
+            ) => {
+              if (
+                !item.id
+              ) {
+                return;
+              }
+
+              trigger(
+                "vibrate"
+              );
+
+              setCidsSelecionados(
+                (
+                  previous
+                ) =>
+                  previous.includes(
+                    item.id!
+                  )
+                    ? previous
+                    : [
+                        ...previous,
+                        item.id!,
+                      ]
+              );
+
+              clearError(
+                "cids"
+              );
             }
-          }}
-          items={cids}
+          }
+          items={
+            cids
+          }
           title="Vincular CIDs"
           placeholder="Buscar CID..."
-          renderItem={(item: Cid) => {
-            const theme = getClinicalTheme(item.descricao || item.codigo);
-            const IconComp = theme.icon;
-            const isSelected = cidsSelecionados.includes(item.id!);
-            return (
-              <div className="flex items-center gap-2 w-full">
-                <IconComp size={16} className={theme.textClass} />
-                <span className={`text-sm font-medium ${isSelected ? theme.textClass : "text-ink-primary"}`}>
-                  {item.codigo} - {item.descricao}
-                </span>
-                {isSelected && <span className="ml-auto text-[10px] text-emerald-400">✓</span>}
-              </div>
-            );
-          }}
-          getItemId={(item: Cid) => item.id!}
-          getItemLabel={(item: Cid) => `${item.codigo} - ${item.descricao}`}
-          onCreateNew={() => { setIsCidModalOpen(false); setIsCreatingCid(true); }}
+          renderItem={
+            (
+              item
+            ) => {
+              const theme =
+                getClinicalTheme(
+                  item.descricao ||
+                    item.codigo
+                );
+
+              const IconComp =
+                theme.icon;
+
+              const isSelected =
+                Boolean(
+                  item.id &&
+                    cidsSelecionados.includes(
+                      item.id
+                    )
+                );
+
+              return (
+                <div className="flex w-full items-center gap-2">
+                  <IconComp
+                    size={
+                      16
+                    }
+                    className={
+                      theme.textClass
+                    }
+                  />
+
+                  <span
+                    className={`text-sm font-medium ${
+                      isSelected
+                        ? theme.textClass
+                        : "text-ink-primary"
+                    }`}
+                  >
+                    {
+                      item.codigo
+                    }{" "}
+                    -{" "}
+                    {
+                      item.descricao
+                    }
+                  </span>
+
+                  {isSelected && (
+                    <Check
+                      size={
+                        14
+                      }
+                      className="ml-auto text-emerald-400"
+                    />
+                  )}
+                </div>
+              );
+            }
+          }
+          getItemId={
+            (
+              item
+            ) =>
+              item.id!
+          }
+          getItemLabel={
+            (
+              item
+            ) =>
+              `${item.codigo} - ${item.descricao}`
+          }
+          onCreateNew={
+            () => {
+              setIsCidModalOpen(
+                false
+              );
+
+              setIsCreatingCid(
+                true
+              );
+            }
+          }
           createNewLabel="Cadastrar Novo CID"
         />
 
-        <BottomSheet isOpen={isCreatingTratamento} onClose={() => setIsCreatingTratamento(false)} title="Novo Tratamento">
+        <BottomSheet
+          isOpen={
+            isCreatingTratamento
+          }
+          onClose={
+            () =>
+              setIsCreatingTratamento(
+                false
+              )
+          }
+          title="Novo Tratamento"
+        >
           <div className="space-y-4 px-1 pb-2">
-            <Input label="Nome do Tratamento" value={newTratamentoName} onChange={(e) => setNewTratamentoName(e.target.value)} autoFocus />
-            <Button variant="primary" fullWidth onClick={handleCreateTratamento} disabled={!newTratamentoName.trim() || isSavingTratamento}>
-              {isSavingTratamento ? <Loader2 size={16} className="animate-spin" /> : "Salvar e Selecionar"}
+            <Input
+              label="Nome do Tratamento"
+              value={
+                newTratamentoName
+              }
+              onChange={
+                (
+                  event
+                ) =>
+                  setNewTratamentoName(
+                    event.target.value
+                  )
+              }
+              autoFocus
+            />
+
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={
+                handleCreateTratamento
+              }
+              disabled={
+                !newTratamentoName.trim() ||
+                isSavingTratamento ||
+                !activePersonId
+              }
+            >
+              {isSavingTratamento ? (
+                <Loader2
+                  size={
+                    16
+                  }
+                  className="animate-spin"
+                />
+              ) : (
+                "Salvar e Selecionar"
+              )}
             </Button>
           </div>
         </BottomSheet>
 
-        <BottomSheet isOpen={isCreatingCid} onClose={() => setIsCreatingCid(false)} title="Novo CID">
+        <BottomSheet
+          isOpen={
+            isCreatingCid
+          }
+          onClose={
+            () =>
+              setIsCreatingCid(
+                false
+              )
+          }
+          title="Novo CID"
+        >
           <div className="space-y-4 px-1 pb-2">
-            <Input label="Código CID" placeholder="Ex: F90.0" value={newCidCodigo} onChange={(e) => setNewCidCodigo(e.target.value)} autoFocus />
-            <Input label="Descrição" placeholder="Ex: Transtorno de déficit de atenção" value={newCidDescricao} onChange={(e) => setNewCidDescricao(e.target.value)} />
-            <Button variant="primary" fullWidth onClick={handleCreateCid} disabled={!newCidCodigo.trim() || !newCidDescricao.trim()}>
-              Salvar e Selecionar
+            <Input
+              label="Código CID"
+              placeholder="Ex: F90.0"
+              value={
+                newCidCodigo
+              }
+              onChange={
+                (
+                  event
+                ) =>
+                  setNewCidCodigo(
+                    event.target.value
+                  )
+              }
+              autoFocus
+            />
+
+            <Input
+              label="Descrição"
+              placeholder="Ex: Transtorno de déficit de atenção"
+              value={
+                newCidDescricao
+              }
+              onChange={
+                (
+                  event
+                ) =>
+                  setNewCidDescricao(
+                    event.target.value
+                  )
+              }
+            />
+
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={
+                handleCreateCid
+              }
+              disabled={
+                !newCidCodigo.trim() ||
+                !newCidDescricao.trim() ||
+                isSavingCid ||
+                !activePersonId
+              }
+            >
+              {isSavingCid ? (
+                <Loader2
+                  size={
+                    16
+                  }
+                  className="animate-spin"
+                />
+              ) : (
+                "Salvar e Selecionar"
+              )}
             </Button>
           </div>
         </BottomSheet>

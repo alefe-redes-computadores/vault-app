@@ -1,456 +1,1561 @@
 // app/saude/medicos/editar/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense, useMemo, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
-import { 
-  ArrowLeft, Save, Loader2, Stethoscope, Trash2, Calendar, 
-  FlaskConical, ExternalLink, Building2, MapPin, Activity, Plus, X, FolderHeart, Pill
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import {
+  motion,
+} from "framer-motion";
+import {
+  Activity,
+  ArrowLeft,
+  Building2,
+  Calendar,
+  ExternalLink,
+  FlaskConical,
+  FolderHeart,
+  Loader2,
+  MapPin,
+  Pill,
+  Save,
+  Trash2,
 } from "lucide-react";
-import { useHapticFeedback } from "@/lib/haptics";
-import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { TextArea } from "@/components/ui/TextArea";
-import { PageTransition } from "@/components/PageTransition";
-import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { medicosRepository } from "@/lib/repositories/medicos";
-import { SelectionModal } from "@/components/SelectionModal";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { useHospitais } from "@/hooks/useHospitais";
-import { useLocais } from "@/hooks/useLocais";
-import { useTratamentos } from "@/hooks/useTratamentos";
-import type { Medico, Consulta, Exame, Cirurgia, Hospital, LocalSaude, Tratamento, Medicamento } from "@/lib/types";
 
-const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
 
-function formatPhone(value: string): string {
-  const clean = value.replace(/\D/g, "").slice(0, 11);
-  if (clean.length <= 2) return clean;
-  if (clean.length <= 6) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
-  if (clean.length <= 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
-  return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+import {
+  useSubmitAction,
+} from "@/hooks/useSubmitAction";
+import {
+  useMedicos,
+} from "@/hooks/useMedicos";
+import {
+  useHospitais,
+} from "@/hooks/useHospitais";
+import {
+  useLocais,
+} from "@/hooks/useLocais";
+import {
+  useTratamentos,
+} from "@/hooks/useTratamentos";
+import {
+  useConsultas,
+} from "@/hooks/useConsultas";
+import {
+  useExames,
+} from "@/hooks/useExames";
+import {
+  useCirurgias,
+} from "@/hooks/useCirurgias";
+import {
+  useMedicamentos,
+} from "@/hooks/useMedicamentos";
+
+import {
+  Button,
+} from "@/components/ui/Button";
+import {
+  Input,
+} from "@/components/ui/Input";
+import {
+  TextArea,
+} from "@/components/ui/TextArea";
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+import {
+  DetailSkeleton,
+} from "@/components/loading/DetailSkeleton";
+import {
+  ConfirmationModal,
+} from "@/components/ConfirmationModal";
+
+const fadeUp = {
+  initial: {
+    opacity: 0,
+    y: 12,
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+  },
+};
+
+function formatPhone(
+  value: string
+): string {
+  const clean =
+    value
+      .replace(
+        /\D/g,
+        ""
+      )
+      .slice(
+        0,
+        11
+      );
+
+  if (
+    clean.length <= 2
+  ) {
+    return clean;
+  }
+
+  if (
+    clean.length <= 6
+  ) {
+    return `(${clean.slice(
+      0,
+      2
+    )}) ${clean.slice(
+      2
+    )}`;
+  }
+
+  if (
+    clean.length <= 10
+  ) {
+    return `(${clean.slice(
+      0,
+      2
+    )}) ${clean.slice(
+      2,
+      6
+    )}-${clean.slice(
+      6
+    )}`;
+  }
+
+  return `(${clean.slice(
+    0,
+    2
+  )}) ${clean.slice(
+    2,
+    7
+  )}-${clean.slice(
+    7
+  )}`;
 }
 
-function formatDateDisplay(isoStr: string): string {
-  if (!isoStr) return "";
-  const parts = isoStr.split("-");
-  if (parts.length !== 3) return isoStr;
+function formatDateDisplay(
+  isoStr?: string
+): string {
+  if (!isoStr) {
+    return "";
+  }
+
+  const parts =
+    isoStr.split("-");
+
+  if (
+    parts.length !== 3
+  ) {
+    return isoStr;
+  }
+
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
 function EditarMedicoContent() {
-  const { trigger } = useHapticFeedback();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const id = searchParams.get("id") || "";
+  const router =
+    useRouter();
 
-  const saveAction = useSubmitAction();
-  const deleteAction = useSubmitAction();
-  const isSubmitLocked = useRef(false);
+  const searchParams =
+    useSearchParams();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  
-  // Estados Básicos
-  const [nome, setNome] = useState("");
-  const [especialidade, setEspecialidade] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [email, setEmail] = useState("");
-  const [crm, setCrm] = useState("");
-  const [observacoes, setObservacoes] = useState("");
-  
-  // Estados de Relacionamento M:N (Direto)
-  const [hospitalIds, setHospitalIds] = useState<string[]>([]);
-  const [localIds, setLocalIds] = useState<string[]>([]);
-  const [tratamentoIds, setTratamentoIds] = useState<string[]>([]);
+  const id =
+    searchParams.get(
+      "id"
+    ) || "";
 
-  // Controle de Modais
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
-  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
-  const [isTratamentoModalOpen, setIsTratamentoModalOpen] = useState(false);
-  
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
 
-  // Puxar opções para vínculo (Diretos)
-  const { hospitais = [] } = useHospitais();
-  const { locais = [] } = useLocais();
-  const { tratamentos = [] } = useTratamentos();
+  const saveAction =
+    useSubmitAction();
 
-  // Históricos (Indiretos)
-  const consultas = useLiveQuery(() => db.consultas.toArray(), [], []) || [];
-  const exames = useLiveQuery(() => db.exames.toArray(), [], []) || [];
-  const cirurgias = useLiveQuery(() => db.cirurgias.toArray(), [], []) || [];
-  const medicamentos = useLiveQuery(() => db.medicamentos.toArray(), [], []) || [];
+  const deleteAction =
+    useSubmitAction();
 
-  useEffect(() => {
-    if (!id) {
-      setNotFound(true);
-      setIsLoading(false);
-      return;
-    }
+  const isSubmitLocked =
+    useRef(false);
 
-    medicosRepository.getById(id).then((item) => {
-      if (!item) {
-        setNotFound(true);
-      } else {
-        setNome(item.nome || "");
-        setEspecialidade(item.especialidade || "");
-        setTelefone(item.telefone || "");
-        setEmail(item.email || "");
-        setCrm(item.crm || "");
-        setObservacoes(item.observacoes || "");
-        
-        // Carrega vínculos
-        setHospitalIds(item.hospital_ids || []);
-        setLocalIds(item.local_ids || []);
-        setTratamentoIds(item.tratamento_ids || []);
-      }
-    }).finally(() => {
-      setIsLoading(false);
-    });
-  }, [id]);
+  // ==========================================================
+  // HOOKS
+  // ==========================================================
 
-  // Vínculos Atuais (M:N)
-  const hospitaisVinculados = useMemo(() => hospitais.filter(h => hospitalIds.includes(h.id!)), [hospitais, hospitalIds]);
-  const locaisVinculados = useMemo(() => locais.filter(l => localIds.includes(l.id!)), [locais, localIds]);
-  const tratamentosVinculados = useMemo(() => tratamentos.filter(t => tratamentoIds.includes(t.id!)), [tratamentos, tratamentoIds]);
+  const {
+    getMedico,
+    updateMedico,
+    deleteMedicoSafe,
+  } =
+    useMedicos();
 
-  // Históricos (Eventos Indiretos puxados automaticamente)
-  const consultasVinculadas = useMemo(() => {
-    if (!id) return [];
-    return consultas.filter((c: Consulta) => c.medico_id === id).sort((a,b) => b.data.localeCompare(a.data));
-  }, [consultas, id]);
+  const {
+    hospitais = [],
+  } =
+    useHospitais();
 
-  const examesVinculados = useMemo(() => {
-    if (!id) return [];
-    return exames.filter((e: Exame) => e.medico_id === id).sort((a,b) => b.data.localeCompare(a.data));
-  }, [exames, id]);
+  const {
+    locais = [],
+  } =
+    useLocais();
 
-  const cirurgiasVinculadas = useMemo(() => {
-    if (!id) return [];
-    return cirurgias.filter((cir: Cirurgia) => cir.medico_id === id).sort((a,b) => b.data.localeCompare(a.data));
-  }, [cirurgias, id]);
+  const {
+    tratamentos = [],
+  } =
+    useTratamentos();
 
-  const medicamentosVinculados = useMemo(() => {
-    if (!id) return [];
-    return medicamentos.filter((m: Medicamento) => m.medico_id === id);
-  }, [medicamentos, id]);
+  const {
+    consultas = [],
+  } =
+    useConsultas();
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const {
+    exames = [],
+  } =
+    useExames();
 
-  const handleSubmit = async () => {
-    trigger("vibrate");
-    if (!validate()) {
-      trigger("error");
-      return;
-    }
+  const {
+    cirurgias = [],
+  } =
+    useCirurgias();
 
-    if (isSubmitLocked.current || saveAction.isSubmitting) return;
-    isSubmitLocked.current = true;
+  const {
+    medicamentos = [],
+  } =
+    useMedicamentos();
 
-    try {
-      await saveAction.run(
+  // ==========================================================
+  // PAGE STATE
+  // ==========================================================
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(true);
+
+  const [
+    notFound,
+    setNotFound,
+  ] =
+    useState(false);
+
+  const [
+    showDeleteModal,
+    setShowDeleteModal,
+  ] =
+    useState(false);
+
+  // ==========================================================
+  // FORM
+  // ==========================================================
+
+  const [
+    nome,
+    setNome,
+  ] =
+    useState("");
+
+  const [
+    especialidade,
+    setEspecialidade,
+  ] =
+    useState("");
+
+  const [
+    telefone,
+    setTelefone,
+  ] =
+    useState("");
+
+  const [
+    email,
+    setEmail,
+  ] =
+    useState("");
+
+  const [
+    crm,
+    setCrm,
+  ] =
+    useState("");
+
+  const [
+    observacoes,
+    setObservacoes,
+  ] =
+    useState("");
+
+  const [
+    errors,
+    setErrors,
+  ] =
+    useState<
+      Record<
+        string,
+        string
+      >
+    >({});
+
+  // ==========================================================
+  // LOAD MÉDICO
+  // ==========================================================
+
+  useEffect(
+    () => {
+      let cancelled =
+        false;
+
+      const load =
         async () => {
-          await medicosRepository.update(id, {
-            nome: nome.trim(),
-            especialidade: especialidade.trim() || undefined,
-            telefone: telefone.trim() || undefined,
-            email: email.trim() || undefined,
-            crm: crm.trim() || undefined,
-            observacoes: observacoes.trim() || undefined,
-            hospital_ids: hospitalIds,
-            local_ids: localIds,
-            tratamento_ids: tratamentoIds,
-          });
-        },
-        { successMessage: "Médico atualizado com sucesso", errorMessage: "Erro ao atualizar médico", goBackOnSuccess: true }
-      );
-    } finally {
-      isSubmitLocked.current = false;
-    }
-  };
+          if (!id) {
+            if (
+              !cancelled
+            ) {
+              setNotFound(
+                true
+              );
 
-  const handleDelete = async () => {
-    trigger("vibrate");
-    await deleteAction.run(
-      async () => {
-        await medicosRepository.delete(id);
-        router.replace("/saude/medicos");
+              setIsLoading(
+                false
+              );
+            }
+
+            return;
+          }
+
+          try {
+            const item =
+              await getMedico(
+                id
+              );
+
+            if (
+              cancelled
+            ) {
+              return;
+            }
+
+            if (!item) {
+              setNotFound(
+                true
+              );
+
+              return;
+            }
+
+            setNome(
+              item.nome ||
+                ""
+            );
+
+            setEspecialidade(
+              item.especialidade ||
+                ""
+            );
+
+            setTelefone(
+              item.telefone ||
+                ""
+            );
+
+            setEmail(
+              item.email ||
+                ""
+            );
+
+            setCrm(
+              item.crm ||
+                ""
+            );
+
+            setObservacoes(
+              item.observacoes ||
+                ""
+            );
+          } finally {
+            if (
+              !cancelled
+            ) {
+              setIsLoading(
+                false
+              );
+            }
+          }
+        };
+
+      void load();
+
+      return () => {
+        cancelled =
+          true;
+      };
+    },
+    [
+      id,
+      getMedico,
+    ]
+  );
+
+  // ==========================================================
+  // RELAÇÕES CANÔNICAS
+  //
+  // Hospital.medico_ids[]
+  // LocalSaude.medico_ids[]
+  // Tratamento.medico_ids[]
+  // ==========================================================
+
+  const hospitaisVinculados =
+    useMemo(
+      () => {
+        if (!id) {
+          return [];
+        }
+
+        return hospitais.filter(
+          (
+            hospital
+          ) =>
+            hospital.medico_ids?.includes(
+              id
+            )
+        );
       },
-      { successMessage: "Médico excluído", errorMessage: "Erro ao excluir médico" }
+      [
+        hospitais,
+        id,
+      ]
     );
-    setShowDeleteModal(false);
-  };
 
-  // Handlers para adicionar/remover (Vínculos Diretos)
-  const handleAddHospital = (h: Hospital) => { if (h.id && !hospitalIds.includes(h.id)) setHospitalIds(p => [...p, h.id!]); };
-  const handleRemoveHospital = (id: string) => { trigger("vibrate"); setHospitalIds(p => p.filter(i => i !== id)); };
+  const locaisVinculados =
+    useMemo(
+      () => {
+        if (!id) {
+          return [];
+        }
 
-  const handleAddLocal = (l: LocalSaude) => { if (l.id && !localIds.includes(l.id)) setLocalIds(p => [...p, l.id!]); };
-  const handleRemoveLocal = (id: string) => { trigger("vibrate"); setLocalIds(p => p.filter(i => i !== id)); };
+        return locais.filter(
+          (
+            local
+          ) =>
+            local.medico_ids?.includes(
+              id
+            )
+        );
+      },
+      [
+        locais,
+        id,
+      ]
+    );
 
-  const handleAddTratamento = (t: Tratamento) => { if (t.id && !tratamentoIds.includes(t.id)) setTratamentoIds(p => [...p, t.id!]); };
-  const handleRemoveTratamento = (id: string) => { trigger("vibrate"); setTratamentoIds(p => p.filter(i => i !== id)); };
+  /*
+   * useTratamentos já fornece somente tratamentos da
+   * pessoa ativa.
+   */
+  const tratamentosVinculados =
+    useMemo(
+      () => {
+        if (!id) {
+          return [];
+        }
 
-  if (isLoading) return <DetailSkeleton />;
-  if (notFound) return <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-void px-6 text-center"><p className="font-display text-lg font-semibold text-ink-primary">Médico não encontrado</p><button onClick={() => router.back()} className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void">Voltar</button></main>;
+        return tratamentos.filter(
+          (
+            tratamento
+          ) =>
+            tratamento.medico_ids?.includes(
+              id
+            )
+        );
+      },
+      [
+        tratamentos,
+        id,
+      ]
+    );
+
+  // ==========================================================
+  // HISTÓRICO DA PESSOA ATIVA
+  // ==========================================================
+
+  const consultasVinculadas =
+    useMemo(
+      () => {
+        if (!id) {
+          return [];
+        }
+
+        return consultas
+          .filter(
+            (
+              consulta
+            ) =>
+              consulta.medico_id ===
+              id
+          )
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              b.data.localeCompare(
+                a.data
+              )
+          );
+      },
+      [
+        consultas,
+        id,
+      ]
+    );
+
+  const examesVinculados =
+    useMemo(
+      () => {
+        if (!id) {
+          return [];
+        }
+
+        return exames
+          .filter(
+            (
+              exame
+            ) =>
+              exame.medico_id ===
+              id
+          )
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              b.data.localeCompare(
+                a.data
+              )
+          );
+      },
+      [
+        exames,
+        id,
+      ]
+    );
+
+  const cirurgiasVinculadas =
+    useMemo(
+      () => {
+        if (!id) {
+          return [];
+        }
+
+        return cirurgias
+          .filter(
+            (
+              cirurgia
+            ) =>
+              cirurgia.medico_id ===
+              id
+          )
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              b.data.localeCompare(
+                a.data
+              )
+          );
+      },
+      [
+        cirurgias,
+        id,
+      ]
+    );
+
+  const medicamentosVinculados =
+    useMemo(
+      () => {
+        if (!id) {
+          return [];
+        }
+
+        return medicamentos.filter(
+          (
+            medicamento
+          ) =>
+            medicamento.medico_id ===
+            id
+        );
+      },
+      [
+        medicamentos,
+        id,
+      ]
+    );
+
+  // ==========================================================
+  // VALIDATION
+  // ==========================================================
+
+  const validate =
+    () => {
+      const newErrors: Record<
+        string,
+        string
+      > = {};
+
+      if (
+        !nome.trim()
+      ) {
+        newErrors.nome =
+          "Nome é obrigatório";
+      }
+
+      setErrors(
+        newErrors
+      );
+
+      return (
+        Object.keys(
+          newErrors
+        ).length === 0
+      );
+    };
+
+  // ==========================================================
+  // SAVE
+  // ==========================================================
+
+  const handleSubmit =
+    async () => {
+      trigger(
+        "vibrate"
+      );
+
+      if (
+        !validate()
+      ) {
+        trigger(
+          "error"
+        );
+
+        return;
+      }
+
+      if (
+        !id ||
+        isSubmitLocked.current ||
+        saveAction.isSubmitting
+      ) {
+        return;
+      }
+
+      isSubmitLocked.current =
+        true;
+
+      try {
+        await saveAction.run(
+          async () => {
+            await updateMedico(
+              id,
+              {
+                nome:
+                  nome.trim(),
+
+                especialidade:
+                  especialidade.trim() ||
+                  undefined,
+
+                telefone:
+                  telefone.trim() ||
+                  undefined,
+
+                email:
+                  email.trim() ||
+                  undefined,
+
+                crm:
+                  crm.trim() ||
+                  undefined,
+
+                observacoes:
+                  observacoes.trim() ||
+                  undefined,
+              }
+            );
+          },
+          {
+            successMessage:
+              "Médico atualizado com sucesso",
+
+            errorMessage:
+              "Erro ao atualizar médico",
+
+            goBackOnSuccess:
+              true,
+          }
+        );
+      } finally {
+        isSubmitLocked.current =
+          false;
+      }
+    };
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const handleDelete =
+    async () => {
+      if (!id) {
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      await deleteAction.run(
+        async () => {
+          await deleteMedicoSafe(
+            id
+          );
+
+          router.replace(
+            "/saude/medicos"
+          );
+        },
+        {
+          successMessage:
+            "Médico excluído",
+
+          errorMessage:
+            "Erro ao excluir médico",
+        }
+      );
+
+      setShowDeleteModal(
+        false
+      );
+    };
+
+  // ==========================================================
+  // LOADING / NOT FOUND
+  // ==========================================================
+
+  if (
+    isLoading
+  ) {
+    return (
+      <DetailSkeleton />
+    );
+  }
+
+  if (
+    notFound
+  ) {
+    return (
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-void px-6 text-center">
+        <p className="font-display text-lg font-semibold text-ink-primary">
+          Médico não encontrado
+        </p>
+
+        <button
+          type="button"
+          onClick={() =>
+            router.back()
+          }
+          className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void"
+        >
+          Voltar
+        </button>
+      </main>
+    );
+  }
+
+  const hasClinicalHistory =
+    consultasVinculadas.length >
+      0 ||
+    cirurgiasVinculadas.length >
+      0 ||
+    examesVinculados.length >
+      0 ||
+    medicamentosVinculados.length >
+      0;
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <button onClick={() => { trigger("vibrate"); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95" type="button" aria-label="Voltar">
-              <ArrowLeft size={18} className="text-ink-primary" />
+            <button
+              type="button"
+              onClick={() => {
+                trigger(
+                  "vibrate"
+                );
+
+                router.back();
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              aria-label="Voltar"
+            >
+              <ArrowLeft
+                size={18}
+                className="text-ink-primary"
+              />
             </button>
+
             <div className="min-w-0 flex-1">
-              <h1 className="font-display text-xl font-semibold text-ink-primary truncate">{nome || "Editar médico"}</h1>
+              <h1 className="truncate font-display text-xl font-semibold text-ink-primary">
+                {nome ||
+                  "Editar médico"}
+              </h1>
+
+              <p className="mt-1 text-xs text-ink-muted">
+                Perfil global do profissional
+              </p>
             </div>
-            <button onClick={() => { trigger("vibrate"); setShowDeleteModal(true); }} className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95" type="button" aria-label="Excluir médico">
-              <Trash2 size={16} />
+
+            <button
+              type="button"
+              onClick={() => {
+                trigger(
+                  "vibrate"
+                );
+
+                setShowDeleteModal(
+                  true
+                );
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+              aria-label="Excluir médico"
+            >
+              <Trash2
+                size={16}
+              />
             </button>
           </div>
         </header>
 
         <section className="space-y-5 px-5 pt-6">
-          
-          {/* DADOS BÁSICOS */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">Dados do Profissional</h2>
-            <Input label="Nome *" placeholder="Ex: Dr. Carlos Silva" value={nome} onChange={(e) => setNome(e.target.value)} error={errors.nome} required />
+          {/* ==================================================
+              DADOS DO PROFISSIONAL
+              ================================================== */}
+
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-ink-muted">
+              Dados do profissional
+            </h2>
+
+            <Input
+              label="Nome *"
+              placeholder="Nome completo"
+              value={
+                nome
+              }
+              onChange={(
+                event
+              ) =>
+                setNome(
+                  event
+                    .target
+                    .value
+                )
+              }
+              error={
+                errors.nome
+              }
+              required
+            />
+
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Especialidade" placeholder="Ex: Cardiologista" value={especialidade} onChange={(e) => setEspecialidade(e.target.value)} />
-              <Input label="CRM" placeholder="Ex: 123456/SP" value={crm} onChange={(e) => setCrm(e.target.value)} />
+              <Input
+                label="Especialidade"
+                placeholder="Cardiologia"
+                value={
+                  especialidade
+                }
+                onChange={(
+                  event
+                ) =>
+                  setEspecialidade(
+                    event
+                      .target
+                      .value
+                  )
+                }
+              />
+
+              <Input
+                label="CRM"
+                placeholder="12345-MG"
+                value={
+                  crm
+                }
+                onChange={(
+                  event
+                ) =>
+                  setCrm(
+                    event
+                      .target
+                      .value
+                  )
+                }
+              />
             </div>
-            <Input label="Telefone" placeholder="(00) 00000-0000" value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} />
-            <Input label="E-mail" placeholder="medico@email.com" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
-            <TextArea label="Observações" placeholder="Dias de atendimento, recados..." value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
+
+            <Input
+              label="Telefone"
+              placeholder="(00) 00000-0000"
+              value={
+                telefone
+              }
+              onChange={(
+                event
+              ) =>
+                setTelefone(
+                  formatPhone(
+                    event
+                      .target
+                      .value
+                  )
+                )
+              }
+            />
+
+            <Input
+              label="E-mail"
+              placeholder="medico@email.com"
+              value={
+                email
+              }
+              onChange={(
+                event
+              ) =>
+                setEmail(
+                  event
+                    .target
+                    .value
+                )
+              }
+              type="email"
+            />
+
+            <TextArea
+              label="Observações"
+              placeholder="Dias de atendimento, recados ou outras informações..."
+              value={
+                observacoes
+              }
+              onChange={(
+                event
+              ) =>
+                setObservacoes(
+                  event
+                    .target
+                    .value
+                )
+              }
+            />
           </motion.div>
 
-          {/* VÍNCULOS DE ATENDIMENTO (Hospitais e Locais) */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            
-            {/* Hospitais */}
-            <div>
-              <div className="flex items-center justify-between px-1 mb-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
-                  <Building2 size={14} className="text-ice" /> Hospitais / Clínicas
-                </h2>
-                <button onClick={() => { trigger("vibrate"); setIsHospitalModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-ice bg-ice/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Adicionar hospital">
-                  <Plus size={12} /> Adicionar
-                </button>
-              </div>
-              {hospitaisVinculados.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum hospital vinculado.</p></div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {hospitaisVinculados.map((h) => (
-                    <div key={h.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
-                      <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{h.nome}</span>
-                      <button onClick={() => handleRemoveHospital(h.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${h.nome}`}><X size={12} /></button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* ==================================================
+              REDE DE ATENDIMENTO
+              ================================================== */}
 
-            {/* Postos de Saúde */}
-            <div>
-              <div className="flex items-center justify-between px-1 mb-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
-                  <MapPin size={14} className="text-emerald-400" /> Postos de Saúde / Locais
-                </h2>
-                <button onClick={() => { trigger("vibrate"); setIsLocalModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Adicionar local">
-                  <Plus size={12} /> Adicionar
-                </button>
-              </div>
-              {locaisVinculados.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center"><p className="text-xs text-ink-muted">Nenhum local vinculado.</p></div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {locaisVinculados.map((l) => (
-                    <div key={l.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1">
-                      <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{l.nome}</span>
-                      <button onClick={() => handleRemoveLocal(l.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${l.nome}`}><X size={12} /></button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          {/* VÍNCULO DE TRATAMENTOS */}
-          <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
-                <Activity size={14} className="text-violet-400" /> Tratamentos Associados
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.04,
+            }}
+            className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="px-1">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                Rede de atendimento
               </h2>
-              <button onClick={() => { trigger("vibrate"); setIsTratamentoModalOpen(true); }} className="flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full active:scale-95 transition-all" type="button" aria-label="Adicionar tratamento">
-                <Plus size={12} /> Adicionar
-              </button>
+
+              <p className="mt-1 text-xs leading-relaxed text-ink-faint">
+                Estes vínculos são derivados dos hospitais e locais cadastrados. Para alterá-los, edite a entidade correspondente.
+              </p>
             </div>
-            {tratamentosVinculados.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-4 text-center"><p className="text-xs text-ink-muted">Nenhum tratamento vinculado.</p></div>
+
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 px-1">
+                <Building2
+                  size={14}
+                  className="text-ice"
+                />
+
+                <h3 className="text-xs font-semibold text-ink-primary">
+                  Hospitais
+                </h3>
+              </div>
+
+              {hospitaisVinculados.length ===
+              0 ? (
+                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center">
+                  <p className="text-xs text-ink-muted">
+                    Nenhum hospital relacionado.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {hospitaisVinculados.map(
+                    (
+                      hospital
+                    ) => (
+                      <span
+                        key={
+                          hospital.id
+                        }
+                        className="inline-flex max-w-[220px] items-center gap-1.5 rounded-full border border-ice/20 bg-ice/5 px-3 py-1.5 text-xs font-semibold text-ink-primary"
+                      >
+                        <Building2
+                          size={12}
+                          className="shrink-0 text-ice"
+                        />
+
+                        <span className="truncate">
+                          {
+                            hospital.nome
+                          }
+                        </span>
+                      </span>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 px-1">
+                <MapPin
+                  size={14}
+                  className="text-ice"
+                />
+
+                <h3 className="text-xs font-semibold text-ink-primary">
+                  Locais de saúde
+                </h3>
+              </div>
+
+              {locaisVinculados.length ===
+              0 ? (
+                <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center">
+                  <p className="text-xs text-ink-muted">
+                    Nenhum local relacionado.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {locaisVinculados.map(
+                    (
+                      local
+                    ) => (
+                      <span
+                        key={
+                          local.id
+                        }
+                        className="inline-flex max-w-[220px] items-center gap-1.5 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-1.5 text-xs font-semibold text-ink-primary"
+                      >
+                        <MapPin
+                          size={12}
+                          className="shrink-0 text-ice"
+                        />
+
+                        <span className="truncate">
+                          {
+                            local.nome
+                          }
+                        </span>
+                      </span>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* ==================================================
+              TRATAMENTOS DA PESSOA ATIVA
+              ================================================== */}
+
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.06,
+            }}
+            className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="px-1">
+              <div className="flex items-center gap-1.5">
+                <Activity
+                  size={14}
+                  className="text-ice"
+                />
+
+                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                  Tratamentos acompanhados
+                </h2>
+              </div>
+
+              <p className="mt-1 text-xs text-ink-faint">
+                Contexto da pessoa ativa.
+              </p>
+            </div>
+
+            {tratamentosVinculados.length ===
+            0 ? (
+              <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-4 text-center">
+                <p className="text-xs text-ink-muted">
+                  Nenhum tratamento relacionado para a pessoa ativa.
+                </p>
+              </div>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {tratamentosVinculados.map((t) => (
-                  <div key={t.id} className="flex items-center gap-2 bg-surface-raised border border-surface-border/50 rounded-full pl-3 pr-1 py-1" style={{ borderLeft: `3px solid ${t.cor || '#8B5CF6'}` }}>
-                    <span className="text-xs font-semibold text-ink-primary truncate max-w-[150px]">{t.nome}</span>
-                    <button onClick={() => handleRemoveTratamento(t.id!)} className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-border/50 text-ink-muted hover:bg-coral/20 hover:text-coral transition-colors" type="button" aria-label={`Remover ${t.nome}`}><X size={12} /></button>
-                  </div>
-                ))}
+                {tratamentosVinculados.map(
+                  (
+                    tratamento
+                  ) => {
+                    const color =
+                      tratamento.cor ||
+                      "#38BDF8";
+
+                    return (
+                      <span
+                        key={
+                          tratamento.id
+                        }
+                        className="inline-flex max-w-[220px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold"
+                        style={{
+                          borderColor:
+                            `${color}40`,
+                          backgroundColor:
+                            `${color}12`,
+                          color,
+                        }}
+                      >
+                        <Activity
+                          size={12}
+                          className="shrink-0"
+                        />
+
+                        <span className="truncate">
+                          {
+                            tratamento.nome
+                          }
+                        </span>
+                      </span>
+                    );
+                  }
+                )}
               </div>
             )}
           </motion.div>
 
-          {/* EVENTOS HISTÓRICOS E PRESCRIÇÕES */}
-          {(consultasVinculadas.length > 0 || cirurgiasVinculadas.length > 0 || examesVinculados.length > 0 || medicamentosVinculados.length > 0) && (
-            <motion.div variants={fadeUp} initial="initial" animate="animate" className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5 px-1">
-                <FolderHeart size={14} className="text-coral" /> Histórico Clínico do Médico
-              </h2>
-              
-              {/* Seção de Medicamentos Receitados */}
-              {medicamentosVinculados.length > 0 && (
+          {/* ==================================================
+              HISTÓRICO DA PESSOA ATIVA
+              ================================================== */}
+
+          {hasClinicalHistory && (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay:
+                  0.08,
+              }}
+              className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            >
+              <div className="px-1">
+                <div className="flex items-center gap-1.5">
+                  <FolderHeart
+                    size={14}
+                    className="text-coral"
+                  />
+
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                    Histórico da pessoa ativa
+                  </h2>
+                </div>
+
+                <p className="mt-1 text-xs text-ink-faint">
+                  Registros clínicos relacionados diretamente a este médico.
+                </p>
+              </div>
+
+              {medicamentosVinculados.length >
+                0 && (
                 <div>
-                  <h3 className="text-[10px] font-bold text-ink-muted uppercase tracking-wider mb-2 flex items-center gap-1"><Pill size={12} className="text-emerald-400" /> Prescrições do Médico</h3>
+                  <h3 className="mb-2 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+                    <Pill
+                      size={12}
+                      className="text-ice"
+                    />
+                    Medicamentos prescritos
+                  </h3>
+
                   <div className="space-y-2">
-                    {medicamentosVinculados.slice(0, 3).map(m => (
-                      <div key={m.id} onClick={() => router.push(`/saude/medicamentos/detalhes?id=${m.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
-                        <div className="min-w-0">
-                          <p className={`text-xs font-semibold truncate ${m.status === 'ativo' ? 'text-ink-primary' : 'text-ink-muted line-through'}`}>{m.nome}</p>
-                          <p className="text-[10px] text-ink-muted">{m.dosagem}</p>
-                        </div>
-                        <ExternalLink size={14} className="text-ink-faint" />
-                      </div>
-                    ))}
+                    {medicamentosVinculados
+                      .slice(
+                        0,
+                        3
+                      )
+                      .map(
+                        (
+                          medicamento
+                        ) => (
+                          <button
+                            key={
+                              medicamento.id
+                            }
+                            type="button"
+                            onClick={() => {
+                              trigger(
+                                "vibrate"
+                              );
+
+                              router.push(
+                                `/saude/medicamentos/detalhes?id=${medicamento.id}`
+                              );
+                            }}
+                            className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.99]"
+                          >
+                            <div className="min-w-0">
+                              <p
+                                className={`truncate text-xs font-semibold ${
+                                  medicamento.status ===
+                                  "ativo"
+                                    ? "text-ink-primary"
+                                    : "text-ink-muted line-through"
+                                }`}
+                              >
+                                {
+                                  medicamento.nome
+                                }
+                              </p>
+
+                              {medicamento.dosagem && (
+                                <p className="mt-0.5 text-[10px] text-ink-muted">
+                                  {
+                                    medicamento.dosagem
+                                  }
+                                </p>
+                              )}
+                            </div>
+
+                            <ExternalLink
+                              size={14}
+                              className="shrink-0 text-ink-faint"
+                            />
+                          </button>
+                        )
+                      )}
                   </div>
                 </div>
               )}
 
-              {/* Seção de Consultas e Cirurgias */}
-              {(consultasVinculadas.length > 0 || cirurgiasVinculadas.length > 0 || examesVinculados.length > 0) && (
+              {(consultasVinculadas.length >
+                0 ||
+                cirurgiasVinculadas.length >
+                  0 ||
+                examesVinculados.length >
+                  0) && (
                 <div>
-                  <h3 className="text-[10px] font-bold text-ink-muted uppercase tracking-wider mb-2 mt-3 flex items-center gap-1"><Calendar size={12} className="text-ice" /> Consultas e Procedimentos</h3>
+                  <h3 className="mb-2 mt-3 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+                    <Calendar
+                      size={12}
+                      className="text-ice"
+                    />
+                    Consultas e procedimentos
+                  </h3>
+
                   <div className="space-y-2.5">
-                    {consultasVinculadas.slice(0, 2).map((c) => (
-                      <div key={c.id} onClick={() => router.push(`/saude/consultas/detalhes?id=${c.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/10 text-ice"><Calendar size={14} /></div>
-                          <div><p className="text-xs font-semibold text-ink-primary truncate">Consulta: {c.especialidade}</p><p className="text-[10px] text-ink-muted">{formatDateDisplay(c.data)}</p></div>
-                        </div>
-                        <ExternalLink size={14} className="text-ink-faint" />
-                      </div>
-                    ))}
+                    {consultasVinculadas
+                      .slice(
+                        0,
+                        2
+                      )
+                      .map(
+                        (
+                          consulta
+                        ) => (
+                          <button
+                            key={
+                              consulta.id
+                            }
+                            type="button"
+                            onClick={() => {
+                              trigger(
+                                "vibrate"
+                              );
 
-                    {cirurgiasVinculadas.slice(0, 2).map((c) => (
-                      <div key={c.id} onClick={() => router.push(`/saude/cirurgias/detalhes?id=${c.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-coral/10 text-coral"><Activity size={14} /></div>
-                          <div><p className="text-xs font-semibold text-ink-primary truncate">Cirurgia: {c.procedimento}</p><p className="text-[10px] text-ink-muted">{formatDateDisplay(c.data)}</p></div>
-                        </div>
-                        <ExternalLink size={14} className="text-ink-faint" />
-                      </div>
-                    ))}
+                              router.push(
+                                `/saude/consultas/detalhes?id=${consulta.id}`
+                              );
+                            }}
+                            className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.99]"
+                          >
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                                <Calendar
+                                  size={14}
+                                />
+                              </div>
 
-                    {examesVinculados.slice(0, 2).map((e) => (
-                      <div key={e.id} onClick={() => router.push(`/saude/exames/detalhes?id=${e.id}`)} className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 cursor-pointer" role="button" tabIndex={0}>
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400"><FlaskConical size={14} /></div>
-                          <div><p className="text-xs font-semibold text-ink-primary truncate">Exame: {e.nome}</p><p className="text-[10px] text-ink-muted">{formatDateDisplay(e.data)}</p></div>
-                        </div>
-                        <ExternalLink size={14} className="text-ink-faint" />
-                      </div>
-                    ))}
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-semibold text-ink-primary">
+                                  Consulta
+                                  {consulta.especialidade
+                                    ? ` · ${consulta.especialidade}`
+                                    : ""}
+                                </p>
+
+                                <p className="text-[10px] text-ink-muted">
+                                  {formatDateDisplay(
+                                    consulta.data
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            <ExternalLink
+                              size={14}
+                              className="shrink-0 text-ink-faint"
+                            />
+                          </button>
+                        )
+                      )}
+
+                    {cirurgiasVinculadas
+                      .slice(
+                        0,
+                        2
+                      )
+                      .map(
+                        (
+                          cirurgia
+                        ) => (
+                          <button
+                            key={
+                              cirurgia.id
+                            }
+                            type="button"
+                            onClick={() => {
+                              trigger(
+                                "vibrate"
+                              );
+
+                              router.push(
+                                `/saude/cirurgias/detalhes?id=${cirurgia.id}`
+                              );
+                            }}
+                            className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.99]"
+                          >
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-coral/10 text-coral">
+                                <Activity
+                                  size={14}
+                                />
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-semibold text-ink-primary">
+                                  {
+                                    cirurgia.procedimento
+                                  }
+                                </p>
+
+                                <p className="text-[10px] text-ink-muted">
+                                  {formatDateDisplay(
+                                    cirurgia.data
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            <ExternalLink
+                              size={14}
+                              className="shrink-0 text-ink-faint"
+                            />
+                          </button>
+                        )
+                      )}
+
+                    {examesVinculados
+                      .slice(
+                        0,
+                        2
+                      )
+                      .map(
+                        (
+                          exame
+                        ) => (
+                          <button
+                            key={
+                              exame.id
+                            }
+                            type="button"
+                            onClick={() => {
+                              trigger(
+                                "vibrate"
+                              );
+
+                              router.push(
+                                `/saude/exames/detalhes?id=${exame.id}`
+                              );
+                            }}
+                            className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.99]"
+                          >
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ice">
+                                <FlaskConical
+                                  size={14}
+                                />
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-semibold text-ink-primary">
+                                  {
+                                    exame.nome
+                                  }
+                                </p>
+
+                                <p className="text-[10px] text-ink-muted">
+                                  {formatDateDisplay(
+                                    exame.data
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            <ExternalLink
+                              size={14}
+                              className="shrink-0 text-ink-faint"
+                            />
+                          </button>
+                        )
+                      )}
                   </div>
                 </div>
               )}
             </motion.div>
           )}
-
         </section>
 
+        {/* ====================================================
+            SAVE
+            ==================================================== */}
+
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={saveAction.isSubmitting} className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10">
-            {saveAction.isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar alterações</>}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={
+              handleSubmit
+            }
+            disabled={
+              saveAction.isSubmitting
+            }
+            className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
+          >
+            {saveAction.isSubmitting ? (
+              <>
+                <Loader2
+                  size={16}
+                  className="animate-spin"
+                />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save
+                  size={16}
+                />
+                Salvar alterações
+              </>
+            )}
           </Button>
         </div>
 
-        <ConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} title="Excluir médico" message={`Tem certeza que deseja excluir "${nome}"?`} isLoading={deleteAction.isSubmitting} type="danger" />
+        {/* ====================================================
+            DELETE
+            ==================================================== */}
 
-        {/* MODAIS DE SELEÇÃO M:N COM OPÇÃO DE CADASTRAR NOVO */}
-        <SelectionModal<Hospital>
-          isOpen={isHospitalModalOpen}
-          onClose={() => setIsHospitalModalOpen(false)}
-          onSelect={handleAddHospital}
-          items={hospitais.filter(h => !hospitalIds.includes(h.id!))}
-          title="Selecionar Hospital"
-          placeholder="Buscar hospital/clínica..."
-          getItemId={(item) => item.id!}
-          getItemLabel={(item) => item.nome}
-          renderItem={(item) => (
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice/10 text-ice"><Building2 size={16} /></div>
-              <div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div>
-            </div>
-          )}
-          onCreateNew={() => { setIsHospitalModalOpen(false); router.push("/saude/hospitais/novo"); }}
-          createNewLabel="Cadastrar Novo Hospital"
+        <ConfirmationModal
+          isOpen={
+            showDeleteModal
+          }
+          onClose={() =>
+            setShowDeleteModal(
+              false
+            )
+          }
+          onConfirm={
+            handleDelete
+          }
+          title="Excluir médico"
+          message={`Tem certeza que deseja excluir "${nome}"? Os registros clínicos serão preservados e apenas desvinculados deste médico.`}
+          isLoading={
+            deleteAction.isSubmitting
+          }
+          type="danger"
         />
-
-        <SelectionModal<LocalSaude>
-          isOpen={isLocalModalOpen}
-          onClose={() => setIsLocalModalOpen(false)}
-          onSelect={handleAddLocal}
-          items={locais.filter(l => !localIds.includes(l.id!))}
-          title="Selecionar Posto"
-          placeholder="Buscar posto de saúde..."
-          getItemId={(item) => item.id!}
-          getItemLabel={(item) => item.nome}
-          renderItem={(item) => (
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400"><MapPin size={16} /></div>
-              <div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div>
-            </div>
-          )}
-          onCreateNew={() => { setIsLocalModalOpen(false); router.push("/saude/locais/novo"); }}
-          createNewLabel="Cadastrar Novo Posto"
-        />
-
-        <SelectionModal<Tratamento>
-          isOpen={isTratamentoModalOpen}
-          onClose={() => setIsTratamentoModalOpen(false)}
-          onSelect={handleAddTratamento}
-          items={tratamentos.filter(t => !tratamentoIds.includes(t.id!))}
-          title="Selecionar Tratamento"
-          placeholder="Buscar tratamento..."
-          getItemId={(item) => item.id!}
-          getItemLabel={(item) => item.nome}
-          renderItem={(item) => (
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-400/10 text-violet-400"><FolderHeart size={16} /></div>
-              <div><p className="text-sm font-semibold text-ink-primary">{item.nome}</p></div>
-            </div>
-          )}
-          onCreateNew={() => { setIsTratamentoModalOpen(false); router.push("/saude/tratamentos/novo"); }}
-          createNewLabel="Cadastrar Novo Tratamento"
-        />
-
       </main>
     </PageTransition>
   );
 }
 
 export default function EditarMedicoPage() {
-  return <Suspense fallback={<DetailSkeleton />}><EditarMedicoContent /></Suspense>;
+  return (
+    <Suspense
+      fallback={
+        <DetailSkeleton />
+      }
+    >
+      <EditarMedicoContent />
+    </Suspense>
+  );
 }

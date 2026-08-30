@@ -1,38 +1,161 @@
 // hooks/useHospitais.ts
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
+import {
+  useCallback,
+} from "react";
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
 import { db } from "@/lib/db";
-import { hospitaisRepository } from "@/lib/repositories/hospitais";
-import { useAuth } from "./useAuth";
-import { useCallback } from "react";
-import type { Hospital } from "@/lib/types";
+import {
+  hospitaisRepository,
+} from "@/lib/repositories/hospitais";
+
+import type {
+  Hospital,
+} from "@/lib/types";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type AddHospitalInput = Omit<
+  Hospital,
+  | "id"
+  | "user_id"
+  | "person_id"
+  | "tratamento_ids"
+  | "created_at"
+  | "updated_at"
+  | "synced"
+>;
+
+type UpdateHospitalInput = Partial<
+  Omit<
+    Hospital,
+    | "id"
+    | "user_id"
+    | "person_id"
+    | "tratamento_ids"
+    | "created_at"
+  >
+>;
+
+// ============================================================
+// HOOK
+// ============================================================
 
 export function useHospitais() {
-  const { user } = useAuth();
+  /*
+   * Hospital é GLOBAL por usuário.
+   *
+   * Portanto:
+   * - sem useActivePersonId;
+   * - sem filtro por person_id;
+   * - sem useAuth aqui.
+   *
+   * O repository resolve autenticação no create.
+   */
 
-  const hospitais = useLiveQuery(
-    () => db.hospitais.toArray(),
-    [],
-    []
-  );
+  const hospitais =
+    useLiveQuery(
+      () =>
+        db.hospitais.toArray(),
+      [],
+      []
+    );
 
-  const getHospital = useCallback((id: string) => hospitaisRepository.getById(id), []);
-  
-  const addHospital = useCallback(async (data: Omit<Hospital, 'id' | 'user_id' | 'person_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    return await hospitaisRepository.create({ 
-      ...data, 
-      user_id: user.id
-    });
-  }, [user]);
-  
-  const updateHospital = useCallback(async (id: string, data: Partial<Hospital>) => {
-    return await hospitaisRepository.update(id, data);
-  }, []);
-  
-  const deleteHospital = useCallback(async (id: string) => await hospitaisRepository.delete(id), []);
-  const deleteHospitalSafe = useCallback(async (id: string) => await hospitaisRepository.deleteSafe(id), []);
+  // ==========================================================
+  // GET
+  // ==========================================================
 
-  return { hospitais, getHospital, addHospital, updateHospital, deleteHospital, deleteHospitalSafe };
+  const getHospital =
+    useCallback(
+      (
+        id: string
+      ) =>
+        hospitaisRepository.getById(
+          id
+        ),
+      []
+    );
+
+  // ==========================================================
+  // ADD
+  // ==========================================================
+
+  const addHospital =
+    useCallback(
+      async (
+        data:
+          AddHospitalInput
+      ) => {
+        return hospitaisRepository.create(
+          data
+        );
+      },
+      []
+    );
+
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
+
+  const updateHospital =
+    useCallback(
+      async (
+        id: string,
+        data:
+          UpdateHospitalInput
+      ) => {
+        return hospitaisRepository.update(
+          id,
+          data
+        );
+      },
+      []
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const deleteHospital =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        return hospitaisRepository.delete(
+          id
+        );
+      },
+      []
+    );
+
+  // ==========================================================
+  // DELETE SAFE
+  // ==========================================================
+
+  const deleteHospitalSafe =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        return hospitaisRepository.deleteSafe(
+          id
+        );
+      },
+      []
+    );
+
+  return {
+    hospitais,
+    getHospital,
+    addHospital,
+    updateHospital,
+    deleteHospital,
+    deleteHospitalSafe,
+  };
 }

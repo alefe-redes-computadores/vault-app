@@ -1,490 +1,1162 @@
 // app/saude/exames/detalhes/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
-  FlaskConical,
-  Building2,
-  Stethoscope,
-  FileText,
-  ExternalLink,
-  Trash2,
-  Edit3,
-  User,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import {
+  motion,
+  AnimatePresence,
+} from "framer-motion";
+import {
   Activity,
-  AlertTriangle,
   AlertOctagon,
+  AlertTriangle,
+  ArrowLeft,
+  Building2,
+  CalendarClock,
   CheckCircle2,
-  Plus,
-  Copy,
   ChevronRight,
+  Edit3,
+  ExternalLink,
+  FileText,
+  FlaskConical,
   History,
+  Stethoscope,
+  Trash2,
+  User,
 } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
 
 import { db } from "@/lib/db";
-import { useHapticFeedback } from "@/lib/haptics";
-import { PageTransition } from "@/components/PageTransition";
-import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { SelectionModal } from "@/components/SelectionModal";
-import { Button } from "@/components/ui/Button";
-import { useToast } from "@/components/ToastProvider";
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+import {
+  deleteFile,
+} from "@/lib/supabase/storage";
+import {
+  getClinicalTheme,
+  getDaysUntil,
+} from "@/lib/health-utils";
 
-import { useExames } from "@/hooks/useExames";
-import { useMedicos } from "@/hooks/useMedicos";
-import { useLocais } from "@/hooks/useLocais";
-import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { useMounted } from "@/hooks/useMounted";
+import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
+import {
+  useExames,
+} from "@/hooks/useExames";
+import {
+  useLocais,
+} from "@/hooks/useLocais";
+import {
+  useMedicos,
+} from "@/hooks/useMedicos";
+import {
+  useMounted,
+} from "@/hooks/useMounted";
+import {
+  useSubmitAction,
+} from "@/hooks/useSubmitAction";
 
-import { isReceitaVencidaSegura } from "@/lib/health-insights";
-import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
-
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+import {
+  DetailSkeleton,
+} from "@/components/loading/DetailSkeleton";
+import {
+  ConfirmationModal,
+} from "@/components/ConfirmationModal";
+import {
+  SelectionModal,
+} from "@/components/SelectionModal";
+import {
+  Button,
+} from "@/components/ui/Button";
+import {
+  useToast,
+} from "@/components/ToastProvider";
 import {
   SectionTitle,
   DetailInfoRow,
 } from "@/components/detail/DetailComponents";
 
 import type {
+  Cid,
   Exame,
+  LocalSaude,
   Medico,
   Tratamento,
-  Cid,
-  LocalSaude,
 } from "@/lib/types";
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+// ============================================================
+// HELPERS
+// ============================================================
 
-function formatDate(isoStr?: string) {
-  if (!isoStr) return "—";
-
-  try {
-    return new Date(isoStr).toLocaleDateString("pt-BR");
-  } catch {
-    return isoStr;
+function formatDate(
+  isoStr?: string
+): string {
+  if (!isoStr) {
+    return "—";
   }
+
+  const datePart =
+    isoStr.includes("T")
+      ? isoStr.split("T")[0]
+      : isoStr;
+
+  const parts =
+    datePart.split("-");
+
+  if (
+    parts.length === 3
+  ) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
+  return isoStr;
 }
 
-/* ============================================================
-   CONTEÚDO
-   ============================================================ */
+function normalizeName(
+  value?: string
+): string {
+  return (
+    value
+      ?.trim()
+      .toLocaleLowerCase(
+        "pt-BR"
+      ) || ""
+  );
+}
+
+/**
+ * Somente URLs do bucket oficial de anexos do Vault
+ * podem ser enviadas para deleteFile().
+ *
+ * anexo_url também aceita links externos, que obviamente
+ * não devem ser tratados como arquivos pertencentes ao Vault.
+ */
+function isVaultStorageUrl(
+  url?: string
+): boolean {
+  return Boolean(
+    url &&
+      url.includes(
+        "/storage/v1/object/public/vault-attachments/"
+      )
+  );
+}
+
+// ============================================================
+// CONTENT
+// ============================================================
 
 function DetalhesExameContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const id = searchParams.get("id");
+  const router =
+    useRouter();
 
-  const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
-  const mounted = useMounted();
+  const searchParams =
+    useSearchParams();
+
+  const id =
+    searchParams.get(
+      "id"
+    );
+
+  const mounted =
+    useMounted();
+
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
+
+  const {
+    showToast,
+  } =
+    useToast();
+
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
   const {
     getExame,
     updateExame,
     deleteExame,
-  } = useExames();
+  } =
+    useExames();
 
-  const { addMedico } = useMedicos();
-  const { addLocal } = useLocais();
+  /*
+   * Médicos e Locais são entidades globais por conta.
+   *
+   * Usamos diretamente os hooks oficiais. Não criamos uma
+   * segunda leitura do Dexie aqui para evitar duas fontes
+   * concorrentes e, principalmente, declarações duplicadas
+   * de `medicos` e `locais`.
+   */
+  const {
+    medicos,
+    addMedico,
+  } =
+    useMedicos();
 
-  const deleteAction = useSubmitAction();
+  const {
+    locais,
+    addLocal,
+  } =
+    useLocais();
 
-  const [exame, setExame] = useState<Exame | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const deleteAction =
+    useSubmitAction();
 
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] =
+  // ==========================================================
+  // STATE
+  // ==========================================================
+
+  const [
+    exame,
+    setExame,
+  ] =
+    useState<Exame | null>(
+      null
+    );
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(true);
+
+  const [
+    showDeleteModal,
+    setShowDeleteModal,
+  ] =
     useState(false);
 
-  const [isMedicoModalOpen, setIsMedicoModalOpen] =
+  const [
+    isMedicoModalOpen,
+    setIsMedicoModalOpen,
+  ] =
     useState(false);
 
-  const [isLocalModalOpen, setIsLocalModalOpen] =
+  const [
+    isLocalModalOpen,
+    setIsLocalModalOpen,
+  ] =
     useState(false);
 
-  const [isCreatingMedico, setIsCreatingMedico] =
+  const [
+    isCreatingMedico,
+    setIsCreatingMedico,
+  ] =
     useState(false);
 
-  const [newMedicoNome, setNewMedicoNome] = useState("");
-  const [newMedicoEspecialidade, setNewMedicoEspecialidade] =
+  const [
+    newMedicoNome,
+    setNewMedicoNome,
+  ] =
     useState("");
 
-  const [isCreatingLocal, setIsCreatingLocal] = useState(false);
-  const [newLocalNome, setNewLocalNome] = useState("");
+  const [
+    newMedicoEspecialidade,
+    setNewMedicoEspecialidade,
+  ] =
+    useState("");
 
-  /* ==========================================================
-     DEXIE
-     ========================================================== */
+  const [
+    isCreatingLocal,
+    setIsCreatingLocal,
+  ] =
+    useState(false);
 
-  const medicos =
-    useLiveQuery(() => db.medicos.toArray(), []) || [];
+  const [
+    newLocalNome,
+    setNewLocalNome,
+  ] =
+    useState("");
 
-  const locais =
-    useLiveQuery(() => db.locais.toArray(), []) || [];
+  // ==========================================================
+  // ACTIVE PERSON
+  // ==========================================================
 
-  const persons =
-    useLiveQuery(() => db.persons.toArray(), []) || [];
+  const person =
+    useLiveQuery(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return undefined;
+        }
+
+        return db.persons.get(
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // PERSON-OWNED RELATIONS
+  // ==========================================================
 
   const tratamentos =
-    useLiveQuery(() => {
+    useLiveQuery(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        return db.tratamentos
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ],
+      []
+    ) || [];
+
+  const cids =
+    useLiveQuery(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        return db.cids
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ],
+      []
+    ) || [];
+
+  // ==========================================================
+  // LOAD EXAME
+  // ==========================================================
+
+  useEffect(() => {
+    if (!id) {
+      router.replace(
+        "/saude/exames"
+      );
+
+      return;
+    }
+
+    if (
+      !activePersonId
+    ) {
+      setExame(
+        null
+      );
+
+      setIsLoading(
+        false
+      );
+
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    const loadExame =
+      async () => {
+        setIsLoading(
+          true
+        );
+
+        try {
+          const data =
+            await getExame(
+              id
+            );
+
+          if (
+            cancelled
+          ) {
+            return;
+          }
+
+          if (!data) {
+            showToast(
+              "Exame não encontrado para a pessoa ativa.",
+              "error"
+            );
+
+            router.replace(
+              "/saude/exames"
+            );
+
+            return;
+          }
+
+          setExame(
+            data
+          );
+        } catch (
+          error
+        ) {
+          console.error(
+            "Erro ao carregar exame:",
+            error
+          );
+
+          if (
+            !cancelled
+          ) {
+            showToast(
+              "Não foi possível carregar o exame.",
+              "error"
+            );
+
+            router.replace(
+              "/saude/exames"
+            );
+          }
+        } finally {
+          if (
+            !cancelled
+          ) {
+            setIsLoading(
+              false
+            );
+          }
+        }
+      };
+
+    void loadExame();
+
+    return () => {
+      cancelled =
+        true;
+    };
+  }, [
+    id,
+    activePersonId,
+    getExame,
+    router,
+    showToast,
+  ]);
+
+  // ==========================================================
+  // DIRECT GLOBAL RELATIONS
+  // ==========================================================
+
+  const medico =
+    useMemo(
+      () => {
+        if (
+          !exame?.medico_id
+        ) {
+          return undefined;
+        }
+
+        return medicos.find(
+          (
+            item
+          ) =>
+            item.id ===
+            exame.medico_id
+        );
+      },
+      [
+        exame?.medico_id,
+        medicos,
+      ]
+    );
+
+  const local =
+    useMemo(
+      () => {
+        if (
+          !exame?.local_id
+        ) {
+          return undefined;
+        }
+
+        return locais.find(
+          (
+            item
+          ) =>
+            item.id ===
+            exame.local_id
+        );
+      },
+      [
+        exame?.local_id,
+        locais,
+      ]
+    );
+
+  // ==========================================================
+  // SAFE RELATIONS
+  // ==========================================================
+
+  const tratamentoIds =
+    useMemo(
+      () =>
+        new Set(
+          exame?.tratamento_ids ||
+            []
+        ),
+      [
+        exame?.tratamento_ids,
+      ]
+    );
+
+  const cidIds =
+    useMemo(
+      () =>
+        new Set(
+          exame?.cid_ids ||
+            []
+        ),
+      [
+        exame?.cid_ids,
+      ]
+    );
+
+  const tratamentosRelacionados =
+    useMemo<
+      Tratamento[]
+    >(() => {
       if (
-        !exame?.tratamento_ids ||
-        exame.tratamento_ids.length === 0
+        !exame ||
+        !activePersonId
       ) {
         return [];
       }
 
-      return db.tratamentos
-        .where("id")
-        .anyOf(exame.tratamento_ids)
-        .toArray();
-    }, [exame?.tratamento_ids]) || [];
+      return tratamentos.filter(
+        (
+          tratamento
+        ) =>
+          Boolean(
+            tratamento.id &&
+              tratamentoIds.has(
+                tratamento.id
+              )
+          )
+      );
+    }, [
+      exame,
+      activePersonId,
+      tratamentos,
+      tratamentoIds,
+    ]);
 
-  const cids =
-    useLiveQuery(() => {
-      if (!exame?.cid_ids || exame.cid_ids.length === 0) {
+  const cidsRelacionados =
+    useMemo<
+      Cid[]
+    >(() => {
+      if (
+        !exame ||
+        !activePersonId
+      ) {
         return [];
       }
 
-      return db.cids
-        .where("id")
-        .anyOf(exame.cid_ids)
-        .toArray();
-    }, [exame?.cid_ids]) || [];
+      return cids.filter(
+        (
+          cid
+        ) =>
+          Boolean(
+            cid.id &&
+              cidIds.has(
+                cid.id
+              )
+          )
+      );
+    }, [
+      exame,
+      activePersonId,
+      cids,
+      cidIds,
+    ]);
 
-  const person = useLiveQuery(
-    () =>
-      exame?.person_id
-        ? db.persons.get(exame.person_id)
-        : undefined,
-    [exame?.person_id]
-  );
-
-  const medico = useLiveQuery(
-    () =>
-      exame?.medico_id
-        ? db.medicos.get(exame.medico_id)
-        : undefined,
-    [exame?.medico_id]
-  );
-
-  const local = useLiveQuery(
-    () =>
-      exame?.local_id
-        ? db.locais.get(exame.local_id)
-        : undefined,
-    [exame?.local_id]
-  );
+  // ==========================================================
+  // HISTORY
+  // ==========================================================
 
   const historicoExames =
-    useLiveQuery(() => {
-      if (!exame) return [];
-
-      return db.exames
-        .where("nome")
-        .equals(exame.nome)
-        .filter(
-          (item) =>
-            item.id !== exame.id &&
-            item.person_id === exame.person_id
-        )
-        .toArray();
-    }, [exame]) || [];
-
-  /* ==========================================================
-     CARREGAMENTO
-     ========================================================== */
-
-  useEffect(() => {
-    let active = true;
-
-    if (!id) {
-      router.replace("/saude/exames");
-      return;
-    }
-
-    const loadExame = async () => {
-      try {
-        const data = await getExame(id);
-
-        if (!active) return;
-
-        if (data) {
-          setExame(data);
-        } else {
-          router.replace("/saude/exames");
+    useLiveQuery(
+      async () => {
+        if (
+          !exame?.nome ||
+          !activePersonId
+        ) {
+          return [];
         }
-      } catch (error) {
-        console.error("Erro ao carregar exame:", error);
 
-        if (active) {
-          router.replace("/saude/exames");
-        }
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
+        const all =
+          await db.exames
+            .where(
+              "person_id"
+            )
+            .equals(
+              activePersonId
+            )
+            .toArray();
+
+        const normalizedCurrentName =
+          normalizeName(
+            exame.nome
+          );
+
+        return all
+          .filter(
+            (
+              item
+            ) =>
+              item.id !==
+                exame.id &&
+              normalizeName(
+                item.nome
+              ) ===
+                normalizedCurrentName
+          )
+          .sort(
+            (
+              first,
+              second
+            ) =>
+              (
+                second.data ||
+                ""
+              ).localeCompare(
+                first.data ||
+                  ""
+              )
+          );
+      },
+      [
+        exame?.id,
+        exame?.nome,
+        activePersonId,
+      ],
+      []
+    ) || [];
+
+  // ==========================================================
+  // RETURN DATE
+  // ==========================================================
+
+  const diasParaRetorno =
+    useMemo(() => {
+      if (
+        !exame?.data_retorno
+      ) {
+        return null;
       }
-    };
 
-    loadExame();
+      return getDaysUntil(
+        exame.data_retorno
+      );
+    }, [
+      exame?.data_retorno,
+    ]);
 
-    return () => {
-      active = false;
-    };
-  }, [id, getExame, router]);
+  const retornoEmAtraso =
+    Boolean(
+      diasParaRetorno !==
+        null &&
+        diasParaRetorno <
+          0
+    );
 
-  /* ==========================================================
-     DADOS DERIVADOS
-     ========================================================== */
+  const retornoProximo =
+    Boolean(
+      diasParaRetorno !==
+        null &&
+        diasParaRetorno >=
+          0 &&
+        diasParaRetorno <=
+          3
+    );
 
-  const exameVencido = useMemo(() => {
-    if (!exame?.data_retorno) return false;
-
-    return isReceitaVencidaSegura(exame.data_retorno);
-  }, [exame?.data_retorno]);
-
-  const diasParaApresentacao = useMemo(() => {
-    if (!exame?.data_retorno) return null;
-
-    return getDaysUntil(exame.data_retorno);
-  }, [exame?.data_retorno]);
-
-  /* ==========================================================
-     LOADING
-     ========================================================== */
-
-  if (!mounted || isLoading) {
-    return <DetailSkeleton />;
+  if (
+    !mounted ||
+    isLoading
+  ) {
+    return (
+      <DetailSkeleton />
+    );
   }
 
-  if (!exame) {
+  if (
+    !activePersonId ||
+    !exame
+  ) {
     return null;
   }
 
-  const exameId = exame.id;
+  // ==========================================================
+  // DERIVED UI
+  // ==========================================================
 
-  const medicoValido = Boolean(medico?.nome);
-  const localValido = Boolean(local?.nome);
+  const exameId =
+    exame.id;
 
   const personName =
     person?.name ||
-    persons.find((item) => item.id === exame.person_id)?.name ||
-    "Pessoa não encontrada";
+    "Pessoa ativa";
+
+  const medicoValido =
+    Boolean(
+      medico?.nome
+    );
+
+  const localValido =
+    Boolean(
+      local?.nome
+    );
 
   const temHorario =
-    typeof exame.horario === "string" &&
-    exame.horario.trim().length > 0;
+    Boolean(
+      exame.horario?.trim()
+    );
 
   const corBorda =
-    exameVencido
+    retornoEmAtraso
       ? "#EF4444"
-      : diasParaApresentacao !== null &&
-          diasParaApresentacao <= 3
+      : retornoProximo
         ? "#F59E0B"
         : "#10B981";
 
-  /* ==========================================================
-     MENU
-     ========================================================== */
+  // ==========================================================
+  // REFRESH
+  // ==========================================================
 
-  const menuOptions = [
-    {
-      id: "duplicar-exame",
-      label: "Solicitar Novamente",
-      icon: Copy,
-      path: `/saude/exames/novo?duplicar=${exameId}`,
-    },
-  ];
+  const refreshExame =
+    async () => {
+      if (
+        !exameId
+      ) {
+        return;
+      }
 
-  const handleMenuOptionClick = (path: string) => {
-    trigger("vibrate");
-    setIsMenuFlutuanteOpen(false);
-    router.push(path);
-  };
-
-  /* ==========================================================
-     CRIAÇÃO RÁPIDA DE MÉDICO
-     ========================================================== */
-
-  const handleCreateMedico = async () => {
-    if (!newMedicoNome.trim()) {
-      showToast("Nome do médico é obrigatório", "error");
-      return;
-    }
-
-    if (!exameId) {
-      showToast("Erro: ID do exame não encontrado", "error");
-      return;
-    }
-
-    trigger("vibrate");
-
-    try {
-      const newId = await addMedico({
-        nome: newMedicoNome.trim(),
-        especialidade:
-          newMedicoEspecialidade.trim() || undefined,
-      });
-
-      await updateExame(exameId, {
-        medico_id: newId,
-      });
-
-      showToast("Médico vinculado com sucesso!", "success");
-
-      setIsCreatingMedico(false);
-      setNewMedicoNome("");
-      setNewMedicoEspecialidade("");
-
-      const updated = await getExame(exameId);
+      const updated =
+        await getExame(
+          exameId
+        );
 
       if (updated) {
-        setExame(updated);
+        setExame(
+          updated
+        );
       }
-    } catch (error) {
-      console.error("Erro ao criar médico:", error);
-      showToast("Erro ao criar médico", "error");
-    }
-  };
+    };
 
-  /* ==========================================================
-     CRIAÇÃO RÁPIDA DE LOCAL
-     ========================================================== */
+  // ==========================================================
+  // SELECT MEDICO
+  // ==========================================================
 
-  const handleCreateLocal = async () => {
-    if (!newLocalNome.trim()) {
-      showToast("Nome do local é obrigatório", "error");
-      return;
-    }
-
-    if (!exameId) {
-      showToast("Erro: ID do exame não encontrado", "error");
-      return;
-    }
-
-    trigger("vibrate");
-
-    try {
-      const newId = await addLocal({
-        nome: newLocalNome.trim(),
-        tipo: "laboratorio",
-      });
-
-      await updateExame(exameId, {
-        local_id: newId,
-      });
-
-      showToast("Local vinculado com sucesso!", "success");
-
-      setIsCreatingLocal(false);
-      setNewLocalNome("");
-
-      const updated = await getExame(exameId);
-
-      if (updated) {
-        setExame(updated);
-      }
-    } catch (error) {
-      console.error("Erro ao criar local:", error);
-      showToast("Erro ao criar local", "error");
-    }
-  };
-
-  /* ==========================================================
-     EXCLUSÃO
-     ========================================================== */
-
-  const handleDelete = () => {
-    if (!exameId) return;
-
-    trigger("vibrate");
-
-    deleteAction.run(
-      async () => {
-        await deleteExame(exameId);
-        router.replace("/saude/exames");
-      },
-      {
-        successMessage: "Exame excluído com sucesso",
-        errorMessage: "Erro ao excluir exame",
-        goBackOnSuccess: false,
-      }
-    );
-  };
-
-  /* ==========================================================
-     SELEÇÃO DE MÉDICO
-     ========================================================== */
-
-  const handleSelectMedico = async (item: Medico) => {
-    if (!exameId) {
-      showToast("Erro: ID do exame não encontrado", "error");
-      return;
-    }
-
-    trigger("vibrate");
-
-    try {
-      await updateExame(exameId, {
-        medico_id: item.id,
-      });
-
-      showToast("Médico atualizado com sucesso!", "success");
-
-      const updated = await getExame(exameId);
-
-      if (updated) {
-        setExame(updated);
+  const handleSelectMedico =
+    async (
+      item: Medico
+    ) => {
+      if (
+        !exameId ||
+        !item.id
+      ) {
+        return;
       }
 
-      setIsMedicoModalOpen(false);
-    } catch (error) {
-      console.error("Erro ao atualizar médico:", error);
-      showToast("Erro ao atualizar médico", "error");
-    }
-  };
+      trigger(
+        "vibrate"
+      );
 
-  /* ==========================================================
-     SELEÇÃO DE LOCAL
-     ========================================================== */
+      try {
+        await updateExame(
+          exameId,
+          {
+            medico_id:
+              item.id,
 
-  const handleSelectLocal = async (item: LocalSaude) => {
-    if (!exameId) {
-      showToast("Erro: ID do exame não encontrado", "error");
-      return;
-    }
+            medico:
+              item.nome,
+          }
+        );
 
-    trigger("vibrate");
+        await refreshExame();
 
-    try {
-      await updateExame(exameId, {
-        local_id: item.id,
-      });
+        setIsMedicoModalOpen(
+          false
+        );
 
-      showToast("Local atualizado com sucesso!", "success");
+        trigger(
+          "success"
+        );
 
-      const updated = await getExame(exameId);
+        showToast(
+          "Médico atualizado",
+          "success"
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao atualizar médico:",
+          error
+        );
 
-      if (updated) {
-        setExame(updated);
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Erro ao atualizar médico",
+          "error"
+        );
+      }
+    };
+
+  // ==========================================================
+  // CREATE MEDICO
+  // ==========================================================
+
+  const handleCreateMedico =
+    async () => {
+      const nome =
+        newMedicoNome.trim();
+
+      if (!nome) {
+        showToast(
+          "Nome do médico é obrigatório.",
+          "error"
+        );
+
+        return;
       }
 
-      setIsLocalModalOpen(false);
-    } catch (error) {
-      console.error("Erro ao atualizar local:", error);
-      showToast("Erro ao atualizar local", "error");
-    }
-  };
+      if (!exameId) {
+        return;
+      }
 
-  /* ==========================================================
-     RENDER
-     ========================================================== */
+      trigger(
+        "vibrate"
+      );
+
+      try {
+        const newId =
+          await addMedico(
+            {
+              nome,
+
+              especialidade:
+                newMedicoEspecialidade.trim() ||
+                "Geral",
+            }
+          );
+
+        await updateExame(
+          exameId,
+          {
+            medico_id:
+              newId,
+
+            medico:
+              nome,
+          }
+        );
+
+        await refreshExame();
+
+        setIsCreatingMedico(
+          false
+        );
+
+        setNewMedicoNome(
+          ""
+        );
+
+        setNewMedicoEspecialidade(
+          ""
+        );
+
+        trigger(
+          "success"
+        );
+
+        showToast(
+          "Médico cadastrado e vinculado",
+          "success"
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao criar médico:",
+          error
+        );
+
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Erro ao cadastrar médico",
+          "error"
+        );
+      }
+    };
+
+  // ==========================================================
+  // SELECT LOCAL
+  // ==========================================================
+
+  const handleSelectLocal =
+    async (
+      item: LocalSaude
+    ) => {
+      if (
+        !exameId ||
+        !item.id
+      ) {
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      try {
+        await updateExame(
+          exameId,
+          {
+            local_id:
+              item.id,
+
+            laboratorio:
+              item.nome,
+          }
+        );
+
+        await refreshExame();
+
+        setIsLocalModalOpen(
+          false
+        );
+
+        trigger(
+          "success"
+        );
+
+        showToast(
+          "Local atualizado",
+          "success"
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao atualizar local:",
+          error
+        );
+
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Erro ao atualizar local",
+          "error"
+        );
+      }
+    };
+
+  // ==========================================================
+  // CREATE LOCAL
+  // ==========================================================
+
+  const handleCreateLocal =
+    async () => {
+      const nome =
+        newLocalNome.trim();
+
+      if (!nome) {
+        showToast(
+          "Nome do local é obrigatório.",
+          "error"
+        );
+
+        return;
+      }
+
+      if (!exameId) {
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      try {
+        const newId =
+          await addLocal(
+            {
+              nome,
+
+              tipo:
+                "laboratorio",
+            }
+          );
+
+        await updateExame(
+          exameId,
+          {
+            local_id:
+              newId,
+
+            laboratorio:
+              nome,
+          }
+        );
+
+        await refreshExame();
+
+        setIsCreatingLocal(
+          false
+        );
+
+        setNewLocalNome(
+          ""
+        );
+
+        trigger(
+          "success"
+        );
+
+        showToast(
+          "Local cadastrado e vinculado",
+          "success"
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao criar local:",
+          error
+        );
+
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Erro ao cadastrar local",
+          "error"
+        );
+      }
+    };
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const handleDelete =
+    () => {
+      if (!exameId) {
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      const attachmentUrl =
+        exame.anexo_url?.trim();
+
+      deleteAction.run(
+        async () => {
+          await deleteExame(
+            exameId
+          );
+
+          /*
+           * anexo_url também pode ser um link externo.
+           *
+           * Apenas arquivos do bucket oficial do Vault são
+           * enviados para deleteFile().
+           */
+          if (
+            attachmentUrl &&
+            isVaultStorageUrl(
+              attachmentUrl
+            )
+          ) {
+            const {
+              error,
+            } =
+              await deleteFile(
+                attachmentUrl
+              );
+
+            if (error) {
+              console.error(
+                "Exame excluído, mas o anexo do Vault não pôde ser removido:",
+                error
+              );
+
+              showToast(
+                "Exame excluído, mas o anexo não pôde ser removido.",
+                "info"
+              );
+            }
+          }
+
+          router.replace(
+            "/saude/exames"
+          );
+        },
+        {
+          successMessage:
+            "Exame excluído com sucesso",
+
+          errorMessage:
+            "Erro ao excluir exame",
+
+          goBackOnSuccess:
+            false,
+        }
+      );
+    };
+
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <PageTransition>
@@ -493,12 +1165,15 @@ function DetalhesExameContent() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button
+                type="button"
                 onClick={() => {
-                  trigger("vibrate");
+                  trigger(
+                    "vibrate"
+                  );
+
                   router.back();
                 }}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-                type="button"
                 aria-label="Voltar"
               >
                 <ArrowLeft
@@ -516,123 +1191,54 @@ function DetalhesExameContent() {
                   {exame.nome}
                 </h1>
 
-                <p className="mt-0.5 text-xs text-ink-muted">
-                  <User size={12} className="mr-1 inline" />
+                <p className="mt-0.5 flex items-center text-xs text-ink-muted">
+                  <User
+                    size={12}
+                    className="mr-1"
+                  />
+
                   {personName}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    trigger("vibrate");
-                    setIsMenuFlutuanteOpen((previous) => !previous);
-                  }}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
-                  type="button"
-                  aria-label="Adicionar registro"
-                >
-                  <Plus size={18} />
-                </button>
-
-                <AnimatePresence>
-                  {isMenuFlutuanteOpen && (
-                    <>
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.16 }}
-                        onClick={() =>
-                          setIsMenuFlutuanteOpen(false)
-                        }
-                        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-                      />
-
-                      <motion.div
-                        initial={{
-                          opacity: 0,
-                          y: 10,
-                          scale: 0.95,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          y: 0,
-                          scale: 1,
-                        }}
-                        exit={{
-                          opacity: 0,
-                          y: 10,
-                          scale: 0.95,
-                        }}
-                        transition={{
-                          duration: 0.18,
-                          ease: [0.16, 1, 0.3, 1],
-                        }}
-                        className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
-                      >
-                        <div className="px-3 pb-2 pt-3.5">
-                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
-                            Adicionar
-                          </p>
-                        </div>
-
-                        <div className="px-1.5 pb-2">
-                          {menuOptions.map((option) => {
-                            const Icon = option.icon;
-
-                            return (
-                              <button
-                                key={option.id}
-                                onClick={() =>
-                                  handleMenuOptionClick(option.path)
-                                }
-                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
-                                type="button"
-                              >
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                                  <Icon size={15} />
-                                </div>
-
-                                <span className="text-sm font-medium text-ink-primary">
-                                  {option.label}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-
               <button
+                type="button"
                 onClick={() => {
-                  trigger("vibrate");
+                  trigger(
+                    "vibrate"
+                  );
+
                   router.push(
                     `/saude/exames/editar?id=${exame.id}`
                   );
                 }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
-                type="button"
                 aria-label="Editar exame"
               >
-                <Edit3 size={16} />
+                <Edit3
+                  size={16}
+                />
               </button>
 
               <button
+                type="button"
                 onClick={() => {
-                  trigger("vibrate");
-                  setShowDeleteModal(true);
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setShowDeleteModal(
+                    true
+                  );
                 }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
-                type="button"
                 aria-label="Excluir exame"
               >
-                <Trash2 size={16} />
+                <Trash2
+                  size={16}
+                />
               </button>
             </div>
           </div>
@@ -641,19 +1247,29 @@ function DetalhesExameContent() {
         <section className="space-y-5 px-5 pt-6">
           {exame.data_retorno && (
             <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{
+                opacity: 0,
+                y: -5,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
               className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-sm ${
-                exameVencido
+                retornoEmAtraso
                   ? "border-coral/40 bg-coral/10 text-coral"
-                  : diasParaApresentacao !== null &&
-                      diasParaApresentacao <= 3
+                  : retornoProximo
                     ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                    : "border-surface-border/50 bg-surface text-ink-primary"
+                    : "border-emerald-400/20 bg-emerald-400/8 text-emerald-300"
               }`}
             >
-              {exameVencido ? (
+              {retornoEmAtraso ? (
                 <AlertTriangle
+                  size={18}
+                  className="mt-0.5 shrink-0"
+                />
+              ) : retornoProximo ? (
+                <CalendarClock
                   size={18}
                   className="mt-0.5 shrink-0"
                 />
@@ -665,44 +1281,50 @@ function DetalhesExameContent() {
               )}
 
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
-                  {exameVencido
-                    ? "Prazo Vencido"
-                    : "Prazo Válido"}
-
-                  <span
-                    className={
-                      exameVencido
-                        ? "rounded-full bg-coral/20 px-1.5 py-0.5 text-[8px] font-bold text-coral"
-                        : "rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[8px] font-bold text-emerald-400"
-                    }
-                  >
-                    {exameVencido ? "Vencido" : "Válido"}
-                  </span>
+                <p className="text-xs font-bold uppercase tracking-wider">
+                  {retornoEmAtraso
+                    ? "Retorno em atraso"
+                    : retornoProximo
+                      ? "Retorno próximo"
+                      : "Retorno programado"}
                 </p>
 
-                <p className="mt-0.5 text-xs opacity-90">
-                  {exameVencido
-                    ? `A data limite era ${formatDate(
+                <p className="mt-0.5 text-xs leading-5 opacity-90">
+                  {retornoEmAtraso
+                    ? `A previsão de retorno era ${formatDate(
                         exame.data_retorno
-                      )}. Verifique se precisa de uma nova solicitação.`
-                    : `Data limite agendada para ${formatDate(
-                        exame.data_retorno
-                      )}.`}
+                      )}.`
+                    : diasParaRetorno ===
+                        0
+                      ? "O retorno está programado para hoje."
+                      : `Retorno previsto para ${formatDate(
+                          exame.data_retorno
+                        )}.`}
                 </p>
               </div>
             </motion.div>
           )}
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
             className="space-y-4 rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm"
-            style={{ borderLeft: `6px solid ${corBorda}` }}
+            style={{
+              borderLeft:
+                `6px solid ${corBorda}`,
+            }}
           >
             <div className="flex items-center gap-3.5 border-b border-surface-border/40 pb-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-400">
-                <FlaskConical size={24} />
+                <FlaskConical
+                  size={24}
+                />
               </div>
 
               <div className="min-w-0">
@@ -710,12 +1332,18 @@ function DetalhesExameContent() {
                   {exame.nome}
                 </h2>
 
-                <p className="flex items-center gap-2 text-xs text-ink-muted">
-                  Registrado em {formatDate(exame.data)}
+                <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+                  <span>
+                    Realizado em{" "}
+                    {formatDate(
+                      exame.data
+                    )}
+                  </span>
 
                   {temHorario && (
                     <span className="font-mono text-[10px]">
-                      • {exame.horario}
+                      •{" "}
+                      {exame.horario}
                     </span>
                   )}
                 </p>
@@ -723,18 +1351,28 @@ function DetalhesExameContent() {
             </div>
 
             <DetailInfoRow
-              icon={<Stethoscope size={18} />}
+              icon={
+                <Stethoscope
+                  size={18}
+                />
+              }
               iconClassName="bg-ice/10 text-ice"
               label="Solicitante"
               action={
-                !medicoValido && exame.medico ? (
+                !medicoValido &&
+                exame.medico ? (
                   <button
+                    type="button"
                     onClick={() => {
-                      trigger("vibrate");
-                      setIsMedicoModalOpen(true);
+                      trigger(
+                        "vibrate"
+                      );
+
+                      setIsMedicoModalOpen(
+                        true
+                      );
                     }}
                     className="rounded-full bg-ice/10 px-3 py-1.5 text-xs font-bold text-ice transition-colors hover:bg-ice/20"
-                    type="button"
                   >
                     Corrigir
                   </button>
@@ -743,30 +1381,44 @@ function DetalhesExameContent() {
             >
               {medicoValido ? (
                 <button
+                  type="button"
                   onClick={() => {
-                    trigger("vibrate");
+                    trigger(
+                      "vibrate"
+                    );
+
                     router.push(
                       `/saude/medicos/detalhes?id=${medico!.id}`
                     );
                   }}
                   className="flex max-w-full items-center gap-1 truncate text-sm font-semibold text-ink-primary transition-colors hover:text-ice"
-                  type="button"
                 >
-                  <span className="truncate">{medico!.nome}</span>
+                  <span className="truncate">
+                    Dr(a).{" "}
+                    {
+                      medico!.nome
+                    }
+                  </span>
+
                   <ChevronRight
                     size={14}
                     className="shrink-0 text-ink-faint"
                   />
                 </button>
               ) : exame.medico ? (
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-ink-muted line-through">
-                    {exame.medico}
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-ink-muted">
+                    {
+                      exame.medico
+                    }
                   </p>
 
                   <span className="flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-400">
-                    <AlertOctagon size={12} />
-                    Cadastro perdido
+                    <AlertOctagon
+                      size={12}
+                    />
+
+                    Vínculo ausente
                   </span>
                 </div>
               ) : (
@@ -777,18 +1429,28 @@ function DetalhesExameContent() {
             </DetailInfoRow>
 
             <DetailInfoRow
-              icon={<Building2 size={18} />}
+              icon={
+                <Building2
+                  size={18}
+                />
+              }
               iconClassName="bg-emerald-400/10 text-emerald-400"
               label="Local / Laboratório"
               action={
-                !localValido && exame.laboratorio ? (
+                !localValido &&
+                exame.laboratorio ? (
                   <button
+                    type="button"
                     onClick={() => {
-                      trigger("vibrate");
-                      setIsLocalModalOpen(true);
+                      trigger(
+                        "vibrate"
+                      );
+
+                      setIsLocalModalOpen(
+                        true
+                      );
                     }}
                     className="rounded-full bg-ice/10 px-3 py-1.5 text-xs font-bold text-ice transition-colors hover:bg-ice/20"
-                    type="button"
                   >
                     Corrigir
                   </button>
@@ -797,30 +1459,43 @@ function DetalhesExameContent() {
             >
               {localValido ? (
                 <button
+                  type="button"
                   onClick={() => {
-                    trigger("vibrate");
+                    trigger(
+                      "vibrate"
+                    );
+
                     router.push(
                       `/saude/locais/detalhes?id=${local!.id}`
                     );
                   }}
                   className="flex max-w-full items-center gap-1 truncate text-sm font-semibold text-ink-primary transition-colors hover:text-ice"
-                  type="button"
                 >
-                  <span className="truncate">{local!.nome}</span>
+                  <span className="truncate">
+                    {
+                      local!.nome
+                    }
+                  </span>
+
                   <ChevronRight
                     size={14}
                     className="shrink-0 text-ink-faint"
                   />
                 </button>
               ) : exame.laboratorio ? (
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-ink-muted line-through">
-                    {exame.laboratorio}
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-ink-muted">
+                    {
+                      exame.laboratorio
+                    }
                   </p>
 
                   <span className="flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-400">
-                    <AlertOctagon size={12} />
-                    Cadastro perdido
+                    <AlertOctagon
+                      size={12}
+                    />
+
+                    Vínculo ausente
                   </span>
                 </div>
               ) : (
@@ -830,82 +1505,160 @@ function DetalhesExameContent() {
               )}
             </DetailInfoRow>
 
-            {tratamentos.length > 0 && (
-              <div className="pt-2">
-                <SectionTitle
-                  icon={<Activity size={15} />}
-                  title="Tratamentos Relacionados"
-                />
+            <div className="pt-2">
+              <SectionTitle
+                icon={
+                  <Activity
+                    size={15}
+                  />
+                }
+                title={`Tratamentos Relacionados (${tratamentosRelacionados.length})`}
+              />
 
+              {tratamentosRelacionados.length >
+              0 ? (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {tratamentos.map((tratamento: Tratamento) => {
-                    const theme = getClinicalTheme(
-                      tratamento.nome
-                    );
-                    const Icon = theme.icon;
+                  {tratamentosRelacionados.map(
+                    (
+                      tratamento
+                    ) => {
+                      const theme =
+                        getClinicalTheme(
+                          tratamento.nome
+                        );
 
-                    return (
-                      <button
-                        key={tratamento.id}
-                        onClick={() => {
-                          trigger("vibrate");
-                          router.push(
-                            `/saude/tratamentos/detalhes?id=${tratamento.id}`
-                          );
-                        }}
-                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-opacity hover:opacity-80 ${theme.tagClass}`}
-                        type="button"
-                      >
-                        <Icon size={14} />
-                        <span className="text-xs font-medium">
-                          {tratamento.nome}
-                        </span>
-                      </button>
-                    );
-                  })}
+                      const Icon =
+                        theme.icon;
+
+                      return (
+                        <button
+                          key={
+                            tratamento.id
+                          }
+                          type="button"
+                          onClick={() => {
+                            if (
+                              !tratamento.id
+                            ) {
+                              return;
+                            }
+
+                            trigger(
+                              "vibrate"
+                            );
+
+                            router.push(
+                              `/saude/tratamentos/detalhes?id=${tratamento.id}`
+                            );
+                          }}
+                          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-opacity hover:opacity-80 ${theme.tagClass}`}
+                        >
+                          <Icon
+                            size={14}
+                          />
+
+                          <span className="text-xs font-medium">
+                            {
+                              tratamento.nome
+                            }
+                          </span>
+                        </button>
+                      );
+                    }
+                  )}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="mt-2 text-xs leading-5 text-ink-muted">
+                  Nenhum tratamento foi vinculado diretamente a este exame.
+                </p>
+              )}
+            </div>
 
-            {cids.length > 0 && (
-              <div className="pt-2">
-                <SectionTitle
-                  icon={<Activity size={15} />}
-                  title="CIDs Relacionados"
-                />
+            <div className="pt-2">
+              <SectionTitle
+                icon={
+                  <Stethoscope
+                    size={15}
+                  />
+                }
+                title={`CIDs Relacionados (${cidsRelacionados.length})`}
+              />
 
+              {cidsRelacionados.length >
+              0 ? (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {cids.map((cid: Cid) => {
-                    const theme = getClinicalTheme(
-                      cid.descricao || cid.codigo
-                    );
-                    const Icon = theme.icon;
+                  {cidsRelacionados.map(
+                    (
+                      cid
+                    ) => {
+                      const theme =
+                        getClinicalTheme(
+                          cid.descricao ||
+                            cid.codigo
+                        );
 
-                    return (
-                      <span
-                        key={cid.id}
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 ${theme.tagClass}`}
-                      >
-                        <Icon size={14} />
-                        <span className="text-xs font-medium">
-                          {cid.codigo}
-                        </span>
-                      </span>
-                    );
-                  })}
+                      const Icon =
+                        theme.icon;
+
+                      return (
+                        <button
+                          key={
+                            cid.id
+                          }
+                          type="button"
+                          onClick={() => {
+                            if (
+                              !cid.id
+                            ) {
+                              return;
+                            }
+
+                            trigger(
+                              "vibrate"
+                            );
+
+                            router.push(
+                              `/saude/cids/detalhes?id=${cid.id}`
+                            );
+                          }}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-opacity hover:opacity-80 ${theme.tagClass}`}
+                        >
+                          <Icon
+                            size={14}
+                          />
+
+                          <span className="text-xs font-medium">
+                            {
+                              cid.codigo
+                            }
+                          </span>
+                        </button>
+                      );
+                    }
+                  )}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="mt-2 text-xs leading-5 text-ink-muted">
+                  Nenhum CID foi vinculado diretamente a este exame.
+                </p>
+              )}
+            </div>
 
             {exame.motivo && (
               <div className="pt-2">
                 <SectionTitle
-                  icon={<FileText size={15} />}
+                  icon={
+                    <FileText
+                      size={15}
+                    />
+                  }
                   title="Motivo da Solicitação"
                 />
 
-                <p className="mt-1 rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3 text-xs text-ink-primary">
-                  {exame.motivo}
+                <p className="mt-2 whitespace-pre-wrap rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3 text-xs leading-5 text-ink-primary">
+                  {
+                    exame.motivo
+                  }
                 </p>
               </div>
             )}
@@ -913,165 +1666,284 @@ function DetalhesExameContent() {
             {exame.observacoes && (
               <div className="pt-2">
                 <SectionTitle
-                  icon={<FileText size={15} />}
+                  icon={
+                    <FileText
+                      size={15}
+                    />
+                  }
                   title="Resultados / Notas"
                 />
 
-                <p className="mt-1 whitespace-pre-wrap rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3 text-xs text-ink-primary">
-                  {exame.observacoes}
+                <p className="mt-2 whitespace-pre-wrap rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3 text-xs leading-5 text-ink-primary">
+                  {
+                    exame.observacoes
+                  }
                 </p>
               </div>
             )}
 
             {exame.anexo_url && (
               <a
-                href={exame.anexo_url}
+                href={
+                  exame.anexo_url
+                }
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="mt-2 flex items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 p-3.5 text-ice transition-colors hover:bg-ice/20"
               >
-                <div className="flex items-center gap-2 text-xs font-semibold">
-                  <FileText size={16} />
-                  Ver Anexo / Documento do Exame
+                <div className="flex min-w-0 items-center gap-2 text-xs font-semibold">
+                  <FileText
+                    size={16}
+                    className="shrink-0"
+                  />
+
+                  <span className="truncate">
+                    Ver Anexo / Laudo
+                  </span>
                 </div>
 
-                <ExternalLink size={14} />
+                <ExternalLink
+                  size={14}
+                  className="shrink-0"
+                />
               </a>
             )}
           </motion.div>
 
-          {historicoExames.length > 0 && (
+          {historicoExames.length >
+            0 && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                delay: 0.08,
+              }}
               className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
             >
               <SectionTitle
-                icon={<History size={15} />}
-                title="Histórico do Exame"
+                icon={
+                  <History
+                    size={15}
+                  />
+                }
+                title={`Histórico deste Exame (${historicoExames.length})`}
               />
 
-              <p className="text-xs text-ink-muted">
-                Outras vezes que "{exame.nome}" foi realizado para{" "}
-                {personName}:
+              <p className="text-xs leading-5 text-ink-muted">
+                Registros anteriores de{" "}
+                <span className="font-medium text-ink-primary">
+                  “{exame.nome}”
+                </span>{" "}
+                para {personName}.
               </p>
 
               <div className="space-y-2 pt-1">
-                {[...historicoExames]
-                  .sort(
-                    (a, b) =>
-                      new Date(b.data).getTime() -
-                      new Date(a.data).getTime()
-                  )
-                  .map((item: Exame) => (
+                {historicoExames.map(
+                  (
+                    item
+                  ) => (
                     <button
-                      key={item.id}
+                      key={
+                        item.id
+                      }
+                      type="button"
                       onClick={() => {
-                        trigger("vibrate");
+                        if (
+                          !item.id
+                        ) {
+                          return;
+                        }
+
+                        trigger(
+                          "vibrate"
+                        );
+
                         router.push(
                           `/saude/exames/detalhes?id=${item.id}`
                         );
                       }}
-                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border/40 bg-surface-raised/70 p-3 text-left transition-colors hover:bg-surface-raised active:scale-[0.99]"
-                      type="button"
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/40 bg-surface-raised/70 p-3 text-left transition-colors hover:bg-surface-raised active:scale-[0.99]"
                     >
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-ink-primary">
-                          Realizado em {formatDate(item.data)}
+                          {
+                            formatDate(
+                              item.data
+                            )
+                          }
                         </p>
 
                         {item.laboratorio && (
-                          <p className="truncate text-[10px] text-ink-muted">
-                            {item.laboratorio}
+                          <p className="mt-0.5 truncate text-[10px] text-ink-muted">
+                            {
+                              item.laboratorio
+                            }
                           </p>
                         )}
 
                         {item.medico && (
                           <p className="truncate text-[10px] text-ink-muted">
-                            Solicitante: {item.medico}
+                            Solicitante:{" "}
+                            {
+                              item.medico
+                            }
                           </p>
                         )}
                       </div>
 
-                      <span className="ml-3 shrink-0 text-xs font-medium text-ice">
-                        Ver detalhes
-                      </span>
+                      <ChevronRight
+                        size={15}
+                        className="shrink-0 text-ice"
+                      />
                     </button>
-                  ))}
+                  )
+                )}
               </div>
             </motion.div>
           )}
         </section>
 
         <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDelete}
+          isOpen={
+            showDeleteModal
+          }
+          onClose={() =>
+            setShowDeleteModal(
+              false
+            )
+          }
+          onConfirm={
+            handleDelete
+          }
           title="Excluir Exame"
-          message={`Tem certeza que deseja excluir o registro de "${exame.nome}"?`}
+          message={`Tem certeza que deseja excluir "${exame.nome}"? Tratamentos e CIDs relacionados não serão excluídos.`}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
-          isLoading={deleteAction.isSubmitting}
+          isLoading={
+            deleteAction.isSubmitting
+          }
           type="danger"
         />
 
-        <SelectionModal
-          isOpen={isMedicoModalOpen}
-          onClose={() => setIsMedicoModalOpen(false)}
-          onSelect={handleSelectMedico}
-          items={medicos}
+        <SelectionModal<Medico>
+          isOpen={
+            isMedicoModalOpen
+          }
+          onClose={() =>
+            setIsMedicoModalOpen(
+              false
+            )
+          }
+          onSelect={
+            handleSelectMedico
+          }
+          items={
+            medicos
+          }
           title="Selecionar Médico"
           placeholder="Buscar médico..."
-          renderItem={(item: Medico) => (
+          renderItem={(
+            item
+          ) => (
             <div>
               <p className="font-medium text-ink-primary">
-                {item.nome}
+                Dr(a).{" "}
+                {
+                  item.nome
+                }
               </p>
 
               {item.especialidade && (
                 <p className="text-xs text-ink-muted">
-                  {item.especialidade}
+                  {
+                    item.especialidade
+                  }
                 </p>
               )}
             </div>
           )}
-          getItemId={(item: Medico) => item.id!}
-          getItemLabel={(item: Medico) => item.nome}
+          getItemId={(
+            item
+          ) =>
+            item.id!
+          }
+          getItemLabel={(
+            item
+          ) =>
+            item.nome
+          }
           onCreateNew={() => {
-            setIsMedicoModalOpen(false);
-            setIsCreatingMedico(true);
+            setIsMedicoModalOpen(
+              false
+            );
+
+            setIsCreatingMedico(
+              true
+            );
           }}
           createNewLabel="Cadastrar Novo Médico"
         />
 
-        <SelectionModal
-          isOpen={isLocalModalOpen}
-          onClose={() => setIsLocalModalOpen(false)}
-          onSelect={handleSelectLocal}
-          items={locais.filter(
-            (item) => item.tipo === "laboratorio"
-          )}
+        <SelectionModal<LocalSaude>
+          isOpen={
+            isLocalModalOpen
+          }
+          onClose={() =>
+            setIsLocalModalOpen(
+              false
+            )
+          }
+          onSelect={
+            handleSelectLocal
+          }
+          items={
+            locais
+          }
           title="Selecionar Local / Laboratório"
           placeholder="Buscar local..."
-          renderItem={(item: LocalSaude) => (
+          renderItem={(
+            item
+          ) => (
             <div>
               <p className="font-medium text-ink-primary">
-                {item.nome}
+                {
+                  item.nome
+                }
               </p>
 
               {item.endereco && (
                 <p className="text-xs text-ink-muted">
-                  {item.endereco}
+                  {
+                    item.endereco
+                  }
                 </p>
               )}
             </div>
           )}
-          getItemId={(item: LocalSaude) => item.id!}
-          getItemLabel={(item: LocalSaude) => item.nome}
+          getItemId={(
+            item
+          ) =>
+            item.id!
+          }
+          getItemLabel={(
+            item
+          ) =>
+            item.nome
+          }
           onCreateNew={() => {
-            setIsLocalModalOpen(false);
-            setIsCreatingLocal(true);
+            setIsLocalModalOpen(
+              false
+            );
+
+            setIsCreatingLocal(
+              true
+            );
           }}
           createNewLabel="Cadastrar Novo Local"
         />
@@ -1079,17 +1951,30 @@ function DetalhesExameContent() {
         <AnimatePresence>
           {isCreatingMedico && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{
+                opacity: 0,
+              }}
+              animate={{
+                opacity: 1,
+              }}
+              exit={{
+                opacity: 0,
+              }}
               className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-md sm:items-center"
             >
               <motion.div
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
+                initial={{
+                  y: "100%",
+                }}
+                animate={{
+                  y: 0,
+                }}
+                exit={{
+                  y: "100%",
+                }}
                 transition={{
-                  type: "spring",
+                  type:
+                    "spring",
                   damping: 25,
                   stiffness: 200,
                 }}
@@ -1103,18 +1988,28 @@ function DetalhesExameContent() {
                   <input
                     type="text"
                     placeholder="Nome do médico"
-                    value={newMedicoNome}
-                    onChange={(event) =>
-                      setNewMedicoNome(event.target.value)
+                    value={
+                      newMedicoNome
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setNewMedicoNome(
+                        event.target.value
+                      )
                     }
                     className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice"
                   />
 
                   <input
                     type="text"
-                    placeholder="Especialidade (opcional)"
-                    value={newMedicoEspecialidade}
-                    onChange={(event) =>
+                    placeholder="Especialidade"
+                    value={
+                      newMedicoEspecialidade
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       setNewMedicoEspecialidade(
                         event.target.value
                       )
@@ -1127,9 +2022,17 @@ function DetalhesExameContent() {
                       variant="secondary"
                       fullWidth
                       onClick={() => {
-                        setIsCreatingMedico(false);
-                        setNewMedicoNome("");
-                        setNewMedicoEspecialidade("");
+                        setIsCreatingMedico(
+                          false
+                        );
+
+                        setNewMedicoNome(
+                          ""
+                        );
+
+                        setNewMedicoEspecialidade(
+                          ""
+                        );
                       }}
                     >
                       Cancelar
@@ -1138,7 +2041,12 @@ function DetalhesExameContent() {
                     <Button
                       variant="primary"
                       fullWidth
-                      onClick={handleCreateMedico}
+                      onClick={
+                        handleCreateMedico
+                      }
+                      disabled={
+                        !newMedicoNome.trim()
+                      }
                     >
                       Salvar e Vincular
                     </Button>
@@ -1152,17 +2060,30 @@ function DetalhesExameContent() {
         <AnimatePresence>
           {isCreatingLocal && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{
+                opacity: 0,
+              }}
+              animate={{
+                opacity: 1,
+              }}
+              exit={{
+                opacity: 0,
+              }}
               className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-md sm:items-center"
             >
               <motion.div
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
+                initial={{
+                  y: "100%",
+                }}
+                animate={{
+                  y: 0,
+                }}
+                exit={{
+                  y: "100%",
+                }}
                 transition={{
-                  type: "spring",
+                  type:
+                    "spring",
                   damping: 25,
                   stiffness: 200,
                 }}
@@ -1176,9 +2097,15 @@ function DetalhesExameContent() {
                   <input
                     type="text"
                     placeholder="Nome do local"
-                    value={newLocalNome}
-                    onChange={(event) =>
-                      setNewLocalNome(event.target.value)
+                    value={
+                      newLocalNome
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setNewLocalNome(
+                        event.target.value
+                      )
                     }
                     className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-ink-primary outline-none focus:border-ice"
                   />
@@ -1188,8 +2115,13 @@ function DetalhesExameContent() {
                       variant="secondary"
                       fullWidth
                       onClick={() => {
-                        setIsCreatingLocal(false);
-                        setNewLocalNome("");
+                        setIsCreatingLocal(
+                          false
+                        );
+
+                        setNewLocalNome(
+                          ""
+                        );
                       }}
                     >
                       Cancelar
@@ -1198,7 +2130,12 @@ function DetalhesExameContent() {
                     <Button
                       variant="primary"
                       fullWidth
-                      onClick={handleCreateLocal}
+                      onClick={
+                        handleCreateLocal
+                      }
+                      disabled={
+                        !newLocalNome.trim()
+                      }
                     >
                       Salvar e Vincular
                     </Button>
@@ -1213,13 +2150,17 @@ function DetalhesExameContent() {
   );
 }
 
-/* ============================================================
-   PÁGINA
-   ============================================================ */
+// ============================================================
+// PAGE
+// ============================================================
 
 export default function DetalhesExamePage() {
   return (
-    <Suspense fallback={<DetailSkeleton />}>
+    <Suspense
+      fallback={
+        <DetailSkeleton />
+      }
+    >
       <DetalhesExameContent />
     </Suspense>
   );

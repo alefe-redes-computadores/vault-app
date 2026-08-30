@@ -1,39 +1,156 @@
 // hooks/useFarmacias.ts
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
+import {
+  useCallback,
+} from "react";
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
 import { db } from "@/lib/db";
-import { farmaciasRepository } from "@/lib/repositories/farmacias";
-import { useAuth } from "./useAuth";
-import { useCallback } from "react";
-import type { Farmacia } from "@/lib/types";
+import {
+  farmaciasRepository,
+} from "@/lib/repositories/farmacias";
+
+import type {
+  Farmacia,
+} from "@/lib/types";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type AddFarmaciaInput = Omit<
+  Farmacia,
+  | "id"
+  | "user_id"
+  | "person_id"
+  | "created_at"
+  | "updated_at"
+  | "synced"
+>;
+
+type UpdateFarmaciaInput = Partial<
+  Omit<
+    Farmacia,
+    | "id"
+    | "user_id"
+    | "person_id"
+    | "created_at"
+  >
+>;
+
+// ============================================================
+// HOOK
+// ============================================================
 
 export function useFarmacias() {
-  const { user } = useAuth();
+  /*
+   * Farmácia é GLOBAL por usuário.
+   *
+   * Não existe useActivePersonId aqui.
+   * Também não precisamos de useAuth:
+   * o repository injeta o usuário autenticado no create.
+   */
 
-  const farmacias = useLiveQuery(
-    () => db.farmacias.toArray(), // global — mostra tudo, sem depender de pessoa ativa
-    [],
-    []
-  );
+  const farmacias =
+    useLiveQuery(
+      () =>
+        db.farmacias.toArray(),
+      [],
+      []
+    );
 
-  const getFarmacia = useCallback((id: string) => farmaciasRepository.getById(id), []);
+  // ==========================================================
+  // GET
+  // ==========================================================
 
-  const addFarmacia = useCallback(async (data: Omit<Farmacia, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    return await farmaciasRepository.create({
-      ...data,
-      user_id: user.id,
-      // sem person_id — Farmácia é global, não pertence a uma pessoa específica
-    });
-  }, [user]);
+  const getFarmacia =
+    useCallback(
+      (
+        id: string
+      ) =>
+        farmaciasRepository.getById(
+          id
+        ),
+      []
+    );
 
-  const updateFarmacia = useCallback(async (id: string, data: Partial<Farmacia>) => {
-    return await farmaciasRepository.update(id, data);
-  }, []);
+  // ==========================================================
+  // ADD
+  // ==========================================================
 
-  const deleteFarmacia = useCallback(async (id: string) => await farmaciasRepository.delete(id), []);
-  const deleteFarmaciaSafe = useCallback(async (id: string) => await farmaciasRepository.deleteSafe(id), []);
+  const addFarmacia =
+    useCallback(
+      async (
+        data:
+          AddFarmaciaInput
+      ) => {
+        return farmaciasRepository.create(
+          data
+        );
+      },
+      []
+    );
 
-  return { farmacias, getFarmacia, addFarmacia, updateFarmacia, deleteFarmacia, deleteFarmaciaSafe };
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
+
+  const updateFarmacia =
+    useCallback(
+      async (
+        id: string,
+        data:
+          UpdateFarmaciaInput
+      ) => {
+        return farmaciasRepository.update(
+          id,
+          data
+        );
+      },
+      []
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const deleteFarmacia =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        return farmaciasRepository.delete(
+          id
+        );
+      },
+      []
+    );
+
+  // ==========================================================
+  // DELETE SAFE
+  // ==========================================================
+
+  const deleteFarmaciaSafe =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        return farmaciasRepository.deleteSafe(
+          id
+        );
+      },
+      []
+    );
+
+  return {
+    farmacias,
+    getFarmacia,
+    addFarmacia,
+    updateFarmacia,
+    deleteFarmacia,
+    deleteFarmaciaSafe,
+  };
 }

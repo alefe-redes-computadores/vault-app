@@ -123,7 +123,8 @@ export function DocumentManager({
 
     try {
       await documentsRepository.delete(
-        documentToDelete.id
+        documentToDelete.id,
+        documentToDelete.person_id
       );
 
       trigger("success");

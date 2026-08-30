@@ -1,37 +1,230 @@
 // hooks/useCids.ts
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
+import {
+  useCallback,
+} from "react";
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
 import { db } from "@/lib/db";
-import { cidsRepository } from "@/lib/repositories/cids";
-import { useAuth } from "./useAuth";
-import { useActivePersonId } from "./useActivePersonId";
-import { useCallback } from "react";
-import type { Cid } from "@/lib/types";
+import {
+  cidsRepository,
+} from "@/lib/repositories/cids";
+import {
+  useActivePersonId,
+} from "./useActivePersonId";
+
+import type {
+  Cid,
+} from "@/lib/types";
+
+// ============================================================
+// TIPOS
+// ============================================================
+
+type AddCidInput = Omit<
+  Cid,
+  | "id"
+  | "user_id"
+  | "person_id"
+  | "created_at"
+  | "updated_at"
+  | "synced"
+>;
+
+type UpdateCidInput = Partial<
+  Omit<
+    Cid,
+    | "id"
+    | "user_id"
+    | "person_id"
+    | "created_at"
+  >
+>;
+
+// ============================================================
+// HOOK
+// ============================================================
 
 export function useCids() {
-  const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  const cids = useLiveQuery(
-    () => activePersonId ? db.cids.where('person_id').equals(activePersonId).toArray() : [],
-    [activePersonId],
-    []
-  );
+  // ==========================================================
+  // LISTA DA PESSOA ATIVA
+  // ==========================================================
 
-  const getCid = useCallback((id: string) => cidsRepository.getById(id), []);
+  const cids =
+    useLiveQuery(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
 
-  const addCid = useCallback(async (data: Omit<Cid, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    return await cidsRepository.create({ ...data, user_id: user.id });
-  }, [user]);
+        return db.cids
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ],
+      []
+    );
 
-  const updateCid = useCallback(async (id: string, data: Partial<Cid>) => {
-    return await cidsRepository.update(id, data);
-  }, []);
+  // ==========================================================
+  // GET
+  // ==========================================================
 
-  const deleteCid = useCallback(async (id: string) => await cidsRepository.delete(id), []);
-  const deleteCidSafe = useCallback(async (id: string) => await cidsRepository.deleteSafe(id), []);
+  const getCid =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          return undefined;
+        }
 
-  return { cids, getCid, addCid, updateCid, deleteCid, deleteCidSafe };
+        return cidsRepository.getById(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // ADD
+  // ==========================================================
+
+  const addCid =
+    useCallback(
+      async (
+        data:
+          AddCidInput
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return cidsRepository.create(
+          {
+            ...data,
+
+            person_id:
+              activePersonId,
+          }
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
+
+  const updateCid =
+    useCallback(
+      async (
+        id: string,
+        data:
+          UpdateCidInput
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return cidsRepository.update(
+          id,
+          activePersonId,
+          data
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const deleteCid =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return cidsRepository.delete(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  const deleteCidSafe =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return cidsRepository.deleteSafe(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  return {
+    cids,
+    getCid,
+    addCid,
+    updateCid,
+    deleteCid,
+    deleteCidSafe,
+  };
 }

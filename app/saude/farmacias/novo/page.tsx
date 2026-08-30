@@ -1,171 +1,493 @@
 // app/saude/farmacias/novo/page.tsx
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Save, Building2 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useHapticFeedback } from "@/lib/haptics";
-import { useToast } from "@/components/ToastProvider";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { TextArea } from "@/components/ui/TextArea";
-import { PageTransition } from "@/components/PageTransition";
-import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { farmaciasRepository } from "@/lib/repositories/farmacias";
+import {
+  useRef,
+  useState,
+} from "react";
+import {
+  useRouter,
+} from "next/navigation";
+import {
+  motion,
+} from "framer-motion";
+import {
+  ArrowLeft,
+  Building2,
+  Loader2,
+  Save,
+} from "lucide-react";
 
-const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
 
-function formatPhone(value: string): string {
-  const clean = value.replace(/\D/g, "").slice(0, 11);
-  if (clean.length <= 2) return clean;
-  if (clean.length <= 6) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
-  if (clean.length <= 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
-  return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+import {
+  useFarmacias,
+} from "@/hooks/useFarmacias";
+import {
+  useSubmitAction,
+} from "@/hooks/useSubmitAction";
+
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+import {
+  Button,
+} from "@/components/ui/Button";
+import {
+  Input,
+} from "@/components/ui/Input";
+import {
+  TextArea,
+} from "@/components/ui/TextArea";
+
+// ============================================================
+// ANIMATION
+// ============================================================
+
+const fadeUp = {
+  initial: {
+    opacity: 0,
+    y: 12,
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+  },
+};
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function formatPhone(
+  value: string
+): string {
+  const clean =
+    value
+      .replace(
+        /\D/g,
+        ""
+      )
+      .slice(
+        0,
+        11
+      );
+
+  if (
+    clean.length <= 2
+  ) {
+    return clean;
+  }
+
+  if (
+    clean.length <= 6
+  ) {
+    return `(${clean.slice(
+      0,
+      2
+    )}) ${clean.slice(2)}`;
+  }
+
+  if (
+    clean.length <= 10
+  ) {
+    return `(${clean.slice(
+      0,
+      2
+    )}) ${clean.slice(
+      2,
+      6
+    )}-${clean.slice(6)}`;
+  }
+
+  return `(${clean.slice(
+    0,
+    2
+  )}) ${clean.slice(
+    2,
+    7
+  )}-${clean.slice(7)}`;
 }
 
+// ============================================================
+// PAGE
+// ============================================================
+
 export default function NovaFarmaciaPage() {
-  const { trigger } = useHapticFeedback();
-  const { showToast } = useToast();
-  const router = useRouter();
-  const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
-  const { run, isSubmitting } = useSubmitAction();
-  const isSubmitLocked = useRef(false);
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
 
-  const [nome, setNome] = useState("");
-  const [endereco, setEndereco] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [observacoes, setObservacoes] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const router =
+    useRouter();
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!nome.trim()) newErrors.nome = "Nome é obrigatório";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const {
+    addFarmacia,
+  } =
+    useFarmacias();
 
-  const handleSubmit = async () => {
-    trigger("vibrate");
-    if (!validate()) {
-      trigger("error");
-      return;
-    }
-    if (!user?.id) return;
+  const {
+    run,
+    isSubmitting,
+  } =
+    useSubmitAction();
 
-    if (isSubmitLocked.current || isSubmitting) return;
-    isSubmitLocked.current = true;
+  const isSubmitLocked =
+    useRef(false);
 
-    try {
-      await run(
-        async () => {
-          await farmaciasRepository.create({
-            user_id: user.id,
-            person_id: activePersonId || undefined,
-            nome: nome.trim(),
-            endereco: endereco.trim() || undefined,
-            telefone: telefone.trim() || undefined,
-            observacoes: observacoes.trim() || undefined,
-          });
-        },
-        {
-          successMessage: "Farmácia cadastrada com sucesso",
-          errorMessage: "Erro ao cadastrar farmácia",
-          goBackOnSuccess: true,
+  const [
+    nome,
+    setNome,
+  ] =
+    useState("");
+
+  const [
+    endereco,
+    setEndereco,
+  ] =
+    useState("");
+
+  const [
+    telefone,
+    setTelefone,
+  ] =
+    useState("");
+
+  const [
+    observacoes,
+    setObservacoes,
+  ] =
+    useState("");
+
+  const [
+    errors,
+    setErrors,
+  ] =
+    useState<
+      Record<
+        string,
+        string
+      >
+    >({});
+
+  // ==========================================================
+  // VALIDATION
+  // ==========================================================
+
+  const clearError =
+    (
+      key: string
+    ) => {
+      setErrors(
+        (
+          previous
+        ) => {
+          if (
+            !previous[key]
+          ) {
+            return previous;
+          }
+
+          const next = {
+            ...previous,
+          };
+
+          delete next[key];
+
+          return next;
         }
       );
-    } finally {
-      isSubmitLocked.current = false;
-    }
-  };
+    };
+
+  const validate =
+    () => {
+      const newErrors:
+        Record<
+          string,
+          string
+        > =
+        {};
+
+      if (
+        !nome.trim()
+      ) {
+        newErrors.nome =
+          "Nome é obrigatório";
+      }
+
+      setErrors(
+        newErrors
+      );
+
+      return (
+        Object.keys(
+          newErrors
+        ).length ===
+        0
+      );
+    };
+
+  // ==========================================================
+  // SUBMIT
+  // ==========================================================
+
+  const handleSubmit =
+    async () => {
+      trigger(
+        "vibrate"
+      );
+
+      if (
+        !validate()
+      ) {
+        trigger(
+          "error"
+        );
+
+        return;
+      }
+
+      if (
+        isSubmitLocked.current ||
+        isSubmitting
+      ) {
+        return;
+      }
+
+      isSubmitLocked.current =
+        true;
+
+      try {
+        await run(
+          async () => {
+            /*
+             * Farmácia é global por usuário.
+             *
+             * Não existe:
+             * - activePersonId
+             * - person_id
+             * - user_id vindo da página
+             *
+             * O repository injeta internamente o usuário.
+             */
+            await addFarmacia({
+              nome:
+                nome.trim(),
+
+              endereco:
+                endereco.trim() ||
+                undefined,
+
+              telefone:
+                telefone.trim() ||
+                undefined,
+
+              observacoes:
+                observacoes.trim() ||
+                undefined,
+            });
+          },
+          {
+            successMessage:
+              "Farmácia cadastrada com sucesso",
+
+            errorMessage:
+              "Erro ao cadastrar farmácia",
+
+            goBackOnSuccess:
+              true,
+          }
+        );
+      } finally {
+        isSubmitLocked.current =
+          false;
+      }
+    };
+
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        {/* ====================================================
+            HEADER
+            ==================================================== */}
+
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
+              type="button"
+              onClick={() => {
+                trigger(
+                  "vibrate"
+                );
+
+                router.back();
+              }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               aria-label="Voltar"
             >
-              <ArrowLeft size={18} className="text-ink-primary" />
+              <ArrowLeft
+                size={18}
+                className="text-ink-primary"
+              />
             </button>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <Building2 size={16} className="text-amber-400" />
+                <Building2
+                  size={16}
+                  className="text-amber-400"
+                />
+
                 <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber-400">
                   Hub de Farmácia
                 </p>
               </div>
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary truncate">
+
+              <h1 className="mt-1 truncate font-display text-xl font-semibold text-ink-primary">
                 Nova Farmácia
               </h1>
             </div>
           </div>
         </header>
 
+        {/* ====================================================
+            FORM
+            ==================================================== */}
+
         <section className="space-y-5 px-5 pt-6">
           <motion.div
-            variants={fadeUp}
+            variants={
+              fadeUp
+            }
             initial="initial"
             animate="animate"
-            transition={{ duration: 0.28 }}
+            transition={{
+              duration:
+                0.28,
+            }}
             className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-1">
-              Informações do Local
-            </h2>
+            <div className="px-1">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                Informações do Local
+              </h2>
+
+              <p className="mt-1 text-[11px] leading-5 text-ink-faint">
+                Este cadastro fica disponível globalmente no seu Vault e pode ser usado pelos registros de saúde das diferentes pessoas.
+              </p>
+            </div>
+
             <Input
               label="Nome *"
               placeholder="Ex: Farmácia Popular, Drogasil..."
               value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              error={errors.nome}
+              onChange={(
+                event
+              ) => {
+                setNome(
+                  event.target.value
+                );
+
+                clearError(
+                  "nome"
+                );
+              }}
+              error={
+                errors.nome
+              }
               required
             />
+
             <Input
               label="Endereço"
               placeholder="Rua, número, bairro"
-              value={endereco}
-              onChange={(e) => setEndereco(e.target.value)}
+              value={
+                endereco
+              }
+              onChange={(
+                event
+              ) =>
+                setEndereco(
+                  event.target.value
+                )
+              }
             />
+
             <Input
               label="Telefone"
               placeholder="(00) 00000-0000"
-              value={telefone}
-              onChange={(e) => setTelefone(formatPhone(e.target.value))}
+              value={
+                telefone
+              }
+              onChange={(
+                event
+              ) =>
+                setTelefone(
+                  formatPhone(
+                    event
+                      .target
+                      .value
+                  )
+                )
+              }
             />
+
             <TextArea
               label="Observações"
-              placeholder="Horário de funcionamento, detalhes..."
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
+              placeholder="Horário de funcionamento, unidade, detalhes..."
+              value={
+                observacoes
+              }
+              onChange={(
+                event
+              ) =>
+                setObservacoes(
+                  event.target.value
+                )
+              }
             />
           </motion.div>
         </section>
+
+        {/* ====================================================
+            SAVE
+            ==================================================== */}
 
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <Button
             variant="primary"
             size="lg"
             fullWidth
-            onClick={handleSubmit}
-            disabled={isSubmitting}
+            onClick={
+              handleSubmit
+            }
+            disabled={
+              isSubmitting
+            }
             className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
           >
             {isSubmitting ? (
               <>
-                <Loader2 size={16} className="animate-spin" />
+                <Loader2
+                  size={16}
+                  className="animate-spin"
+                />
+
                 Salvando...
               </>
             ) : (
               <>
-                <Save size={16} />
+                <Save
+                  size={16}
+                />
+
                 Salvar farmácia
               </>
             )}

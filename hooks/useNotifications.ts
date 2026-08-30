@@ -1,86 +1,211 @@
+// hooks/useNotifications.ts
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { LocalNotifications } from '@capacitor/local-notifications';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  Capacitor,
+} from "@capacitor/core";
+
+import {
+  LocalNotifications,
+} from "@capacitor/local-notifications";
 
 export function useNotifications() {
-  const [permissionGranted, setPermissionGranted] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [
+    permissionGranted,
+    setPermissionGranted,
+  ] = useState(false);
 
-  // Função para verificar permissões
-  const checkPermissions = useCallback(async () => {
-    try {
-      // Verifica se está em ambiente Capacitor/Cordova
-      if (typeof window !== 'undefined' && 'cordova' in window) {
-        const result = await LocalNotifications.checkPermissions();
-        const granted = result.display === 'granted';
-        setPermissionGranted(granted);
-        return granted;
-      }
-      // Em ambiente web, retorna true (mas não faz nada)
-      setPermissionGranted(true);
-      return true;
-    } catch (error) {
-      console.error('Erro ao verificar permissões:', error);
-      setPermissionGranted(false);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-  // Função para solicitar permissões
-  const requestPermissions = useCallback(async () => {
-    try {
-      if (typeof window !== 'undefined' && 'cordova' in window) {
-        const result = await LocalNotifications.requestPermissions();
-        const granted = result.display === 'granted';
-        setPermissionGranted(granted);
-        return granted;
-      }
-      setPermissionGranted(true);
-      return true;
-    } catch (error) {
-      console.error('Erro ao solicitar permissões:', error);
-      return false;
-    }
-  }, []);
+  const checkPermissions =
+    useCallback(
+      async () => {
+        try {
+          if (
+            !Capacitor.isNativePlatform()
+          ) {
+            setPermissionGranted(
+              false
+            );
 
-  // Listener para quando o usuário clica em uma notificação
-  const handleNotificationAction = useCallback((callback: (data: any) => void) => {
-    let listener: any;
+            return false;
+          }
 
-    const setupListener = async () => {
-      try {
-        if (typeof window !== 'undefined' && 'cordova' in window) {
-          listener = await LocalNotifications.addListener(
-            'localNotificationActionPerformed',
-            (notification: any) => {
-              const data = notification.notification?.extra;
-              if (data) {
-                callback(data);
-              }
-            }
+          const result =
+            await LocalNotifications.checkPermissions();
+
+          const granted =
+            result.display ===
+            "granted";
+
+          setPermissionGranted(
+            granted
+          );
+
+          return granted;
+        } catch (error) {
+          console.error(
+            "[useNotifications] Erro ao verificar permissões:",
+            error
+          );
+
+          setPermissionGranted(
+            false
+          );
+
+          return false;
+        } finally {
+          setIsLoading(
+            false
           );
         }
-      } catch (error) {
-        console.error('Erro ao configurar listener de notificações:', error);
-      }
-    };
+      },
+      []
+    );
 
-    setupListener();
+  const requestPermissions =
+    useCallback(
+      async () => {
+        try {
+          if (
+            !Capacitor.isNativePlatform()
+          ) {
+            setPermissionGranted(
+              false
+            );
 
-    return () => {
-      if (listener) {
-        listener.remove();
-      }
-    };
-  }, []);
+            return false;
+          }
 
-  // Verificar permissões ao montar
-  useEffect(() => {
-    checkPermissions();
-  }, [checkPermissions]);
+          const current =
+            await LocalNotifications.checkPermissions();
+
+          if (
+            current.display ===
+            "granted"
+          ) {
+            setPermissionGranted(
+              true
+            );
+
+            return true;
+          }
+
+          const result =
+            await LocalNotifications.requestPermissions();
+
+          const granted =
+            result.display ===
+            "granted";
+
+          setPermissionGranted(
+            granted
+          );
+
+          return granted;
+        } catch (error) {
+          console.error(
+            "[useNotifications] Erro ao solicitar permissões:",
+            error
+          );
+
+          setPermissionGranted(
+            false
+          );
+
+          return false;
+        }
+      },
+      []
+    );
+
+  const handleNotificationAction =
+    useCallback(
+      (
+        callback: (
+          data: unknown
+        ) => void
+      ) => {
+        if (
+          !Capacitor.isNativePlatform()
+        ) {
+          return () => {};
+        }
+
+        let disposed =
+          false;
+
+        const listenerPromise =
+          LocalNotifications.addListener(
+            "localNotificationActionPerformed",
+            (
+              event
+            ) => {
+              if (
+                disposed
+              ) {
+                return;
+              }
+
+              const data =
+                event.notification
+                  ?.extra;
+
+              if (
+                !data
+              ) {
+                return;
+              }
+
+              callback(
+                data
+              );
+            }
+          );
+
+        return () => {
+          disposed =
+            true;
+
+          void listenerPromise
+            .then(
+              (
+                listener
+              ) =>
+                listener.remove()
+            )
+            .catch(
+              (
+                error
+              ) => {
+                console.error(
+                  "[useNotifications] Erro ao remover listener:",
+                  error
+                );
+              }
+            );
+        };
+      },
+      []
+    );
+
+  useEffect(
+    () => {
+      void checkPermissions();
+    },
+    [
+      checkPermissions,
+    ]
+  );
 
   return {
     permissionGranted,

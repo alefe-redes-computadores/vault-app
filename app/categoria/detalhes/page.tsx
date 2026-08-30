@@ -1440,9 +1440,6 @@ export default function EditarDetalhePage() {
           await uploadPendingAttachments();
 
         await updateDocument(id, {
-          person_id:
-            formData.person_id,
-
           category_id:
             formData.category_id,
 

@@ -8,23 +8,12 @@ import type { SyncQueueItem } from "@/lib/types";
 
 // ============================================================
 // TRAVA GLOBAL DE MÓDULO
-//
-// Evita pulls paralelos disparados por telas/providers diferentes.
 // ============================================================
 
 let isPullingGlobal = false;
 
 // ============================================================
 // TIPOS INTERNOS
-//
-// Mantemos o pull desacoplado dos tipos específicos de cada tabela
-// porque os nomes vindos do Supabase nem sempre são idênticos aos
-// nomes usados localmente.
-//
-// Ex:
-// persons.is_default -> Person.isDefault
-// credentials.history -> Credential.password_history
-// anexos_clinicos.titulo -> nome
 // ============================================================
 
 type RemoteRow =
@@ -139,10 +128,6 @@ export async function pullAllData(
     console.log(
       "🔄 [Pull] Iniciando sincronização da nuvem para o dispositivo..."
     );
-
-    // ==========================================================
-    // USUÁRIO AUTENTICADO
-    // ==========================================================
 
     const {
       data:
@@ -325,13 +310,6 @@ export async function pullAllData(
                     ...remoteItem,
                   };
 
-            /**
-             * Esta é a fronteira entre o schema remoto
-             * genérico e o tipo concreto da tabela Dexie.
-             *
-             * Cada chamada de processTable fornece a tabela
-             * correta e os mapeamentos necessários.
-             */
             const localValue = {
               ...mapped,
               synced: true,
@@ -437,131 +415,101 @@ export async function pullAllData(
     });
 
     // ==========================================================
-    // ENTIDADES GLOBAIS POR CONTA
+    // ENTIDADES GLOBAIS
     // ==========================================================
 
     await processTable({
       remoteTable:
         "medicos",
-
       queueTable:
         "medicos",
-
       localTable:
         db.medicos,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "medicos"
-            )
+        async () =>
+          await supabase
+            .from("medicos")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
 
     await processTable({
       remoteTable:
         "farmacias",
-
       queueTable:
         "farmacias",
-
       localTable:
         db.farmacias,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "farmacias"
-            )
+        async () =>
+          await supabase
+            .from("farmacias")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
 
     await processTable({
       remoteTable:
         "hospitais",
-
       queueTable:
         "hospitais",
-
       localTable:
         db.hospitais,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "hospitais"
-            )
+        async () =>
+          await supabase
+            .from("hospitais")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
 
     await processTable({
       remoteTable:
         "locais",
-
       queueTable:
         "locais",
-
       localTable:
         db.locais,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "locais"
-            )
+        async () =>
+          await supabase
+            .from("locais")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
 
     await processTable({
       remoteTable:
         "instituicoes",
-
       queueTable:
         "instituicoes",
-
       localTable:
         db.instituicoes,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "instituicoes"
-            )
+        async () =>
+          await supabase
+            .from("instituicoes")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
 
     // ==========================================================
-    // CIDs
+    // CIDS
     // ==========================================================
 
     await processTable({
@@ -575,21 +523,18 @@ export async function pullAllData(
         db.cids,
 
       query:
-        async () => {
-          return await supabase
-            .from(
-              "cids"
-            )
+        async () =>
+          await supabase
+            .from("cids")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
 
     // ==========================================================
-    // VAULT MEMBERS
+    // VAULT MEMBERS VISÍVEIS
     // ==========================================================
 
     const {
@@ -674,7 +619,7 @@ export async function pullAllData(
       ]);
 
     // ==========================================================
-    // VAULTS DO PRÓPRIO USUÁRIO
+    // VAULTS
     // ==========================================================
 
     const {
@@ -700,10 +645,6 @@ export async function pullAllData(
         ownedVaultsError
       );
     }
-
-    // ==========================================================
-    // VAULTS COMPARTILHADOS
-    // ==========================================================
 
     const sharedVaultIds =
       Array.from(
@@ -788,10 +729,6 @@ export async function pullAllData(
             null,
         }),
     });
-
-    // ==========================================================
-    // MEMBERSHIPS DOS VAULTS VISÍVEIS
-    // ==========================================================
 
     const visibleVaultIds =
       visibleVaults
@@ -966,218 +903,145 @@ export async function pullAllData(
     });
 
     // ==========================================================
-    // TRATAMENTOS
+    // SAÚDE
     // ==========================================================
 
     await processTable({
       remoteTable:
         "tratamentos",
-
       queueTable:
         "tratamentos",
-
       localTable:
         db.tratamentos,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "tratamentos"
-            )
+        async () =>
+          await supabase
+            .from("tratamentos")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
-
-    // ==========================================================
-    // MEDICAMENTOS
-    // ==========================================================
 
     await processTable({
       remoteTable:
         "medicamentos",
-
       queueTable:
         "medicamentos",
-
       localTable:
         db.medicamentos,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "medicamentos"
-            )
+        async () =>
+          await supabase
+            .from("medicamentos")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
-
-    // ==========================================================
-    // EXAMES
-    // ==========================================================
 
     await processTable({
       remoteTable:
         "exames",
-
       queueTable:
         "exames",
-
       localTable:
         db.exames,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "exames"
-            )
+        async () =>
+          await supabase
+            .from("exames")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
-
-    // ==========================================================
-    // CONSULTAS
-    // ==========================================================
 
     await processTable({
       remoteTable:
         "consultas",
-
       queueTable:
         "consultas",
-
       localTable:
         db.consultas,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "consultas"
-            )
+        async () =>
+          await supabase
+            .from("consultas")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
-
-    // ==========================================================
-    // CIRURGIAS
-    // ==========================================================
 
     await processTable({
       remoteTable:
         "cirurgias",
-
       queueTable:
         "cirurgias",
-
       localTable:
         db.cirurgias,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "cirurgias"
-            )
+        async () =>
+          await supabase
+            .from("cirurgias")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
-
-    // ==========================================================
-    // RENOVAÇÕES
-    // ==========================================================
 
     await processTable({
       remoteTable:
         "renovacoes",
-
       queueTable:
         "renovacoes",
-
       localTable:
         db.renovacoes,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "renovacoes"
-            )
+        async () =>
+          await supabase
+            .from("renovacoes")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
-
-    // ==========================================================
-    // DOSE LOGS
-    // ==========================================================
 
     await processTable({
       remoteTable:
         "dose_logs",
-
       queueTable:
         "doseLogs",
-
       localTable:
         db.doseLogs,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "dose_logs"
-            )
+        async () =>
+          await supabase
+            .from("dose_logs")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
-
-    // ==========================================================
-    // REGISTROS DE SAÚDE
-    // ==========================================================
 
     await processTable({
       remoteTable:
         "registros_saude",
-
       queueTable:
         "registros_saude",
-
       localTable:
         db.registros_saude,
-
       query:
-        async () => {
-          return await supabase
+        async () =>
+          await supabase
             .from(
               "registros_saude"
             )
@@ -1185,13 +1049,8 @@ export async function pullAllData(
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
-
-    // ==========================================================
-    // ANEXOS CLÍNICOS
-    // ==========================================================
 
     await processTable({
       remoteTable:
@@ -1204,8 +1063,8 @@ export async function pullAllData(
         db.anexos_clinicos,
 
       query:
-        async () => {
-          return await supabase
+        async () =>
+          await supabase
             .from(
               "anexos_clinicos"
             )
@@ -1213,8 +1072,7 @@ export async function pullAllData(
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
 
       mapRemote:
         (row) => {
@@ -1257,17 +1115,14 @@ export async function pullAllData(
         db.credentials,
 
       query:
-        async () => {
-          return await supabase
-            .from(
-              "credentials"
-            )
+        async () =>
+          await supabase
+            .from("credentials")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
 
       mapRemote:
         (row) => {
@@ -1296,25 +1151,19 @@ export async function pullAllData(
     await processTable({
       remoteTable:
         "cards",
-
       queueTable:
         "cards",
-
       localTable:
         db.bankCards,
-
       query:
-        async () => {
-          return await supabase
-            .from(
-              "cards"
-            )
+        async () =>
+          await supabase
+            .from("cards")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
 
     // ==========================================================
@@ -1506,6 +1355,102 @@ export async function pullAllData(
     }
 
     // ----------------------------------------------------------
+    // EXAME <-> CID
+    // ----------------------------------------------------------
+
+    try {
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from(
+            "exame_cids"
+          )
+          .select(
+            "exame_id, cid_id"
+          );
+
+      if (error) {
+        console.error(
+          "❌ [Pull] Erro em exame_cids:",
+          error
+        );
+      } else {
+        const relations =
+          new Map<
+            string,
+            string[]
+          >();
+
+        for (
+          const row of
+            data ?? []
+        ) {
+          if (
+            typeof row.exame_id !==
+              "string" ||
+            typeof row.cid_id !==
+              "string"
+          ) {
+            continue;
+          }
+
+          const ids =
+            relations.get(
+              row.exame_id
+            ) ?? [];
+
+          ids.push(
+            row.cid_id
+          );
+
+          relations.set(
+            row.exame_id,
+            ids
+          );
+        }
+
+        for (
+          const [
+            exameId,
+            cidIds,
+          ] of relations
+        ) {
+          if (
+            hasPendingOperation(
+              "exames",
+              exameId
+            )
+          ) {
+            continue;
+          }
+
+          await db.exames.update(
+            exameId,
+            {
+              cid_ids:
+                Array.from(
+                  new Set(
+                    cidIds
+                  )
+                ),
+            }
+          );
+        }
+
+        console.log(
+          `✅ [Pull] exame_cids: relações reconstruídas para ${relations.size} exames`
+        );
+      }
+    } catch (error) {
+      console.error(
+        "❌ [Pull] Falha ao reconstruir exame_cids:",
+        error
+      );
+    }
+
+    // ----------------------------------------------------------
     // TRATAMENTO <-> CID
     // ----------------------------------------------------------
 
@@ -1612,17 +1557,14 @@ export async function pullAllData(
         db.versiculos,
 
       query:
-        async () => {
-          return await supabase
-            .from(
-              "versiculos"
-            )
+        async () =>
+          await supabase
+            .from("versiculos")
             .select("*")
             .eq(
               "user_id",
               userId
-            );
-        },
+            ),
     });
 
     // ==========================================================

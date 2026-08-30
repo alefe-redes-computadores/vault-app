@@ -1,38 +1,206 @@
 // hooks/useConsultas.ts
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
+import {
+  useCallback,
+} from "react";
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
 import { db } from "@/lib/db";
-import { consultasRepository } from "@/lib/repositories/consultas";
-import { useAuth } from "./useAuth";
-import { useActivePersonId } from "./useActivePersonId";
-import { useCallback } from "react";
-import type { Consulta } from "@/lib/types";
+import {
+  consultasRepository,
+} from "@/lib/repositories/consultas";
+import {
+  useActivePersonId,
+} from "./useActivePersonId";
+
+import type {
+  Consulta,
+} from "@/lib/types";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type AddConsultaInput = Omit<
+  Consulta,
+  | "id"
+  | "user_id"
+  | "person_id"
+  | "created_at"
+  | "updated_at"
+  | "synced"
+>;
+
+type UpdateConsultaInput = Partial<
+  Omit<
+    Consulta,
+    | "id"
+    | "user_id"
+    | "person_id"
+    | "created_at"
+  >
+>;
+
+// ============================================================
+// HOOK
+// ============================================================
 
 export function useConsultas() {
-  const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  const consultas = useLiveQuery(
-    () => activePersonId ? db.consultas.where('person_id').equals(activePersonId).toArray() : [],
-    [activePersonId],
-    []
-  );
+  // ==========================================================
+  // LIST
+  // ==========================================================
 
-  const getConsulta = useCallback((id: string) => consultasRepository.getById(id), []);
+  const consultas =
+    useLiveQuery(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
 
-  const addConsulta = useCallback(async (data: Omit<Consulta, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    return await consultasRepository.create({ ...data, user_id: user.id });
-  }, [user]);
+        return db.consultas
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ],
+      []
+    );
 
-  const updateConsulta = useCallback(async (id: string, data: Partial<Consulta>) => {
-    return await consultasRepository.update(id, data);
-  }, []);
+  // ==========================================================
+  // GET
+  // ==========================================================
 
-  const deleteConsulta = useCallback(async (id: string) => {
-    return await consultasRepository.delete(id);
-  }, []);
+  const getConsulta =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          return undefined;
+        }
 
-  return { consultas, getConsulta, addConsulta, updateConsulta, deleteConsulta };
+        return consultasRepository.getById(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // ADD
+  // ==========================================================
+
+  const addConsulta =
+    useCallback(
+      async (
+        data:
+          AddConsultaInput
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return consultasRepository.create(
+          {
+            ...data,
+
+            person_id:
+              activePersonId,
+          }
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
+
+  const updateConsulta =
+    useCallback(
+      async (
+        id: string,
+        data:
+          UpdateConsultaInput
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return consultasRepository.update(
+          id,
+          activePersonId,
+          data
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const deleteConsulta =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return consultasRepository.delete(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  return {
+    consultas,
+    getConsulta,
+    addConsulta,
+    updateConsulta,
+    deleteConsulta,
+  };
 }

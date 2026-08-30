@@ -5,68 +5,68 @@
 // ============================================================
 
 export const PERSON_COLORS = [
-  '#3B82F6',
-  '#8B5CF6',
-  '#EC4899',
-  '#10B981',
-  '#F59E0B',
-  '#EF4444',
-  '#06B6D4',
-  '#6366F1',
+  "#3B82F6",
+  "#8B5CF6",
+  "#EC4899",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#06B6D4",
+  "#6366F1",
 ] as const;
 
 export type PersonColor = (typeof PERSON_COLORS)[number];
 
-export type CategoryId = 'saude' | 'pessoal' | 'empresa' | 'outros';
+export type CategoryId = "saude" | "pessoal" | "empresa" | "outros";
 
 export type DocumentType =
-  | 'rg'
-  | 'cpf'
-  | 'cnh'
-  | 'certidao_nascimento'
-  | 'titulo_eleitor'
-  | 'certificado'
-  | 'carteira_trabalho'
-  | 'passaporte'
-  | 'dispensa_militar'
-  | 'receita'
-  | 'prontuario'
-  | 'laudo'
-  | 'encaminhamento'
-  | 'consulta'
-  | 'cirurgia'
-  | 'exame_sangue'
-  | 'exame_imagem'
-  | 'credencial'
-  | 'outro';
+  | "rg"
+  | "cpf"
+  | "cnh"
+  | "certidao_nascimento"
+  | "titulo_eleitor"
+  | "certificado"
+  | "carteira_trabalho"
+  | "passaporte"
+  | "dispensa_militar"
+  | "receita"
+  | "prontuario"
+  | "laudo"
+  | "encaminhamento"
+  | "consulta"
+  | "cirurgia"
+  | "exame_sangue"
+  | "exame_imagem"
+  | "credencial"
+  | "outro";
 
-export type DocumentFieldType = 'text' | 'date' | 'select';
+export type DocumentFieldType = "text" | "date" | "select";
 
-export type TipoReceita = 'comum' | 'amarela' | 'azul' | 'branca';
+export type TipoReceita = "comum" | "amarela" | "azul" | "branca";
 
-export type VaultPermission = 'view' | 'edit' | 'admin';
+export type VaultPermission = "view" | "edit" | "admin";
 
 export type VaultMemberStatus =
-  | 'pending'
-  | 'accepted'
-  | 'declined';
+  | "pending"
+  | "accepted"
+  | "declined";
 
 export type CardType =
-  | 'cartao_credito'
-  | 'cartao_debito'
-  | 'conta_corrente'
-  | 'conta_poupanca'
-  | 'conta_digital';
+  | "cartao_credito"
+  | "cartao_debito"
+  | "conta_corrente"
+  | "conta_poupanca"
+  | "conta_digital";
 
 export type CardBrand =
-  | 'visa'
-  | 'mastercard'
-  | 'elo'
-  | 'amex'
-  | 'hipercard'
-  | 'unknown';
+  | "visa"
+  | "mastercard"
+  | "elo"
+  | "amex"
+  | "hipercard"
+  | "unknown";
 
-export type CategoriaRegistro = 'sintoma' | 'medicao' | 'humor';
+export type CategoriaRegistro = "sintoma" | "medicao" | "humor";
 
 // ============================================================
 // 2. PESSOAS E CATEGORIAS
@@ -96,32 +96,32 @@ export interface Category {
 
 export const CATEGORIES: Record<CategoryId, Category> = {
   saude: {
-    id: 'saude',
-    name: 'Saúde',
-    icon: 'Heart',
-    color: '#EC4899',
-    description: 'Prontuários, receitas, laudos, medicamentos',
+    id: "saude",
+    name: "Saúde",
+    icon: "Heart",
+    color: "#EC4899",
+    description: "Prontuários, receitas, laudos, medicamentos",
   },
   pessoal: {
-    id: 'pessoal',
-    name: 'Pessoal',
-    icon: 'User',
-    color: '#3B82F6',
-    description: 'C.I.N, CPF, CNH, Certidões',
+    id: "pessoal",
+    name: "Pessoal",
+    icon: "User",
+    color: "#3B82F6",
+    description: "C.I.N, CPF, CNH, Certidões",
   },
   empresa: {
-    id: 'empresa',
-    name: 'Empresa',
-    icon: 'Building2',
-    color: '#7C9CB5',
-    description: 'Documentos corporativos',
+    id: "empresa",
+    name: "Empresa",
+    icon: "Building2",
+    color: "#7C9CB5",
+    description: "Documentos corporativos",
   },
   outros: {
-    id: 'outros',
-    name: 'Outros',
-    icon: 'FolderOpen',
-    color: '#6B7280',
-    description: 'Documentos diversos',
+    id: "outros",
+    name: "Outros",
+    icon: "FolderOpen",
+    color: "#6B7280",
+    description: "Documentos diversos",
   },
 };
 
@@ -137,7 +137,7 @@ export interface Attachment {
   url: string;
   thumbnail_url?: string;
   name: string;
-  type: 'image' | 'pdf';
+  type: "image" | "pdf";
   uploaded_at: string;
 }
 
@@ -159,8 +159,6 @@ export interface Document {
   medico_id?: string;
 
   // Relacionamento genérico de documentos introduzido no schema v32.
-  // Permite vincular um documento a entidades como medicamento,
-  // tratamento, CID, exame, consulta, cirurgia etc.
   entidade_tipo?: string;
   entidade_id?: string;
 
@@ -170,25 +168,25 @@ export interface Document {
 }
 
 export const TYPE_CATEGORY_MAP: Record<DocumentType, CategoryId[]> = {
-  rg: ['pessoal'],
-  cpf: ['pessoal'],
-  cnh: ['pessoal'],
-  certidao_nascimento: ['pessoal'],
-  titulo_eleitor: ['pessoal'],
-  receita: ['saude'],
-  prontuario: ['saude'],
-  laudo: ['saude'],
-  encaminhamento: ['saude'],
-  consulta: ['saude'],
-  cirurgia: ['saude'],
-  exame_sangue: ['saude'],
-  exame_imagem: ['saude'],
-  credencial: ['saude'],
-  certificado: ['pessoal', 'empresa', 'outros'],
-  carteira_trabalho: ['pessoal', 'empresa'],
-  passaporte: ['pessoal'],
-  dispensa_militar: ['pessoal'],
-  outro: ['pessoal', 'saude', 'empresa', 'outros'],
+  rg: ["pessoal"],
+  cpf: ["pessoal"],
+  cnh: ["pessoal"],
+  certidao_nascimento: ["pessoal"],
+  titulo_eleitor: ["pessoal"],
+  receita: ["saude"],
+  prontuario: ["saude"],
+  laudo: ["saude"],
+  encaminhamento: ["saude"],
+  consulta: ["saude"],
+  cirurgia: ["saude"],
+  exame_sangue: ["saude"],
+  exame_imagem: ["saude"],
+  credencial: ["saude"],
+  certificado: ["pessoal", "empresa", "outros"],
+  carteira_trabalho: ["pessoal", "empresa"],
+  passaporte: ["pessoal"],
+  dispensa_militar: ["pessoal"],
+  outro: ["pessoal", "saude", "empresa", "outros"],
 };
 
 export interface DocumentField {
@@ -202,476 +200,476 @@ export interface DocumentField {
 export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
   rg: [
     {
-      key: 'modelo',
-      label: 'Modelo do Documento',
-      type: 'select',
-      options: ['C.I.N (Nova Identidade)', 'RG (Antigo)'],
+      key: "modelo",
+      label: "Modelo do Documento",
+      type: "select",
+      options: ["C.I.N (Nova Identidade)", "RG (Antigo)"],
       required: true,
     },
     {
-      key: 'cpf',
-      label: 'Número do CPF',
-      type: 'text',
+      key: "cpf",
+      label: "Número do CPF",
+      type: "text",
       required: true,
     },
     {
-      key: 'rg_number',
-      label: 'Número do RG',
-      type: 'text',
+      key: "rg_number",
+      label: "Número do RG",
+      type: "text",
     },
     {
-      key: 'issue_date',
-      label: 'Data de emissão',
-      type: 'date',
+      key: "issue_date",
+      label: "Data de emissão",
+      type: "date",
       required: true,
     },
     {
-      key: 'expiry_date',
-      label: 'Data de validade',
-      type: 'date',
+      key: "expiry_date",
+      label: "Data de validade",
+      type: "date",
     },
     {
-      key: 'issuer',
-      label: 'Órgão emissor',
-      type: 'text',
+      key: "issuer",
+      label: "Órgão emissor",
+      type: "text",
       required: true,
     },
   ],
 
   cpf: [
     {
-      key: 'number',
-      label: 'Número do CPF',
-      type: 'text',
+      key: "number",
+      label: "Número do CPF",
+      type: "text",
       required: true,
     },
   ],
 
   cnh: [
     {
-      key: 'number',
-      label: 'Número da CNH',
-      type: 'text',
+      key: "number",
+      label: "Número da CNH",
+      type: "text",
       required: true,
     },
     {
-      key: 'category',
-      label: 'Categoria',
-      type: 'select',
-      options: ['A', 'B', 'AB', 'C', 'D', 'E'],
+      key: "category",
+      label: "Categoria",
+      type: "select",
+      options: ["A", "B", "AB", "C", "D", "E"],
       required: true,
     },
     {
-      key: 'issue_date',
-      label: 'Data de emissão',
-      type: 'date',
+      key: "issue_date",
+      label: "Data de emissão",
+      type: "date",
       required: true,
     },
     {
-      key: 'expiry_date',
-      label: 'Data de validade',
-      type: 'date',
+      key: "expiry_date",
+      label: "Data de validade",
+      type: "date",
       required: true,
     },
   ],
 
   certidao_nascimento: [
     {
-      key: 'nome_registrado',
-      label: 'Nome Registrado',
-      type: 'text',
+      key: "nome_registrado",
+      label: "Nome Registrado",
+      type: "text",
       required: true,
     },
     {
-      key: 'matricula',
-      label: 'Matrícula',
-      type: 'text',
+      key: "matricula",
+      label: "Matrícula",
+      type: "text",
       required: true,
     },
     {
-      key: 'livro',
-      label: 'Livro',
-      type: 'text',
+      key: "livro",
+      label: "Livro",
+      type: "text",
     },
     {
-      key: 'folha',
-      label: 'Folha',
-      type: 'text',
+      key: "folha",
+      label: "Folha",
+      type: "text",
     },
     {
-      key: 'termo',
-      label: 'Termo',
-      type: 'text',
+      key: "termo",
+      label: "Termo",
+      type: "text",
     },
     {
-      key: 'cartorio',
-      label: 'Cartório de Registro',
-      type: 'text',
+      key: "cartorio",
+      label: "Cartório de Registro",
+      type: "text",
     },
     {
-      key: 'data_nascimento',
-      label: 'Data de Nascimento',
-      type: 'date',
+      key: "data_nascimento",
+      label: "Data de Nascimento",
+      type: "date",
       required: true,
     },
   ],
 
   titulo_eleitor: [
     {
-      key: 'number',
-      label: 'Número do Título',
-      type: 'text',
+      key: "number",
+      label: "Número do Título",
+      type: "text",
       required: true,
     },
     {
-      key: 'zona',
-      label: 'Zona Eleitoral',
-      type: 'text',
+      key: "zona",
+      label: "Zona Eleitoral",
+      type: "text",
       required: true,
     },
     {
-      key: 'secao',
-      label: 'Seção',
-      type: 'text',
+      key: "secao",
+      label: "Seção",
+      type: "text",
       required: true,
     },
   ],
 
   certificado: [
     {
-      key: 'institution',
-      label: 'Instituição de ensino',
-      type: 'text',
+      key: "institution",
+      label: "Instituição de ensino",
+      type: "text",
       required: true,
     },
     {
-      key: 'course',
-      label: 'Curso',
-      type: 'text',
+      key: "course",
+      label: "Curso",
+      type: "text",
       required: true,
     },
     {
-      key: 'duration',
-      label: 'Duração (ex: 120 horas)',
-      type: 'text',
+      key: "duration",
+      label: "Duração (ex: 120 horas)",
+      type: "text",
       required: true,
     },
     {
-      key: 'completion_date',
-      label: 'Data de conclusão',
-      type: 'date',
+      key: "completion_date",
+      label: "Data de conclusão",
+      type: "date",
     },
   ],
 
   carteira_trabalho: [
     {
-      key: 'numero',
-      label: 'Número da CTPS',
-      type: 'text',
+      key: "numero",
+      label: "Número da CTPS",
+      type: "text",
       required: true,
     },
     {
-      key: 'serie',
-      label: 'Série',
-      type: 'text',
+      key: "serie",
+      label: "Série",
+      type: "text",
     },
     {
-      key: 'data_emissao',
-      label: 'Data de emissão',
-      type: 'date',
+      key: "data_emissao",
+      label: "Data de emissão",
+      type: "date",
     },
     {
-      key: 'uf',
-      label: 'UF',
-      type: 'text',
+      key: "uf",
+      label: "UF",
+      type: "text",
     },
   ],
 
   passaporte: [
     {
-      key: 'numero',
-      label: 'Número do Passaporte',
-      type: 'text',
+      key: "numero",
+      label: "Número do Passaporte",
+      type: "text",
       required: true,
     },
     {
-      key: 'pais',
-      label: 'País de emissão',
-      type: 'text',
+      key: "pais",
+      label: "País de emissão",
+      type: "text",
       required: true,
     },
     {
-      key: 'data_emissao',
-      label: 'Data de emissão',
-      type: 'date',
+      key: "data_emissao",
+      label: "Data de emissão",
+      type: "date",
       required: true,
     },
     {
-      key: 'data_validade',
-      label: 'Data de validade',
-      type: 'date',
+      key: "data_validade",
+      label: "Data de validade",
+      type: "date",
       required: true,
     },
   ],
 
   dispensa_militar: [
     {
-      key: 'numero',
-      label: 'Número do Certificado',
-      type: 'text',
+      key: "numero",
+      label: "Número do Certificado",
+      type: "text",
       required: true,
     },
     {
-      key: 'categoria',
-      label: 'Categoria',
-      type: 'select',
-      options: ['A', 'B', 'C', 'D', 'E'],
+      key: "categoria",
+      label: "Categoria",
+      type: "select",
+      options: ["A", "B", "C", "D", "E"],
       required: true,
     },
     {
-      key: 'data_emissao',
-      label: 'Data de emissão',
-      type: 'date',
+      key: "data_emissao",
+      label: "Data de emissão",
+      type: "date",
     },
   ],
 
   receita: [
     {
-      key: 'medicamento_id',
-      label: 'Medicamento',
-      type: 'select',
+      key: "medicamento_id",
+      label: "Medicamento",
+      type: "select",
       required: true,
     },
     {
-      key: 'dosage',
-      label: 'Dosagem',
-      type: 'text',
+      key: "dosage",
+      label: "Dosagem",
+      type: "text",
       required: true,
     },
     {
-      key: 'medico_id',
-      label: 'Médico',
-      type: 'select',
+      key: "medico_id",
+      label: "Médico",
+      type: "select",
       required: true,
     },
     {
-      key: 'farmacia_id',
-      label: 'Farmácia',
-      type: 'select',
+      key: "farmacia_id",
+      label: "Farmácia",
+      type: "select",
     },
     {
-      key: 'prescription_date',
-      label: 'Data da receita',
-      type: 'date',
+      key: "prescription_date",
+      label: "Data da receita",
+      type: "date",
       required: true,
     },
     {
-      key: 'renewal_date',
-      label: 'Próxima renovação',
-      type: 'date',
+      key: "renewal_date",
+      label: "Próxima renovação",
+      type: "date",
       required: true,
     },
   ],
 
   prontuario: [
     {
-      key: 'hospital_id',
-      label: 'Hospital',
-      type: 'select',
+      key: "hospital_id",
+      label: "Hospital",
+      type: "select",
       required: true,
     },
     {
-      key: 'medico_id',
-      label: 'Médico',
-      type: 'select',
+      key: "medico_id",
+      label: "Médico",
+      type: "select",
       required: true,
     },
     {
-      key: 'specialty',
-      label: 'Especialidade',
-      type: 'text',
+      key: "specialty",
+      label: "Especialidade",
+      type: "text",
       required: true,
     },
     {
-      key: 'date',
-      label: 'Data',
-      type: 'date',
+      key: "date",
+      label: "Data",
+      type: "date",
       required: true,
     },
   ],
 
   laudo: [
     {
-      key: 'medico_id',
-      label: 'Médico',
-      type: 'select',
+      key: "medico_id",
+      label: "Médico",
+      type: "select",
       required: true,
     },
     {
-      key: 'specialty',
-      label: 'Especialidade',
-      type: 'text',
+      key: "specialty",
+      label: "Especialidade",
+      type: "text",
       required: true,
     },
     {
-      key: 'hospital_id',
-      label: 'Hospital',
-      type: 'select',
+      key: "hospital_id",
+      label: "Hospital",
+      type: "select",
       required: true,
     },
     {
-      key: 'date',
-      label: 'Data',
-      type: 'date',
+      key: "date",
+      label: "Data",
+      type: "date",
       required: true,
     },
   ],
 
   encaminhamento: [
     {
-      key: 'from_medico_id',
-      label: 'Quem encaminhou (Médico)',
-      type: 'select',
+      key: "from_medico_id",
+      label: "Quem encaminhou (Médico)",
+      type: "select",
       required: true,
     },
     {
-      key: 'to_medico_id',
-      label: 'Para quem (Médico - opcional)',
-      type: 'select',
+      key: "to_medico_id",
+      label: "Para quem (Médico - opcional)",
+      type: "select",
     },
     {
-      key: 'reason',
-      label: 'Motivo',
-      type: 'text',
+      key: "reason",
+      label: "Motivo",
+      type: "text",
       required: true,
     },
     {
-      key: 'date',
-      label: 'Data',
-      type: 'date',
+      key: "date",
+      label: "Data",
+      type: "date",
       required: true,
     },
   ],
 
   consulta: [
     {
-      key: 'medico_id',
-      label: 'Médico',
-      type: 'select',
+      key: "medico_id",
+      label: "Médico",
+      type: "select",
       required: true,
     },
     {
-      key: 'specialty',
-      label: 'Especialidade',
-      type: 'text',
+      key: "specialty",
+      label: "Especialidade",
+      type: "text",
       required: true,
     },
     {
-      key: 'hospital_id',
-      label: 'Clínica / Hospital',
-      type: 'select',
+      key: "hospital_id",
+      label: "Clínica / Hospital",
+      type: "select",
     },
     {
-      key: 'date',
-      label: 'Data da Consulta',
-      type: 'date',
+      key: "date",
+      label: "Data da Consulta",
+      type: "date",
       required: true,
     },
     {
-      key: 'reason',
-      label: 'Motivo da Consulta',
-      type: 'text',
+      key: "reason",
+      label: "Motivo da Consulta",
+      type: "text",
     },
   ],
 
   cirurgia: [
     {
-      key: 'procedure',
-      label: 'Procedimento',
-      type: 'text',
+      key: "procedure",
+      label: "Procedimento",
+      type: "text",
       required: true,
     },
     {
-      key: 'medico_id',
-      label: 'Médico Cirurgião',
-      type: 'select',
+      key: "medico_id",
+      label: "Médico Cirurgião",
+      type: "select",
       required: true,
     },
     {
-      key: 'hospital_id',
-      label: 'Hospital',
-      type: 'select',
+      key: "hospital_id",
+      label: "Hospital",
+      type: "select",
       required: true,
     },
     {
-      key: 'date',
-      label: 'Data da Cirurgia',
-      type: 'date',
+      key: "date",
+      label: "Data da Cirurgia",
+      type: "date",
       required: true,
     },
   ],
 
   exame_sangue: [
     {
-      key: 'local_id',
-      label: 'Local / Laboratório',
-      type: 'select',
+      key: "local_id",
+      label: "Local / Laboratório",
+      type: "select",
       required: true,
     },
     {
-      key: 'data_exame',
-      label: 'Data do Exame',
-      type: 'date',
+      key: "data_exame",
+      label: "Data do Exame",
+      type: "date",
       required: true,
     },
   ],
 
   exame_imagem: [
     {
-      key: 'hospital_id',
-      label: 'Local / Hospital',
-      type: 'select',
+      key: "hospital_id",
+      label: "Local / Hospital",
+      type: "select",
       required: true,
     },
     {
-      key: 'tipo',
-      label: 'Tipo de Exame (Ex: Raio-X, RM)',
-      type: 'text',
+      key: "tipo",
+      label: "Tipo de Exame (Ex: Raio-X, RM)",
+      type: "text",
       required: true,
     },
     {
-      key: 'data_exame',
-      label: 'Data do Exame',
-      type: 'date',
+      key: "data_exame",
+      label: "Data do Exame",
+      type: "date",
       required: true,
     },
   ],
 
   credencial: [
     {
-      key: 'orgao',
-      label: 'Órgão Emissor / Instituição',
-      type: 'text',
+      key: "orgao",
+      label: "Órgão Emissor / Instituição",
+      type: "text",
       required: true,
     },
     {
-      key: 'validade',
-      label: 'Validade',
-      type: 'date',
+      key: "validade",
+      label: "Validade",
+      type: "date",
       required: true,
     },
   ],
 
   outro: [
     {
-      key: 'custom_field_1',
-      label: 'Campo personalizado 1',
-      type: 'text',
+      key: "custom_field_1",
+      label: "Campo personalizado 1",
+      type: "text",
     },
     {
-      key: 'custom_field_2',
-      label: 'Campo personalizado 2',
-      type: 'text',
+      key: "custom_field_2",
+      label: "Campo personalizado 2",
+      type: "text",
     },
   ],
 };
@@ -684,30 +682,30 @@ export interface SyncQueueItem {
   id?: string;
   chave: string;
   table:
-    | 'persons'
-    | 'documents'
-    | 'medicamentos'
-    | 'renovacoes'
-    | 'vaults'
-    | 'vaultMembers'
-    | 'medicos'
-    | 'farmacias'
-    | 'hospitais'
-    | 'locais'
-    | 'exames'
-    | 'consultas'
-    | 'cirurgias'
-    | 'doseLogs'
-    | 'credentials'
-    | 'cards'
-    | 'instituicoes'
-    | 'tratamentos'
-    | 'cids'
-    | 'anexos_clinicos'
-    | 'settings'
-    | 'versiculos'
-    | 'registros_saude';
-  operation: 'add' | 'update' | 'delete';
+    | "persons"
+    | "documents"
+    | "medicamentos"
+    | "renovacoes"
+    | "vaults"
+    | "vaultMembers"
+    | "medicos"
+    | "farmacias"
+    | "hospitais"
+    | "locais"
+    | "exames"
+    | "consultas"
+    | "cirurgias"
+    | "doseLogs"
+    | "credentials"
+    | "cards"
+    | "instituicoes"
+    | "tratamentos"
+    | "cids"
+    | "anexos_clinicos"
+    | "settings"
+    | "versiculos"
+    | "registros_saude";
+  operation: "add" | "update" | "delete";
   payload: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -725,50 +723,62 @@ export interface Medicamento {
   id?: string;
   user_id: string;
   person_id?: string;
+
   document_id?: string;
+
   nome: string;
   dosagem: string;
+
   medico_id?: string;
   farmacia_id?: string;
   hospital_id?: string;
   local_id?: string;
+
   tratamento_ids?: string[];
+
   medico: string;
   farmacia?: string;
+
   data_receita: string;
   proxima_renovacao: string;
+
   observacoes?: string;
   tipo_receita?: TipoReceita;
-  tipo_uso?: 'continuo' | 'esporadico' | 'sos';
+  tipo_uso?: "continuo" | "esporadico" | "sos";
 
-  // 🛡️ NOVIDADES DO SUS / GOVERNO:
-  tipo_aquisicao?: 'comprado' | 'sus' | 'gratuito';
+  tipo_aquisicao?: "comprado" | "sus" | "gratuito";
   data_retorno_sus?: string;
 
   forma_farmaceutica?:
-    | 'capsula'
-    | 'comprimido'
-    | 'gota'
-    | 'injecao'
-    | 'adesivo';
+    | "capsula"
+    | "comprimido"
+    | "gota"
+    | "injecao"
+    | "adesivo";
 
   cor_principal?: string;
   cor_secundaria?: string;
-  status?: 'ativo' | 'descontinuado';
+
+  status?: "ativo" | "descontinuado";
+
   estoque_quantidade?: number;
   estoque_data_referencia?: string;
   estoque_horarios?: string[];
+
   estoque_unidade_por_dose?: number;
   estoque_unidade_medida?: string;
   estoque_ml_total?: number;
   estoque_gotas_por_ml?: number;
+
   formato?: string;
   cores?: string[];
+
   motivo_descontinuacao?: string;
   medico_descontinuacao_id?: string;
   medico_descontinuacao_nome?: string;
   substituido_por_id?: string;
   data_descontinuacao?: string;
+
   preco?: number;
 
   historico_dosagens?: {
@@ -780,37 +790,142 @@ export interface Medicamento {
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
+
   cid_ids?: string[];
   cid_id?: string;
 }
+
+/**
+ * Contrato de criação.
+ *
+ * A entidade persistida continua tendo data_receita e
+ * proxima_renovacao como strings, mas esses campos podem não
+ * existir na entrada inicial. O repository normaliza ausência
+ * para string vazia antes de persistir.
+ */
+export type CreateMedicamentoInput = Omit<
+  Medicamento,
+  | "id"
+  | "user_id"
+  | "person_id"
+  | "data_receita"
+  | "proxima_renovacao"
+  | "created_at"
+  | "updated_at"
+  | "synced"
+> & {
+  id?: string;
+  person_id: string;
+  data_receita?: string;
+  proxima_renovacao?: string;
+};
+
+/**
+ * Campos em que null possui significado explícito durante
+ * atualização:
+ *
+ * undefined = não alterar
+ * null      = limpar
+ *
+ * Isso evita espalhar null pela entidade Medicamento inteira.
+ */
+export type NullableMedicamentoFields = {
+  document_id?: string | null;
+
+  medico_id?: string | null;
+  farmacia_id?: string | null;
+  hospital_id?: string | null;
+  local_id?: string | null;
+
+  farmacia?: string | null;
+
+  data_receita?: string | null;
+  proxima_renovacao?: string | null;
+
+  observacoes?: string | null;
+  data_retorno_sus?: string | null;
+
+  cor_principal?: string | null;
+  cor_secundaria?: string | null;
+
+  estoque_quantidade?: number | null;
+  estoque_data_referencia?: string | null;
+  estoque_unidade_por_dose?: number | null;
+  estoque_unidade_medida?: string | null;
+  estoque_ml_total?: number | null;
+  estoque_gotas_por_ml?: number | null;
+
+  formato?: string | null;
+
+  motivo_descontinuacao?: string | null;
+  medico_descontinuacao_id?: string | null;
+  medico_descontinuacao_nome?: string | null;
+  substituido_por_id?: string | null;
+  data_descontinuacao?: string | null;
+
+  preco?: number | null;
+
+  cid_id?: string | null;
+};
+
+type UpdateMedicamentoBase = Partial<
+  Omit<
+    Medicamento,
+    | "id"
+    | "user_id"
+    | "person_id"
+    | "created_at"
+    | keyof NullableMedicamentoFields
+  >
+>;
+
+export type UpdateMedicamentoInput =
+  UpdateMedicamentoBase &
+  NullableMedicamentoFields;
 
 export interface Renovacao {
   id?: string;
   user_id: string;
   person_id?: string;
-  medicamento_id: string;
-  document_id?: string;
-  medico_id?: string;
-  farmacia_id?: string;
-  hospital_id?: string;
-  local_id?: string;
-  quantidade?: number;
-  preco?: number;
-  lote?: string;
-  validade_produto?: string;
-  data: string;
-  anexo_url?: string;
-  observacoes?: string;
 
-  // 🛡️ Atualizado para aceitar 'sus' explicitamente:
-  tipo_aquisicao?: 'comprado' | 'sus' | 'gratuito';
-  data_proxima_retirada?: string;
-  exige_nova_receita?: boolean;
+  medicamento_id: string;
+
+  document_id?: string | null;
+  medico_id?: string | null;
+  farmacia_id?: string | null;
+  hospital_id?: string | null;
+  local_id?: string | null;
+
+  quantidade?: number | null;
+  preco?: number | null;
+
+  lote?: string | null;
+  validade_produto?: string | null;
+
+  data: string;
+
+  anexo_url?: string | null;
+  observacoes?: string | null;
+
+  tipo_aquisicao?:
+    | "comprado"
+    | "sus"
+    | "gratuito";
+
+  data_proxima_retirada?:
+    | string
+    | null;
+
+  exige_nova_receita?:
+    boolean;
 
   created_at?: string;
   updated_at?: string;
   synced?: boolean;
-  data_retorno_sus?: string | null;
+
+  data_retorno_sus?:
+    | string
+    | null;
 }
 
 export interface DoseLog {
@@ -862,7 +977,7 @@ export interface Cirurgia {
   medico_id?: string;
   hospital_id?: string;
   local_id?: string;
-  status: 'agendada' | 'realizada' | 'cancelada';
+  status: "agendada" | "realizada" | "cancelada";
   observacoes?: string;
   tratamento_ids?: string[];
   cid_ids?: string[];
@@ -886,7 +1001,7 @@ export interface Consulta {
   motivo?: string;
   observacoes?: string;
   anexo_url?: string;
-  status: 'agendada' | 'realizada' | 'cancelada';
+  status: "agendada" | "realizada" | "cancelada";
   tratamento_ids?: string[];
   cid_ids?: string[];
   created_at?: string;
@@ -932,9 +1047,6 @@ export interface Vault {
 
   /**
    * Pessoa da conta proprietária à qual este cofre pertence.
-   *
-   * Na arquitetura atual todo Vault pertence obrigatoriamente
-   * a uma Person da conta proprietária.
    */
   person_id: string;
 
@@ -943,13 +1055,11 @@ export interface Vault {
 
   /**
    * Chave visual do ícone.
-   * Ex.: "home", "heart", "users".
    */
   icon: string;
 
   /**
    * Cor canônica em HEX.
-   * Ex.: "#7DD3FC".
    */
   color: string;
 
@@ -968,20 +1078,11 @@ export interface VaultMember {
 
   /**
    * Conta do usuário convidado.
-   *
-   * Pode estar ausente enquanto o convite ainda estiver
-   * pendente e não tiver sido associado a uma conta real.
    */
   user_id?: string;
 
   /**
-   * Pessoa da conta convidada à qual o cofre compartilhado
-   * será associado depois da aceitação do convite.
-   *
-   * Não representa a mesma pessoa de Vault.person_id.
-   *
-   * Continua opcional porque convites pending/declined não
-   * precisam ter Person vinculada.
+   * Pessoa da conta convidada vinculada ao compartilhamento.
    */
   person_id?: string;
 
@@ -1001,10 +1102,6 @@ export interface VaultMember {
 
   /**
    * Campo local legado.
-   *
-   * A tabela atual do Supabase não depende de created_at
-   * para VaultMember, mas mantemos opcionalmente enquanto
-   * houver registros/imports antigos no IndexedDB.
    */
   created_at?: string;
 
@@ -1015,11 +1112,8 @@ export interface VaultMember {
 /**
  * Tipo legado.
  *
- * A arquitetura atual persiste o vínculo de documento com
- * cofre diretamente através de Document.vault_id.
- *
- * Mantido temporariamente para não quebrar imports existentes
- * até fazermos a limpeza global de referências.
+ * A arquitetura atual persiste o vínculo com o cofre através de
+ * Document.vault_id.
  */
 export interface VaultDocument {
   document_id: string;
@@ -1051,8 +1145,7 @@ export interface Medico {
   /**
    * Campo legado local.
    *
-   * A arquitetura atual trata Médico como entidade global
-   * da conta, não vinculada a uma Person específica.
+   * Médico é entidade global da conta.
    */
   person_id?: string;
 }
@@ -1065,8 +1158,7 @@ export interface Farmacia {
   telefone?: string;
   observacoes?: string;
 
-  // 🛡️ NOVIDADE: Identifica se é uma UBS, Farmácia Popular ou Posto do Estado
-  tipo?: 'particular' | 'sus' | 'posto';
+  tipo?: "particular" | "sus" | "posto";
   is_sus?: boolean;
 
   created_at: string;
@@ -1076,7 +1168,7 @@ export interface Farmacia {
   /**
    * Campo legado local.
    *
-   * Farmácia é global por conta na arquitetura atual.
+   * Farmácia é global por conta.
    */
   person_id?: string;
 }
@@ -1098,7 +1190,7 @@ export interface Hospital {
   /**
    * Campo legado local.
    *
-   * Hospital é global por conta na arquitetura atual.
+   * Hospital é global por conta.
    */
   person_id?: string;
 }
@@ -1120,7 +1212,7 @@ export interface LocalSaude {
   /**
    * Campo legado local.
    *
-   * Local é global por conta na arquitetura atual.
+   * Local é global por conta.
    */
   person_id?: string;
 }
@@ -1168,7 +1260,7 @@ export interface Tratamento {
   hospital_ids?: string[];
   local_ids?: string[];
   data_inicio?: string;
-  status: 'ativo' | 'concluido' | 'suspenso';
+  status: "ativo" | "concluido" | "suspenso";
   cor?: string;
   observacoes?: string;
   created_at: string;
@@ -1195,7 +1287,7 @@ export interface Credential {
   password_encrypted: string;
   url?: string;
   notes?: string;
-  category: 'banco' | 'social' | 'trabalho' | 'outros';
+  category: "banco" | "social" | "trabalho" | "outros";
 
   password_history?: {
     encrypted: string;

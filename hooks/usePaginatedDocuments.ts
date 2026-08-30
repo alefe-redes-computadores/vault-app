@@ -1,126 +1,514 @@
+// hooks/usePaginatedDocuments.ts
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { useAuth } from "./useAuth";
-import type { CategoryId, Document } from "@/lib/types";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-const PAGE_SIZE = 20;
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
+import {
+  useActivePersonId,
+} from "./useActivePersonId";
+
+import {
+  documentsRepository,
+} from "@/lib/repositories/documents";
+
+import type {
+  CategoryId,
+  Document,
+} from "@/lib/types";
+
+// ============================================================
+// CONFIG
+// ============================================================
+
+const PAGE_SIZE =
+  20;
+
+const EMPTY_CATEGORIES:
+  CategoryId[] =
+  [];
+
+// ============================================================
+// TYPES
+// ============================================================
 
 interface UsePaginatedDocumentsOptions {
-  personId?: string;
-  categoryId?: CategoryId;
-  excludeCategories?: CategoryId[];
-  searchQuery?: string;
-  sortBy?: 'created_at' | 'updated_at' | 'title';
-  sortOrder?: 'asc' | 'desc';
-  initialPage?: number;
+  personId?:
+    string;
+
+  categoryId?:
+    CategoryId;
+
+  excludeCategories?:
+    CategoryId[];
+
+  searchQuery?:
+    string;
+
+  sortBy?:
+    "created_at"
+    | "updated_at"
+    | "title";
+
+  sortOrder?:
+    "asc"
+    | "desc";
+
+  initialPage?:
+    number;
 }
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function normalizeSearch(
+  value:
+    string
+): string {
+  return value
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .toLocaleLowerCase(
+      "pt-BR"
+    )
+    .trim();
+}
+
+function getComparableValue(
+  document:
+    Document,
+  key:
+    "created_at"
+    | "updated_at"
+    | "title"
+): string {
+  const value =
+    document[
+      key
+    ];
+
+  return typeof value ===
+    "string"
+    ? value
+    : "";
+}
+
+function normalizeInitialPage(
+  value:
+    number
+): number {
+  if (
+    !Number.isFinite(
+      value
+    )
+  ) {
+    return 1;
+  }
+
+  return Math.max(
+    1,
+    Math.floor(
+      value
+    )
+  );
+}
+
+// ============================================================
+// HOOK
+// ============================================================
 
 export function usePaginatedDocuments({
   personId,
   categoryId,
-  excludeCategories = [],
+  excludeCategories = EMPTY_CATEGORIES,
   searchQuery = "",
-  sortBy = 'created_at',
-  sortOrder = 'desc',
+  sortBy = "created_at",
+  sortOrder = "desc",
   initialPage = 1,
 }: UsePaginatedDocumentsOptions = {}) {
-  const { user } = useAuth();
-  const [page, setPage] = useState(initialPage);
-  const [allLoaded, setAllLoaded] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  // Busca os documentos com paginação real
-  const documents = useLiveQuery(
-    async () => {
-      if (!user) return [];
+  const targetPersonId =
+    personId ||
+    activePersonId ||
+    undefined;
 
-      // Buscar todos os documentos do usuário
-      let docs = await db.documents.where('user_id').equals(user.id).toArray();
+  const safeInitialPage =
+    normalizeInitialPage(
+      initialPage
+    );
 
-      // Aplicar filtros
-      if (personId) {
-        docs = docs.filter((doc: Document) => doc.person_id === personId);
-      }
-      if (categoryId) {
-        docs = docs.filter((doc: Document) => doc.category_id === categoryId);
-      }
-      if (excludeCategories.length > 0) {
-        docs = docs.filter((doc: Document) => !excludeCategories.includes(doc.category_id));
-      }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        docs = docs.filter((doc: Document) =>
-          doc.title.toLowerCase().includes(q) ||
-          doc.description?.toLowerCase().includes(q)
-        );
-      }
+  /*
+   * A identidade do array não deve controlar reset/paginação.
+   * Duas listas com as mesmas categorias são semanticamente
+   * equivalentes, mesmo que o componente pai crie um [] novo.
+   */
+  const excludeCategoriesKey =
+    useMemo(
+      () =>
+        [
+          ...excludeCategories,
+        ]
+          .sort()
+          .join(
+            "|"
+          ),
+      [
+        excludeCategories,
+      ]
+    );
 
-      // Ordenar
-      docs.sort((a: Document, b: Document) => {
-        const aVal = a[sortBy as keyof Document] || '';
-        const bVal = b[sortBy as keyof Document] || '';
-        if (sortOrder === 'asc') {
-          return aVal > bVal ? 1 : -1;
-        } else {
-          return aVal < bVal ? 1 : -1;
+  const excludedCategories =
+    useMemo(
+      () =>
+        new Set<CategoryId>(
+          excludeCategories
+        ),
+      [
+        excludeCategoriesKey,
+      ]
+    );
+
+  const [
+    page,
+    setPage,
+  ] =
+    useState(
+      safeInitialPage
+    );
+
+  const [
+    isLoadingMore,
+    setIsLoadingMore,
+  ] =
+    useState(
+      false
+    );
+
+  const loadingTimerRef =
+    useRef<
+      number | null
+    >(
+      null
+    );
+
+  // ==========================================================
+  // QUERY
+  // ==========================================================
+
+  const allDocuments =
+    useLiveQuery<Document[]>(
+      async () => {
+        if (
+          !targetPersonId
+        ) {
+          return [];
         }
-      });
 
-      // Atualizar total
-      setTotalCount(docs.length);
+        return documentsRepository.getAll(
+          targetPersonId
+        );
+      },
+      [
+        targetPersonId,
+      ]
+    );
 
-      // Paginar
-      const start = 0;
-      const end = page * PAGE_SIZE;
-      const paginated = docs.slice(start, end);
+  // ==========================================================
+  // FILTER
+  // ==========================================================
 
-      // Verificar se carregou todos
-      if (paginated.length >= docs.length) {
-        setAllLoaded(true);
-      } else {
-        setAllLoaded(false);
-      }
+  const filteredDocuments =
+    useMemo<Document[]>(
+      () => {
+        let docs:
+          Document[] = [
+            ...(allDocuments ??
+              []),
+          ];
 
-      return paginated;
+        if (
+          categoryId
+        ) {
+          docs =
+            docs.filter(
+              (
+                document
+              ) =>
+                document.category_id ===
+                categoryId
+            );
+        }
+
+        if (
+          excludedCategories.size >
+          0
+        ) {
+          docs =
+            docs.filter(
+              (
+                document
+              ) =>
+                !excludedCategories.has(
+                  document.category_id
+                )
+            );
+        }
+
+        const query =
+          normalizeSearch(
+            searchQuery
+          );
+
+        if (
+          query
+        ) {
+          docs =
+            docs.filter(
+              (
+                document
+              ) => {
+                const searchable =
+                  normalizeSearch(
+                    [
+                      document.title ||
+                        "",
+                      document.description ||
+                        "",
+                    ].join(
+                      " "
+                    )
+                  );
+
+                return searchable.includes(
+                  query
+                );
+              }
+            );
+        }
+
+        docs.sort(
+          (
+            a,
+            b
+          ) => {
+            const aValue =
+              getComparableValue(
+                a,
+                sortBy
+              );
+
+            const bValue =
+              getComparableValue(
+                b,
+                sortBy
+              );
+
+            const comparison =
+              aValue.localeCompare(
+                bValue,
+                "pt-BR"
+              );
+
+            return sortOrder ===
+              "asc"
+              ? comparison
+              : -comparison;
+          }
+        );
+
+        return docs;
+      },
+      [
+        allDocuments,
+        categoryId,
+        excludedCategories,
+        searchQuery,
+        sortBy,
+        sortOrder,
+      ]
+    );
+
+  // ==========================================================
+  // PAGE RESET
+  // ==========================================================
+
+  const reset =
+    useCallback(
+      () => {
+        setPage(
+          safeInitialPage
+        );
+
+        setIsLoadingMore(
+          false
+        );
+
+        if (
+          loadingTimerRef.current !==
+          null
+        ) {
+          window.clearTimeout(
+            loadingTimerRef.current
+          );
+
+          loadingTimerRef.current =
+            null;
+        }
+      },
+      [
+        safeInitialPage,
+      ]
+    );
+
+  useEffect(
+    () => {
+      reset();
     },
-    [user?.id, personId, categoryId, excludeCategories, searchQuery, sortBy, sortOrder, page],
+    [
+      targetPersonId,
+      categoryId,
+      excludeCategoriesKey,
+      searchQuery,
+      sortBy,
+      sortOrder,
+      reset,
+    ]
+  );
+
+  // ==========================================================
+  // TIMER CLEANUP
+  // ==========================================================
+
+  useEffect(
+    () => {
+      return () => {
+        if (
+          loadingTimerRef.current !==
+          null
+        ) {
+          window.clearTimeout(
+            loadingTimerRef.current
+          );
+
+          loadingTimerRef.current =
+            null;
+        }
+      };
+    },
     []
   );
 
-  // Carregar mais
-  const loadMore = useCallback(() => {
-    if (!allLoaded && !isLoadingMore) {
-      setIsLoadingMore(true);
-      setPage(prev => prev + 1);
-      setTimeout(() => setIsLoadingMore(false), 100);
-    }
-  }, [allLoaded, isLoadingMore]);
+  // ==========================================================
+  // PAGINATED VIEW
+  // ==========================================================
 
-  // Resetar para a primeira página quando os filtros mudarem
-  const reset = useCallback(() => {
-    setPage(1);
-    setAllLoaded(false);
-  }, []);
+  const documents =
+    useMemo<Document[]>(
+      () =>
+        filteredDocuments.slice(
+          0,
+          page *
+            PAGE_SIZE
+        ),
+      [
+        filteredDocuments,
+        page,
+      ]
+    );
 
-  // Resetar quando os filtros mudarem
-  useEffect(() => {
-    reset();
-  }, [personId, categoryId, excludeCategories, searchQuery, reset]);
+  const totalCount =
+    filteredDocuments.length;
 
-  const hasMore = !allLoaded && (documents?.length || 0) < (totalCount || 0);
+  const allLoaded =
+    documents.length >=
+    totalCount;
+
+  const hasMore =
+    !allLoaded;
+
+  // ==========================================================
+  // LOAD MORE
+  // ==========================================================
+
+  const loadMore =
+    useCallback(
+      () => {
+        if (
+          allLoaded ||
+          isLoadingMore
+        ) {
+          return;
+        }
+
+        setIsLoadingMore(
+          true
+        );
+
+        setPage(
+          (
+            previous
+          ) =>
+            previous +
+            1
+        );
+
+        /*
+         * Não há requisição remota aqui.
+         * O timeout apenas impede múltiplos taps no mesmo frame.
+         */
+        loadingTimerRef.current =
+          window.setTimeout(
+            () => {
+              setIsLoadingMore(
+                false
+              );
+
+              loadingTimerRef.current =
+                null;
+            },
+            0
+          );
+      },
+      [
+        allLoaded,
+        isLoadingMore,
+      ]
+    );
 
   return {
-    documents: documents || [],
+    documents,
+
     totalCount,
+
     page,
+
     hasMore,
+
     isLoadingMore,
+
     loadMore,
+
     reset,
+
     allLoaded,
   };
 }

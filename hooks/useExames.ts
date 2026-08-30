@@ -1,37 +1,192 @@
 // hooks/useExames.ts
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { examesRepository } from "@/lib/repositories/exames";
-import { useAuth } from "./useAuth";
-import { useActivePersonId } from "./useActivePersonId";
-import { useCallback } from "react";
-import type { Exame } from "@/lib/types";
+import {
+  useCallback,
+} from "react";
+
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
+import {
+  examesRepository,
+} from "@/lib/repositories/exames";
+
+import {
+  useActivePersonId,
+} from "./useActivePersonId";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type CreateExameInput =
+  Omit<
+    Parameters<
+      typeof examesRepository.create
+    >[0],
+    "person_id"
+  >;
+
+type UpdateExameInput =
+  Parameters<
+    typeof examesRepository.update
+  >[2];
+
+// ============================================================
+// HOOK
+// ============================================================
 
 export function useExames() {
-  const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  const exames = useLiveQuery(
-    () => activePersonId ? db.exames.where('person_id').equals(activePersonId).toArray() : [],
-    [activePersonId],
-    []
-  );
+  // ==========================================================
+  // LIVE LIST
+  // ==========================================================
 
-  const getExame = useCallback((id: string) => examesRepository.getById(id), []);
+  const exames =
+    useLiveQuery(
+      async () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
 
-  const addExame = useCallback(async (data: Omit<Exame, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-    return await examesRepository.create({ ...data, user_id: user?.id });
-  }, [user]);
+        return examesRepository.getAll(
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ],
+      []
+    );
 
-  const updateExame = useCallback(async (id: string, data: Partial<Exame>) => {
-    return await examesRepository.update(id, data);
-  }, []);
+  // ==========================================================
+  // GET
+  // ==========================================================
 
-  const deleteExame = useCallback(async (id: string) => {
-    return await examesRepository.delete(id);
-  }, []);
+  const getExame =
+    useCallback(
+      async (
+        id:
+          string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          return undefined;
+        }
 
-  return { exames, getExame, addExame, updateExame, deleteExame };
+        return examesRepository.getById(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // CREATE
+  // ==========================================================
+
+  const addExame =
+    useCallback(
+      async (
+        data:
+          CreateExameInput
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return examesRepository.create({
+          ...data,
+
+          person_id:
+            activePersonId,
+        });
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
+
+  const updateExame =
+    useCallback(
+      async (
+        id:
+          string,
+        data:
+          UpdateExameInput
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return examesRepository.update(
+          id,
+          activePersonId,
+          data
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const deleteExame =
+    useCallback(
+      async (
+        id:
+          string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return examesRepository.delete(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  return {
+    exames,
+    getExame,
+    addExame,
+    updateExame,
+    deleteExame,
+  };
 }

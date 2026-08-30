@@ -1,41 +1,281 @@
 // hooks/useRenovacoes.ts
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { renovacoesRepository } from "@/lib/repositories/renovacoes";
-import { useAuth } from "./useAuth";
-import { useActivePersonId } from "./useActivePersonId";
-import { useCallback } from "react";
-import type { Renovacao } from "@/lib/types";
+import {
+  useCallback,
+} from "react";
 
-export function useRenovacoes(medicamentoId?: string) {
-  const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
 
-  const renovacoes = useLiveQuery(
-    () => {
-      if (!activePersonId) return [];
-      let query = db.renovacoes.where('person_id').equals(activePersonId);
-      if (medicamentoId) query = query.and((r) => r.medicamento_id === medicamentoId);
-      return query.reverse().sortBy("data");
-    },
-    [activePersonId, medicamentoId],
-    []
-  );
+import {
+  renovacoesRepository,
+} from "@/lib/repositories/renovacoes";
 
-  const getRenovacao = useCallback((id: string) => renovacoesRepository.getById(id), []);
+import {
+  useActivePersonId,
+} from "./useActivePersonId";
 
-  const addRenovacao = useCallback(async (data: Omit<Renovacao, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    return await renovacoesRepository.create({ ...data, user_id: user.id });
-  }, [user]);
+import type {
+  Renovacao,
+} from "@/lib/types";
 
-  const updateRenovacao = useCallback(async (id: string, data: Partial<Renovacao>) => {
-    return await renovacoesRepository.update(id, data);
-  }, []);
+import type {
+  RenovacaoCreateOptions,
+} from "@/lib/repositories/renovacoes";
 
-  const deleteRenovacao = useCallback(async (id: string) => await renovacoesRepository.delete(id), []);
+// ============================================================
+// TIPOS
+// ============================================================
 
-  return { renovacoes, getRenovacao, addRenovacao, updateRenovacao, deleteRenovacao };
+type AddRenovacaoInput =
+  Omit<
+    Renovacao,
+    | "id"
+    | "user_id"
+    | "person_id"
+    | "created_at"
+    | "updated_at"
+    | "synced"
+  >;
+
+type NullableRenovacaoFields = {
+  document_id?:
+    string | null;
+
+  medico_id?:
+    string | null;
+
+  farmacia_id?:
+    string | null;
+
+  hospital_id?:
+    string | null;
+
+  local_id?:
+    string | null;
+
+  quantidade?:
+    number | null;
+
+  preco?:
+    number | null;
+
+  lote?:
+    string | null;
+
+  validade_produto?:
+    string | null;
+
+  anexo_url?:
+    string | null;
+
+  observacoes?:
+    string | null;
+
+  data_proxima_retirada?:
+    string | null;
+
+  data_retorno_sus?:
+    string | null;
+};
+
+type UpdateRenovacaoBase =
+  Partial<
+    Omit<
+      Renovacao,
+      | "id"
+      | "user_id"
+      | "person_id"
+      | "created_at"
+      | "updated_at"
+      | "synced"
+    >
+  >;
+
+type UpdateRenovacaoInput =
+  Omit<
+    UpdateRenovacaoBase,
+    keyof NullableRenovacaoFields
+  > &
+    NullableRenovacaoFields;
+
+// ============================================================
+// HOOK
+// ============================================================
+
+export function useRenovacoes(
+  medicamentoId?: string
+) {
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
+
+  // ==========================================================
+  // LIST
+  // ==========================================================
+
+  const renovacoes =
+    useLiveQuery(
+      async () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        if (
+          medicamentoId
+        ) {
+          return renovacoesRepository.getByMedicamento(
+            activePersonId,
+            medicamentoId
+          );
+        }
+
+        return renovacoesRepository.getAll(
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+        medicamentoId,
+      ],
+      []
+    );
+
+  // ==========================================================
+  // GET
+  // ==========================================================
+
+  const getRenovacao =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          return undefined;
+        }
+
+        return renovacoesRepository.getById(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // CREATE
+  //
+  // Já inclui os efeitos atômicos sobre o medicamento.
+  // ==========================================================
+
+  const addRenovacao =
+    useCallback(
+      async (
+        data:
+          AddRenovacaoInput,
+        options:
+          RenovacaoCreateOptions = {}
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return renovacoesRepository.create(
+          {
+            ...data,
+
+            person_id:
+              activePersonId,
+          },
+          options
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
+
+  const updateRenovacao =
+    useCallback(
+      async (
+        id: string,
+        data:
+          UpdateRenovacaoInput
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        await renovacoesRepository.update(
+          id,
+          activePersonId,
+          data
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const deleteRenovacao =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        await renovacoesRepository.delete(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  return {
+    renovacoes:
+      renovacoes ||
+      [],
+
+    getRenovacao,
+
+    addRenovacao,
+
+    updateRenovacao,
+
+    deleteRenovacao,
+  };
 }

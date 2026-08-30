@@ -1,188 +1,740 @@
 // app/saude/renovacao/page.tsx
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
-  Calendar,
-  FileWarning,
-  Pill,
-  Filter,
-  X,
-  Clock,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
   AlertCircle,
+  Calendar,
   CheckCircle2,
+  Clock,
+  FileWarning,
   MessageCircle,
+  Pill,
+  Receipt,
+  Store,
 } from "lucide-react";
-import { useHapticFeedback } from "@/lib/haptics";
-import { PageTransition } from "@/components/PageTransition";
-import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
-import { EmptyState } from "@/components/EmptyState";
-import { useRenovacoes } from "@/hooks/useRenovacoes";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useMedicamentos } from "@/hooks/useMedicamentos";
-import { isReceitaVencidaSegura } from "@/lib/health-insights";
-import { getDaysUntil, getClinicalTheme } from "@/lib/health-utils";
+
 import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+
+import {
+  EmptyState,
+} from "@/components/EmptyState";
+
+import {
+  useRenovacoes,
+} from "@/hooks/useRenovacoes";
+
+import {
+  useMedicamentos,
+} from "@/hooks/useMedicamentos";
+
+import {
+  analisarValidadeReceita,
+} from "@/lib/health-insights";
+
+import {
+  formatCurrency,
+  getClinicalTheme,
+} from "@/lib/health-utils";
+
+import {
+  ListCard,
+  ListFilters,
   ListPageHeader,
   ListSearch,
-  ListFilters,
-  ListCard,
 } from "@/components/list";
-import type { Renovacao, Medicamento } from "@/lib/types";
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+import type {
+  Renovacao,
+} from "@/lib/types";
 
-function formatDateDisplay(isoStr: string): string {
-  if (!isoStr) return "";
-  const parts = isoStr.split("-");
-  if (parts.length !== 3) return isoStr;
+// ============================================================
+// TIPOS
+// ============================================================
+
+type PeriodFilter =
+  | "todos"
+  | "30dias"
+  | "60dias";
+
+type StatusFilter =
+  | "todos"
+  | "vencida"
+  | "valida";
+
+type AcquisitionFilter =
+  | "todos"
+  | "comprado"
+  | "sus";
+
+type RenovacaoEnriquecida =
+  Renovacao & {
+    medicamentoNome: string;
+
+    medicamentoDosagem:
+      string;
+
+    validadeHistorica:
+      string | null;
+
+    validadeConhecida:
+      boolean;
+
+    vencida:
+      boolean;
+
+    diasRestantes:
+      number | null;
+  };
+
+// ============================================================
+// DATAS
+// ============================================================
+
+function formatDateDisplay(
+  isoStr?: string
+): string {
+  if (!isoStr) {
+    return "";
+  }
+
+  const clean =
+    isoStr.split("T")[0];
+
+  const parts =
+    clean.split("-");
+
+  if (
+    parts.length !==
+    3
+  ) {
+    return isoStr;
+  }
+
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function formatCurrency(value: number | string): string {
-  const numericValue = Number(value);
-  if (isNaN(numericValue)) return "R$ 0,00";
-  return `R$ ${numericValue.toFixed(2).replace(".", ",")}`;
+// ============================================================
+// PREÇO / AQUISIÇÃO
+// ============================================================
+
+function getAcquisitionLabel(
+  renovacao: Renovacao
+): string {
+  if (
+    renovacao.tipo_aquisicao ===
+    "sus"
+  ) {
+    return "SUS / Gratuito";
+  }
+
+  if (
+    typeof renovacao.preco ===
+      "number" &&
+    Number.isFinite(
+      renovacao.preco
+    ) &&
+    renovacao.preco >=
+      0
+  ) {
+    return formatCurrency(
+      renovacao.preco
+    );
+  }
+
+  return "Valor não informado";
 }
 
-type RenovacaoEnriquecida = Renovacao & {
-  medicamentoNome: string;
-  medicamentoDosagem: string;
-  vencida: boolean;
-  diasRestantes: number | null;
-};
+// ============================================================
+// FILTRO TEMPORAL
+// ============================================================
 
-/* ============================================================
-   PÁGINA
-   ============================================================ */
+function isWithinLastDays(
+  isoDate: string,
+  days: number
+): boolean {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/.exec(
+      isoDate
+    );
 
-export default function RenovacoesPage() {
-  const { trigger } = useHapticFeedback();
-  const router = useRouter();
-  const { activePersonId } = useActivePersonId();
-  const [search, setSearch] = useState("");
-  const [filtroPeriodo, setFiltroPeriodo] = useState<"todos" | "30dias" | "60dias">("todos");
-  const [filtroStatus, setFiltroStatus] = useState<"todos" | "vencida" | "valida">("todos");
+  if (!match) {
+    return false;
+  }
 
-  const { renovacoes: rawRenovacoes } = useRenovacoes();
-  const { medicamentos: rawMedicamentos } = useMedicamentos();
-  const renovacoes = rawRenovacoes ?? [];
-  const medicamentos = rawMedicamentos ?? [];
+  const year =
+    Number(
+      match[1]
+    );
 
-  const medicamentoMap = useMemo(
-    () => new Map(medicamentos.map((m) => [m.id, m])),
-    [medicamentos]
+  const month =
+    Number(
+      match[2]
+    );
+
+  const day =
+    Number(
+      match[3]
+    );
+
+  const registro =
+    new Date(
+      year,
+      month - 1,
+      day
+    );
+
+  if (
+    registro.getFullYear() !==
+      year ||
+    registro.getMonth() !==
+      month - 1 ||
+    registro.getDate() !==
+      day
+  ) {
+    return false;
+  }
+
+  const hoje =
+    new Date();
+
+  hoje.setHours(
+    0,
+    0,
+    0,
+    0
   );
 
-  const renovacoesEnriquecidas = useMemo<RenovacaoEnriquecida[]>(() => {
-    const renovacoesFiltradas = renovacoes.filter((r) => {
-      return !activePersonId || !r.person_id || r.person_id === activePersonId;
-    });
+  registro.setHours(
+    0,
+    0,
+    0,
+    0
+  );
 
-    return renovacoesFiltradas.map((r) => {
-      const med = medicamentoMap.get(r.medicamento_id);
+  const limite =
+    new Date(
+      hoje
+    );
 
-      const vencida = med?.proxima_renovacao
-        ? isReceitaVencidaSegura(med.proxima_renovacao)
-        : false;
-      const diasRestantes = med?.proxima_renovacao
-        ? getDaysUntil(med.proxima_renovacao)
-        : null;
+  limite.setDate(
+    limite.getDate() -
+      days
+  );
 
-      return {
-        ...r,
-        medicamentoNome: med?.nome || "Medicamento não encontrado",
-        medicamentoDosagem: med?.dosagem || "",
-        vencida,
-        diasRestantes,
-      };
-    });
-  }, [renovacoes, medicamentoMap, activePersonId]);
+  return (
+    registro.getTime() >=
+      limite.getTime() &&
+    registro.getTime() <=
+      hoje.getTime()
+  );
+}
 
-  const filteredRenovacoes = useMemo(() => {
-    let result = renovacoesEnriquecidas;
+// ============================================================
+// PAGE
+// ============================================================
 
-    if (search) {
-      const term = search.toLowerCase();
-      result = result.filter(
-        (r) =>
-          r.medicamentoNome.toLowerCase().includes(term) ||
-          (r.observacoes && r.observacoes.toLowerCase().includes(term))
+export default function RenovacoesPage() {
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
+
+  const router =
+    useRouter();
+
+  const [
+    search,
+    setSearch,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    filtroPeriodo,
+    setFiltroPeriodo,
+  ] =
+    useState<PeriodFilter>(
+      "todos"
+    );
+
+  const [
+    filtroStatus,
+    setFiltroStatus,
+  ] =
+    useState<StatusFilter>(
+      "todos"
+    );
+
+  const [
+    filtroAquisicao,
+    setFiltroAquisicao,
+  ] =
+    useState<AcquisitionFilter>(
+      "todos"
+    );
+
+  const {
+    renovacoes,
+  } =
+    useRenovacoes();
+
+  const {
+    medicamentos,
+  } =
+    useMedicamentos();
+
+  // ==========================================================
+  // MEDICAMENTOS
+  // ==========================================================
+
+  const medicamentoMap =
+    useMemo(
+      () =>
+        new Map(
+          medicamentos.map(
+            (
+              medicamento
+            ) => [
+              medicamento.id,
+              medicamento,
+            ]
+          )
+        ),
+      [
+        medicamentos,
+      ]
+    );
+
+  // ==========================================================
+  // ENRIQUECIMENTO HISTÓRICO
+  // ==========================================================
+
+  const renovacoesEnriquecidas =
+    useMemo<
+      RenovacaoEnriquecida[]
+    >(
+      () =>
+        renovacoes.map(
+          (
+            renovacao
+          ) => {
+            const medicamento =
+              medicamentoMap.get(
+                renovacao.medicamento_id
+              );
+
+            /*
+             * A tela não calcula mais validade.
+             *
+             * Toda interpretação da receita vem do cérebro
+             * transversal do Vault.
+             */
+            const validade =
+              analisarValidadeReceita(
+                renovacao.data
+              );
+
+            const validadeConhecida =
+              validade.status !==
+                "sem_data" &&
+              Boolean(
+                validade.dataValidade
+              );
+
+            return {
+              ...renovacao,
+
+              medicamentoNome:
+                medicamento?.nome ||
+                "Medicamento não encontrado",
+
+              medicamentoDosagem:
+                medicamento?.dosagem ||
+                "",
+
+              validadeHistorica:
+                validade.dataValidade,
+
+              validadeConhecida,
+
+              vencida:
+                validade.vencida,
+
+              diasRestantes:
+                validade.diasRestantes,
+            };
+          }
+        ),
+      [
+        renovacoes,
+        medicamentoMap,
+      ]
+    );
+
+  // ==========================================================
+  // INDICADORES
+  // ==========================================================
+
+  const indicadores =
+    useMemo(
+      () => {
+        let vencidas =
+          0;
+
+        let proximas =
+          0;
+
+        let sus =
+          0;
+
+        for (
+          const renovacao of
+          renovacoesEnriquecidas
+        ) {
+          if (
+            renovacao.validadeConhecida &&
+            renovacao.vencida
+          ) {
+            vencidas +=
+              1;
+          }
+
+          if (
+            renovacao.validadeConhecida &&
+            !renovacao.vencida &&
+            renovacao.diasRestantes !==
+              null &&
+            renovacao.diasRestantes >=
+              0 &&
+            renovacao.diasRestantes <=
+              7
+          ) {
+            proximas +=
+              1;
+          }
+
+          if (
+            renovacao.tipo_aquisicao ===
+            "sus"
+          ) {
+            sus +=
+              1;
+          }
+        }
+
+        return {
+          total:
+            renovacoesEnriquecidas.length,
+
+          vencidas,
+
+          proximas,
+
+          sus,
+        };
+      },
+      [
+        renovacoesEnriquecidas,
+      ]
+    );
+
+  // ==========================================================
+  // FILTROS
+  // ==========================================================
+
+  const filteredRenovacoes =
+    useMemo(
+      () => {
+        let result =
+          renovacoesEnriquecidas;
+
+        const normalizedSearch =
+          search
+            .trim()
+            .toLocaleLowerCase(
+              "pt-BR"
+            );
+
+        if (
+          normalizedSearch
+        ) {
+          result =
+            result.filter(
+              (
+                renovacao
+              ) => {
+                const fields = [
+                  renovacao.medicamentoNome,
+                  renovacao.medicamentoDosagem,
+                  renovacao.observacoes,
+                  renovacao.lote,
+                ];
+
+                return fields.some(
+                  (
+                    value
+                  ) =>
+                    value
+                      ?.toLocaleLowerCase(
+                        "pt-BR"
+                      )
+                      .includes(
+                        normalizedSearch
+                      )
+                );
+              }
+            );
+        }
+
+        if (
+          filtroPeriodo ===
+          "30dias"
+        ) {
+          result =
+            result.filter(
+              (
+                renovacao
+              ) =>
+                isWithinLastDays(
+                  renovacao.data,
+                  30
+                )
+            );
+        }
+
+        if (
+          filtroPeriodo ===
+          "60dias"
+        ) {
+          result =
+            result.filter(
+              (
+                renovacao
+              ) =>
+                isWithinLastDays(
+                  renovacao.data,
+                  60
+                )
+            );
+        }
+
+        if (
+          filtroStatus ===
+          "vencida"
+        ) {
+          result =
+            result.filter(
+              (
+                renovacao
+              ) =>
+                renovacao.validadeConhecida &&
+                renovacao.vencida
+            );
+        }
+
+        if (
+          filtroStatus ===
+          "valida"
+        ) {
+          result =
+            result.filter(
+              (
+                renovacao
+              ) =>
+                renovacao.validadeConhecida &&
+                !renovacao.vencida
+            );
+        }
+
+        if (
+          filtroAquisicao !==
+          "todos"
+        ) {
+          result =
+            result.filter(
+              (
+                renovacao
+              ) =>
+                renovacao.tipo_aquisicao ===
+                filtroAquisicao
+            );
+        }
+
+        /*
+         * useRenovacoes já entrega o histórico ordenado.
+         *
+         * Criamos nova referência para impedir mutação acidental
+         * caso novos tratamentos sejam adicionados depois.
+         */
+        return [
+          ...result,
+        ];
+      },
+      [
+        renovacoesEnriquecidas,
+        search,
+        filtroPeriodo,
+        filtroStatus,
+        filtroAquisicao,
+      ]
+    );
+
+  // ==========================================================
+  // FILTER ACTIONS
+  // ==========================================================
+
+  const handleClearFilters =
+    () => {
+      trigger(
+        "vibrate"
       );
-    }
 
-    if (filtroPeriodo === "30dias") {
-      const trintaDiasAtras = new Date();
-      trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-      result = result.filter((r) => r.data && new Date(r.data) >= trintaDiasAtras);
-    } else if (filtroPeriodo === "60dias") {
-      const sessentaDiasAtras = new Date();
-      sessentaDiasAtras.setDate(sessentaDiasAtras.getDate() - 60);
-      result = result.filter((r) => r.data && new Date(r.data) >= sessentaDiasAtras);
-    }
+      setFiltroPeriodo(
+        "todos"
+      );
 
-    if (filtroStatus === "vencida") {
-      result = result.filter((r) => r.vencida);
-    } else if (filtroStatus === "valida") {
-      result = result.filter((r) => !r.vencida);
-    }
+      setFiltroStatus(
+        "todos"
+      );
 
-    return result.sort((a, b) => {
-      let dateA = 0;
-      let dateB = 0;
+      setFiltroAquisicao(
+        "todos"
+      );
+    };
 
-      if (a.data) {
-        dateA = a.data.includes("/")
-          ? new Date(a.data.split("/").reverse().join("-")).getTime()
-          : new Date(a.data).getTime();
-      }
-      if (b.data) {
-        dateB = b.data.includes("/")
-          ? new Date(b.data.split("/").reverse().join("-")).getTime()
-          : new Date(b.data).getTime();
-      }
+  const hasActiveFilters =
+    filtroPeriodo !==
+      "todos" ||
+    filtroStatus !==
+      "todos" ||
+    filtroAquisicao !==
+      "todos";
 
-      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
-    });
-  }, [renovacoesEnriquecidas, search, filtroPeriodo, filtroStatus]);
-
-  const handleClearFilters = () => {
-    trigger("vibrate");
-    setFiltroPeriodo("todos");
-    setFiltroStatus("todos");
-  };
-
-  if (!rawRenovacoes && renovacoes.length === 0) return <CardListSkeleton />;
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
         <ListPageHeader
           title="Histórico de Renovações"
-          badgeLabel="HISTÓRICO FINANCEIRO"
+          badgeLabel="RECEITAS E AQUISIÇÕES"
           badgeColor="text-ice"
         >
           <ListSearch
-            value={search}
-            onChange={setSearch}
-            placeholder="Buscar por medicamento ou notas..."
+            value={
+              search
+            }
+            onChange={
+              setSearch
+            }
+            placeholder="Buscar medicamento, notas ou lote..."
           />
 
-          <ListFilters onClear={handleClearFilters}>
+          {/* ==================================================
+              RESUMO
+              ================================================== */}
+
+          {indicadores.total >
+            0 && (
+            <div className="grid grid-cols-4 gap-2">
+              <div className="rounded-2xl border border-surface-border/40 bg-surface-raised p-2.5 text-center">
+                <p className="font-mono text-base font-bold text-ink-primary">
+                  {
+                    indicadores.total
+                  }
+                </p>
+
+                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
+                  Registros
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-coral/20 bg-coral/5 p-2.5 text-center">
+                <p className="font-mono text-base font-bold text-coral">
+                  {
+                    indicadores.vencidas
+                  }
+                </p>
+
+                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
+                  Expiradas
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-2.5 text-center">
+                <p className="font-mono text-base font-bold text-amber-400">
+                  {
+                    indicadores.proximas
+                  }
+                </p>
+
+                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
+                  Até 7 dias
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-2.5 text-center">
+                <p className="font-mono text-base font-bold text-emerald-400">
+                  {
+                    indicadores.sus
+                  }
+                </p>
+
+                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
+                  SUS
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ==================================================
+              FILTERS
+              ================================================== */}
+
+          <ListFilters
+            onClear={
+              handleClearFilters
+            }
+          >
             <button
               type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setFiltroPeriodo(filtroPeriodo === "30dias" ? "todos" : "30dias");
-              }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
-                filtroPeriodo === "30dias"
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setFiltroPeriodo(
+                    filtroPeriodo ===
+                      "30dias"
+                      ? "todos"
+                      : "30dias"
+                  );
+                }
+              }
+              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroPeriodo ===
+                "30dias"
                   ? "border-ice bg-ice/20 text-ice"
-                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
               }`}
             >
               Últimos 30 dias
@@ -190,131 +742,412 @@ export default function RenovacoesPage() {
 
             <button
               type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setFiltroPeriodo(filtroPeriodo === "60dias" ? "todos" : "60dias");
-              }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
-                filtroPeriodo === "60dias"
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setFiltroPeriodo(
+                    filtroPeriodo ===
+                      "60dias"
+                      ? "todos"
+                      : "60dias"
+                  );
+                }
+              }
+              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroPeriodo ===
+                "60dias"
                   ? "border-ice bg-ice/20 text-ice"
-                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
               }`}
             >
               Últimos 60 dias
             </button>
 
-            <div className="w-px h-5 bg-surface-border/40 mx-1" />
+            <div className="mx-1 h-5 w-px bg-surface-border/40" />
 
             <button
               type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setFiltroStatus(filtroStatus === "vencida" ? "todos" : "vencida");
-              }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
-                filtroStatus === "vencida"
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setFiltroStatus(
+                    filtroStatus ===
+                      "vencida"
+                      ? "todos"
+                      : "vencida"
+                  );
+                }
+              }
+              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroStatus ===
+                "vencida"
                   ? "border-coral bg-coral/20 text-coral"
-                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
               }`}
             >
-              Receita Vencida
+              Expirada
             </button>
 
             <button
               type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setFiltroStatus(filtroStatus === "valida" ? "todos" : "valida");
-              }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
-                filtroStatus === "valida"
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setFiltroStatus(
+                    filtroStatus ===
+                      "valida"
+                      ? "todos"
+                      : "valida"
+                  );
+                }
+              }
+              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroStatus ===
+                "valida"
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
-                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
               }`}
             >
-              Receita Válida
+              Dentro da validade
+            </button>
+
+            <div className="mx-1 h-5 w-px bg-surface-border/40" />
+
+            <button
+              type="button"
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setFiltroAquisicao(
+                    filtroAquisicao ===
+                      "comprado"
+                      ? "todos"
+                      : "comprado"
+                  );
+                }
+              }
+              className={`flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroAquisicao ===
+                "comprado"
+                  ? "border-ice bg-ice/20 text-ice"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
+              }`}
+            >
+              <Store
+                size={
+                  10
+                }
+              />
+
+              Particular
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setFiltroAquisicao(
+                    filtroAquisicao ===
+                      "sus"
+                      ? "todos"
+                      : "sus"
+                  );
+                }
+              }
+              className={`flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroAquisicao ===
+                "sus"
+                  ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
+              }`}
+            >
+              <Receipt
+                size={
+                  10
+                }
+              />
+
+              SUS
             </button>
           </ListFilters>
         </ListPageHeader>
 
+        {/* ====================================================
+            LISTA
+            ==================================================== */}
+
         <section className="space-y-3.5 px-5 pt-4">
-          {filteredRenovacoes.length === 0 ? (
+          {filteredRenovacoes.length ===
+          0 ? (
             <EmptyState
-              icon={FileWarning}
+              icon={
+                FileWarning
+              }
               title="Nenhuma renovação encontrada"
               description={
-                search || filtroPeriodo !== "todos" || filtroStatus !== "todos"
-                  ? "Tente ajustar os filtros aplicados."
-                  : "Registre receitas renovadas para acompanhar custos e validades."
+                search ||
+                hasActiveFilters
+                  ? "Tente ajustar a busca ou os filtros aplicados."
+                  : "Registre uma renovação para começar a construir o histórico de receitas e aquisições."
               }
             />
           ) : (
-            filteredRenovacoes.map((renovacao, index) => {
-              const theme = getClinicalTheme(renovacao.medicamentoNome);
-              const borderColor = renovacao.vencida ? "#EF4444" : theme.hex;
+            filteredRenovacoes.map(
+              (
+                renovacao,
+                index
+              ) => {
+                const theme =
+                  getClinicalTheme(
+                    renovacao.medicamentoNome
+                  );
 
-              return (
-                <ListCard
-                  key={renovacao.id}
-                  id={renovacao.id!}
-                  color={borderColor}
-                  onClick={() => {
-                    trigger("vibrate");
-                    router.push(`/saude/renovacao/detalhes?id=${renovacao.id}`);
-                  }}
-                  delay={index * 0.025}
-                  icon={<Pill size={22} />}
-                >
-                  <div className="flex min-w-0 items-baseline gap-2">
-                    <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
-                      {renovacao.medicamentoNome}
-                    </h3>
-                    <span className="shrink-0 whitespace-nowrap text-xs font-mono font-medium text-emerald-400">
-                      {renovacao.preco ? formatCurrency(renovacao.preco) : "SUS / Gratuito"}
-                    </span>
-                  </div>
+                const borderColor =
+                  renovacao.validadeConhecida &&
+                  renovacao.vencida
+                    ? "#EF4444"
+                    : theme.hex;
 
-                  <p className="mt-0.5 text-xs text-ink-muted">{renovacao.medicamentoDosagem}</p>
+                const acquisitionLabel =
+                  getAcquisitionLabel(
+                    renovacao
+                  );
 
-                  <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                    <span className="flex items-center gap-1 font-mono">
-                      <Calendar size={12} className="text-ice" /> {formatDateDisplay(renovacao.data)}
-                    </span>
+                return (
+                  <ListCard
+                    key={
+                      renovacao.id
+                    }
+                    id={
+                      renovacao.id!
+                    }
+                    color={
+                      borderColor
+                    }
+                    onClick={
+                      () => {
+                        trigger(
+                          "vibrate"
+                        );
 
-                    {renovacao.vencida ? (
-                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-coral/20 text-coral px-2 py-0.5 rounded-full border border-coral/30">
-                        <AlertCircle size={10} /> Rec. Vencida
+                        router.push(
+                          `/saude/renovacao/detalhes?id=${renovacao.id}`
+                        );
+                      }
+                    }
+                    delay={
+                      index *
+                      0.025
+                    }
+                    icon={
+                      <Pill
+                        size={
+                          22
+                        }
+                      />
+                    }
+                  >
+                    {/* ========================================
+                        TÍTULO
+                        ======================================== */}
+
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
+                        {
+                          renovacao.medicamentoNome
+                        }
+                      </h3>
+
+                      <span
+                        className={`shrink-0 whitespace-nowrap text-xs font-mono font-medium ${
+                          renovacao.tipo_aquisicao ===
+                          "sus"
+                            ? "text-emerald-400"
+                            : renovacao.preco !==
+                                undefined &&
+                              renovacao.preco !==
+                                null
+                              ? "text-emerald-400"
+                              : "text-ink-muted"
+                        }`}
+                      >
+                        {
+                          acquisitionLabel
+                        }
                       </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-400/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-400/30">
-                        <CheckCircle2 size={10} /> Rec. Válida
-                      </span>
+                    </div>
+
+                    {renovacao.medicamentoDosagem && (
+                      <p className="mt-0.5 text-xs text-ink-muted">
+                        {
+                          renovacao.medicamentoDosagem
+                        }
+                      </p>
                     )}
 
-                    {renovacao.diasRestantes !== null &&
-                      !renovacao.vencida &&
-                      renovacao.diasRestantes >= 0 && (
-                        <span
-                          className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                            renovacao.diasRestantes <= 7
-                              ? "bg-amber-400/20 text-amber-400 border border-amber-400/30"
-                              : "bg-surface-raised text-ink-muted border border-surface-border/40"
-                          }`}
-                        >
-                          <Clock size={10} /> Faltam {renovacao.diasRestantes} dias
-                        </span>
+                    {/* ========================================
+                        META
+                        ======================================== */}
+
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+                      <span className="flex items-center gap-1 font-mono">
+                        <Calendar
+                          size={
+                            12
+                          }
+                          className="text-ice"
+                        />
+
+                        {formatDateDisplay(
+                          renovacao.data
+                        )}
+                      </span>
+
+                      {/* AQUISIÇÃO */}
+
+                      <span
+                        className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
+                          renovacao.tipo_aquisicao ===
+                          "sus"
+                            ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
+                            : "border-ice/20 bg-ice/10 text-ice"
+                        }`}
+                      >
+                        {renovacao.tipo_aquisicao ===
+                        "sus" ? (
+                          <Receipt
+                            size={
+                              10
+                            }
+                          />
+                        ) : (
+                          <Store
+                            size={
+                              10
+                            }
+                          />
+                        )}
+
+                        {renovacao.tipo_aquisicao ===
+                        "sus"
+                          ? "SUS"
+                          : "Particular"}
+                      </span>
+
+                      {/* VALIDADE */}
+
+                      {renovacao.validadeConhecida && (
+                        renovacao.vencida ? (
+                          <span className="flex items-center gap-1 rounded-full border border-coral/30 bg-coral/20 px-2 py-0.5 text-[10px] font-bold uppercase text-coral">
+                            <AlertCircle
+                              size={
+                                10
+                              }
+                            />
+
+                            Expirada
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/20 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-400">
+                            <CheckCircle2
+                              size={
+                                10
+                              }
+                            />
+
+                            Válida
+                          </span>
+                        )
                       )}
 
-                    {renovacao.observacoes && (
-                      <span className="truncate max-w-[150px] text-ink-muted flex items-center gap-1">
-                        <MessageCircle size={11} className="shrink-0" />
-                        {renovacao.observacoes}
-                      </span>
-                    )}
-                  </div>
-                </ListCard>
-              );
-            })
+                      {/* DIAS */}
+
+                      {renovacao.validadeConhecida &&
+                        renovacao.diasRestantes !==
+                          null &&
+                        !renovacao.vencida &&
+                        renovacao.diasRestantes >=
+                          0 && (
+                          <span
+                            className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                              renovacao.diasRestantes <=
+                              7
+                                ? "border-amber-400/30 bg-amber-400/20 text-amber-400"
+                                : "border-surface-border/40 bg-surface-raised text-ink-muted"
+                            }`}
+                          >
+                            <Clock
+                              size={
+                                10
+                              }
+                            />
+
+                            {renovacao.diasRestantes ===
+                            0
+                              ? "Vence hoje"
+                              : `${renovacao.diasRestantes} dia(s)`}
+                          </span>
+                        )}
+
+                      {/* QUANTIDADE */}
+
+                      {renovacao.quantidade !==
+                        undefined &&
+                        renovacao.quantidade !==
+                          null && (
+                          <span className="flex items-center gap-1 rounded-full border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                            <Receipt
+                              size={
+                                10
+                              }
+                            />
+
+                            Qtd.{" "}
+                            {
+                              renovacao.quantidade
+                            }
+                          </span>
+                        )}
+
+                      {/* OBS */}
+
+                      {renovacao.observacoes && (
+                        <span className="flex max-w-[180px] items-center gap-1 truncate text-ink-muted">
+                          <MessageCircle
+                            size={
+                              11
+                            }
+                            className="shrink-0"
+                          />
+
+                          <span className="truncate">
+                            {
+                              renovacao.observacoes
+                            }
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  </ListCard>
+                );
+              }
+            )
           )}
         </section>
       </main>

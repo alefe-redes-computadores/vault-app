@@ -1,65 +1,310 @@
 // lib/repositories/cirurgias.ts
+
 import { db } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { supabase } from "@/lib/supabase/client";
 import type { Cirurgia } from "@/lib/types";
 
+// ============================================================
+// TIPOS
+// ============================================================
+
+type CreateCirurgiaInput = Omit<
+  Cirurgia,
+  | "id"
+  | "user_id"
+  | "person_id"
+  | "created_at"
+  | "updated_at"
+  | "synced"
+> & {
+  id?: string;
+  person_id: string;
+};
+
+type UpdateCirurgiaInput = Partial<
+  Omit<
+    Cirurgia,
+    | "id"
+    | "user_id"
+    | "person_id"
+    | "created_at"
+  >
+>;
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function requirePersonId(
+  personId: string
+): string {
+  const normalized = personId.trim();
+
+  if (!normalized) {
+    throw new Error(
+      "Pessoa ativa não identificada."
+    );
+  }
+
+  return normalized;
+}
+
+async function getCirurgiaForPerson(
+  id: string,
+  personId: string
+): Promise<Cirurgia | undefined> {
+  const safePersonId =
+    requirePersonId(personId);
+
+  const cirurgia =
+    await db.cirurgias.get(id);
+
+  if (
+    !cirurgia ||
+    cirurgia.person_id !== safePersonId
+  ) {
+    return undefined;
+  }
+
+  return cirurgia;
+}
+
+// ============================================================
+// REPOSITORY
+// ============================================================
+
 export const cirurgiasRepository = {
-  async getAll() {
-    return db.cirurgias.toArray();
+  // ==========================================================
+  // LISTA
+  // ==========================================================
+
+  async getAll(
+    personId: string
+  ) {
+    const safePersonId =
+      requirePersonId(personId);
+
+    return db.cirurgias
+      .where("person_id")
+      .equals(safePersonId)
+      .toArray();
   },
 
-  async getById(id: string) {
-    return db.cirurgias.get(id);
+  // ==========================================================
+  // GET
+  // ==========================================================
+
+  async getById(
+    id: string,
+    personId: string
+  ) {
+    return getCirurgiaForPerson(
+      id,
+      personId
+    );
   },
 
-  async create(data: Omit<Cirurgia, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'> & { id?: string; user_id?: string }) {
-    if (process.env.NODE_ENV === "development" && "user_id" in data) {
-      console.warn("[cirurgiasRepository] user_id recebido do caller será ignorado — repositório injeta internamente.");
+  // ==========================================================
+  // CREATE
+  // ==========================================================
+
+  async create(
+    data: CreateCirurgiaInput
+  ) {
+    const personId =
+      requirePersonId(
+        data.person_id
+      );
+
+    const {
+      data: {
+        user,
+      },
+    } =
+      await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error(
+        "Usuário não autenticado."
+      );
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado");
+    const now =
+      new Date().toISOString();
 
-    const now = new Date().toISOString();
-    const cirurgiaId = data.id || crypto.randomUUID();
+    const cirurgiaId =
+      data.id ||
+      crypto.randomUUID();
 
-    const { user_id: _, ...cirurgiaData } = data;
+    const cirurgiaCompleta:
+      Cirurgia = {
+      ...data,
 
-    const cirurgiaCompleta: Cirurgia = {
-      ...cirurgiaData,
-      user_id: user.id,
-      created_at: now,
-      updated_at: now,
-      synced: false,
-      id: cirurgiaId,
+      id:
+        cirurgiaId,
+
+      user_id:
+        user.id,
+
+      person_id:
+        personId,
+
+      created_at:
+        now,
+
+      updated_at:
+        now,
+
+      synced:
+        false,
     };
 
-    await db.transaction("rw", [db.cirurgias, db.syncQueue], async () => {
-      await db.cirurgias.add(cirurgiaCompleta);
-      await enfileirarOperacao("cirurgias", "add", cirurgiaCompleta);
-    });
+    await db.transaction(
+      "rw",
+      [
+        db.cirurgias,
+        db.syncQueue,
+      ],
+      async () => {
+        await db.cirurgias.add(
+          cirurgiaCompleta
+        );
+
+        await enfileirarOperacao(
+          "cirurgias",
+          "add",
+          cirurgiaCompleta
+        );
+      }
+    );
 
     return cirurgiaId;
   },
 
-  async update(id: string, data: Partial<Cirurgia>) {
-    const now = new Date().toISOString();
-    const payload = { ...data, updated_at: now, synced: false };
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
 
-    await db.transaction("rw", [db.cirurgias, db.syncQueue], async () => {
-      await db.cirurgias.update(id, payload);
-      await enfileirarOperacao("cirurgias", "update", { id, ...payload });
-    });
+  async update(
+    id: string,
+    personId: string,
+    data: UpdateCirurgiaInput
+  ) {
+    const safePersonId =
+      requirePersonId(
+        personId
+      );
+
+    const current =
+      await getCirurgiaForPerson(
+        id,
+        safePersonId
+      );
+
+    if (!current) {
+      throw new Error(
+        "Cirurgia não encontrada para a pessoa ativa."
+      );
+    }
+
+    const now =
+      new Date().toISOString();
+
+    const payload:
+      UpdateCirurgiaInput &
+        Pick<
+          Cirurgia,
+          | "updated_at"
+          | "synced"
+        > = {
+      ...data,
+
+      updated_at:
+        now,
+
+      synced:
+        false,
+    };
+
+    await db.transaction(
+      "rw",
+      [
+        db.cirurgias,
+        db.syncQueue,
+      ],
+      async () => {
+        const updated =
+          await db.cirurgias.update(
+            id,
+            payload
+          );
+
+        if (!updated) {
+          throw new Error(
+            "Não foi possível atualizar a cirurgia."
+          );
+        }
+
+        await enfileirarOperacao(
+          "cirurgias",
+          "update",
+          {
+            id,
+            ...payload,
+          }
+        );
+      }
+    );
 
     return id;
   },
 
-  async delete(id: string) {
-    await db.transaction("rw", [db.cirurgias, db.syncQueue], async () => {
-      await db.cirurgias.delete(id);
-      await enfileirarOperacao("cirurgias", "delete", { id });
-    });
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  async delete(
+    id: string,
+    personId: string
+  ) {
+    const safePersonId =
+      requirePersonId(
+        personId
+      );
+
+    const current =
+      await getCirurgiaForPerson(
+        id,
+        safePersonId
+      );
+
+    if (!current) {
+      throw new Error(
+        "Cirurgia não encontrada para a pessoa ativa."
+      );
+    }
+
+    await db.transaction(
+      "rw",
+      [
+        db.cirurgias,
+        db.syncQueue,
+      ],
+      async () => {
+        await db.cirurgias.delete(
+          id
+        );
+
+        await enfileirarOperacao(
+          "cirurgias",
+          "delete",
+          {
+            id,
+          }
+        );
+      }
+    );
 
     return id;
   },

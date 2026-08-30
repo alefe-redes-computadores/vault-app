@@ -1,388 +1,1574 @@
 // app/saude/locais/page.tsx
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import {
-  MapPin,
-  Calendar,
-  FileText,
-  DollarSign,
-  Filter,
-  X,
-  Plus,
-  FlaskConical,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
+  Activity,
   Building2,
+  Calendar,
+  ChevronRight,
+  Clock,
+  DollarSign,
+  FileText,
+  FlaskConical,
+  MapPin,
+  Plus,
   PlusCircle,
   Stethoscope,
-  Activity,
-  FolderHeart,
-  Clock,
-  ChevronRight,
 } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { useHapticFeedback } from "@/lib/haptics";
-import { PageTransition } from "@/components/PageTransition";
-import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
-import { EmptyState } from "@/components/EmptyState";
-import { useLocais } from "@/hooks/useLocais";
-import { useRenovacoes } from "@/hooks/useRenovacoes";
+
+import type {
+  LucideIcon,
+} from "lucide-react";
+
 import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+
+import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
+
+import {
+  useLocais,
+} from "@/hooks/useLocais";
+
+import {
+  useConsultas,
+} from "@/hooks/useConsultas";
+
+import {
+  useExames,
+} from "@/hooks/useExames";
+
+import {
+  useCirurgias,
+} from "@/hooks/useCirurgias";
+
+import {
+  useRenovacoes,
+} from "@/hooks/useRenovacoes";
+
+import {
+  useMedicos,
+} from "@/hooks/useMedicos";
+
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+
+import {
+  EmptyState,
+} from "@/components/EmptyState";
+
+import {
+  ListCard,
+  ListFilters,
   ListPageHeader,
   ListSearch,
-  ListFilters,
-  ListCard,
 } from "@/components/list";
-import type { LocalSaude, Renovacao, Medico, Tratamento, Consulta } from "@/lib/types";
 
-function formatDateDisplay(isoStr: string): string {
-  if (!isoStr) return "";
-  const parts = isoStr.split("-");
-  if (parts.length !== 3) return isoStr;
+import type {
+  Cirurgia,
+  Consulta,
+  Exame,
+  LocalSaude,
+  Medico,
+  Renovacao,
+} from "@/lib/types";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type FiltroTipo =
+  | "todos"
+  | "posto_saude"
+  | "laboratorio"
+  | "clinica"
+  | "outro";
+
+type FiltroStatus =
+  | "todos"
+  | "com_registros"
+  | "sem_registros";
+
+interface LocalTypeStyle {
+  color: string;
+  icon: LucideIcon;
+  label: string;
+  shortLabel: string;
+}
+
+type HistoricoTipo =
+  | "consulta"
+  | "exame"
+  | "cirurgia"
+  | "renovacao";
+
+interface UltimaAtividade {
+  tipo: HistoricoTipo;
+  data: string;
+}
+
+type LocalComHistorico =
+  LocalSaude & {
+    consultasCount: number;
+    examesCount: number;
+    cirurgiasCount: number;
+    renovacoesCount: number;
+
+    historicoCount: number;
+
+    proximasConsultasCount: number;
+
+    medicosCount: number;
+
+    totalGasto: number;
+
+    ultimaAtividade:
+      | UltimaAtividade
+      | null;
+  };
+
+// ============================================================
+// LOCAL TYPE CONFIG
+// ============================================================
+
+const LOCAL_TYPE_STYLE: Record<
+  string,
+  LocalTypeStyle
+> = {
+  posto_saude: {
+    color:
+      "#34D399",
+
+    icon:
+      PlusCircle,
+
+    label:
+      "Posto de Saúde / UBS",
+
+    shortLabel:
+      "Posto / UBS",
+  },
+
+  laboratorio: {
+    color:
+      "#A78BFA",
+
+    icon:
+      FlaskConical,
+
+    label:
+      "Laboratório",
+
+    shortLabel:
+      "Laboratório",
+  },
+
+  clinica: {
+    color:
+      "#38BDF8",
+
+    icon:
+      Building2,
+
+    label:
+      "Clínica",
+
+    shortLabel:
+      "Clínica",
+  },
+
+  outro: {
+    color:
+      "#F59E0B",
+
+    icon:
+      MapPin,
+
+    label:
+      "Outro Local de Saúde",
+
+    shortLabel:
+      "Outro",
+  },
+};
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function formatDateDisplay(
+  isoStr?: string
+): string {
+  if (
+    !isoStr
+  ) {
+    return "";
+  }
+
+  const datePart =
+    isoStr.includes(
+      "T"
+    )
+      ? isoStr.split(
+          "T"
+        )[0]
+      : isoStr;
+
+  const parts =
+    datePart.split(
+      "-"
+    );
+
+  if (
+    parts.length !==
+    3
+  ) {
+    return isoStr;
+  }
+
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function formatCurrency(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+function formatCurrency(
+  value: number
+): string {
+  return `R$ ${value
+    .toFixed(
+      2
+    )
+    .replace(
+      ".",
+      ","
+    )}`;
 }
 
-const LOCAL_TYPE_STYLE: Record<string, { color: string; icon: any; label: string }> = {
-  posto_saude: { color: "#34D399", icon: PlusCircle, label: "Posto de Saúde" },
-  laboratorio: { color: "#A78BFA", icon: FlaskConical, label: "Laboratório" },
-  clinica: { color: "#38BDF8", icon: Building2, label: "Clínica" },
-  outro: { color: "#F59E0B", icon: MapPin, label: "Outro" },
-};
+function getTodayIso(): string {
+  const now =
+    new Date();
 
-type FiltroTipo = "todos" | "posto_saude" | "laboratorio" | "clinica";
-type FiltroStatus = "todos" | "com_registros" | "sem_registros";
+  const year =
+    now.getFullYear();
 
-type LocalComHistorico = LocalSaude & {
-  historicoCount: number;
-  totalGasto: number;
-  ultimaRenovacao: Renovacao | null;
-  medicosCount: number;
-  tratamentosCount: number;
-  proximasConsultasCount: number;
-};
+  const month =
+    String(
+      now.getMonth() +
+        1
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const day =
+    String(
+      now.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeSearch(
+  value: string
+): string {
+  return value
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .toLocaleLowerCase(
+      "pt-BR"
+    )
+    .trim();
+}
+
+// ============================================================
+// PAGE
+// ============================================================
 
 export default function LocaisPage() {
-  const { trigger } = useHapticFeedback();
-  const router = useRouter();
-  const [search, setSearch] = useState("");
-  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
-  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("todos");
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
 
-  const { locais = [] } = useLocais();
-  const { renovacoes = [] } = useRenovacoes();
+  const router =
+    useRouter();
 
-  const medicos = useLiveQuery(() => db.medicos.toArray(), []) || [];
-  const tratamentos = useLiveQuery(() => db.tratamentos.toArray(), []) || [];
-  const consultas = useLiveQuery(() => db.consultas.toArray(), []) || [];
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  const hoje = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
+  const [
+    search,
+    setSearch,
+  ] =
+    useState(
+      ""
+    );
 
-  const locaisEnriquecidos = useMemo<LocalComHistorico[]>(() => {
-    return locais.map((local) => {
-      const historico = renovacoes.filter((r: Renovacao) => r.local_id === local.id);
+  const [
+    filtroTipo,
+    setFiltroTipo,
+  ] =
+    useState<FiltroTipo>(
+      "todos"
+    );
 
-      const totalGasto = historico.reduce((acc, r) => {
-        if (typeof r.preco === "number" && r.preco > 0) {
-          return acc + r.preco;
+  const [
+    filtroStatus,
+    setFiltroStatus,
+  ] =
+    useState<FiltroStatus>(
+      "todos"
+    );
+
+  // ==========================================================
+  // GLOBAL ENTITIES
+  // ==========================================================
+
+  const {
+    locais = [],
+  } =
+    useLocais();
+
+  const {
+    medicos = [],
+  } =
+    useMedicos();
+
+  // ==========================================================
+  // PERSON-OWNED CLINICAL ENTITIES
+  // ==========================================================
+
+  const {
+    consultas = [],
+  } =
+    useConsultas();
+
+  const {
+    exames = [],
+  } =
+    useExames();
+
+  const {
+    cirurgias = [],
+  } =
+    useCirurgias();
+
+  const {
+    renovacoes = [],
+  } =
+    useRenovacoes();
+
+  const hoje =
+    useMemo(
+      () =>
+        getTodayIso(),
+      []
+    );
+
+  // ==========================================================
+  // PERSON SCOPE
+  //
+  // Local é global.
+  //
+  // Porém todo histórico exibido dentro dele é clínico e deve
+  // pertencer exatamente à pessoa ativa.
+  //
+  // Mesmo que os hooks já façam esse filtro, esta tela é
+  // agregadora e mantém uma segunda barreira explícita.
+  // ==========================================================
+
+  const scopedConsultas =
+    useMemo(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
         }
-        return acc;
-      }, 0);
 
-      const ultimaRenovacao = historico.length > 0
-        ? [...historico].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())[0]
-        : null;
+        return consultas.filter(
+          (
+            consulta:
+              Consulta
+          ) =>
+            consulta.person_id ===
+            activePersonId
+        );
+      },
+      [
+        consultas,
+        activePersonId,
+      ]
+    );
 
-      const medicosNoLocal = medicos.filter((med: Medico) =>
-        (local.medico_ids || []).includes(med.id || "")
-      ).length;
+  const scopedExames =
+    useMemo(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
 
-      const tratamentosNoLocal = tratamentos.filter((trat: Tratamento) =>
-        (local.tratamento_ids || []).includes(trat.id || "")
-      ).length;
+        return exames.filter(
+          (
+            exame:
+              Exame
+          ) =>
+            exame.person_id ===
+            activePersonId
+        );
+      },
+      [
+        exames,
+        activePersonId,
+      ]
+    );
 
-      const proximasConsultas = consultas.filter((c: Consulta) =>
-        c.local_id === local.id && c.data && new Date(c.data) >= hoje
-      ).length;
+  const scopedCirurgias =
+    useMemo(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
 
-      return {
-        ...local,
-        historicoCount: historico.length,
-        totalGasto,
-        ultimaRenovacao,
-        medicosCount: medicosNoLocal,
-        tratamentosCount: tratamentosNoLocal,
-        proximasConsultasCount: proximasConsultas,
-      };
-    });
-  }, [locais, renovacoes, medicos, tratamentos, consultas, hoje]);
+        return cirurgias.filter(
+          (
+            cirurgia:
+              Cirurgia
+          ) =>
+            cirurgia.person_id ===
+            activePersonId
+        );
+      },
+      [
+        cirurgias,
+        activePersonId,
+      ]
+    );
 
-  const filteredLocais = useMemo(() => {
-    let result = locaisEnriquecidos;
+  const scopedRenovacoes =
+    useMemo(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
 
-    if (search) {
-      const term = search.toLowerCase();
-      result = result.filter(
-        (local) =>
-          local.nome?.toLowerCase().includes(term) ||
-          (local.endereco && local.endereco.toLowerCase().includes(term))
+        return renovacoes.filter(
+          (
+            renovacao:
+              Renovacao
+          ) =>
+            renovacao.person_id ===
+            activePersonId
+        );
+      },
+      [
+        renovacoes,
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // INDEXES
+  // ==========================================================
+
+  const consultasPorLocal =
+    useMemo(
+      () => {
+        const map =
+          new Map<
+            string,
+            Consulta[]
+          >();
+
+        scopedConsultas.forEach(
+          (
+            consulta
+          ) => {
+            if (
+              !consulta.local_id
+            ) {
+              return;
+            }
+
+            const current =
+              map.get(
+                consulta.local_id
+              ) ||
+              [];
+
+            current.push(
+              consulta
+            );
+
+            map.set(
+              consulta.local_id,
+              current
+            );
+          }
+        );
+
+        return map;
+      },
+      [
+        scopedConsultas,
+      ]
+    );
+
+  const examesPorLocal =
+    useMemo(
+      () => {
+        const map =
+          new Map<
+            string,
+            Exame[]
+          >();
+
+        scopedExames.forEach(
+          (
+            exame
+          ) => {
+            if (
+              !exame.local_id
+            ) {
+              return;
+            }
+
+            const current =
+              map.get(
+                exame.local_id
+              ) ||
+              [];
+
+            current.push(
+              exame
+            );
+
+            map.set(
+              exame.local_id,
+              current
+            );
+          }
+        );
+
+        return map;
+      },
+      [
+        scopedExames,
+      ]
+    );
+
+  const cirurgiasPorLocal =
+    useMemo(
+      () => {
+        const map =
+          new Map<
+            string,
+            Cirurgia[]
+          >();
+
+        scopedCirurgias.forEach(
+          (
+            cirurgia
+          ) => {
+            if (
+              !cirurgia.local_id
+            ) {
+              return;
+            }
+
+            const current =
+              map.get(
+                cirurgia.local_id
+              ) ||
+              [];
+
+            current.push(
+              cirurgia
+            );
+
+            map.set(
+              cirurgia.local_id,
+              current
+            );
+          }
+        );
+
+        return map;
+      },
+      [
+        scopedCirurgias,
+      ]
+    );
+
+  const renovacoesPorLocal =
+    useMemo(
+      () => {
+        const map =
+          new Map<
+            string,
+            Renovacao[]
+          >();
+
+        scopedRenovacoes.forEach(
+          (
+            renovacao
+          ) => {
+            if (
+              !renovacao.local_id
+            ) {
+              return;
+            }
+
+            const current =
+              map.get(
+                renovacao.local_id
+              ) ||
+              [];
+
+            current.push(
+              renovacao
+            );
+
+            map.set(
+              renovacao.local_id,
+              current
+            );
+          }
+        );
+
+        return map;
+      },
+      [
+        scopedRenovacoes,
+      ]
+    );
+
+  const medicosById =
+    useMemo(
+      () => {
+        const map =
+          new Map<
+            string,
+            Medico
+          >();
+
+        medicos.forEach(
+          (
+            medico
+          ) => {
+            if (
+              medico.id
+            ) {
+              map.set(
+                medico.id,
+                medico
+              );
+            }
+          }
+        );
+
+        return map;
+      },
+      [
+        medicos,
+      ]
+    );
+
+  // ==========================================================
+  // CROSS DATA
+  // ==========================================================
+
+  const locaisEnriquecidos =
+    useMemo<
+      LocalComHistorico[]
+    >(
+      () => {
+        return locais.map(
+          (
+            local
+          ) => {
+            if (
+              !local.id
+            ) {
+              return {
+                ...local,
+
+                consultasCount:
+                  0,
+
+                examesCount:
+                  0,
+
+                cirurgiasCount:
+                  0,
+
+                renovacoesCount:
+                  0,
+
+                historicoCount:
+                  0,
+
+                proximasConsultasCount:
+                  0,
+
+                medicosCount:
+                  0,
+
+                totalGasto:
+                  0,
+
+                ultimaAtividade:
+                  null,
+              };
+            }
+
+            const consultasLocal =
+              consultasPorLocal.get(
+                local.id
+              ) ||
+              [];
+
+            const examesLocal =
+              examesPorLocal.get(
+                local.id
+              ) ||
+              [];
+
+            const cirurgiasLocal =
+              cirurgiasPorLocal.get(
+                local.id
+              ) ||
+              [];
+
+            const renovacoesLocal =
+              renovacoesPorLocal.get(
+                local.id
+              ) ||
+              [];
+
+            const proximasConsultasCount =
+              consultasLocal.filter(
+                (
+                  consulta
+                ) =>
+                  consulta.status ===
+                    "agendada" &&
+                  Boolean(
+                    consulta.data &&
+                      consulta.data >=
+                        hoje
+                  )
+              ).length;
+
+            const medicoIds =
+              new Set(
+                (
+                  local.medico_ids ||
+                  []
+                ).filter(
+                  (
+                    medicoId
+                  ) =>
+                    medicosById.has(
+                      medicoId
+                    )
+                )
+              );
+
+            const totalGasto =
+              renovacoesLocal.reduce(
+                (
+                  total,
+                  renovacao
+                ) => {
+                  if (
+                    typeof renovacao.preco !==
+                      "number" ||
+                    renovacao.preco <=
+                      0
+                  ) {
+                    return total;
+                  }
+
+                  return (
+                    total +
+                    renovacao.preco
+                  );
+                },
+                0
+              );
+
+            const atividades:
+              UltimaAtividade[] =
+              [];
+
+            consultasLocal.forEach(
+              (
+                consulta
+              ) => {
+                if (
+                  consulta.data
+                ) {
+                  atividades.push({
+                    tipo:
+                      "consulta",
+
+                    data:
+                      consulta.data,
+                  });
+                }
+              }
+            );
+
+            examesLocal.forEach(
+              (
+                exame
+              ) => {
+                if (
+                  exame.data
+                ) {
+                  atividades.push({
+                    tipo:
+                      "exame",
+
+                    data:
+                      exame.data,
+                  });
+                }
+              }
+            );
+
+            cirurgiasLocal.forEach(
+              (
+                cirurgia
+              ) => {
+                if (
+                  cirurgia.data
+                ) {
+                  atividades.push({
+                    tipo:
+                      "cirurgia",
+
+                    data:
+                      cirurgia.data,
+                  });
+                }
+              }
+            );
+
+            renovacoesLocal.forEach(
+              (
+                renovacao
+              ) => {
+                if (
+                  renovacao.data
+                ) {
+                  atividades.push({
+                    tipo:
+                      "renovacao",
+
+                    data:
+                      renovacao.data,
+                  });
+                }
+              }
+            );
+
+            atividades.sort(
+              (
+                first,
+                second
+              ) =>
+                second.data.localeCompare(
+                  first.data
+                )
+            );
+
+            const historicoCount =
+              consultasLocal.length +
+              examesLocal.length +
+              cirurgiasLocal.length +
+              renovacoesLocal.length;
+
+            return {
+              ...local,
+
+              consultasCount:
+                consultasLocal.length,
+
+              examesCount:
+                examesLocal.length,
+
+              cirurgiasCount:
+                cirurgiasLocal.length,
+
+              renovacoesCount:
+                renovacoesLocal.length,
+
+              historicoCount,
+
+              proximasConsultasCount,
+
+              medicosCount:
+                medicoIds.size,
+
+              totalGasto,
+
+              ultimaAtividade:
+                atividades[0] ||
+                null,
+            };
+          }
+        );
+      },
+      [
+        locais,
+        consultasPorLocal,
+        examesPorLocal,
+        cirurgiasPorLocal,
+        renovacoesPorLocal,
+        medicosById,
+        hoje,
+      ]
+    );
+
+  // ==========================================================
+  // FILTERING
+  // ==========================================================
+
+  const normalizedSearch =
+    useMemo(
+      () =>
+        normalizeSearch(
+          search
+        ),
+      [
+        search,
+      ]
+    );
+
+  const filteredLocais =
+    useMemo(
+      () => {
+        let result =
+          locaisEnriquecidos;
+
+        if (
+          normalizedSearch
+        ) {
+          result =
+            result.filter(
+              (
+                local
+              ) => {
+                const nome =
+                  normalizeSearch(
+                    local.nome ||
+                      ""
+                  );
+
+                const endereco =
+                  normalizeSearch(
+                    local.endereco ||
+                      ""
+                  );
+
+                const tipo =
+                  LOCAL_TYPE_STYLE[
+                    local.tipo ||
+                      "outro"
+                  ] ||
+                  LOCAL_TYPE_STYLE.outro;
+
+                return (
+                  nome.includes(
+                    normalizedSearch
+                  ) ||
+                  endereco.includes(
+                    normalizedSearch
+                  ) ||
+                  normalizeSearch(
+                    tipo.label
+                  ).includes(
+                    normalizedSearch
+                  ) ||
+                  normalizeSearch(
+                    tipo.shortLabel
+                  ).includes(
+                    normalizedSearch
+                  )
+                );
+              }
+            );
+        }
+
+        if (
+          filtroTipo !==
+          "todos"
+        ) {
+          result =
+            result.filter(
+              (
+                local
+              ) =>
+                local.tipo ===
+                filtroTipo
+            );
+        }
+
+        if (
+          filtroStatus ===
+          "com_registros"
+        ) {
+          result =
+            result.filter(
+              (
+                local
+              ) =>
+                local.historicoCount >
+                0
+            );
+        }
+
+        if (
+          filtroStatus ===
+          "sem_registros"
+        ) {
+          result =
+            result.filter(
+              (
+                local
+              ) =>
+                local.historicoCount ===
+                0
+            );
+        }
+
+        return [
+          ...result,
+        ].sort(
+          (
+            first,
+            second
+          ) =>
+            first.nome.localeCompare(
+              second.nome,
+              "pt-BR"
+            )
+        );
+      },
+      [
+        locaisEnriquecidos,
+        normalizedSearch,
+        filtroTipo,
+        filtroStatus,
+      ]
+    );
+
+  // ==========================================================
+  // ACTIONS
+  // ==========================================================
+
+  const handleClearFilters =
+    () => {
+      trigger(
+        "vibrate"
       );
-    }
 
-    if (filtroTipo !== "todos") {
-      result = result.filter((local) => local.tipo === filtroTipo);
-    }
+      setFiltroTipo(
+        "todos"
+      );
 
-    if (filtroStatus === "com_registros") {
-      result = result.filter((local) => local.historicoCount > 0);
-    } else if (filtroStatus === "sem_registros") {
-      result = result.filter((local) => local.historicoCount === 0);
-    }
+      setFiltroStatus(
+        "todos"
+      );
+    };
 
-    return result.sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [locaisEnriquecidos, search, filtroTipo, filtroStatus]);
-
-  const handleClearFilters = () => {
-    trigger("vibrate");
-    setFiltroTipo("todos");
-    setFiltroStatus("todos");
-  };
-
-  if (!locais || !renovacoes) return <CardListSkeleton />;
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
         <ListPageHeader
-          title="Postos e Locais"
-          badgeLabel="Rede de Apoio"
-          badgeColor="text-emerald-400"
-          icon={<MapPin size={14} />}
-          iconColor="text-emerald-400"
+          title="Locais de Saúde"
+          badgeLabel="Rede de Atendimento"
+          badgeColor="text-ice"
+          icon={
+            <MapPin
+              size={
+                14
+              }
+            />
+          }
+          iconColor="text-ice"
         >
           <ListSearch
-            value={search}
-            onChange={setSearch}
-            placeholder="Buscar por nome ou endereço..."
+            value={
+              search
+            }
+            onChange={
+              setSearch
+            }
+            placeholder="Buscar local por nome, endereço ou tipo..."
           />
 
-          <ListFilters onClear={handleClearFilters}>
+          <ListFilters
+            onClear={
+              handleClearFilters
+            }
+          >
+            {(
+              [
+                [
+                  "posto_saude",
+                  "Postos / UBS",
+                ],
+                [
+                  "laboratorio",
+                  "Laboratórios",
+                ],
+                [
+                  "clinica",
+                  "Clínicas",
+                ],
+                [
+                  "outro",
+                  "Outros",
+                ],
+              ] as const
+            ).map(
+              ([
+                type,
+                label,
+              ]) => (
+                <button
+                  key={
+                    type
+                  }
+                  type="button"
+                  onClick={
+                    () => {
+                      trigger(
+                        "vibrate"
+                      );
+
+                      setFiltroTipo(
+                        filtroTipo ===
+                          type
+                          ? "todos"
+                          : type
+                      );
+                    }
+                  }
+                  className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                    filtroTipo ===
+                    type
+                      ? "border-ice bg-ice/15 text-ice"
+                      : "border-surface-border/40 bg-surface-raised text-ink-muted"
+                  }`}
+                >
+                  {
+                    label
+                  }
+                </button>
+              )
+            )}
+
             <button
               type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setFiltroTipo(filtroTipo === "posto_saude" ? "todos" : "posto_saude");
-              }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
-                filtroTipo === "posto_saude"
-                  ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
-                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setFiltroStatus(
+                    filtroStatus ===
+                      "com_registros"
+                      ? "todos"
+                      : "com_registros"
+                  );
+                }
+              }
+              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroStatus ===
+                "com_registros"
+                  ? "border-ice bg-ice/15 text-ice"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
               }`}
             >
-              Postos
+              Com histórico
             </button>
 
             <button
               type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setFiltroTipo(filtroTipo === "laboratorio" ? "todos" : "laboratorio");
-              }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
-                filtroTipo === "laboratorio"
-                  ? "border-violet-400 bg-violet-400/20 text-violet-300"
-                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-              }`}
-            >
-              Laboratórios
-            </button>
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
 
-            <button
-              type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setFiltroTipo(filtroTipo === "clinica" ? "todos" : "clinica");
-              }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
-                filtroTipo === "clinica"
-                  ? "border-ice bg-ice/20 text-ice"
-                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                  setFiltroStatus(
+                    filtroStatus ===
+                      "sem_registros"
+                      ? "todos"
+                      : "sem_registros"
+                  );
+                }
+              }
+              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroStatus ===
+                "sem_registros"
+                  ? "border-coral bg-coral/15 text-coral"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
               }`}
             >
-              Clínicas
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setFiltroStatus(filtroStatus === "com_registros" ? "todos" : "com_registros");
-              }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
-                filtroStatus === "com_registros"
-                  ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
-                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-              }`}
-            >
-              Com Registros
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                trigger("vibrate");
-                setFiltroStatus(filtroStatus === "sem_registros" ? "todos" : "sem_registros");
-              }}
-              className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border transition-all shrink-0 ${
-                filtroStatus === "sem_registros"
-                  ? "border-coral bg-coral/20 text-coral"
-                  : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-              }`}
-            >
-              Sem Registros
+              Sem histórico
             </button>
           </ListFilters>
         </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
+          {!activePersonId &&
+            locais.length >
+              0 && (
+              <div className="rounded-2xl border border-ice/15 bg-ice/5 px-3.5 py-3">
+                <p className="text-[11px] leading-5 text-ink-muted">
+                  Os locais continuam disponíveis porque são globais. Selecione uma pessoa para visualizar consultas, exames, cirurgias e retiradas relacionados.
+                </p>
+              </div>
+            )}
+
           <button
             type="button"
-            onClick={() => {
-              trigger("vibrate");
-              router.push("/saude/locais/novo");
-            }}
-            className="group relative w-full overflow-hidden rounded-[24px] border border-emerald-400/30 bg-gradient-to-r from-emerald-400/10 via-surface to-surface p-4 shadow-sm transition-all active:scale-[0.985] hover:border-emerald-400/50"
+            onClick={
+              () => {
+                trigger(
+                  "vibrate"
+                );
+
+                router.push(
+                  "/saude/locais/novo"
+                );
+              }
+            }
+            className="group relative w-full overflow-hidden rounded-[24px] border border-ice/25 bg-surface p-4 text-left shadow-sm transition-all hover:border-ice/40 active:scale-[0.985]"
           >
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-400">
-                <Plus size={24} />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                <Plus
+                  size={
+                    22
+                  }
+                />
               </div>
+
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-ink-primary">
-                  Adicionar posto, laboratório ou clínica
+                  Cadastrar local de saúde
                 </p>
-                <p className="mt-0.5 text-xs text-ink-muted">
-                  Centralize os locais de atendimento, consultas e exames.
+
+                <p className="mt-0.5 text-xs leading-5 text-ink-muted">
+                  Posto/UBS, laboratório, clínica ou outro estabelecimento.
                 </p>
               </div>
-              <ChevronRight size={18} className="shrink-0 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+
+              <ChevronRight
+                size={
+                  18
+                }
+                className="shrink-0 text-ice transition-transform group-hover:translate-x-1"
+              />
             </div>
           </button>
 
-          {filteredLocais.length === 0 ? (
+          {filteredLocais.length ===
+          0 ? (
             <EmptyState
-              icon={MapPin}
-              title="Nenhum local cadastrado"
+              icon={
+                MapPin
+              }
+              title="Nenhum local encontrado"
               description={
-                search || filtroTipo !== "todos" || filtroStatus !== "todos"
-                  ? "Tente ajustar os filtros aplicados."
-                  : "Cadastre postos de saúde, laboratórios ou clínicas para organizar sua rede de atendimento."
+                search ||
+                filtroTipo !==
+                  "todos" ||
+                filtroStatus !==
+                  "todos"
+                  ? "Nenhum local corresponde aos filtros aplicados."
+                  : "Cadastre os locais de saúde usados pelo Vault."
               }
             />
           ) : (
-            filteredLocais.map((local, index) => {
-              const style = LOCAL_TYPE_STYLE[local.tipo || "outro"] || LOCAL_TYPE_STYLE.outro;
-              const IconComponent = style.icon;
+            filteredLocais.map(
+              (
+                local,
+                index
+              ) => {
+                if (
+                  !local.id
+                ) {
+                  return null;
+                }
 
-              const tratamentosDoLocal = tratamentos.filter((t: Tratamento) =>
-                (local.tratamento_ids || []).includes(t.id || "")
-              );
+                const style =
+                  LOCAL_TYPE_STYLE[
+                    local.tipo ||
+                      "outro"
+                  ] ||
+                  LOCAL_TYPE_STYLE.outro;
 
-              return (
-                <ListCard
-                  key={local.id}
-                  id={local.id!}
-                  color={style.color}
-                  onClick={() => {
-                    trigger("vibrate");
-                    router.push(`/saude/locais/detalhes?id=${local.id}`);
-                  }}
-                  delay={index * 0.025}
-                  icon={<IconComponent size={22} />}
-                >
-                  <div className="flex min-w-0 items-baseline gap-2">
-                    <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold uppercase text-ink-primary">
-                      {local.nome}
-                    </h3>
-                    <span className="shrink-0 whitespace-nowrap text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border border-surface-border/40 bg-surface-raised text-ink-muted">
-                      {style.label}
-                    </span>
-                  </div>
+                const Icon =
+                  style.icon;
 
-                  {local.endereco && (
-                    <p className="mt-1 truncate text-xs text-ink-muted">{local.endereco}</p>
-                  )}
+                return (
+                  <ListCard
+                    key={
+                      local.id
+                    }
+                    id={
+                      local.id
+                    }
+                    color={
+                      style.color
+                    }
+                    onClick={
+                      () => {
+                        trigger(
+                          "vibrate"
+                        );
 
-                  {tratamentosDoLocal.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {tratamentosDoLocal.slice(0, 3).map((t: Tratamento) => (
-                        <span
-                          key={t.id}
-                          className="inline-flex items-center gap-1 truncate rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide max-w-[100px]"
-                          style={{
-                            backgroundColor: `${t.cor || "#38BDF8"}20`,
-                            borderColor: `${t.cor || "#38BDF8"}40`,
-                            color: t.cor || "#38BDF8",
-                          }}
-                        >
-                          <Activity size={10} /> {t.nome}
+                        router.push(
+                          `/saude/locais/detalhes?id=${local.id}`
+                        );
+                      }
+                    }
+                    delay={
+                      index *
+                      0.025
+                    }
+                    icon={
+                      <Icon
+                        size={
+                          22
+                        }
+                      />
+                    }
+                  >
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold uppercase text-ink-primary">
+                        {
+                          local.nome
+                        }
+                      </h3>
+
+                      <span className="shrink-0 rounded-full border border-surface-border/50 bg-surface-raised px-2 py-0.5 text-[9px] font-bold uppercase text-ink-muted">
+                        {
+                          style.shortLabel
+                        }
+                      </span>
+                    </div>
+
+                    {local.endereco && (
+                      <p className="mt-1 flex items-center gap-1 truncate text-xs text-ink-muted">
+                        <MapPin
+                          size={
+                            11
+                          }
+                          className="shrink-0 text-ink-faint"
+                        />
+
+                        {
+                          local.endereco
+                        }
+                      </p>
+                    )}
+
+                    {local.ultimaAtividade && (
+                      <div className="mt-2 flex items-center gap-1.5 text-[10px] text-ink-muted">
+                        <Clock
+                          size={
+                            12
+                          }
+                          className="text-ice"
+                        />
+
+                        Última atividade:{" "}
+                        {formatDateDisplay(
+                          local
+                            .ultimaAtividade
+                            .data
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 border-t border-surface-border/40 pt-2 sm:grid-cols-4">
+                      <div className="rounded-xl bg-surface-raised/60 p-2 text-center">
+                        <p className="flex items-center justify-center gap-1 font-mono text-[9px] uppercase text-ink-muted">
+                          <Calendar
+                            size={
+                              10
+                            }
+                            className="text-ice"
+                          />
+
+                          Consultas
+                        </p>
+
+                        <p className="mt-0.5 text-sm font-semibold text-ink-primary">
+                          {
+                            local.consultasCount
+                          }
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-surface-raised/60 p-2 text-center">
+                        <p className="flex items-center justify-center gap-1 font-mono text-[9px] uppercase text-ink-muted">
+                          <FlaskConical
+                            size={
+                              10
+                            }
+                            className="text-violet-400"
+                          />
+
+                          Exames
+                        </p>
+
+                        <p className="mt-0.5 text-sm font-semibold text-ink-primary">
+                          {
+                            local.examesCount
+                          }
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-surface-raised/60 p-2 text-center">
+                        <p className="flex items-center justify-center gap-1 font-mono text-[9px] uppercase text-ink-muted">
+                          <Activity
+                            size={
+                              10
+                            }
+                            className="text-coral"
+                          />
+
+                          Cirurgias
+                        </p>
+
+                        <p className="mt-0.5 text-sm font-semibold text-ink-primary">
+                          {
+                            local.cirurgiasCount
+                          }
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-surface-raised/60 p-2 text-center">
+                        <p className="flex items-center justify-center gap-1 font-mono text-[9px] uppercase text-ink-muted">
+                          <FileText
+                            size={
+                              10
+                            }
+                            className="text-ink-muted"
+                          />
+
+                          Retiradas
+                        </p>
+
+                        <p className="mt-0.5 text-sm font-semibold text-ink-primary">
+                          {
+                            local.renovacoesCount
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {local.medicosCount >
+                        0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                          <Stethoscope
+                            size={
+                              11
+                            }
+                            className="text-ice"
+                          />
+
+                          {
+                            local.medicosCount
+                          }{" "}
+                          médico(s)
                         </span>
-                      ))}
-                      {tratamentosDoLocal.length > 3 && (
-                        <span className="flex items-center text-[9px] font-medium text-ink-faint">
-                          +{tratamentosDoLocal.length - 3}
+                      )}
+
+                      {local.proximasConsultasCount >
+                        0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-ice/20 bg-ice/5 px-2 py-0.5 text-[10px] text-ice">
+                          <Calendar
+                            size={
+                              11
+                            }
+                          />
+
+                          {
+                            local.proximasConsultasCount
+                          }{" "}
+                          próxima(s)
+                        </span>
+                      )}
+
+                      {local.totalGasto >
+                        0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                          <DollarSign
+                            size={
+                              11
+                            }
+                            className="text-ink-faint"
+                          />
+
+                          {formatCurrency(
+                            local.totalGasto
+                          )}
+                        </span>
+                      )}
+
+                      {local.historicoCount ===
+                        0 && (
+                        <span className="text-[10px] text-ink-faint">
+                          Sem histórico para a pessoa ativa
                         </span>
                       )}
                     </div>
-                  )}
-
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    {local.medicosCount > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                        <Stethoscope size={11} className="text-ice" /> {local.medicosCount} médico(s)
-                      </span>
-                    )}
-                    {local.tratamentosCount > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                        <FolderHeart size={11} className="text-violet-400" /> {local.tratamentosCount} tratamento(s)
-                      </span>
-                    )}
-                    {local.proximasConsultasCount > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                        <Calendar size={11} className="text-emerald-400" /> {local.proximasConsultasCount} próxima(s)
-                      </span>
-                    )}
-                    {local.historicoCount > 0 ? (
-                      <>
-                        <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                          <FileText size={11} className="text-amber-400" /> {local.historicoCount} retirada(s)
-                        </span>
-                        {local.totalGasto > 0 && (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                            <DollarSign size={11} className="text-emerald-400" /> {formatCurrency(local.totalGasto)}
-                          </span>
-                        )}
-                        {local.ultimaRenovacao && (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">
-                            <Clock size={11} className="text-ice" /> {formatDateDisplay(local.ultimaRenovacao.data)}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-[10px] text-ink-muted">Sem registros</span>
-                    )}
-                  </div>
-                </ListCard>
-              );
-            })
+                  </ListCard>
+                );
+              }
+            )
           )}
         </section>
       </main>

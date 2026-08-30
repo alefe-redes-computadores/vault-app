@@ -1,592 +1,1454 @@
 // app/saude/tratamentos/detalhes/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Pill,
-  Edit3,
-  ChevronRight,
-  History,
-  FileText,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+
+import {
+  AnimatePresence,
+  motion,
+} from "framer-motion";
+
+import {
+  Activity,
   ArrowLeftRight,
+  Building2,
+  ChevronRight,
   Clock,
+  Edit3,
+  FileStack,
+  FileText,
+  FolderHeart,
+  History,
+  MapPin,
+  Pill,
+  Plus,
+  Receipt,
+  ShoppingCart,
+  Sparkles,
+  Stethoscope,
   TrendingDown,
   TrendingUp,
-  Sparkles,
-  Plus,
-  FolderHeart,
-  X,
-  Receipt,
   Users,
-  FileStack,
-  Stethoscope,
-  ShoppingCart,
-  Building2,
-  MapPin,
+  X,
 } from "lucide-react";
 
-import { useHapticFeedback } from "@/lib/haptics";
-import { PageTransition } from "@/components/PageTransition";
-import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
-import { DocumentCard } from "@/components/DocumentCard";
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
 
-import { useSafeDb } from "@/hooks/useSafeDb";
-import { useMedicamentos } from "@/hooks/useMedicamentos";
-import { useMedicos } from "@/hooks/useMedicos";
-import { useHospitais } from "@/hooks/useHospitais";
-import { useLocais } from "@/hooks/useLocais";
-import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useMounted } from "@/hooks/useMounted";
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
 
-import { db } from "@/lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+
+import {
+  DetailSkeleton,
+} from "@/components/loading/DetailSkeleton";
+
+import {
+  DocumentCard,
+} from "@/components/DocumentCard";
+
+import {
+  useSafeDb,
+} from "@/hooks/useSafeDb";
+
+import {
+  useTratamentos,
+} from "@/hooks/useTratamentos";
+
+import {
+  useMedicamentos,
+} from "@/hooks/useMedicamentos";
+
+import {
+  useRenovacoes,
+} from "@/hooks/useRenovacoes";
+
+import {
+  useCids,
+} from "@/hooks/useCids";
+
+import {
+  useMedicos,
+} from "@/hooks/useMedicos";
+
+import {
+  useHospitais,
+} from "@/hooks/useHospitais";
+
+import {
+  useLocais,
+} from "@/hooks/useLocais";
+
+import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
+
+import {
+  useMounted,
+} from "@/hooks/useMounted";
+
+import {
+  db,
+} from "@/lib/db";
 
 import type {
-  Tratamento,
-  Document,
-  Medicamento,
-  Renovacao,
-  Medico,
   Cid,
+  Document,
   Hospital,
   LocalSaude,
+  Medico,
+  Medicamento,
+  Renovacao,
+  Tratamento,
 } from "@/lib/types";
 
 import {
-  isReceitaVencidaSegura,
   calcularEconomia,
-  sugerirRenovacao,
   getCidInsights,
+  isReceitaVencidaSegura,
+  sugerirRenovacao,
 } from "@/lib/health-insights";
 
-import { getClinicalTheme, formatCurrency } from "@/lib/health-utils";
+import {
+  formatCurrency,
+  getClinicalTheme,
+} from "@/lib/health-utils";
 
 import {
-  SectionTitle,
   DetailInfoRow,
+  SectionTitle,
   StatCard,
 } from "@/components/detail/DetailComponents";
 
-/* ============================================================
-   ANIMAÇÕES
-   ============================================================ */
+// ============================================================
+// ANIMAÇÕES
+// ============================================================
 
 const listVariants = {
-  hidden: { opacity: 0 },
+  hidden: {
+    opacity: 0,
+  },
+
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.04 },
+
+    transition: {
+      staggerChildren:
+        0.04,
+    },
   },
 };
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 10 },
+  hidden: {
+    opacity: 0,
+    y: 10,
+  },
+
   show: {
     opacity: 1,
     y: 0,
+
     transition: {
-      duration: 0.22,
-      ease: [0.16, 1, 0.3, 1],
+      duration:
+        0.22,
+
+      ease: [
+        0.16,
+        1,
+        0.3,
+        1,
+      ],
     },
   },
 };
 
 const fadeUp = {
-  initial: { opacity: 0, y: 15 },
-  animate: { opacity: 1, y: 0 },
+  initial: {
+    opacity: 0,
+    y: 15,
+  },
+
+  animate: {
+    opacity: 1,
+    y: 0,
+  },
 };
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+// ============================================================
+// TIPOS
+// ============================================================
 
-function formatDateDisplay(isoStr: string): string {
-  if (!isoStr) return "";
+interface MedicamentoComAlertas
+  extends Medicamento {
+  receitaVencida:
+    boolean;
 
-  const parts = isoStr.split("-");
+  insight:
+    ReturnType<
+      typeof sugerirRenovacao
+    >;
+}
 
-  if (parts.length !== 3) return isoStr;
+interface DocumentMetadata {
+  tratamento_id?:
+    string;
+
+  cid_id?:
+    string;
+
+  [key: string]:
+    unknown;
+}
+
+type DocumentPersonScoped =
+  Document & {
+    person_id?:
+      string;
+  };
+
+interface EconomiaMedicamento {
+  medicamento:
+    Medicamento;
+
+  economia:
+    NonNullable<
+      ReturnType<
+        typeof calcularEconomia
+      >
+    >;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function formatDateDisplay(
+  isoStr?:
+    string | null
+): string {
+  if (!isoStr) {
+    return "";
+  }
+
+  const parts =
+    isoStr.split(
+      "-"
+    );
+
+  if (
+    parts.length !==
+    3
+  ) {
+    return isoStr;
+  }
 
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-interface MedicamentoComAlertas extends Medicamento {
-  receitaVencida?: boolean;
-  insight?: ReturnType<typeof sugerirRenovacao>;
+function getPrecoSeguro(
+  value:
+    Renovacao["preco"]
+): number {
+  if (
+    typeof value !==
+      "number" ||
+    !Number.isFinite(
+      value
+    ) ||
+    value <=
+      0
+  ) {
+    return 0;
+  }
+
+  return value;
 }
 
-interface DocumentMetadata {
-  tratamento_id?: string;
-  cid_id?: string;
-  [key: string]: unknown;
+function getStatusLabel(
+  status:
+    Tratamento["status"]
+): string {
+  if (
+    status ===
+    "ativo"
+  ) {
+    return "Em andamento";
+  }
+
+  if (
+    status ===
+    "concluido"
+  ) {
+    return "Concluído";
+  }
+
+  return "Suspenso";
 }
 
-/* ============================================================
-   CONTEÚDO
-   ============================================================ */
+// ============================================================
+// CONTENT
+// ============================================================
 
 function TratamentoContent() {
-  const { trigger } = useHapticFeedback();
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router =
+    useRouter();
 
-  const id = searchParams.get("id");
+  const searchParams =
+    useSearchParams();
 
-  const { favorite } = useSafeDb();
-  const { medicamentos } = useMedicamentos();
-  const { medicos } = useMedicos();
-  const { hospitais } = useHospitais();
-  const { locais } = useLocais();
-  const { activePersonId } = useActivePersonId();
+  const id =
+    searchParams.get(
+      "id"
+    ) ||
+    "";
 
-  const mounted = useMounted();
+  const {
+    favorite,
+  } =
+    useSafeDb();
 
-  const [tratamento, setTratamento] = useState<Tratamento | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  const [dismissEconomia, setDismissEconomia] = useState(() => {
-    if (typeof window !== "undefined" && id) {
-      const stored = localStorage.getItem(`dismissEconomia_${id}`);
-      return stored === "true";
-    }
+  const {
+    getTratamento,
+  } =
+    useTratamentos();
 
-    return false;
-  });
+  /*
+   * Medicamentos, Renovações e CIDs já são person-scoped
+   * pelos respectivos hooks.
+   */
+  const {
+    medicamentos = [],
+  } =
+    useMedicamentos();
 
-  /* ============================================================
-     DADOS
-     ============================================================ */
+  const {
+    renovacoes = [],
+  } =
+    useRenovacoes();
 
-  const allDocuments =
-    useLiveQuery(() => db.documents.toArray(), []) || [];
+  const {
+    cids = [],
+  } =
+    useCids();
 
-  const allRenovacoes =
-    useLiveQuery(() => db.renovacoes.toArray(), []) || [];
+  /*
+   * Médicos, Hospitais e Locais são entidades globais da conta.
+   * O vínculo exibido parte do Tratamento person-owned.
+   */
+  const {
+    medicos = [],
+  } =
+    useMedicos();
 
-  const cidsVinculados =
-    useLiveQuery(() => {
-      if (!tratamento?.cid_ids || tratamento.cid_ids.length === 0) {
-        return [];
-      }
+  const {
+    hospitais = [],
+  } =
+    useHospitais();
 
-      return db.cids
-        .where("id")
-        .anyOf(tratamento.cid_ids)
-        .toArray();
-    }, [tratamento?.cid_ids]) || [];
+  const {
+    locais = [],
+  } =
+    useLocais();
 
-  /* ============================================================
-     MEDICAMENTOS VINCULADOS
-     ============================================================ */
+  const mounted =
+    useMounted();
 
-  const linkedMedicamentos = useMemo(() => {
-    if (!id || !medicamentos) return [];
+  // ==========================================================
+  // ESTADO
+  // ==========================================================
 
-    return medicamentos.filter((m: Medicamento) => {
-      // Procura tanto no padrão antigo (m.tratamento_ids) quanto no novo (tratamento.medicamento_ids)
-      const inMed = m.tratamento_ids && m.tratamento_ids.includes(id);
-      const inTrat = tratamento?.medicamento_ids && m.id && tratamento.medicamento_ids.includes(m.id);
-      
-      return inMed || inTrat;
-    });
-  }, [medicamentos, tratamento?.medicamento_ids, id]);
-
-  /* ============================================================
-     RENOVAÇÕES VINCULADAS
-     ============================================================ */
-
-  const linkedRenovacoes = useMemo(() => {
-    const medIds = new Set(
-      linkedMedicamentos
-        .map((m: Medicamento) => m.id)
-        .filter(Boolean)
+  const [
+    tratamento,
+    setTratamento,
+  ] =
+    useState<Tratamento | null>(
+      null
     );
 
-    return allRenovacoes
-      .filter(
-        (r: Renovacao) =>
-          r.medicamento_id &&
-          medIds.has(r.medicamento_id)
-      )
-      .sort(
-        (a, b) =>
-          new Date(b.data).getTime() -
-          new Date(a.data).getTime()
-      );
-  }, [linkedMedicamentos, allRenovacoes]);
-
-  /* ============================================================
-     DOCUMENTOS VINCULADOS
-     ============================================================ */
-
-  const linkedDocuments = useMemo(() => {
-    if (!id) return [];
-
-    return allDocuments
-      .filter((doc: Document) => {
-        const meta = doc.metadata as DocumentMetadata;
-
-        return meta.tratamento_id === id;
-      })
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() -
-          new Date(a.created_at).getTime()
-      );
-  }, [allDocuments, id]);
-
-  /* ============================================================
-     CUSTO TOTAL (SOMA DE MEDICAMENTOS + RENOVAÇÕES COM PARSER SEGURO)
-     ============================================================ */
-
-  const custoTotalTratamento = useMemo(() => {
-    let total = 0;
-
-    const getSafeNumber = (val: any) => {
-      if (!val) return 0;
-      if (typeof val === 'number') return val;
-      // Remove pontos de milhar e troca vírgula por ponto para não falhar
-      const parsed = Number(String(val).replace(/\./g, '').replace(',', '.'));
-      return isNaN(parsed) ? 0 : parsed;
-    };
-
-    linkedMedicamentos.forEach((med: Medicamento) => {
-      total += getSafeNumber(med.preco);
-    });
-
-    linkedRenovacoes.forEach((r: Renovacao) => {
-      total += getSafeNumber(r.preco);
-    });
-
-    return total;
-  }, [linkedMedicamentos, linkedRenovacoes]);
-
-  const custoDisplay = useMemo(() => {
-    if (custoTotalTratamento > 0) {
-      return formatCurrency(custoTotalTratamento);
-    }
-    const isAllSus = linkedMedicamentos.length > 0 && linkedMedicamentos.every(m => m.tipo_aquisicao === 'sus');
-    if (isAllSus) return "SUS";
-    return "R$ 0,00";
-  }, [custoTotalTratamento, linkedMedicamentos]);
-
-  /* ============================================================
-     ANÁLISE DE SUS
-     ============================================================ */
-
-  const statsSus = useMemo(() => {
-    const isAllSus = linkedMedicamentos.length > 0 && linkedMedicamentos.every(m => m.tipo_aquisicao === 'sus');
-    const hasSus = linkedMedicamentos.some(m => m.tipo_aquisicao === 'sus');
-    
-    return { isAllSus, hasSus };
-  }, [linkedMedicamentos]);
-
-  /* ============================================================
-     ECONOMIA
-     ============================================================ */
-
-  const economiaInfo = useMemo(() => {
-    return calcularEconomia(linkedRenovacoes);
-  }, [linkedRenovacoes]);
-
-  /* ============================================================
-     REDE DE APOIO (MÉDICOS, HOSPITAIS E LOCAIS)
-     ============================================================ */
-
-  const linkedMedicos = useMemo(() => {
-    const medIds = new Set<string>();
-    
-    // Pega os médicos que estão nos medicamentos
-    linkedMedicamentos.forEach((m: Medicamento) => {
-      if (m.medico_id) medIds.add(m.medico_id);
-    });
-    
-    // Pega os médicos que estão direto no tratamento
-    if (tratamento?.medico_ids) {
-      tratamento.medico_ids.forEach(i => medIds.add(i));
-    }
-
-    return medicos.filter(
-      (med: Medico) =>
-        med.id && medIds.has(med.id)
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(
+      true
     );
-  }, [linkedMedicamentos, medicos, tratamento?.medico_ids]);
 
-  const linkedHospitais = useMemo(() => {
-    if (!tratamento?.hospital_ids) return [];
-    
-    return hospitais.filter(
-      (h: Hospital) => 
-        h.id && tratamento.hospital_ids!.includes(h.id)
+  const [
+    isMenuFlutuanteOpen,
+    setIsMenuFlutuanteOpen,
+  ] =
+    useState(
+      false
     );
-  }, [hospitais, tratamento?.hospital_ids]);
 
-  const linkedLocais = useMemo(() => {
-    if (!tratamento?.local_ids) return [];
-    
-    return locais.filter(
-      (l: LocalSaude) => 
-        l.id && tratamento.local_ids!.includes(l.id)
+  const [
+    dismissEconomia,
+    setDismissEconomia,
+  ] =
+    useState(
+      false
     );
-  }, [locais, tratamento?.local_ids]);
 
-  /* ============================================================
-     ALERTAS DOS MEDICAMENTOS
-     ============================================================ */
+  // ==========================================================
+  // DOCUMENTOS
+  //
+  // Ainda usamos Dexie diretamente porque não temos aqui uma
+  // API confirmada de Documentos adequada para esta consulta.
+  //
+  // A leitura, porém, é obrigatoriamente person-scoped.
+  // ==========================================================
 
-  const medicamentosComAlertas = useMemo(() => {
-    return linkedMedicamentos.map(
-      (
-        med: Medicamento
-      ): MedicamentoComAlertas => {
-        const receitaVencida =
-          isReceitaVencidaSegura(
-            med.proxima_renovacao
+  const documentosDaPessoa =
+    useLiveQuery(
+      async () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        return db.documents
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ],
+      []
+    ) ||
+    [];
+
+  // ==========================================================
+  // CARREGAR TRATAMENTO
+  // ==========================================================
+
+  useEffect(
+    () => {
+      let cancelled =
+        false;
+
+      const fetchTratamento =
+        async () => {
+          setIsLoading(
+            true
           );
 
-        const insight = sugerirRenovacao(med);
+          if (
+            !id ||
+            !activePersonId
+          ) {
+            if (
+              !cancelled
+            ) {
+              setTratamento(
+                null
+              );
 
-        return {
-          ...med,
-          receitaVencida,
-          insight,
+              setIsLoading(
+                false
+              );
+            }
+
+            return;
+          }
+
+          try {
+            const data =
+              await getTratamento(
+                id
+              );
+
+            if (
+              cancelled
+            ) {
+              return;
+            }
+
+            if (
+              !data ||
+              data.person_id !==
+                activePersonId
+            ) {
+              setTratamento(
+                null
+              );
+
+              return;
+            }
+
+            setTratamento(
+              data
+            );
+          } catch (
+            error
+          ) {
+            console.error(
+              "[TratamentoDetalhes] Erro ao buscar tratamento:",
+              error
+            );
+
+            if (
+              !cancelled
+            ) {
+              setTratamento(
+                null
+              );
+            }
+          } finally {
+            if (
+              !cancelled
+            ) {
+              setIsLoading(
+                false
+              );
+            }
+          }
         };
-      }
-    );
-  }, [linkedMedicamentos]);
 
-  /* ============================================================
-     INSIGHTS DOS CIDs
-     ============================================================ */
+      void fetchTratamento();
 
-  const cidsInsights = useMemo(() => {
-    return cidsVinculados.map((cid: Cid) => {
-      const insight = getCidInsights(
-        cid.codigo
-      );
-
-      return {
-        ...cid,
-        insight,
+      return () => {
+        cancelled =
+          true;
       };
-    });
-  }, [cidsVinculados]);
+    },
+    [
+      id,
+      activePersonId,
+      getTratamento,
+    ]
+  );
 
-  /* ============================================================
-     FECHAR MENU
-     ============================================================ */
+  // ==========================================================
+  // PREFERÊNCIA LOCAL DO CARD DE ECONOMIA
+  // ==========================================================
 
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setIsMenuFlutuanteOpen(false);
-    };
+  useEffect(
+    () => {
+      if (
+        typeof window ===
+          "undefined" ||
+        !id
+      ) {
+        return;
+      }
 
-    if (isMenuFlutuanteOpen) {
+      const stored =
+        localStorage.getItem(
+          `dismissEconomia_${id}`
+        );
+
+      setDismissEconomia(
+        stored ===
+          "true"
+      );
+    },
+    [
+      id,
+    ]
+  );
+
+  // ==========================================================
+  // FECHAR MENU FLUTUANTE
+  // ==========================================================
+
+  useEffect(
+    () => {
+      if (
+        !isMenuFlutuanteOpen
+      ) {
+        return;
+      }
+
+      const handleClickOutside =
+        () => {
+          setIsMenuFlutuanteOpen(
+            false
+          );
+        };
+
       document.addEventListener(
         "click",
         handleClickOutside
       );
 
-      return () =>
+      return () => {
         document.removeEventListener(
           "click",
           handleClickOutside
         );
-    }
-  }, [isMenuFlutuanteOpen]);
-
-  /* ============================================================
-     BUSCAR TRATAMENTO
-     ============================================================ */
-
-  useEffect(() => {
-    if (!id) {
-      router.push("/saude");
-      return;
-    }
-
-    const fetchTratamento = async () => {
-      try {
-        const data =
-          await db.tratamentos.get(id);
-
-        if (data) {
-          setTratamento(data);
-        } else {
-          router.push("/saude");
-        }
-      } catch (error) {
-        console.error(
-          "Erro ao buscar tratamento:",
-          error
-        );
-
-        router.push("/saude");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTratamento();
-  }, [id, router]);
-
-  /* ============================================================
-     LOADING
-     ============================================================ */
-
-  if (!mounted) {
-    return <DetailSkeleton />;
-  }
-
-  if (isLoading) {
-    return <DetailSkeleton />;
-  }
-
-  if (!tratamento) {
-    return null;
-  }
-
-  /* ============================================================
-     HANDLERS
-     ============================================================ */
-
-  const handleFavoriteToggle = async (
-    docId: string
-  ) => {
-    await favorite(docId);
-    trigger("vibrate");
-  };
-
-  const handleDismissEconomia = () => {
-    if (id) {
-      localStorage.setItem(
-        `dismissEconomia_${id}`,
-        "true"
-      );
-    }
-
-    setDismissEconomia(true);
-    trigger("vibrate");
-  };
-
-  /* ============================================================
-     MENU FLUTUANTE
-     ============================================================ */
-
-  const menuOptions = [
-    {
-      id: "adicionar-cid",
-      label: "Adicionar CID",
-      icon: FolderHeart,
-      path: `/saude/cids?tratamento_id=${id}`,
+      };
     },
-    {
-      id: "novo-medicamento",
-      label: "Novo Medicamento",
-      icon: Pill,
-      path: `/saude/medicamentos/novo?tratamento_id=${id}`,
-    },
-    {
-      id: "adicionar-documento",
-      label: "Adicionar Documento",
-      icon: FileText,
-      path: `/novo?tratamento_id=${id}`,
-    },
-    {
-      id: "editar-tratamento",
-      label: "Editar Tratamento",
-      icon: Edit3,
-      path: `/saude/tratamentos/editar?id=${id}`,
-    },
-  ];
-
-  const handleMenuOptionClick = (
-    path: string
-  ) => {
-    trigger("vibrate");
-    setIsMenuFlutuanteOpen(false);
-    router.push(path);
-  };
-
-  /* ============================================================
-     TEMA CLÍNICO
-     ============================================================ */
-
-  const theme = getClinicalTheme(
-    tratamento.nome
+    [
+      isMenuFlutuanteOpen,
+    ]
   );
 
-  const IconComp = theme.icon;
+  // ==========================================================
+  // MEDICAMENTOS VINCULADOS
+  //
+  // ÚNICA fonte canônica:
+  //
+  // Medicamento.tratamento_ids
+  //
+  // Não lemos mais tratamento.medicamento_ids.
+  // ==========================================================
 
-  /* ============================================================
-     CATEGORIAS DE MEDICAMENTOS
-     ============================================================ */
+  const linkedMedicamentos =
+    useMemo(
+      () => {
+        if (
+          !id
+        ) {
+          return [];
+        }
+
+        return medicamentos.filter(
+          (
+            medicamento
+          ) =>
+            medicamento.tratamento_ids?.includes(
+              id
+            ) ===
+            true
+        );
+      },
+      [
+        medicamentos,
+        id,
+      ]
+    );
+
+  // ==========================================================
+  // RENOVAÇÕES DO TRATAMENTO
+  // ==========================================================
+
+  const linkedRenovacoes =
+    useMemo(
+      () => {
+        const medIds =
+          new Set(
+            linkedMedicamentos
+              .map(
+                (
+                  medicamento
+                ) =>
+                  medicamento.id
+              )
+              .filter(
+                (
+                  medicamentoId
+                ): medicamentoId is string =>
+                  Boolean(
+                    medicamentoId
+                  )
+              )
+          );
+
+        return renovacoes
+          .filter(
+            (
+              renovacao
+            ) =>
+              medIds.has(
+                renovacao.medicamento_id
+              )
+          )
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              String(
+                b.data ||
+                  ""
+              ).localeCompare(
+                String(
+                  a.data ||
+                    ""
+                )
+              )
+          );
+      },
+      [
+        linkedMedicamentos,
+        renovacoes,
+      ]
+    );
+
+  // ==========================================================
+  // DOCUMENTOS DO TRATAMENTO
+  // ==========================================================
+
+  const linkedDocuments =
+    useMemo(
+      () => {
+        if (
+          !id ||
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        return (
+          documentosDaPessoa as
+            DocumentPersonScoped[]
+        )
+          .filter(
+            (
+              document
+            ) => {
+              /*
+               * Defesa adicional de ownership.
+               */
+              if (
+                document.person_id !==
+                activePersonId
+              ) {
+                return false;
+              }
+
+              const metadata =
+                (
+                  document.metadata ||
+                  {}
+                ) as DocumentMetadata;
+
+              return (
+                metadata.tratamento_id ===
+                id
+              );
+            }
+          )
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              String(
+                b.created_at ||
+                  ""
+              ).localeCompare(
+                String(
+                  a.created_at ||
+                    ""
+                )
+              )
+          );
+      },
+      [
+        documentosDaPessoa,
+        activePersonId,
+        id,
+      ]
+    );
+
+  // ==========================================================
+  // CIDS
+  // ==========================================================
+
+  const cidsVinculados =
+    useMemo(
+      () => {
+        const ids =
+          new Set(
+            tratamento?.cid_ids ||
+              []
+          );
+
+        if (
+          ids.size ===
+          0
+        ) {
+          return [];
+        }
+
+        return cids.filter(
+          (
+            cid
+          ) =>
+            Boolean(
+              cid.id &&
+                ids.has(
+                  cid.id
+                )
+            )
+        );
+      },
+      [
+        cids,
+        tratamento?.cid_ids,
+      ]
+    );
+
+  const cidsInsights =
+    useMemo(
+      () => {
+        return cidsVinculados.map(
+          (
+            cid: Cid
+          ) => ({
+            ...cid,
+
+            insight:
+              getCidInsights(
+                cid.codigo
+              ),
+          })
+        );
+      },
+      [
+        cidsVinculados,
+      ]
+    );
+
+  // ==========================================================
+  // REDE DE APOIO
+  // ==========================================================
+
+  const linkedMedicos =
+    useMemo(
+      () => {
+        const ids =
+          new Set<string>();
+
+        /*
+         * Médicos explicitamente vinculados ao Tratamento.
+         */
+        for (
+          const medicoId of
+          tratamento?.medico_ids ||
+          []
+        ) {
+          ids.add(
+            medicoId
+          );
+        }
+
+        /*
+         * Também consideramos médicos atuais dos medicamentos,
+         * pois fazem parte da rede clínica real deste tratamento.
+         */
+        for (
+          const medicamento of
+          linkedMedicamentos
+        ) {
+          if (
+            medicamento.medico_id
+          ) {
+            ids.add(
+              medicamento.medico_id
+            );
+          }
+        }
+
+        return medicos.filter(
+          (
+            medico: Medico
+          ) =>
+            Boolean(
+              medico.id &&
+                ids.has(
+                  medico.id
+                )
+            )
+        );
+      },
+      [
+        medicos,
+        linkedMedicamentos,
+        tratamento?.medico_ids,
+      ]
+    );
+
+  const linkedHospitais =
+    useMemo(
+      () => {
+        const ids =
+          new Set(
+            tratamento?.hospital_ids ||
+              []
+          );
+
+        return hospitais.filter(
+          (
+            hospital: Hospital
+          ) =>
+            Boolean(
+              hospital.id &&
+                ids.has(
+                  hospital.id
+                )
+            )
+        );
+      },
+      [
+        hospitais,
+        tratamento?.hospital_ids,
+      ]
+    );
+
+  const linkedLocais =
+    useMemo(
+      () => {
+        const ids =
+          new Set(
+            tratamento?.local_ids ||
+              []
+          );
+
+        return locais.filter(
+          (
+            local: LocalSaude
+          ) =>
+            Boolean(
+              local.id &&
+                ids.has(
+                  local.id
+                )
+            )
+        );
+      },
+      [
+        locais,
+        tratamento?.local_ids,
+      ]
+    );
+
+  // ==========================================================
+  // INTELIGÊNCIA DOS MEDICAMENTOS
+  // ==========================================================
+
+  const medicamentosComAlertas =
+    useMemo(
+      () => {
+        return linkedMedicamentos.map(
+          (
+            medicamento
+          ): MedicamentoComAlertas => ({
+            ...medicamento,
+
+            receitaVencida:
+              isReceitaVencidaSegura(
+                medicamento.proxima_renovacao
+              ),
+
+            insight:
+              sugerirRenovacao(
+                medicamento
+              ),
+          })
+        );
+      },
+      [
+        linkedMedicamentos,
+      ]
+    );
 
   const medicamentosAtivos =
-    medicamentosComAlertas.filter(
-      (m) => m.status !== "descontinuado"
+    useMemo(
+      () =>
+        medicamentosComAlertas.filter(
+          (
+            medicamento
+          ) =>
+            medicamento.status !==
+            "descontinuado"
+        ),
+      [
+        medicamentosComAlertas,
+      ]
     );
 
   const medicamentosDescontinuados =
-    medicamentosComAlertas.filter(
-      (m) => m.status === "descontinuado"
+    useMemo(
+      () =>
+        medicamentosComAlertas.filter(
+          (
+            medicamento
+          ) =>
+            medicamento.status ===
+            "descontinuado"
+        ),
+      [
+        medicamentosComAlertas,
+      ]
     );
 
-  /* ============================================================
-     RENDER
-     ============================================================ */
+  const medicamentosPrecisandoAtencao =
+    useMemo(
+      () =>
+        medicamentosAtivos.filter(
+          (
+            medicamento
+          ) =>
+            medicamento.receitaVencida ||
+            medicamento.insight
+              ?.deveRenovar
+        ),
+      [
+        medicamentosAtivos,
+      ]
+    );
+
+  // ==========================================================
+  // HISTÓRICO FINANCEIRO
+  //
+  // Só Renovação representa aquisição histórica.
+  //
+  // Não somamos Medicamento.preco, porque isso duplicaria o
+  // valor atual junto com compras que já estão no histórico.
+  // ==========================================================
+
+  const custoHistorico =
+    useMemo(
+      () =>
+        linkedRenovacoes.reduce(
+          (
+            total,
+            renovacao
+          ) =>
+            total +
+            getPrecoSeguro(
+              renovacao.preco
+            ),
+          0
+        ),
+      [
+        linkedRenovacoes,
+      ]
+    );
+
+  const aquisicoesComPreco =
+    useMemo(
+      () =>
+        linkedRenovacoes.filter(
+          (
+            renovacao
+          ) =>
+            getPrecoSeguro(
+              renovacao.preco
+            ) >
+            0
+        ).length,
+      [
+        linkedRenovacoes,
+      ]
+    );
+
+  // ==========================================================
+  // ECONOMIA
+  //
+  // IMPORTANTE:
+  //
+  // O código antigo passava as renovações de TODOS os
+  // medicamentos juntas para calcularEconomia().
+  //
+  // Isso podia comparar preço de remédios diferentes.
+  //
+  // Agora calculamos por medicamento.
+  // ==========================================================
+
+  const economiasPorMedicamento =
+    useMemo<
+      EconomiaMedicamento[]
+    >(
+      () => {
+        const result:
+          EconomiaMedicamento[] =
+          [];
+
+        for (
+          const medicamento of
+          linkedMedicamentos
+        ) {
+          if (
+            !medicamento.id
+          ) {
+            continue;
+          }
+
+          const historico =
+            linkedRenovacoes.filter(
+              (
+                renovacao
+              ) =>
+                renovacao.medicamento_id ===
+                medicamento.id
+            );
+
+          const economia =
+            calcularEconomia(
+              historico
+            );
+
+          if (
+            !economia ||
+            !Number.isFinite(
+              economia.percentual
+            ) ||
+            !Number.isFinite(
+              economia.economia
+            )
+          ) {
+            continue;
+          }
+
+          result.push({
+            medicamento,
+            economia,
+          });
+        }
+
+        return result;
+      },
+      [
+        linkedMedicamentos,
+        linkedRenovacoes,
+      ]
+    );
+
+  // ==========================================================
+  // SUS
+  //
+  // É somente leitura do cadastro atual.
+  // Não significa garantia futura de fornecimento/cobertura.
+  // ==========================================================
+
+  const statsSus =
+    useMemo(
+      () => {
+        const total =
+          linkedMedicamentos.length;
+
+        const totalSus =
+          linkedMedicamentos.filter(
+            (
+              medicamento
+            ) =>
+              medicamento.tipo_aquisicao ===
+              "sus"
+          ).length;
+
+        return {
+          total,
+
+          totalSus,
+
+          hasSus:
+            totalSus >
+            0,
+
+          isAllSus:
+            total >
+              0 &&
+            totalSus ===
+              total,
+        };
+      },
+      [
+        linkedMedicamentos,
+      ]
+    );
+
+  // ==========================================================
+  // PANORAMA LONGITUDINAL
+  // ==========================================================
+
+  const panorama =
+    useMemo(
+      () => {
+        const primeiraAquisicao =
+          linkedRenovacoes.length >
+          0
+            ? linkedRenovacoes[
+                linkedRenovacoes.length -
+                  1
+              ]?.data
+            : undefined;
+
+        const ultimaAquisicao =
+          linkedRenovacoes[
+            0
+          ]?.data;
+
+        return {
+          renovacoes:
+            linkedRenovacoes.length,
+
+          primeiraAquisicao,
+
+          ultimaAquisicao,
+
+          medicamentosAtivos:
+            medicamentosAtivos.length,
+
+          medicamentosDescontinuados:
+            medicamentosDescontinuados.length,
+
+          medicamentosPrecisandoAtencao:
+            medicamentosPrecisandoAtencao.length,
+        };
+      },
+      [
+        linkedRenovacoes,
+        medicamentosAtivos.length,
+        medicamentosDescontinuados.length,
+        medicamentosPrecisandoAtencao.length,
+      ]
+    );
+
+  // ==========================================================
+  // LOADING
+  // ==========================================================
+
+  if (
+    !mounted ||
+    isLoading
+  ) {
+    return (
+      <DetailSkeleton />
+    );
+  }
+
+  if (
+    !tratamento
+  ) {
+    return (
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-void px-6 text-center">
+        <FolderHeart
+          size={
+            36
+          }
+          className="text-ink-muted"
+        />
+
+        <p className="mt-4 font-semibold text-ink-primary">
+          Tratamento não encontrado
+        </p>
+
+        <p className="mt-1 max-w-sm text-sm text-ink-muted">
+          O registro não existe ou não pertence à pessoa ativa.
+        </p>
+
+        <button
+          type="button"
+          onClick={
+            () =>
+              router.replace(
+                "/saude/tratamentos"
+              )
+          }
+          className="mt-5 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void"
+        >
+          Voltar
+        </button>
+      </main>
+    );
+  }
+
+  // ==========================================================
+  // HANDLERS
+  // ==========================================================
+
+  const handleFavoriteToggle =
+    async (
+      docId:
+        string
+    ) => {
+      await favorite(
+        docId
+      );
+
+      trigger(
+        "vibrate"
+      );
+    };
+
+  const handleDismissEconomia =
+    () => {
+      if (
+        typeof window !==
+          "undefined" &&
+        id
+      ) {
+        localStorage.setItem(
+          `dismissEconomia_${id}`,
+          "true"
+        );
+      }
+
+      setDismissEconomia(
+        true
+      );
+
+      trigger(
+        "vibrate"
+      );
+    };
+
+  // ==========================================================
+  // MENU
+  // ==========================================================
+
+  const menuOptions = [
+    {
+      id:
+        "adicionar-cid",
+
+      label:
+        "Adicionar CID",
+
+      icon:
+        FolderHeart,
+
+      path:
+        `/saude/cids?tratamento_id=${id}`,
+    },
+
+    {
+      id:
+        "novo-medicamento",
+
+      label:
+        "Novo Medicamento",
+
+      icon:
+        Pill,
+
+      path:
+        `/saude/medicamentos/novo?tratamento_id=${id}`,
+    },
+
+    {
+      id:
+        "adicionar-documento",
+
+      label:
+        "Adicionar Documento",
+
+      icon:
+        FileText,
+
+      path:
+        `/novo?tratamento_id=${id}`,
+    },
+
+    {
+      id:
+        "editar-tratamento",
+
+      label:
+        "Editar Tratamento",
+
+      icon:
+        Edit3,
+
+      path:
+        `/saude/tratamentos/editar?id=${id}`,
+    },
+  ];
+
+  const handleMenuOptionClick =
+    (
+      path:
+        string
+    ) => {
+      trigger(
+        "vibrate"
+      );
+
+      setIsMenuFlutuanteOpen(
+        false
+      );
+
+      router.push(
+        path
+      );
+    };
+
+  // ==========================================================
+  // TEMA
+  // ==========================================================
+
+  const theme =
+    getClinicalTheme(
+      tratamento.nome
+    );
+
+  const IconComp =
+    theme.icon;
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-
-        {/* ======================================================
+        {/* ====================================================
             HEADER
-        ====================================================== */}
+            ==================================================== */}
 
-        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-surface-border/30 bg-void/85 px-5 pb-4 header-safe-top backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
-
-            {/* Esquerda */}
-
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  router.back();
-                }}
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    router.back();
+                  }
+                }
                 aria-label="Voltar"
-                className="
-                  flex h-11 w-11 shrink-0
-                  items-center justify-center
-                  rounded-full
-                  border border-surface-border/50
-                  bg-surface-raised
-                  text-ink-primary
-                  transition-transform
-                  active:scale-95
-                "
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
               >
                 <ChevronRight
-                  size={18}
+                  size={
+                    18
+                  }
                   className="rotate-180"
                 />
               </button>
 
               <div className="min-w-0">
                 <p
-                  className={`
-                    font-mono
-                    text-[11px]
-                    uppercase
-                    tracking-[0.28em]
-                    ${theme.textClass}
-                  `}
+                  className={`font-mono text-[11px] uppercase tracking-[0.28em] ${theme.textClass}`}
                 >
                   Painel Clínico
                 </p>
@@ -597,60 +1459,66 @@ function TratamentoContent() {
               </div>
             </div>
 
-            {/* Ações */}
-
             <div className="flex items-center gap-2">
-
-              {/* Menu + */}
+              {/* ==============================================
+                  MENU
+                  ============================================== */}
 
               <div className="relative">
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={
+                    (
+                      event
+                    ) => {
+                      event.stopPropagation();
 
-                    trigger("vibrate");
+                      trigger(
+                        "vibrate"
+                      );
 
-                    setIsMenuFlutuanteOpen(
-                      (prev) => !prev
-                    );
-                  }}
-                  className="
-                    flex h-10 w-10
-                    items-center justify-center
-                    rounded-full
-                    border border-ice/20
-                    bg-ice/10
-                    text-ice
-                    transition-all
-                    active:scale-95
-                    hover:bg-ice/20
-                  "
-                  aria-label="Menu"
+                      setIsMenuFlutuanteOpen(
+                        (
+                          current
+                        ) =>
+                          !current
+                      );
+                    }
+                  }
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all hover:bg-ice/20 active:scale-95"
+                  aria-label="Adicionar ao tratamento"
                 >
-                  <Plus size={18} />
+                  <Plus
+                    size={
+                      18
+                    }
+                  />
                 </button>
 
                 <AnimatePresence>
                   {isMenuFlutuanteOpen && (
                     <>
                       <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{
-                          duration: 0.16,
+                        initial={{
+                          opacity: 0,
                         }}
-                        onClick={() =>
-                          setIsMenuFlutuanteOpen(
-                            false
-                          )
+                        animate={{
+                          opacity: 1,
+                        }}
+                        exit={{
+                          opacity: 0,
+                        }}
+                        transition={{
+                          duration:
+                            0.16,
+                        }}
+                        onClick={
+                          () =>
+                            setIsMenuFlutuanteOpen(
+                              false
+                            )
                         }
-                        className="
-                          fixed inset-0 z-40
-                          bg-black/50
-                          backdrop-blur-sm
-                        "
+                        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
                       />
 
                       <motion.div
@@ -670,7 +1538,9 @@ function TratamentoContent() {
                           scale: 0.95,
                         }}
                         transition={{
-                          duration: 0.18,
+                          duration:
+                            0.18,
+
                           ease: [
                             0.16,
                             1,
@@ -678,56 +1548,54 @@ function TratamentoContent() {
                             1,
                           ],
                         }}
-                        className="
-                          absolute right-0 top-12 z-50
-                          w-56 overflow-hidden
-                          rounded-[24px]
-                          border border-surface-border/60
-                          bg-surface
-                          shadow-2xl
-                        "
-                        onClick={(e) =>
-                          e.stopPropagation()
+                        className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                        onClick={
+                          (
+                            event
+                          ) =>
+                            event.stopPropagation()
                         }
                       >
                         <div className="px-3 pb-2 pt-3.5">
                           <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
-                            Adicionar
+                            Ações
                           </p>
                         </div>
 
                         <div className="space-y-0.5 px-1.5 pb-2">
                           {menuOptions.map(
-                            (option) => {
-                              const Icon =
+                            (
+                              option
+                            ) => {
+                              const MenuIcon =
                                 option.icon;
 
                               return (
                                 <button
-                                  key={option.id}
-                                  type="button"
-                                  onClick={() =>
-                                    handleMenuOptionClick(
-                                      option.path
-                                    )
+                                  key={
+                                    option.id
                                   }
-                                  className="
-                                    flex w-full
-                                    items-center gap-3
-                                    rounded-2xl
-                                    px-3 py-2.5
-                                    text-left
-                                    transition-colors
-                                    active:scale-[0.98]
-                                    hover:bg-ice/8
-                                  "
+                                  type="button"
+                                  onClick={
+                                    () =>
+                                      handleMenuOptionClick(
+                                        option.path
+                                      )
+                                  }
+                                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-ice/8 active:scale-[0.98]"
                                 >
                                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                                    <Icon size={15} />
+                                    <MenuIcon
+                                      size={
+                                        15
+                                      }
+                                    />
                                   </div>
 
                                   <span className="text-sm font-medium text-ink-primary">
-                                    {option.label}
+                                    {
+                                      option.label
+                                    }
                                   </span>
                                 </button>
                               );
@@ -740,280 +1608,476 @@ function TratamentoContent() {
                 </AnimatePresence>
               </div>
 
-              {/* Editar */}
+              {/* ==============================================
+                  EDITAR
+                  ============================================== */}
 
               <button
                 type="button"
-                onClick={() => {
-                  trigger("vibrate");
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
 
-                  router.push(
-                    `/saude/tratamentos/editar?id=${tratamento.id}`
-                  );
-                }}
-                className="
-                  flex h-10 w-10
-                  items-center justify-center
-                  rounded-full
-                  border border-surface-border/50
-                  bg-surface-raised
-                  text-ink-primary
-                  transition-all
-                  active:scale-95
-                "
+                    router.push(
+                      `/saude/tratamentos/editar?id=${tratamento.id}`
+                    );
+                  }
+                }
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
                 aria-label="Editar tratamento"
               >
-                <Edit3 size={16} />
+                <Edit3
+                  size={
+                    16
+                  }
+                />
               </button>
             </div>
           </div>
         </header>
 
-        {/* ======================================================
-            CONTEÚDO
-        ====================================================== */}
+        {/* ====================================================
+            CONTENT
+            ==================================================== */}
 
         <section className="space-y-6 px-5 pt-6">
-
-          {/* ====================================================
+          {/* ==================================================
               CARD PRINCIPAL
-          ==================================================== */}
+              ================================================== */}
 
           <motion.div
-            variants={fadeUp}
+            variants={
+              fadeUp
+            }
             initial="initial"
             animate="animate"
-            className={`
-              relative
-              overflow-hidden
-              rounded-[32px]
-              border
-              bg-surface
-              p-6
-              shadow-sm
-              ${theme.borderClass}
-            `}
+            className={`relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm ${theme.borderClass}`}
             style={{
-              borderLeft: `6px solid ${theme.hex}`,
+              borderLeft:
+                `6px solid ${theme.hex}`,
             }}
           >
-            {/* Ícone decorativo */}
-
             <div
-              className={`
-                pointer-events-none
-                absolute
-                -bottom-8
-                -right-8
-                opacity-[0.03]
-                z-0
-                ${theme.textClass}
-              `}
+              className={`pointer-events-none absolute -bottom-8 -right-8 z-0 opacity-[0.03] ${theme.textClass}`}
             >
-              <IconComp size={180} />
+              <IconComp
+                size={
+                  180
+                }
+              />
             </div>
 
-            {/* Identidade */}
+            {/* ================================================
+                IDENTIDADE
+                ================================================ */}
 
             <div className="relative z-10 flex items-start gap-4">
               <div
-                className={`
-                  flex h-16 w-16 shrink-0
-                  items-center justify-center
-                  rounded-2xl
-                  border
-                  shadow-sm
-                  ${theme.bgClass}
-                  ${theme.borderClass}
-                  ${theme.textClass}
-                `}
+                className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border shadow-sm ${theme.bgClass} ${theme.borderClass} ${theme.textClass}`}
               >
-                <IconComp size={28} />
+                <IconComp
+                  size={
+                    28
+                  }
+                />
               </div>
 
               <div className="min-w-0 pt-1">
                 <h2 className="font-display text-2xl font-bold leading-tight text-ink-primary">
-                  {tratamento.nome}
+                  {
+                    tratamento.nome
+                  }
                 </h2>
 
                 <div className="mt-2 flex items-center gap-2">
                   <span
-                    className={`
-                      flex items-center gap-1.5
-                      rounded-full
-                      px-2.5 py-1
-                      text-[10px]
-                      font-bold
-                      uppercase
-                      tracking-wider
-                      ${
-                        tratamento.status ===
-                        "ativo"
-                          ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
-                          : tratamento.status ===
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                      tratamento.status ===
+                      "ativo"
+                        ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
+                        : tratamento.status ===
                             "concluido"
                           ? "border border-ice/20 bg-ice/10 text-ice"
                           : "border border-coral/20 bg-coral/10 text-coral"
-                      }
-                    `}
+                    }`}
                   >
                     {tratamento.status ===
                       "ativo" && (
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     )}
 
-                    {tratamento.status ===
-                    "ativo"
-                      ? "Em andamento"
-                      : tratamento.status ===
-                        "concluido"
-                      ? "Concluído"
-                      : "Suspenso"}
+                    {getStatusLabel(
+                      tratamento.status
+                    )}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* ==================================================
-                CIDs
-            ================================================== */}
+            {/* ================================================
+                CIDS
+                ================================================ */}
 
-            {cidsVinculados.length > 0 && (
+            {cidsVinculados.length >
+              0 && (
               <div className="relative z-10 mt-4 rounded-xl border border-surface-border/40 bg-surface-raised/50 p-3">
                 <p className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
                   <FolderHeart
-                    size={14}
+                    size={
+                      14
+                    }
                     className="text-violet-400"
                   />
-                  Diagnósticos vinculados:
+
+                  Diagnósticos vinculados
                 </p>
 
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {cidsInsights.map((cid) => {
-                    const cidTheme =
-                      getClinicalTheme(
-                        cid.descricao ||
-                          cid.codigo
-                      );
+                  {cidsInsights.map(
+                    (
+                      cid
+                    ) => {
+                      const cidTheme =
+                        getClinicalTheme(
+                          cid.descricao ||
+                            cid.codigo
+                        );
 
-                    const CidIcon =
-                      cidTheme.icon;
+                      const CidIcon =
+                        cidTheme.icon;
 
-                    return (
-                      <div
-                        key={cid.id}
-                        className={`
-                          flex items-center gap-1.5
-                          rounded-full
-                          border
-                          px-2.5 py-1
-                          ${cidTheme.tagClass}
-                        `}
-                      >
-                        <CidIcon size={12} />
+                      return (
+                        <button
+                          key={
+                            cid.id
+                          }
+                          type="button"
+                          onClick={
+                            () => {
+                              if (
+                                !cid.id
+                              ) {
+                                return;
+                              }
 
-                        <span className="text-[10px] font-semibold">
-                          {cid.codigo}
-                        </span>
+                              trigger(
+                                "vibrate"
+                              );
 
-                        <span className="text-[10px] opacity-80">
-                          - {cid.descricao}
-                        </span>
-
-                        {cid.insight && (
-                          <Sparkles
-                            size={12}
-                            className="opacity-80"
+                              router.push(
+                                `/saude/cids/detalhes?id=${cid.id}`
+                              );
+                            }
+                          }
+                          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-left transition-all active:scale-95 ${cidTheme.tagClass}`}
+                        >
+                          <CidIcon
+                            size={
+                              12
+                            }
                           />
-                        )}
-                      </div>
-                    );
-                  })}
+
+                          {cid.codigo &&
+                            cid.codigo !==
+                              "N/A" && (
+                              <span className="text-[10px] font-semibold">
+                                {
+                                  cid.codigo
+                                }
+                              </span>
+                            )}
+
+                          <span className="max-w-[190px] truncate text-[10px] opacity-80">
+                            {
+                              cid.descricao
+                            }
+                          </span>
+
+                          {cid.insight && (
+                            <Sparkles
+                              size={
+                                12
+                              }
+                              className="opacity-80"
+                            />
+                          )}
+                        </button>
+                      );
+                    }
+                  )}
                 </div>
 
                 {cidsInsights.some(
-                  (c) => c.insight
+                  (
+                    cid
+                  ) =>
+                    Boolean(
+                      cid.insight
+                        ?.alertaClinico
+                    )
                 ) && (
-                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 p-2.5">
+                  <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/5 p-2.5">
                     <Sparkles
-                      size={16}
+                      size={
+                        16
+                      }
                       className="mt-0.5 shrink-0 text-amber-400"
                     />
 
                     <p className="text-[11px] leading-relaxed text-ink-muted">
                       <span className="font-medium text-amber-400">
-                        Dica clínica:
+                        Contexto do histórico:
                       </span>{" "}
                       {cidsInsights
                         .map(
-                          (c) =>
-                            c.insight
+                          (
+                            cid
+                          ) =>
+                            cid.insight
                               ?.alertaClinico
                         )
-                        .filter(Boolean)
-                        .join(" • ")}
+                        .filter(
+                          Boolean
+                        )
+                        .join(
+                          " • "
+                        )}
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* ==================================================
-                TAG DO SUS (Custo Zero)
-            ================================================== */}
+            {/* ================================================
+                SUS
+                ================================================ */}
 
             {statsSus.hasSus && (
-              <div className="relative z-10 mt-3 flex items-start gap-2 rounded-lg border border-blue-400/30 bg-blue-400/10 p-2.5">
-                <Building2 size={16} className="mt-0.5 shrink-0 text-blue-400" />
+              <div className="relative z-10 mt-3 flex items-start gap-2 rounded-xl border border-blue-400/20 bg-blue-400/10 p-2.5">
+                <Building2
+                  size={
+                    16
+                  }
+                  className="mt-0.5 shrink-0 text-blue-400"
+                />
+
                 <p className="text-[11px] leading-relaxed text-blue-200">
-                  <span className="font-bold text-blue-400">Cobertura SUS:</span>{" "}
-                  {statsSus.isAllSus 
-                    ? "Este tratamento é 100% garantido pela rede pública (Custo Zero)." 
-                    : "Alguns medicamentos deste tratamento são retirados gratuitamente pelo SUS."}
+                  <span className="font-semibold text-blue-400">
+                    Aquisição registrada via SUS:
+                  </span>{" "}
+                  {statsSus.isAllSus
+                    ? "Todos os medicamentos atualmente vinculados a este tratamento estão cadastrados no Vault com aquisição via SUS."
+                    : `${statsSus.totalSus} de ${statsSus.total} medicamentos atualmente vinculados estão cadastrados com aquisição via SUS.`}
                 </p>
               </div>
             )}
 
-            {/* ==================================================
+            {/* ================================================
                 MÉTRICAS
-            ================================================== */}
+                ================================================ */}
 
             <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5">
               <StatCard
-                icon={<Pill size={14} />}
-                label="Ativos"
+                icon={
+                  <Pill
+                    size={
+                      14
+                    }
+                  />
+                }
+                label="Em uso"
                 value={`${medicamentosAtivos.length}`}
                 description="Medicamentos"
               />
 
               <StatCard
-                icon={<FileStack size={14} />}
-                label="Laudos"
+                icon={
+                  <FileStack
+                    size={
+                      14
+                    }
+                  />
+                }
+                label="Documentos"
                 value={`${linkedDocuments.length}`}
-                description="Documentos"
+                description="Vinculados"
               />
 
               <StatCard
-                icon={<Receipt size={14} />}
-                label="Custo Total"
-                value={custoDisplay}
-                description={
-                  statsSus.isAllSus 
-                    ? "Integral" 
-                    : "Histórico completo"
+                icon={
+                  <Receipt
+                    size={
+                      14
+                    }
+                  />
                 }
+                label="Aquisições"
+                value={`${panorama.renovacoes}`}
+                description="Registradas"
               />
             </div>
           </motion.div>
 
-          {/* ====================================================
-              ECONOMIA
-          ==================================================== */}
+          {/* ==================================================
+              PANORAMA LONGITUDINAL
+              ================================================== */}
 
-          {economiaInfo &&
-            isFinite(
-              economiaInfo.percentual
-            ) &&
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.02,
+            }}
+            className="space-y-3"
+          >
+            <SectionTitle
+              icon={
+                <Activity
+                  size={
+                    15
+                  }
+                />
+              }
+              title="Panorama do Tratamento"
+            />
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3.5">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
+                  Histórico de aquisições
+                </p>
+
+                <p className="mt-1 font-display text-lg font-semibold text-ink-primary">
+                  {
+                    panorama.renovacoes
+                  }
+                </p>
+
+                <p className="mt-0.5 text-[10px] text-ink-muted">
+                  {panorama.ultimaAquisicao
+                    ? `Última em ${formatDateDisplay(
+                        panorama.ultimaAquisicao
+                      )}`
+                    : "Nenhuma aquisição registrada"}
+                </p>
+              </div>
+
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3.5">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
+                  Atenção atual
+                </p>
+
+                <p className="mt-1 font-display text-lg font-semibold text-ink-primary">
+                  {
+                    panorama.medicamentosPrecisandoAtencao
+                  }
+                </p>
+
+                <p className="mt-0.5 text-[10px] text-ink-muted">
+                  Receita ou renovação sinalizada
+                </p>
+              </div>
+            </div>
+
+            {panorama.primeiraAquisicao &&
+              panorama.ultimaAquisicao &&
+              panorama.primeiraAquisicao !==
+                panorama.ultimaAquisicao && (
+                <p className="px-1 text-[10px] leading-relaxed text-ink-muted">
+                  O histórico de aquisições associado a este tratamento vai de{" "}
+                  <span className="font-medium text-ink-primary">
+                    {formatDateDisplay(
+                      panorama.primeiraAquisicao
+                    )}
+                  </span>{" "}
+                  até{" "}
+                  <span className="font-medium text-ink-primary">
+                    {formatDateDisplay(
+                      panorama.ultimaAquisicao
+                    )}
+                  </span>
+                  .
+                </p>
+              )}
+          </motion.div>
+
+          {/* ==================================================
+              HISTÓRICO FINANCEIRO
+              ================================================== */}
+
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.03,
+            }}
+            className="space-y-3"
+          >
+            <SectionTitle
+              icon={
+                <Receipt
+                  size={
+                    15
+                  }
+                />
+              }
+              title="Histórico de Aquisições"
+            />
+
+            <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
+                    Valor registrado
+                  </p>
+
+                  <p className="mt-1 font-display text-xl font-semibold text-ink-primary">
+                    {aquisicoesComPreco >
+                    0
+                      ? formatCurrency(
+                          custoHistorico
+                        )
+                      : "Sem valores"}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-xs font-medium text-ink-primary">
+                    {
+                      aquisicoesComPreco
+                    }{" "}
+                    compra
+                    {aquisicoesComPreco !==
+                    1
+                      ? "s"
+                      : ""}{" "}
+                    com preço
+                  </p>
+
+                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                    Soma apenas eventos de aquisição
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ==================================================
+              ECONOMIA / VARIAÇÃO
+              ================================================== */}
+
+          {economiasPorMedicamento.length >
+            0 &&
             !dismissEconomia && (
               <motion.div
                 initial={{
@@ -1024,118 +2088,161 @@ function TratamentoContent() {
                   opacity: 1,
                   y: 0,
                 }}
-                className={`
-                  flex items-center
-                  justify-between
-                  rounded-2xl
-                  border
-                  p-4
-                  ${
-                    economiaInfo.economia >
-                    0
-                      ? "border-emerald-500/30 bg-emerald-500/10"
-                      : "border-coral/30 bg-coral/10"
-                  }
-                `}
+                className="space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4"
               >
-                <div className="flex flex-1 items-center gap-3">
-                  <div
-                    className={`
-                      rounded-full
-                      p-2
-                      ${
-                        economiaInfo.economia >
-                        0
-                          ? "bg-emerald-500/20"
-                          : "bg-coral/20"
-                      }
-                    `}
-                  >
-                    {economiaInfo.economia >
-                    0 ? (
-                      <TrendingDown
-                        size={20}
-                        className="text-emerald-400"
-                      />
-                    ) : (
-                      <TrendingUp
-                        size={20}
-                        className="text-coral"
-                      />
-                    )}
-                  </div>
-
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-ink-primary">
-                      {economiaInfo.economia >
-                      0
-                        ? "💰 Economia na última compra"
-                        : "📈 Aumento de custo"}
+                    <p className="text-sm font-semibold text-ink-primary">
+                      Variação recente de preço
                     </p>
 
-                    <p className="text-xs text-ink-muted">
-                      {economiaInfo.economia >
-                      0
-                        ? `Você economizou ${formatCurrency(
-                            Math.abs(
-                              economiaInfo.economia
-                            )
-                          )} (${Math.abs(
-                            economiaInfo.percentual
-                          ).toFixed(
-                            1
-                          )}%) em relação à média anterior.`
-                        : `A última compra custou ${formatCurrency(
-                            Math.abs(
-                              economiaInfo.economia
-                            )
-                          )} (${Math.abs(
-                            economiaInfo.percentual
-                          ).toFixed(
-                            1
-                          )}%) a mais que a média.`}
+                    <p className="mt-0.5 text-[10px] text-ink-muted">
+                      Comparação feita separadamente por medicamento.
                     </p>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleDismissEconomia
+                    }
+                    className="shrink-0 rounded-full p-1.5 transition-colors hover:bg-surface-raised"
+                    aria-label="Ocultar análise de preço"
+                  >
+                    <X
+                      size={
+                        16
+                      }
+                      className="text-ink-muted"
+                    />
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={
-                    handleDismissEconomia
-                  }
-                  className="
-                    ml-2 shrink-0
-                    rounded-full p-1.5
-                    transition-colors
-                    hover:bg-void/20
-                  "
-                  aria-label="Fechar alerta"
-                >
-                  <X
-                    size={16}
-                    className="text-ink-muted"
-                  />
-                </button>
+                <div className="space-y-2 pt-1">
+                  {economiasPorMedicamento
+                    .slice(
+                      0,
+                      3
+                    )
+                    .map(
+                      (
+                        item
+                      ) => {
+                        const melhorou =
+                          item.economia
+                            .economia >
+                          0;
+
+                        return (
+                          <div
+                            key={
+                              item.medicamento
+                                .id
+                            }
+                            className={`flex items-start gap-3 rounded-2xl border p-3 ${
+                              melhorou
+                                ? "border-emerald-500/20 bg-emerald-500/5"
+                                : "border-coral/20 bg-coral/5"
+                            }`}
+                          >
+                            <div
+                              className={`mt-0.5 rounded-full p-1.5 ${
+                                melhorou
+                                  ? "bg-emerald-500/15 text-emerald-400"
+                                  : "bg-coral/15 text-coral"
+                              }`}
+                            >
+                              {melhorou ? (
+                                <TrendingDown
+                                  size={
+                                    15
+                                  }
+                                />
+                              ) : (
+                                <TrendingUp
+                                  size={
+                                    15
+                                  }
+                                />
+                              )}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-semibold text-ink-primary">
+                                {
+                                  item
+                                    .medicamento
+                                    .nome
+                                }
+                              </p>
+
+                              <p className="mt-0.5 text-[10px] leading-relaxed text-ink-muted">
+                                {melhorou
+                                  ? `Última aquisição ficou ${formatCurrency(
+                                      Math.abs(
+                                        item.economia
+                                          .economia
+                                      )
+                                    )} abaixo da média anterior (${Math.abs(
+                                      item.economia
+                                        .percentual
+                                    ).toFixed(
+                                      1
+                                    )}%).`
+                                  : `Última aquisição ficou ${formatCurrency(
+                                      Math.abs(
+                                        item.economia
+                                          .economia
+                                      )
+                                    )} acima da média anterior (${Math.abs(
+                                      item.economia
+                                        .percentual
+                                    ).toFixed(
+                                      1
+                                    )}%).`}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                    )}
+                </div>
               </motion.div>
             )}
 
-          {/* ====================================================
-              REDE DE APOIO (MÉDICOS, HOSPITAIS E LOCAIS)
-          ==================================================== */}
+          {/* ==================================================
+              REDE DE APOIO
+              ================================================== */}
 
           <motion.div
-            variants={fadeUp}
+            variants={
+              fadeUp
+            }
             initial="initial"
             animate="animate"
-            transition={{ delay: 0.03 }}
+            transition={{
+              delay:
+                0.04,
+            }}
             className="space-y-3"
           >
             <SectionTitle
-              icon={<Users size={15} />}
+              icon={
+                <Users
+                  size={
+                    15
+                  }
+                />
+              }
               title="Rede de Apoio"
             />
 
-            {linkedMedicos.length === 0 && linkedHospitais.length === 0 && linkedLocais.length === 0 ? (
+            {linkedMedicos.length ===
+              0 &&
+            linkedHospitais.length ===
+              0 &&
+            linkedLocais.length ===
+              0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/40 p-4 text-center">
                 <p className="text-xs text-ink-muted">
                   Nenhum profissional ou local de saúde vinculado.
@@ -1143,172 +2250,191 @@ function TratamentoContent() {
               </div>
             ) : (
               <div className="space-y-2">
-                
-                {/* Médicos */}
                 {linkedMedicos.map(
-                  (med: Medico) => (
+                  (
+                    medico
+                  ) => (
                     <DetailInfoRow
-                      key={med.id}
+                      key={
+                        medico.id
+                      }
                       icon={
                         <Stethoscope
-                          size={18}
+                          size={
+                            18
+                          }
                         />
                       }
                       iconClassName="bg-ice/10 text-ice"
                       label="Profissional"
                       action={
                         <ChevronRight
-                          size={17}
+                          size={
+                            17
+                          }
                           className="text-ink-faint"
                         />
                       }
                     >
                       <button
                         type="button"
-                        onClick={() => {
-                          trigger(
-                            "vibrate"
-                          );
+                        onClick={
+                          () => {
+                            trigger(
+                              "vibrate"
+                            );
 
-                          router.push(
-                            `/saude/medicos/detalhes?id=${med.id}`
-                          );
-                        }}
-                        className="
-                          max-w-full
-                          truncate
-                          text-left
-                          text-sm
-                          font-semibold
-                          text-ink-primary
-                          transition-colors
-                          hover:text-ice
-                        "
+                            router.push(
+                              `/saude/medicos/detalhes?id=${medico.id}`
+                            );
+                          }
+                        }
+                        className="max-w-full truncate text-left text-sm font-semibold text-ink-primary transition-colors hover:text-ice"
                       >
-                        Dr(a). {med.nome}
+                        Dr(a).{" "}
+                        {
+                          medico.nome
+                        }
                       </button>
                     </DetailInfoRow>
                   )
                 )}
 
-                {/* Hospitais */}
                 {linkedHospitais.map(
-                  (hosp: Hospital) => (
+                  (
+                    hospital
+                  ) => (
                     <DetailInfoRow
-                      key={hosp.id}
+                      key={
+                        hospital.id
+                      }
                       icon={
                         <Building2
-                          size={18}
+                          size={
+                            18
+                          }
                         />
                       }
                       iconClassName="bg-violet-400/10 text-violet-400"
                       label="Hospital / Clínica"
                       action={
                         <ChevronRight
-                          size={17}
+                          size={
+                            17
+                          }
                           className="text-ink-faint"
                         />
                       }
                     >
                       <button
                         type="button"
-                        onClick={() => {
-                          trigger(
-                            "vibrate"
-                          );
+                        onClick={
+                          () => {
+                            trigger(
+                              "vibrate"
+                            );
 
-                          router.push(
-                            `/saude/hospitais/detalhes?id=${hosp.id}`
-                          );
-                        }}
-                        className="
-                          max-w-full
-                          truncate
-                          text-left
-                          text-sm
-                          font-semibold
-                          text-ink-primary
-                          transition-colors
-                          hover:text-violet-400
-                        "
+                            router.push(
+                              `/saude/hospitais/detalhes?id=${hospital.id}`
+                            );
+                          }
+                        }
+                        className="max-w-full truncate text-left text-sm font-semibold text-ink-primary transition-colors hover:text-violet-400"
                       >
-                        {hosp.nome}
+                        {
+                          hospital.nome
+                        }
                       </button>
                     </DetailInfoRow>
                   )
                 )}
 
-                {/* Locais SUS / Postos */}
                 {linkedLocais.map(
-                  (loc: LocalSaude) => (
+                  (
+                    local
+                  ) => (
                     <DetailInfoRow
-                      key={loc.id}
+                      key={
+                        local.id
+                      }
                       icon={
                         <MapPin
-                          size={18}
+                          size={
+                            18
+                          }
                         />
                       }
                       iconClassName="bg-emerald-400/10 text-emerald-400"
-                      label="Posto de Saúde"
+                      label="Local de Saúde"
                       action={
                         <ChevronRight
-                          size={17}
+                          size={
+                            17
+                          }
                           className="text-ink-faint"
                         />
                       }
                     >
                       <button
                         type="button"
-                        onClick={() => {
-                          trigger(
-                            "vibrate"
-                          );
+                        onClick={
+                          () => {
+                            trigger(
+                              "vibrate"
+                            );
 
-                          router.push(
-                            `/saude/locais/detalhes?id=${loc.id}`
-                          );
-                        }}
-                        className="
-                          max-w-full
-                          truncate
-                          text-left
-                          text-sm
-                          font-semibold
-                          text-ink-primary
-                          transition-colors
-                          hover:text-emerald-400
-                        "
+                            router.push(
+                              `/saude/locais/detalhes?id=${local.id}`
+                            );
+                          }
+                        }
+                        className="max-w-full truncate text-left text-sm font-semibold text-ink-primary transition-colors hover:text-emerald-400"
                       >
-                        {loc.nome}
+                        {
+                          local.nome
+                        }
                       </button>
                     </DetailInfoRow>
                   )
                 )}
-
               </div>
             )}
           </motion.div>
 
-          {/* ====================================================
-              ÚLTIMAS COMPRAS
-          ==================================================== */}
+          {/* ==================================================
+              ÚLTIMAS AQUISIÇÕES
+              ================================================== */}
 
-          {linkedRenovacoes.length > 0 && (
+          {linkedRenovacoes.length >
+            0 && (
             <motion.div
-              variants={fadeUp}
+              variants={
+                fadeUp
+              }
               initial="initial"
               animate="animate"
-              transition={{ delay: 0.04 }}
+              transition={{
+                delay:
+                  0.05,
+              }}
               className="space-y-3"
             >
               <SectionTitle
-                icon={<Clock size={15} />}
-                title="Últimas Compras"
+                icon={
+                  <Clock
+                    size={
+                      15
+                    }
+                  />
+                }
+                title="Últimas Aquisições"
                 action={
                   linkedRenovacoes.length >
                   5 ? (
                     <span className="text-[10px] font-medium text-ink-faint">
-                      {linkedRenovacoes.length}{" "}
+                      {
+                        linkedRenovacoes.length
+                      }{" "}
                       registros
                     </span>
                   ) : undefined
@@ -1317,50 +2443,90 @@ function TratamentoContent() {
 
               <div className="space-y-2">
                 {linkedRenovacoes
-                  .slice(0, 5)
+                  .slice(
+                    0,
+                    5
+                  )
                   .map(
                     (
-                      ren: Renovacao
+                      renovacao
                     ) => {
-                      const med =
+                      const medicamento =
                         linkedMedicamentos.find(
                           (
-                            m: Medicamento
+                            item
                           ) =>
-                            m.id ===
-                            ren.medicamento_id
+                            item.id ===
+                            renovacao.medicamento_id
                         );
 
                       return (
-                        <DetailInfoRow
-                          key={ren.id}
-                          icon={
-                            <ShoppingCart
-                              size={17}
-                            />
+                        <button
+                          key={
+                            renovacao.id
                           }
-                          iconClassName="bg-emerald-400/10 text-emerald-400"
-                          label={formatDateDisplay(
-                            ren.data
-                          )}
-                        >
-                          <div className="flex min-w-0 items-center justify-between gap-3">
-                            <p className="min-w-0 truncate text-sm font-semibold text-ink-primary">
-                              {med?.nome ||
-                                "Medicamento"}
-                            </p>
+                          type="button"
+                          onClick={
+                            () => {
+                              if (
+                                !renovacao.id
+                              ) {
+                                return;
+                              }
 
-                            {typeof ren.preco ===
-                              "number" &&
-                              ren.preco > 0 && (
+                              trigger(
+                                "vibrate"
+                              );
+
+                              router.push(
+                                `/saude/renovacao/detalhes?id=${renovacao.id}`
+                              );
+                            }
+                          }
+                          className="w-full text-left transition-transform active:scale-[0.99]"
+                        >
+                          <DetailInfoRow
+                            icon={
+                              <ShoppingCart
+                                size={
+                                  17
+                                }
+                              />
+                            }
+                            iconClassName="bg-emerald-400/10 text-emerald-400"
+                            label={
+                              formatDateDisplay(
+                                renovacao.data
+                              )
+                            }
+                            action={
+                              <ChevronRight
+                                size={
+                                  16
+                                }
+                                className="text-ink-faint"
+                              />
+                            }
+                          >
+                            <div className="flex min-w-0 items-center justify-between gap-3">
+                              <p className="min-w-0 truncate text-sm font-semibold text-ink-primary">
+                                {medicamento?.nome ||
+                                  "Medicamento"}
+                              </p>
+
+                              {getPrecoSeguro(
+                                renovacao.preco
+                              ) >
+                                0 && (
                                 <span className="shrink-0 text-sm font-semibold text-emerald-400">
                                   {formatCurrency(
-                                    ren.preco
+                                    renovacao.preco as number
                                   )}
                                 </span>
                               )}
-                          </div>
-                        </DetailInfoRow>
+                            </div>
+                          </DetailInfoRow>
+                        </button>
                       );
                     }
                   )}
@@ -1372,31 +2538,44 @@ function TratamentoContent() {
                   E mais{" "}
                   {linkedRenovacoes.length -
                     5}{" "}
-                  compra(s)...
+                  aquisição(ões).
                 </p>
               )}
             </motion.div>
           )}
 
-          {/* ====================================================
+          {/* ==================================================
               MEDICAMENTOS EM USO
-          ==================================================== */}
+              ================================================== */}
 
           <motion.div
-            variants={fadeUp}
+            variants={
+              fadeUp
+            }
             initial="initial"
             animate="animate"
-            transition={{ delay: 0.05 }}
+            transition={{
+              delay:
+                0.06,
+            }}
             className="space-y-3"
           >
             <SectionTitle
-              icon={<Pill size={15} />}
+              icon={
+                <Pill
+                  size={
+                    15
+                  }
+                />
+              }
               title="Medicamentos em Uso"
               action={
                 medicamentosAtivos.length >
                 0 ? (
                   <span className="text-[10px] font-medium text-ink-faint">
-                    {medicamentosAtivos.length}{" "}
+                    {
+                      medicamentosAtivos.length
+                    }{" "}
                     ativo
                     {medicamentosAtivos.length !==
                     1
@@ -1411,90 +2590,87 @@ function TratamentoContent() {
             0 ? (
               <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">
                 <p className="text-sm text-ink-muted">
-                  Nenhum medicamento ativo
-                  vinculado a este tratamento.
+                  Nenhum medicamento ativo vinculado a este tratamento.
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {medicamentosAtivos.map(
-                  (med) => (
+                  (
+                    medicamento
+                  ) => (
                     <button
-                      key={med.id}
+                      key={
+                        medicamento.id
+                      }
                       type="button"
-                      onClick={() => {
-                        trigger(
-                          "vibrate"
-                        );
+                      onClick={
+                        () => {
+                          trigger(
+                            "vibrate"
+                          );
 
-                        router.push(
-                          `/saude/medicamentos/detalhes?id=${med.id}`
-                        );
-                      }}
-                      className="
-                        group relative
-                        w-full
-                        cursor-pointer
-                        rounded-[24px]
-                        border
-                        border-surface-border/50
-                        bg-surface
-                        p-4
-                        text-left
-                        shadow-sm
-                        transition-all
-                        hover:border-ice/30
-                        active:scale-[0.98]
-                      "
+                          router.push(
+                            `/saude/medicamentos/detalhes?id=${medicamento.id}`
+                          );
+                        }
+                      }
+                      className="group relative w-full cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all hover:border-ice/30 active:scale-[0.98]"
                       style={{
-                        borderLeft: `4px solid ${
-                          activePersonId
-                            ? "var(--person-accent, #38BDF8)"
-                            : "#38BDF8"
-                        }`,
+                        borderLeft:
+                          `4px solid ${theme.hex}`,
                       }}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ice/10 bg-ice/10 text-ice">
-                            <Pill size={18} />
+                            <Pill
+                              size={
+                                18
+                              }
+                            />
                           </div>
 
                           <div className="min-w-0">
                             <div className="flex min-w-0 items-center gap-2">
                               <p className="truncate text-[15px] font-semibold text-ink-primary">
-                                {med.nome}
+                                {
+                                  medicamento.nome
+                                }
                               </p>
 
-                              {med.receitaVencida && (
+                              {medicamento.receitaVencida && (
                                 <span className="shrink-0 rounded-full bg-coral/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-coral">
-                                  Vencida
+                                  Receita vencida
                                 </span>
                               )}
 
-                              {med.insight
-                                ?.deveRenovar && (
-                                <span className="shrink-0 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-400">
-                                  Renovar
-                                </span>
-                              )}
+                              {!medicamento.receitaVencida &&
+                                medicamento.insight
+                                  ?.deveRenovar && (
+                                  <span className="shrink-0 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-400">
+                                    Renovar
+                                  </span>
+                                )}
                             </div>
 
                             <p className="mt-0.5 truncate text-xs text-ink-muted">
-                              {med.dosagem} • Dr(a).{" "}
-                              {med.medico}
+                              {
+                                medicamento.dosagem
+                              }
+
+                              {medicamento.medico
+                                ? ` • Dr(a). ${medicamento.medico}`
+                                : ""}
                             </p>
                           </div>
                         </div>
 
                         <ChevronRight
-                          size={18}
-                          className="
-                            shrink-0
-                            text-ink-faint
-                            transition-colors
-                            group-hover:text-ice
-                          "
+                          size={
+                            18
+                          }
+                          className="shrink-0 text-ink-faint transition-colors group-hover:text-ice"
                         />
                       </div>
                     </button>
@@ -1504,26 +2680,39 @@ function TratamentoContent() {
             )}
           </motion.div>
 
-          {/* ====================================================
+          {/* ==================================================
               HISTÓRICO DESCONTINUADOS
-          ==================================================== */}
+              ================================================== */}
 
           {medicamentosDescontinuados.length >
             0 && (
             <motion.div
-              variants={fadeUp}
+              variants={
+                fadeUp
+              }
               initial="initial"
               animate="animate"
-              transition={{ delay: 0.1 }}
+              transition={{
+                delay:
+                  0.08,
+              }}
               className="space-y-3"
             >
               <SectionTitle
-                icon={<History size={15} />}
-                title="Histórico (Descontinuados)"
+                icon={
+                  <History
+                    size={
+                      15
+                    }
+                  />
+                }
+                title="Histórico de Medicamentos"
                 action={
                   <span className="text-[10px] font-medium text-coral">
-                    {medicamentosDescontinuados.length}{" "}
-                    suspenso
+                    {
+                      medicamentosDescontinuados.length
+                    }{" "}
+                    descontinuado
                     {medicamentosDescontinuados.length !==
                     1
                       ? "s"
@@ -1534,62 +2723,61 @@ function TratamentoContent() {
 
               <div className="ml-3 space-y-3 border-l-2 border-surface-border/50 pl-4">
                 {medicamentosDescontinuados.map(
-                  (med) => (
+                  (
+                    medicamento
+                  ) => (
                     <button
-                      key={med.id}
+                      key={
+                        medicamento.id
+                      }
                       type="button"
-                      onClick={() => {
-                        trigger(
-                          "vibrate"
-                        );
+                      onClick={
+                        () => {
+                          trigger(
+                            "vibrate"
+                          );
 
-                        router.push(
-                          `/saude/medicamentos/detalhes?id=${med.id}`
-                        );
-                      }}
-                      className="
-                        relative
-                        w-full
-                        cursor-pointer
-                        rounded-2xl
-                        border border-coral/10
-                        bg-surface-raised/60
-                        p-3.5
-                        text-left
-                        transition-all
-                        active:scale-[0.98]
-                      "
+                          router.push(
+                            `/saude/medicamentos/detalhes?id=${medicamento.id}`
+                          );
+                        }
+                      }
+                      className="relative w-full cursor-pointer rounded-2xl border border-coral/10 bg-surface-raised/60 p-3.5 text-left transition-all active:scale-[0.98]"
                     >
                       <div className="absolute -left-[23px] top-4 h-2.5 w-2.5 rounded-full border-2 border-void bg-coral ring-1 ring-surface-border/50" />
 
                       <div className="mb-1 flex items-start justify-between gap-3">
-                        <p className="min-w-0 text-sm font-semibold text-ink-primary line-through opacity-70">
-                          {med.nome}{" "}
-                          {med.dosagem}
+                        <p className="min-w-0 text-sm font-semibold text-ink-primary opacity-70">
+                          {
+                            medicamento.nome
+                          }{" "}
+                          {
+                            medicamento.dosagem
+                          }
                         </p>
 
                         <span className="shrink-0 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold text-coral">
-                          SUSPENSO
+                          DESCONTINUADO
                         </span>
                       </div>
 
-                      {med.motivo_descontinuacao && (
+                      {medicamento.motivo_descontinuacao && (
                         <p className="mb-2 text-xs italic text-ink-muted">
-                          "
                           {
-                            med.motivo_descontinuacao
+                            medicamento.motivo_descontinuacao
                           }
-                          "
                         </p>
                       )}
 
-                      {med.substituido_por_id && (
+                      {medicamento.substituido_por_id && (
                         <div className="mt-2 flex w-fit items-center gap-1.5 rounded-md border border-ice/10 bg-ice/10 px-2 py-1 text-[11px] font-medium text-ice">
                           <ArrowLeftRight
-                            size={10}
+                            size={
+                              10
+                            }
                           />
-                          Substituído por
-                          outro medicamento
+
+                          Possui medicamento substituto registrado
                         </div>
                       )}
                     </button>
@@ -1599,25 +2787,38 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          {/* ====================================================
-              RECEITAS E LAUDOS
-          ==================================================== */}
+          {/* ==================================================
+              DOCUMENTOS
+              ================================================== */}
 
           <motion.div
-            variants={fadeUp}
+            variants={
+              fadeUp
+            }
             initial="initial"
             animate="animate"
-            transition={{ delay: 0.15 }}
+            transition={{
+              delay:
+                0.1,
+            }}
             className="space-y-3"
           >
             <SectionTitle
-              icon={<FileText size={15} />}
+              icon={
+                <FileText
+                  size={
+                    15
+                  }
+                />
+              }
               title="Receitas e Laudos"
               action={
                 linkedDocuments.length >
                 0 ? (
                   <span className="text-[10px] font-medium text-ink-faint">
-                    {linkedDocuments.length}{" "}
+                    {
+                      linkedDocuments.length
+                    }{" "}
                     documento
                     {linkedDocuments.length !==
                     1
@@ -1632,25 +2833,34 @@ function TratamentoContent() {
             0 ? (
               <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">
                 <p className="text-sm text-ink-muted">
-                  Nenhum documento ou laudo
-                  vinculado a este tratamento.
+                  Nenhum documento ou laudo vinculado a este tratamento.
                 </p>
               </div>
             ) : (
               <motion.div
-                variants={listVariants}
+                variants={
+                  listVariants
+                }
                 initial="hidden"
                 animate="show"
                 className="space-y-4"
               >
                 {linkedDocuments.map(
-                  (doc) => (
+                  (
+                    document
+                  ) => (
                     <motion.div
-                      key={doc.id}
-                      variants={cardVariants}
+                      key={
+                        document.id
+                      }
+                      variants={
+                        cardVariants
+                      }
                     >
                       <DocumentCard
-                        document={doc}
+                        document={
+                          document
+                        }
                         onFavoriteToggle={
                           handleFavoriteToggle
                         }
@@ -1667,14 +2877,16 @@ function TratamentoContent() {
   );
 }
 
-/* ============================================================
-   PÁGINA
-   ============================================================ */
+// ============================================================
+// PAGE
+// ============================================================
 
 export default function TratamentoPage() {
   return (
     <Suspense
-      fallback={<DetailSkeleton />}
+      fallback={
+        <DetailSkeleton />
+      }
     >
       <TratamentoContent />
     </Suspense>

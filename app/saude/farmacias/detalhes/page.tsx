@@ -1,537 +1,796 @@
 // app/saude/farmacias/detalhes/page.tsx
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import {
+  motion,
+} from "framer-motion";
 import {
   ArrowLeft,
-  Store,
-  MapPin,
-  Phone,
-  Edit3,
-  Trash2,
-  Pill,
-  ExternalLink,
-  Clock,
-  Plus,
-  FileWarning,
-  AlertTriangle,
-  Navigation,
+  Award,
+  Building2,
   Calendar,
+  Clock,
   DollarSign,
-  Gift,
+  Edit3,
+  ExternalLink,
+  FileText,
+  MapPin,
+  Navigation,
+  Phone,
+  Pill,
+  ReceiptText,
+  Store,
+  Trash2,
+  User,
 } from "lucide-react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { useFarmacias } from "@/hooks/useFarmacias";
-import { useMedicamentos } from "@/hooks/useMedicamentos";
-import { useHapticFeedback } from "@/lib/haptics";
-import { PageTransition } from "@/components/PageTransition";
-import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
 import {
-  calcularEconomia,
-  isReceitaVencidaSegura,
-  sugerirRenovacao,
+  useLiveQuery,
+} from "dexie-react-hooks";
+
+import { db } from "@/lib/db";
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
+import {
   analisarFarmaciaDetalhada,
+  analisarMelhorFarmacia,
+  sugerirRenovacao,
 } from "@/lib/health-insights";
-import { useSubmitAction } from "@/hooks/useSubmitAction";
-import { useMounted } from "@/hooks/useMounted";
+
+import {
+  useActivePersonId,
+} from "@/hooks/useActivePersonId";
+import {
+  useFarmacias,
+} from "@/hooks/useFarmacias";
+import {
+  useMedicamentos,
+} from "@/hooks/useMedicamentos";
+import {
+  useRenovacoes,
+} from "@/hooks/useRenovacoes";
+import {
+  useMounted,
+} from "@/hooks/useMounted";
+import {
+  useSubmitAction,
+} from "@/hooks/useSubmitAction";
+
+import {
+  PageTransition,
+} from "@/components/PageTransition";
+import {
+  DetailSkeleton,
+} from "@/components/loading/DetailSkeleton";
+import {
+  ConfirmationModal,
+} from "@/components/ConfirmationModal";
 import {
   SectionTitle,
   StatCard,
 } from "@/components/detail/DetailComponents";
-import type { Farmacia, Medicamento, Renovacao } from "@/lib/types";
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+import type {
+  Farmacia,
+  Medicamento,
+  Renovacao,
+} from "@/lib/types";
 
-function formatDateDisplay(isoStr?: string): string {
-  if (!isoStr) return "";
+// ============================================================
+// TYPES
+// ============================================================
 
-  const parts = isoStr.split("-");
+type RenovacaoComMedicamento =
+  Renovacao & {
+    medicamento_nome: string;
+    dosagem?: string;
+  };
 
-  if (parts.length !== 3) return isoStr;
+type MedicamentoComContexto =
+  Medicamento & {
+    deveRenovar: boolean;
+    ultimaCompra:
+      | Renovacao
+      | null;
+  };
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function formatDateDisplay(
+  isoStr?: string
+): string {
+  if (!isoStr) {
+    return "";
+  }
+
+  const datePart =
+    isoStr.includes("T")
+      ? isoStr.split("T")[0]
+      : isoStr;
+
+  const parts =
+    datePart.split("-");
+
+  if (
+    parts.length !== 3
+  ) {
+    return isoStr;
+  }
 
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function formatCurrency(value: number): string {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+function formatCurrency(
+  value: number
+): string {
+  return `R$ ${value
+    .toFixed(2)
+    .replace(".", ",")}`;
 }
 
 const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
+  initial: {
+    opacity: 0,
+    y: 12,
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+  },
 };
 
-/* ============================================================
-   CONTEÚDO
-   ============================================================ */
+// ============================================================
+// CONTENT
+// ============================================================
 
 function DetalhesFarmaciaContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const id = searchParams.get("id");
+  const router =
+    useRouter();
 
-  const { trigger } = useHapticFeedback();
-  const { getFarmacia, deleteFarmacia } = useFarmacias();
-  const { medicamentos } = useMedicamentos();
-  const deleteAction = useSubmitAction();
-  const mounted = useMounted();
+  const searchParams =
+    useSearchParams();
 
-  const [farmacia, setFarmacia] = useState<Farmacia | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
+  const id =
+    searchParams.get(
+      "id"
+    );
 
-  /* ==========================================================
-     DEXIE
-     ========================================================== */
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
 
-  const renovacoes = useLiveQuery(
-    () => db.renovacoes.toArray(),
-    []
-  ) || [];
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  /* ==========================================================
-     CARREGAMENTO
-     ========================================================== */
+  /*
+   * FARMÁCIA:
+   * global por usuário.
+   */
+  const {
+    getFarmacia,
+    deleteFarmaciaSafe,
+  } =
+    useFarmacias();
+
+  /*
+   * MEDICAMENTOS E RENOVAÇÕES:
+   * filtrados pela pessoa ativa nos respectivos hooks.
+   */
+  const {
+    medicamentos = [],
+  } =
+    useMedicamentos();
+
+  const {
+    renovacoes = [],
+  } =
+    useRenovacoes();
+
+  const deleteAction =
+    useSubmitAction();
+
+  const mounted =
+    useMounted();
+
+  // ==========================================================
+  // STATE
+  // ==========================================================
+
+  const [
+    farmacia,
+    setFarmacia,
+  ] =
+    useState<Farmacia | null>(
+      null
+    );
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(true);
+
+  const [
+    showDeleteModal,
+    setShowDeleteModal,
+  ] =
+    useState(false);
+
+  // ==========================================================
+  // PERSON CONTEXT
+  // ==========================================================
+
+  const activePerson =
+    useLiveQuery(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return undefined;
+        }
+
+        return db.persons.get(
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // LOAD FARMACIA
+  // ==========================================================
 
   useEffect(() => {
-    let active = true;
-
     if (!id) {
-      router.replace("/saude/farmacias");
+      router.replace(
+        "/saude/farmacias"
+      );
+
       return;
     }
 
-    const loadFarmacia = async () => {
-      try {
-        const item = await getFarmacia(id);
+    let cancelled =
+      false;
 
-        if (!active) return;
+    const load =
+      async () => {
+        setIsLoading(
+          true
+        );
 
-        if (item) {
-          setFarmacia(item);
-        } else {
-          router.replace("/saude/farmacias");
+        try {
+          /*
+           * Não existe person_id aqui.
+           * Farmácia é global.
+           */
+          const item =
+            await getFarmacia(
+              id
+            );
+
+          if (
+            cancelled
+          ) {
+            return;
+          }
+
+          if (!item) {
+            router.replace(
+              "/saude/farmacias"
+            );
+
+            return;
+          }
+
+          setFarmacia(
+            item
+          );
+        } catch (
+          error
+        ) {
+          console.error(
+            "Erro ao carregar farmácia:",
+            error
+          );
+
+          if (
+            !cancelled
+          ) {
+            router.replace(
+              "/saude/farmacias"
+            );
+          }
+        } finally {
+          if (
+            !cancelled
+          ) {
+            setIsLoading(
+              false
+            );
+          }
         }
-      } catch (error) {
-        console.error("Erro ao carregar farmácia:", error);
+      };
 
-        if (active) {
-          router.replace("/saude/farmacias");
-        }
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    loadFarmacia();
+    void load();
 
     return () => {
-      active = false;
+      cancelled =
+        true;
     };
-  }, [id, getFarmacia, router]);
+  }, [
+    id,
+    getFarmacia,
+    router,
+  ]);
 
-  /* ==========================================================
-     ANÁLISE
-     ========================================================== */
+  // ==========================================================
+  // RELATIONAL ANALYSIS
+  // ==========================================================
 
-  const analiseFarmacia = useMemo(() => {
-    if (!farmacia || !medicamentos) {
-      return {
-        medicamentosVinculados: [] as Medicamento[],
-        totalGasto: 0,
-        precoMedio: 0,
-        ultimaCompra: null as Renovacao | null,
-        ultimasRenovacoes:
-          [] as Array<
-            Renovacao & {
-              medicamento_nome: string;
-              dosagem?: string;
-            }
-          >,
-        economia: null,
-      };
-    }
-
-    const medicamentosVinculados = medicamentos.filter(
-      (medicamento) => medicamento.farmacia_id === farmacia.id
-    );
-
-    const renovacoesDaFarmacia = renovacoes
-      .filter((renovacao) => renovacao.farmacia_id === farmacia.id)
-      .sort(
-        (a, b) =>
-          new Date(b.data).getTime() -
-          new Date(a.data).getTime()
-      );
-
-    let totalGasto = 0;
-    const precosParaMedia: number[] = [];
-
-    renovacoesDaFarmacia.forEach((renovacao) => {
+  const analiseFarmacia =
+    useMemo(() => {
       if (
-        typeof renovacao.preco === "number" &&
-        renovacao.preco > 0
+        !farmacia?.id
       ) {
-        totalGasto += renovacao.preco;
-        precosParaMedia.push(renovacao.preco);
+        return {
+          medicamentosVinculados:
+            [] as Medicamento[],
+          renovacoesDaFarmacia:
+            [] as Renovacao[],
+          ultimasRenovacoes:
+            [] as RenovacaoComMedicamento[],
+          totalGasto: 0,
+          precoMedio: 0,
+          ultimaCompra:
+            null as Renovacao | null,
+          comprasCount: 0,
+        };
       }
-    });
 
-    medicamentosVinculados.forEach((medicamento) => {
-      if (
-        typeof medicamento.preco === "number" &&
-        medicamento.preco > 0
-      ) {
-        const jaTemRenovacaoIgual =
-          renovacoesDaFarmacia.some(
-            (renovacao) =>
-              renovacao.medicamento_id === medicamento.id &&
-              renovacao.preco === medicamento.preco &&
+      /*
+       * Estes arrays já estão person-scoped.
+       *
+       * Portanto:
+       * - Farmácia continua global;
+       * - dados clínico-financeiros são da pessoa ativa.
+       */
+      const medicamentosVinculados =
+        medicamentos.filter(
+          (
+            medicamento
+          ) =>
+            medicamento.farmacia_id ===
+            farmacia.id
+        );
+
+      const renovacoesDaFarmacia =
+        renovacoes
+          .filter(
+            (
+              renovacao
+            ) =>
+              renovacao.farmacia_id ===
+              farmacia.id
+          )
+          .sort(
+            (
+              first,
+              second
+            ) =>
               (
-                renovacao.data === medicamento.data_receita ||
-                renovacao.data === medicamento.estoque_data_referencia
+                second.data ||
+                ""
+              ).localeCompare(
+                first.data ||
+                  ""
               )
           );
 
-        if (!jaTemRenovacaoIgual) {
-          totalGasto += medicamento.preco;
-          precosParaMedia.push(medicamento.preco);
-        }
-      }
-    });
-
-    const precoMedio =
-      precosParaMedia.length > 0
-        ? precosParaMedia.reduce((a, b) => a + b, 0) /
-          precosParaMedia.length
-        : 0;
-
-    const ultimaCompra =
-      renovacoesDaFarmacia.length > 0
-        ? renovacoesDaFarmacia[0]
-        : null;
-
-    const ultimasRenovacoes = renovacoesDaFarmacia
-      .slice(0, 5)
-      .map((renovacao) => {
-        const medicamento = medicamentosVinculados.find(
-          (item) => item.id === renovacao.medicamento_id
+      /*
+       * Gasto histórico usa SOMENTE Renovações.
+       *
+       * medicamento.preco é um valor atual/de referência;
+       * não prova que uma compra aconteceu.
+       *
+       * Somá-lo como gasto gerava falso histórico financeiro.
+       */
+      const comprasComPreco =
+        renovacoesDaFarmacia.filter(
+          (
+            renovacao
+          ) =>
+            typeof renovacao.preco ===
+              "number" &&
+            renovacao.preco >
+              0
         );
 
-        return {
-          ...renovacao,
-          medicamento_nome:
-            medicamento?.nome || "Medicamento",
-          dosagem: medicamento?.dosagem || "",
-        };
-      });
+      const totalGasto =
+        comprasComPreco.reduce(
+          (
+            total,
+            renovacao
+          ) =>
+            total +
+            Number(
+              renovacao.preco
+            ),
+          0
+        );
 
-    const economia = calcularEconomia(
-      renovacoesDaFarmacia
-    );
+      const precoMedio =
+        comprasComPreco.length >
+        0
+          ? totalGasto /
+            comprasComPreco.length
+          : 0;
 
-    return {
-      medicamentosVinculados,
-      totalGasto,
-      precoMedio,
-      ultimaCompra,
-      ultimasRenovacoes,
-      economia,
-    };
-  }, [farmacia, medicamentos, renovacoes]);
+      const ultimaCompra =
+        renovacoesDaFarmacia[0] ||
+        null;
 
-  const medicamentosComBadge = useMemo(() => {
-    return analiseFarmacia.medicamentosVinculados.map(
-      (medicamento) => {
-        const renovacaoSugerida =
-          sugerirRenovacao(medicamento);
+      const ultimasRenovacoes:
+        RenovacaoComMedicamento[] =
+        renovacoesDaFarmacia
+          .slice(
+            0,
+            5
+          )
+          .map(
+            (
+              renovacao
+            ) => {
+              const medicamento =
+                medicamentos.find(
+                  (
+                    item
+                  ) =>
+                    item.id ===
+                    renovacao.medicamento_id
+                );
 
-        return {
-          ...medicamento,
-          receitaVencida: isReceitaVencidaSegura(
-            medicamento.proxima_renovacao
-          ),
-          deveRenovar: renovacaoSugerida.deveRenovar,
-        };
+              return {
+                ...renovacao,
+
+                medicamento_nome:
+                  medicamento?.nome ||
+                  "Medicamento",
+
+                dosagem:
+                  medicamento?.dosagem ||
+                  undefined,
+              };
+            }
+          );
+
+      return {
+        medicamentosVinculados,
+        renovacoesDaFarmacia,
+        ultimasRenovacoes,
+        totalGasto,
+        precoMedio,
+        ultimaCompra,
+        comprasCount:
+          renovacoesDaFarmacia.length,
+      };
+    }, [
+      farmacia,
+      medicamentos,
+      renovacoes,
+    ]);
+
+  // ==========================================================
+  // RANKING
+  // ==========================================================
+
+  const rankingFarmacias =
+    useMemo(() => {
+      /*
+       * Ranking também fica restrito à pessoa ativa porque
+       * renovacoes já é person-scoped.
+       */
+      return analisarMelhorFarmacia(
+        renovacoes
+      );
+    }, [
+      renovacoes,
+    ]);
+
+  const posicaoRanking =
+    useMemo(() => {
+      if (
+        !farmacia?.id
+      ) {
+        return null;
       }
+
+      const index =
+        rankingFarmacias.findIndex(
+          (
+            item
+          ) =>
+            item.farmacia_id ===
+            farmacia.id
+        );
+
+      return index >= 0
+        ? index + 1
+        : null;
+    }, [
+      farmacia?.id,
+      rankingFarmacias,
+    ]);
+
+  const isMaisEconomica =
+    posicaoRanking === 1;
+
+  // ==========================================================
+  // MEDICATION CONTEXT
+  // ==========================================================
+
+  const medicamentosComContexto =
+    useMemo<
+      MedicamentoComContexto[]
+    >(() => {
+      return analiseFarmacia.medicamentosVinculados.map(
+        (
+          medicamento
+        ) => {
+          const renovacaoSugerida =
+            sugerirRenovacao(
+              medicamento
+            );
+
+          const ultimaCompra =
+            analiseFarmacia.renovacoesDaFarmacia.find(
+              (
+                renovacao
+              ) =>
+                renovacao.medicamento_id ===
+                medicamento.id
+            ) ||
+            null;
+
+          return {
+            ...medicamento,
+
+            deveRenovar:
+              renovacaoSugerida.deveRenovar,
+
+            ultimaCompra,
+          };
+        }
+      );
+    }, [
+      analiseFarmacia,
+    ]);
+
+  // ==========================================================
+  // INSIGHT
+  // ==========================================================
+
+  const insightFarmacia =
+    useMemo(() => {
+      if (!farmacia) {
+        return null;
+      }
+
+      /*
+       * comprasCount agora representa compras históricas
+       * registradas, e não "medicamentos + compras".
+       */
+      return analisarFarmaciaDetalhada(
+        {
+          totalGasto:
+            analiseFarmacia.totalGasto,
+
+          comprasCount:
+            analiseFarmacia.comprasCount,
+
+          isMaisEconomica,
+        }
+      );
+    }, [
+      farmacia,
+      analiseFarmacia.totalGasto,
+      analiseFarmacia.comprasCount,
+      isMaisEconomica,
+    ]);
+
+  // ==========================================================
+  // LOADING
+  // ==========================================================
+
+  if (
+    !mounted ||
+    isLoading
+  ) {
+    return (
+      <DetailSkeleton />
     );
-  }, [analiseFarmacia.medicamentosVinculados]);
-
-  const insightFarmacia = useMemo(() => {
-    if (!farmacia) return null;
-
-    return analisarFarmaciaDetalhada({
-      totalGasto: analiseFarmacia.totalGasto,
-      comprasCount:
-        analiseFarmacia.medicamentosVinculados.length +
-        analiseFarmacia.ultimasRenovacoes.length,
-      isMaisEconomica: false,
-    });
-  }, [farmacia, analiseFarmacia]);
-
-  /* ==========================================================
-     ESTADO DE CARREGAMENTO
-     ========================================================== */
-
-  if (!mounted || isLoading) {
-    return <DetailSkeleton />;
   }
 
   if (!farmacia) {
     return null;
   }
 
-  /* ==========================================================
-     MENU
-     ========================================================== */
+  // ==========================================================
+  // DERIVED UI
+  // ==========================================================
 
-  const menuOptions = [
-    {
-      id: "nova-renovacao",
-      label: "Nova Renovação",
-      icon: FileWarning,
-      path: `/saude/renovacao/nova?farmacia_id=${farmacia.id}`,
-    },
-    {
-      id: "novo-medicamento",
-      label: "Novo Medicamento",
-      icon: Pill,
-      path: `/saude/medicamentos/novo?farmacia_id=${farmacia.id}`,
-    },
-  ];
+  const cor =
+    isMaisEconomica
+      ? "#34D399"
+      : "#F59E0B";
 
-  const handleMenuOptionClick = (path: string) => {
-    trigger("vibrate");
-    setIsMenuFlutuanteOpen(false);
-    router.push(path);
-  };
+  const activePersonName =
+    activePerson?.name ||
+    "Pessoa ativa";
 
-  /* ==========================================================
-     EXCLUSÃO
-     ========================================================== */
+  // ==========================================================
+  // DELETE
+  // ==========================================================
 
-  const handleDelete = () => {
-    if (!farmacia.id) return;
-
-    trigger("vibrate");
-
-    deleteAction.run(
-      async () => {
-        await deleteFarmacia(farmacia.id!);
-        router.replace("/saude/farmacias");
-      },
-      {
-        successMessage: "Farmácia excluída com sucesso",
-        errorMessage: "Erro ao excluir farmácia",
-        goBackOnSuccess: false,
+  const handleDelete =
+    () => {
+      if (
+        !farmacia.id
+      ) {
+        return;
       }
-    );
-  };
 
-  const cor = "#F59E0B";
+      trigger(
+        "vibrate"
+      );
 
-  /* ==========================================================
-     RENDER
-     ========================================================== */
+      deleteAction.run(
+        async () => {
+          /*
+           * Farmácia é global.
+           *
+           * O cleanup precisa alcançar referências de TODAS
+           * as pessoas, por isso usamos deleteFarmaciaSafe.
+           *
+           * Medicamentos e renovações não são excluídos.
+           */
+          await deleteFarmaciaSafe(
+            farmacia.id!
+          );
+
+          router.replace(
+            "/saude/farmacias"
+          );
+        },
+        {
+          successMessage:
+            "Farmácia excluída com sucesso",
+
+          errorMessage:
+            "Erro ao excluir farmácia",
+
+          goBackOnSuccess:
+            false,
+        }
+      );
+    };
+
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
-
         {/* ====================================================
             HEADER
-        ==================================================== */}
+            ==================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.back();
-              }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
-              type="button"
-              aria-label="Voltar"
-            >
-              <ArrowLeft size={18} className="text-ink-primary" />
-            </button>
-
-            <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber-400">
-                Farmácia
-              </p>
-
-              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
-                Detalhes da Farmácia
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-
-            <div className="relative">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 header-safe-top backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <button
-                onClick={() => {
-                  trigger("vibrate");
-                  setIsMenuFlutuanteOpen(
-                    (previous) => !previous
-                  );
-                }}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95 hover:bg-ice/20"
                 type="button"
-                aria-label="Adicionar registro"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.back();
+                }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+                aria-label="Voltar"
               >
-                <Plus size={18} />
+                <ArrowLeft
+                  size={18}
+                  className="text-ink-primary"
+                />
               </button>
 
-              <AnimatePresence>
-                {isMenuFlutuanteOpen && (
-                  <>
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.16 }}
-                      onClick={() =>
-                        setIsMenuFlutuanteOpen(false)
-                      }
-                      className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-                    />
+              <div className="min-w-0">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber-400">
+                  Entidade global
+                </p>
 
-                    <motion.div
-                      initial={{
-                        opacity: 0,
-                        y: 10,
-                        scale: 0.95,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                        scale: 1,
-                      }}
-                      exit={{
-                        opacity: 0,
-                        y: 10,
-                        scale: 0.95,
-                      }}
-                      transition={{
-                        duration: 0.18,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                      className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
-                    >
-                      <div className="px-3 pb-2 pt-3.5">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
-                          Adicionar
-                        </p>
-                      </div>
-
-                      <div className="px-1.5 pb-2">
-                        {menuOptions.map((option) => {
-                          const Icon = option.icon;
-
-                          return (
-                            <button
-                              key={option.id}
-                              onClick={() =>
-                                handleMenuOptionClick(
-                                  option.path
-                                )
-                              }
-                              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] hover:bg-ice/8"
-                              type="button"
-                            >
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                                <Icon size={15} />
-                              </div>
-
-                              <span className="text-sm font-medium text-ink-primary">
-                                {option.label}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
+                <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
+                  Farmácia
+                </h1>
+              </div>
             </div>
 
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                router.push(
-                  `/saude/farmacias/editar?id=${farmacia.id}`
-                );
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all hover:border-amber-400/30 hover:text-amber-400 active:scale-95"
-              type="button"
-              aria-label="Editar farmácia"
-            >
-              <Edit3 size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
 
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                setShowDeleteModal(true);
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
-              type="button"
-              aria-label="Excluir farmácia"
-            >
-              <Trash2 size={16} />
-            </button>
+                  router.push(
+                    `/saude/farmacias/editar?id=${farmacia.id}`
+                  );
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all hover:border-amber-400/30 hover:text-amber-400 active:scale-95"
+                aria-label="Editar farmácia"
+              >
+                <Edit3
+                  size={16}
+                />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setShowDeleteModal(
+                    true
+                  );
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
+                aria-label="Excluir farmácia"
+              >
+                <Trash2
+                  size={16}
+                />
+              </button>
+            </div>
           </div>
         </header>
 
         <section className="space-y-5 px-5 pt-6">
-
-          {/* ==================================================
-              INSIGHT
-          ================================================== */}
-
-          {insightFarmacia && (
-            <motion.div
-              variants={fadeUp}
-              initial="initial"
-              animate="animate"
-              className="rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-4 shadow-sm"
-            >
-              <div className="flex items-start gap-3">
-                <AlertTriangle
-                  size={16}
-                  className="mt-0.5 shrink-0 text-amber-400"
-                />
-
-                <p className="text-sm text-ink-primary">
-                  {insightFarmacia.mensagem}
-                </p>
-              </div>
-            </motion.div>
-          )}
-
           {/* ==================================================
               HERO
-          ================================================== */}
+              ================================================== */}
 
           <motion.div
-            variants={fadeUp}
+            variants={
+              fadeUp
+            }
             initial="initial"
             animate="animate"
-            className="space-y-4 rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm"
+            className="space-y-5 rounded-[32px] border border-surface-border/50 bg-surface p-6 shadow-sm"
             style={{
-              borderLeft: `6px solid ${cor}`,
+              borderLeft:
+                `6px solid ${cor}`,
             }}
           >
             <div className="flex items-start justify-between gap-4">
@@ -539,26 +798,60 @@ function DetalhesFarmaciaContent() {
                 <div
                   className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border"
                   style={{
-                    backgroundColor: `${cor}15`,
-                    color: cor,
-                    borderColor: `${cor}30`,
+                    backgroundColor:
+                      `${cor}15`,
+
+                    color:
+                      cor,
+
+                    borderColor:
+                      `${cor}30`,
                   }}
                 >
-                  <Store size={28} />
+                  <Store
+                    size={28}
+                  />
                 </div>
 
                 <div className="min-w-0 pt-1">
-                  <h2 className="truncate font-display text-2xl font-bold uppercase text-ink-primary">
-                    {farmacia.nome}
-                  </h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="truncate font-display text-2xl font-bold uppercase text-ink-primary">
+                      {
+                        farmacia.nome
+                      }
+                    </h2>
+
+                    {isMaisEconomica && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-400 px-2 py-0.5 text-[9px] font-bold uppercase text-void">
+                        <Award
+                          size={10}
+                        />
+
+                        Melhor preço
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-ice/15 bg-ice/8 px-2.5 py-1 text-[10px] font-medium text-ice">
+                    <Building2
+                      size={11}
+                    />
+
+                    Cadastro global do Vault
+                  </div>
 
                   {farmacia.endereco && (
-                    <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-ink-muted">
+                    <p className="mt-3 flex items-start gap-1.5 text-xs leading-5 text-ink-muted">
                       <MapPin
                         size={13}
-                        className="shrink-0 text-ink-faint"
+                        className="mt-0.5 shrink-0 text-ink-faint"
                       />
-                      {farmacia.endereco}
+
+                      <span>
+                        {
+                          farmacia.endereco
+                        }
+                      </span>
                     </p>
                   )}
 
@@ -568,7 +861,10 @@ function DetalhesFarmaciaContent() {
                         size={13}
                         className="shrink-0 text-ink-faint"
                       />
-                      {farmacia.telefone}
+
+                      {
+                        farmacia.telefone
+                      }
                     </p>
                   )}
                 </div>
@@ -578,12 +874,18 @@ function DetalhesFarmaciaContent() {
                 {farmacia.telefone && (
                   <a
                     href={`tel:${farmacia.telefone}`}
-                    onClick={() => trigger("vibrate")}
+                    onClick={() =>
+                      trigger(
+                        "vibrate"
+                      )
+                    }
                     className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-400 transition-all active:scale-95"
                     title="Ligar para farmácia"
                     aria-label="Ligar para farmácia"
                   >
-                    <Phone size={16} />
+                    <Phone
+                      size={16}
+                    />
                   </a>
                 )}
 
@@ -594,20 +896,59 @@ function DetalhesFarmaciaContent() {
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => trigger("vibrate")}
+                    onClick={() =>
+                      trigger(
+                        "vibrate"
+                      )
+                    }
                     className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/30 bg-ice/10 text-ice transition-all active:scale-95"
                     title="Abrir no mapa"
                     aria-label="Abrir no mapa"
                   >
-                    <Navigation size={16} />
+                    <Navigation
+                      size={16}
+                    />
                   </a>
                 )}
               </div>
             </div>
 
+            {/* ================================================
+                PERSON CONTEXT
+                ================================================ */}
+
+            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/45 px-3.5 py-3">
+              <div className="flex items-start gap-2.5">
+                <User
+                  size={15}
+                  className="mt-0.5 shrink-0 text-ice"
+                />
+
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">
+                    Dados abaixo
+                  </p>
+
+                  <p className="mt-0.5 text-xs leading-5 text-ink-muted">
+                    Medicamentos, compras e valores exibidos são do contexto de{" "}
+                    <span className="font-semibold text-ink-primary">
+                      {
+                        activePersonName
+                      }
+                    </span>
+                    .
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ================================================
+                LAST PURCHASE
+                ================================================ */}
+
             {analiseFarmacia.ultimaCompra && (
-              <div className="border-t border-surface-border/40 pt-2">
-                <div className="flex items-center gap-2 text-xs text-ink-muted">
+              <div className="border-t border-surface-border/40 pt-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                   <Clock
                     size={14}
                     className="text-amber-400"
@@ -617,51 +958,91 @@ function DetalhesFarmaciaContent() {
                     Última compra:{" "}
                     <span className="font-medium text-ink-primary">
                       {formatDateDisplay(
-                        analiseFarmacia.ultimaCompra.data
+                        analiseFarmacia
+                          .ultimaCompra
+                          .data
                       )}
                     </span>
                   </span>
 
-                  {typeof analiseFarmacia.ultimaCompra.preco ===
+                  {typeof analiseFarmacia
+                    .ultimaCompra
+                    .preco ===
                     "number" &&
-                    analiseFarmacia.ultimaCompra.preco > 0 && (
-                      <span className="ml-1 font-medium text-emerald-400">
-                        (
+                    analiseFarmacia
+                      .ultimaCompra
+                      .preco >
+                      0 && (
+                      <span className="font-semibold text-emerald-400">
                         {formatCurrency(
-                          analiseFarmacia.ultimaCompra.preco
+                          analiseFarmacia
+                            .ultimaCompra
+                            .preco
                         )}
-                        )
                       </span>
                     )}
                 </div>
               </div>
             )}
 
-            {/* MÉTRICAS */}
+            {/* ================================================
+                METRICS
+                ================================================ */}
 
-            <div className="grid grid-cols-3 gap-2 border-t border-surface-border/40 pt-4">
+            <div className="grid grid-cols-2 gap-2 border-t border-surface-border/40 pt-4">
               <StatCard
-                icon={<Pill size={14} />}
-                label="Vinculados"
+                icon={
+                  <Pill
+                    size={14}
+                  />
+                }
+                label="Medicamentos"
                 value={String(
                   analiseFarmacia
-                    .medicamentosVinculados.length
+                    .medicamentosVinculados
+                    .length
                 )}
               />
 
               <StatCard
-                icon={<DollarSign size={14} />}
-                label="Total Gasto"
-                value={formatCurrency(
-                  analiseFarmacia.totalGasto
+                icon={
+                  <ReceiptText
+                    size={14}
+                  />
+                }
+                label="Compras"
+                value={String(
+                  analiseFarmacia.comprasCount
                 )}
               />
 
               <StatCard
-                icon={<DollarSign size={14} />}
-                label="Preço Médio"
+                icon={
+                  <DollarSign
+                    size={14}
+                  />
+                }
+                label="Total gasto"
                 value={
-                  analiseFarmacia.precoMedio > 0
+                  analiseFarmacia.totalGasto >
+                  0
+                    ? formatCurrency(
+                        analiseFarmacia.totalGasto
+                      )
+                    : "—"
+                }
+              />
+
+              <StatCard
+                icon={
+                  <DollarSign
+                    size={14}
+                  />
+                }
+                label="Média histórica"
+                value={
+                  analiseFarmacia.precoMedio >
+                  0
                     ? formatCurrency(
                         analiseFarmacia.precoMedio
                       )
@@ -672,168 +1053,313 @@ function DetalhesFarmaciaContent() {
           </motion.div>
 
           {/* ==================================================
-              MEDICAMENTOS VINCULADOS
-          ================================================== */}
+              INSIGHT
+              ================================================== */}
+
+          {insightFarmacia &&
+            analiseFarmacia.comprasCount >
+              0 && (
+              <motion.div
+                variants={
+                  fadeUp
+                }
+                initial="initial"
+                animate="animate"
+                transition={{
+                  delay: 0.04,
+                }}
+                className={`rounded-[24px] border p-4 shadow-sm ${
+                  isMaisEconomica
+                    ? "border-emerald-400/30 bg-emerald-400/5"
+                    : "border-amber-400/30 bg-amber-400/5"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <Award
+                    size={16}
+                    className={`mt-0.5 shrink-0 ${
+                      isMaisEconomica
+                        ? "text-emerald-400"
+                        : "text-amber-400"
+                    }`}
+                  />
+
+                  <div>
+                    {posicaoRanking && (
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-ink-faint">
+                        {posicaoRanking ===
+                        1
+                          ? "1ª colocada no perfil atual"
+                          : `${posicaoRanking}ª colocada no perfil atual`}
+                      </p>
+                    )}
+
+                    <p className="text-sm leading-6 text-ink-primary">
+                      {
+                        insightFarmacia.mensagem
+                      }
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+          {/* ==================================================
+              OBSERVACOES
+              ================================================== */}
+
+          {farmacia.observacoes && (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay: 0.05,
+              }}
+              className="space-y-3 rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            >
+              <SectionTitle
+                icon={
+                  <FileText
+                    size={15}
+                  />
+                }
+                title="Observações"
+              />
+
+              <p className="whitespace-pre-wrap text-xs leading-6 text-ink-muted">
+                {
+                  farmacia.observacoes
+                }
+              </p>
+            </motion.div>
+          )}
+
+          {/* ==================================================
+              MEDICATIONS
+              ================================================== */}
 
           <motion.div
-            variants={fadeUp}
+            variants={
+              fadeUp
+            }
             initial="initial"
             animate="animate"
-            transition={{ delay: 0.05 }}
+            transition={{
+              delay: 0.07,
+            }}
             className="space-y-3"
           >
             <SectionTitle
-              icon={<Pill size={15} />}
-              title={`Medicamentos Vinculados (${medicamentosComBadge.length})`}
+              icon={
+                <Pill
+                  size={15}
+                />
+              }
+              title={`Medicamentos de ${activePersonName} (${medicamentosComContexto.length})`}
             />
 
-            {medicamentosComBadge.length === 0 ? (
+            {medicamentosComContexto.length ===
+            0 ? (
               <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
-                <p className="text-xs text-ink-muted">
-                  Nenhum medicamento vinculado a esta farmácia.
+                <p className="text-xs leading-5 text-ink-muted">
+                  Nenhum medicamento da pessoa ativa está vinculado a esta farmácia.
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                {medicamentosComBadge.map((medicamento) => (
-                  <button
-                    key={medicamento.id}
-                    onClick={() => {
-                      trigger("vibrate");
-                      router.push(
-                        `/saude/medicamentos/detalhes?id=${medicamento.id}`
-                      );
-                    }}
-                    className="flex w-full flex-col justify-center gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all hover:border-amber-400/30 active:scale-[0.98]"
-                    type="button"
-                  >
-                    <div className="flex w-full items-center justify-between">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
-                          <Pill size={16} />
+                {medicamentosComContexto.map(
+                  (
+                    medicamento
+                  ) => (
+                    <button
+                      key={
+                        medicamento.id
+                      }
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !medicamento.id
+                        ) {
+                          return;
+                        }
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/medicamentos/detalhes?id=${medicamento.id}`
+                        );
+                      }}
+                      className="flex w-full flex-col gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all hover:border-amber-400/30 active:scale-[0.98]"
+                    >
+                      <div className="flex w-full items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
+                            <Pill
+                              size={16}
+                            />
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <p className="truncate text-sm font-semibold uppercase text-ink-primary">
+                                {
+                                  medicamento.nome
+                                }
+                              </p>
+
+                              {medicamento.deveRenovar && (
+                                <span className="shrink-0 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-400">
+                                  Renovar
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="text-[11px] text-ink-muted">
+                              {medicamento.dosagem ||
+                                "Dosagem não informada"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <ExternalLink
+                          size={15}
+                          className="shrink-0 text-ink-faint"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 border-t border-surface-border/40 pt-2">
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-mono uppercase text-ink-faint">
+                            Preço cadastrado
+                          </p>
+
+                          <p className="mt-0.5 truncate text-xs font-semibold text-ink-primary">
+                            {typeof medicamento.preco ===
+                              "number" &&
+                            medicamento.preco >
+                              0
+                              ? formatCurrency(
+                                  medicamento.preco
+                                )
+                              : "Não informado"}
+                          </p>
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-semibold uppercase text-ink-primary">
-                              {medicamento.nome}
-                            </p>
+                          <p className="text-[9px] font-mono uppercase text-ink-faint">
+                            Última compra
+                          </p>
 
-                            {medicamento.receitaVencida && (
-                              <span className="shrink-0 rounded-full bg-coral/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-coral">
-                                Vencida
-                              </span>
-                            )}
-
-                            {medicamento.deveRenovar && (
-                              <span className="shrink-0 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-400">
-                                Renovar
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="text-[11px] text-ink-muted">
-                            {medicamento.dosagem ||
-                              "Uso contínuo"}
+                          <p className="mt-0.5 truncate text-xs font-semibold text-ink-primary">
+                            {medicamento.ultimaCompra
+                              ? formatDateDisplay(
+                                  medicamento
+                                    .ultimaCompra
+                                    .data
+                                )
+                              : "Sem histórico"}
                           </p>
                         </div>
                       </div>
-
-                      <ExternalLink
-                        size={15}
-                        className="shrink-0 text-ink-faint"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-surface-border/40 pt-2 text-xs">
-                      <div className="flex items-center gap-1.5 text-ink-muted">
-                        <Calendar
-                          size={12}
-                          className="text-ink-faint"
-                        />
-
-                        <span>
-                          Vinculado em:{" "}
-                          <span className="font-semibold text-ink-primary">
-                            {formatDateDisplay(
-                              medicamento.estoque_data_referencia ||
-                                medicamento.data_receita
-                            )}
-                          </span>
-                        </span>
-                      </div>
-
-                      {typeof medicamento.preco === "number" &&
-                      medicamento.preco > 0 ? (
-                        <div className="flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-bold text-emerald-400">
-                          <DollarSign size={12} />
-                          {formatCurrency(medicamento.preco)}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 rounded-md border border-ice/20 bg-ice/10 px-2 py-0.5 font-bold text-ice">
-                          <Gift size={12} />
-                          Gratuito
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  )
+                )}
               </div>
             )}
           </motion.div>
 
           {/* ==================================================
-              ÚLTIMAS COMPRAS
-          ================================================== */}
+              PURCHASE HISTORY
+              ================================================== */}
 
-          {analiseFarmacia.ultimasRenovacoes.length > 0 && (
+          {analiseFarmacia
+            .ultimasRenovacoes
+            .length >
+            0 && (
             <motion.div
-              variants={fadeUp}
+              variants={
+                fadeUp
+              }
               initial="initial"
               animate="animate"
-              transition={{ delay: 0.08 }}
+              transition={{
+                delay: 0.1,
+              }}
               className="space-y-3"
             >
               <SectionTitle
-                icon={<Clock size={15} />}
-                title="Últimas Compras"
+                icon={
+                  <Clock
+                    size={15}
+                  />
+                }
+                title="Compras recentes"
               />
 
               <div className="space-y-2">
                 {analiseFarmacia.ultimasRenovacoes.map(
-                  (renovacao) => (
+                  (
+                    renovacao
+                  ) => (
                     <div
-                      key={renovacao.id}
-                      className="flex items-center justify-between rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm"
+                      key={
+                        renovacao.id
+                      }
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3.5 shadow-sm"
                     >
-                      <div>
-                        <p className="text-sm font-semibold uppercase text-ink-primary">
-                          {renovacao.medicamento_nome}
-                        </p>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                          <Calendar
+                            size={15}
+                          />
+                        </div>
 
-                        <div className="mt-0.5 flex items-center gap-3">
-                          <p className="text-[11px] text-ink-muted">
-                            {formatDateDisplay(
-                              renovacao.data
-                            )}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold uppercase text-ink-primary">
+                            {
+                              renovacao.medicamento_nome
+                            }
                           </p>
 
-                          {renovacao.dosagem && (
-                            <span className="rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
-                              {renovacao.dosagem}
-                            </span>
-                          )}
+                          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                            <p className="text-[11px] text-ink-muted">
+                              {formatDateDisplay(
+                                renovacao.data
+                              )}
+                            </p>
+
+                            {renovacao.dosagem && (
+                              <span className="rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                                {
+                                  renovacao.dosagem
+                                }
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {typeof renovacao.preco === "number" &&
-                        renovacao.preco > 0 && (
+                      <div className="shrink-0 text-right">
+                        {typeof renovacao.preco ===
+                          "number" &&
+                        renovacao.preco >
+                          0 ? (
                           <span className="text-sm font-semibold text-emerald-400">
                             {formatCurrency(
                               renovacao.preco
                             )}
                           </span>
+                        ) : (
+                          <span className="text-[10px] text-ink-faint">
+                            Sem preço
+                          </span>
                         )}
+                      </div>
                     </div>
                   )
                 )}
@@ -843,18 +1369,28 @@ function DetalhesFarmaciaContent() {
         </section>
 
         {/* ====================================================
-            CONFIRMAÇÃO DE EXCLUSÃO
-        ==================================================== */}
+            DELETE
+            ==================================================== */}
 
         <ConfirmationModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDelete}
+          isOpen={
+            showDeleteModal
+          }
+          onClose={() =>
+            setShowDeleteModal(
+              false
+            )
+          }
+          onConfirm={
+            handleDelete
+          }
           title="Excluir farmácia"
-          message={`Tem certeza que deseja excluir "${farmacia.nome}"?`}
+          message={`Tem certeza que deseja excluir "${farmacia.nome}"? Como esta é uma entidade global, ela será desvinculada dos medicamentos e renovações de todas as pessoas. Os registros clínicos e históricos não serão excluídos.`}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
-          isLoading={deleteAction.isSubmitting}
+          isLoading={
+            deleteAction.isSubmitting
+          }
           type="danger"
         />
       </main>
@@ -862,13 +1398,17 @@ function DetalhesFarmaciaContent() {
   );
 }
 
-/* ============================================================
-   PÁGINA
-   ============================================================ */
+// ============================================================
+// PAGE
+// ============================================================
 
 export default function DetalhesFarmaciaPage() {
   return (
-    <Suspense fallback={<DetailSkeleton />}>
+    <Suspense
+      fallback={
+        <DetailSkeleton />
+      }
+    >
       <DetalhesFarmaciaContent />
     </Suspense>
   );

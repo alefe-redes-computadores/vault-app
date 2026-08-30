@@ -1,38 +1,195 @@
 // hooks/useMedicamentos.ts
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { medicamentosRepository } from "@/lib/repositories/medicamentos";
-import { useAuth } from "./useAuth";
-import { useActivePersonId } from "./useActivePersonId";
-import { useCallback } from "react";
-import type { Medicamento } from "@/lib/types";
+import {
+  useCallback,
+} from "react";
+
+import {
+  useLiveQuery,
+} from "dexie-react-hooks";
+
+import {
+  db,
+} from "@/lib/db";
+
+import {
+  medicamentosRepository,
+} from "@/lib/repositories/medicamentos";
+
+import {
+  useActivePersonId,
+} from "./useActivePersonId";
+
+import type {
+  CreateMedicamentoInput,
+  UpdateMedicamentoInput,
+} from "@/lib/types";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type AddMedicamentoInput = Omit<
+  CreateMedicamentoInput,
+  "person_id"
+>;
+
+// ============================================================
+// HOOK
+// ============================================================
 
 export function useMedicamentos() {
-  const { user } = useAuth();
-  const { activePersonId } = useActivePersonId();
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
 
-  const medicamentos = useLiveQuery(
-    () => activePersonId ? db.medicamentos.where('person_id').equals(activePersonId).toArray() : [],
-    [activePersonId],
-    []
-  );
+  // ==========================================================
+  // LIST
+  // ==========================================================
 
-  const getMedicamento = useCallback((id: string) => medicamentosRepository.getById(id), []);
+  const medicamentos =
+    useLiveQuery(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
 
-  const addMedicamento = useCallback(async (data: Omit<Medicamento, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'synced'>) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    return await medicamentosRepository.create({ ...data, user_id: user.id });
-  }, [user]);
+        return db.medicamentos
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ],
+      []
+    ) || [];
 
-  const updateMedicamento = useCallback(async (id: string, data: Partial<Medicamento>) => {
-    return await medicamentosRepository.update(id, data);
-  }, []);
+  // ==========================================================
+  // GET
+  // ==========================================================
 
-  const deleteMedicamento = useCallback(async (id: string) => {
-    return await medicamentosRepository.delete(id);
-  }, []);
+  const getMedicamento =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          return undefined;
+        }
 
-  return { medicamentos, getMedicamento, addMedicamento, updateMedicamento, deleteMedicamento };
+        return medicamentosRepository.getById(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // CREATE
+  // ==========================================================
+
+  const addMedicamento =
+    useCallback(
+      async (
+        data: AddMedicamentoInput
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return medicamentosRepository.create(
+          {
+            ...data,
+
+            person_id:
+              activePersonId,
+          }
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // UPDATE
+  // ==========================================================
+
+  const updateMedicamento =
+    useCallback(
+      async (
+        id: string,
+        data: UpdateMedicamentoInput
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return medicamentosRepository.update(
+          id,
+          activePersonId,
+          data
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  // ==========================================================
+  // DELETE
+  // ==========================================================
+
+  const deleteMedicamento =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return medicamentosRepository.delete(
+          id,
+          activePersonId
+        );
+      },
+      [
+        activePersonId,
+      ]
+    );
+
+  return {
+    medicamentos,
+    getMedicamento,
+    addMedicamento,
+    updateMedicamento,
+    deleteMedicamento,
+  };
 }
