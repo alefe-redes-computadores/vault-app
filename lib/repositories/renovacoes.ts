@@ -379,6 +379,7 @@ export const renovacoesRepository = {
     medicamentoId: string
   ): Promise<Renovacao[]> {
     const safePersonId = requirePersonId(personId);
+
     const safeMedicamentoId =
       requireMedicamentoId(medicamentoId);
 
@@ -449,6 +450,10 @@ export const renovacoesRepository = {
       );
     }
 
+    const documentId = normalizeNullableText(
+      data.document_id
+    );
+
     const medicoId = normalizeNullableText(
       data.medico_id
     );
@@ -496,9 +501,7 @@ export const renovacoesRepository = {
       person_id: personId,
       medicamento_id: medicamentoId,
 
-      document_id: normalizeNullableText(
-        data.document_id
-      ),
+      document_id: documentId,
 
       medico_id: medicoId,
       farmacia_id: farmaciaId,
@@ -547,6 +550,12 @@ export const renovacoesRepository = {
      *
      * Portanto os valores nullable da Renovacao são convertidos
      * para undefined somente quando consolidados no Medicamento.
+     *
+     * IMPORTANTE:
+     * quando uma nova renovação informa document_id, esse
+     * documento passa a ser também o documento atual/principal
+     * do Medicamento. O histórico continua preservado nas
+     * próprias Renovacoes.
      */
     const medicamentoAtualizado: Medicamento = {
       ...medicamento,
@@ -559,6 +568,13 @@ export const renovacoesRepository = {
           : data.tipo_aquisicao === "gratuito"
             ? "gratuito"
             : "comprado",
+
+      ...(data.document_id !== undefined
+        ? {
+            document_id:
+              documentId || undefined,
+          }
+        : {}),
 
       medico_id:
         medicoId || undefined,

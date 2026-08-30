@@ -33,7 +33,6 @@ import {
   HeartPulse,
   Paperclip,
   Pill,
-  Plus,
   Search,
   SlidersHorizontal,
   Stethoscope,
@@ -170,35 +169,16 @@ interface PrescriptionAlert {
 
 interface DocumentViewModel {
   document: Document;
-
   id: string;
-
-  date:
-    string | null;
-
-  domainId:
-    ClinicalDomainId;
-
-  parentKey:
-    string;
-
-  parentName:
-    string;
-
-  parentDescription?:
-    string;
-
-  parentIcon:
-    LucideIcon;
-
-  parentColor:
-    string;
-
-  entityLabel?:
-    string;
-
-  alert:
-    PrescriptionAlert | null;
+  date: string | null;
+  domainId: ClinicalDomainId;
+  parentKey: string;
+  parentName: string;
+  parentDescription?: string;
+  parentIcon: LucideIcon;
+  parentColor: string;
+  entityLabel?: string;
+  alert: PrescriptionAlert | null;
 }
 
 interface ParentGroup {
@@ -221,8 +201,7 @@ interface DomainGroup {
 }
 
 interface CardElementRef {
-  current:
-    HTMLDivElement | null;
+  current: HTMLDivElement | null;
 }
 
 // ============================================================
@@ -239,170 +218,102 @@ const DOMAIN_CONFIG: Record<
   }
 > = {
   medicamentos: {
-    label:
-      "Medicamentos",
-
+    label: "Medicamentos",
     description:
       "Receitas, renovações e documentos associados aos medicamentos.",
-
-    icon:
-      Pill,
-
-    color:
-      "#F59E0B",
+    icon: Pill,
+    color: "#F59E0B",
   },
 
   consultas: {
-    label:
-      "Consultas",
-
+    label: "Consultas",
     description:
       "Documentos organizados pelos profissionais das consultas.",
-
-    icon:
-      Stethoscope,
-
-    color:
-      "#38BDF8",
+    icon: Stethoscope,
+    color: "#38BDF8",
   },
 
   exames: {
-    label:
-      "Exames",
-
+    label: "Exames",
     description:
       "Laudos, resultados e imagens vinculados aos exames.",
-
-    icon:
-      FlaskConical,
-
-    color:
-      "#10B981",
+    icon: FlaskConical,
+    color: "#10B981",
   },
 
   cirurgias: {
-    label:
-      "Cirurgias",
-
+    label: "Cirurgias",
     description:
       "Relatórios e documentos cirúrgicos organizados pelos médicos.",
-
-    icon:
-      Syringe,
-
-    color:
-      "#EF4444",
+    icon: Syringe,
+    color: "#EF4444",
   },
 
   tratamentos: {
-    label:
-      "Tratamentos",
-
+    label: "Tratamentos",
     description:
       "Documentos relacionados ao acompanhamento dos tratamentos.",
-
-    icon:
-      FolderHeart,
-
-    color:
-      "#8B5CF6",
+    icon: FolderHeart,
+    color: "#8B5CF6",
   },
 
   cids: {
-    label:
-      "Condições e CIDs",
-
+    label: "Condições e CIDs",
     description:
       "Laudos e documentos ligados às condições registradas.",
-
-    icon:
-      Tag,
-
-    color:
-      "#14B8A6",
+    icon: Tag,
+    color: "#14B8A6",
   },
 
   registros: {
-    label:
-      "Registros de Saúde",
-
+    label: "Registros de Saúde",
     description:
       "Documentos vinculados a registros clínicos e acompanhamento diário.",
-
-    icon:
-      HeartPulse,
-
-    color:
-      "#EC4899",
+    icon: HeartPulse,
+    color: "#EC4899",
   },
 
   outros: {
-    label:
-      "Outros Documentos",
-
+    label: "Outros Documentos",
     description:
       "Documentos clínicos gerais ou que ainda não possuem vínculo estruturado.",
-
-    icon:
-      FileQuestion,
-
-    color:
-      "#6B7280",
+    icon: FileQuestion,
+    color: "#6B7280",
   },
 };
 
-const DOMAIN_ORDER:
-  ClinicalDomainId[] = [
-    "medicamentos",
-    "consultas",
-    "exames",
-    "cirurgias",
-    "tratamentos",
-    "cids",
-    "registros",
-    "outros",
-  ];
+const DOMAIN_ORDER: ClinicalDomainId[] = [
+  "medicamentos",
+  "consultas",
+  "exames",
+  "cirurgias",
+  "tratamentos",
+  "cids",
+  "registros",
+  "outros",
+];
 
 // ============================================================
 // HELPERS
 // ============================================================
 
-function normalizeSearch(
-  value:
-    string
-): string {
+function normalizeSearch(value: string): string {
   return value
-    .normalize(
-      "NFD"
-    )
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
-    .toLocaleLowerCase(
-      "pt-BR"
-    )
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
     .trim();
 }
 
 function getMetadataString(
-  document:
-    Document,
-  ...keys:
-    string[]
+  document: Document,
+  ...keys: string[]
 ): string {
-  for (
-    const key of
-    keys
-  ) {
-    const value =
-      document.metadata?.[
-        key
-      ];
+  for (const key of keys) {
+    const value = document.metadata?.[key];
 
     if (
-      typeof value ===
-        "string" &&
+      typeof value === "string" &&
       value.trim()
     ) {
       return value.trim();
@@ -413,85 +324,57 @@ function getMetadataString(
 }
 
 function getDocumentDate(
-  document:
-    Document
+  document: Document
 ): string | null {
-  const metadataDate =
-    getMetadataString(
-      document,
-      "prescription_date",
-      "date",
-      "data_exame",
-      "issue_date",
-      "data",
-      "created_date"
-    );
+  const metadataDate = getMetadataString(
+    document,
+    "prescription_date",
+    "date",
+    "data_exame",
+    "issue_date",
+    "data",
+    "created_date"
+  );
 
-  if (
-    metadataDate
-  ) {
+  if (metadataDate) {
     return metadataDate;
   }
 
-  return (
-    document.created_at ||
-    null
-  );
+  return document.created_at || null;
 }
 
 function getSortableDate(
-  document:
-    Document
+  document: Document
 ): number {
-  const value =
-    getDocumentDate(
-      document
-    );
+  const value = getDocumentDate(document);
 
-  if (
-    !value
-  ) {
+  if (!value) {
     return 0;
   }
 
   const normalized =
-    /^\d{4}-\d{2}-\d{2}$/.test(
-      value
-    )
+    /^\d{4}-\d{2}-\d{2}$/.test(value)
       ? `${value}T12:00:00`
       : value;
 
-  const timestamp =
-    Date.parse(
-      normalized
-    );
+  const timestamp = Date.parse(normalized);
 
-  return Number.isFinite(
-    timestamp
-  )
+  return Number.isFinite(timestamp)
     ? timestamp
     : 0;
 }
 
 function formatFullDate(
-  dateString:
-    string
+  dateString: string
 ): string {
   try {
-    const clean =
-      dateString.slice(
-        0,
-        10
-      );
+    const clean = dateString.slice(0, 10);
 
     return format(
-      parseISO(
-        clean
-      ),
+      parseISO(clean),
       "dd 'de' MMMM 'de' yyyy",
       {
-        locale:
-          ptBR,
+        locale: ptBR,
       }
     );
   } catch {
@@ -500,24 +383,16 @@ function formatFullDate(
 }
 
 function formatShortDate(
-  dateString:
-    string
+  dateString: string
 ): string {
   try {
-    const clean =
-      dateString.slice(
-        0,
-        10
-      );
+    const clean = dateString.slice(0, 10);
 
     return format(
-      parseISO(
-        clean
-      ),
+      parseISO(clean),
       "dd MMM yyyy",
       {
-        locale:
-          ptBR,
+        locale: ptBR,
       }
     );
   } catch {
@@ -526,75 +401,46 @@ function formatShortDate(
 }
 
 function getMonthKey(
-  document:
-    Document
+  document: Document
 ): string | null {
-  const date =
-    getDocumentDate(
-      document
-    );
+  const date = getDocumentDate(document);
 
   if (
     !date ||
-    !/^\d{4}-\d{2}/.test(
-      date
-    )
+    !/^\d{4}-\d{2}/.test(date)
   ) {
     return null;
   }
 
-  return date.slice(
-    0,
-    7
-  );
+  return date.slice(0, 7);
 }
 
 function formatMonthLabel(
-  monthKey:
-    string
+  monthKey: string
 ): string {
-  if (
-    monthKey ===
-    "all"
-  ) {
+  if (monthKey === "all") {
     return "Todos os meses";
   }
 
   try {
-    const [
-      year,
-      month,
-    ] =
-      monthKey.split(
-        "-"
-      );
+    const [year, month] =
+      monthKey.split("-");
 
-    const value =
-      format(
-        new Date(
-          Number(
-            year
-          ),
-          Number(
-            month
-          ) -
-            1,
-          1
-        ),
-        "MMMM 'de' yyyy",
-        {
-          locale:
-            ptBR,
-        }
-      );
+    const value = format(
+      new Date(
+        Number(year),
+        Number(month) - 1,
+        1
+      ),
+      "MMMM 'de' yyyy",
+      {
+        locale: ptBR,
+      }
+    );
 
     return (
-      value.charAt(
-        0
-      ).toUpperCase() +
-      value.slice(
-        1
-      )
+      value.charAt(0).toUpperCase() +
+      value.slice(1)
     );
   } catch {
     return monthKey;
@@ -602,12 +448,9 @@ function formatMonthLabel(
 }
 
 function getDocumentTypeLabel(
-  type:
-    Document["type"]
+  type: Document["type"]
 ): string {
-  switch (
-    type
-  ) {
+  switch (type) {
     case "receita":
       return "Receita";
 
@@ -638,12 +481,9 @@ function getDocumentTypeLabel(
 }
 
 function getDocumentIcon(
-  type:
-    Document["type"]
+  type: Document["type"]
 ): LucideIcon {
-  switch (
-    type
-  ) {
+  switch (type) {
     case "receita":
       return Pill;
 
@@ -666,20 +506,16 @@ function getDocumentIcon(
 }
 
 function getPrescriptionMedicationId(
-  document:
-    Document
+  document: Document
 ): string {
   if (
-    document.entidade_tipo ===
-      "medicamento" &&
+    document.entidade_tipo === "medicamento" &&
     document.entidade_id
   ) {
     return document.entidade_id;
   }
 
-  if (
-    document.entidade_tipo
-  ) {
+  if (document.entidade_tipo) {
     return "";
   }
 
@@ -691,109 +527,69 @@ function getPrescriptionMedicationId(
 }
 
 function getPrescriptionAlert(
-  document:
-    Document,
-  renewalsByMedication:
-    Map<
-      string,
-      Renovacao[]
-    >,
-  medicationIdOverride?:
-    string
+  document: Document,
+  renewalsByMedication: Map<
+    string,
+    Renovacao[]
+  >,
+  medicationIdOverride?: string
 ): PrescriptionAlert | null {
-  if (
-    document.type !==
-    "receita"
-  ) {
+  if (document.type !== "receita") {
     return null;
   }
 
   const medicationId =
     medicationIdOverride ||
-    getPrescriptionMedicationId(
-      document
-    );
+    getPrescriptionMedicationId(document);
 
-  if (
-    !medicationId
-  ) {
+  if (!medicationId) {
     return null;
   }
 
   const prescriptionDate =
-    getDocumentDate(
-      document
-    );
+    getDocumentDate(document);
 
   const renewals =
     renewalsByMedication.get(
       medicationId
-    ) ||
-    [];
+    ) || [];
 
-  if (
-    prescriptionDate
-  ) {
+  if (prescriptionDate) {
     const normalizedPrescriptionDate =
-      prescriptionDate.slice(
-        0,
-        10
-      );
+      prescriptionDate.slice(0, 10);
 
-    const renewed =
-      renewals.some(
-        (
-          renewal
-        ) =>
-          Boolean(
-            renewal.data &&
-              renewal.data.slice(
-                0,
-                10
-              ) >
-                normalizedPrescriptionDate
-          )
-      );
+    const renewed = renewals.some(
+      (renewal) =>
+        Boolean(
+          renewal.data &&
+            renewal.data.slice(0, 10) >
+              normalizedPrescriptionDate
+        )
+    );
 
-    if (
-      renewed
-    ) {
+    if (renewed) {
       return {
-        status:
-          "renovada",
-
-        label:
-          "Renovada",
-
-        color:
-          "#38BDF8",
+        status: "renovada",
+        label: "Renovada",
+        color: "#38BDF8",
       };
     }
   }
 
   /*
-   * IMPORTANTE:
-   *
    * renewal_date NÃO é validade da receita.
-   *
-   * renewal_date representa uma data de renovação prevista /
-   * contextual e não pode fazer uma receita aparecer como
-   * vencida.
    *
    * A validade documental usa somente campos que representam
    * explicitamente expiração / validade.
    */
-  const expirationDate =
-    getMetadataString(
-      document,
-      "expiry_date",
-      "expiration_date",
-      "validade"
-    );
+  const expirationDate = getMetadataString(
+    document,
+    "expiry_date",
+    "expiration_date",
+    "validade"
+  );
 
-  if (
-    !expirationDate
-  ) {
+  if (!expirationDate) {
     return null;
   }
 
@@ -803,132 +599,85 @@ function getPrescriptionAlert(
     )
   ) {
     return {
-      status:
-        "vencida",
-
-      label:
-        "Vencida",
-
-      color:
-        "#EF4444",
+      status: "vencida",
+      label: "Vencida",
+      color: "#EF4444",
     };
   }
 
-  const days =
-    getDaysUntil(
-      expirationDate
-    );
+  const days = getDaysUntil(
+    expirationDate
+  );
 
   if (
-    days !==
-      null &&
-    days >=
-      0 &&
-    days <=
-      7
+    days !== null &&
+    days >= 0 &&
+    days <= 7
   ) {
     return {
-      status:
-        "proxima",
-
-      label:
-        "Próxima ao vencimento",
-
-      color:
-        "#F59E0B",
+      status: "proxima",
+      label: "Próxima ao vencimento",
+      color: "#F59E0B",
     };
   }
 
   return {
-    status:
-      "valida",
-
-    label:
-      "Válida",
-
-    color:
-      "#10B981",
+    status: "valida",
+    label: "Válida",
+    color: "#10B981",
   };
 }
 
 function getRegistroDescription(
-  registro:
-    RegistroSaude
+  registro: RegistroSaude
 ): string | undefined {
-  const parts =
-    [
-      registro.data
-        ? formatFullDate(
-            registro.data
-          )
-        : undefined,
+  const parts = [
+    registro.data
+      ? formatFullDate(registro.data)
+      : undefined,
 
-      registro.horario
-        ? registro.horario
-        : undefined,
-    ].filter(
-      Boolean
-    );
+    registro.horario
+      ? registro.horario
+      : undefined,
+  ].filter(Boolean);
 
-  return parts.length >
-    0
-    ? parts.join(
-        " · "
-      )
+  return parts.length > 0
+    ? parts.join(" · ")
     : undefined;
 }
 
 function matchesViewModelSearch(
-  item:
-    DocumentViewModel,
-  normalizedQuery:
-    string
+  item: DocumentViewModel,
+  normalizedQuery: string
 ): boolean {
-  if (
-    !normalizedQuery
-  ) {
+  if (!normalizedQuery) {
     return true;
   }
 
-  const document =
-    item.document;
+  const document = item.document;
 
-  const metadataValues =
-    Object.values(
-      document.metadata ||
-        {}
+  const metadataValues = Object.values(
+    document.metadata || {}
+  )
+    .filter(
+      (value): value is string =>
+        typeof value === "string"
     )
-      .filter(
-        (
-          value
-        ): value is string =>
-          typeof value ===
-          "string"
-      )
-      .slice(
-        0,
-        20
-      );
+    .slice(0, 20);
 
-  const searchable =
-    normalizeSearch(
-      [
-        document.title,
-        document.description ||
-          "",
-        getDocumentTypeLabel(
-          document.type
-        ),
-        item.parentName,
-        item.parentDescription ||
-          "",
-        item.entityLabel ||
-          "",
-        ...metadataValues,
-      ].join(
-        " "
-      )
-    );
+  const searchable = normalizeSearch(
+    [
+      document.title,
+      document.description || "",
+      getDocumentTypeLabel(
+        document.type
+      ),
+      item.parentName,
+      item.parentDescription || "",
+      item.entityLabel || "",
+      ...metadataValues,
+    ].join(" ")
+  );
 
   return searchable.includes(
     normalizedQuery
@@ -940,66 +689,51 @@ function matchesViewModelSearch(
 // ============================================================
 
 export default function DocumentsPage() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const {
-    trigger,
-  } =
+  const { trigger } =
     useHapticFeedback();
 
-  const {
-    activePersonId,
-  } =
+  const { activePersonId } =
     useActivePersonId();
 
-  const documents =
-    useDocuments();
+  const documents = useDocuments();
 
   const {
     medicamentos = [],
-  } =
-    useMedicamentos();
+  } = useMedicamentos();
 
   const {
     tratamentos = [],
-  } =
-    useTratamentos();
+  } = useTratamentos();
 
   const {
     cids = [],
-  } =
-    useCids();
+  } = useCids();
 
   const {
     consultas = [],
-  } =
-    useConsultas();
+  } = useConsultas();
 
   const {
     exames = [],
-  } =
-    useExames();
+  } = useExames();
 
   const {
     cirurgias = [],
-  } =
-    useCirurgias();
+  } = useCirurgias();
 
   const {
     medicos = [],
-  } =
-    useMedicos();
+  } = useMedicos();
 
   const {
     renovacoes = [],
-  } =
-    useRenovacoes();
+  } = useRenovacoes();
 
   const {
     registros = [],
-  } =
-    useRegistrosSaude();
+  } = useRegistrosSaude();
 
   // ==========================================================
   // STATE
@@ -1008,10 +742,7 @@ export default function DocumentsPage() {
   const [
     searchQuery,
     setSearchQuery,
-  ] =
-    useState(
-      ""
-    );
+  ] = useState("");
 
   /*
    * Regra de produto:
@@ -1020,43 +751,31 @@ export default function DocumentsPage() {
   const [
     selectedMonth,
     setSelectedMonth,
-  ] =
-    useState(
-      format(
-        new Date(),
-        "yyyy-MM"
-      )
-    );
+  ] = useState(
+    format(
+      new Date(),
+      "yyyy-MM"
+    )
+  );
 
   const [
     showFilters,
     setShowFilters,
-  ] =
-    useState(
-      false
-    );
+  ] = useState(false);
 
   const [
     expandedDomains,
     setExpandedDomains,
-  ] =
-    useState<
-      Set<
-        ClinicalDomainId
-      >
-    >(
-      new Set()
-    );
+  ] = useState<
+    Set<ClinicalDomainId>
+  >(new Set());
 
   const [
     expandedParents,
     setExpandedParents,
-  ] =
-    useState<
-      Set<string>
-    >(
-      new Set()
-    );
+  ] = useState<
+    Set<string>
+  >(new Set());
 
   // ==========================================================
   // EXPORT REFS
@@ -1068,15 +787,12 @@ export default function DocumentsPage() {
         string,
         CardElementRef
       >
-    >(
-      {}
-    );
+    >({});
 
   const getExportCardRef =
     useCallback(
       (
-        id:
-          string
+        id: string
       ): CardElementRef => {
         if (
           !exportCardRefs.current[
@@ -1086,8 +802,7 @@ export default function DocumentsPage() {
           exportCardRefs.current[
             id
           ] = {
-            current:
-              null,
+            current: null,
           };
         }
 
@@ -1105,16 +820,12 @@ export default function DocumentsPage() {
   const healthDocuments =
     useMemo(
       () => {
-        if (
-          !activePersonId
-        ) {
+        if (!activePersonId) {
           return [];
         }
 
         return documents.filter(
-          (
-            document
-          ) =>
+          (document) =>
             document.person_id ===
               activePersonId &&
             document.category_id ===
@@ -1130,16 +841,12 @@ export default function DocumentsPage() {
   const scopedMedicamentos =
     useMemo(
       () => {
-        if (
-          !activePersonId
-        ) {
+        if (!activePersonId) {
           return [];
         }
 
         return medicamentos.filter(
-          (
-            item
-          ) =>
+          (item) =>
             item.person_id ===
             activePersonId
         );
@@ -1153,16 +860,12 @@ export default function DocumentsPage() {
   const scopedTratamentos =
     useMemo(
       () => {
-        if (
-          !activePersonId
-        ) {
+        if (!activePersonId) {
           return [];
         }
 
         return tratamentos.filter(
-          (
-            item
-          ) =>
+          (item) =>
             item.person_id ===
             activePersonId
         );
@@ -1176,16 +879,12 @@ export default function DocumentsPage() {
   const scopedCids =
     useMemo(
       () => {
-        if (
-          !activePersonId
-        ) {
+        if (!activePersonId) {
           return [];
         }
 
         return cids.filter(
-          (
-            item
-          ) =>
+          (item) =>
             item.person_id ===
             activePersonId
         );
@@ -1199,16 +898,12 @@ export default function DocumentsPage() {
   const scopedConsultas =
     useMemo(
       () => {
-        if (
-          !activePersonId
-        ) {
+        if (!activePersonId) {
           return [];
         }
 
         return consultas.filter(
-          (
-            item
-          ) =>
+          (item) =>
             item.person_id ===
             activePersonId
         );
@@ -1222,16 +917,12 @@ export default function DocumentsPage() {
   const scopedExames =
     useMemo(
       () => {
-        if (
-          !activePersonId
-        ) {
+        if (!activePersonId) {
           return [];
         }
 
         return exames.filter(
-          (
-            item
-          ) =>
+          (item) =>
             item.person_id ===
             activePersonId
         );
@@ -1245,16 +936,12 @@ export default function DocumentsPage() {
   const scopedCirurgias =
     useMemo(
       () => {
-        if (
-          !activePersonId
-        ) {
+        if (!activePersonId) {
           return [];
         }
 
         return cirurgias.filter(
-          (
-            item
-          ) =>
+          (item) =>
             item.person_id ===
             activePersonId
         );
@@ -1268,16 +955,12 @@ export default function DocumentsPage() {
   const scopedRenovacoes =
     useMemo(
       () => {
-        if (
-          !activePersonId
-        ) {
+        if (!activePersonId) {
           return [];
         }
 
         return renovacoes.filter(
-          (
-            item
-          ) =>
+          (item) =>
             item.person_id ===
             activePersonId
         );
@@ -1291,16 +974,12 @@ export default function DocumentsPage() {
   const scopedRegistros =
     useMemo(
       () => {
-        if (
-          !activePersonId
-        ) {
+        if (!activePersonId) {
           return [];
         }
 
         return registros.filter(
-          (
-            item
-          ) =>
+          (item) =>
             item.person_id ===
             activePersonId
         );
@@ -1324,17 +1003,13 @@ export default function DocumentsPage() {
         >(
           scopedMedicamentos
             .filter(
-              (
-                item
-              ) =>
+              (item) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (
-                item
-              ) => [
+              (item) => [
                 item.id!,
                 item,
               ]
@@ -1354,17 +1029,13 @@ export default function DocumentsPage() {
         >(
           scopedTratamentos
             .filter(
-              (
-                item
-              ) =>
+              (item) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (
-                item
-              ) => [
+              (item) => [
                 item.id!,
                 item,
               ]
@@ -1384,17 +1055,13 @@ export default function DocumentsPage() {
         >(
           scopedCids
             .filter(
-              (
-                item
-              ) =>
+              (item) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (
-                item
-              ) => [
+              (item) => [
                 item.id!,
                 item,
               ]
@@ -1414,17 +1081,13 @@ export default function DocumentsPage() {
         >(
           scopedConsultas
             .filter(
-              (
-                item
-              ) =>
+              (item) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (
-                item
-              ) => [
+              (item) => [
                 item.id!,
                 item,
               ]
@@ -1444,17 +1107,13 @@ export default function DocumentsPage() {
         >(
           scopedExames
             .filter(
-              (
-                item
-              ) =>
+              (item) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (
-                item
-              ) => [
+              (item) => [
                 item.id!,
                 item,
               ]
@@ -1474,17 +1133,13 @@ export default function DocumentsPage() {
         >(
           scopedCirurgias
             .filter(
-              (
-                item
-              ) =>
+              (item) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (
-                item
-              ) => [
+              (item) => [
                 item.id!,
                 item,
               ]
@@ -1504,17 +1159,13 @@ export default function DocumentsPage() {
         >(
           scopedRenovacoes
             .filter(
-              (
-                item
-              ) =>
+              (item) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (
-                item
-              ) => [
+              (item) => [
                 item.id!,
                 item,
               ]
@@ -1534,17 +1185,13 @@ export default function DocumentsPage() {
         >(
           scopedRegistros
             .filter(
-              (
-                item
-              ) =>
+              (item) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (
-                item
-              ) => [
+              (item) => [
                 item.id!,
                 item,
               ]
@@ -1564,17 +1211,13 @@ export default function DocumentsPage() {
         new Map(
           medicos
             .filter(
-              (
-                item
-              ) =>
+              (item) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (
-                item
-              ) => [
+              (item) => [
                 item.id!,
                 item,
               ]
@@ -1582,6 +1225,152 @@ export default function DocumentsPage() {
         ),
       [
         medicos,
+      ]
+    );
+
+  // ==========================================================
+  // REVERSE DOCUMENT RELATIONS
+  // ==========================================================
+
+  /*
+   * Alguns fluxos históricos possuem o vínculo no sentido:
+   *
+   * Medicamento.document_id -> Documento
+   *
+   * em vez de:
+   *
+   * Documento.entidade_id -> Medicamento
+   *
+   * Este mapa permite resolver o vínculo sem inferir pelo título.
+   */
+  const medicationByDocumentId =
+    useMemo(
+      () => {
+        const map =
+          new Map<
+            string,
+            Medicamento
+          >();
+
+        for (
+          const medicamento of
+          scopedMedicamentos
+        ) {
+          const documentId =
+            medicamento.document_id?.trim();
+
+          if (
+            !documentId ||
+            !medicamento.id
+          ) {
+            continue;
+          }
+
+          if (
+            !map.has(
+              documentId
+            )
+          ) {
+            map.set(
+              documentId,
+              medicamento
+            );
+          }
+        }
+
+        return map;
+      },
+      [
+        scopedMedicamentos,
+      ]
+    );
+
+  /*
+   * O histórico de receitas fica preservado nas Renovações:
+   *
+   * Renovacao.document_id   -> Documento
+   * Renovacao.medicamento_id -> Medicamento
+   *
+   * Um mesmo documento não deveria representar várias
+   * renovações diferentes, mas usamos lista para não perder
+   * informação caso existam dados históricos duplicados.
+   */
+  const renewalsByDocumentId =
+    useMemo(
+      () => {
+        const map =
+          new Map<
+            string,
+            Renovacao[]
+          >();
+
+        for (
+          const renewal of
+          scopedRenovacoes
+        ) {
+          const documentId =
+            renewal.document_id?.trim();
+
+          if (!documentId) {
+            continue;
+          }
+
+          const current =
+            map.get(
+              documentId
+            ) || [];
+
+          current.push(
+            renewal
+          );
+
+          map.set(
+            documentId,
+            current
+          );
+        }
+
+        for (
+          const [
+            documentId,
+            list,
+          ] of map
+        ) {
+          map.set(
+            documentId,
+            [...list].sort(
+              (a, b) => {
+                const dataCompare =
+                  String(
+                    b.data || ""
+                  ).localeCompare(
+                    String(
+                      a.data || ""
+                    )
+                  );
+
+                if (
+                  dataCompare !== 0
+                ) {
+                  return dataCompare;
+                }
+
+                return String(
+                  b.created_at || ""
+                ).localeCompare(
+                  String(
+                    a.created_at || ""
+                  )
+                );
+              }
+            )
+          );
+        }
+
+        return map;
+      },
+      [
+        scopedRenovacoes,
       ]
     );
 
@@ -1611,8 +1400,7 @@ export default function DocumentsPage() {
           const list =
             map.get(
               renewal.medicamento_id
-            ) ||
-            [];
+            ) || [];
 
           list.push(
             renewal
@@ -1650,25 +1438,16 @@ export default function DocumentsPage() {
               document
             );
 
-          if (
-            key
-          ) {
-            months.add(
-              key
-            );
+          if (key) {
+            months.add(key);
           }
         }
 
         return Array.from(
           months
         ).sort(
-          (
-            a,
-            b
-          ) =>
-            b.localeCompare(
-              a
-            )
+          (a, b) =>
+            b.localeCompare(a)
         );
       },
       [
@@ -1685,9 +1464,7 @@ export default function DocumentsPage() {
       () =>
         healthDocuments
           .filter(
-            (
-              document
-            ) => {
+            (document) => {
               if (
                 selectedMonth ===
                 "all"
@@ -1704,16 +1481,9 @@ export default function DocumentsPage() {
             }
           )
           .sort(
-            (
-              a,
-              b
-            ) =>
-              getSortableDate(
-                b
-              ) -
-              getSortableDate(
-                a
-              )
+            (a, b) =>
+              getSortableDate(b) -
+              getSortableDate(a)
           ),
       [
         healthDocuments,
@@ -1732,17 +1502,13 @@ export default function DocumentsPage() {
       () =>
         periodDocuments
           .filter(
-            (
-              document
-            ) =>
+            (document) =>
               Boolean(
                 document.id
               )
           )
           .map(
-            (
-              document
-            ) => {
+            (document) => {
               const id =
                 document.id!;
 
@@ -1765,9 +1531,7 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (
-                  medicamento
-                ) {
+                if (medicamento) {
                   return {
                     document,
                     id,
@@ -1802,7 +1566,8 @@ export default function DocumentsPage() {
                     alert:
                       getPrescriptionAlert(
                         document,
-                        renewalsByMedication
+                        renewalsByMedication,
+                        medicamento.id
                       ),
                   };
                 }
@@ -1838,7 +1603,8 @@ export default function DocumentsPage() {
                   alert:
                     getPrescriptionAlert(
                       document,
-                      renewalsByMedication
+                      renewalsByMedication,
+                      document.entidade_id
                     ),
                 };
               }
@@ -1857,9 +1623,7 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (
-                  renovacao
-                ) {
+                if (renovacao) {
                   const medicamento =
                     renovacao.medicamento_id
                       ? medicationMap.get(
@@ -1867,9 +1631,7 @@ export default function DocumentsPage() {
                         )
                       : undefined;
 
-                  if (
-                    medicamento
-                  ) {
+                  if (medicamento) {
                     return {
                       document,
                       id,
@@ -2004,9 +1766,7 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (
-                  cirurgia
-                ) {
+                if (cirurgia) {
                   const medico =
                     cirurgia.medico_id
                       ? medicoMap.get(
@@ -2098,9 +1858,7 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (
-                  consulta
-                ) {
+                if (consulta) {
                   const medico =
                     consulta.medico_id
                       ? medicoMap.get(
@@ -2153,12 +1911,8 @@ export default function DocumentsPage() {
                             )
                           : undefined,
                       ]
-                        .filter(
-                          Boolean
-                        )
-                        .join(
-                          " · "
-                        ),
+                        .filter(Boolean)
+                        .join(" · "),
 
                     alert:
                       null,
@@ -2212,9 +1966,7 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (
-                  exame
-                ) {
+                if (exame) {
                   return {
                     document,
                     id,
@@ -2299,9 +2051,7 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (
-                  tratamento
-                ) {
+                if (tratamento) {
                   return {
                     document,
                     id,
@@ -2384,9 +2134,7 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (
-                  cid
-                ) {
+                if (cid) {
                   return {
                     document,
                     id,
@@ -2471,9 +2219,7 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (
-                  registro
-                ) {
+                if (registro) {
                   const registroNome =
                     String(
                       registro.nome ||
@@ -2554,6 +2300,163 @@ export default function DocumentsPage() {
               }
 
               // ==============================================
+              // RELAÇÃO REVERSA: RENOVAÇÃO -> DOCUMENTO
+              // ==============================================
+
+              const linkedRenewals =
+                renewalsByDocumentId.get(
+                  id
+                );
+
+              const linkedRenewal =
+                linkedRenewals?.find(
+                  (renewal) =>
+                    Boolean(
+                      renewal.medicamento_id
+                    )
+                );
+
+              if (
+                linkedRenewal?.medicamento_id
+              ) {
+                const medicamento =
+                  medicationMap.get(
+                    linkedRenewal.medicamento_id
+                  );
+
+                if (medicamento) {
+                  return {
+                    document,
+                    id,
+                    date,
+
+                    domainId:
+                      "medicamentos",
+
+                    parentKey:
+                      `medicamento:${medicamento.id}`,
+
+                    parentName:
+                      medicamento.nome,
+
+                    parentDescription:
+                      medicamento.dosagem ||
+                      undefined,
+
+                    parentIcon:
+                      Pill,
+
+                    parentColor:
+                      DOMAIN_CONFIG
+                        .medicamentos
+                        .color,
+
+                    entityLabel:
+                      linkedRenewal.data
+                        ? `${medicamento.nome} · ${formatShortDate(
+                            linkedRenewal.data
+                          )}`
+                        : medicamento.nome,
+
+                    alert:
+                      getPrescriptionAlert(
+                        document,
+                        renewalsByMedication,
+                        linkedRenewal.medicamento_id
+                      ),
+                  };
+                }
+
+                return {
+                  document,
+                  id,
+                  date,
+
+                  domainId:
+                    "medicamentos",
+
+                  parentKey:
+                    `medicamento-ausente:${linkedRenewal.medicamento_id}`,
+
+                  parentName:
+                    "Medicamento indisponível",
+
+                  parentDescription:
+                    "A receita está vinculada pelo histórico de renovação, mas o medicamento não está disponível localmente.",
+
+                  parentIcon:
+                    Pill,
+
+                  parentColor:
+                    DOMAIN_CONFIG
+                      .medicamentos
+                      .color,
+
+                  entityLabel:
+                    document.title,
+
+                  alert:
+                    getPrescriptionAlert(
+                      document,
+                      renewalsByMedication,
+                      linkedRenewal.medicamento_id
+                    ),
+                };
+              }
+
+              // ==============================================
+              // RELAÇÃO REVERSA: MEDICAMENTO -> DOCUMENTO
+              // ==============================================
+
+              const currentMedication =
+                medicationByDocumentId.get(
+                  id
+                );
+
+              if (
+                currentMedication?.id
+              ) {
+                return {
+                  document,
+                  id,
+                  date,
+
+                  domainId:
+                    "medicamentos",
+
+                  parentKey:
+                    `medicamento:${currentMedication.id}`,
+
+                  parentName:
+                    currentMedication.nome,
+
+                  parentDescription:
+                    currentMedication.dosagem ||
+                    undefined,
+
+                  parentIcon:
+                    Pill,
+
+                  parentColor:
+                    DOMAIN_CONFIG
+                      .medicamentos
+                      .color,
+
+                  entityLabel:
+                    currentMedication.dosagem
+                      ? `${currentMedication.nome} · ${currentMedication.dosagem}`
+                      : currentMedication.nome,
+
+                  alert:
+                    getPrescriptionAlert(
+                      document,
+                      renewalsByMedication,
+                      currentMedication.id
+                    ),
+                };
+              }
+
+              // ==============================================
               // CANONICAL DESCONHECIDO / INCOMPLETO
               // ==============================================
 
@@ -2619,9 +2522,7 @@ export default function DocumentsPage() {
                     legacyMedicationId
                   );
 
-                if (
-                  medicamento
-                ) {
+                if (medicamento) {
                   return {
                     document,
                     id,
@@ -2656,7 +2557,8 @@ export default function DocumentsPage() {
                     alert:
                       getPrescriptionAlert(
                         document,
-                        renewalsByMedication
+                        renewalsByMedication,
+                        legacyMedicationId
                       ),
                   };
                 }
@@ -2897,6 +2799,8 @@ export default function DocumentsPage() {
         renovacaoMap,
         registroMap,
         medicoMap,
+        medicationByDocumentId,
+        renewalsByDocumentId,
         renewalsByMedication,
       ]
     );
@@ -2913,16 +2817,12 @@ export default function DocumentsPage() {
             searchQuery
           );
 
-        if (
-          !normalizedQuery
-        ) {
+        if (!normalizedQuery) {
           return resolvedViewModels;
         }
 
         return resolvedViewModels.filter(
-          (
-            item
-          ) =>
+          (item) =>
             matchesViewModelSearch(
               item,
               normalizedQuery
@@ -3013,9 +2913,7 @@ export default function DocumentsPage() {
 
         return DOMAIN_ORDER
           .map(
-            (
-              domainId
-            ) => {
+            (domainId) => {
               const parentsMap =
                 domainMap.get(
                   domainId
@@ -3023,8 +2921,7 @@ export default function DocumentsPage() {
 
               if (
                 !parentsMap ||
-                parentsMap.size ===
-                  0
+                parentsMap.size === 0
               ) {
                 return null;
               }
@@ -3039,19 +2936,14 @@ export default function DocumentsPage() {
                   parentsMap.values()
                 )
                   .map(
-                    (
-                      parent
-                    ) => ({
+                    (parent) => ({
                       ...parent,
 
                       documents:
                         [
                           ...parent.documents,
                         ].sort(
-                          (
-                            a,
-                            b
-                          ) =>
+                          (a, b) =>
                             getSortableDate(
                               b.document
                             ) -
@@ -3062,19 +2954,12 @@ export default function DocumentsPage() {
                     })
                   )
                   .sort(
-                    (
-                      a,
-                      b
-                    ) => {
+                    (a, b) => {
                       const latestA =
-                        a.documents[
-                          0
-                        ];
+                        a.documents[0];
 
                       const latestB =
-                        b.documents[
-                          0
-                        ];
+                        b.documents[0];
 
                       return (
                         getSortableDate(
@@ -3122,9 +3007,7 @@ export default function DocumentsPage() {
             (
               group
             ): group is DomainGroup =>
-              Boolean(
-                group
-              )
+              Boolean(group)
           );
       },
       [
@@ -3141,17 +3024,13 @@ export default function DocumentsPage() {
       const validDomainIds =
         new Set(
           domainGroups.map(
-            (
-              group
-            ) =>
+            (group) =>
               group.id
           )
         );
 
       setExpandedDomains(
-        (
-          previous
-        ) => {
+        (previous) => {
           const next =
             new Set<
               ClinicalDomainId
@@ -3166,20 +3045,16 @@ export default function DocumentsPage() {
                 id
               )
             ) {
-              next.add(
-                id
-              );
+              next.add(id);
             }
           }
 
           if (
             next.size ===
-              0
+            0
           ) {
             domainGroups.forEach(
-              (
-                group
-              ) =>
+              (group) =>
                 next.add(
                   group.id
                 )
@@ -3200,22 +3075,16 @@ export default function DocumentsPage() {
       const validParentKeys =
         new Set(
           domainGroups.flatMap(
-            (
-              domain
-            ) =>
+            (domain) =>
               domain.parents.map(
-                (
-                  parent
-                ) =>
+                (parent) =>
                   parent.key
               )
           )
         );
 
       setExpandedParents(
-        (
-          previous
-        ) => {
+        (previous) => {
           const next =
             new Set<string>();
 
@@ -3228,31 +3097,23 @@ export default function DocumentsPage() {
                 key
               )
             ) {
-              next.add(
-                key
-              );
+              next.add(key);
             }
           }
 
           if (
             next.size ===
-              0
+            0
           ) {
             domainGroups.forEach(
-              (
-                domain
-              ) => {
+              (domain) => {
                 const first =
                   domain.parents[
                     0
                   ]?.key;
 
-                if (
-                  first
-                ) {
-                  next.add(
-                    first
-                  );
+                if (first) {
+                  next.add(first);
                 }
               }
             );
@@ -3274,34 +3135,21 @@ export default function DocumentsPage() {
   const toggleDomain =
     useCallback(
       (
-        id:
-          ClinicalDomainId
+        id: ClinicalDomainId
       ) => {
-        trigger(
-          "vibrate"
-        );
+        trigger("vibrate");
 
         setExpandedDomains(
-          (
-            previous
-          ) => {
+          (previous) => {
             const next =
               new Set(
                 previous
               );
 
-            if (
-              next.has(
-                id
-              )
-            ) {
-              next.delete(
-                id
-              );
+            if (next.has(id)) {
+              next.delete(id);
             } else {
-              next.add(
-                id
-              );
+              next.add(id);
             }
 
             return next;
@@ -3316,34 +3164,21 @@ export default function DocumentsPage() {
   const toggleParent =
     useCallback(
       (
-        key:
-          string
+        key: string
       ) => {
-        trigger(
-          "vibrate"
-        );
+        trigger("vibrate");
 
         setExpandedParents(
-          (
-            previous
-          ) => {
+          (previous) => {
             const next =
               new Set(
                 previous
               );
 
-            if (
-              next.has(
-                key
-              )
-            ) {
-              next.delete(
-                key
-              );
+            if (next.has(key)) {
+              next.delete(key);
             } else {
-              next.add(
-                key
-              );
+              next.add(key);
             }
 
             return next;
@@ -3358,12 +3193,9 @@ export default function DocumentsPage() {
   const openDocument =
     useCallback(
       (
-        id:
-          string
+        id: string
       ) => {
-        trigger(
-          "vibrate"
-        );
+        trigger("vibrate");
 
         router.push(
           `/saude/documentos/detalhes?id=${id}`
@@ -3383,9 +3215,7 @@ export default function DocumentsPage() {
     useMemo(
       () =>
         viewModels.map(
-          (
-            item
-          ) => ({
+          (item) => ({
             ref:
               getExportCardRef(
                 item.id
@@ -3449,16 +3279,6 @@ export default function DocumentsPage() {
       <main className="min-h-screen bg-void pb-28">
         {/* ====================================================
             EXPORT SURFACE
-            ====================================================
-
-            A superfície fica montada fora da viewport, mas não
-            usa display:none, visibility:hidden ou opacity:0.
-
-            html2canvas precisa de elementos realmente
-            renderizados para capturar corretamente.
-
-            Ela não interfere na árvore visual e não depende de
-            domínio/pai estar expandido.
             ==================================================== */}
 
         {viewModels.length >
@@ -3469,9 +3289,7 @@ export default function DocumentsPage() {
           >
             <div className="space-y-6 bg-void p-6">
               {viewModels.map(
-                (
-                  item
-                ) => {
+                (item) => {
                   const exportRef =
                     getExportCardRef(
                       item.id
@@ -3588,32 +3406,6 @@ export default function DocumentsPage() {
                   }
                 />
               </button>
-
-              <button
-                type="button"
-                onClick={
-                  () => {
-                    trigger(
-                      "vibrate"
-                    );
-
-                    router.push(
-                      "/saude/documentos/novo"
-                    );
-                  }
-                }
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400 text-void shadow-lg shadow-emerald-400/20 transition-transform active:scale-95"
-                aria-label="Novo documento de saúde"
-              >
-                <Plus
-                  size={
-                    19
-                  }
-                  strokeWidth={
-                    2.5
-                  }
-                />
-              </button>
             </div>
           </div>
 
@@ -3631,9 +3423,7 @@ export default function DocumentsPage() {
                 searchQuery
               }
               onChange={
-                (
-                  event
-                ) =>
+                (event) =>
                   setSearchQuery(
                     event.target.value
                   )
@@ -3712,18 +3502,12 @@ export default function DocumentsPage() {
               0 ? (
                 <motion.div
                   initial={{
-                    opacity:
-                      0,
-
-                    y:
-                      10,
+                    opacity: 0,
+                    y: 10,
                   }}
                   animate={{
-                    opacity:
-                      1,
-
-                    y:
-                      0,
+                    opacity: 1,
+                    y: 0,
                   }}
                   className="flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface px-6 py-12 text-center shadow-sm"
                 >
@@ -3746,70 +3530,56 @@ export default function DocumentsPage() {
                       ? "Não encontramos documentos compatíveis com a busca dentro do período selecionado."
                       : selectedMonth !==
                           "all"
-                        ? "O mês selecionado ainda não possui documentos clínicos. Você pode consultar outros períodos ou adicionar um documento."
-                        : "O Acervo Clínico desta pessoa ainda está vazio."}
+                        ? "O mês selecionado ainda não possui documentos clínicos. Consulte outro período ou use o menu inferior para adicionar um documento."
+                        : "O Acervo Clínico desta pessoa ainda está vazio. Use o menu inferior para adicionar um documento."}
                   </p>
 
-                  <div className="mt-5 flex flex-wrap justify-center gap-2">
-                    {searchQuery.trim() && (
-                      <button
-                        type="button"
-                        onClick={
-                          () => {
-                            trigger(
-                              "vibrate"
-                            );
+                  {(searchQuery.trim() ||
+                    selectedMonth !==
+                      "all") && (
+                    <div className="mt-5 flex flex-wrap justify-center gap-2">
+                      {searchQuery.trim() && (
+                        <button
+                          type="button"
+                          onClick={
+                            () => {
+                              trigger(
+                                "vibrate"
+                              );
 
-                            setSearchQuery(
-                              ""
-                            );
+                              setSearchQuery(
+                                ""
+                              );
+                            }
                           }
-                        }
-                        className="rounded-full border border-surface-border/50 bg-surface-raised px-4 py-2 text-xs font-semibold text-ink-primary active:scale-95"
-                      >
-                        Limpar busca
-                      </button>
-                    )}
+                          className="rounded-full border border-surface-border/50 bg-surface-raised px-4 py-2 text-xs font-semibold text-ink-primary active:scale-95"
+                        >
+                          Limpar busca
+                        </button>
+                      )}
 
-                    {selectedMonth !==
-                      "all" && (
-                      <button
-                        type="button"
-                        onClick={
-                          () => {
-                            trigger(
-                              "vibrate"
-                            );
+                      {selectedMonth !==
+                        "all" && (
+                        <button
+                          type="button"
+                          onClick={
+                            () => {
+                              trigger(
+                                "vibrate"
+                              );
 
-                            setSelectedMonth(
-                              "all"
-                            );
+                              setSelectedMonth(
+                                "all"
+                              );
+                            }
                           }
-                        }
-                        className="rounded-full border border-surface-border/50 bg-surface-raised px-4 py-2 text-xs font-semibold text-ink-primary active:scale-95"
-                      >
-                        Todos os meses
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={
-                        () => {
-                          trigger(
-                            "vibrate"
-                          );
-
-                          router.push(
-                            "/saude/documentos/novo"
-                          );
-                        }
-                      }
-                      className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-void active:scale-95"
-                    >
-                      Novo documento
-                    </button>
-                  </div>
+                          className="rounded-full border border-surface-border/50 bg-surface-raised px-4 py-2 text-xs font-semibold text-ink-primary active:scale-95"
+                        >
+                          Todos os meses
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
               ) : (
                 <div className="space-y-4">
@@ -3846,18 +3616,12 @@ export default function DocumentsPage() {
                             domain.id
                           }
                           initial={{
-                            opacity:
-                              0,
-
-                            y:
-                              10,
+                            opacity: 0,
+                            y: 10,
                           }}
                           animate={{
-                            opacity:
-                              1,
-
-                            y:
-                              0,
+                            opacity: 1,
+                            y: 0,
                           }}
                           transition={{
                             delay:
@@ -3885,7 +3649,6 @@ export default function DocumentsPage() {
                                 style={{
                                   backgroundColor:
                                     `${domain.color}18`,
-
                                   color:
                                     domain.color,
                                 }}
@@ -3940,25 +3703,16 @@ export default function DocumentsPage() {
                             {isDomainExpanded && (
                               <motion.div
                                 initial={{
-                                  opacity:
-                                    0,
-
-                                  height:
-                                    0,
+                                  opacity: 0,
+                                  height: 0,
                                 }}
                                 animate={{
-                                  opacity:
-                                    1,
-
-                                  height:
-                                    "auto",
+                                  opacity: 1,
+                                  height: "auto",
                                 }}
                                 exit={{
-                                  opacity:
-                                    0,
-
-                                  height:
-                                    0,
+                                  opacity: 0,
+                                  height: 0,
                                 }}
                                 className="overflow-hidden"
                               >
@@ -4001,7 +3755,6 @@ export default function DocumentsPage() {
                                                 style={{
                                                   backgroundColor:
                                                     `${parent.color}15`,
-
                                                   color:
                                                     parent.color,
                                                 }}
@@ -4059,25 +3812,16 @@ export default function DocumentsPage() {
                                             {isParentExpanded && (
                                               <motion.div
                                                 initial={{
-                                                  opacity:
-                                                    0,
-
-                                                  height:
-                                                    0,
+                                                  opacity: 0,
+                                                  height: 0,
                                                 }}
                                                 animate={{
-                                                  opacity:
-                                                    1,
-
-                                                  height:
-                                                    "auto",
+                                                  opacity: 1,
+                                                  height: "auto",
                                                 }}
                                                 exit={{
-                                                  opacity:
-                                                    0,
-
-                                                  height:
-                                                    0,
+                                                  opacity: 0,
+                                                  height: 0,
                                                 }}
                                                 className="overflow-hidden"
                                               >
@@ -4088,9 +3832,7 @@ export default function DocumentsPage() {
                                                     ) => {
                                                       const DocumentIcon =
                                                         getDocumentIcon(
-                                                          item
-                                                            .document
-                                                            .type
+                                                          item.document.type
                                                         );
 
                                                       return (
@@ -4120,9 +3862,7 @@ export default function DocumentsPage() {
                                                               <div className="flex min-w-0 items-center gap-2">
                                                                 <p className="truncate text-xs font-semibold text-ink-primary">
                                                                   {
-                                                                    item
-                                                                      .document
-                                                                      .title
+                                                                    item.document.title
                                                                   }
                                                                 </p>
 
@@ -4132,15 +3872,12 @@ export default function DocumentsPage() {
                                                                     style={{
                                                                       backgroundColor:
                                                                         `${item.alert.color}18`,
-
                                                                       color:
                                                                         item.alert.color,
                                                                     }}
                                                                   >
                                                                     {
-                                                                      item
-                                                                        .alert
-                                                                        .label
+                                                                      item.alert.label
                                                                     }
                                                                   </span>
                                                                 )}
@@ -4149,9 +3886,7 @@ export default function DocumentsPage() {
                                                               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-muted">
                                                                 <span>
                                                                   {getDocumentTypeLabel(
-                                                                    item
-                                                                      .document
-                                                                      .type
+                                                                    item.document.type
                                                                   )}
                                                                 </span>
 
@@ -4163,9 +3898,7 @@ export default function DocumentsPage() {
                                                                       "consultas" ||
                                                                     item.domainId ===
                                                                       "registros" ||
-                                                                    item
-                                                                      .document
-                                                                      .entidade_tipo ===
+                                                                    item.document.entidade_tipo ===
                                                                       "renovacao"
                                                                   ) && (
                                                                     <>
@@ -4195,10 +3928,7 @@ export default function DocumentsPage() {
                                                                   </>
                                                                 )}
 
-                                                                {(item
-                                                                  .document
-                                                                  .attachments
-                                                                  ?.length ||
+                                                                {(item.document.attachments?.length ||
                                                                   0) >
                                                                   0 && (
                                                                   <>
@@ -4214,10 +3944,7 @@ export default function DocumentsPage() {
                                                                       />
 
                                                                       {
-                                                                        item
-                                                                          .document
-                                                                          .attachments
-                                                                          .length
+                                                                        item.document.attachments.length
                                                                       }
                                                                     </span>
                                                                   </>
@@ -4406,14 +4133,9 @@ export default function DocumentsPage() {
 // ============================================================
 
 interface ExportDocumentCardProps {
-  item:
-    DocumentViewModel;
-
-  cardRef:
-    CardElementRef;
-
-  selectedMonthLabel:
-    string;
+  item: DocumentViewModel;
+  cardRef: CardElementRef;
+  selectedMonthLabel: string;
 }
 
 function ExportDocumentCard({
@@ -4439,9 +4161,7 @@ function ExportDocumentCard({
   return (
     <div
       ref={
-        (
-          element
-        ) => {
+        (element) => {
           cardRef.current =
             element;
         }
@@ -4491,7 +4211,6 @@ function ExportDocumentCard({
             style={{
               backgroundColor:
                 `${item.parentColor}15`,
-
               color:
                 item.parentColor,
             }}
@@ -4594,7 +4313,6 @@ function ExportDocumentCard({
             style={{
               backgroundColor:
                 `${item.alert.color}18`,
-
               color:
                 item.alert.color,
             }}
@@ -4620,14 +4338,9 @@ function ExportDocumentCard({
 // ============================================================
 
 interface LayersSummaryProps {
-  domains:
-    number;
-
-  parents:
-    number;
-
-  documents:
-    number;
+  domains: number;
+  parents: number;
+  documents: number;
 }
 
 function LayersSummary({
