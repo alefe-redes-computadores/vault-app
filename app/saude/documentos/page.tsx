@@ -551,12 +551,18 @@ function getDocumentTypeLabel(
   }
 }
 
+/*
+ * O ícone do medicamento pertence ao nível pai.
+ *
+ * Receitas e demais arquivos usam identidade documental no
+ * nível filho para evitar a repetição visual do medicamento.
+ */
 function getDocumentIcon(
   type: Document["type"]
 ): LucideIcon {
   switch (type) {
     case "receita":
-      return Pill;
+      return FileText;
 
     case "consulta":
       return Stethoscope;
@@ -574,6 +580,21 @@ function getDocumentIcon(
     default:
       return FileText;
   }
+}
+
+function getCompactMedicationDocumentLabel(
+  item: DocumentViewModel
+): string {
+  if (
+    item.document.entidade_tipo ===
+    "renovacao"
+  ) {
+    return "Renovação";
+  }
+
+  return getDocumentTypeLabel(
+    item.document.type
+  );
 }
 
 function getMedicationColors(
@@ -815,12 +836,6 @@ function getPrescriptionAlert(
     }
   }
 
-  /*
-   * renewal_date NÃO é validade da receita.
-   *
-   * A validade documental usa somente campos que representam
-   * explicitamente expiração / validade.
-   */
   const expirationDate =
     getMetadataString(
       document,
@@ -1038,10 +1053,6 @@ export default function DocumentsPage() {
   ] =
     useState("");
 
-  /*
-   * Regra de produto:
-   * o Acervo abre sempre no mês corrente.
-   */
   const [
     selectedMonth,
     setSelectedMonth,
@@ -1575,9 +1586,6 @@ export default function DocumentsPage() {
       ]
     );
 
-  /*
-   * Médicos são globais à conta.
-   */
   const medicoMap =
     useMemo(
       () =>
@@ -1609,15 +1617,6 @@ export default function DocumentsPage() {
   // REVERSE DOCUMENT RELATIONS
   // ==========================================================
 
-  /*
-   * Alguns fluxos históricos possuem o vínculo no sentido:
-   *
-   * Medicamento.document_id -> Documento
-   *
-   * em vez de:
-   *
-   * Documento.entidade_id -> Medicamento
-   */
   const medicationByDocumentId =
     useMemo(
       () => {
@@ -1660,12 +1659,6 @@ export default function DocumentsPage() {
       ]
     );
 
-  /*
-   * Histórico de receitas:
-   *
-   * Renovacao.document_id -> Documento
-   * Renovacao.medicamento_id -> Medicamento
-   */
   const renewalsByDocumentId =
     useMemo(
       () => {
@@ -2899,11 +2892,6 @@ export default function DocumentsPage() {
 
               // ==============================================
               // LEGADO SEGURO: RECEITA PELO NOME
-              //
-              // Recuperação somente visual.
-              //
-              // Não grava vínculo no banco e só aceita uma
-              // correspondência exata e única.
               // ==============================================
 
               const legacyPrescriptionMedication =
@@ -4393,7 +4381,7 @@ export default function DocumentsPage() {
                                                 );
                                               }
                                             }
-                                            className="flex min-h-[68px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-raised/45 active:bg-surface-raised/60"
+                                            className="flex min-h-[66px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-raised/45 active:bg-surface-raised/60"
                                             aria-expanded={
                                               hasSingleMedicationDocument
                                                 ? undefined
@@ -4604,15 +4592,36 @@ export default function DocumentsPage() {
                                                   }}
                                                   className="overflow-hidden"
                                                 >
-                                                  <div className="space-y-2 border-t border-surface-border/25 bg-void/20 px-3 pb-3 pt-2.5">
+                                                  {/*
+                                                   * Histórico compacto.
+                                                   *
+                                                   * Não criamos novos cards dentro
+                                                   * do grupo pai. Cada documento é
+                                                   * apenas uma linha navegável.
+                                                   */}
+                                                  <div className="border-t border-surface-border/20 bg-void/15 px-4">
                                                     {parent.documents.map(
                                                       (
-                                                        item
+                                                        item,
+                                                        itemIndex
                                                       ) => {
                                                         const DocumentIcon =
                                                           getDocumentIcon(
                                                             item.document.type
                                                           );
+
+                                                        const attachmentCount =
+                                                          item.document
+                                                            .attachments
+                                                            ?.length ||
+                                                          0;
+
+                                                        const primaryLabel =
+                                                          isMedicationParent
+                                                            ? getCompactMedicationDocumentLabel(
+                                                                item
+                                                              )
+                                                            : item.document.title;
 
                                                         return (
                                                           <button
@@ -4626,10 +4635,15 @@ export default function DocumentsPage() {
                                                                   item.id
                                                                 )
                                                             }
-                                                            className="group flex w-full items-center justify-between gap-3 rounded-[17px] border border-surface-border/35 bg-surface-raised/45 px-3 py-2.5 text-left transition-all hover:border-emerald-400/25 active:scale-[0.99]"
+                                                            className={`group flex min-h-[58px] w-full items-center justify-between gap-3 py-2.5 text-left transition-colors hover:bg-surface-raised/20 active:bg-surface-raised/35 ${
+                                                              itemIndex >
+                                                              0
+                                                                ? "border-t border-surface-border/20"
+                                                                : ""
+                                                            }`}
                                                           >
-                                                            <div className="flex min-w-0 items-center gap-3">
-                                                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] border border-surface-border/35 bg-surface text-emerald-400">
+                                                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                                                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-surface-border/30 bg-surface-raised/45 text-emerald-400">
                                                                 <DocumentIcon
                                                                   size={
                                                                     14
@@ -4637,20 +4651,30 @@ export default function DocumentsPage() {
                                                                 />
                                                               </div>
 
-                                                              <div className="min-w-0">
+                                                              <div className="min-w-0 flex-1">
                                                                 <div className="flex min-w-0 items-center gap-2">
+                                                                  {isMedicationParent && (
+                                                                    <span
+                                                                      className="h-1.5 w-1.5 shrink-0 rounded-full"
+                                                                      style={{
+                                                                        backgroundColor:
+                                                                          parent.color,
+                                                                      }}
+                                                                    />
+                                                                  )}
+
                                                                   <p className="truncate text-[11px] font-semibold text-ink-primary">
                                                                     {
-                                                                      item.document.title
+                                                                      primaryLabel
                                                                     }
                                                                   </p>
 
                                                                   {item.alert && (
                                                                     <span
-                                                                      className="shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-bold"
+                                                                      className="shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-semibold"
                                                                       style={{
                                                                         backgroundColor:
-                                                                          `${item.alert.color}18`,
+                                                                          `${item.alert.color}16`,
                                                                         color:
                                                                           item.alert.color,
                                                                       }}
@@ -4662,14 +4686,17 @@ export default function DocumentsPage() {
                                                                   )}
                                                                 </div>
 
-                                                                <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px] text-ink-muted">
-                                                                  <span>
-                                                                    {getDocumentTypeLabel(
-                                                                      item.document.type
-                                                                    )}
-                                                                  </span>
+                                                                <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px] text-ink-muted">
+                                                                  {!isMedicationParent && (
+                                                                    <span>
+                                                                      {getDocumentTypeLabel(
+                                                                        item.document.type
+                                                                      )}
+                                                                    </span>
+                                                                  )}
 
-                                                                  {item.entityLabel &&
+                                                                  {!isMedicationParent &&
+                                                                    item.entityLabel &&
                                                                     (
                                                                       item.domainId ===
                                                                         "cirurgias" ||
@@ -4694,28 +4721,21 @@ export default function DocumentsPage() {
                                                                     )}
 
                                                                   {item.date && (
-                                                                    <>
-                                                                      <span className="text-ink-faint">
-                                                                        ·
-                                                                      </span>
-
-                                                                      <span className="font-mono">
-                                                                        {formatShortDate(
-                                                                          item.date
-                                                                        )}
-                                                                      </span>
-                                                                    </>
+                                                                    <span className="font-mono">
+                                                                      {formatShortDate(
+                                                                        item.date
+                                                                      )}
+                                                                    </span>
                                                                   )}
 
-                                                                  {(item.document
-                                                                    .attachments
-                                                                    ?.length ||
-                                                                    0) >
+                                                                  {attachmentCount >
                                                                     0 && (
                                                                     <>
-                                                                      <span className="text-ink-faint">
-                                                                        ·
-                                                                      </span>
+                                                                      {item.date && (
+                                                                        <span className="text-ink-faint">
+                                                                          ·
+                                                                        </span>
+                                                                      )}
 
                                                                       <span className="flex items-center gap-1 text-ice">
                                                                         <Paperclip
@@ -4725,10 +4745,7 @@ export default function DocumentsPage() {
                                                                         />
 
                                                                         {
-                                                                          item
-                                                                            .document
-                                                                            .attachments
-                                                                            .length
+                                                                          attachmentCount
                                                                         }
                                                                       </span>
                                                                     </>
@@ -4741,7 +4758,7 @@ export default function DocumentsPage() {
                                                               size={
                                                                 13
                                                               }
-                                                              className="shrink-0 text-ink-faint transition-colors group-hover:text-emerald-400"
+                                                              className="shrink-0 text-ink-faint transition-all group-hover:translate-x-0.5 group-hover:text-emerald-400"
                                                             />
                                                           </button>
                                                         );
