@@ -129,6 +129,10 @@ import {
   ScrollToTop,
 } from "@/components/ScrollToTop";
 
+import {
+  MedicationFormatIcon,
+} from "@/components/saude/MedicationFormatIcon";
+
 import type {
   Cid,
   Cirurgia,
@@ -177,6 +181,7 @@ interface DocumentViewModel {
   parentDescription?: string;
   parentIcon: LucideIcon;
   parentColor: string;
+  medication?: Medicamento;
   entityLabel?: string;
   alert: PrescriptionAlert | null;
 }
@@ -187,6 +192,7 @@ interface ParentGroup {
   description?: string;
   icon: LucideIcon;
   color: string;
+  medication?: Medicamento;
   documents: DocumentViewModel[];
 }
 
@@ -297,11 +303,18 @@ const DOMAIN_ORDER: ClinicalDomainId[] = [
 // HELPERS
 // ============================================================
 
-function normalizeSearch(value: string): string {
+function normalizeSearch(
+  value: string
+): string {
   return value
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .toLocaleLowerCase(
+      "pt-BR"
+    )
     .trim();
 }
 
@@ -309,11 +322,17 @@ function getMetadataString(
   document: Document,
   ...keys: string[]
 ): string {
-  for (const key of keys) {
-    const value = document.metadata?.[key];
+  for (
+    const key of keys
+  ) {
+    const value =
+      document.metadata?.[
+        key
+      ];
 
     if (
-      typeof value === "string" &&
+      typeof value ===
+        "string" &&
       value.trim()
     ) {
       return value.trim();
@@ -326,40 +345,54 @@ function getMetadataString(
 function getDocumentDate(
   document: Document
 ): string | null {
-  const metadataDate = getMetadataString(
-    document,
-    "prescription_date",
-    "date",
-    "data_exame",
-    "issue_date",
-    "data",
-    "created_date"
-  );
+  const metadataDate =
+    getMetadataString(
+      document,
+      "prescription_date",
+      "date",
+      "data_exame",
+      "issue_date",
+      "data",
+      "created_date"
+    );
 
   if (metadataDate) {
     return metadataDate;
   }
 
-  return document.created_at || null;
+  return (
+    document.created_at ||
+    null
+  );
 }
 
 function getSortableDate(
   document: Document
 ): number {
-  const value = getDocumentDate(document);
+  const value =
+    getDocumentDate(
+      document
+    );
 
   if (!value) {
     return 0;
   }
 
   const normalized =
-    /^\d{4}-\d{2}-\d{2}$/.test(value)
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      value
+    )
       ? `${value}T12:00:00`
       : value;
 
-  const timestamp = Date.parse(normalized);
+  const timestamp =
+    Date.parse(
+      normalized
+    );
 
-  return Number.isFinite(timestamp)
+  return Number.isFinite(
+    timestamp
+  )
     ? timestamp
     : 0;
 }
@@ -368,13 +401,20 @@ function formatFullDate(
   dateString: string
 ): string {
   try {
-    const clean = dateString.slice(0, 10);
+    const clean =
+      dateString.slice(
+        0,
+        10
+      );
 
     return format(
-      parseISO(clean),
+      parseISO(
+        clean
+      ),
       "dd 'de' MMMM 'de' yyyy",
       {
-        locale: ptBR,
+        locale:
+          ptBR,
       }
     );
   } catch {
@@ -386,13 +426,20 @@ function formatShortDate(
   dateString: string
 ): string {
   try {
-    const clean = dateString.slice(0, 10);
+    const clean =
+      dateString.slice(
+        0,
+        10
+      );
 
     return format(
-      parseISO(clean),
+      parseISO(
+        clean
+      ),
       "dd MMM yyyy",
       {
-        locale: ptBR,
+        locale:
+          ptBR,
       }
     );
   } catch {
@@ -403,43 +450,67 @@ function formatShortDate(
 function getMonthKey(
   document: Document
 ): string | null {
-  const date = getDocumentDate(document);
+  const date =
+    getDocumentDate(
+      document
+    );
 
   if (
     !date ||
-    !/^\d{4}-\d{2}/.test(date)
+    !/^\d{4}-\d{2}/.test(
+      date
+    )
   ) {
     return null;
   }
 
-  return date.slice(0, 7);
+  return date.slice(
+    0,
+    7
+  );
 }
 
 function formatMonthLabel(
   monthKey: string
 ): string {
-  if (monthKey === "all") {
+  if (
+    monthKey ===
+    "all"
+  ) {
     return "Todos os meses";
   }
 
   try {
-    const [year, month] =
-      monthKey.split("-");
+    const [
+      year,
+      month,
+    ] =
+      monthKey.split(
+        "-"
+      );
 
-    const value = format(
-      new Date(
-        Number(year),
-        Number(month) - 1,
-        1
-      ),
-      "MMMM 'de' yyyy",
-      {
-        locale: ptBR,
-      }
-    );
+    const value =
+      format(
+        new Date(
+          Number(
+            year
+          ),
+          Number(
+            month
+          ) - 1,
+          1
+        ),
+        "MMMM 'de' yyyy",
+        {
+          locale:
+            ptBR,
+        }
+      );
 
     return (
-      value.charAt(0).toUpperCase() +
+      value
+        .charAt(0)
+        .toUpperCase() +
       value.slice(1)
     );
   } catch {
@@ -505,17 +576,164 @@ function getDocumentIcon(
   }
 }
 
+function getMedicationColors(
+  medicamento: Medicamento
+): string[] {
+  const colors =
+    medicamento.cores
+      ?.filter(
+        (
+          color
+        ): color is string =>
+          typeof color ===
+            "string" &&
+          color.trim().length >
+            0
+      )
+      .map(
+        (color) =>
+          color.trim()
+      )
+      .slice(
+        0,
+        2
+      ) || [];
+
+  if (
+    colors.length >
+    0
+  ) {
+    return colors;
+  }
+
+  if (
+    medicamento.cor_principal?.trim()
+  ) {
+    return [
+      medicamento.cor_principal.trim(),
+    ];
+  }
+
+  return [
+    DOMAIN_CONFIG
+      .medicamentos
+      .color,
+  ];
+}
+
+function getMedicationPrimaryColor(
+  medicamento: Medicamento
+): string {
+  return (
+    getMedicationColors(
+      medicamento
+    )[0] ||
+    DOMAIN_CONFIG
+      .medicamentos
+      .color
+  );
+}
+
+/*
+ * Compatibilidade visual para receitas históricas que não
+ * possuem entidade_tipo / entidade_id nem medicamento_id.
+ *
+ * Não altera o banco.
+ *
+ * O fallback só aceita o padrão explícito:
+ *
+ * Receita — Nome do Medicamento
+ * Receita - Nome do Medicamento
+ * Receita: Nome do Medicamento
+ */
+function extractLegacyPrescriptionMedicationName(
+  document: Document
+): string | null {
+  if (
+    document.type !==
+    "receita"
+  ) {
+    return null;
+  }
+
+  if (
+    document.entidade_tipo ||
+    document.entidade_id
+  ) {
+    return null;
+  }
+
+  const title =
+    document.title.trim();
+
+  const match =
+    title.match(
+      /^receita\s*[-–—:]\s*(.+)$/i
+    );
+
+  const medicationName =
+    match?.[1]?.trim();
+
+  return (
+    medicationName ||
+    null
+  );
+}
+
+function findUniqueLegacyPrescriptionMedication(
+  document: Document,
+  medicamentos: Medicamento[]
+): Medicamento | null {
+  const extractedName =
+    extractLegacyPrescriptionMedicationName(
+      document
+    );
+
+  if (!extractedName) {
+    return null;
+  }
+
+  const normalizedName =
+    normalizeSearch(
+      extractedName
+    );
+
+  if (!normalizedName) {
+    return null;
+  }
+
+  const matches =
+    medicamentos.filter(
+      (
+        medicamento
+      ) =>
+        normalizeSearch(
+          medicamento.nome
+        ) ===
+        normalizedName
+    );
+
+  return (
+    matches.length === 1
+      ? matches[0]
+      : null
+  );
+}
+
 function getPrescriptionMedicationId(
   document: Document
 ): string {
   if (
-    document.entidade_tipo === "medicamento" &&
+    document.entidade_tipo ===
+      "medicamento" &&
     document.entidade_id
   ) {
     return document.entidade_id;
   }
 
-  if (document.entidade_tipo) {
+  if (
+    document.entidade_tipo
+  ) {
     return "";
   }
 
@@ -534,44 +752,65 @@ function getPrescriptionAlert(
   >,
   medicationIdOverride?: string
 ): PrescriptionAlert | null {
-  if (document.type !== "receita") {
+  if (
+    document.type !==
+    "receita"
+  ) {
     return null;
   }
 
   const medicationId =
     medicationIdOverride ||
-    getPrescriptionMedicationId(document);
+    getPrescriptionMedicationId(
+      document
+    );
 
   if (!medicationId) {
     return null;
   }
 
   const prescriptionDate =
-    getDocumentDate(document);
+    getDocumentDate(
+      document
+    );
 
   const renewals =
     renewalsByMedication.get(
       medicationId
     ) || [];
 
-  if (prescriptionDate) {
+  if (
+    prescriptionDate
+  ) {
     const normalizedPrescriptionDate =
-      prescriptionDate.slice(0, 10);
+      prescriptionDate.slice(
+        0,
+        10
+      );
 
-    const renewed = renewals.some(
-      (renewal) =>
-        Boolean(
-          renewal.data &&
-            renewal.data.slice(0, 10) >
-              normalizedPrescriptionDate
-        )
-    );
+    const renewed =
+      renewals.some(
+        (
+          renewal
+        ) =>
+          Boolean(
+            renewal.data &&
+              renewal.data.slice(
+                0,
+                10
+              ) >
+                normalizedPrescriptionDate
+          )
+      );
 
     if (renewed) {
       return {
-        status: "renovada",
-        label: "Renovada",
-        color: "#38BDF8",
+        status:
+          "renovada",
+        label:
+          "Renovada",
+        color:
+          "#38BDF8",
       };
     }
   }
@@ -582,14 +821,17 @@ function getPrescriptionAlert(
    * A validade documental usa somente campos que representam
    * explicitamente expiração / validade.
    */
-  const expirationDate = getMetadataString(
-    document,
-    "expiry_date",
-    "expiration_date",
-    "validade"
-  );
+  const expirationDate =
+    getMetadataString(
+      document,
+      "expiry_date",
+      "expiration_date",
+      "validade"
+    );
 
-  if (!expirationDate) {
+  if (
+    !expirationDate
+  ) {
     return null;
   }
 
@@ -599,15 +841,19 @@ function getPrescriptionAlert(
     )
   ) {
     return {
-      status: "vencida",
-      label: "Vencida",
-      color: "#EF4444",
+      status:
+        "vencida",
+      label:
+        "Vencida",
+      color:
+        "#EF4444",
     };
   }
 
-  const days = getDaysUntil(
-    expirationDate
-  );
+  const days =
+    getDaysUntil(
+      expirationDate
+    );
 
   if (
     days !== null &&
@@ -615,16 +861,22 @@ function getPrescriptionAlert(
     days <= 7
   ) {
     return {
-      status: "proxima",
-      label: "Próxima ao vencimento",
-      color: "#F59E0B",
+      status:
+        "proxima",
+      label:
+        "Próxima ao vencimento",
+      color:
+        "#F59E0B",
     };
   }
 
   return {
-    status: "valida",
-    label: "Válida",
-    color: "#10B981",
+    status:
+      "valida",
+    label:
+      "Válida",
+    color:
+      "#10B981",
   };
 }
 
@@ -633,51 +885,77 @@ function getRegistroDescription(
 ): string | undefined {
   const parts = [
     registro.data
-      ? formatFullDate(registro.data)
+      ? formatFullDate(
+          registro.data
+        )
       : undefined,
 
     registro.horario
       ? registro.horario
       : undefined,
-  ].filter(Boolean);
+  ].filter(
+    Boolean
+  );
 
-  return parts.length > 0
-    ? parts.join(" · ")
-    : undefined;
+  return (
+    parts.length >
+    0
+      ? parts.join(
+          " · "
+        )
+      : undefined
+  );
 }
 
 function matchesViewModelSearch(
   item: DocumentViewModel,
   normalizedQuery: string
 ): boolean {
-  if (!normalizedQuery) {
+  if (
+    !normalizedQuery
+  ) {
     return true;
   }
 
-  const document = item.document;
+  const document =
+    item.document;
 
-  const metadataValues = Object.values(
-    document.metadata || {}
-  )
-    .filter(
-      (value): value is string =>
-        typeof value === "string"
+  const metadataValues =
+    Object.values(
+      document.metadata ||
+        {}
     )
-    .slice(0, 20);
+      .filter(
+        (
+          value
+        ): value is string =>
+          typeof value ===
+          "string"
+      )
+      .slice(
+        0,
+        20
+      );
 
-  const searchable = normalizeSearch(
-    [
-      document.title,
-      document.description || "",
-      getDocumentTypeLabel(
-        document.type
-      ),
-      item.parentName,
-      item.parentDescription || "",
-      item.entityLabel || "",
-      ...metadataValues,
-    ].join(" ")
-  );
+  const searchable =
+    normalizeSearch(
+      [
+        document.title,
+        document.description ||
+          "",
+        getDocumentTypeLabel(
+          document.type
+        ),
+        item.parentName,
+        item.parentDescription ||
+          "",
+        item.entityLabel ||
+          "",
+        ...metadataValues,
+      ].join(
+        " "
+      )
+    );
 
   return searchable.includes(
     normalizedQuery
@@ -689,51 +967,66 @@ function matchesViewModelSearch(
 // ============================================================
 
 export default function DocumentsPage() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const { trigger } =
+  const {
+    trigger,
+  } =
     useHapticFeedback();
 
-  const { activePersonId } =
+  const {
+    activePersonId,
+  } =
     useActivePersonId();
 
-  const documents = useDocuments();
+  const documents =
+    useDocuments();
 
   const {
     medicamentos = [],
-  } = useMedicamentos();
+  } =
+    useMedicamentos();
 
   const {
     tratamentos = [],
-  } = useTratamentos();
+  } =
+    useTratamentos();
 
   const {
     cids = [],
-  } = useCids();
+  } =
+    useCids();
 
   const {
     consultas = [],
-  } = useConsultas();
+  } =
+    useConsultas();
 
   const {
     exames = [],
-  } = useExames();
+  } =
+    useExames();
 
   const {
     cirurgias = [],
-  } = useCirurgias();
+  } =
+    useCirurgias();
 
   const {
     medicos = [],
-  } = useMedicos();
+  } =
+    useMedicos();
 
   const {
     renovacoes = [],
-  } = useRenovacoes();
+  } =
+    useRenovacoes();
 
   const {
     registros = [],
-  } = useRegistrosSaude();
+  } =
+    useRegistrosSaude();
 
   // ==========================================================
   // STATE
@@ -742,7 +1035,8 @@ export default function DocumentsPage() {
   const [
     searchQuery,
     setSearchQuery,
-  ] = useState("");
+  ] =
+    useState("");
 
   /*
    * Regra de produto:
@@ -751,31 +1045,41 @@ export default function DocumentsPage() {
   const [
     selectedMonth,
     setSelectedMonth,
-  ] = useState(
-    format(
-      new Date(),
-      "yyyy-MM"
-    )
-  );
+  ] =
+    useState(
+      format(
+        new Date(),
+        "yyyy-MM"
+      )
+    );
 
   const [
     showFilters,
     setShowFilters,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     expandedDomains,
     setExpandedDomains,
-  ] = useState<
-    Set<ClinicalDomainId>
-  >(new Set());
+  ] =
+    useState<
+      Set<ClinicalDomainId>
+    >(
+      new Set()
+    );
 
   const [
     expandedParents,
     setExpandedParents,
-  ] = useState<
-    Set<string>
-  >(new Set());
+  ] =
+    useState<
+      Set<string>
+    >(
+      new Set()
+    );
 
   // ==========================================================
   // EXPORT REFS
@@ -802,7 +1106,8 @@ export default function DocumentsPage() {
           exportCardRefs.current[
             id
           ] = {
-            current: null,
+            current:
+              null,
           };
         }
 
@@ -820,12 +1125,16 @@ export default function DocumentsPage() {
   const healthDocuments =
     useMemo(
       () => {
-        if (!activePersonId) {
+        if (
+          !activePersonId
+        ) {
           return [];
         }
 
         return documents.filter(
-          (document) =>
+          (
+            document
+          ) =>
             document.person_id ===
               activePersonId &&
             document.category_id ===
@@ -841,12 +1150,16 @@ export default function DocumentsPage() {
   const scopedMedicamentos =
     useMemo(
       () => {
-        if (!activePersonId) {
+        if (
+          !activePersonId
+        ) {
           return [];
         }
 
         return medicamentos.filter(
-          (item) =>
+          (
+            item
+          ) =>
             item.person_id ===
             activePersonId
         );
@@ -860,12 +1173,16 @@ export default function DocumentsPage() {
   const scopedTratamentos =
     useMemo(
       () => {
-        if (!activePersonId) {
+        if (
+          !activePersonId
+        ) {
           return [];
         }
 
         return tratamentos.filter(
-          (item) =>
+          (
+            item
+          ) =>
             item.person_id ===
             activePersonId
         );
@@ -879,12 +1196,16 @@ export default function DocumentsPage() {
   const scopedCids =
     useMemo(
       () => {
-        if (!activePersonId) {
+        if (
+          !activePersonId
+        ) {
           return [];
         }
 
         return cids.filter(
-          (item) =>
+          (
+            item
+          ) =>
             item.person_id ===
             activePersonId
         );
@@ -898,12 +1219,16 @@ export default function DocumentsPage() {
   const scopedConsultas =
     useMemo(
       () => {
-        if (!activePersonId) {
+        if (
+          !activePersonId
+        ) {
           return [];
         }
 
         return consultas.filter(
-          (item) =>
+          (
+            item
+          ) =>
             item.person_id ===
             activePersonId
         );
@@ -917,12 +1242,16 @@ export default function DocumentsPage() {
   const scopedExames =
     useMemo(
       () => {
-        if (!activePersonId) {
+        if (
+          !activePersonId
+        ) {
           return [];
         }
 
         return exames.filter(
-          (item) =>
+          (
+            item
+          ) =>
             item.person_id ===
             activePersonId
         );
@@ -936,12 +1265,16 @@ export default function DocumentsPage() {
   const scopedCirurgias =
     useMemo(
       () => {
-        if (!activePersonId) {
+        if (
+          !activePersonId
+        ) {
           return [];
         }
 
         return cirurgias.filter(
-          (item) =>
+          (
+            item
+          ) =>
             item.person_id ===
             activePersonId
         );
@@ -955,12 +1288,16 @@ export default function DocumentsPage() {
   const scopedRenovacoes =
     useMemo(
       () => {
-        if (!activePersonId) {
+        if (
+          !activePersonId
+        ) {
           return [];
         }
 
         return renovacoes.filter(
-          (item) =>
+          (
+            item
+          ) =>
             item.person_id ===
             activePersonId
         );
@@ -974,12 +1311,16 @@ export default function DocumentsPage() {
   const scopedRegistros =
     useMemo(
       () => {
-        if (!activePersonId) {
+        if (
+          !activePersonId
+        ) {
           return [];
         }
 
         return registros.filter(
-          (item) =>
+          (
+            item
+          ) =>
             item.person_id ===
             activePersonId
         );
@@ -1003,13 +1344,17 @@ export default function DocumentsPage() {
         >(
           scopedMedicamentos
             .filter(
-              (item) =>
+              (
+                item
+              ) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (item) => [
+              (
+                item
+              ) => [
                 item.id!,
                 item,
               ]
@@ -1029,13 +1374,17 @@ export default function DocumentsPage() {
         >(
           scopedTratamentos
             .filter(
-              (item) =>
+              (
+                item
+              ) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (item) => [
+              (
+                item
+              ) => [
                 item.id!,
                 item,
               ]
@@ -1055,13 +1404,17 @@ export default function DocumentsPage() {
         >(
           scopedCids
             .filter(
-              (item) =>
+              (
+                item
+              ) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (item) => [
+              (
+                item
+              ) => [
                 item.id!,
                 item,
               ]
@@ -1081,13 +1434,17 @@ export default function DocumentsPage() {
         >(
           scopedConsultas
             .filter(
-              (item) =>
+              (
+                item
+              ) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (item) => [
+              (
+                item
+              ) => [
                 item.id!,
                 item,
               ]
@@ -1107,13 +1464,17 @@ export default function DocumentsPage() {
         >(
           scopedExames
             .filter(
-              (item) =>
+              (
+                item
+              ) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (item) => [
+              (
+                item
+              ) => [
                 item.id!,
                 item,
               ]
@@ -1133,13 +1494,17 @@ export default function DocumentsPage() {
         >(
           scopedCirurgias
             .filter(
-              (item) =>
+              (
+                item
+              ) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (item) => [
+              (
+                item
+              ) => [
                 item.id!,
                 item,
               ]
@@ -1159,13 +1524,17 @@ export default function DocumentsPage() {
         >(
           scopedRenovacoes
             .filter(
-              (item) =>
+              (
+                item
+              ) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (item) => [
+              (
+                item
+              ) => [
                 item.id!,
                 item,
               ]
@@ -1185,13 +1554,17 @@ export default function DocumentsPage() {
         >(
           scopedRegistros
             .filter(
-              (item) =>
+              (
+                item
+              ) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (item) => [
+              (
+                item
+              ) => [
                 item.id!,
                 item,
               ]
@@ -1211,13 +1584,17 @@ export default function DocumentsPage() {
         new Map(
           medicos
             .filter(
-              (item) =>
+              (
+                item
+              ) =>
                 Boolean(
                   item.id
                 )
             )
             .map(
-              (item) => [
+              (
+                item
+              ) => [
                 item.id!,
                 item,
               ]
@@ -1240,8 +1617,6 @@ export default function DocumentsPage() {
    * em vez de:
    *
    * Documento.entidade_id -> Medicamento
-   *
-   * Este mapa permite resolver o vínculo sem inferir pelo título.
    */
   const medicationByDocumentId =
     useMemo(
@@ -1286,14 +1661,10 @@ export default function DocumentsPage() {
     );
 
   /*
-   * O histórico de receitas fica preservado nas Renovações:
+   * Histórico de receitas:
    *
-   * Renovacao.document_id   -> Documento
+   * Renovacao.document_id -> Documento
    * Renovacao.medicamento_id -> Medicamento
-   *
-   * Um mesmo documento não deveria representar várias
-   * renovações diferentes, mas usamos lista para não perder
-   * informação caso existam dados históricos duplicados.
    */
   const renewalsByDocumentId =
     useMemo(
@@ -1311,7 +1682,9 @@ export default function DocumentsPage() {
           const documentId =
             renewal.document_id?.trim();
 
-          if (!documentId) {
+          if (
+            !documentId
+          ) {
             continue;
           }
 
@@ -1338,28 +1711,38 @@ export default function DocumentsPage() {
         ) {
           map.set(
             documentId,
-            [...list].sort(
-              (a, b) => {
+            [
+              ...list,
+            ].sort(
+              (
+                a,
+                b
+              ) => {
                 const dataCompare =
                   String(
-                    b.data || ""
+                    b.data ||
+                      ""
                   ).localeCompare(
                     String(
-                      a.data || ""
+                      a.data ||
+                        ""
                     )
                   );
 
                 if (
-                  dataCompare !== 0
+                  dataCompare !==
+                  0
                 ) {
                   return dataCompare;
                 }
 
                 return String(
-                  b.created_at || ""
+                  b.created_at ||
+                    ""
                 ).localeCompare(
                   String(
-                    a.created_at || ""
+                    a.created_at ||
+                      ""
                   )
                 );
               }
@@ -1439,15 +1822,22 @@ export default function DocumentsPage() {
             );
 
           if (key) {
-            months.add(key);
+            months.add(
+              key
+            );
           }
         }
 
         return Array.from(
           months
         ).sort(
-          (a, b) =>
-            b.localeCompare(a)
+          (
+            a,
+            b
+          ) =>
+            b.localeCompare(
+              a
+            )
         );
       },
       [
@@ -1464,7 +1854,9 @@ export default function DocumentsPage() {
       () =>
         healthDocuments
           .filter(
-            (document) => {
+            (
+              document
+            ) => {
               if (
                 selectedMonth ===
                 "all"
@@ -1481,9 +1873,16 @@ export default function DocumentsPage() {
             }
           )
           .sort(
-            (a, b) =>
-              getSortableDate(b) -
-              getSortableDate(a)
+            (
+              a,
+              b
+            ) =>
+              getSortableDate(
+                b
+              ) -
+              getSortableDate(
+                a
+              )
           ),
       [
         healthDocuments,
@@ -1502,13 +1901,17 @@ export default function DocumentsPage() {
       () =>
         periodDocuments
           .filter(
-            (document) =>
+            (
+              document
+            ) =>
               Boolean(
                 document.id
               )
           )
           .map(
-            (document) => {
+            (
+              document
+            ) => {
               const id =
                 document.id!;
 
@@ -1531,7 +1934,9 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (medicamento) {
+                if (
+                  medicamento
+                ) {
                   return {
                     document,
                     id,
@@ -1554,9 +1959,12 @@ export default function DocumentsPage() {
                       Pill,
 
                     parentColor:
-                      DOMAIN_CONFIG
-                        .medicamentos
-                        .color,
+                      getMedicationPrimaryColor(
+                        medicamento
+                      ),
+
+                    medication:
+                      medicamento,
 
                     entityLabel:
                       medicamento.dosagem
@@ -1623,7 +2031,9 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (renovacao) {
+                if (
+                  renovacao
+                ) {
                   const medicamento =
                     renovacao.medicamento_id
                       ? medicationMap.get(
@@ -1631,7 +2041,9 @@ export default function DocumentsPage() {
                         )
                       : undefined;
 
-                  if (medicamento) {
+                  if (
+                    medicamento
+                  ) {
                     return {
                       document,
                       id,
@@ -1654,9 +2066,12 @@ export default function DocumentsPage() {
                         Pill,
 
                       parentColor:
-                        DOMAIN_CONFIG
-                          .medicamentos
-                          .color,
+                        getMedicationPrimaryColor(
+                          medicamento
+                        ),
+
+                      medication:
+                        medicamento,
 
                       entityLabel:
                         renovacao.data
@@ -1766,7 +2181,9 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (cirurgia) {
+                if (
+                  cirurgia
+                ) {
                   const medico =
                     cirurgia.medico_id
                       ? medicoMap.get(
@@ -1858,7 +2275,9 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (consulta) {
+                if (
+                  consulta
+                ) {
                   const medico =
                     consulta.medico_id
                       ? medicoMap.get(
@@ -1911,8 +2330,12 @@ export default function DocumentsPage() {
                             )
                           : undefined,
                       ]
-                        .filter(Boolean)
-                        .join(" · "),
+                        .filter(
+                          Boolean
+                        )
+                        .join(
+                          " · "
+                        ),
 
                     alert:
                       null,
@@ -1966,7 +2389,9 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (exame) {
+                if (
+                  exame
+                ) {
                   return {
                     document,
                     id,
@@ -2051,7 +2476,9 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (tratamento) {
+                if (
+                  tratamento
+                ) {
                   return {
                     document,
                     id,
@@ -2134,7 +2561,9 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (cid) {
+                if (
+                  cid
+                ) {
                   return {
                     document,
                     id,
@@ -2219,11 +2648,13 @@ export default function DocumentsPage() {
                     document.entidade_id
                   );
 
-                if (registro) {
+                if (
+                  registro
+                ) {
                   const registroNome =
                     String(
                       registro.nome ||
-                      ""
+                        ""
                     ).trim() ||
                     "Registro de Saúde";
 
@@ -2310,7 +2741,9 @@ export default function DocumentsPage() {
 
               const linkedRenewal =
                 linkedRenewals?.find(
-                  (renewal) =>
+                  (
+                    renewal
+                  ) =>
                     Boolean(
                       renewal.medicamento_id
                     )
@@ -2324,7 +2757,9 @@ export default function DocumentsPage() {
                     linkedRenewal.medicamento_id
                   );
 
-                if (medicamento) {
+                if (
+                  medicamento
+                ) {
                   return {
                     document,
                     id,
@@ -2347,9 +2782,12 @@ export default function DocumentsPage() {
                       Pill,
 
                     parentColor:
-                      DOMAIN_CONFIG
-                        .medicamentos
-                        .color,
+                      getMedicationPrimaryColor(
+                        medicamento
+                      ),
+
+                    medication:
+                      medicamento,
 
                     entityLabel:
                       linkedRenewal.data
@@ -2438,9 +2876,12 @@ export default function DocumentsPage() {
                     Pill,
 
                   parentColor:
-                    DOMAIN_CONFIG
-                      .medicamentos
-                      .color,
+                    getMedicationPrimaryColor(
+                      currentMedication
+                    ),
+
+                  medication:
+                    currentMedication,
 
                   entityLabel:
                     currentMedication.dosagem
@@ -2452,6 +2893,67 @@ export default function DocumentsPage() {
                       document,
                       renewalsByMedication,
                       currentMedication.id
+                    ),
+                };
+              }
+
+              // ==============================================
+              // LEGADO SEGURO: RECEITA PELO NOME
+              //
+              // Recuperação somente visual.
+              //
+              // Não grava vínculo no banco e só aceita uma
+              // correspondência exata e única.
+              // ==============================================
+
+              const legacyPrescriptionMedication =
+                findUniqueLegacyPrescriptionMedication(
+                  document,
+                  scopedMedicamentos
+                );
+
+              if (
+                legacyPrescriptionMedication?.id
+              ) {
+                return {
+                  document,
+                  id,
+                  date,
+
+                  domainId:
+                    "medicamentos",
+
+                  parentKey:
+                    `medicamento:${legacyPrescriptionMedication.id}`,
+
+                  parentName:
+                    legacyPrescriptionMedication.nome,
+
+                  parentDescription:
+                    legacyPrescriptionMedication.dosagem ||
+                    undefined,
+
+                  parentIcon:
+                    Pill,
+
+                  parentColor:
+                    getMedicationPrimaryColor(
+                      legacyPrescriptionMedication
+                    ),
+
+                  medication:
+                    legacyPrescriptionMedication,
+
+                  entityLabel:
+                    legacyPrescriptionMedication.dosagem
+                      ? `${legacyPrescriptionMedication.nome} · ${legacyPrescriptionMedication.dosagem}`
+                      : legacyPrescriptionMedication.nome,
+
+                  alert:
+                    getPrescriptionAlert(
+                      document,
+                      renewalsByMedication,
+                      legacyPrescriptionMedication.id
                     ),
                 };
               }
@@ -2522,7 +3024,9 @@ export default function DocumentsPage() {
                     legacyMedicationId
                   );
 
-                if (medicamento) {
+                if (
+                  medicamento
+                ) {
                   return {
                     document,
                     id,
@@ -2545,9 +3049,12 @@ export default function DocumentsPage() {
                       Pill,
 
                     parentColor:
-                      DOMAIN_CONFIG
-                        .medicamentos
-                        .color,
+                      getMedicationPrimaryColor(
+                        medicamento
+                      ),
+
+                    medication:
+                      medicamento,
 
                     entityLabel:
                       medicamento.dosagem
@@ -2802,6 +3309,7 @@ export default function DocumentsPage() {
         medicationByDocumentId,
         renewalsByDocumentId,
         renewalsByMedication,
+        scopedMedicamentos,
       ]
     );
 
@@ -2817,12 +3325,16 @@ export default function DocumentsPage() {
             searchQuery
           );
 
-        if (!normalizedQuery) {
+        if (
+          !normalizedQuery
+        ) {
           return resolvedViewModels;
         }
 
         return resolvedViewModels.filter(
-          (item) =>
+          (
+            item
+          ) =>
             matchesViewModelSearch(
               item,
               normalizedQuery
@@ -2896,24 +3408,41 @@ export default function DocumentsPage() {
                 color:
                   item.parentColor,
 
+                medication:
+                  item.medication,
+
                 documents:
                   [],
               }
             );
           }
 
-          parents
-            .get(
+          const parent =
+            parents.get(
               item.parentKey
-            )!
-            .documents.push(
-              item
-            );
+            )!;
+
+          if (
+            !parent.medication &&
+            item.medication
+          ) {
+            parent.medication =
+              item.medication;
+
+            parent.color =
+              item.parentColor;
+          }
+
+          parent.documents.push(
+            item
+          );
         }
 
         return DOMAIN_ORDER
           .map(
-            (domainId) => {
+            (
+              domainId
+            ) => {
               const parentsMap =
                 domainMap.get(
                   domainId
@@ -2921,7 +3450,8 @@ export default function DocumentsPage() {
 
               if (
                 !parentsMap ||
-                parentsMap.size === 0
+                parentsMap.size ===
+                  0
               ) {
                 return null;
               }
@@ -2936,14 +3466,19 @@ export default function DocumentsPage() {
                   parentsMap.values()
                 )
                   .map(
-                    (parent) => ({
+                    (
+                      parent
+                    ) => ({
                       ...parent,
 
                       documents:
                         [
                           ...parent.documents,
                         ].sort(
-                          (a, b) =>
+                          (
+                            a,
+                            b
+                          ) =>
                             getSortableDate(
                               b.document
                             ) -
@@ -2954,12 +3489,19 @@ export default function DocumentsPage() {
                     })
                   )
                   .sort(
-                    (a, b) => {
+                    (
+                      a,
+                      b
+                    ) => {
                       const latestA =
-                        a.documents[0];
+                        a.documents[
+                          0
+                        ];
 
                       const latestB =
-                        b.documents[0];
+                        b.documents[
+                          0
+                        ];
 
                       return (
                         getSortableDate(
@@ -3007,7 +3549,9 @@ export default function DocumentsPage() {
             (
               group
             ): group is DomainGroup =>
-              Boolean(group)
+              Boolean(
+                group
+              )
           );
       },
       [
@@ -3024,13 +3568,17 @@ export default function DocumentsPage() {
       const validDomainIds =
         new Set(
           domainGroups.map(
-            (group) =>
+            (
+              group
+            ) =>
               group.id
           )
         );
 
       setExpandedDomains(
-        (previous) => {
+        (
+          previous
+        ) => {
           const next =
             new Set<
               ClinicalDomainId
@@ -3045,7 +3593,9 @@ export default function DocumentsPage() {
                 id
               )
             ) {
-              next.add(id);
+              next.add(
+                id
+              );
             }
           }
 
@@ -3054,7 +3604,9 @@ export default function DocumentsPage() {
             0
           ) {
             domainGroups.forEach(
-              (group) =>
+              (
+                group
+              ) =>
                 next.add(
                   group.id
                 )
@@ -3075,16 +3627,22 @@ export default function DocumentsPage() {
       const validParentKeys =
         new Set(
           domainGroups.flatMap(
-            (domain) =>
+            (
+              domain
+            ) =>
               domain.parents.map(
-                (parent) =>
+                (
+                  parent
+                ) =>
                   parent.key
               )
           )
         );
 
       setExpandedParents(
-        (previous) => {
+        (
+          previous
+        ) => {
           const next =
             new Set<string>();
 
@@ -3097,7 +3655,9 @@ export default function DocumentsPage() {
                 key
               )
             ) {
-              next.add(key);
+              next.add(
+                key
+              );
             }
           }
 
@@ -3106,14 +3666,29 @@ export default function DocumentsPage() {
             0
           ) {
             domainGroups.forEach(
-              (domain) => {
-                const first =
-                  domain.parents[
-                    0
-                  ]?.key;
+              (
+                domain
+              ) => {
+                const firstExpandable =
+                  domain.parents.find(
+                    (
+                      parent
+                    ) =>
+                      !(
+                        domain.id ===
+                          "medicamentos" &&
+                        parent.medication &&
+                        parent.documents.length ===
+                          1
+                      )
+                  );
 
-                if (first) {
-                  next.add(first);
+                if (
+                  firstExpandable
+                ) {
+                  next.add(
+                    firstExpandable.key
+                  );
                 }
               }
             );
@@ -3137,19 +3712,31 @@ export default function DocumentsPage() {
       (
         id: ClinicalDomainId
       ) => {
-        trigger("vibrate");
+        trigger(
+          "vibrate"
+        );
 
         setExpandedDomains(
-          (previous) => {
+          (
+            previous
+          ) => {
             const next =
               new Set(
                 previous
               );
 
-            if (next.has(id)) {
-              next.delete(id);
+            if (
+              next.has(
+                id
+              )
+            ) {
+              next.delete(
+                id
+              );
             } else {
-              next.add(id);
+              next.add(
+                id
+              );
             }
 
             return next;
@@ -3166,19 +3753,31 @@ export default function DocumentsPage() {
       (
         key: string
       ) => {
-        trigger("vibrate");
+        trigger(
+          "vibrate"
+        );
 
         setExpandedParents(
-          (previous) => {
+          (
+            previous
+          ) => {
             const next =
               new Set(
                 previous
               );
 
-            if (next.has(key)) {
-              next.delete(key);
+            if (
+              next.has(
+                key
+              )
+            ) {
+              next.delete(
+                key
+              );
             } else {
-              next.add(key);
+              next.add(
+                key
+              );
             }
 
             return next;
@@ -3195,7 +3794,9 @@ export default function DocumentsPage() {
       (
         id: string
       ) => {
-        trigger("vibrate");
+        trigger(
+          "vibrate"
+        );
 
         router.push(
           `/saude/documentos/detalhes?id=${id}`
@@ -3215,7 +3816,9 @@ export default function DocumentsPage() {
     useMemo(
       () =>
         viewModels.map(
-          (item) => ({
+          (
+            item
+          ) => ({
             ref:
               getExportCardRef(
                 item.id
@@ -3289,7 +3892,9 @@ export default function DocumentsPage() {
           >
             <div className="space-y-6 bg-void p-6">
               {viewModels.map(
-                (item) => {
+                (
+                  item
+                ) => {
                   const exportRef =
                     getExportCardRef(
                       item.id
@@ -3423,7 +4028,9 @@ export default function DocumentsPage() {
                 searchQuery
               }
               onChange={
-                (event) =>
+                (
+                  event
+                ) =>
                   setSearchQuery(
                     event.target.value
                   )
@@ -3502,12 +4109,16 @@ export default function DocumentsPage() {
               0 ? (
                 <motion.div
                   initial={{
-                    opacity: 0,
-                    y: 10,
+                    opacity:
+                      0,
+                    y:
+                      10,
                   }}
                   animate={{
-                    opacity: 1,
-                    y: 0,
+                    opacity:
+                      1,
+                    y:
+                      0,
                   }}
                   className="flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface px-6 py-12 text-center shadow-sm"
                 >
@@ -3616,19 +4227,23 @@ export default function DocumentsPage() {
                             domain.id
                           }
                           initial={{
-                            opacity: 0,
-                            y: 10,
+                            opacity:
+                              0,
+                            y:
+                              10,
                           }}
                           animate={{
-                            opacity: 1,
-                            y: 0,
+                            opacity:
+                              1,
+                            y:
+                              0,
                           }}
                           transition={{
                             delay:
                               domainIndex *
                               0.025,
                           }}
-                          className="overflow-hidden rounded-[28px] border border-surface-border/50 bg-surface shadow-sm"
+                          className="overflow-hidden rounded-[26px] border border-surface-border/50 bg-surface shadow-sm"
                         >
                           <button
                             type="button"
@@ -3638,48 +4253,40 @@ export default function DocumentsPage() {
                                   domain.id
                                 )
                             }
-                            className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-surface-raised/40"
+                            className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface-raised/40"
                             aria-expanded={
                               isDomainExpanded
                             }
                           >
                             <div className="flex min-w-0 items-center gap-3">
                               <div
-                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px]"
                                 style={{
                                   backgroundColor:
-                                    `${domain.color}18`,
+                                    `${domain.color}15`,
                                   color:
                                     domain.color,
                                 }}
                               >
                                 <DomainIcon
                                   size={
-                                    19
+                                    18
                                   }
                                 />
                               </div>
 
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <h2 className="truncate font-display text-sm font-semibold text-ink-primary">
-                                    {
-                                      domain.label
-                                    }
-                                  </h2>
-
-                                  <span className="shrink-0 rounded-full border border-surface-border/40 bg-surface-raised px-2 py-0.5 font-mono text-[9px] text-ink-muted">
-                                    {
-                                      domain.count
-                                    }
-                                  </span>
-                                </div>
-
-                                <p className="mt-0.5 line-clamp-1 text-[11px] text-ink-muted">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <h2 className="truncate font-display text-sm font-semibold text-ink-primary">
                                   {
-                                    domain.description
+                                    domain.label
                                   }
-                                </p>
+                                </h2>
+
+                                <span className="shrink-0 rounded-full border border-surface-border/40 bg-surface-raised px-2 py-0.5 font-mono text-[9px] text-ink-muted">
+                                  {
+                                    domain.count
+                                  }
+                                </span>
                               </div>
                             </div>
 
@@ -3703,23 +4310,30 @@ export default function DocumentsPage() {
                             {isDomainExpanded && (
                               <motion.div
                                 initial={{
-                                  opacity: 0,
-                                  height: 0,
+                                  opacity:
+                                    0,
+                                  height:
+                                    0,
                                 }}
                                 animate={{
-                                  opacity: 1,
-                                  height: "auto",
+                                  opacity:
+                                    1,
+                                  height:
+                                    "auto",
                                 }}
                                 exit={{
-                                  opacity: 0,
-                                  height: 0,
+                                  opacity:
+                                    0,
+                                  height:
+                                    0,
                                 }}
                                 className="overflow-hidden"
                               >
-                                <div className="space-y-2.5 border-t border-surface-border/30 px-3.5 pb-3.5 pt-3">
+                                <div className="border-t border-surface-border/30">
                                   {domain.parents.map(
                                     (
-                                      parent
+                                      parent,
+                                      parentIndex
                                     ) => {
                                       const ParentIcon =
                                         parent.icon;
@@ -3729,66 +4343,223 @@ export default function DocumentsPage() {
                                           parent.key
                                         );
 
+                                      const isMedicationParent =
+                                        domain.id ===
+                                          "medicamentos" &&
+                                        Boolean(
+                                          parent.medication
+                                        );
+
+                                      const hasSingleMedicationDocument =
+                                        isMedicationParent &&
+                                        parent.documents.length ===
+                                          1;
+
+                                      const singleMedicationDocument =
+                                        hasSingleMedicationDocument
+                                          ? parent.documents[
+                                              0
+                                            ]
+                                          : undefined;
+
                                       return (
                                         <div
                                           key={
                                             parent.key
                                           }
-                                          className="overflow-hidden rounded-[22px] border border-surface-border/40 bg-surface-raised/45"
+                                          className={
+                                            parentIndex >
+                                            0
+                                              ? "border-t border-surface-border/25"
+                                              : ""
+                                          }
                                         >
                                           <button
                                             type="button"
                                             onClick={
-                                              () =>
+                                              () => {
+                                                if (
+                                                  singleMedicationDocument
+                                                ) {
+                                                  openDocument(
+                                                    singleMedicationDocument.id
+                                                  );
+
+                                                  return;
+                                                }
+
                                                 toggleParent(
                                                   parent.key
-                                                )
+                                                );
+                                              }
                                             }
-                                            className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-surface-raised"
+                                            className="flex min-h-[68px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-raised/45 active:bg-surface-raised/60"
                                             aria-expanded={
-                                              isParentExpanded
+                                              hasSingleMedicationDocument
+                                                ? undefined
+                                                : isParentExpanded
                                             }
                                           >
-                                            <div className="flex min-w-0 items-center gap-3">
+                                            <div className="flex min-w-0 flex-1 items-center gap-3">
                                               <div
-                                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                                                className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[13px] border"
                                                 style={{
                                                   backgroundColor:
-                                                    `${parent.color}15`,
-                                                  color:
-                                                    parent.color,
+                                                    `${parent.color}10`,
+                                                  borderColor:
+                                                    `${parent.color}28`,
                                                 }}
                                               >
-                                                <ParentIcon
-                                                  size={
-                                                    16
-                                                  }
-                                                />
+                                                {parent.medication ? (
+                                                  <MedicationFormatIcon
+                                                    formato={
+                                                      parent.medication.formato
+                                                    }
+                                                    cores={
+                                                      getMedicationColors(
+                                                        parent.medication
+                                                      )
+                                                    }
+                                                    size={
+                                                      21
+                                                    }
+                                                  />
+                                                ) : (
+                                                  <ParentIcon
+                                                    size={
+                                                      16
+                                                    }
+                                                    style={{
+                                                      color:
+                                                        parent.color,
+                                                    }}
+                                                  />
+                                                )}
                                               </div>
 
-                                              <div className="min-w-0">
-                                                <p className="truncate text-xs font-semibold text-ink-primary">
-                                                  {
-                                                    parent.name
-                                                  }
-                                                </p>
-
-                                                <div className="mt-0.5 flex items-center gap-2">
-                                                  {parent.description && (
-                                                    <p className="truncate text-[10px] text-ink-muted">
-                                                      {
-                                                        parent.description
-                                                      }
-                                                    </p>
-                                                  )}
-
-                                                  <span className="shrink-0 text-[9px] text-ink-faint">
+                                              <div className="min-w-0 flex-1">
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                  <p className="truncate text-[13px] font-semibold text-ink-primary">
                                                     {
-                                                      parent.documents.length
-                                                    }{" "}
-                                                    doc.
-                                                  </span>
+                                                      parent.name
+                                                    }
+                                                  </p>
+
+                                                  {parent.documents.length >
+                                                    1 && (
+                                                    <span className="shrink-0 rounded-full bg-surface-raised px-2 py-0.5 font-mono text-[8px] text-ink-faint">
+                                                      {
+                                                        parent.documents.length
+                                                      }{" "}
+                                                      docs
+                                                    </span>
+                                                  )}
                                                 </div>
+
+                                                {singleMedicationDocument ? (
+                                                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-ink-muted">
+                                                    {parent.description && (
+                                                      <>
+                                                        <span className="max-w-[120px] truncate">
+                                                          {
+                                                            parent.description
+                                                          }
+                                                        </span>
+
+                                                        <span className="text-ink-faint">
+                                                          ·
+                                                        </span>
+                                                      </>
+                                                    )}
+
+                                                    <span>
+                                                      {getDocumentTypeLabel(
+                                                        singleMedicationDocument.document.type
+                                                      )}
+                                                    </span>
+
+                                                    {singleMedicationDocument.date && (
+                                                      <>
+                                                        <span className="text-ink-faint">
+                                                          ·
+                                                        </span>
+
+                                                        <span className="font-mono">
+                                                          {formatShortDate(
+                                                            singleMedicationDocument.date
+                                                          )}
+                                                        </span>
+                                                      </>
+                                                    )}
+
+                                                    {(singleMedicationDocument
+                                                      .document
+                                                      .attachments
+                                                      ?.length ||
+                                                      0) >
+                                                      0 && (
+                                                      <>
+                                                        <span className="text-ink-faint">
+                                                          ·
+                                                        </span>
+
+                                                        <span className="flex items-center gap-1 text-ice">
+                                                          <Paperclip
+                                                            size={
+                                                              9
+                                                            }
+                                                          />
+
+                                                          {
+                                                            singleMedicationDocument
+                                                              .document
+                                                              .attachments
+                                                              .length
+                                                          }
+                                                        </span>
+                                                      </>
+                                                    )}
+
+                                                    {singleMedicationDocument.alert && (
+                                                      <span
+                                                        className="ml-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-semibold"
+                                                        style={{
+                                                          backgroundColor:
+                                                            `${singleMedicationDocument.alert.color}15`,
+                                                          color:
+                                                            singleMedicationDocument.alert.color,
+                                                        }}
+                                                      >
+                                                        {
+                                                          singleMedicationDocument
+                                                            .alert
+                                                            .label
+                                                        }
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                ) : (
+                                                  <div className="mt-0.5 flex min-w-0 items-center gap-2">
+                                                    {parent.description ? (
+                                                      <p className="truncate text-[10px] text-ink-muted">
+                                                        {
+                                                          parent.description
+                                                        }
+                                                      </p>
+                                                    ) : (
+                                                      <p className="text-[10px] text-ink-faint">
+                                                        {
+                                                          parent.documents.length
+                                                        }{" "}
+                                                        documento
+                                                        {parent.documents.length ===
+                                                        1
+                                                          ? ""
+                                                          : "s"}
+                                                      </p>
+                                                    )}
+                                                  </div>
+                                                )}
                                               </div>
                                             </div>
 
@@ -3796,9 +4567,10 @@ export default function DocumentsPage() {
                                               size={
                                                 15
                                               }
-                                              className={`shrink-0 text-ink-muted transition-transform ${
+                                              className={`shrink-0 text-ink-faint transition-all ${
+                                                !hasSingleMedicationDocument &&
                                                 isParentExpanded
-                                                  ? "rotate-90"
+                                                  ? "rotate-90 text-ink-muted"
                                                   : ""
                                               }`}
                                             />
@@ -3809,163 +4581,175 @@ export default function DocumentsPage() {
                                               false
                                             }
                                           >
-                                            {isParentExpanded && (
-                                              <motion.div
-                                                initial={{
-                                                  opacity: 0,
-                                                  height: 0,
-                                                }}
-                                                animate={{
-                                                  opacity: 1,
-                                                  height: "auto",
-                                                }}
-                                                exit={{
-                                                  opacity: 0,
-                                                  height: 0,
-                                                }}
-                                                className="overflow-hidden"
-                                              >
-                                                <div className="space-y-2 border-t border-surface-border/30 px-2.5 pb-2.5 pt-2.5">
-                                                  {parent.documents.map(
-                                                    (
-                                                      item
-                                                    ) => {
-                                                      const DocumentIcon =
-                                                        getDocumentIcon(
-                                                          item.document.type
-                                                        );
+                                            {isParentExpanded &&
+                                              !hasSingleMedicationDocument && (
+                                                <motion.div
+                                                  initial={{
+                                                    opacity:
+                                                      0,
+                                                    height:
+                                                      0,
+                                                  }}
+                                                  animate={{
+                                                    opacity:
+                                                      1,
+                                                    height:
+                                                      "auto",
+                                                  }}
+                                                  exit={{
+                                                    opacity:
+                                                      0,
+                                                    height:
+                                                      0,
+                                                  }}
+                                                  className="overflow-hidden"
+                                                >
+                                                  <div className="space-y-2 border-t border-surface-border/25 bg-void/20 px-3 pb-3 pt-2.5">
+                                                    {parent.documents.map(
+                                                      (
+                                                        item
+                                                      ) => {
+                                                        const DocumentIcon =
+                                                          getDocumentIcon(
+                                                            item.document.type
+                                                          );
 
-                                                      return (
-                                                        <button
-                                                          key={
-                                                            item.id
-                                                          }
-                                                          type="button"
-                                                          onClick={
-                                                            () =>
-                                                              openDocument(
-                                                                item.id
-                                                              )
-                                                          }
-                                                          className="group flex w-full items-center justify-between gap-3 rounded-[18px] border border-surface-border/40 bg-surface px-3 py-3 text-left transition-all hover:border-emerald-400/25 active:scale-[0.99]"
-                                                        >
-                                                          <div className="flex min-w-0 items-center gap-3">
-                                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-surface-border/40 bg-surface-raised text-emerald-400">
-                                                              <DocumentIcon
-                                                                size={
-                                                                  15
-                                                                }
-                                                              />
-                                                            </div>
-
-                                                            <div className="min-w-0">
-                                                              <div className="flex min-w-0 items-center gap-2">
-                                                                <p className="truncate text-xs font-semibold text-ink-primary">
-                                                                  {
-                                                                    item.document.title
+                                                        return (
+                                                          <button
+                                                            key={
+                                                              item.id
+                                                            }
+                                                            type="button"
+                                                            onClick={
+                                                              () =>
+                                                                openDocument(
+                                                                  item.id
+                                                                )
+                                                            }
+                                                            className="group flex w-full items-center justify-between gap-3 rounded-[17px] border border-surface-border/35 bg-surface-raised/45 px-3 py-2.5 text-left transition-all hover:border-emerald-400/25 active:scale-[0.99]"
+                                                          >
+                                                            <div className="flex min-w-0 items-center gap-3">
+                                                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] border border-surface-border/35 bg-surface text-emerald-400">
+                                                                <DocumentIcon
+                                                                  size={
+                                                                    14
                                                                   }
-                                                                </p>
-
-                                                                {item.alert && (
-                                                                  <span
-                                                                    className="shrink-0 rounded-full px-2 py-0.5 text-[8px] font-bold"
-                                                                    style={{
-                                                                      backgroundColor:
-                                                                        `${item.alert.color}18`,
-                                                                      color:
-                                                                        item.alert.color,
-                                                                    }}
-                                                                  >
-                                                                    {
-                                                                      item.alert.label
-                                                                    }
-                                                                  </span>
-                                                                )}
+                                                                />
                                                               </div>
 
-                                                              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-muted">
-                                                                <span>
-                                                                  {getDocumentTypeLabel(
-                                                                    item.document.type
-                                                                  )}
-                                                                </span>
+                                                              <div className="min-w-0">
+                                                                <div className="flex min-w-0 items-center gap-2">
+                                                                  <p className="truncate text-[11px] font-semibold text-ink-primary">
+                                                                    {
+                                                                      item.document.title
+                                                                    }
+                                                                  </p>
 
-                                                                {item.entityLabel &&
-                                                                  (
-                                                                    item.domainId ===
-                                                                      "cirurgias" ||
-                                                                    item.domainId ===
-                                                                      "consultas" ||
-                                                                    item.domainId ===
-                                                                      "registros" ||
-                                                                    item.document.entidade_tipo ===
-                                                                      "renovacao"
-                                                                  ) && (
+                                                                  {item.alert && (
+                                                                    <span
+                                                                      className="shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-bold"
+                                                                      style={{
+                                                                        backgroundColor:
+                                                                          `${item.alert.color}18`,
+                                                                        color:
+                                                                          item.alert.color,
+                                                                      }}
+                                                                    >
+                                                                      {
+                                                                        item.alert.label
+                                                                      }
+                                                                    </span>
+                                                                  )}
+                                                                </div>
+
+                                                                <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px] text-ink-muted">
+                                                                  <span>
+                                                                    {getDocumentTypeLabel(
+                                                                      item.document.type
+                                                                    )}
+                                                                  </span>
+
+                                                                  {item.entityLabel &&
+                                                                    (
+                                                                      item.domainId ===
+                                                                        "cirurgias" ||
+                                                                      item.domainId ===
+                                                                        "consultas" ||
+                                                                      item.domainId ===
+                                                                        "registros" ||
+                                                                      item.document.entidade_tipo ===
+                                                                        "renovacao"
+                                                                    ) && (
+                                                                      <>
+                                                                        <span className="text-ink-faint">
+                                                                          ·
+                                                                        </span>
+
+                                                                        <span className="max-w-[140px] truncate text-ink-primary">
+                                                                          {
+                                                                            item.entityLabel
+                                                                          }
+                                                                        </span>
+                                                                      </>
+                                                                    )}
+
+                                                                  {item.date && (
                                                                     <>
                                                                       <span className="text-ink-faint">
                                                                         ·
                                                                       </span>
 
-                                                                      <span className="max-w-[150px] truncate text-ink-primary">
-                                                                        {
-                                                                          item.entityLabel
-                                                                        }
+                                                                      <span className="font-mono">
+                                                                        {formatShortDate(
+                                                                          item.date
+                                                                        )}
                                                                       </span>
                                                                     </>
                                                                   )}
 
-                                                                {item.date && (
-                                                                  <>
-                                                                    <span className="text-ink-faint">
-                                                                      ·
-                                                                    </span>
+                                                                  {(item.document
+                                                                    .attachments
+                                                                    ?.length ||
+                                                                    0) >
+                                                                    0 && (
+                                                                    <>
+                                                                      <span className="text-ink-faint">
+                                                                        ·
+                                                                      </span>
 
-                                                                    <span className="font-mono">
-                                                                      {formatShortDate(
-                                                                        item.date
-                                                                      )}
-                                                                    </span>
-                                                                  </>
-                                                                )}
+                                                                      <span className="flex items-center gap-1 text-ice">
+                                                                        <Paperclip
+                                                                          size={
+                                                                            9
+                                                                          }
+                                                                        />
 
-                                                                {(item.document.attachments?.length ||
-                                                                  0) >
-                                                                  0 && (
-                                                                  <>
-                                                                    <span className="text-ink-faint">
-                                                                      ·
-                                                                    </span>
-
-                                                                    <span className="flex items-center gap-1 text-ice">
-                                                                      <Paperclip
-                                                                        size={
-                                                                          10
+                                                                        {
+                                                                          item
+                                                                            .document
+                                                                            .attachments
+                                                                            .length
                                                                         }
-                                                                      />
-
-                                                                      {
-                                                                        item.document.attachments.length
-                                                                      }
-                                                                    </span>
-                                                                  </>
-                                                                )}
+                                                                      </span>
+                                                                    </>
+                                                                  )}
+                                                                </div>
                                                               </div>
                                                             </div>
-                                                          </div>
 
-                                                          <ChevronRight
-                                                            size={
-                                                              14
-                                                            }
-                                                            className="shrink-0 text-ink-faint transition-colors group-hover:text-emerald-400"
-                                                          />
-                                                        </button>
-                                                      );
-                                                    }
-                                                  )}
-                                                </div>
-                                              </motion.div>
-                                            )}
+                                                            <ChevronRight
+                                                              size={
+                                                                13
+                                                              }
+                                                              className="shrink-0 text-ink-faint transition-colors group-hover:text-emerald-400"
+                                                            />
+                                                          </button>
+                                                        );
+                                                      }
+                                                    )}
+                                                  </div>
+                                                </motion.div>
+                                              )}
                                           </AnimatePresence>
                                         </div>
                                       );
@@ -4154,14 +4938,17 @@ function ExportDocumentCard({
     ].icon;
 
   const attachmentCount =
-    item.document.attachments
+    item.document
+      .attachments
       ?.length ||
     0;
 
   return (
     <div
       ref={
-        (element) => {
+        (
+          element
+        ) => {
           cardRef.current =
             element;
         }
@@ -4207,19 +4994,39 @@ function ExportDocumentCard({
       <div className="mt-5 rounded-[20px] border border-surface-border/40 bg-surface-raised/60 p-4">
         <div className="flex items-start gap-3">
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border"
             style={{
               backgroundColor:
-                `${item.parentColor}15`,
-              color:
-                item.parentColor,
+                `${item.parentColor}12`,
+              borderColor:
+                `${item.parentColor}28`,
             }}
           >
-            <DomainIcon
-              size={
-                17
-              }
-            />
+            {item.medication ? (
+              <MedicationFormatIcon
+                formato={
+                  item.medication.formato
+                }
+                cores={
+                  getMedicationColors(
+                    item.medication
+                  )
+                }
+                size={
+                  19
+                }
+              />
+            ) : (
+              <DomainIcon
+                size={
+                  17
+                }
+                style={{
+                  color:
+                    item.parentColor,
+                }}
+              />
+            )}
           </div>
 
           <div className="min-w-0">
